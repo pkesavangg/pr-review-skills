@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+
+# Android
+*.iml
+.gradle/
+build/
+local.properties
+.idea/
+*.log
+
+# General
+*.swp
+*.swo
+*.bak
+*.tmp
