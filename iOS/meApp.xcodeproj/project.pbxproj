@@ -45,8 +45,6 @@
 				Data/Storage/DB/.gitkeep,
 				Data/Storage/Persistence/.gitkeep,
 				Domain/Interfaces/.gitkeep,
-				Domain/Models/API/.gitkeep,
-				Domain/Models/Domain/.gitkeep,
 				Domain/Models/Persistence/.gitkeep,
 				Domain/Repositories/.gitkeep,
 				Domain/Services/.gitkeep,
