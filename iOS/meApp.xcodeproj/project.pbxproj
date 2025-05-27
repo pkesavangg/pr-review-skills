@@ -30,10 +30,43 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		105A1FDB2DE5923500FBB764 /* Exceptions for "meApp" folder in "meApp" target */ = {
+		105A208B2DE5998800FBB764 /* Exceptions for "meApp" folder in "meApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				Core/Config/.gitkeep,
+				Core/DI/.gitkeep,
+				Core/Navigation/.gitkeep,
+				Core/Network/.gitkeep,
+				Core/Services/.gitkeep,
+				Core/Shared/Extensions/.gitkeep,
+				Core/Shared/Utilities/.gitkeep,
+				Data/API/.gitkeep,
+				Data/Repositories/.gitkeep,
+				Data/Services/.gitkeep,
+				Data/Storage/DB/.gitkeep,
+				Data/Storage/Persistence/.gitkeep,
+				Domain/Interfaces/.gitkeep,
+				Domain/Models/API/.gitkeep,
+				Domain/Models/Domain/.gitkeep,
+				Domain/Models/Persistence/.gitkeep,
+				Domain/Repositories/.gitkeep,
+				Domain/Services/.gitkeep,
+				Features/Auth/Enums/.gitkeep,
+				Features/Auth/Models/.gitkeep,
+				Features/Auth/Stores/.gitkeep,
+				Features/Auth/Strings/.gitkeep,
+				Features/Auth/Views/Components/.gitkeep,
+				Features/Auth/Views/Screens/.gitkeep,
+				Features/Entry/Enums/.gitkeep,
+				Features/Entry/Models/.gitkeep,
+				Features/Entry/Stores/.gitkeep,
+				Features/Entry/Strings/.gitkeep,
+				Features/Entry/Views/Components/.gitkeep,
+				Features/Entry/Views/Screens/.gitkeep,
+				Features/Settings/.gitkeep,
+				Resources/Info.plist,
+				Tests/.gitkeep,
+				Theme/.gitkeep,
 			);
 			target = 105A1F992DE585B800FBB764 /* meApp */;
 		};
@@ -43,7 +76,7 @@
 		105A1F9C2DE585B800FBB764 /* meApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				105A1FDB2DE5923500FBB764 /* Exceptions for "meApp" folder in "meApp" target */,
+				105A208B2DE5998800FBB764 /* Exceptions for "meApp" folder in "meApp" target */,
 			);
 			path = meApp;
 			sourceTree = "<group>";
@@ -412,7 +445,7 @@
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = meApp/Info.plist;
+				INFOPLIST_FILE = meApp/Resources/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -448,7 +481,7 @@
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = meApp/Info.plist;
+				INFOPLIST_FILE = meApp/Resources/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
