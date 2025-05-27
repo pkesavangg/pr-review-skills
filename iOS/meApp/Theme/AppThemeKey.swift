@@ -7,11 +7,6 @@
 
 import SwiftUI
 
-/// Enum representing the available color schemes for the application.
-enum AppColorScheme: String, CaseIterable {
-    case primary
-}
-
 /// Defines a custom environment key to inject the current app theme palette into the view hierarchy.
 private struct AppThemeKey: EnvironmentKey {
     static let defaultValue: AppColors.Palette = AppColors.Theme.primary.palette
