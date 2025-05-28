@@ -10,7 +10,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    @State private var selectedTheme: AppearanceMode = .system
     var body: some View {
         VStack {
             // Testing purpose it will replace by the actual content
