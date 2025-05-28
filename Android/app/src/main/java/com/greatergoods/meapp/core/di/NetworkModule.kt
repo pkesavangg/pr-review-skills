@@ -3,7 +3,7 @@ package com.greatergoods.meapp.core.di
 import android.content.pm.ApplicationInfo
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.network.HttpClient
-import com.greatergoods.meapp.core.network.interceptor.BaseUrlInterceptor
+import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
