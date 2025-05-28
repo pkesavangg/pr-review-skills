@@ -6,27 +6,18 @@
 //
 
 import SwiftUI
-import SwiftData
 
 @main
 struct meApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
+    // Initialize the ThemeManager to manage the app's theme
+    let themeManager = Theme.shared
+    // Initialize the ServiceRegistry to register the essential services
+    let serviceRegistry = ServiceRegistry.shared
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .themeable()
+                .environmentObject(themeManager)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
