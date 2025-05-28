@@ -6,11 +6,11 @@
 //
 
 import SwiftUI
-import SwiftData
 
 @main
 struct meApp: App {
     let themeManager = Theme.shared
+    let serviceRegistry = ServiceRegistry.shared
     var body: some Scene {
         WindowGroup {
             ContentView()
