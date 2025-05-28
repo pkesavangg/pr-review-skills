@@ -1,0 +1,21 @@
+---
+description: 
+globs: db/*
+alwaysApply: false
+---
+# Room Database Best Practices (Android)
+
+* Use the latest stable version of Room as per the [official release notes](mdc:https:/developer.android.com/jetpack/androidx/releases/room).
+* Always define entities as data classes with explicit types and clear field names.
+* Use `@PrimaryKey`, `@ColumnInfo`, and other Room annotations for clarity and schema control.
+* Prefer `val` for immutable fields; use `var` only when mutation is required.
+* Use meaningful table and column names; avoid abbreviations unless widely accepted.
+* Always provide a version number and migration strategy for the database.
+* Use DAO interfaces for all database operations; never access the database directly from UI or ViewModel.
+* Use suspend functions and `Flow`/`LiveData` for asynchronous and observable queries.
+* Write unit tests for all DAOs and migrations.
+* Avoid database operations on the main thread; always use coroutines or background threads.
+* Document each entity, DAO, and migration with KDoc comments.
+* Use type converters for unsupported types (e.g., Date, List<String>).
+* Keep entity classes, DAOs, and database classes in separate files for clarity and maintainability.
+wzqws
