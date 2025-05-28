@@ -3,6 +3,7 @@ import Foundation
 struct ScaleMetaDataDTO: Codable {
     var firmwareRevision: String?
     var hardwareRevision: String?
+    var latestFirmwareVersion: String?
     var manufacturerName: String?
     var modelNumber: String?
     var serialNumber: String?
