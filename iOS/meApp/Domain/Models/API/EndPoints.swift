@@ -39,7 +39,7 @@ enum Endpoint {
     case flags
     case clearFlag(flagId: String)
     case feed
-    case markFeedAs(action: String, elementId: String)
+    case markFeedAs(elementId: String)
 
     var urlRequest: URLRequest? {
         switch self {
@@ -113,13 +113,9 @@ enum Endpoint {
             return request(path: "/account/flag/\(flagId)")
         case .feed:
             return request(path: "/feed")
-        case .markFeedAs(let action, let elementId):
+        case .markFeedAs(let elementId):
             guard let url = URL(string: "\(API.baseURL)/feed/\(elementId)") else { return nil }
-            var request = URLRequest(url: url)
-            let body = ["action": action]
-            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            return request
+            return URLRequest(url: url)
         case .deleteAccount:
             return request(path: "/account/")
         }
