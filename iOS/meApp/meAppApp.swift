@@ -9,17 +9,14 @@ import SwiftUI
 
 @main
 struct meApp: App {
-    // Initialize the ThemeManager to manage the app's theme
-    let themeManager = Theme.shared
-    // Initialize the ServiceRegistry to register the essential services
-    let serviceRegistry = ServiceRegistry.shared
-    // Initialize the NetworkMonitor to monitor network connectivity
-    let networkService = NetworkMonitor.shared
+    /// The shared app state, injected as an environment object to enable global service access.
+    private var appState = AppState()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .themeable()
-                .environmentObject(themeManager)
+                .environmentObject(appState.themeManager)
         }
     }
 }
