@@ -3,74 +3,74 @@ import SwiftData
 
 @Model
 final class Entry {
-    @Attribute(.unique) var entryTimestamp: String
+    @Attribute(.unique) var id: String
+    var entryTimestamp: String
     var accountId: String?
     var operationType: String?
-    var weight: Double?
-    var bodyFat: Double?
-    var muscleMass: Double?
-    var boneMass: Double?
-    var water: Double?
-    var bmi: Double?
     var source: String?
     var unit: String?
-    var impedance: Double?
-    var pulse: Double?
-    var visceralFatLevel: Double?
-    var subcutaneousFatPercent: Double?
-    var proteinPercent: Double?
-    var skeletalMusclePercent: Double?
-    var bmr: Double?
-    var metabolicAge: Double?
     var serverTimestamp: String?
     var isSynced: Bool = false
+    @Relationship var bathScaleMetrics: BathScaleEntry?
 
-    init(from dto: OperationDTO, isSynced: Bool = false) {
-        self.entryTimestamp = dto.entryTimestamp ?? UUID().uuidString
-        self.accountId = dto.accountId
-        self.operationType = dto.operationType
-        self.weight = dto.weight
-        self.bodyFat = dto.bodyFat
-        self.muscleMass = dto.muscleMass
-        self.boneMass = dto.boneMass
-        self.water = dto.water
-        self.bmi = dto.bmi
-        self.source = dto.source
-        self.unit = dto.unit
-        self.impedance = dto.impedance
-        self.pulse = dto.pulse
-        self.visceralFatLevel = dto.visceralFatLevel
-        self.subcutaneousFatPercent = dto.subcutaneousFatPercent
-        self.proteinPercent = dto.proteinPercent
-        self.skeletalMusclePercent = dto.skeletalMusclePercent
-        self.bmr = dto.bmr
-        self.metabolicAge = dto.metabolicAge
-        self.serverTimestamp = dto.serverTimestamp
+    init(id: String = UUID().uuidString,
+         entryTimestamp: String,
+         accountId: String? = nil,
+         operationType: String? = nil,
+         source: String? = nil,
+         unit: String? = nil,
+         serverTimestamp: String? = nil,
+         isSynced: Bool = false,
+         bathScaleMetrics: BathScaleEntry? = nil) {
+        self.id = id
+        self.entryTimestamp = entryTimestamp
+        self.accountId = accountId
+        self.operationType = operationType
+        self.source = source
+        self.unit = unit
+        self.serverTimestamp = serverTimestamp
         self.isSynced = isSynced
+        self.bathScaleMetrics = bathScaleMetrics
     }
 
-    toOperationDTO() -> OperationDTO {
-        return OperationDTO(
-            entryTimestamp: self.entryTimestamp,
+    convenience init(from dto: BathScaleOperationDTO, isSynced: Bool = false, bathScaleMetrics: BathScaleEntry? = nil) {
+        let bathScaleMetrics = BathScaleEntry(from: dto)
+        let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
+        self.init(
+            id: UUID().uuidString,
+            entryTimestamp: timestamp,
+            accountId: dto.accountId,
+            operationType: dto.operationType,
+            source: dto.source,
+            unit: dto.unit,
+            serverTimestamp: dto.serverTimestamp,
+            isSynced: isSynced,
+            bathScaleMetrics: bathScaleMetrics
+        )
+    }
+
+    func toOperationDTO() -> BathScaleOperationDTO {
+        return BathScaleOperationDTO(
             accountId: self.accountId,
+            bmr: self.bathScaleMetrics?.bmr,
+            bmi: self.bathScaleMetrics?.bmi,
+            bodyFat: self.bathScaleMetrics?.bodyFat,
+            boneMass: self.bathScaleMetrics?.boneMass,
+            entryTimestamp: self.entryTimestamp,
+            impedance: self.bathScaleMetrics?.impedance,
+            metabolicAge: self.bathScaleMetrics?.metabolicAge,
+            muscleMass: self.bathScaleMetrics?.muscleMass,
             operationType: self.operationType,
-            weight: self.weight,
-            bodyFat: self.bodyFat,
-            muscleMass: self.muscleMass,
-            boneMass: self.boneMass,
-            water: self.water,
-            bmi: self.bmi,
+            proteinPercent: self.bathScaleMetrics?.proteinPercent,
+            pulse: self.bathScaleMetrics?.pulse,
+            serverTimestamp: self.serverTimestamp,
+            skeletalMusclePercent: self.bathScaleMetrics?.skeletalMusclePercent,
             source: self.source,
+            subcutaneousFatPercent: self.bathScaleMetrics?.subcutaneousFatPercent,
             unit: self.unit,
-            impedance: self.impedance,
-            pulse: self.pulse,
-            visceralFatLevel: self.visceralFatLevel,
-            subcutaneousFatPercent: self.subcutaneousFatPercent,
-            proteinPercent: self.proteinPercent,
-            skeletalMusclePercent: self.skeletalMusclePercent,
-            bmr: self.bmr,
-            metabolicAge: self.metabolicAge,
-            serverTimestamp: self.serverTimestamp
+            visceralFatLevel: self.bathScaleMetrics?.visceralFatLevel,
+            water: self.bathScaleMetrics?.water,
+            weight: self.bathScaleMetrics?.weight
         )
     }
 }
