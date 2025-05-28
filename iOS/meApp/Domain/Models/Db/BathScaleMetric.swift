@@ -1,3 +1,18 @@
+/// Stores additional scale metrics for each entry.
+///
+/// | Column Name            | Type   | Description                          |
+/// |-----------------------|--------|--------------------------------------|
+/// | id                    | int    | FK to entry.id (Primary Key)         |
+/// | bmr                   | float  | Basal Metabolic Rate                 |
+/// | metabolicAge          | float  | Calculated metabolic age             |
+/// | proteinPercent        | float  | Protein percentage in the body       |
+/// | pulse                 | float  | Heart rate or pulse                  |
+/// | skeletalMusclePercent | float  | Percentage of skeletal muscle        |
+/// | subcutaneousFatPercent| float  | Subcutaneous fat percentage          |
+/// | visceralFatLevel      | float  | Visceral fat level                   |
+/// | boneMass              | float  | Bone mass                            |
+/// | impedance             | float  | Bioelectrical impedance              |
+/// | unit                  | string | Unit of measurement                  |
 
 import Foundation
 import SwiftData

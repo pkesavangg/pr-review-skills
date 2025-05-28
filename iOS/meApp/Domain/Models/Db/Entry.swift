@@ -1,3 +1,16 @@
+/// Stores all user entry records with common properties for all device types.
+///
+/// | Column Name      | Type    | Description                                         |
+/// |------------------|---------|-----------------------------------------------------|
+/// | id               | int     | Unique entry ID (Primary Key)                       |
+/// | userId           | string  | Foreign key referencing account.id                  |
+/// | entryTimestamp   | string  | Timestamp when the entry was made                   |
+/// | serverTimestamp  | string  | Server-generated timestamp of entry receipt         |
+/// | opTimestamp      | string  | Operation timestamp                                |
+/// | operationType    | string  | Type of operation (e.g., create, delete, note)      |
+/// | deviceType       | string  | Device type (e.g., scale, bgm)                      |
+/// | isSynced         | boolean | Whether entry is synced online                      |
+
 import Foundation
 import SwiftData
 

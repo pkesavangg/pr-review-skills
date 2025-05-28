@@ -1,8 +1,23 @@
+/// Table: device_meta_data
+///
+/// | Column Name      | Type   | Description                       |
+/// | ---------------- | ------ | --------------------------------- |
+/// | id               | string | Unique scale ID (PK, FK to scale) |
+/// | modelNumber      | string | Model number                      |
+/// | serialNumber     | string | Serial number                     |
+/// | firmwareRevision | string | Firmware revision                 |
+/// | hardwareRevision | string | Hardware revision                 |
+/// | softwareRevision | string | Software revision                 |
+/// | manufacturerName | string | Manufacturer name                 |
+/// | systemId         | string | Device MAC (A3 scales)            |
+/// | latestVersion    | string | Latest firmware version           |
+///
+
 import Foundation
 import SwiftData
 
 @Model
-final class ScaleMetaData {
+final class DeviceMetaData {
     @Attribute(.unique) var id: String
     var modelNumber: String?
     var serialNumber: String?

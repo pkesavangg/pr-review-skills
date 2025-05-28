@@ -1,3 +1,18 @@
+/// Table: r4_scale_preference
+///
+/// | Column Name            | Type     | Description                       |
+/// | ---------------------- | -------- | --------------------------------- |
+/// | id                     | string   | Unique scale ID (PK, FK to scale) |
+/// | displayName            | string   | Display name                      |
+/// | displayMetrics         | string[] | Displayed metrics                 |
+/// | shouldFactoryReset     | boolean  | Factory reset flag                |
+/// | shouldMeasureImpedance | boolean  | Impedance measurement flag        |
+/// | shouldMeasurePulse     | boolean  | Pulse measurement flag            |
+/// | timeFormat             | string   | Time format                       |
+/// | tzOffset               | number   | Timezone offset                   |
+/// | wifiFotaScheduleTime   | number   | FOTA schedule time                |
+/// | updatedAt              | string   | Last update timestamp             |
+
 import Foundation
 import SwiftData
 
