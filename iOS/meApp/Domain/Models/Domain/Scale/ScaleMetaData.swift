@@ -11,7 +11,7 @@ final class ScaleMetaData {
     var softwareRevision: String?
     var manufacturerName: String?
     var systemId: String?
-    var wifiMac: String?
+    var latestVersion: String?
 
     init(from dto: ScaleMetaDataDTO, id: String? = nil) {
         self.id =  id ?? UUID().uuidString
@@ -22,19 +22,19 @@ final class ScaleMetaData {
         self.softwareRevision = dto.softwareRevision
         self.manufacturerName = dto.manufacturerName
         self.systemId = dto.systemId
-        self.wifiMac = dto.wifiMac
+        self.latestVersion = dto.latestFirmwareVersion
     }
 
     func toDTO() -> ScaleMetaDataDTO {
         return ScaleMetaDataDTO(
             firmwareRevision: self.firmwareRevision,
             hardwareRevision: self.hardwareRevision,
+            latestFirmwareVersion: self.latestVersion,
             manufacturerName: self.manufacturerName,
             modelNumber: self.modelNumber,
             serialNumber: self.serialNumber,
             softwareRevision: self.softwareRevision,
-            systemId: self.systemId,
-            wifiMac: self.wifiMac
+            systemId: self.systemId
         )
     }
 }
