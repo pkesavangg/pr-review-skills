@@ -1,3 +1,7 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -37,6 +41,19 @@ android {
     buildFeatures {
         compose = true
     }
+    android.applicationVariants.all {
+        val variantName = this.name // get the variant name here
+
+        outputs.all {
+            val outputImpl = this as BaseVariantOutputImpl
+
+            val appName = "MyApp"
+            val versionCode = this@all.versionCode
+            val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
+            outputImpl.outputFileName = "${appName}-${variantName}-v${versionName}(${versionCode})-${timestamp}.apk"
+        }
+    }
+
 }
 
 dependencies {
