@@ -39,4 +39,16 @@ enum NetworkError: Error, LocalizedError {
             return error.localizedDescription
         }
     }
+    
+    static func isNetworkError(_ error: Error) -> Bool {
+        if let networkError = error as? NetworkError {
+            switch networkError {
+            case .noInternet, .statusCode(0):
+                return true
+            default:
+                return false
+            }
+        }
+        return false
+    }
 }
