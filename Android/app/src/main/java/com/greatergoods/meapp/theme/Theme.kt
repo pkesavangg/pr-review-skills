@@ -1,16 +1,23 @@
 package com.greatergoods.meapp.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import com.greatergoods.meapp.theme.model.Animation
+import com.greatergoods.meapp.theme.model.Colors
+import com.greatergoods.meapp.theme.model.Spacing
+import com.greatergoods.meapp.theme.model.Typography
+import com.greatergoods.meapp.theme.token.AnimationToken
+import com.greatergoods.meapp.theme.token.LocalAnimation
+import com.greatergoods.meapp.theme.token.LocalSpacing
+import com.greatergoods.meapp.theme.token.SpacingToken
 
-
+/**
+ * Main theme composable that sets up the app's theme.
+ * This combines all theme components (colors, typography, spacing, animations) into a single theme.
+ */
 @Composable
 fun MeAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -18,16 +25,37 @@ fun MeAppTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        else -> if (darkTheme) darkColorScheme() else lightColorScheme()
+    val meAppColors = if (darkTheme) {
+        DarkColors
+    } else {
+        LightColors
     }
 
-    MaterialTheme(
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalColors provides meAppColors,
+        LocalTypography provides AppTypography,
+        LocalSpacing provides SpacingToken,
+        LocalAnimation provides AnimationToken
+    ) {
+        MaterialTheme(
+            content = content
+        )
+    }
+}
+
+/**
+ * Object providing access to theme components throughout the app.
+ */
+object MeAppTheme {
+    val colors: Colors
+        @Composable @ReadOnlyComposable get() = LocalColors.current
+
+    val typography: Typography
+        @Composable @ReadOnlyComposable get() = LocalTypography.current
+
+    val spaceTokens: Spacing
+        @Composable @ReadOnlyComposable get() = LocalSpacing.current
+
+    val animationTokens: Animation
+        @Composable @ReadOnlyComposable get() = LocalAnimation.current
 }

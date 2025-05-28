@@ -64,6 +64,6 @@ val DarkColors = Colors(
 )
 
 
-val LocalAppColors = staticCompositionLocalOf<Colors> { error("No AppColors provided") }
+val LocalColors = staticCompositionLocalOf<Colors> { error("No AppColors provided") }
 
 

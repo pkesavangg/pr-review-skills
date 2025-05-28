@@ -11,6 +11,6 @@ val SpacingToken = Spacing(
     large = 24.dp,
 )
 
-val LocalSpacingTokens = staticCompositionLocalOf<Spacing> {
+val LocalSpacing = staticCompositionLocalOf<Spacing> {
     SpacingToken
 }
