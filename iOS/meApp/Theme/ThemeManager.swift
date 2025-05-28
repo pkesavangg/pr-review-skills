@@ -16,16 +16,44 @@ final class ThemeManager: ObservableObject {
     /// Currently active app color scheme.
     @Published var currentColorScheme: AppColorScheme = .primary
         
-    /// Flag indicating whether dark mode is enabled. This is persisted using UserDefaults.
-    @Published var isDarkMode: Bool {
+    @Published var appearanceMode: AppearanceMode {
         didSet {
-            UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode")
+            UserDefaults.standard.set(appearanceMode.rawValue, forKey: "appearanceMode")
         }
     }
+    
+    /// Computed property for backward compatibility
+    var isDarkMode: Bool {
+        get {
+            switch appearanceMode {
+            case .dark: return true
+            case .light: return false
+            case .system:
+                // For system mode, we'll return false here
+                // The actual appearance will be determined by the system
+                // when we return nil from getPreferredColorScheme()
+                return false
+            }
+        }
+        set {
+            appearanceMode = newValue ? .dark : .light
+        }
+    }
+    
+    /// Returns the ColorScheme to be used by SwiftUI views
+    func getPreferredColorScheme() -> ColorScheme? {
+        return appearanceMode.colorScheme
+    }
 
-    /// Private initializer to enforce singleton pattern. Loads saved dark mode state from UserDefaults.
+    /// Private initializer to enforce singleton pattern. Loads saved appearance mode from UserDefaults.
     private init() {
         // Load initial value from UserDefaults
-        isDarkMode = UserDefaults.standard.bool(forKey: "isDarkMode")
+        if let savedMode = UserDefaults.standard.string(forKey: "appearanceMode"),
+           let mode = AppearanceMode(rawValue: savedMode) {
+            appearanceMode = mode
+        } else {
+            // Default to system mode if no saved preference
+            appearanceMode = .system
+        }
     }
 }

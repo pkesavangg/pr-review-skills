@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(\.appTheme) private var theme
+    @State private var selectedTheme: AppearanceMode = .system
     var body: some View {
         VStack {
             // Testing purpose it will replace by the actual content
@@ -20,7 +21,7 @@ struct ContentView: View {
                     themeManager.isDarkMode.toggle()
                 }
         }
-        .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+        .preferredColorScheme(themeManager.getPreferredColorScheme())
     }
 }
 
