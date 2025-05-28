@@ -12,8 +12,8 @@ final class R4ScalePreference {
     var timeFormat: String
     var tzOffset: Int
     var wifiFotaScheduleTime: Int
-    var updatedAt: String
-    var isTemporary: Bool
+    var updatedAt: String?
+    var isTemporary: Bool?
 
     init(from dto: R4ScalePreferenceDTO) {
         self.scaleId = dto.scaleId
@@ -25,8 +25,8 @@ final class R4ScalePreference {
         self.timeFormat = dto.timeFormat
         self.tzOffset = dto.tzOffset
         self.wifiFotaScheduleTime = dto.wifiFotaScheduleTime
-        self.updatedAt = dto.updatedAt ?? ""
-        self.isTemporary = dto.isTemporary ?? false
+        self.updatedAt = dto.updatedAt
+        self.isTemporary = dto.isTemporary 
     }
 
     func toDTO() -> R4ScalePreferenceDTO {

@@ -13,8 +13,8 @@ final class ScaleMetaData {
     var systemId: String?
     var wifiMac: String?
 
-    init(from dto: ScaleMetaDataDTO) {
-        self.id = UUID().uuidString
+    init(from dto: ScaleMetaDataDTO, id: String? = nil) {
+        self.id =  id ?? UUID().uuidString
         self.modelNumber = dto.modelNumber
         self.serialNumber = dto.serialNumber
         self.firmwareRevision = dto.firmwareRevision
