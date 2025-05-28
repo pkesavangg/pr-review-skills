@@ -36,7 +36,7 @@ struct Injector<Value> {
 
     var wrappedValue: Value {
         mutating get {
-            if value == nil {
+           if value == nil {
                 value = DependencyContainer.shared.resolve(Value.self)
             }
             return value!
