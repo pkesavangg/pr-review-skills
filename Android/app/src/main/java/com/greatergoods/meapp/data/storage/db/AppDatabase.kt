@@ -4,18 +4,13 @@ import android.content.Context
 import androidx.room.RoomDatabase
 import androidx.room.Database
 import androidx.room.Room
-import com.greatergoods.meapp.data.storage.db.dao.AccountDao
-import com.greatergoods.meapp.data.storage.db.dao.EntryDao
-import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
 
 /**
  * Main database class for the MeApp application.
  */
 @Database(
-    entities = [],
+    entities = [AccountEntity::class],
     version = 1,
     exportSchema = false
 )
