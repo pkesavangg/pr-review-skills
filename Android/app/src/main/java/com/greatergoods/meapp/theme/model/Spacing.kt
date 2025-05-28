@@ -11,24 +11,14 @@ import androidx.compose.ui.unit.Dp
 
 @Stable
 data class Spacing(
-    // Extra Small
-    val xs: Dp,
-    // Small
-    val sm: Dp,
-    // Medium
-    val md: Dp,
-    // Large
-    val lg: Dp,
-    // Extra Large
-    val xl: Dp,
-    // 2XL
-    val x2l: Dp,
-    // 3XL
-    val x3l: Dp,
-    // 4XL
-    val x4l: Dp,
-    // 5XL
-    val x5l: Dp,
-    // 6XL
-    val x6l: Dp
+    val xs: Dp, // Extra Small
+    val sm: Dp, // Small
+    val md: Dp, // Medium
+    val lg: Dp, // Large
+    val xl: Dp, // Extra Large
+    val x2l: Dp, // 2XL
+    val x3l: Dp, // 3XL
+    val x4l: Dp, // 4XL
+    val x5l: Dp, // 5XL
+    val x6l: Dp, // 6XL
 )
