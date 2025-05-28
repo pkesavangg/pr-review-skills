@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Jetpack Compose Best Practices (Latest Standards)
+
+* Use the latest stable versions of Jetpack Compose libraries as per the [official release notes](mdc:https:/developer.android.com/jetpack/androidx/releases/compose).
+* Follow Material 3 guidelines for theming and UI components.
+* Use `@Composable` functions for all UI, and prefer stateless composables unless state is required.
+* Use `StateFlow` or `MutableStateFlow` for state management in ViewModels.
+* Use `remember` and `rememberSaveable` for local state in composables.
+* Use `Modifier` chaining for layout, styling, and interaction.
+* Use `LaunchedEffect`, `SideEffect`, and `DisposableEffect` for side effects and lifecycle-aware code.
+* Use `Navigation Compose` for in-app navigation.
+* Use `LazyColumn`, `LazyRow`, and other lazy layouts for lists and grids.
+* Use `Scaffold` and `Surface` for structure and theming.
+* Use `@OptIn` annotation for experimental APIs, and prefer stable APIs when possible.
