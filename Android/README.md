@@ -42,7 +42,6 @@ Stores user account details such as personal info, tokens, and app settings.
 | gender                               | string  | Gender of the user                                |
 | goalType                             | string  | Type of health/fitness goal (e.g., weight loss)   |
 | goalWeight                           | string  | Target weight as defined by the user              |
-| healthkit                            | string  | Identifier or status related to Apple HealthKit   |
 | height                               | string  | Height of the user                                |
 | initialWeight                        | float   | Weight at account creation or goal start          |
 | isActiveAccount                      | boolean | Indicates if the account is currently active      |
@@ -248,7 +247,6 @@ erDiagram
         string gender
         string goalType
         string goalWeight
-        string healthkit
         string height
         float initialWeight
         boolean isActiveAccount
