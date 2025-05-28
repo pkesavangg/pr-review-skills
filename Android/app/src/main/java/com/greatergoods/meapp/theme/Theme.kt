@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import com.greatergoods.meapp.theme.model.Animation
-import com.greatergoods.meapp.theme.model.Colors
+import com.greatergoods.meapp.theme.model.ColorScheme
 import com.greatergoods.meapp.theme.model.Spacing
 import com.greatergoods.meapp.theme.model.Typography
 import com.greatergoods.meapp.theme.token.AnimationToken
@@ -25,14 +25,14 @@ fun MeAppTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val meAppColors = if (darkTheme) {
-        DarkColors
+    val meAppColorScheme = if (darkTheme) {
+        DarkColorScheme
     } else {
-        LightColors
+        LightColorScheme
     }
 
     CompositionLocalProvider(
-        LocalColors provides meAppColors,
+        LocalColorScheme provides meAppColorScheme,
         LocalTypography provides AppTypography,
         LocalSpacing provides SpacingToken,
         LocalAnimation provides AnimationToken
@@ -47,15 +47,15 @@ fun MeAppTheme(
  * Object providing access to theme components throughout the app.
  */
 object MeAppTheme {
-    val colors: Colors
-        @Composable @ReadOnlyComposable get() = LocalColors.current
+    val colorScheme: ColorScheme
+        @Composable @ReadOnlyComposable get() = LocalColorScheme.current
 
     val typography: Typography
         @Composable @ReadOnlyComposable get() = LocalTypography.current
 
-    val spaceTokens: Spacing
+    val spacing: Spacing
         @Composable @ReadOnlyComposable get() = LocalSpacing.current
 
-    val animationTokens: Animation
+    val animation: Animation
         @Composable @ReadOnlyComposable get() = LocalAnimation.current
 }

@@ -1,3 +1,9 @@
+/**
+ * Defines the application's typography system for Jetpack Compose, based on the design system.
+ *
+ * Each property represents a semantic typography role (heading, subheading, body, link, button, etc.)
+ * and is mapped to a TextStyle for consistent text appearance across the app.
+ */
 package com.greatergoods.meapp.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -7,7 +13,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.theme.model.Typography
 
+/**
+ * App-wide typography definitions, mapping semantic roles to TextStyle values.
+ */
 val AppTypography = Typography(
+    // Heading
     heading1 = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.ExtraBold,
@@ -43,7 +53,7 @@ val AppTypography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
-
+    // Subheading
     subHeading1 = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
@@ -57,7 +67,8 @@ val AppTypography = Typography(
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.sp
-    ) ,
+    ),
+    // Body
     body1 = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
@@ -79,6 +90,7 @@ val AppTypography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.sp
     ),
+    // Link
     link1 = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
@@ -93,7 +105,7 @@ val AppTypography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.sp
     ),
-
+    // Button
     button1 = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
@@ -110,4 +122,7 @@ val AppTypography = Typography(
     )
 )
 
+/**
+ * CompositionLocal for accessing the current [Typography] instance in the Compose hierarchy.
+ */
 val LocalTypography = staticCompositionLocalOf<Typography> { error("No Typography provided") }
