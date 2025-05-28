@@ -1,5 +1,5 @@
 //
-//  EmptyBody.swift
+//  EmptyRequestResponse.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 28/05/25.

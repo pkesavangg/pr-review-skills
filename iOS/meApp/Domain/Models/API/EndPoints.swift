@@ -33,52 +33,52 @@ enum Endpoint {
     case updateDashboardMetrics
     case updateNotifications
     case operations(startTimestamp: String?)
-    case operationsR4(startTimestamp: String?) // New endpoint for /operation/r4
+    case operationsR4(startTimestamp: String?)
     case submitOperation
     case operationsCSV(utcOffset: Int?, download: Bool?)
     case flags
     case clearFlag(flagId: String)
     case feed
     case markFeedAs(action: String, elementId: String)
-    
+
     var urlRequest: URLRequest? {
         switch self {
         case .signup:
-            return postRequest(path: "/account/")
+            return request(path: "/account/")
         case .login:
-            return postRequest(path: "/account/login/")
+            return request(path: "/account/login/")
         case .logout:
-            return postRequest(path: "/account/logout")
+            return request(path: "/account/logout")
         case .refreshToken:
-            return postRequest(path: "/refresh-token")
+            return request(path: "/refresh-token")
         case .accountInfo:
-            return getRequest(path: "/account/")
+            return request(path: "/account/")
         case .updateAccount:
-            return putRequest(path: "/account/")
+            return request(path: "/account/")
         case .changePassword:
-            return putRequest(path: "/account/password/")
+            return request(path: "/account/password/")
         case .requestPasswordReset:
-            return postRequest(path: "/account/password-reset/request")
+            return request(path: "/account/password-reset/request")
         case .checkPasswordResetToken:
-            return postRequest(path: "/account/password-reset/check")
+            return request(path: "/account/password-reset/check")
         case .confirmPasswordReset:
-            return postRequest(path: "/account/password-reset/confirm")
+            return request(path: "/account/password-reset/confirm")
         case .setGoal:
-            return postRequest(path: "/account/goal")
+            return request(path: "/account/goal")
         case .updateProfile:
-            return patchRequest(path: "/account/profile")
+            return request(path: "/account/profile")
         case .updateBodyComp:
-            return patchRequest(path: "/account/bodycomp")
+            return request(path: "/account/bodycomp")
         case .updateWeightless:
-            return patchRequest(path: "/account/weightless")
+            return request(path: "/account/weightless")
         case .updateStreak:
-            return patchRequest(path: "/account/streak")
+            return request(path: "/account/streak")
         case .updateDashboardType:
-            return patchRequest(path: "/account/dashboard-type")
+            return request(path: "/account/dashboard-type")
         case .updateDashboardMetrics:
-            return patchRequest(path: "/account/dashboard-metrics")
+            return request(path: "/account/dashboard-metrics")
         case .updateNotifications:
-            return patchRequest(path: "/account/notification")
+            return request(path: "/account/notification")
         case .operations(let startTimestamp):
             var components = URLComponents(string: "\(API.baseURL)/operation")
             if let timestamp = startTimestamp {
@@ -94,7 +94,7 @@ enum Endpoint {
             guard let url = components?.url else { return nil }
             return URLRequest(url: url)
         case .submitOperation:
-            return postRequest(path: "/operation")
+            return request(path: "/operation")
         case .operationsCSV(let utcOffset, let download):
             var components = URLComponents(string: "\(API.baseURL)/operation/csv")
             var queryItems: [URLQueryItem] = []
@@ -108,56 +108,26 @@ enum Endpoint {
             guard let url = components?.url else { return nil }
             return URLRequest(url: url)
         case .flags:
-            return getRequest(path: "/account/flag")
+            return request(path: "/account/flag")
         case .clearFlag(let flagId):
-            return deleteRequest(path: "/account/flag/\(flagId)")
+            return request(path: "/account/flag/\(flagId)")
         case .feed:
-            return getRequest(path: "/feed")
+            return request(path: "/feed")
         case .markFeedAs(let action, let elementId):
             guard let url = URL(string: "\(API.baseURL)/feed/\(elementId)") else { return nil }
             var request = URLRequest(url: url)
-            request.httpMethod = "POST"
             let body = ["action": action]
             request.httpBody = try? JSONSerialization.data(withJSONObject: body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             return request
         case .deleteAccount:
-            return deleteRequest(path: "/account/")
+            return request(path: "/account/")
         }
     }
 
-    // MARK: - Helper Methods
-
-    private func getRequest(path: String) -> URLRequest? {
+    // MARK: - Shared URL Construction Helper
+    private func request(path: String) -> URLRequest? {
         guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
         return URLRequest(url: url)
-    }
-
-    private func postRequest(path: String) -> URLRequest? {
-        guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        return request
-    }
-
-    private func putRequest(path: String) -> URLRequest? {
-        guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        return request
-    }
-
-    private func patchRequest(path: String) -> URLRequest? {
-        guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
-        var request = URLRequest(url: url)
-        request.httpMethod = "PATCH"
-        return request
-    }
-
-    private func deleteRequest(path: String) -> URLRequest? {
-        guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-        return request
     }
 }
