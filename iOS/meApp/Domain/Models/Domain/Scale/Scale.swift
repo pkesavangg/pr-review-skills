@@ -34,8 +34,8 @@ final class Scale {
         self.type = dto.type
         self.userId = dto.userId
         self.peripheralIdentifier = dto.peripheralIdentifier
-        self.preference = dto.preference != nil ? R4ScalePreference(from: dto.preference!) : nil
-        self.metaData = dto.metaData != nil ? ScaleMetaData(from: dto.metaData!) : nil
+        self.preference = dto.preference.map { R4ScalePreference(from: $0) }
+        self.metaData = dto.metaData.map { ScaleMetaData(from: $0) }
         self.userNumber = dto.userNumber
         self.scaleToken = dto.scaleToken
         self.broadcastId = dto.broadcastId
