@@ -53,6 +53,7 @@ val AppTypography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
+
     // Subheading
     subHeading1 = TextStyle(
         fontFamily = FontFamily.Default,
@@ -68,6 +69,7 @@ val AppTypography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.sp
     ),
+
     // Body
     body1 = TextStyle(
         fontFamily = FontFamily.Default,
@@ -90,6 +92,7 @@ val AppTypography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.sp
     ),
+
     // Link
     link1 = TextStyle(
         fontFamily = FontFamily.Default,
@@ -105,6 +108,7 @@ val AppTypography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.sp
     ),
+
     // Button
     button1 = TextStyle(
         fontFamily = FontFamily.Default,

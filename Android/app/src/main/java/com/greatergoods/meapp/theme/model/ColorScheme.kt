@@ -72,6 +72,7 @@ data class ColorScheme(
         return when (token) {
             ColorSchemeKey.Primary -> primary
             ColorSchemeKey.Secondary -> secondary
+
             ColorSchemeKey.Overlay -> overlay
             ColorSchemeKey.ToastBackground -> toastBackground
 

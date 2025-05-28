@@ -5,10 +5,8 @@
  * as specified in the design system. Used for mapping and retrieving colors in the theme.
  */
 package com.greatergoods.meapp.theme.enums
-// Background
 enum class ColorSchemeKey {
-
-
+    // Background
     Primary,
     Secondary,
     // Support

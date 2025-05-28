@@ -42,20 +42,3 @@ fun MeAppTheme(
         )
     }
 }
-
-/**
- * Object providing access to theme components throughout the app.
- */
-object MeAppTheme {
-    val colorScheme: ColorScheme
-        @Composable @ReadOnlyComposable get() = LocalColorScheme.current
-
-    val typography: Typography
-        @Composable @ReadOnlyComposable get() = LocalTypography.current
-
-    val spacing: Spacing
-        @Composable @ReadOnlyComposable get() = LocalSpacing.current
-
-    val animation: Animation
-        @Composable @ReadOnlyComposable get() = LocalAnimation.current
-}
