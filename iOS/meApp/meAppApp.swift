@@ -10,7 +10,7 @@ import SwiftData
 
 @main
 struct meApp: App {
-    let themeManager = ThemeManager.shared
+    let themeManager = Theme.shared
     var body: some Scene {
         WindowGroup {
             ContentView()

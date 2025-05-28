@@ -22,7 +22,7 @@ extension EnvironmentValues {
 
 /// ViewModifier that injects the current theme palette into the environment using the ThemeManager.
 struct ThemeableModifier: ViewModifier {
-    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var themeManager: Theme
     
     func body(content: Content) -> some View {
         let theme = themeFrom(themeManager.currentColorScheme)

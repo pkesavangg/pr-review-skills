@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @State private var selectedTheme: AppearanceMode = .system
     var body: some View {
@@ -27,5 +27,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(ThemeManager.shared)
+        .environmentObject(Theme.shared)
 }

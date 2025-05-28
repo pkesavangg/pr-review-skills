@@ -10,8 +10,8 @@ import Foundation
 import SwiftUI
 
 /// Singleton class responsible for managing the current color scheme and dark mode settings of the app.
-final class ThemeManager: ObservableObject {
-    static let shared = ThemeManager()
+final class Theme: ObservableObject {
+    static let shared = Theme()
 
     /// Currently active app color scheme.
     @Published var currentColorScheme: AppColorScheme = .primary
