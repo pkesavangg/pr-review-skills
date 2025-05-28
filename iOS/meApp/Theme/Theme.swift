@@ -31,7 +31,7 @@ final class Theme: ObservableObject {
             case .system:
                 // For system mode, we'll return false here
                 // The actual appearance will be determined by the system
-                // when we return nil from getPreferredColorScheme()
+                // when we return nil from getPreferredAppearanceMode()
                 return false
             }
         }
@@ -41,7 +41,7 @@ final class Theme: ObservableObject {
     }
     
     /// Returns the ColorScheme to be used by SwiftUI views
-    func getPreferredColorScheme() -> ColorScheme? {
+    func getPreferredAppearanceMode() -> ColorScheme? {
         return appearanceMode.colorScheme
     }
 

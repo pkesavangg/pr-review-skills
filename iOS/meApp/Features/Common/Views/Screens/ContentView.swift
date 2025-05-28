@@ -20,7 +20,7 @@ struct ContentView: View {
                     themeManager.isDarkMode.toggle()
                 }
         }
-        .preferredColorScheme(themeManager.getPreferredColorScheme())
+        .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }
 }
 
