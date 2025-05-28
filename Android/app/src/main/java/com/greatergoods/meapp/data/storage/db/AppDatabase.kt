@@ -10,11 +10,22 @@ import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
  * Main database class for the MeApp application.
  */
 @Database(
-    entities = [AccountEntity::class],
+    entities = [
+        AccountEntity::class, 
+        EntryEntity::class,
+        ScaleEntryEntity::class,
+        ScaleEntryMetricEntity::class,
+        BpmEntryEntity::class
+    ],
     version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun accountDao(): AccountDao
+    abstract fun entryDao(): EntryDao
+    abstract fun scaleEntryDao(): ScaleEntryDao
+    abstract fun scaleEntryMetricDao(): ScaleEntryMetricDao
+    abstract fun bpmEntryDao(): BpmEntryDao
 
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
