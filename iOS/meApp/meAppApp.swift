@@ -13,6 +13,8 @@ struct meApp: App {
     let themeManager = Theme.shared
     // Initialize the ServiceRegistry to register the essential services
     let serviceRegistry = ServiceRegistry.shared
+    // Initialize the NetworkMonitor to monitor network connectivity
+    let networkService = NetworkMonitor.shared
     var body: some Scene {
         WindowGroup {
             ContentView()
