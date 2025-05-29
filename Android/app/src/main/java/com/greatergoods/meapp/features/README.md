@@ -10,6 +10,7 @@ Contains feature-specific code organized by feature modules.
 - **settings/**: User preferences and settings
 
 Each feature follows the structure:
+
 - model/
 - enum/
 - strings/
@@ -17,3 +18,7 @@ Each feature follows the structure:
 - view/
   - screens/
   - components/
+
+# Common Feature Module
+
+This directory is intended for shared sample screens and utilities that demonstrate or provide common functionality across the app, such as theme token usage and dynamic theming samples.
