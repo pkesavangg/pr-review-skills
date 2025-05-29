@@ -1,9 +1,13 @@
 package com.greatergoods.meapp.core.di
 
 import android.content.pm.ApplicationInfo
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.network.HttpClient
 import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
+import com.greatergoods.meapp.core.network.interceptors.NetworkInterceptor
+import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,6 +42,7 @@ class NetworkModule @Inject constructor() {
         }
         okHttpClient.addInterceptor(interceptor)
             .addInterceptor(baseUrlInterceptor)
+
         return okHttpClient.build()
     }
 
@@ -57,5 +62,14 @@ class NetworkModule @Inject constructor() {
     @Singleton
     fun provideBaseUrlInterceptor(): BaseUrlInterceptor {
         return BaseUrlInterceptor()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    @Provides
+    @Singleton
+    fun provideNetworkInterceptor(
+        networkConnectivityObserver: NetworkConnectivityObserver
+    ): NetworkInterceptor {
+        return NetworkInterceptor(networkConnectivityObserver)
     }
 }
