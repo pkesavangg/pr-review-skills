@@ -2,6 +2,11 @@ package com.greatergoods.meapp.data.storage.db.dao
 
 import androidx.room.*
 import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceDetails
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -166,4 +171,54 @@ interface DeviceDao {
      */
     @Query("DELETE FROM device WHERE accountId = :accountId")
     suspend fun deleteAllDevicesForAccount(accountId: String): Int
-} 
+
+    @Transaction
+    @Query("SELECT * FROM device WHERE id = :deviceId")
+    suspend fun getDevice(deviceId: String): DeviceDetails?
+
+    @Transaction
+    @Query("SELECT * FROM device WHERE accountId = :accountId")
+    fun getDevices(accountId: String): Flow<List<DeviceDetails>>
+
+    @Transaction
+    @Query("SELECT * FROM device WHERE deviceType = :deviceType AND accountId = :accountId")
+    fun getDevicesByTypeWithAccount(deviceType: String, accountId: String): Flow<List<DeviceDetails>>
+
+    @Transaction
+    @Query("SELECT * FROM device WHERE isConnected = 1 AND accountId = :accountId")
+    fun getConnectedDevicesWithAccount(accountId: String): Flow<List<DeviceDetails>>
+
+    @Transaction
+    @Query("SELECT * FROM device WHERE mac = :mac AND accountId = :accountId")
+    suspend fun getDeviceByMacWithAccount(mac: String, accountId: String): DeviceDetails?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScale(scale: ScaleEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBpm(bpm: BpmEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMeta(meta: DeviceMetaDataEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertR4Preference(preference: R4ScalePreferenceEntity)
+
+    @Transaction
+    suspend fun insertDevice(device: DeviceDetails) {
+        insertDevice(device.device)
+        device.scale?.let { insertScale(it) }
+        device.bpm?.let { insertBpm(it) }
+        device.meta?.let { insertMeta(it) }
+        device.r4Preference?.let { insertR4Preference(it) }
+    }
+
+    @Query("DELETE FROM device WHERE id = :deviceId")
+    suspend fun deleteDevice(deviceId: String)
+
+    @Transaction
+    suspend fun updateDeviceConnection(deviceId: String, isConnected: Boolean) {
+        // Update the device's connection status
+        // You might want to add a specific query for this
+    }
+}
