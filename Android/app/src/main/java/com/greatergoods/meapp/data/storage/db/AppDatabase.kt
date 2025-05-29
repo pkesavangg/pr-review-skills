@@ -8,17 +8,32 @@ import androidx.room.TypeConverters
 import com.greatergoods.meapp.data.storage.db.converter.DateConverter
 import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import com.greatergoods.meapp.data.storage.db.dao.*
+import com.greatergoods.meapp.data.storage.db.entity.*
 
 /**
  * Main database class for the MeApp application.
  */
 @Database(
-    entities = [AccountEntity::class],
+    entities = [
+        AccountEntity::class,
+        DeviceEntity::class,
+        ScaleEntity::class,
+        DeviceMetaDataEntity::class,
+        BpmEntity::class,
+        R4ScalePreferenceEntity::class
+    ],
     version = 1,
     exportSchema = false
 )
 @TypeConverters(DateConverter::class, JsonConverter::class)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun accountDao(): AccountDao
+    abstract fun deviceDao(): DeviceDao
+    abstract fun scaleDao(): ScaleDao
+    abstract fun deviceMetaDataDao(): DeviceMetaDataDao
+    abstract fun bpmDao(): BpmDao
+    abstract fun r4ScalePreferenceDao(): R4ScalePreferenceDao
 
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
