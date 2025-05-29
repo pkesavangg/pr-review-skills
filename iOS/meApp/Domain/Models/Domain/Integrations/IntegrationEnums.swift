@@ -13,8 +13,3 @@ enum IntegrationType: String, Codable {
     case healthKit = "healthkit"
 }
 
-/// Enum for integration operation types
-enum OperationType: String, Codable {
-    case save = "save"
-    case remove = "remove"
-}
