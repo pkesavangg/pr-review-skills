@@ -19,10 +19,10 @@ struct ScanData: Codable {
     let additionalInfo: [String: AnyCodable]?
 }
 
-/// PairData extends ScanData with pairing-specific fields.
+/// PairData contains pairing-specific fields and embeds ScanData as a property.
 struct PairData: Codable {
     let userName: String
     let userNumber: Int
-    // Inherit all fields from ScanData
+    /// Embedded user scan/profile data needed for pairing and scanning.
     let scanData: ScanData
 }
