@@ -1,2 +1,2 @@
 APP_ENV = STAGING
-API_BASE_URL = http://ec2-34-197-4-77.compute-1.amazonaws.com/v3
+API_BASE_URL = ec2-34-197-4-77.compute-1.amazonaws.com/v3
