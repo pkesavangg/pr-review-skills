@@ -12,7 +12,6 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
  * Stores user account details such as personal info, tokens, and app settings.
  */
 @Entity(tableName = "account")
-@TypeConverters(DateConverter::class, JsonConverter::class)
 data class AccountEntity(
     @PrimaryKey
     @ColumnInfo(name = "id")
