@@ -20,6 +20,7 @@ import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
     version = 1,
     exportSchema = false
 )
+@TypeConverters(DateConverter::class, JsonConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun entryDao(): EntryDao
