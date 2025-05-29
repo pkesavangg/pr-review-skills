@@ -38,4 +38,4 @@ data class BpmEntryEntity(
 
     @ColumnInfo(name = "note")
     val note: String?
-) : BaseEntity() 
+)

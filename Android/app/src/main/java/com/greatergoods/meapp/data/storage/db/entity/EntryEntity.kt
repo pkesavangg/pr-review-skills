@@ -44,4 +44,4 @@ data class EntryEntity(
 
     @ColumnInfo(name = "deviceId")
     val deviceId: String
-) : BaseEntity() 
+)

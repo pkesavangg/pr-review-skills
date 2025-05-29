@@ -41,4 +41,4 @@ data class ScaleEntryEntity(
 
     @ColumnInfo(name = "source")
     val source: String
-) : BaseEntity() 
+)

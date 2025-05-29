@@ -53,4 +53,4 @@ data class ScaleEntryMetricEntity(
 
     @ColumnInfo(name = "unit")
     val unit: String
-) : BaseEntity() 
+)
