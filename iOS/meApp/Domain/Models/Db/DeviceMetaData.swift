@@ -1,16 +1,16 @@
 /// Table: device_meta_data
 ///
-/// | Column Name      | Type   | Description                       |
-/// | ---------------- | ------ | --------------------------------- |
-/// | id               | string | Unique scale ID (PK, FK to scale) |
-/// | modelNumber      | string | Model number                      |
-/// | serialNumber     | string | Serial number                     |
-/// | firmwareRevision | string | Firmware revision                 |
-/// | hardwareRevision | string | Hardware revision                 |
-/// | softwareRevision | string | Software revision                 |
-/// | manufacturerName | string | Manufacturer name                 |
-/// | systemId         | string | Device MAC (A3 scales)            |
-/// | latestVersion    | string | Latest firmware version           |
+/// | Column Name       | Type   | Description                       |
+/// | ----------------- | ------ | --------------------------------- |
+/// | id                | string | Unique scale ID (PK, FK to scale) |
+/// | model_number      | string | Model number                      |
+/// | serial_number     | string | Serial number                     |
+/// | firmware_revision | string | Firmware revision                 |
+/// | hardware_revision | string | Hardware revision                 |
+/// | software_revision | string | Software revision                 |
+/// | manufacturer_name | string | Manufacturer name                 |
+/// | system_id         | string | Device MAC (A3 scales)            |
+/// | latest_version    | string | Latest firmware version           |
 ///
 
 import Foundation
@@ -18,15 +18,15 @@ import SwiftData
 
 @Model
 final class DeviceMetaData {
-    @Attribute(.unique) var id: String
-    var modelNumber: String?
-    var serialNumber: String?
-    var firmwareRevision: String?
-    var hardwareRevision: String?
-    var softwareRevision: String?
-    var manufacturerName: String?
-    var systemId: String?
-    var latestVersion: String?
+    @Attribute(.unique) var id: String // Unique scale ID (PK, FK to scale)
+    var modelNumber: String? // Model number
+    var serialNumber: String? // Serial number
+    var firmwareRevision: String? // Firmware revision
+    var hardwareRevision: String? // Hardware revision
+    var softwareRevision: String? // Software revision
+    var manufacturerName: String? // Manufacturer name
+    var systemId: String? // Device MAC (A3 scales)
+    var latestVersion: String? // Latest firmware version
 
     init(from dto: ScaleMetaDataDTO, id: String? = nil) {
         self.id =  id ?? UUID().uuidString

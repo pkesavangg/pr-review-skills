@@ -1,9 +1,15 @@
 import Foundation
 
+/// Request DTO for setting a user's goal
 struct GoalRequest: Codable {
-    var goalWeight: Double
-    var goalType: GoalType 
-    var initialWeight: Double
-    var metPreviousGoal: Bool?
-    var percent: Double?
+    /// The type of goal
+    let goalType: GoalType
+    /// The target goal weight
+    let goalWeight: Double
+    /// The initial weight
+    let initialWeight: Double
+    /// Whether the previous goal was met
+    let metPreviousGoal: Bool?
+    /// The percent progress towards the goal
+    let percent: Double?
 }

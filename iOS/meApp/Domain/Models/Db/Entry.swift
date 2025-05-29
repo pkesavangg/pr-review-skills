@@ -3,7 +3,7 @@
 /// | Column Name      | Type    | Description                                         |
 /// |------------------|---------|-----------------------------------------------------|
 /// | id               | int     | Unique entry ID (Primary Key)                       |
-/// | userId           | string  | Foreign key referencing account.id                  |
+/// | accountId        | string  | Foreign key referencing account.accountId           |
 /// | entryTimestamp   | string  | Timestamp when the entry was made                   |
 /// | serverTimestamp  | string  | Server-generated timestamp of entry receipt         |
 /// | opTimestamp      | string  | Operation timestamp                                |
@@ -16,77 +16,77 @@ import SwiftData
 
 @Model
 final class Entry {
-    @Attribute(.unique) var id: String
+    /// Unique entry ID (PK)
+    @Attribute(.unique) var id: Int
+    /// Foreign key referencing account.accountId
+    var accountId: String
+    /// Timestamp when the entry was made
     var entryTimestamp: String
-    var userId: String
-    var operationType: String
-    var opTimestamp: String?
+    /// Server-generated timestamp of entry receipt
     var serverTimestamp: String?
+    /// Operation timestamp
+    var opTimestamp: String?
+    /// Type of operation (eg., 'create', 'delete', 'note')
+    var operationType: String
+    /// Device type (eg., 'scale', 'bgm' )
     var deviceType: String
-    var isSynced: Bool = false
-    @Relationship var bathScaleEntry: BathScaleEntry?
-    @Relationship var bodyMetricEntry: BathScaleMetric?
+    /// Whether entry is synced online
+    var isSynced: Bool
+    @Relationship var scaleEntry: BathScaleEntry?
+    @Relationship var scaleEntryMetric: BathScaleMetric?
 
-    init(id: String = UUID().uuidString,
+    init(id: Int = 0,
          entryTimestamp: String,
-         userId: String,
+         accountId: String,
          operationType: String,
          opTimestamp: String? = nil,
          serverTimestamp: String? = nil,
          deviceType: String = "scale",
-         isSynced: Bool = false,
-         bathScaleEntry: BathScaleEntry? = nil,
-         bodyMetricEntry: BathScaleMetric? = nil) {
+         isSynced: Bool = false) {
         self.id = id
         self.entryTimestamp = entryTimestamp
-        self.userId = userId
+        self.accountId = accountId
         self.operationType = operationType
         self.opTimestamp = opTimestamp
         self.serverTimestamp = serverTimestamp
         self.deviceType = deviceType
         self.isSynced = isSynced
-        self.bathScaleEntry = bathScaleEntry
-        self.bodyMetricEntry = bodyMetricEntry
     }
 
-    convenience init(from dto: BathScaleOperationDTO, isSynced: Bool = false, bathScaleMetrics: BathScaleEntry? = nil) {
-        let bathScaleEntry = BathScaleEntry(from: dto)
-        let bodyMetricEntry = BathScaleMetric(from: dto)
+    convenience init(from dto: BathScaleOperationDTO, isSynced: Bool = false) {
         let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
         self.init(
-            id: UUID().uuidString,
+            id: 0,
             entryTimestamp: timestamp,
-            userId: dto.accountId ?? "",
+            accountId: dto.accountId ?? "",
             operationType: dto.operationType ?? "",
             serverTimestamp: dto.serverTimestamp,
-            isSynced: isSynced,
-            bathScaleEntry: bathScaleEntry,
-            bodyMetricEntry: bodyMetricEntry
+            isSynced: isSynced
         )
     }
 
     func toOperationDTO() -> BathScaleOperationDTO {
         return BathScaleOperationDTO(
-            accountId: self.userId,
-            bmr: self.bodyMetricEntry?.bmr,
-            bmi: self.bathScaleEntry?.bmi,
-            bodyFat: self.bathScaleEntry?.bodyFat,
-            boneMass: self.bathScaleEntry?.boneMass,
+            accountId: self.accountId,
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
             entryTimestamp: self.entryTimestamp,
-            impedance: self.bodyMetricEntry?.impedance,
-            metabolicAge: self.bodyMetricEntry?.metabolicAge,
-            muscleMass: self.bathScaleEntry?.muscleMass,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
             operationType: self.operationType,
-            proteinPercent: self.bodyMetricEntry?.proteinPercent,
-            pulse: self.bodyMetricEntry?.pulse,
+            proteinPercent: nil,
+            pulse: nil,
             serverTimestamp: self.serverTimestamp,
-            skeletalMusclePercent: self.bodyMetricEntry?.skeletalMusclePercent,
-            source: self.bathScaleEntry?.source,
-            subcutaneousFatPercent: self.bodyMetricEntry?.subcutaneousFatPercent,
-            unit: self.bodyMetricEntry?.unit,
-            visceralFatLevel: self.bodyMetricEntry?.visceralFatLevel,
-            water: self.bathScaleEntry?.water,
-            weight: self.bathScaleEntry?.weight
+            skeletalMusclePercent: nil,
+            source: nil,
+            subcutaneousFatPercent: nil,
+            unit: nil,
+            visceralFatLevel: nil,
+            water: nil,
+            weight: nil
         )
     }
 }

@@ -1,5 +1,7 @@
 import Foundation
 
+/// Response DTO for streak status
 struct StreakStatusResponse: Codable {
-    var account: AccountDTO
+    /// The account information
+    let account: AccountDTO
 }

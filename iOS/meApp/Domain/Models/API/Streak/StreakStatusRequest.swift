@@ -1,6 +1,9 @@
 import Foundation
 
+/// Request DTO for updating streak status
 struct StreakStatusRequest: Codable {
-    var isStreakOn: Bool?
-    var streakTimestamp: String?
+    /// Indicates if the streak is on
+    let isStreakOn: Bool?
+    /// The timestamp for the streak
+    let streakTimestamp: String?
 }
