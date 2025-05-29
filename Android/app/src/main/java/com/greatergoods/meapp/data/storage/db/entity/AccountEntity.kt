@@ -3,9 +3,6 @@ package com.greatergoods.meapp.data.storage.db.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
-import androidx.room.TypeConverters
-import com.greatergoods.meapp.data.storage.db.converter.DateConverter
-import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 
 /**
  * Entity class representing the account table in the database.
