@@ -51,13 +51,6 @@ final class DateTimeTools {
         return formatter("MMM d, h:mma").string(from: date)
     }
     
-    /// Formats a date string as 'MMM d'. Returns empty string if invalid.
-    static func getFormattedMonthDay(_ dateString: String) -> String {
-        // Parse and format as 'MMM d'
-        guard let date = parse(dateString) else { return "" }
-        return formatter("MMM d").string(from: date)
-    }
-    
     /// Formats a time string as 'h:mm a' (e.g., '3:45 PM'). Returns empty string if invalid.
     static func getFormattedTime(_ timeString: String) -> String {
         // Parse and format as 'h:mm a'
