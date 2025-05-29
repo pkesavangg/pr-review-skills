@@ -2,7 +2,6 @@
 ///
 /// | Column Name       | Type   | Description                       |
 /// | ----------------- | ------ | --------------------------------- |
-/// | id                | string | Unique scale ID (PK, FK to scale) |
 /// | model_number      | string | Model number                      |
 /// | serial_number     | string | Serial number                     |
 /// | firmware_revision | string | Firmware revision                 |
@@ -18,7 +17,6 @@ import SwiftData
 
 @Model
 final class DeviceMetaData {
-    @Attribute(.unique) var id: String // Unique scale ID (PK, FK to scale)
     var modelNumber: String? // Model number
     var serialNumber: String? // Serial number
     var firmwareRevision: String? // Firmware revision
@@ -29,7 +27,6 @@ final class DeviceMetaData {
     var latestVersion: String? // Latest firmware version
 
     init(from dto: ScaleMetaDataDTO, id: String? = nil) {
-        self.id =  id ?? UUID().uuidString
         self.modelNumber = dto.modelNumber
         self.serialNumber = dto.serialNumber
         self.firmwareRevision = dto.firmwareRevision

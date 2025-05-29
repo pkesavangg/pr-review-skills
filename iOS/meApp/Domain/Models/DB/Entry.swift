@@ -17,7 +17,7 @@ import SwiftData
 @Model
 final class Entry {
     /// Unique entry ID (PK)
-    @Attribute(.unique) var id: Int
+    @Attribute(.unique) var id: UUID
     /// Foreign key referencing account.accountId
     var accountId: String
     /// Timestamp when the entry was made
@@ -35,7 +35,7 @@ final class Entry {
     @Relationship var scaleEntry: BathScaleEntry?
     @Relationship var scaleEntryMetric: BathScaleMetric?
 
-    init(id: Int = 0,
+    init(id: UUID = UUID(),
          entryTimestamp: String,
          accountId: String,
          operationType: String,
@@ -56,7 +56,7 @@ final class Entry {
     convenience init(from dto: BathScaleOperationDTO, isSynced: Bool = false) {
         let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
         self.init(
-            id: 0,
+            id: UUID(),
             entryTimestamp: timestamp,
             accountId: dto.accountId ?? "",
             operationType: dto.operationType ?? "",
