@@ -7,6 +7,8 @@ import androidx.room.Room
 import androidx.room.TypeConverters
 import com.greatergoods.meapp.data.storage.db.converter.DateConverter
 import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
+import com.greatergoods.meapp.data.storage.db.dao.AccountDao
+import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import com.greatergoods.meapp.data.storage.db.dao.*
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
@@ -17,6 +19,10 @@ import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 
 /**
  * Main database class for the MeApp application.
@@ -29,6 +35,10 @@ import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
         DeviceMetaDataEntity::class,
         BpmEntity::class,
         R4ScalePreferenceEntity::class
+        EntryEntity::class,
+        ScaleEntryEntity::class,
+        ScaleEntryMetricEntity::class,
+        BpmEntryEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -37,6 +47,8 @@ import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun deviceDao(): DeviceDao
+    abstract fun entryDao(): EntryDao
+
 
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
