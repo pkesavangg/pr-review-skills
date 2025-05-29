@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core.network.`interface`
+package com.greatergoods.meapp.core.network.interfaces
 
 import com.greatergoods.meapp.core.network.utility.NetworkState
 import kotlinx.coroutines.flow.Flow
