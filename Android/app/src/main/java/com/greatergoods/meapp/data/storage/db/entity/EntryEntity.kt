@@ -3,6 +3,7 @@ package com.greatergoods.meapp.data.storage.db.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -14,18 +15,19 @@ import androidx.room.PrimaryKey
     foreignKeys = [
         ForeignKey(
             entity = AccountEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["userId"],
+            parentColumns = ["account_id"],
+            childColumns = ["accountId"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index("accountId")]
 )
 data class EntryEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long,
 
-    @ColumnInfo(name = "userId")
-    val userId: String,
+    @ColumnInfo(name = "accountId")
+    val accountId: String,
 
     @ColumnInfo(name = "entryTimestamp")
     val entryTimestamp: String,
@@ -43,5 +45,8 @@ data class EntryEntity(
     val deviceType: String,
 
     @ColumnInfo(name = "deviceId")
-    val deviceId: String
+    val deviceId: String,
+
+    @ColumnInfo(name = "isSynced")
+    val isSynced: Boolean = false
 )
