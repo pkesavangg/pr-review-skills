@@ -39,21 +39,21 @@ interface AccountDao {
      * @param id The account ID
      * @return The account entity if found, null otherwise
      */
-    @Query("SELECT * FROM account WHERE id = :id")
+    @Query("SELECT * FROM account WHERE account_id = :id")
     suspend fun getAccountById(id: String): AccountEntity?
 
     /**
      * Get the active account.
      * @return The active account entity if found, null otherwise
      */
-    @Query("SELECT * FROM account WHERE isActiveAccount = 1 LIMIT 1")
+    @Query("SELECT * FROM account WHERE is_active_account = 1 LIMIT 1")
     suspend fun getActiveAccount(): AccountEntity?
 
     /**
      * Get all logged-in accounts.
      * @return A Flow of all logged-in account entities
      */
-    @Query("SELECT * FROM account WHERE isLoggedIn = 1")
+    @Query("SELECT * FROM account WHERE is_logged_in = 1")
     fun getAllLoggedInAccounts(): Flow<List<AccountEntity>>
 
     /**
@@ -62,7 +62,7 @@ interface AccountDao {
      * @param lastActiveTime The new last active time
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET lastActiveTime = :lastActiveTime WHERE id = :id")
+    @Query("UPDATE account SET last_active_time = :lastActiveTime WHERE account_id = :id")
     suspend fun updateLastActiveTime(id: String, lastActiveTime: String): Int
 
     /**
@@ -71,7 +71,7 @@ interface AccountDao {
      * @param dashboardType The new dashboard type
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET dashboardType = :dashboardType WHERE id = :id")
+    @Query("UPDATE account SET dashboard_type = :dashboardType WHERE account_id = :id")
     suspend fun updateDashboardType(id: String, dashboardType: String): Int
 
     /**
@@ -80,7 +80,7 @@ interface AccountDao {
      * @param fcmToken The new FCM token
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET fcmToken = :fcmToken WHERE id = :id")
+    @Query("UPDATE account SET fcm_token = :fcmToken WHERE account_id = :id")
     suspend fun updateFcmToken(id: String, fcmToken: String): Int
 
     /**
@@ -91,7 +91,7 @@ interface AccountDao {
      * @param expiresAt The new expiration time
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET accessToken = :accessToken, refreshToken = :refreshToken, expiresAt = :expiresAt WHERE id = :id")
+    @Query("UPDATE account SET access_token = :accessToken, refresh_token = :refreshToken, expires_at = :expiresAt WHERE account_id = :id")
     suspend fun updateTokens(id: String, accessToken: String, refreshToken: String, expiresAt: String): Int
 
     /**
@@ -99,7 +99,7 @@ interface AccountDao {
      * @param id The account ID
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET accessToken = '', refreshToken = '', expiresAt = '', isActiveAccount = 0, isLoggedIn = 0, isExpired = 0 WHERE id = :id")
+    @Query("UPDATE account SET access_token = '', refresh_token = '', expires_at = '', is_active_account = 0, is_logged_in = 0, is_expired = 0 WHERE account_id = :id")
     suspend fun clearAccountTokens(id: String): Int
 
     /**
@@ -107,7 +107,7 @@ interface AccountDao {
      * @param id The account ID to set as active
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET isActiveAccount = CASE WHEN id = :id THEN 1 ELSE 0 END")
+    @Query("UPDATE account SET is_active_account = CASE WHEN account_id = :id THEN 1 ELSE 0 END")
     suspend fun setActiveAccount(id: String): Int
 
     /**
@@ -116,7 +116,7 @@ interface AccountDao {
      * @param isLoggedIn The new logged-in status
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET isLoggedIn = :isLoggedIn WHERE id = :id")
+    @Query("UPDATE account SET is_logged_in = :isLoggedIn WHERE account_id = :id")
     suspend fun updateLoggedInStatus(id: String, isLoggedIn: Boolean): Int
 
     /**
@@ -134,15 +134,15 @@ interface AccountDao {
      */
     @Query("""
         UPDATE account 
-        SET firstName = :firstName,
-            lastName = :lastName,
+        SET first_name = :firstName,
+            last_name = :lastName,
             email = :email,
             dob = :dob,
             gender = :gender,
             height = :height,
             zipcode = :zipcode,
-            activityLevel = :activityLevel
-        WHERE id = :id
+            activity_level = :activityLevel
+        WHERE account_id = :id
     """)
     suspend fun updateProfile(
         id: String,
@@ -166,10 +166,10 @@ interface AccountDao {
      */
     @Query("""
         UPDATE account 
-        SET goalType = :goalType,
-            goalWeight = :goalWeight,
-            initialWeight = :initialWeight
-        WHERE id = :id
+        SET goal_type = :goalType,
+            goal_weight = :goalWeight,
+            initial_weight = :initialWeight
+        WHERE account_id = :id
     """)
     suspend fun updateGoal(
         id: String,
@@ -184,7 +184,7 @@ interface AccountDao {
      * @param dashboardMetrics The new dashboard metrics
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET dashboardMetrics = :dashboardMetrics WHERE id = :id")
+    @Query("UPDATE account SET dashboard_metrics = :dashboardMetrics WHERE account_id = :id")
     suspend fun updateDashboardMetrics(id: String, dashboardMetrics: String): Int
 
     /**
@@ -193,7 +193,7 @@ interface AccountDao {
      * @param weightUnit The new weight unit
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET weightUnit = :weightUnit WHERE id = :id")
+    @Query("UPDATE account SET weight_unit = :weightUnit WHERE account_id = :id")
     suspend fun updateWeightUnit(id: String, weightUnit: String): Int
 
     /**
@@ -211,15 +211,15 @@ interface AccountDao {
      */
     @Query("""
         UPDATE account 
-        SET isFitbitOn = :isFitbitOn,
-            isFitbitValid = :isFitbitValid,
-            isGoogleFitOn = :isGoogleFitOn,
-            isGoogleFitValid = :isGoogleFitValid,
-            isMFPOn = :isMFPOn,
-            isMFPValid = :isMFPValid,
-            isUAOn = :isUAOn,
-            isUAValid = :isUAValid
-        WHERE id = :id
+        SET is_fitbit_on = :isFitbitOn,
+            is_fitbit_valid = :isFitbitValid,
+            is_google_fit_on = :isGoogleFitOn,
+            is_google_fit_valid = :isGoogleFitValid,
+            is_mfp_on = :isMFPOn,
+            is_mfp_valid = :isMFPValid,
+            is_ua_on = :isUAOn,
+            is_ua_valid = :isUAValid
+        WHERE account_id = :id
     """)
     suspend fun updateIntegrationStatus(
         id: String,
@@ -242,9 +242,9 @@ interface AccountDao {
      */
     @Query("""
         UPDATE account 
-        SET shouldSendEntryNotifications = :shouldSendEntryNotifications,
-            shouldSendWeightInEntryNotifications = :shouldSendWeightInEntryNotifications
-        WHERE id = :id
+        SET should_send_entry_notifications = :shouldSendEntryNotifications,
+            should_send_weight_in_entry_notifications = :shouldSendWeightInEntryNotifications
+        WHERE account_id = :id
     """)
     suspend fun updateNotificationSettings(
         id: String,
@@ -263,11 +263,11 @@ interface AccountDao {
      */
     @Query("""
         UPDATE account 
-        SET weightlessWeight = :weightlessWeight,
-            weightlessBodyFat = :weightlessBodyFat,
-            weightlessMuscle = :weightlessMuscle,
-            weightlessTimestamp = :weightlessTimestamp
-        WHERE id = :id
+        SET weightless_weight = :weightlessWeight,
+            weightless_body_fat = :weightlessBodyFat,
+            weightless_muscle = :weightlessMuscle,
+            weightless_timestamp = :weightlessTimestamp
+        WHERE account_id = :id
     """)
     suspend fun updateWeightlessData(
         id: String,
@@ -283,21 +283,21 @@ interface AccountDao {
      * @param isSynced Whether the account data is synced with the server
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET isSynced = :isSynced WHERE id = :id")
+    @Query("UPDATE account SET is_synced = :isSynced WHERE account_id = :id")
     suspend fun updateSyncStatus(id: String, isSynced: Boolean): Int
 
     /**
      * Get all accounts that need syncing.
      * @return A Flow of account entities that are not synced
      */
-    @Query("SELECT * FROM account WHERE isSynced = 0")
+    @Query("SELECT * FROM account WHERE is_synced = 0")
     fun getUnsyncedAccounts(): Flow<List<AccountEntity>>
 
     /**
      * Mark all accounts as synced.
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET isSynced = 1")
+    @Query("UPDATE account SET is_synced = 1")
     suspend fun markAllAccountsSynced(): Int
 
     /**
@@ -305,7 +305,7 @@ interface AccountDao {
      * @param id The account ID
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET isSynced = 1 WHERE id = :id")
+    @Query("UPDATE account SET is_synced = 1 WHERE account_id = :id")
     suspend fun markAccountSynced(id: String): Int
 
     /**
@@ -313,6 +313,6 @@ interface AccountDao {
      * @param id The account ID
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET isSynced = 0 WHERE id = :id")
+    @Query("UPDATE account SET is_synced = 0 WHERE account_id = :id")
     suspend fun markAccountUnsynced(id: String): Int
 } 
