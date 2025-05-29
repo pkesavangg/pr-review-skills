@@ -8,7 +8,7 @@ import android.net.NetworkRequest
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.content.getSystemService
-import com.greatergoods.meapp.core.network.IConnectivityObserver
+import com.greatergoods.meapp.core.network.`interface`.IConnectivityObserver
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
