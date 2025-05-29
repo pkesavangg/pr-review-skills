@@ -22,8 +22,9 @@ import androidx.room.PrimaryKey
 )
 data class BpmEntity(
     @PrimaryKey
+    @ColumnInfo(name = "id")
     val id: String,
 
     @ColumnInfo(name = "hasNumericUsers")
     val hasNumericUsers: Boolean = false
-) : BaseEntity() 
+) 

@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Entity class representing device metadata in the database.
- * Maps to the 'device_meta_data' table in the SQLite database.
+ * Extends DeviceEntity through a one-to-one relationship.
  */
 @Entity(
     tableName = "device_meta_data",
@@ -22,6 +22,7 @@ import androidx.room.PrimaryKey
 )
 data class DeviceMetaDataEntity(
     @PrimaryKey
+    @ColumnInfo(name = "id")
     val id: String,
 
     @ColumnInfo(name = "modelNumber")
@@ -29,9 +30,6 @@ data class DeviceMetaDataEntity(
 
     @ColumnInfo(name = "serialNumber")
     val serialNumber: String?,
-
-    @ColumnInfo(name = "latestVersion")
-    val latestVersion: String?,
 
     @ColumnInfo(name = "firmwareRevision")
     val firmwareRevision: String?,
@@ -46,5 +44,8 @@ data class DeviceMetaDataEntity(
     val manufacturerName: String?,
 
     @ColumnInfo(name = "systemId")
-    val systemId: String?
-) : BaseEntity() 
+    val systemId: String?,
+
+    @ColumnInfo(name = "latestVersion")
+    val latestVersion: String?
+)

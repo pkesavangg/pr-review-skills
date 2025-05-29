@@ -14,6 +14,11 @@ import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 
 /**
  * Main database class for the MeApp application.

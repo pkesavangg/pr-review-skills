@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Entity class representing a scale in the database.
- * Maps to the 'scale' table in the SQLite database.
+ * Extends DeviceEntity through a one-to-one relationship.
  */
 @Entity(
     tableName = "scale",
@@ -22,11 +22,12 @@ import androidx.room.PrimaryKey
 )
 data class ScaleEntity(
     @PrimaryKey
-    val id: String,
+    @ColumnInfo(name = "id")
+    val id: String, // This is both PK and FK to device.id
 
     @ColumnInfo(name = "scaleType")
     val scaleType: String?,
 
     @ColumnInfo(name = "bodyComp")
     val bodyComp: Boolean = false
-) : BaseEntity() 
+)
