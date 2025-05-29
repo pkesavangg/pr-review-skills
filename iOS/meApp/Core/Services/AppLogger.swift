@@ -4,6 +4,18 @@
 //
 //  Created by Kesavan Panchabakesan on 29/05/25.
 //
+
+/**
+ AppLogger provides thread-safe, leveled logging for debugging and analytics in the meApp project.
+
+ - Features:
+   - Thread-safe logging using a concurrent queue with barrier writes.
+   - Supports log levels: debug, info, error, critical.
+   - Optional data serialization for structured logging.
+   - OSLog integration for system-level logging.
+   - In-memory log buffer with configurable maximum size.
+   - Usage guide included at the end of this file.
+*/
 /// AppLogger provides thread-safe, leveled logging with optional data serialization for debugging and analytics.
 
 import Foundation
