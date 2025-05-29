@@ -16,15 +16,22 @@ interface DeviceDao {
      * @return The row ID of the inserted device
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(device: DeviceEntity): Long
+    suspend fun insertDevice(device: DeviceEntity)
 
     /**
-     * Update an existing device in the database.
-     * @param device The device entity to update
-     * @return The number of rows updated
+     * Get all devices from the database.
+     * @return A Flow of all devices
      */
-    @Update
-    suspend fun update(device: DeviceEntity): Int
+    @Query("SELECT * FROM device")
+    fun getAllDevices(): Flow<List<DeviceEntity>>
+
+    /**
+     * Get devices by type from the database.
+     * @param deviceType The device type
+     * @return A Flow of devices of the specified type
+     */
+    @Query("SELECT * FROM device WHERE deviceType = :deviceType")
+    fun getDevicesByType(deviceType: String): Flow<List<DeviceEntity>>
 
     /**
      * Delete a device from the database.
@@ -32,23 +39,23 @@ interface DeviceDao {
      * @return The number of rows deleted
      */
     @Delete
-    suspend fun delete(device: DeviceEntity): Int
+    suspend fun deleteDevice(device: DeviceEntity)
 
     /**
      * Get a device by its ID.
-     * @param id The device ID
+     * @param deviceId The device ID
      * @return The device entity if found, null otherwise
      */
-    @Query("SELECT * FROM device WHERE id = :id")
-    suspend fun getDeviceById(id: String): DeviceEntity?
+    @Query("SELECT * FROM device WHERE id = :deviceId")
+    suspend fun getDeviceById(deviceId: String): DeviceEntity?
 
     /**
      * Get all devices for a specific user.
-     * @param userId The user ID
+     * @param accountId The user ID
      * @return A Flow of all devices for the user
      */
-    @Query("SELECT * FROM device WHERE userId = :userId")
-    fun getDevicesByUserId(userId: String): Flow<List<DeviceEntity>>
+    @Query("SELECT * FROM device WHERE accountId = :accountId")
+    fun getDevicesByAccountId(accountId: String): Flow<List<DeviceEntity>>
 
     /**
      * Get all unsynced devices.
@@ -59,20 +66,20 @@ interface DeviceDao {
 
     /**
      * Get devices by device type for a specific user.
-     * @param userId The user ID
+     * @param accountId The user ID
      * @param deviceType The device type
      * @return A Flow of devices of the specified type
      */
-    @Query("SELECT * FROM device WHERE userId = :userId AND deviceType = :deviceType")
-    fun getDevicesByType(userId: String, deviceType: String): Flow<List<DeviceEntity>>
+    @Query("SELECT * FROM device WHERE accountId = :accountId AND deviceType = :deviceType")
+    fun getDevicesByType(accountId: String, deviceType: String): Flow<List<DeviceEntity>>
 
     /**
      * Get connected devices for a specific user.
-     * @param userId The user ID
+     * @param accountId The user ID
      * @return A Flow of connected devices
      */
-    @Query("SELECT * FROM device WHERE userId = :userId AND isConnected = 1")
-    fun getConnectedDevices(userId: String): Flow<List<DeviceEntity>>
+    @Query("SELECT * FROM device WHERE accountId = :accountId AND isConnected = 1")
+    fun getConnectedDevices(accountId: String): Flow<List<DeviceEntity>>
 
     /**
      * Update device connection status.
@@ -154,9 +161,9 @@ interface DeviceDao {
 
     /**
      * Delete all devices for a specific user.
-     * @param userId The user ID
+     * @param accountId The user ID
      * @return The number of rows deleted
      */
-    @Query("DELETE FROM device WHERE userId = :userId")
-    suspend fun deleteAllDevicesForUser(userId: String): Int
+    @Query("DELETE FROM device WHERE accountId = :accountId")
+    suspend fun deleteAllDevicesForAccount(accountId: String): Int
 } 

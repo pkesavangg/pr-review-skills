@@ -9,7 +9,7 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 
 /**
  * Entity class representing R4 scale preferences in the database.
- * Maps to the 'r4_scale_preference' table in the SQLite database.
+ * Extends ScaleEntity through a one-to-one relationship.
  */
 @Entity(
     tableName = "r4_scale_preference",
@@ -25,6 +25,7 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 @TypeConverters(JsonConverter::class)
 data class R4ScalePreferenceEntity(
     @PrimaryKey
+    @ColumnInfo(name = "id")
     val id: String,
 
     @ColumnInfo(name = "displayName")
@@ -52,5 +53,5 @@ data class R4ScalePreferenceEntity(
     val wifiFotaScheduleTime: Int?,
 
     @ColumnInfo(name = "updatedAt")
-    val updatedAt: String?,
-) : BaseEntity() 
+    val updatedAt: String?
+) 

@@ -24,10 +24,11 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 @TypeConverters(DateConverter::class, JsonConverter::class)
 data class DeviceEntity(
     @PrimaryKey
+    @ColumnInfo(name = "id")
     val id: String,
 
-    @ColumnInfo(name = "userId")
-    val userId: String,
+    @ColumnInfo(name = "accountId")
+    val accountId: String,
 
     @ColumnInfo(name = "peripheralIdentifier")
     val peripheralIdentifier: String?,
@@ -85,4 +86,4 @@ data class DeviceEntity(
 
     @ColumnInfo(name = "token")
     val token: String?
-) : BaseEntity() 
+) 

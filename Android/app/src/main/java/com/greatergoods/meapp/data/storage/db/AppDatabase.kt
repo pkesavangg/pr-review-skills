@@ -9,6 +9,8 @@ import com.greatergoods.meapp.data.storage.db.converter.DateConverter
 import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import com.greatergoods.meapp.data.storage.db.dao.*
+import com.greatergoods.meapp.data.storage.db.dao.AccountDao
+import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.entity.*
 
 /**
@@ -30,10 +32,6 @@ import com.greatergoods.meapp.data.storage.db.entity.*
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun deviceDao(): DeviceDao
-    abstract fun scaleDao(): ScaleDao
-    abstract fun deviceMetaDataDao(): DeviceMetaDataDao
-    abstract fun bpmDao(): BpmDao
-    abstract fun r4ScalePreferenceDao(): R4ScalePreferenceDao
 
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
