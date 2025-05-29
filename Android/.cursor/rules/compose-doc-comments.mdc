@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Documentation and Comments for Compose/Kotlin
+
+* Every function and method must have a concise, meaningful KDoc comment describing its purpose, parameters, and return value.
+* For complex logic or non-obvious code, add inline comments explaining the reasoning or algorithm.
+* Avoid redundant comments; comments should add value beyond what the code expresses.
