@@ -25,6 +25,11 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
         ScaleEntryEntity::class,
         ScaleEntryMetricEntity::class,
         BpmEntryEntity::class
+        DeviceEntity::class,
+        ScaleEntity::class,
+        DeviceMetaDataEntity::class,
+        BpmEntity::class,
+        R4ScalePreferenceEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -33,7 +38,7 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun entryDao(): EntryDao
-
+    abstract fun deviceDao(): DeviceDao
 
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
