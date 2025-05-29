@@ -14,19 +14,19 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 @Entity(tableName = "account")
 data class AccountEntity(
     @PrimaryKey
-    @ColumnInfo(name = "id")
+    @ColumnInfo(name = "account_id")
     val id: String,
 
-    @ColumnInfo(name = "accessToken")
+    @ColumnInfo(name = "access_token")
     val accessToken: String? = null,
 
-    @ColumnInfo(name = "activityLevel")
+    @ColumnInfo(name = "activity_level")
     val activityLevel: String? = null,
 
-    @ColumnInfo(name = "dashboardMetrics")
+    @ColumnInfo(name = "dashboard_metrics")
     val dashboardMetrics: String? = null,
 
-    @ColumnInfo(name = "dashboardType")
+    @ColumnInfo(name = "dashboard_type")
     val dashboardType: String? = null,
 
     @ColumnInfo(name = "dob")
@@ -35,121 +35,121 @@ data class AccountEntity(
     @ColumnInfo(name = "email")
     val email: String? = null,
 
-    @ColumnInfo(name = "expiresAt")
+    @ColumnInfo(name = "expires_at")
     val expiresAt: String? = null,
 
-    @ColumnInfo(name = "fcmToken")
+    @ColumnInfo(name = "fcm_token")
     val fcmToken: String? = null,
 
-    @ColumnInfo(name = "firstName")
+    @ColumnInfo(name = "first_name")
     val firstName: String? = null,
 
     @ColumnInfo(name = "gender")
     val gender: String? = null,
 
-    @ColumnInfo(name = "goalType")
+    @ColumnInfo(name = "goal_type")
     val goalType: String? = null,
 
-    @ColumnInfo(name = "goalWeight")
+    @ColumnInfo(name = "goal_weight")
     val goalWeight: String? = null,
 
     @ColumnInfo(name = "height")
     val height: String? = null,
 
-    @ColumnInfo(name = "initialWeight")
+    @ColumnInfo(name = "initial_weight")
     val initialWeight: Float? = null,
 
-    @ColumnInfo(name = "isActiveAccount")
+    @ColumnInfo(name = "is_active_account")
     val isActiveAccount: Boolean = false,
 
-    @ColumnInfo(name = "isFitbitOn")
+    @ColumnInfo(name = "is_fitbit_on")
     val isFitbitOn: Boolean = false,
 
-    @ColumnInfo(name = "isFitbitValid")
+    @ColumnInfo(name = "is_fitbit_valid")
     val isFitbitValid: Boolean = false,
 
-    @ColumnInfo(name = "isGoogleFitOn")
+    @ColumnInfo(name = "is_google_fit_on")
     val isGoogleFitOn: Boolean = false,
 
-    @ColumnInfo(name = "isGoogleFitValid")
+    @ColumnInfo(name = "is_google_fit_valid")
     val isGoogleFitValid: Boolean = false,
 
-    @ColumnInfo(name = "isHealthConnectOn")
+    @ColumnInfo(name = "is_health_connect_on")
     val isHealthConnectOn: Boolean = false,
 
-    @ColumnInfo(name = "isHealthKitOn")
+    @ColumnInfo(name = "is_health_kit_on")
     val isHealthKitOn: Boolean = false,
 
-    @ColumnInfo(name = "isLoggedIn")
+    @ColumnInfo(name = "is_logged_in")
     val isLoggedIn: Boolean = false,
 
-    @ColumnInfo(name = "isExpired")
+    @ColumnInfo(name = "is_expired")
     val isExpired: Boolean = false,
 
-    @ColumnInfo(name = "isMFPOn")
+    @ColumnInfo(name = "is_mfp_on")
     val isMFPOn: Boolean = false,
 
-    @ColumnInfo(name = "isMFPValid")
+    @ColumnInfo(name = "is_mfp_valid")
     val isMFPValid: Boolean = false,
 
-    @ColumnInfo(name = "isStreakOn")
+    @ColumnInfo(name = "is_streak_on")
     val isStreakOn: Boolean = false,
 
-    @ColumnInfo(name = "isSynced")
+    @ColumnInfo(name = "is_synced")
     val isSynced: Boolean = false,
 
-    @ColumnInfo(name = "isUAOn")
+    @ColumnInfo(name = "is_ua_on")
     val isUAOn: Boolean = false,
 
-    @ColumnInfo(name = "isUAValid")
+    @ColumnInfo(name = "is_ua_valid")
     val isUAValid: Boolean = false,
 
-    @ColumnInfo(name = "isWeightlessOn")
+    @ColumnInfo(name = "is_weightless_on")
     val isWeightlessOn: Boolean = false,
 
-    @ColumnInfo(name = "lastActiveTime")
+    @ColumnInfo(name = "last_active_time")
     val lastActiveTime: String? = null,
 
-    @ColumnInfo(name = "lastName")
+    @ColumnInfo(name = "last_name")
     val lastName: String? = null,
 
-    @ColumnInfo(name = "metPreviousGoal")
+    @ColumnInfo(name = "met_previous_goal")
     val metPreviousGoal: Boolean = false,
 
     @ColumnInfo(name = "percent")
     val percent: Float? = null,
 
-    @ColumnInfo(name = "preferredInputMethod")
+    @ColumnInfo(name = "preferred_input_method")
     val preferredInputMethod: String? = null,
 
-    @ColumnInfo(name = "refreshToken")
+    @ColumnInfo(name = "refresh_token")
     val refreshToken: String? = null,
 
-    @ColumnInfo(name = "shouldSendEntryNotifications")
+    @ColumnInfo(name = "should_send_entry_notifications")
     val shouldSendEntryNotifications: Boolean = false,
 
-    @ColumnInfo(name = "shouldSendWeightInEntryNotifications")
+    @ColumnInfo(name = "should_send_weight_in_entry_notifications")
     val shouldSendWeightInEntryNotifications: Boolean = false,
 
-    @ColumnInfo(name = "streakTimestamp")
+    @ColumnInfo(name = "streak_timestamp")
     val streakTimestamp: String? = null,
 
     @ColumnInfo(name = "type")
     val type: String? = null,
 
-    @ColumnInfo(name = "weightUnit")
+    @ColumnInfo(name = "weight_unit")
     val weightUnit: String? = null,
 
-    @ColumnInfo(name = "weightlessBodyFat")
+    @ColumnInfo(name = "weightless_body_fat")
     val weightlessBodyFat: Float? = null,
 
-    @ColumnInfo(name = "weightlessMuscle")
+    @ColumnInfo(name = "weightless_muscle")
     val weightlessMuscle: Float? = null,
 
-    @ColumnInfo(name = "weightlessTimestamp")
+    @ColumnInfo(name = "weightless_timestamp")
     val weightlessTimestamp: String? = null,
 
-    @ColumnInfo(name = "weightlessWeight")
+    @ColumnInfo(name = "weightless_weight")
     val weightlessWeight: Float? = null,
 
     @ColumnInfo(name = "zipcode")
