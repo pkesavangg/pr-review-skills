@@ -1,4 +1,3 @@
-// A minimal AnyCodable implementation for Codable dictionaries
 import Foundation
 
 public struct AnyCodable: Codable {
