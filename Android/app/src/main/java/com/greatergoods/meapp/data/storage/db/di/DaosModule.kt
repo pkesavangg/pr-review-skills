@@ -1,0 +1,34 @@
+package com.greatergoods.meapp.data.storage.db.di
+
+import com.greatergoods.meapp.data.storage.db.AppDatabase
+import com.greatergoods.meapp.data.storage.db.dao.AccountDao
+import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
+import com.greatergoods.meapp.data.storage.db.dao.EntryDao
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DaosModule {
+
+    @Provides
+    @Singleton
+    fun provideAccountDao(
+        database: AppDatabase
+    ): AccountDao = database.accountDao()
+
+    @Provides
+    @Singleton
+    fun provideDeviceDao(
+        database: AppDatabase
+    ): DeviceDao = database.deviceDao()
+
+    @Provides
+    @Singleton
+    fun provideEntryDao(
+        database: AppDatabase
+    ): EntryDao = database.entryDao()
+} 
