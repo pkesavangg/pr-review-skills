@@ -20,6 +20,21 @@ enum ActivityLevel: String, Codable, Equatable {
 enum Sex: String, Codable, Equatable {
     case male = "male"
     case female = "female"
+    
+    init?(rawInput: String?) {
+        guard let input = rawInput?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
+            return nil
+        }
+        
+        switch input {
+        case "male":
+            self = .male
+        case "female":
+            self = .female
+        default:
+            return nil
+        }
+    }
 }
 
 // MARK: - WeightUnit

@@ -44,6 +44,8 @@
 				Data/Services/.gitkeep,
 				Data/Storage/DB/.gitkeep,
 				Data/Storage/Persistence/.gitkeep,
+				Domain/Repositories/.gitkeep,
+				Domain/Services/.gitkeep,
 				Features/Auth/Enums/.gitkeep,
 				Features/Auth/Models/.gitkeep,
 				Features/Auth/Stores/.gitkeep,
@@ -310,6 +312,8 @@
 /* Begin XCBuildConfiguration section */
 		105A1FBE2DE585BA00FBB764 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -373,6 +377,8 @@
 		};
 		105A1FBF2DE585BA00FBB764 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -429,6 +435,8 @@
 		};
 		105A1FC12DE585BA00FBB764 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -465,6 +473,8 @@
 		};
 		105A1FC22DE585BA00FBB764 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -501,6 +511,8 @@
 		};
 		105A1FC42DE585BA00FBB764 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -520,6 +532,8 @@
 		};
 		105A1FC52DE585BA00FBB764 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -539,6 +553,8 @@
 		};
 		105A1FC72DE585BA00FBB764 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -556,6 +572,8 @@
 		};
 		105A1FC82DE585BA00FBB764 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -573,6 +591,8 @@
 		};
 		105A21E22DE5A29400FBB764 /* Dev */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -674,6 +694,8 @@
 		};
 		105A21E42DE5A29400FBB764 /* Dev */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -693,6 +715,8 @@
 		};
 		105A21E52DE5A29400FBB764 /* Dev */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -710,6 +734,8 @@
 		};
 		105A21E62DE5A2A700FBB764 /* Production */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -804,6 +830,8 @@
 		};
 		105A21E82DE5A2A700FBB764 /* Production */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -823,6 +851,8 @@
 		};
 		105A21E92DE5A2A700FBB764 /* Production */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
+			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -850,7 +880,7 @@
 				105A21E62DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 		105A1FC02DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meApp" */ = {
 			isa = XCConfigurationList;
@@ -861,7 +891,7 @@
 				105A21E72DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 		105A1FC32DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meAppTests" */ = {
 			isa = XCConfigurationList;
@@ -872,7 +902,7 @@
 				105A21E82DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 		105A1FC62DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meAppUITests" */ = {
 			isa = XCConfigurationList;
@@ -883,7 +913,7 @@
 				105A21E92DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 /* End XCConfigurationList section */
 	};
