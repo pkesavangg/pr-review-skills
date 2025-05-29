@@ -12,6 +12,11 @@ import com.greatergoods.meapp.data.storage.db.dao.*
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.entity.*
+import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 
 /**
  * Main database class for the MeApp application.

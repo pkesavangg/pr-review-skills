@@ -2,6 +2,8 @@ package com.greatergoods.meapp.data.storage.db.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.greatergoods.meapp.data.storage.db.converter.DateConverter
@@ -12,15 +14,17 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
  * Maps to the 'device' table in the SQLite database.
  */
 @Entity(
-      tableName = "device", 
+      tableName = "device",
       foreignKeys = [
-        ForeignKey(
-            entity = DeviceEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["deviceId"],
+          ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["account_id"],
+            childColumns = ["accountId"],
             onDelete = ForeignKey.CASCADE
         )
-    ])
+    ],
+    indices = [Index("accountId")]
+)
 @TypeConverters(DateConverter::class, JsonConverter::class)
 data class DeviceEntity(
     @PrimaryKey
@@ -86,4 +90,4 @@ data class DeviceEntity(
 
     @ColumnInfo(name = "token")
     val token: String?
-) 
+)
