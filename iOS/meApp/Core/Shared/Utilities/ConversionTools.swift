@@ -57,7 +57,7 @@ final class ConversionTools {
 
     /// Converts stored weight (tenths of lbs) to kg
     static func convertStoredToKg(_ stored: Int) -> Double {
-        return (Double(stored) / 22.046).rounded(toPlaces: 1)
+        return rounded(Double(stored) / 22.046, toPlaces: 1)
     }
 
     /// Converts kg to stored weight (tenths of lbs)
@@ -86,7 +86,7 @@ final class ConversionTools {
     /// Converts Bluetooth scale kg value to stored value (tenths of lbs)
     static func convertBluetoothToStored(_ btKg: Double) -> Int {
         // Bluetooth scales: .2 lbs resolution, special formula
-        return Int(round(btKg * 1.1023 * 2 * 10) / 10)
+        return Int(rounded(btKg * 1.1023 * 2 * 10, toPlaces: 0) / 10)
     }
 
     /// Appsync display to stored (kg to lbs, more precision)
@@ -136,12 +136,11 @@ final class ConversionTools {
         }
         return hexPairs.reversed().joined().uppercased()
     }
-}
 
-// MARK: - Double Rounding Extension
-private extension Double {
-    func rounded(toPlaces places: Int) -> Double {
+    // MARK: - Internal helpers
+    /// Rounds a Double to the given number of decimal places
+    private static func rounded(_ value: Double, toPlaces places: Int) -> Double {
         let divisor = pow(10.0, Double(places))
-        return (self * divisor).rounded() / divisor
+        return (value * divisor).rounded() / divisor
     }
 }
