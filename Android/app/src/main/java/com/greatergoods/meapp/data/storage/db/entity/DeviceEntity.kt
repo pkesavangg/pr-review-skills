@@ -18,7 +18,7 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
       foreignKeys = [
           ForeignKey(
             entity = AccountEntity::class,
-            parentColumns = ["account_id"],
+            parentColumns = ["accountId"],
             childColumns = ["accountId"],
             onDelete = ForeignKey.CASCADE
         )
