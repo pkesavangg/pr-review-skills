@@ -1,16 +1,12 @@
 package com.greatergoods.meapp.core.navigation
 
-import android.os.Build
 import androidx.activity.compose.LocalActivity
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation3.runtime.NavKey
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import kotlinx.coroutines.flow.Flow
 
-
-@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun NavigationObserver(
     navigationIntentFlow: Flow<NavigationIntent>,
@@ -37,11 +33,14 @@ fun NavigationObserver(
                     is NavigationIntent.NavigateToMultiple -> {
 
                         (backStack).addAll(intent.routes)
-
                     }
 
                     is NavigationIntent.ReplaceStack -> {
                         backStack.replaceStack(intent.routes)
+                    }
+
+                    is NavigationIntent.AddTopLevelRoute -> {
+                        backStack.addTopLevel(intent.route)
                     }
                 }
             }

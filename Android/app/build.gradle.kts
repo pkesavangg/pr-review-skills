@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     kotlin("kapt")
+    id("com.google.gms.google-services")
 
 }
 
@@ -52,9 +53,10 @@ android {
             val outputImpl = this as BaseVariantOutputImpl
 
             val appName = "MyApp"
-            val versionCode = this@all.versionCode
+            val versionCode = this.versionCode
             val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
-            outputImpl.outputFileName = "${appName}-${variantName}-v${versionName}(${versionCode})-${timestamp}.apk"
+            outputImpl.outputFileName =
+                "${appName}-${variantName}-v${versionName}(${versionCode})-${timestamp}.apk"
         }
     }
 
@@ -75,6 +77,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.firebase.messaging.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -100,10 +103,20 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
 
-    //Datastore
-    implementation (libs.androidx.datastore)
-    implementation (libs.androidx.datastore.preferences.core)
-    implementation (libs.gson)
+    // Datastore
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.gson)
+
+    // Firebase
+    // Import the Firebase BoM
+    implementation(platform(libs.firebase.bom))
+    // When using the BoM, you don't specify versions in Firebase library dependencies
+    // Add the dependency for the Firebase SDK for Google Analytics
+    implementation(libs.firebase.analytics)
+
+    // modules
+    implementation(project(":notification"))
 
 }
 

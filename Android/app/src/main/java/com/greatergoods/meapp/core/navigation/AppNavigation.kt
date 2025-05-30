@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.core.navigation
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
@@ -26,16 +24,15 @@ import com.greatergoods.meapp.features.sample.SampleThemeScreen
  *
  * @param navigationViewModel The ViewModel managing navigation intents and state.
  */
-@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun AppNavigation(
-    navigationViewModel: NavigationViewmodel
+    navigationViewModel: NavigationViewmodel,
 ) {
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
     val isDark = remember { mutableStateOf(false) }
     NavigationObserver(
         navigationViewModel.appEventService.navigationIntent,
-        topLevelBackStack
+        topLevelBackStack,
     )
     val selectedRoute = topLevelBackStack.topLevelKey as AppRoute
     CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
@@ -49,12 +46,11 @@ fun AppNavigation(
                     initEntries(isDark.value) { isDark.value = !isDark.value }
                     mainEntries()
                     productEntries()
-                }
+                },
             )
         }
     }
 }
-
 
 /**
  * Registers the entry for the initial theme sample screen.
@@ -90,5 +86,5 @@ fun EntryProviderBuilder<NavKey>.mainEntries() {
  */
 fun EntryProviderBuilder<NavKey>.productEntries() {
     entry<AppRoute.Product.ProductList> { ProductListScreen() }
-    entry<AppRoute.Product.ProductDetail> { key -> ProductDetailScreen((key as AppRoute.Product.ProductDetail).id) }
+    entry<AppRoute.Product.ProductDetail> { key -> ProductDetailScreen(key.id) }
 }
