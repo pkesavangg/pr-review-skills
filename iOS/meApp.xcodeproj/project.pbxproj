@@ -35,12 +35,9 @@
 			membershipExceptions = (
 				Core/DI/.gitkeep,
 				Core/Navigation/.gitkeep,
-				Core/Network/.gitkeep,
-				Core/Services/.gitkeep,
 				Core/Shared/Extensions/.gitkeep,
 				Core/Shared/Utilities/.gitkeep,
 				Data/API/.gitkeep,
-				Data/Repositories/.gitkeep,
 				Data/Services/.gitkeep,
 				Data/Storage/DB/.gitkeep,
 				Data/Storage/Persistence/.gitkeep,

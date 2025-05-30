@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core
+package com.greatergoods.meapp
 
 import com.google.firebase.Firebase
 import com.google.firebase.messaging.FirebaseMessaging
@@ -19,7 +19,7 @@ import android.widget.Toast
  * Application class for MeApp. Initializes notification channels and retrieves the FCM token on startup.
  */
 @HiltAndroidApp
-class MeApp : Application() {
+class MeAppApplication : Application() {
     @Inject
     lateinit var notificationService: NotificationService
     override fun onCreate() {
