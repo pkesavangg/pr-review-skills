@@ -2,17 +2,21 @@
 // Utility class for protocol-specific conversion (e.g., int <-> hex using protocol types)
 
 final class ProtocolConversionTools {
+    // MARK: - Constants
+    private static let r4HexPadding = "000000000000"
+    private static let standardHexPadding = "0000000"
+    
     // MARK: - Protocol Conversion
     /// Converts integer to hex string for protocol (R4 or other)
     static func convertIntToHex(_ value: Int, protocolType: ProtocolType) -> String {
         var convertedValue = String(format: "%x", value)
         if protocolType == .R4 {
-            convertedValue = String("000000000000" + convertedValue).suffix(12).description
+            convertedValue = String(r4HexPadding + convertedValue).suffix(12).description
         } else {
             if convertedValue.count < 8 {
-                convertedValue = String("0000000" + convertedValue).suffix(8).description
+                convertedValue = String(standardHexPadding + convertedValue).suffix(8).description
             } else if convertedValue.count > 8 && convertedValue.count < 12 {
-                convertedValue = String("0000000" + convertedValue).suffix(12).description
+                convertedValue = String(standardHexPadding + convertedValue).suffix(12).description
             }
         }
         // Reverse every 2 chars and uppercase
