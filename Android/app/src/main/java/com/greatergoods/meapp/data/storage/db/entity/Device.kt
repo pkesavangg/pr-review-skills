@@ -61,63 +61,6 @@ data class DeviceDetails(
 }
 
 /**
- * Converts a database DeviceDetails to a domain model.
- * This is used when you need to pass the data to the UI layer or external components.
- */
-fun DeviceDetails.asExternalModel() = Device(
-    // Device properties
-    id = device.id,
-    accountId = device.accountId,
-    peripheralIdentifier = device.peripheralIdentifier,
-    nickname = device.nickname,
-    sku = device.sku,
-    mac = device.mac,
-    password = device.password,
-    isDeleted = device.isDeleted,
-    deviceName = device.deviceName,
-    deviceType = device.deviceType,
-    broadcastId = device.broadcastId,
-    broadcastIdString = device.broadcastIdString,
-    userNumber = device.userNumber,
-    protocolType = device.protocolType,
-    createdAt = device.createdAt,
-    lastModified = device.lastModified,
-    isSynced = device.isSynced,
-    isConnected = device.isConnected,
-    wifiMac = device.wifiMac,
-    isWifiConfigured = device.isWifiConfigured,
-    token = device.token,
-
-    // Scale properties
-    scaleType = scale?.scaleType,
-    bodyComp = scale?.bodyComp ?: false,
-
-    // R4 Preference
-    displayName = r4Preference?.displayName,
-    displayMetrics = r4Preference?.displayMetrics?.joinToString(","),
-    shouldFactoryReset = r4Preference?.shouldFactoryReset ?: false,
-    shouldMeasureImpedance = r4Preference?.shouldMeasureImpedance ?: false,
-    shouldMeasurePulse = r4Preference?.shouldMeasurePulse ?: false,
-    timeFormat = r4Preference?.timeFormat,
-    tzOffset = r4Preference?.tzOffset?.toString(),
-    wifiFotaScheduleTime = r4Preference?.wifiFotaScheduleTime?.toString(),
-    prefsUpdatedAt = r4Preference?.updatedAt,
-
-    // Meta
-    modelNumber = meta?.modelNumber,
-    serialNumber = meta?.serialNumber,
-    firmwareRevision = meta?.firmwareRevision,
-    hardwareRevision = meta?.hardwareRevision,
-    softwareRevision = meta?.softwareRevision,
-    manufacturerName = meta?.manufacturerName,
-    systemId = meta?.systemId,
-    latestVersion = meta?.latestVersion,
-
-    // BPM
-    hasNumericUsers = bpm?.hasNumericUsers
-)
-
-/**
  * Creates a DeviceDetails from a DTO.
  */
 fun fromDTO(dto: DeviceDTO) = DeviceDetails(
