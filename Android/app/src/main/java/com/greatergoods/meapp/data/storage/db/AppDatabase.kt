@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.room.RoomDatabase
 import androidx.room.Database
 import androidx.room.Room
+import androidx.room.TypeConverters
+import com.greatergoods.meapp.data.storage.db.converter.DateConverter
+import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 
 /**
@@ -14,6 +17,7 @@ import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
     version = 1,
     exportSchema = false
 )
+@TypeConverters(DateConverter::class, JsonConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
     companion object {
