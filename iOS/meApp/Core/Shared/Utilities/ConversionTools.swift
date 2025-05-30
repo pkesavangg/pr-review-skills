@@ -5,12 +5,6 @@
 
 import Foundation
 
-enum ProtocolType: String {
-    case A3 = "A3"
-    case A6 = "A6"
-    case R4 = "R4"
-}
-
 final class ConversionTools {
     // MARK: - Height Conversion
     /// Converts stored height (tenths of inches) to formatted string (e.g., 5' 10" or 178 cm)
@@ -112,29 +106,6 @@ final class ConversionTools {
         if value == "-Infinity" { return -Double.infinity }
         if let num = Double(value) { return num }
         return value
-    }
-
-    // MARK: - Protocol Conversion
-    /// Converts integer to hex string for protocol (R4 or other)
-    static func convertIntToHex(_ value: Int, protocolType: ProtocolType) -> String {
-        var convertedValue = String(format: "%x", value)
-        if protocolType == .R4 {
-            convertedValue = String("000000000000" + convertedValue).suffix(12).description
-        } else {
-            if convertedValue.count < 8 {
-                convertedValue = String("0000000" + convertedValue).suffix(8).description
-            } else if convertedValue.count > 8 && convertedValue.count < 12 {
-                convertedValue = String("0000000" + convertedValue).suffix(12).description
-            }
-        }
-        // Reverse every 2 chars and uppercase
-        let hexPairs = stride(from: 0, to: convertedValue.count, by: 2).map {
-            (i) -> String in
-            let start = convertedValue.index(convertedValue.startIndex, offsetBy: i)
-            let end = convertedValue.index(start, offsetBy: 2, limitedBy: convertedValue.endIndex) ?? convertedValue.endIndex
-            return String(convertedValue[start..<end])
-        }
-        return hexPairs.reversed().joined().uppercased()
     }
 
     // MARK: - Internal helpers
