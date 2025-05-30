@@ -38,7 +38,6 @@
 				Core/Shared/Extensions/.gitkeep,
 				Core/Shared/Utilities/.gitkeep,
 				Data/API/.gitkeep,
-				Data/Repositories/.gitkeep,
 				Data/Services/.gitkeep,
 				Data/Storage/DB/.gitkeep,
 				Data/Storage/Persistence/.gitkeep,
