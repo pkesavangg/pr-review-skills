@@ -49,7 +49,7 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true) as EmptyResponse
     }
 
-    func fetchAccount(accountId: String) async throws -> AccountResponse {
+    func fetchAccount(accountId: String) async throws -> AccountDTO {
         return try await httpClient.get(.accountInfo, needsAuth: true)
     }
 

@@ -31,8 +31,8 @@ protocol AccountRepositoryAPIProtocol {
 
     /// Fetches the current account's details from the backend. (GET /account)
     /// - Parameter accountId: The ID of the account to fetch.
-    /// - Returns: AccountResponse
-    func fetchAccount(accountId: String) async throws -> AccountResponse
+    /// - Returns: AccountDTO (from { account })
+    func fetchAccount(accountId: String) async throws -> AccountDTO
 
     /// Edits the account with the given updated Account object (PUT /account).
     /// - Parameter updatedAccount: The updated Account object.

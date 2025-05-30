@@ -155,7 +155,7 @@ final class Account {
         self.gender = dto.gender
         self.zipcode = dto.zipcode
         self.dob = dto.dob
-        self.weightUnit = WeightUnit(rawValue: dto.weightUnit)
+        self.weightUnit = dto.weightUnit
         self.height = String(dto.height)
         self.activityLevel = dto.activityLevel
         self.goalWeight = dto.goalWeight.map { String($0) }
@@ -184,7 +184,6 @@ final class Account {
         self.refreshToken = nil
         self.expiresAt = nil
         self.isStreakOn = dto.isStreakOn
-        self.streakTimestamp = nil
         self.dashboardMetrics = dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ",")
         self.dashboardType = dto.dashboardType
         self.isLoggedIn = nil
@@ -203,7 +202,7 @@ final class Account {
             lastName: self.lastName,
             gender: self.gender ?? .male,
             zipcode: self.zipcode,
-            weightUnit: self.weightUnit?.rawValue ?? "",
+            weightUnit: self.weightUnit ?? .lb,
             isWeightlessOn: self.isWeightlessOn,
             preferredInputMethod: self.preferredInputMethod,
             height: Double(self.height ?? "0") ?? 0.0,
@@ -228,7 +227,9 @@ final class Account {
             isMFPOn: self.isMfpOn,
             isMFPValid: self.isMfpValid,
             isUAOn: self.isUaOn,
-            isUAValid: self.isUaValid
+            isUAValid: self.isUaValid,
+            isHealthKitOn: self.isHealthKitOn,
+            isHealthConnectOn: self.isHealthConnectOn
         )
     }
 }
