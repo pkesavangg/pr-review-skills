@@ -5,32 +5,25 @@ import androidx.activity.compose.LocalActivity
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
-import com.greatergoods.meapp.domain.interfaces.matchesBaseRoute
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
-import kotlin.reflect.KClass
 
 
 @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun NavigationObserver(
     navigationIntentFlow: Flow<NavigationIntent>,
-    backStack: NavBackStack,
-    baseClass: KClass<out AppRoute>
+    backStack: TopLevelBackStack<NavKey>,
 ) {
     val activity = LocalActivity.current
 
     LaunchedEffect(activity) {
         navigationIntentFlow
-            .filter { intent ->
-                intent.matchesBaseRoute(baseClass)
-            }
             .collect { intent ->
                 when (intent) {
                     is NavigationIntent.NavigateTo -> {
-                        backStack.add(intent.route as AppRoute)
+                        backStack.add(intent.route)
                     }
 
                     is NavigationIntent.NavigateBack -> {
@@ -38,16 +31,17 @@ fun NavigationObserver(
                     }
 
                     is NavigationIntent.NavigateToRoot -> {
-                        backStack.clear()
+                        (backStack).clearStack()
                     }
 
                     is NavigationIntent.NavigateToMultiple -> {
-                        backStack.addAll(intent.routes.map { it as AppRoute })
+
+                        (backStack).addAll(intent.routes)
+
                     }
 
                     is NavigationIntent.ReplaceStack -> {
-                        backStack.clear()
-                        backStack.addAll(intent.routes.map { it as AppRoute })
+                        backStack.replaceStack(intent.routes)
                     }
                 }
             }
