@@ -22,30 +22,21 @@ import androidx.room.PrimaryKey
 )
 data class DeviceMetaDataEntity(
     @PrimaryKey
-    @ColumnInfo(name = "id")
     val id: String,
 
-    @ColumnInfo(name = "modelNumber")
     val modelNumber: String?,
 
-    @ColumnInfo(name = "serialNumber")
     val serialNumber: String?,
 
-    @ColumnInfo(name = "firmwareRevision")
     val firmwareRevision: String?,
 
-    @ColumnInfo(name = "hardwareRevision")
     val hardwareRevision: String?,
 
-    @ColumnInfo(name = "softwareRevision")
     val softwareRevision: String?,
 
-    @ColumnInfo(name = "manufacturerName")
     val manufacturerName: String?,
 
-    @ColumnInfo(name = "systemId")
     val systemId: String?,
 
-    @ColumnInfo(name = "latestVersion")
     val latestVersion: String?
 )
