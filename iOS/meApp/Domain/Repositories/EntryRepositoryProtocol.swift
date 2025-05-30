@@ -26,7 +26,7 @@ protocol EntryRepositoryProtocol {
 
     /// Deletes an entry by its unique ID.
     /// - Parameter id: The ID of the entry to delete.
-    func deleteEntry(byId id: String, hardDelete: Bool) async throws
+    func deleteEntry(byId id: String) async throws
 
     /// Deletes all entries from the local data store.
     func deleteAllEntries() async throws
@@ -75,6 +75,4 @@ protocol EntryRepositoryProtocol {
     ///   - deleteOps: Entries to delete.
     func syncEntries(newEntries: [Entry]) async throws
 
-    /// Clears all entry-related data from the local data store.
-    func clearAllData() async throws
 }

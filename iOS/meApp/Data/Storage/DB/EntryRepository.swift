@@ -51,13 +51,9 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     /// Deletes an entry by its unique UUID string.
     /// - Parameter id: The UUID string of the entry to delete.
-    func deleteEntry(byId id: String, hardDelete: Bool) async throws {
+    func deleteEntry(byId id: String) async throws {
         if let entry = try await fetchEntry(byId: id) {
-            if hardDelete {
-                context.delete(entry)
-            } else {
-                entry.operationType = "delete"
-            }
+             context.delete(entry)
             try context.save()
         }
     }
@@ -164,15 +160,6 @@ final class EntryRepository: EntryRepositoryProtocol {
     func syncEntries(newEntries: [Entry]) async throws {
         for entry in newEntries {
             context.insert(entry)
-        }
-        try context.save()
-    }
-
-    /// Clears all entry-related data from the local data store by marking all entries as deleted (soft delete).
-    func clearAllData() async throws {
-        let all = try await fetchAllEntries()
-        for entry in all {
-            context.delete(entry)
         }
         try context.save()
     }
