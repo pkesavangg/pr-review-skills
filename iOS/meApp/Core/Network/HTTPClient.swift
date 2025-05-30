@@ -11,12 +11,12 @@ import Foundation
 final class HTTPClient {
     static let shared = HTTPClient()
     private init() {}
-
+    
     private var accessToken: String {
         // TODO: Retrieve the access token from the AccountService for the logged-in user
         ""
     }
-
+    
     // MARK: - GET Request
     func get<T: Decodable>(
         _ endpoint: Endpoint,
@@ -28,7 +28,7 @@ final class HTTPClient {
         let request = try makeRequest(for: endpoint, method: .get, headers: headers, needsAuth: needsAuth)
         return try await send(request: request)
     }
-
+    
     // MARK: - POST/PUT/PATCH/DELETE with Body
     func send<T: Encodable, R: Decodable>(
         _ endpoint: Endpoint,
@@ -44,25 +44,25 @@ final class HTTPClient {
         request.httpBody = try JSONEncoder().encode(body)
         return try await send(request: request)
     }
-
+    
     // MARK: - Core Send Logic
     private func send<T: Decodable>(request: URLRequest) async throws -> T {
         let (data, response) = try await URLSession.shared.data(for: request)
-
+        
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
-
+        
         // Map raw status code to enum
         guard let status = HTTPStatusCode(rawValue: httpResponse.statusCode) else {
             throw NetworkError.statusCode(httpResponse.statusCode)
         }
-
+        
         // Check for success status
         guard status.isSuccess else {
             throw NetworkError.statusCode(status.rawValue)
         }
-
+        
         // Handle 204 No Content
         if status == .noContent || data.isEmpty {
             if let emptyResponse = EmptyResponse() as? T {
@@ -71,20 +71,26 @@ final class HTTPClient {
                 throw NetworkError.decodingError
             }
         }
-
+        
         // Handle plain text response for String.self
         if T.self == String.self, let string = String(data: data, encoding: .utf8) as? T {
             return string
         }
-
+        
         // Attempt to decode response
         do {
+            // 🔹 Print raw JSON or text response for debugging
+            if let rawString = String(data: data, encoding: .utf8) {
+                print("🔍 Raw Response: \(rawString)")
+            } else {
+                print("⚠️ Unable to decode data to string")
+            }
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
             throw NetworkError.decodingError
         }
     }
-
+    
     // MARK: - Request Constructor
     private func makeRequest(
         for endpoint: Endpoint,
@@ -95,19 +101,19 @@ final class HTTPClient {
         guard var request = endpoint.urlRequest else {
             throw NetworkError.invalidRequest
         }
-
+        
         request.httpMethod = method.rawValue
-
+        
         var allHeaders = headers ?? [:]
         if needsAuth && !accessToken.isEmpty {
             allHeaders["Authorization"] = "Bearer \(accessToken)"
         }
-
+        
         allHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-
+        
         return request
     }
-
+    
     // MARK: - Connectivity Check
     private func checkConnectivity() async throws {
         if !NetworkMonitor.shared.isConnected {

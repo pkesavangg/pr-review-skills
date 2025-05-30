@@ -31,52 +31,52 @@ protocol AccountRepositoryAPIProtocol {
 
     /// Fetches the current account's details from the backend. (GET /account)
     /// - Parameter accountId: The ID of the account to fetch.
-    /// - Returns: AccountDTO
-    func fetchAccount(accountId: String) async throws -> AccountDTO
+    /// - Returns: AccountResponse
+    func fetchAccount(accountId: String) async throws -> AccountResponse
 
     /// Edits the account with the given updated Account object (PUT /account).
     /// - Parameter updatedAccount: The updated Account object.
-    /// - Returns: AccountDTO (from { account })
-    func editAccount(_ updatedAccount: Account) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func editAccount(_ updatedAccount: Account) async throws -> AccountResponse
 
     /// Partially updates the profile fields (PATCH /account/profile).
     /// - Parameter profile: The updated Profile object.
-    /// - Returns: AccountDTO (from { account })
-    func patchProfile(_ profile: Profile) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func patchProfile(_ profile: Profile) async throws -> AccountResponse
 
     /// Partially updates the body composition fields (PATCH /account/bodycomp).
     /// - Parameter bodyComp: The updated BodyComp object.
-    /// - Returns: AccountDTO (from { account })
-    func patchBodyComp(_ bodyComp: BodyComp) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func patchBodyComp(_ bodyComp: BodyComp) async throws -> AccountResponse
 
     /// Partially updates notification settings (PATCH /account/notification).
     /// - Parameter notifications: The updated Notifications object.
-    /// - Returns: AccountDTO (from { account })
-    func patchNotification(_ notifications: Notifications) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func patchNotification(_ notifications: Notifications) async throws -> AccountResponse
 
     /// Partially updates dashboard type (PATCH /account/dashboard-type).
     /// - Parameter type: The new dashboard type.
-    /// - Returns: AccountDTO (from { account })
-    func patchDashboardType(_ type: DashboardType) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func patchDashboardType(_ type: DashboardType) async throws -> AccountResponse
 
     /// Partially updates dashboard metrics (PATCH /account/dashboard-metrics).
     /// - Parameter metrics: The new dashboard metrics as an array of strings.
-    /// - Returns: AccountDTO (from { account })
-    func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse
 
     /// Partially updates streak (PATCH /account/streak).
     /// - Parameter isStreakOn: A boolean indicating if the streak is on or off.
     /// - Parameter streakTimestamp: The timestamp of the streak in ISO 8601 format.
-    /// - Returns: AccountDTO (from { account })
-    func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse
 
     /// Partially updates weightless (PATCH /account/weightless).
     /// - Parameters:
     ///   - isWeightlessOn: A boolean indicating if weightless mode is on or off.
     ///   - weightlessTimestamp: The timestamp of the weightless setting in ISO 8601 format.
     ///   - weightlessWeight: The weight value for weightless mode.
-    /// - Returns: AccountDTO (from { account })
-    func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountDTO
+    /// - Returns: AccountResponse (from { account })
+    func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountResponse
 
     /// Deletes the account with the given ID (DELETE /account).
     /// - Parameter accountId: The ID of the account to delete.

@@ -5,13 +5,30 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     private let httpClient = HTTPClient.shared
 
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {
-        struct CreateAccountRequest: Codable {
+        struct RegisterRequest: Codable {
             let email: String
             let password: String
-            let profile: Profile
+            let firstName: String
+            let lastName: String
+            let gender: String
+            let zipcode: String
+            let dob: String
+            let weightUnit: String
+            let height: Double
+            let activityLevel: String
         }
-        let req = CreateAccountRequest(email: email, password: password, profile: profile)
-        return try await httpClient.send(.signup, method: .post, body: req)
+        let createAccountRequest = RegisterRequest(
+            email: email,
+            password: password,
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            gender: profile.gender.rawValue,
+            zipcode: profile.zipcode,
+            dob: profile.dob,
+            weightUnit: profile.weightUnit.rawValue,
+            height: profile.height,
+            activityLevel: profile.activityLevel.rawValue)
+        return try await httpClient.send(.signup, method: .post, body: createAccountRequest)
     }
 
     func logIn(email: String, password: String) async throws -> AccountResponse {
@@ -32,44 +49,43 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true) as EmptyResponse
     }
 
-    func fetchAccount(accountId: String) async throws -> AccountDTO {
-        // GET /account/ (assume accountId is in token or as param)
+    func fetchAccount(accountId: String) async throws -> AccountResponse {
         return try await httpClient.get(.accountInfo, needsAuth: true)
     }
 
-    func editAccount(_ updatedAccount: Account) async throws -> AccountDTO {
+    func editAccount(_ updatedAccount: Account) async throws -> AccountResponse {
         let dto = updatedAccount.toAccountDTO()
         return try await httpClient.send(.updateAccount, method: .put, body: dto, needsAuth: true)
     }
 
-    func patchProfile(_ profile: Profile) async throws -> AccountDTO {
+    func patchProfile(_ profile: Profile) async throws -> AccountResponse {
         return try await httpClient.send(.updateProfile, method: .patch, body: profile, needsAuth: true)
     }
 
-    func patchBodyComp(_ bodyComp: BodyComp) async throws -> AccountDTO {
+    func patchBodyComp(_ bodyComp: BodyComp) async throws -> AccountResponse {
         return try await httpClient.send(.updateBodyComp, method: .patch, body: bodyComp, needsAuth: true)
     }
 
-    func patchNotification(_ notifications: Notifications) async throws -> AccountDTO {
+    func patchNotification(_ notifications: Notifications) async throws -> AccountResponse {
         return try await httpClient.send(.updateNotifications, method: .patch, body: notifications, needsAuth: true)
     }
 
-    func patchDashboardType(_ type: DashboardType) async throws -> AccountDTO {
+    func patchDashboardType(_ type: DashboardType) async throws -> AccountResponse {
         struct DashboardTypeRequest: Codable { let type: DashboardType }
         return try await httpClient.send(.updateDashboardType, method: .patch, body: DashboardTypeRequest(type: type), needsAuth: true)
     }
 
-    func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountDTO {
+    func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse {
         struct DashboardMetricsRequest: Codable { let metrics: [String] }
         return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(metrics: metrics), needsAuth: true)
     }
 
-    func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountDTO {
+    func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse {
         struct StreakRequest: Codable { let isStreakOn: Bool, streakTimestamp: String }
         return try await httpClient.send(.updateStreak, method: .patch, body: StreakRequest(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp), needsAuth: true)
     }
 
-    func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountDTO {
+    func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountResponse {
         struct WeightlessRequest: Codable {
             let isWeightlessOn: Bool
             let weightlessTimestamp: String
