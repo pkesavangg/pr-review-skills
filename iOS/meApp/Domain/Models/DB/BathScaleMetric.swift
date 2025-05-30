@@ -19,8 +19,7 @@ import SwiftData
 
 @Model
 final class BathScaleMetric {
-    /// FK to entry.id
-    @Attribute(.unique) var id: Int
+
     /// Basal Metabolic Rate
     var bmr: Int?
     /// Calculated metabolic age
@@ -42,7 +41,7 @@ final class BathScaleMetric {
     /// Unit of measurement
     var unit: String?
 
-    init(id: Int,
+    init(
          bmr: Int? = nil,
          metabolicAge: Int? = nil,
          proteinPercent: Int? = nil,
@@ -53,7 +52,6 @@ final class BathScaleMetric {
          boneMass: Int? = nil,
          impedance: Int? = nil,
          unit: String? = nil) {
-        self.id = id
         self.bmr = bmr
         self.metabolicAge = metabolicAge
         self.proteinPercent = proteinPercent
@@ -66,9 +64,8 @@ final class BathScaleMetric {
         self.unit = unit
     }
 
-    convenience init(id: Int, from dto: BathScaleOperationDTO) {
+    convenience init(from dto: BathScaleOperationDTO) {
         self.init(
-            id: id,
             bmr: dto.bmr.map { Int($0) },
             metabolicAge: dto.metabolicAge.map { Int($0) },
             proteinPercent: dto.proteinPercent.map { Int($0) },
