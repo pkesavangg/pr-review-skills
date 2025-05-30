@@ -14,6 +14,16 @@ import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
+import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
+import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 
 /**
  * Main database class for the MeApp application.
@@ -25,6 +35,15 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
         ScaleEntryEntity::class,
         ScaleEntryMetricEntity::class,
         BpmEntryEntity::class
+        DeviceEntity::class,
+        ScaleEntity::class,
+        DeviceMetaDataEntity::class,
+        BpmEntity::class,
+        R4ScalePreferenceEntity::class,
+        EntryEntity::class,
+        ScaleEntryEntity::class,
+        ScaleEntryMetricEntity::class,
+        BpmEntryEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -32,6 +51,8 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 @TypeConverters(DateConverter::class, JsonConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
+    abstract fun entryDao(): EntryDao
+    abstract fun deviceDao(): DeviceDao
     abstract fun entryDao(): EntryDao
 
 
