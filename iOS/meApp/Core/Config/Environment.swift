@@ -17,7 +17,19 @@ enum AppEnvironment: String {
         return AppEnvironment(rawValue: env) ?? .production
     }
 
-    static var apiBaseURL: String {
+    static var baseDomain: String {
         Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? ""
+    }
+    
+    /// Returns the full base URL with the correct scheme (http/https) based on environment.
+    static var apiBaseURL: String {
+        let scheme: String
+        switch current {
+        case .production:
+            scheme = "https://"
+        case .dev, .staging:
+            scheme = "http://"
+        }
+        return scheme + baseDomain
     }
 }

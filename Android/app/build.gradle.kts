@@ -1,3 +1,7 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -27,7 +31,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -41,6 +45,19 @@ android {
     buildFeatures {
         compose = true
     }
+    android.applicationVariants.all {
+        val variantName = this.name // get the variant name here
+
+        outputs.all {
+            val outputImpl = this as BaseVariantOutputImpl
+
+            val appName = "MyApp"
+            val versionCode = this@all.versionCode
+            val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
+            outputImpl.outputFileName = "${appName}-${variantName}-v${versionName}(${versionCode})-${timestamp}.apk"
+        }
+    }
+
 }
 
 dependencies {
@@ -49,6 +66,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.androidx.hilt.navigation.fragment)
+    // Existing dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -66,7 +84,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.hilt.navigation.compose)
 
-
     // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.android.compiler)
@@ -77,6 +94,16 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
+
+    // Room dependencies
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
+
+    //Datastore
+    implementation (libs.androidx.datastore)
+    implementation (libs.androidx.datastore.preferences.core)
+    implementation (libs.gson)
 
 }
 
