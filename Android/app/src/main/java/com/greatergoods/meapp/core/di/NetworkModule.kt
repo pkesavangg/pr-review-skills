@@ -5,9 +5,9 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.network.HttpClient
+import com.greatergoods.meapp.core.network.interceptors.AuthTokenInterceptor
 import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
 import com.greatergoods.meapp.core.network.interceptors.NetworkInterceptor
-import com.greatergoods.meapp.core.network.interceptors.TokenInterceptor
 import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
 import dagger.Module
 import dagger.Provides
@@ -43,7 +43,6 @@ class NetworkModule @Inject constructor() {
         }
         okHttpClient.addInterceptor(interceptor)
             .addInterceptor(baseUrlInterceptor)
-
         return okHttpClient.build()
     }
 
@@ -76,7 +75,7 @@ class NetworkModule @Inject constructor() {
 
     @Provides
     @Singleton
-    fun provideAuthInterceptor(): TokenInterceptor {
-        return TokenInterceptor()
+    fun provideAuthTokenInterceptor(): AuthTokenInterceptor {
+        return AuthTokenInterceptor()
     }
 }
