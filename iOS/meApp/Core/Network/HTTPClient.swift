@@ -14,7 +14,7 @@ final class HTTPClient {
 
     private var accessToken: String {
         // TODO: Retrieve the access token from the AccountService for the logged-in user
-        ""
+        "zN2n4wkRVJbFOfoB3mvvLeUboFGb2c81hHYNo28/7CYeM7ug2aqlJwR2uqlTqY0oSXJpXsdrG6rZRct82b8Dbw=="
     }
 
     // MARK: - GET Request
@@ -42,7 +42,6 @@ final class HTTPClient {
         var request = try makeRequest(for: endpoint, method: method, headers: headers, needsAuth: needsAuth)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
-        
         return try await send(request: request)
     }
 
@@ -71,6 +70,11 @@ final class HTTPClient {
             } else {
                 throw NetworkError.decodingError
             }
+        }
+
+        // Handle plain text response for String.self
+        if T.self == String.self, let string = String(data: data, encoding: .utf8) as? T {
+            return string
         }
 
         // Attempt to decode response
