@@ -22,12 +22,10 @@ import androidx.room.PrimaryKey
 )
 data class ScaleEntity(
     @PrimaryKey
-    @ColumnInfo(name = "id")
+
     val id: String, // This is both PK and FK to device.id
 
-    @ColumnInfo(name = "scaleType")
     val scaleType: String?,
 
-    @ColumnInfo(name = "bodyComp")
     val bodyComp: Boolean = false
 )
