@@ -40,6 +40,7 @@ enum Endpoint {
     case clearFlag(flagId: String)
     case feed
     case markFeedAs(elementId: String)
+    case log
 
     var urlRequest: URLRequest? {
         switch self {
@@ -118,6 +119,8 @@ enum Endpoint {
             return URLRequest(url: url)
         case .deleteAccount:
             return request(path: "/account/")
+        case .log:
+            return request(path: "/support/log")
         }
     }
 
