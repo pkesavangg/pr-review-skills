@@ -20,6 +20,10 @@ import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 
 /**
  * Main database class for the MeApp application.
@@ -35,7 +39,11 @@ import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
         ScaleEntity::class,
         DeviceMetaDataEntity::class,
         BpmEntity::class,
-        R4ScalePreferenceEntity::class
+        R4ScalePreferenceEntity::class,
+        EntryEntity::class,
+        ScaleEntryEntity::class,
+        ScaleEntryMetricEntity::class,
+        BpmEntryEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -45,6 +53,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun entryDao(): EntryDao
     abstract fun deviceDao(): DeviceDao
+    abstract fun entryDao(): EntryDao
+
 
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
