@@ -80,6 +80,7 @@ class NotificationService @Inject constructor(
      * @param notificationId The notification ID.
      * @param groupId The group ID.
      */
+    @RequiresApi(Build.VERSION_CODES.M)
     fun cancelGroupedNotification(notificationId: Int, groupId: Int) {
         notificationHandler.cancelGroupedNotification(notificationId, groupId)
     }
