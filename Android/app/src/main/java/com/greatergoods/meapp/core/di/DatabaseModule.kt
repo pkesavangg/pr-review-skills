@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.data.storage.db.di
+package com.greatergoods.meapp.core.di.di
 
 import android.content.Context
 import androidx.room.Room
@@ -26,4 +26,4 @@ object DatabaseModule {
         ).fallbackToDestructiveMigration(true)
             .build()
     }
-} 
+}

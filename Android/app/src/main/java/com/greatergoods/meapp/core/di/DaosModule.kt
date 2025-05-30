@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.data.storage.db.di
+package com.greatergoods.meapp.core.di.di
 
 import com.greatergoods.meapp.data.storage.db.AppDatabase
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
@@ -31,4 +31,4 @@ object DaosModule {
     fun provideEntryDao(
         database: AppDatabase
     ): EntryDao = database.entryDao()
-} 
+}
