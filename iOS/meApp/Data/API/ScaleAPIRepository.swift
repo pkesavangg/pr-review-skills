@@ -1,4 +1,4 @@
-// ScaleRepository.swift
+// ScaleAPIRepository.swift
 // Implements remote API access for paired scale operations.
 // Fulfills ScaleRepositoryProtocol.
 
