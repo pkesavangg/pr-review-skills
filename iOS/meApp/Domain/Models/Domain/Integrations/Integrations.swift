@@ -3,7 +3,7 @@
 
 import Foundation
 
-struct Integrations: Codable {
+struct Integrations: Codable, Equatable {
     /// Indicates if Fitbit integration is enabled
     let isFitbitOn: Bool
     /// Indicates if Google Fit integration is enabled
