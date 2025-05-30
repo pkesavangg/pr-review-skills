@@ -92,8 +92,6 @@ data class AccountEntity(
 
     val streakTimestamp: String? = null,
 
-    val type: String? = null,
-
     val weightUnit: String? = null,
 
     val weightlessBodyFat: Float? = null,

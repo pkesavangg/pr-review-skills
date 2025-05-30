@@ -10,7 +10,16 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
-import com.greatergoods.meapp.data.storage.db.entity.*
+import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 
 /**
  * Main database class for the MeApp application.

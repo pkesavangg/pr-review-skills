@@ -48,12 +48,11 @@ Stores user account details such as personal info, tokens, and app settings.
 | should_send_entry_notifications           | boolean | Whether to send reminders for entries             |
 | should_send_weight_in_entry_notifications | boolean | Whether to send reminders for weight-ins          |
 | streak_timestamp                          | string  | Timestamp for streak tracking                     |
-| type                                      | string  | Account type or role                              |
 | weight_unit                               | string  | Unit of weight measurement (kg/lb)                |
-| weightless_body_fat                       | float   | Offline/stored body fat value                     |
-| weightless_muscle                         | float   | Offline/stored muscle mass value                  |
+| weightless_body_fat                       | float   | Variant body fat value                            |
+| weightless_muscle                         | float   | Variant muscle mass value                         |
 | weightless_timestamp                      | string  | Last updated timestamp for weightless data        |
-| weightless_weight                         | float   | Offline/stored weight value                       |
+| weightless_weight                         | float   | Variant weight value                              |
 | zipcode                                   | string  | User's zip/postal code                            |
 
 ## Table: entry
@@ -237,7 +236,6 @@ erDiagram
         boolean should_send_entry_notifications
         boolean should_send_weight_in_entry_notifications
         string streak_timestamp
-        string type
         string weight_unit
         float weightless_body_fat
         float weightless_muscle

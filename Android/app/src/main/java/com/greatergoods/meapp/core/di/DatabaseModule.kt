@@ -1,29 +1,26 @@
 package com.greatergoods.meapp.core.di.di
 
-import android.content.Context
-import androidx.room.Room
 import com.greatergoods.meapp.data.storage.db.AppDatabase
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
+import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+    @Provides
+    @Singleton
+    fun provideAccountDao(
+        database: AppDatabase
+    ): AccountDao = database.accountDao()
 
     @Provides
     @Singleton
-    fun provideAppDatabase(
-        @ApplicationContext context: Context
-    ): AppDatabase {
-        return Room.databaseBuilder(
-            context,
-            AppDatabase::class.java,
-            "meapp.db"
-        ).fallbackToDestructiveMigration(true)
-            .build()
-    }
+    fun provideDeviceDao(
+        database: AppDatabase
+    ): DeviceDao = database.deviceDao()
+
+    @Provides
+    @Singleton
+    fun provideEntryDao(
+        database: AppDatabase
+    ): EntryDao = database.entryDao()
 }
