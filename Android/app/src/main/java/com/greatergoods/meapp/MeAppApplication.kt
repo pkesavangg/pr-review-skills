@@ -1,7 +1,7 @@
-package com.greatergoods.meapp.core
+package com.greatergoods.meapp
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class MeApp: Application()
+class MeAppApplication : Application() 

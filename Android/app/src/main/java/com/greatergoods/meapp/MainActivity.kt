@@ -13,7 +13,9 @@ import com.greatergoods.meapp.features.common.viewmodel.NavigationViewmodel
 import com.greatergoods.meapp.theme.MeAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+/**
+ * Main activity that hosts the sample theme screen and demonstrates dynamic theming.
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
