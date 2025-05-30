@@ -42,6 +42,7 @@ data class Entry(
     )
 }
 
+
 fun fromDTO(dto: EntryDTO): Entry = Entry(
     entry = dto.entry,
     bpmEntry = dto.bpmEntry,

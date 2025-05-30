@@ -24,18 +24,13 @@ data class BpmEntryEntity(
     @PrimaryKey
     val id: Long,
 
-    @ColumnInfo(name = "systolic")
     val systolic: Int,
 
-    @ColumnInfo(name = "diastolic")
     val diastolic: Int,
 
-    @ColumnInfo(name = "pulse")
     val pulse: Int,
 
-    @ColumnInfo(name = "meanArterial")
     val meanArterial: String,
 
-    @ColumnInfo(name = "note")
     val note: String?
 )

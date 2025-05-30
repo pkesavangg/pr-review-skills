@@ -26,27 +26,19 @@ data class EntryEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long,
 
-    @ColumnInfo(name = "accountId")
     val accountId: String,
 
-    @ColumnInfo(name = "entryTimestamp")
     val entryTimestamp: String,
 
-    @ColumnInfo(name = "serverTimestamp")
     val serverTimestamp: String?,
 
-    @ColumnInfo(name = "opTimestamp")
     val opTimestamp: String?,
 
-    @ColumnInfo(name = "operationType")
     val operationType: String,
 
-    @ColumnInfo(name = "deviceType")
     val deviceType: String,
 
-    @ColumnInfo(name = "deviceId")
     val deviceId: String,
 
-    @ColumnInfo(name = "isSynced")
     val isSynced: Boolean = false
 )
