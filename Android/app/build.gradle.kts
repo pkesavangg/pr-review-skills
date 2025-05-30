@@ -61,6 +61,11 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.kotlinx.serialization.core)
+    implementation(libs.androidx.hilt.navigation.fragment)
     // Existing dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -89,7 +94,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
-        
+
     // Room dependencies
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
