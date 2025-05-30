@@ -1,0 +1,94 @@
+import Foundation
+
+@MainActor
+final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
+    private let httpClient = HTTPClient.shared
+
+    func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {
+        struct CreateAccountRequest: Codable {
+            let email: String
+            let password: String
+            let profile: Profile
+        }
+        let req = CreateAccountRequest(email: email, password: password, profile: profile)
+        return try await httpClient.send(.signup, method: .post, body: req)
+    }
+
+    func logIn(email: String, password: String) async throws -> AccountResponse {
+        struct LoginRequest: Codable {
+            let email: String
+            let password: String
+        }
+        let req = LoginRequest(email: email, password: password)
+        return try await httpClient.send(.login, method: .post, body: req)
+    }
+
+    func logOut(accountId: String, fcmToken: String?) async throws {
+        struct LogoutRequest: Codable {
+            let accountId: String
+            let fcmToken: String?
+        }
+        let req = LogoutRequest(accountId: accountId, fcmToken: fcmToken)
+        _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true) as EmptyResponse
+    }
+
+    func fetchAccount(accountId: String) async throws -> AccountDTO {
+        // GET /account/ (assume accountId is in token or as param)
+        return try await httpClient.get(.accountInfo, needsAuth: true)
+    }
+
+    func editAccount(_ updatedAccount: Account) async throws -> AccountDTO {
+        let dto = updatedAccount.toAccountDTO()
+        return try await httpClient.send(.updateAccount, method: .put, body: dto, needsAuth: true)
+    }
+
+    func patchProfile(_ profile: Profile) async throws -> AccountDTO {
+        return try await httpClient.send(.updateProfile, method: .patch, body: profile, needsAuth: true)
+    }
+
+    func patchBodyComp(_ bodyComp: BodyComp) async throws -> AccountDTO {
+        return try await httpClient.send(.updateBodyComp, method: .patch, body: bodyComp, needsAuth: true)
+    }
+
+    func patchNotification(_ notifications: Notifications) async throws -> AccountDTO {
+        return try await httpClient.send(.updateNotifications, method: .patch, body: notifications, needsAuth: true)
+    }
+
+    func patchDashboardType(_ type: DashboardType) async throws -> AccountDTO {
+        struct DashboardTypeRequest: Codable { let type: DashboardType }
+        return try await httpClient.send(.updateDashboardType, method: .patch, body: DashboardTypeRequest(type: type), needsAuth: true)
+    }
+
+    func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountDTO {
+        struct DashboardMetricsRequest: Codable { let metrics: [String] }
+        return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(metrics: metrics), needsAuth: true)
+    }
+
+    func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountDTO {
+        struct StreakRequest: Codable { let isStreakOn: Bool, streakTimestamp: String }
+        return try await httpClient.send(.updateStreak, method: .patch, body: StreakRequest(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp), needsAuth: true)
+    }
+
+    func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountDTO {
+        struct WeightlessRequest: Codable {
+            let isWeightlessOn: Bool
+            let weightlessTimestamp: String
+            let weightlessWeight: Int
+        }
+        return try await httpClient.send(.updateWeightless, method: .patch, body: WeightlessRequest(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: weightlessWeight), needsAuth: true)
+    }
+
+    func deleteAccount(accountId: String) async throws {
+        _ = try await httpClient.send(.deleteAccount, method: .delete, body: EmptyBody(), needsAuth: true) as EmptyResponse
+    }
+
+    func requestPasswordReset(email: String) async throws {
+        struct Request: Codable { let email: String }
+        _ = try await httpClient.send(.requestPasswordReset, method: .post, body: Request(email: email)) as EmptyResponse
+    }
+
+    func updatePassword(oldPassword: String, newPassword: String) async throws {
+        struct Request: Codable { let oldPassword: String; let newPassword: String }
+        _ = try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true) as EmptyResponse
+    }
+} 

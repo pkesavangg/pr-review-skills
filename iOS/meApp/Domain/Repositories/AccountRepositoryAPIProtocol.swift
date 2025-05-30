@@ -65,14 +65,18 @@ protocol AccountRepositoryAPIProtocol {
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountDTO
 
     /// Partially updates streak (PATCH /account/streak).
-    /// - Parameter streak: The new streak value.
+    /// - Parameter isStreakOn: A boolean indicating if the streak is on or off.
+    /// - Parameter streakTimestamp: The timestamp of the streak in ISO 8601 format.
     /// - Returns: AccountDTO (from { account })
-    func patchStreak(_ streak: Int) async throws -> AccountDTO
+    func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountDTO
 
     /// Partially updates weightless (PATCH /account/weightless).
-    /// - Parameter weightless: The new weightless value.
+    /// - Parameters:
+    ///   - isWeightlessOn: A boolean indicating if weightless mode is on or off.
+    ///   - weightlessTimestamp: The timestamp of the weightless setting in ISO 8601 format.
+    ///   - weightlessWeight: The weight value for weightless mode.
     /// - Returns: AccountDTO (from { account })
-    func patchWeightless(_ weightless: Bool) async throws -> AccountDTO
+    func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountDTO
 
     /// Deletes the account with the given ID (DELETE /account).
     /// - Parameter accountId: The ID of the account to delete.
@@ -82,27 +86,10 @@ protocol AccountRepositoryAPIProtocol {
     /// - Parameter email: The email address to send the reset link to.
     func requestPasswordReset(email: String) async throws
 
-    /// Checks a password reset token (POST /account/password-reset/check).
-    /// - Parameter token: The password reset token to check.
-    func checkPasswordResetToken(token: String) async throws
-
-    /// Confirms a password reset (POST /account/password-reset/confirm).
-    /// - Parameters:
-    ///   - token: The password reset token to confirm.
-    ///   - newPassword: The new password to set.
-    func confirmPasswordReset(token: String, newPassword: String) async throws
-
     /// Updates the password for the account (PUT /account/password).
     /// - Parameters:
     ///   - oldPassword: The current password.
     ///   - newPassword: The new password to set.
     func updatePassword(oldPassword: String, newPassword: String) async throws
-
-    /// Gets a scale token for the account (GET /account/scale).
-    /// - Parameters:
-    ///   - accountId: The ID of the account.
-    ///   - revision: The revision/version of the scale token (optional).
-    /// - Returns: The scale token as a string.
-    func getScaleToken(accountId: String, revision: String?) async throws -> String
 }
 
