@@ -10,10 +10,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.greatergoods.meapp.features.common.SampleThemeScreen
 import com.greatergoods.meapp.theme.MeAppTheme
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * Main activity that hosts the sample theme screen and demonstrates dynamic theming.
  */
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
