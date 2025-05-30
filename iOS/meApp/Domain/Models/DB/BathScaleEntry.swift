@@ -15,7 +15,6 @@ import SwiftData
 
 @Model
 final class BathScaleEntry {
-    @Attribute(.unique) var id: Int
     var weight: Int?
     var bodyFat: Int?
     var muscleMass: Int?
@@ -24,14 +23,12 @@ final class BathScaleEntry {
     var source: String?
 
 
-    init(id: Int,
-         weight: Int? = nil,
+    init(weight: Int? = nil,
          bodyFat: Int? = nil,
          muscleMass: Int? = nil,
          water: Int? = nil,
          bmi: Int? = nil,
          source: String? = nil) {
-        self.id = id
         self.weight = weight
         self.bodyFat = bodyFat
         self.muscleMass = muscleMass
@@ -40,9 +37,8 @@ final class BathScaleEntry {
         self.source = source
     }
 
-    convenience init(id: Int, from dto: BathScaleOperationDTO) {
+    convenience init(from dto: BathScaleOperationDTO) {
         self.init(
-            id: id,
             weight: dto.weight.map { Int($0) },
             bodyFat: dto.bodyFat.map { Int($0) },
             muscleMass: dto.muscleMass.map { Int($0) },
