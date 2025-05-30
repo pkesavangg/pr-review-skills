@@ -25,33 +25,23 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 @TypeConverters(JsonConverter::class)
 data class R4ScalePreferenceEntity(
     @PrimaryKey
-    @ColumnInfo(name = "id")
     val id: String,
 
-    @ColumnInfo(name = "displayName")
     val displayName: String?,
 
-    @ColumnInfo(name = "displayMetrics")
     val displayMetrics: List<String>?,
 
-    @ColumnInfo(name = "shouldFactoryReset")
     val shouldFactoryReset: Boolean = false,
 
-    @ColumnInfo(name = "shouldMeasureImpedance")
     val shouldMeasureImpedance: Boolean = false,
 
-    @ColumnInfo(name = "shouldMeasurePulse")
     val shouldMeasurePulse: Boolean = false,
 
-    @ColumnInfo(name = "timeFormat")
     val timeFormat: String?,
 
-    @ColumnInfo(name = "tzOffset")
     val tzOffset: Int?,
 
-    @ColumnInfo(name = "wifiFotaScheduleTime")
     val wifiFotaScheduleTime: Int?,
 
-    @ColumnInfo(name = "updatedAt")
     val updatedAt: String?
 ) 
