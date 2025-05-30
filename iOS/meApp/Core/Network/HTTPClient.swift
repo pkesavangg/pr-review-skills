@@ -14,7 +14,7 @@ final class HTTPClient {
 
     private var accessToken: String {
         // TODO: Retrieve the access token from the AccountService for the logged-in user
-        "zN2n4wkRVJbFOfoB3mvvLeUboFGb2c81hHYNo28/7CYeM7ug2aqlJwR2uqlTqY0oSXJpXsdrG6rZRct82b8Dbw=="
+        ""
     }
 
     // MARK: - GET Request
