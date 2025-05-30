@@ -24,21 +24,15 @@ data class ScaleEntryEntity(
     @PrimaryKey
     val id: Long,
 
-    @ColumnInfo(name = "weight")
     val weight: Int,
 
-    @ColumnInfo(name = "bodyFat")
     val bodyFat: Int,
 
-    @ColumnInfo(name = "muscleMass")
     val muscleMass: Int,
 
-    @ColumnInfo(name = "water")
     val water: Int,
 
-    @ColumnInfo(name = "bmi")
     val bmi: Int,
 
-    @ColumnInfo(name = "source")
     val source: String
 )

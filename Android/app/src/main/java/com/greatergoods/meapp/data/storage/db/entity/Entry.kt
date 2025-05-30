@@ -42,12 +42,6 @@ data class Entry(
     )
 }
 
-fun EntryDetails.asExternalModel() = Entry(
-    entry = this.entry,
-    bpmEntry = this.bpmEntry,
-    scaleEntry = this.scaleEntry,
-    scaleEntryMetric = this.scaleEntryMetric
-)
 
 fun fromDTO(dto: EntryDTO): Entry = Entry(
     entry = dto.entry,

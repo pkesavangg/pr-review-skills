@@ -24,33 +24,23 @@ data class ScaleEntryMetricEntity(
     @PrimaryKey
     val id: Long,
 
-    @ColumnInfo(name = "bmr")
     val bmr: Int,
 
-    @ColumnInfo(name = "metabolicAge")
     val metabolicAge: Int,
 
-    @ColumnInfo(name = "proteinPercent")
     val proteinPercent: Int,
 
-    @ColumnInfo(name = "pulse")
     val pulse: Int,
 
-    @ColumnInfo(name = "skeletalMusclePercent")
     val skeletalMusclePercent: Int,
 
-    @ColumnInfo(name = "subcutaneousFatPercent")
     val subcutaneousFatPercent: Int,
 
-    @ColumnInfo(name = "visceralFatLevel")
     val visceralFatLevel: Int,
 
-    @ColumnInfo(name = "boneMass")
     val boneMass: Int,
 
-    @ColumnInfo(name = "impedance")
     val impedance: Int,
 
-    @ColumnInfo(name = "unit")
     val unit: String
 )
