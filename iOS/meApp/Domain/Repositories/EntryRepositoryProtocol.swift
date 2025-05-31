@@ -38,6 +38,13 @@ protocol EntryRepositoryProtocol {
     /// - Returns: An array of Entry objects for the user.
     func fetchEntries(forUserId userId: String) async throws -> [Entry]
 
+    /// Fetches all entries for a specific user and timestamp.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - timestamp: The timestamp to filter entries by.
+    /// - Returns: An array of Entry objects for the user and timestamp.
+    func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry]
+
     /// Fetches all entries for a specific month and user.
     /// - Parameters:
     ///   - month: The month in 'YYYY-MM' format.

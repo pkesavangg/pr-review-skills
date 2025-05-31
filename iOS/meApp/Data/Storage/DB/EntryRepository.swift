@@ -77,6 +77,16 @@ final class EntryRepository: EntryRepositoryProtocol {
         return try context.fetch(descriptor)
     }
 
+    /// Fetches all entries for a specific user and timestamp.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - timestamp: The timestamp to filter entries by.
+    /// - Returns: An array of Entry objects for the user and timestamp.
+    func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry] {
+        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
+        return try context.fetch(descriptor)
+    }
+
     /// Fetches all entries for a specific month and user.
     /// - Parameters:
     ///   - month: The month in 'YYYY-MM' format (e.g., "2025-05").

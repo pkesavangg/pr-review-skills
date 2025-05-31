@@ -335,8 +335,8 @@ final class EntryService: EntryServiceProtocol {
         // For each remote op, check if local entry exists
         for remoteOp in remoteOps {
             guard let remoteTimestamp = remoteOp.entryTimestamp else { continue }
-            let localEntry = try? await localRepo.fetchEntries(forUserId: accountId).first(where: { $0.entryTimestamp == remoteTimestamp })
-            if let localEntry = localEntry {
+            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: remoteTimestamp)
+            if let localEntry = localEntries?.first {
                 // Conflict: keep the one with the latest serverTimestamp
                 let localServerTS = localEntry.serverTimestamp ?? ""
                 let remoteServerTS = remoteOp.serverTimestamp ?? ""
