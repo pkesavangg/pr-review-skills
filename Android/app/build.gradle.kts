@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.ksp)
     kotlin("kapt")
     id("com.google.gms.google-services")
+    id("com.google.protobuf") version "0.9.4"
 
 }
 
@@ -122,9 +123,28 @@ dependencies {
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.datastore.preferences.core)
     implementation(libs.gson)
+
+    // Protobuf dependencies
+    implementation("com.google.protobuf:protobuf-javalite:3.24.0")
+    implementation("androidx.datastore:datastore:1.0.0")
 }
 
 // Allow references to generated code
 kapt {
     correctErrorTypes = true
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.24.0"
+    }
+    generateProtoTasks {
+        all().forEach {
+            it.builtins {
+                create("java") {
+                    option("lite")
+                }
+            }
+        }
+    }
 }

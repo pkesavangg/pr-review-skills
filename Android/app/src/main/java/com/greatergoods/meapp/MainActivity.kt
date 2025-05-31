@@ -3,21 +3,16 @@ package com.greatergoods.meapp
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
 import com.greatergoods.meapp.core.navigation.AppNavigation
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
-import com.greatergoods.meapp.features.common.viewmodel.NavigationViewmodel
-import com.greatergoods.meapp.theme.MeAppTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import androidx.lifecycle.lifecycleScope
 
 /**
  * Main entry point for the MeApp application.
@@ -40,10 +35,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val viewModel = hiltViewModel<NavigationViewmodel>()
-            MeAppTheme {
-                AppNavigation(navigationViewModel = viewModel)
-            }
+            AppNavigation()
         }
         handleIntentNavigationIfNeeded(intent)
     }
