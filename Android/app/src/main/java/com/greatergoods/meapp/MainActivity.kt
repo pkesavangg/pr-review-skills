@@ -1,8 +1,5 @@
 package com.greatergoods.meapp
 
-import android.annotation.SuppressLint
-import android.os.Build
-import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -12,6 +9,8 @@ import com.greatergoods.meapp.core.navigation.AppNavigation
 import com.greatergoods.meapp.features.common.viewmodel.NavigationViewmodel
 import com.greatergoods.meapp.theme.MeAppTheme
 import dagger.hilt.android.AndroidEntryPoint
+import android.os.Build
+import android.os.Bundle
 
 /**
  * Main activity that hosts the sample theme screen and demonstrates dynamic theming.
@@ -31,5 +30,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-

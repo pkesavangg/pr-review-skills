@@ -8,20 +8,21 @@ import com.greatergoods.meapp.core.network.HttpClient
 import com.greatergoods.meapp.core.network.interceptors.AuthTokenInterceptor
 import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
 import com.greatergoods.meapp.core.network.interceptors.NetworkInterceptor
+import com.greatergoods.meapp.core.network.interceptors.ResponseInterceptor
 import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
 
 @Module
 @InstallIn(SingletonComponent::class)
-class NetworkModule @Inject constructor() {
+object NetworkModule  {
 
     @Provides
     @Singleton
@@ -31,26 +32,11 @@ class NetworkModule @Inject constructor() {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(
-        interceptor: Interceptor,
-        applicationInfo: ApplicationInfo,
-        loggingInterceptor: HttpLoggingInterceptor,
-        baseUrlInterceptor: BaseUrlInterceptor,
-    ): OkHttpClient {
-        val okHttpClient = OkHttpClient.Builder()
-        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-            okHttpClient.addInterceptor(loggingInterceptor)
-        }
-        okHttpClient.addInterceptor(interceptor)
-            .addInterceptor(baseUrlInterceptor)
-        return okHttpClient.build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideLoggingInterceptor(applicationInfo: ApplicationInfo): HttpLoggingInterceptor {
+    fun provideLoggingInterceptor(@ApplicationContext context: Context): HttpLoggingInterceptor {
+        val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE
+        ) != 0
         return HttpLoggingInterceptor().apply {
-            level = if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            level = if (isDebuggable) {
                 HttpLoggingInterceptor.Level.BODY
             } else {
                 HttpLoggingInterceptor.Level.NONE
@@ -77,5 +63,32 @@ class NetworkModule @Inject constructor() {
     @Singleton
     fun provideAuthTokenInterceptor(): AuthTokenInterceptor {
         return AuthTokenInterceptor()
+    }
+
+    @Provides
+    @Singleton
+    fun provideResponseInterceptor(): ResponseInterceptor {
+        return ResponseInterceptor()
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        authTokenInterceptor: AuthTokenInterceptor,
+        @ApplicationContext context: Context,
+        loggingInterceptor: HttpLoggingInterceptor,
+        baseUrlInterceptor: BaseUrlInterceptor,
+        responseInterceptor: ResponseInterceptor,
+        networkInterceptor: NetworkInterceptor
+    ): OkHttpClient {
+        val okHttpClient = OkHttpClient.Builder()
+        if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            okHttpClient.addInterceptor(loggingInterceptor)
+        }
+        okHttpClient.addInterceptor(networkInterceptor)
+            .addInterceptor(baseUrlInterceptor)
+            .addInterceptor(authTokenInterceptor)
+            .addInterceptor(responseInterceptor)
+        return okHttpClient.build()
     }
 }
