@@ -40,7 +40,6 @@
 				Data/API/.gitkeep,
 				Data/Services/.gitkeep,
 				Data/Storage/DB/.gitkeep,
-				Data/Storage/Persistence/.gitkeep,
 				Features/Auth/Enums/.gitkeep,
 				Features/Auth/Models/.gitkeep,
 				Features/Auth/Stores/.gitkeep,

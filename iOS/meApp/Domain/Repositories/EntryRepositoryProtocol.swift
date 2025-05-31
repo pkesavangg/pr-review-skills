@@ -45,6 +45,10 @@ protocol EntryRepositoryProtocol {
     /// - Returns: An array of Entry objects for the month and user.
     func fetchEntries(forMonth month: String, userId: String) async throws -> [Entry]
 
+    /// Fetches all unsynced entries from the local data store.
+    /// - Returns: An array of Entry objects that are not synced.
+    func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry]
+
     /// Fetches the latest entry for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The latest Entry object, or nil if none exist.
@@ -66,6 +70,13 @@ protocol EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The oldest Entry object, or nil if none exist.
     func fetchOldestEntry(forUserId userId: String) async throws -> Entry?
+
+    /// Checks if an entry with a specific timestamp exists for a user.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - entryTimestamp: The timestamp to check for.
+    /// - Returns: True if the entry exists, false otherwise.
+    func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool
 
     // MARK: - Sync
 

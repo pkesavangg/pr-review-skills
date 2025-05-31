@@ -103,6 +103,13 @@ final class EntryRepository: EntryRepositoryProtocol {
         return try context.fetch(descriptor)
     }
 
+    /// Fetches all unsynced entries from the local data store.
+    /// - Returns: An array of Entry objects that are not synced.
+    func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry] {
+        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
+        return try context.fetch(descriptor)
+    }
+
     /// Fetches the latest entry for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The latest Entry object, or nil if none exist.
@@ -150,7 +157,15 @@ final class EntryRepository: EntryRepositoryProtocol {
         return try context.fetch(descriptor).first
     }
 
-
+    /// Checks if an entry with a specific timestamp exists for a user.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - entryTimestamp: The timestamp to check for.
+    /// - Returns: True if the entry exists, false otherwise.
+    func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool {
+        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == entryTimestamp })
+        return try context.fetch(descriptor).first != nil
+    }
 
     // MARK: - Sync
 
