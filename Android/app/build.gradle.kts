@@ -8,8 +8,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
     kotlin("kapt")
-
 }
 
 android {
@@ -54,10 +54,9 @@ android {
             val appName = "MyApp"
             val versionCode = this@all.versionCode
             val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
-            outputImpl.outputFileName = "${appName}-${variantName}-v${versionName}(${versionCode})-${timestamp}.apk"
+            outputImpl.outputFileName = "$appName-$variantName-v$versionName($versionCode)-$timestamp.apk"
         }
     }
-
 }
 
 dependencies {
@@ -89,17 +88,16 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
-        
+
     // Room dependencies
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 
-    //Datastore
-    implementation (libs.androidx.datastore)
-    implementation (libs.androidx.datastore.preferences.core)
-    implementation (libs.gson)
-
+    // Datastore
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.gson)
 }
 
 // Allow references to generated code

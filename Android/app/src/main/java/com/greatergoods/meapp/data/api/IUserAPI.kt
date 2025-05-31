@@ -13,14 +13,14 @@ import retrofit2.http.*
 
 interface IUserAPI {
     companion object {
-        const val ACCOUNT = "account"
-        const val PROFILE = "/profile"
-        const val BODY_COMP = "/bodycomp"
-        const val WEIGHTLESS = "/weightless"
-        const val NOTIFICATION = "/notification"
-        const val STREAK = "/streak"
-        const val DASHBOARD_TYPE = "/dashboard-type"
-        const val DASHBOARD_METRICS = "/dashboard-metrics"
+        private const val ACCOUNT = "account/"
+        private const val PROFILE = "profile"
+        private const val BODY_COMP = "bodycomp"
+        private const val WEIGHTLESS = "weightless"
+        private const val NOTIFICATION = "notification"
+        private const val STREAK = "streak"
+        private const val DASHBOARD_TYPE = "dashboard-type"
+        private const val DASHBOARD_METRICS = "dashboard-metrics"
     }
 
     @POST(ACCOUNT)
@@ -29,25 +29,25 @@ interface IUserAPI {
     @GET(ACCOUNT)
     suspend fun getAccount(): AccountResponse
 
-    @PATCH("$ACCOUNT$PROFILE")
+    @PATCH(ACCOUNT + PROFILE)
     suspend fun updateProfile(@Body request: ProfileUpdateRequest): AccountResponse
 
-    @PATCH("$ACCOUNT$BODY_COMP")
+    @PATCH(ACCOUNT + BODY_COMP)
     suspend fun updateBodyComp(@Body request: BodyCompRequest): AccountResponse
 
-    @PATCH("$ACCOUNT$WEIGHTLESS")
+    @PATCH(ACCOUNT + WEIGHTLESS)
     suspend fun updateWeightless(@Body request: WeightlessRequest): AccountResponse
 
-    @PATCH("$ACCOUNT$NOTIFICATION")
+    @PATCH(ACCOUNT + NOTIFICATION)
     suspend fun updateNotificationSettings(@Body request: NotificationSettingsRequest): AccountResponse
 
-    @PATCH("$ACCOUNT$STREAK")
+    @PATCH(ACCOUNT + STREAK)
     suspend fun updateStreak(@Body request: StreakRequest): AccountResponse
 
-    @PATCH("$ACCOUNT$DASHBOARD_TYPE")
+    @PATCH(ACCOUNT + DASHBOARD_TYPE)
     suspend fun updateDashboardType(@Body request: DashboardTypeRequest): AccountResponse
 
-    @PATCH("$ACCOUNT$DASHBOARD_METRICS")
+    @PATCH(ACCOUNT + DASHBOARD_METRICS)
     suspend fun updateDashboardMetrics(@Body request: DashboardMetricsRequest): AccountResponse
 
     @DELETE(ACCOUNT)
