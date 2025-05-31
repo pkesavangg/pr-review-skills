@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
     kotlin("kapt")
     id("com.google.gms.google-services")
 
@@ -59,7 +60,6 @@ android {
                 "${appName}-${variantName}-v${versionName}(${versionCode})-${timestamp}.apk"
         }
     }
-
 }
 
 dependencies {
@@ -118,6 +118,10 @@ dependencies {
     // modules
     implementation(project(":notification"))
 
+    // Datastore
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.gson)
 }
 
 // Allow references to generated code
