@@ -1,8 +1,14 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
-import androidx.room.*
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import com.greatergoods.meapp.data.storage.db.entity.Entry
+import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -66,7 +72,10 @@ interface EntryDao {
      * @return A Flow of entries for the specified device type
      */
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND deviceType = :deviceType")
-    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<EntryEntity>>
+    fun getEntriesByDeviceType(
+        accountId: String,
+        deviceType: String,
+    ): Flow<List<EntryEntity>>
 
     /**
      * Get entries within a time range for a specific account.
@@ -76,7 +85,11 @@ interface EntryDao {
      * @return A Flow of entries within the time range
      */
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND entryTimestamp BETWEEN :startTime AND :endTime")
-    fun getEntriesByTimeRange(accountId: String, startTime: String, endTime: String): Flow<List<EntryEntity>>
+    fun getEntriesByTimeRange(
+        accountId: String,
+        startTime: String,
+        endTime: String,
+    ): Flow<List<EntryEntity>>
 
     /**
      * Mark an entry as synced.
@@ -117,7 +130,10 @@ interface EntryDao {
      * @return A Flow of entries with the specified operation type
      */
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND operationType = :operationType")
-    fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<EntryEntity>>
+    fun getEntriesByOperationType(
+        accountId: String,
+        operationType: String,
+    ): Flow<List<EntryEntity>>
 
     /**
      * Get entries by source type.
@@ -126,7 +142,10 @@ interface EntryDao {
      * @return A Flow of entries from the specified source
      */
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND deviceType = :source")
-    fun getEntriesBySource(accountId: String, source: String): Flow<List<EntryEntity>>
+    fun getEntriesBySource(
+        accountId: String,
+        source: String,
+    ): Flow<List<EntryEntity>>
 
     // ----------- ENTRY METHODS -----------
 
@@ -186,4 +205,4 @@ interface EntryDao {
     @Transaction
     @Query("SELECT * FROM entry WHERE deviceType = 'scale'")
     suspend fun getScaleEntries(): List<Entry>
-} 
+}
