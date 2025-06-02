@@ -3,7 +3,6 @@ package com.greatergoods.meapp.data.repository
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.domain.interfaces.IDeviceRepository
 import com.greatergoods.meapp.domain.model.Device
-import com.greatergoods.meapp.domain.models.DeviceSearchInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
@@ -75,15 +74,6 @@ class DeviceRepository
         ): Flow<Device> =
             flow {
                 // TODO: Implement device nickname update in local database using deviceDao.updateNickname
-            }
-
-        override suspend fun searchDevice(
-            peripheralIdentifier: String,
-            accountId: String,
-            userNumber: String,
-        ): Flow<DeviceSearchInfo> =
-            flow {
-                // TODO: Implement device search in local database using deviceDao.getDeviceByPeripheralId
             }
 
         override suspend fun syncDevices(): Flow<List<Device>> =

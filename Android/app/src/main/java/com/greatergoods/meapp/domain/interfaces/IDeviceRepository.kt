@@ -89,19 +89,6 @@ interface IDeviceRepository {
     ): Flow<Device>
 
     /**
-     * Search for a device by peripheral identifier
-     * @param peripheralIdentifier The peripheral identifier to search for
-     * @param accountId The ID of the current user account
-     * @param userNumber The user number to check against
-     * @return Flow of DeviceSearchInfo containing search results
-     */
-    suspend fun searchDevice(
-        peripheralIdentifier: String,
-        accountId: String,
-        userNumber: String,
-    ): Flow<DeviceSearchInfo>
-
-    /**
      * Synchronize devices with the remote server
      * @return Flow of list of synchronized devices
      */
