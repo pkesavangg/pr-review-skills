@@ -17,18 +17,19 @@ object NotificationConfig {
             Notification.PRIORITY_HIGH
         }
 
-    val NotificationChannels = listOf(
-        ChannelConfig(
-            NotificationChannel.GENERAL,
-            "General",
-            importance(),
-            "General notification",
-        ),
-        ChannelConfig(
-            NotificationChannel.ENTRY_NOTIFICATION,
-            "Entry Notification",
-            importance(),
-            "Entry notification",
-        ),
-    )
+    val NotificationChannels =
+        listOf(
+            ChannelConfig(
+                NotificationChannel.GENERAL,
+                "General",
+                importance(),
+                "General notification",
+            ),
+            ChannelConfig(
+                NotificationChannel.ENTRY_NOTIFICATION,
+                "Entry Notification",
+                importance(),
+                "Entry notification",
+            ),
+        )
 }

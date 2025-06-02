@@ -6,14 +6,12 @@ import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-class AppEventService() : IAppEventService {
+class AppEventService : IAppEventService {
     private val _navigationIntent = MutableSharedFlow<NavigationIntent>(replay = 1)
 
     override val navigationIntent = _navigationIntent.asSharedFlow()
 
-    override suspend fun navigateTo(
-        route: AppRoute,
-    ) {
+    override suspend fun navigateTo(route: AppRoute) {
         emitNavigationIntent(
             NavigationIntent.NavigateTo(
                 route,
