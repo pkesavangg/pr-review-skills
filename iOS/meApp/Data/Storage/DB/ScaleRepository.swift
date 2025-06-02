@@ -9,16 +9,27 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
     private let container: ModelContainer
     private let context: ModelContext
-
+    private let logger = AppLogger.shared
+    
     /// Initializes the repository with a SwiftData context.
     /// - Parameter context: The SwiftData model context to use.
     init() {
         let schema = Schema([Device.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        self.container = try! ModelContainer(for: schema, configurations: [config])
-        self.context = ModelContext(container)
+        do {
+            self.container = try ModelContainer(for: schema, configurations: [config])
+            self.context = ModelContext(container)
+        } catch {
+            logger.log(
+                level: .error,
+                tag: "ScaleRepository",
+                message: "Failed to initialize ModelContainer: \(error.localizedDescription)",
+                data: error
+            )
+            fatalError("Failed to initialize ModelContainer. Check logs for details.")
+        }
     }
-
+    
     /// Fetches all scales stored locally.
     /// - Returns: An array of all ScaleDTO objects.
     func listScales() async throws -> [ScaleDTO] {
@@ -26,7 +37,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let devices = try context.fetch(descriptor)
         return devices.map { $0.toDTO() }
     }
-
+    
     /// Saves a new scale to the local data store.
     /// - Parameter scale: The ScaleDTO object to save.
     /// - Returns: The created ScaleDTO.
@@ -36,7 +47,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         try context.save()
         return device.toDTO()
     }
-
+    
     /// Updates an existing scale in the local data store.
     /// - Parameters:
     ///   - scaleId: The ID of the scale to update.
@@ -65,7 +76,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         try context.save()
         return device.toDTO()
     }
-
+    
     /// Deletes a scale by its unique ID.
     /// - Parameter scaleId: The ID of the scale to delete.
     func deleteScale(_ scaleId: String) async throws {
@@ -75,7 +86,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             try context.save()
         }
     }
-
+    
     /// Updates the meta data for a scale.
     /// - Parameters:
     ///   - scaleId: The ID of the scale to update.
@@ -87,7 +98,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             try context.save()
         }
     }
-
+    
     /// Updates the R4 scale preference for a scale.
     /// - Parameter preference: The new R4ScalePreferenceDTO to set.
     func patchScalePreference(_ preference: R4ScalePreferenceDTO) async throws {
