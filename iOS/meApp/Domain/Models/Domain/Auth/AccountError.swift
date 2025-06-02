@@ -24,7 +24,7 @@ enum AccountError: LocalizedError {
         case .unknown(let error):
             return "Unknown error: \(error.localizedDescription)"
         case .maxAccountsReached:
-            return "Maximum number of accounts (10) reached. Please remove an account before adding a new one."
+            return "Maximum number of accounts \(AppConstants.Account.maxAccounts) reached. Please remove an account before adding a new one."
         }
     }
-} 
+}
