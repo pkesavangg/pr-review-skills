@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.domain.model
+package com.greatergoods.meapp.domain.model.storage
 
 /**
  * Domain model representing a device in the application.

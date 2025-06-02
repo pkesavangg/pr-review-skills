@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.domain.model
+package com.greatergoods.meapp.domain.model.storage
 
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity

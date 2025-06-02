@@ -2,10 +2,7 @@ package com.greatergoods.meapp.data.storage.db.entity
 
 import androidx.room.Embedded
 import androidx.room.Relation
-import com.greatergoods.meapp.domain.model.EntryDTO
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
-
+import com.greatergoods.meapp.domain.model.storage.EntryDTO
 
 /**
  * Wrapper class that combines EntryEntity with its related entities (BpmEntry, ScaleEntry, ScaleEntryMetric).

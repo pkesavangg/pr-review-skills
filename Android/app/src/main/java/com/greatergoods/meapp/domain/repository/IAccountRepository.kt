@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.domain.interfaces
+package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import kotlinx.coroutines.flow.Flow
@@ -102,4 +102,4 @@ interface IAccountRepository {
      * Clears all offline data for the current account.
      */
     suspend fun clearOfflineData()
-} 
+}

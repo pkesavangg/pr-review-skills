@@ -10,4 +10,4 @@ data class DeviceDTO(
     val bpm: BpmEntity? = null,
     val meta: DeviceMetaDataEntity? = null,
     val r4Preference: R4ScalePreferenceEntity? = null
-) 
+)

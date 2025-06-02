@@ -1,9 +1,6 @@
 package com.greatergoods.meapp.data.storage.db.entity
 
 import androidx.room.Embedded
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
 import androidx.room.Relation
 
 /**
