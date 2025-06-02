@@ -29,8 +29,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
  * @param navigationViewModel The ViewModel managing navigation intents and state.
  */
 @Composable
-fun AppNavigation(
-) {
+fun AppNavigation() {
     val themeViewModel: ThemeViewModel = hiltViewModel()
     val themeMode by themeViewModel.themeMode.collectAsState()
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
@@ -40,12 +39,14 @@ fun AppNavigation(
     )
     val selectedRoute = topLevelBackStack.topLevelKey as AppRoute
     MeAppTheme(
-        darkTheme = when (themeMode) {
-            ThemeMode.DARK -> true
-            ThemeMode.LIGHT -> false
-            ThemeMode.SYSTEM -> isSystemInDarkTheme()
-            ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
-        },
+        darkTheme =
+            when (themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
+                ThemeMode.UNSET -> isSystemInDarkTheme()
+            },
     ) {
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
             HomeScreen(
@@ -54,11 +55,12 @@ fun AppNavigation(
                 NavDisplay(
                     backStack = topLevelBackStack.backStack,
                     onBack = { topLevelBackStack.removeLast() },
-                    entryProvider = entryProvider {
-                        initEntries(themeViewModel)
-                        mainEntries()
-                        productEntries()
-                    },
+                    entryProvider =
+                        entryProvider {
+                            initEntries(themeViewModel)
+                            mainEntries()
+                            productEntries()
+                        },
                 )
             }
         }
@@ -70,9 +72,7 @@ fun AppNavigation(
  *
  * @param themeViewModel The ThemeViewModel for theme state and updates.
  */
-fun EntryProviderBuilder<NavKey>.initEntries(
-    themeViewModel: ThemeViewModel
-) {
+fun EntryProviderBuilder<NavKey>.initEntries(themeViewModel: ThemeViewModel) {
     entry<AppRoute.Init.SampleScreen> {
         val themeMode by themeViewModel.themeMode.collectAsState()
         SampleThemeScreen(

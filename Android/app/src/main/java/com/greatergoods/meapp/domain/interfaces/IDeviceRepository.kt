@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.domain.interfaces
 
-import com.greatergoods.meapp.domain.models.Device
-import com.greatergoods.meapp.domain.models.DeviceSearchInfo
+import com.greatergoods.meapp.domain.model.Device
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -84,7 +83,10 @@ interface IDeviceRepository {
      * @param nickname The new nickname
      * @return Flow of the updated device
      */
-    suspend fun updateDeviceNickname(deviceId: String, nickname: String): Flow<Device>
+    suspend fun updateDeviceNickname(
+        deviceId: String,
+        nickname: String,
+    ): Flow<Device>
 
     /**
      * Search for a device by peripheral identifier
@@ -96,7 +98,7 @@ interface IDeviceRepository {
     suspend fun searchDevice(
         peripheralIdentifier: String,
         accountId: String,
-        userNumber: String
+        userNumber: String,
     ): Flow<DeviceSearchInfo>
 
     /**

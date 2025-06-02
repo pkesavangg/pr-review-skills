@@ -10,9 +10,8 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.proto)
     kotlin("kapt")
-    id("com.google.protobuf") version "0.9.4"
-
 }
 
 android {
@@ -121,8 +120,8 @@ dependencies {
     implementation(libs.gson)
 
     // Protobuf dependencies
-    implementation("com.google.protobuf:protobuf-javalite:3.24.0")
-    implementation("androidx.datastore:datastore:1.0.0")
+    implementation(libs.protobuf.javalite)
+    implementation(libs.androidx.datastore.v100)
 
     // modules
     implementation(project(":notification"))
