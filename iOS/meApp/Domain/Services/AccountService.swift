@@ -2,6 +2,8 @@ import Foundation
 
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
+    static let shared: AccountService = AccountService()
+    
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
     

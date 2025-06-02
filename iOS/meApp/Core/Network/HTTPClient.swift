@@ -7,13 +7,16 @@
 
 import Foundation
 
+@MainActor
 final class HTTPClient {
     static let shared = HTTPClient()
+    // Singleton instance for shared access
+    @Injector var accountService: AccountService
     private init() {}
     
     private var accessToken: String {
-        // TODO: Retrieve the access token from the AccountService for the logged-in user
-        "z8WLH3sYfnxa1jgaE+8yVEMMsoydMXkwpHW+aSLwPRQf90Au7Xd6Ow8BVGbFTM9F/aV0f3r+L9AnFPQj8Up0Cw=="
+        // Retrieve the access token from the AccountService for the logged-in user
+        accountService.activeAccount?.accessToken ?? ""
     }
     
     // MARK: - GET Request
