@@ -78,21 +78,38 @@ protocol AccountServiceProtocol {
 
     /// Updates the dashboard type for the specified account.
     /// - Parameters:
-    ///   - accountId: The ID of the account to update.
     ///   - type: The new dashboard type.
-    func updateDashboardType(accountId: String, type: DashboardType) async throws
+    func updateDashboardType(type: DashboardType) async throws -> Account
 
     /// Updates the integrations for the specified account.
     /// - Parameters:
-    ///   - accountId: The ID of the account to update.
     ///   - integrations: The new Integrations object.
-    func updateIntegrations(accountId: String, integrations: Integrations) async throws
+    func updateIntegrations(integrations: Integrations) async throws
 
     /// Updates the notification settings for the specified account.
     /// - Parameters:
-    ///   - accountId: The ID of the account to update.
     ///   - notifications: The new Notifications object.
-    func updateNotifications(accountId: String, notifications: Notifications) async throws
+    func updateNotifications(notifications: Notifications) async throws -> Account
+
+    /// Updates the dashboard metrics for the specified account.
+    /// - Parameters:
+    ///   - metrics: Array of metric strings to display on dashboard.
+    func updateDashboardMetrics(metrics: [String]) async throws -> Account
+
+    /// Updates the streak status for the specified account.
+    /// - Parameters:
+    ///   - isStreakOn: Whether streak tracking is enabled.
+    ///   - streakTimestamp: The timestamp of the last streak update.
+    /// - Returns: The updated Account object.
+    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws -> Account
+
+    /// Updates the weightless mode settings for the specified account.
+    /// - Parameters:
+    ///   - isWeightlessOn: Whether weightless mode is enabled.
+    ///   - weightlessTimestamp: The timestamp of the last weightless update.
+    ///   - weightlessWeight: The weight value for weightless mode.
+    /// - Returns: The updated Account object.
+    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws -> Account
 
     // MARK: - Password & Security
 
