@@ -59,7 +59,7 @@ protocol AccountServiceProtocol {
 
     /// Updates the entire account object in the data store and/or backend.
     /// - Parameter updatedAccount: The updated Account object.
-    func updateAccount(_ updatedAccount: Account) async throws
+    func updateAccount(_ updatedAccount: Account) async throws -> Account
 
     /// Updates the user's profile information.
     /// - Parameter profile: The updated Profile object.
@@ -107,6 +107,10 @@ protocol AccountServiceProtocol {
     func updatePassword(oldPassword: String, newPassword: String) async throws
 
     // MARK: - Sync & Offline
+    
+    /// Refreshes all accounts from the backend.
+    /// - Note: This should be called on app launch to ensure all accounts are up-to-date.
+    func refreshAllAccounts() async throws
 
     /// Refreshes the account data from the backend for the specified account ID.
     /// - Parameter accountId: The ID of the account to refresh. If nil, refreshes the currently active account.

@@ -48,8 +48,8 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true, customToken: accessToken) as EmptyResponse
     }
 
-    func fetchAccount(accountId: String) async throws -> AccountDTO {
-        return try await httpClient.get(.accountInfo, needsAuth: true)
+    func fetchAccount(accessToken: String? = nil) async throws -> AccountDTO {
+        return try await httpClient.get(.accountInfo, needsAuth: true, customToken: accessToken)
     }
 
     func editAccount(_ updatedAccount: Account) async throws -> AccountResponse {

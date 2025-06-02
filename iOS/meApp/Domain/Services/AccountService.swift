@@ -6,8 +6,24 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
+    private let networkMonitor: NetworkMonitor = NetworkMonitor.shared
     
     @Published var activeAccount: Account? = nil
+    @Published var allAccounts: [Account] = []
+
+    
+    init() {
+        // Load initial accounts from local storage
+        Task {
+            do {
+                try await updatePublishedState()
+                let _ = try await refreshAccount()
+                let _ = try await refreshAllAccounts()
+            } catch {
+               
+            }
+        }
+    }
     
     // MARK: - Account Lifecycle
     func signUp(email: String, password: String, profile: Profile) async throws -> Account {
@@ -26,7 +42,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.isExpired = false // New account is not expired by default
             try await makeOtherAccountsInactive(except: account)
             try await localRepo.saveAccount(account)
-            activeAccount = try await self.getActiveAccount();
+            try await updatePublishedState()
             return account
         } catch {
             throw error // No offline fallback for signup
@@ -49,7 +65,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.isExpired = false // New account is not expired by default
             try await makeOtherAccountsInactive(except: account)
             try await localRepo.saveAccount(account)
-            activeAccount = try await self.getActiveAccount();
+            try await updatePublishedState()
             return account
         } catch {
             throw error // No offline fallback for login
@@ -72,6 +88,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
         // Logout the account locally (happens regardless of API success/failure)
         try await deleteAccountLocally(accountId: accountId)
+        try await updatePublishedState()
     }
     
     func deleteAccount() async throws {
@@ -82,6 +99,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             try await apiRepo.deleteAccount(accountId: accountId)
             try await localRepo.deleteAccount(byId: accountId)
+            try await updatePublishedState()
         } catch {
             throw error // Handle any errors that occur during deletion
         }
@@ -90,20 +108,28 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     // MARK: - Account Switching
     /// Switches to a different account by setting it as the active account.
     func switchAccount(to account: Account) async throws {
-        try await setActiveAccount(account)
+        // Check network connectivity before switching
+        guard networkMonitor.isConnected else {
+            throw NetworkError.noInternet
+        }
+        do {
+            let _ = try await refreshAccount(accountId: account.accountId)
+            try await setActiveAccount(account)
+        } catch {
+            throw error
+        }
     }
     
     func setActiveAccount(_ account: Account) async throws {
         account.isActiveAccount = true
         try await makeOtherAccountsInactive(except: account)
         try await localRepo.updateAccount(account)
-        activeAccount = try await self.getActiveAccount();
+        try await updatePublishedState()
     }
     
     // MARK: - Account State
     func getActiveAccount() async throws -> Account? {
-        let all = try await localRepo.fetchAllAccounts()
-        activeAccount =  all.first(where: { $0.isActiveAccount == true })
+        try await updatePublishedState()
         return activeAccount
     }
     
@@ -121,7 +147,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     // MARK: - Account Updates
-    func updateAccount(_ updatedAccount: Account) async throws {
+    func updateAccount(_ updatedAccount: Account) async throws -> Account {
         do {
             let response = try await apiRepo.editAccount(updatedAccount)
             let account = Account(from: response.account)
@@ -130,10 +156,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.expiresAt = response.expiresAt
             account.isSynced = true
             try await localRepo.updateAccount(account)
+            try await updatePublishedState()
+            return account
         } catch {
             if NetworkError.isNetworkError(error) {
                 updatedAccount.isSynced = false
                 try await localRepo.updateAccount(updatedAccount)
+                try await updatePublishedState()
+                return updatedAccount
             } else {
                 throw error
             }
@@ -152,12 +182,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             updated.expiresAt = response.expiresAt
             updated.isSynced = true
             try await localRepo.updateAccount(updated)
+            try await updatePublishedState()
             return updated
         } catch {
             if NetworkError.isNetworkError(error) {
                 account.isSynced = false
                 // Optionally update local profile fields
                 try await localRepo.updateAccount(account)
+                try await updatePublishedState()
                 return account
             } else {
                 throw error
@@ -177,11 +209,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             updated.expiresAt = response.expiresAt
             updated.isSynced = true
             try await localRepo.updateAccount(updated)
+            try await updatePublishedState()
             return updated
         } catch {
             if NetworkError.isNetworkError(error) {
                 account.isSynced = false
                 try await localRepo.updateAccount(account)
+                try await updatePublishedState()
                 return account
             } else {
                 throw error
@@ -198,6 +232,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         account.refreshToken = tokens.refreshToken
         account.expiresAt = tokens.expiresAt
         try await localRepo.updateAccount(account)
+        try await updatePublishedState()
     }
     
     func updateDashboardType(accountId: String, type: DashboardType) async throws {
@@ -207,10 +242,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let updated = Account(from: response.account)
             updated.isSynced = true
             try await localRepo.updateAccount(updated)
+            try await updatePublishedState()
         } catch {
             if NetworkError.isNetworkError(error) {
                 account.isSynced = false
                 try await localRepo.updateAccount(account)
+                try await updatePublishedState()
             } else {
                 throw error
             }
@@ -228,10 +265,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let updated = Account(from: response.account)
             updated.isSynced = true
             try await localRepo.updateAccount(updated)
+            try await updatePublishedState()
         } catch {
             if NetworkError.isNetworkError(error) {
                 account.isSynced = false
                 try await localRepo.updateAccount(account)
+                try await updatePublishedState()
             } else {
                 throw error
             }
@@ -253,16 +292,62 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     // MARK: - Sync & Offline
-    func refreshAccount(accountId: String?) async throws -> Account {
+    func refreshAllAccounts() async throws {
+        let accounts = try await localRepo.fetchAllAccounts()
+        for account in accounts {
+            // Skip active account to avoid unnecessary refresh
+            if account.isActiveAccount ?? false {
+                continue
+            }
+            
+            do {
+                _ = try await refreshAccount(accountId: account.accountId)
+            } catch {
+                if NetworkError.isNetworkError(error) {
+                    continue
+                } else {
+                    do {
+                        // Mark account as expired for error
+                        if let expiredAccount = try await localRepo.fetchAccount(byId: account.accountId) {
+                            expiredAccount.isExpired = true
+                            try await localRepo.updateAccount(expiredAccount)
+                        }
+                    } catch {
+                        // Ignore errors during logout
+                        continue
+                    }
+                }
+            }
+        }
+        try await updatePublishedState()
+    }
+    
+    func refreshAccount(accountId: String? = nil) async throws -> Account {
         // If accountId is nil, use current logged in account
         guard let accountId = accountId ?? activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        let dto = try await apiRepo.fetchAccount(accountId: accountId)
-        let account = Account(from: dto)
-        account.isSynced = true
-        try await localRepo.updateAccount(account)
-        return account
+        
+        // First get the local account
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
+        }
+        
+        do {
+            // Try to fetch from API
+            let dto = try await apiRepo.fetchAccount(accessToken: localAccount.accessToken)
+            let account = Account(from: dto)
+            account.isSynced = true
+            try await localRepo.updateAccount(account)
+            try await updatePublishedState()
+            return account
+        } catch {
+            if NetworkError.isNetworkError(error) {
+                // On network error, return local account
+                return localAccount
+            }
+            throw error
+        }
     }
     
     func clearOfflineData(for account: Account) async throws {
@@ -280,6 +365,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 }
             }
         } catch {}
+        try await self.updatePublishedState()
     }
     
     // Call this on app launch to sync unsynced accounts
@@ -300,12 +386,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 continue
             }
         }
+        try await updatePublishedState()
     }
     
     private func deleteAccountLocally(accountId: String) async throws {
         do {
             // delete the account from local storage
             try await localRepo.deleteAccount(byId: accountId)
+            try await updatePublishedState()
         } catch {
             throw error
         }
@@ -327,5 +415,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             acc.isActiveAccount = false
             try await localRepo.updateAccount(acc)
         }
+    }
+    
+    private func updatePublishedState() async throws {
+        allAccounts = try await localRepo.fetchAllAccounts()
+        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true })
     }
 }

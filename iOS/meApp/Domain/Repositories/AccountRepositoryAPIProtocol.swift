@@ -31,9 +31,9 @@ protocol AccountRepositoryAPIProtocol {
     func logOut(fcmToken: String?, accessToken: String?) async throws
 
     /// Fetches the current account's details from the backend. (GET /account)
-    /// - Parameter accountId: The ID of the account to fetch.
+    /// - Parameter accessToken: The access token for authentication, defaults to nil.
     /// - Returns: AccountDTO (from { account })
-    func fetchAccount(accountId: String) async throws -> AccountDTO
+    func fetchAccount(accessToken: String?) async throws -> AccountDTO
 
     /// Edits the account with the given updated Account object (PUT /account).
     /// - Parameter updatedAccount: The updated Account object.
