@@ -1,58 +1,44 @@
 package com.greatergoods.meapp.features.login
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.login.LoginViewModel.ProfileState
 import com.greatergoods.meapp.features.login.LoginViewModel.LoginState
 import com.greatergoods.meapp.features.login.LoginViewModel.RefreshTokenState
 
+
+
+
 @Composable
-fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
+fun LoginScreen(
+    viewModel: LoginViewModel = hiltViewModel()
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var refreshToken by remember { mutableStateOf("") }
 
     val loginState by viewModel.loginState.collectAsState()
+    val profileState by viewModel.profileState.collectAsState()
     val refreshTokenState by viewModel.refreshTokenState.collectAsState()
 
     Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 25.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Login Section
-        Text(
-            text = "Login",
-            style = MaterialTheme.typography.headlineMedium,
-        )
-
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
@@ -60,87 +46,117 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             onValueChange = { password = it },
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
 
         Button(
             onClick = { viewModel.login(email, password) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = loginState !is LoginState.Loading,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            if (loginState is LoginState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            } else {
-                Text("Login")
-            }
+            Text("Login")
         }
 
-        // Refresh Token Section
-        Text(
-            text = "Refresh Token",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 32.dp),
-        )
-
-        OutlinedTextField(
-            value = refreshToken,
-            onValueChange = { refreshToken = it },
-            label = { Text("Refresh Token") },
+        // Profile Section
+        Card(
             modifier = Modifier.fillMaxWidth(),
-        )
-
-        Button(
-            onClick = { viewModel.refreshToken(refreshToken) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = refreshTokenState !is RefreshTokenState.Loading,
         ) {
-            if (refreshTokenState is RefreshTokenState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            } else {
-                Text("Refresh Token")
-            }
-        }
-
-        // State Display
-        when (loginState) {
-            is LoginState.Success -> {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text(
-                    text = "Login successful!",
-                    color = MaterialTheme.colorScheme.primary,
+                    text = "Profile Section",
+                    style = MaterialTheme.typography.titleMedium
                 )
-            }
 
+                Button(
+                    onClick = { viewModel.fetchProfile() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Fetch Profile")
+                }
+
+                // Profile State Display
+                when (val state = profileState) {
+                    is ProfileState.Loading -> {
+                        CircularProgressIndicator()
+                    }
+                    is ProfileState.Success -> {
+                        Text("Profile: ${state.profile.firstName} ${state.profile.lastName}")
+                        Text("Email: ${state.profile.email}")
+                        state.profile.height?.let { Text("Height: $it") }
+                        state.profile.weight?.let { Text("Weight: $it") }
+                    }
+                    is ProfileState.Error -> {
+                        Text(
+                            text = "Error: ${state.message}",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    else -> {}
+                }
+            }
+        }
+
+        // Token Refresh Section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Token Refresh Section",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Button(
+                    onClick = {
+                        // Get refresh token from login response
+                        (loginState as? LoginState.Success)?.response?.refreshToken?.let { token ->
+                            viewModel.refreshToken(token)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = loginState is LoginState.Success
+                ) {
+                    Text("Refresh Token")
+                }
+
+                // Token Refresh State Display
+                when (val state = refreshTokenState) {
+                    is RefreshTokenState.Loading -> {
+                        CircularProgressIndicator()
+                    }
+                    is RefreshTokenState.Success -> {
+                        Text("Token Refreshed Successfully")
+                    }
+                    is RefreshTokenState.Error -> {
+                        Text(
+                            text = "Error: ${state.message}",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    else -> {}
+                }
+            }
+        }
+
+        // Login State Display
+        when (val state = loginState) {
+            is LoginState.Loading -> {
+                CircularProgressIndicator()
+            }
+            is LoginState.Success -> {
+                Text("Login Successful")
+            }
             is LoginState.Error -> {
                 Text(
-                    text = (loginState as LoginState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
+                    text = "Error: ${state.message}",
+                    color = MaterialTheme.colorScheme.error
                 )
             }
-
-            else -> {}
-        }
-
-        when (refreshTokenState) {
-            is RefreshTokenState.Success -> {
-                Text(
-                    text = "Token refreshed successfully!",
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-
-            is RefreshTokenState.Error -> {
-                Text(
-                    text = (refreshTokenState as RefreshTokenState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-
             else -> {}
         }
     }
