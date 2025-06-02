@@ -4,14 +4,13 @@ import java.util.Date
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.service)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     kotlin("kapt")
-    id("com.google.gms.google-services")
-
 }
 
 android {
@@ -52,12 +51,11 @@ android {
 
         outputs.all {
             val outputImpl = this as BaseVariantOutputImpl
-
-            val appName = "MyApp"
+            val appName = "MeApp"
             val versionCode = this.versionCode
             val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
             outputImpl.outputFileName =
-                "${appName}-${variantName}-v${versionName}(${versionCode})-${timestamp}.apk"
+                "$appName-$variantName-v$versionName($versionCode)-$timestamp.apk"
         }
     }
 }
@@ -101,7 +99,7 @@ dependencies {
     // Room dependencies
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 
     // Datastore
     implementation(libs.androidx.datastore)
@@ -115,13 +113,13 @@ dependencies {
     // Add the dependency for the Firebase SDK for Google Analytics
     implementation(libs.firebase.analytics)
 
-    // modules
-    implementation(project(":notification"))
-
     // Datastore
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.datastore.preferences.core)
     implementation(libs.gson)
+
+    // modules
+    implementation(project(":notification"))
 }
 
 // Allow references to generated code
