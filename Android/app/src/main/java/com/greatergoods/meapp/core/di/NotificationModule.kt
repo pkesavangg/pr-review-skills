@@ -16,7 +16,6 @@ import android.content.Context
 @Module
 @InstallIn(SingletonComponent::class)
 class NotificationModule {
-
     /**
      * Provides a singleton instance of [NotificationService].
      * @param notificationHandler The handler for notification operations.
@@ -24,11 +23,8 @@ class NotificationModule {
      */
     @Provides
     @Singleton
-    fun provideNotificationService(
-        notificationHandler: NotificationHandler,
-    ): NotificationService {
-        return NotificationService(notificationHandler)
-    }
+    fun provideNotificationService(notificationHandler: NotificationHandler): NotificationService =
+        NotificationService(notificationHandler)
 
     /**
      * Provides a singleton instance of [NotificationHandler].
@@ -39,9 +35,5 @@ class NotificationModule {
     @Singleton
     fun provideNotificationHandler(
         @ApplicationContext context: Context,
-    ): NotificationHandler {
-        return NotificationHandler(context)
-    }
-
-
+    ): NotificationHandler = NotificationHandler(context)
 }
