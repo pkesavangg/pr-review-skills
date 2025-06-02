@@ -8,6 +8,8 @@ import com.greatergoods.meapp.core.network.interceptors.AuthTokenInterceptor
 import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
 import com.greatergoods.meapp.core.network.interceptors.NetworkInterceptor
 import com.greatergoods.meapp.core.network.interceptors.ResponseInterceptor
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import com.greatergoods.meapp.core.network.utility.LegacyNetworkConnectivityObserver
 import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
 import dagger.Module
 import dagger.Provides
@@ -82,6 +84,20 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideResponseInterceptor(): ResponseInterceptor = ResponseInterceptor()
+
+    /**
+     * Provides the appropriate IConnectivityObserver implementation based on SDK version.
+     */
+    @Provides
+    @Singleton
+    fun provideConnectivityObserver(
+        @ApplicationContext context: Context,
+    ): IConnectivityObserver =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            NetworkConnectivityObserver(context)
+        } else {
+            LegacyNetworkConnectivityObserver(context)
+        }
 
     /**
      * Provides a configured OkHttpClient with all required interceptors.
