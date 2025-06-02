@@ -12,13 +12,26 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import android.content.Context
 
+/**
+ * Dagger Hilt module for providing core service dependencies such as event and notification managers.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object ServiceModule {
+    /**
+     * Provides a singleton instance of [IAppEventService].
+     * @return [AppEventService] instance.
+     */
     @Provides
     @Singleton
     fun provideAppEventService(): IAppEventService = AppEventService()
 
+    /**
+     * Provides a singleton instance of [NotificationManager] for notification operations.
+     * @param context The application context.
+     * @param notificationService The notification service dependency.
+     * @return [NotificationManager] instance.
+     */
     @Provides
     @Singleton
     fun provideNotificationManager(
