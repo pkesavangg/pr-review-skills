@@ -5,20 +5,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
     
-    @Published var currentLoggedInAccount: Account? = nil
+    @Published var activeAccount: Account? = nil
     
-    init() {
-        // Load the current logged in account from local storage if available
-        Task {
-            do {
-                currentLoggedInAccount = try await self.getActiveAccount();
-            } catch {
-                print("Failed to load current logged in account: \(error)")
-            }
-        }
-    }
-    
-    // MARK: - Account Lifecycle
+// MARK: - Account Lifecycle
     func signUp(email: String, password: String, profile: Profile) async throws -> Account {
         do {
             let response = try await apiRepo.createAccount(email: email, password: password, profile: profile)
@@ -30,7 +19,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.isActiveAccount = true // New account is active by default
             account.isExpired = false // New account is not expired by default
             try await localRepo.saveAccount(account)
-            currentLoggedInAccount = try await self.getActiveAccount();
+            activeAccount = try await self.getActiveAccount();
             return account
         } catch {
             throw error // No offline fallback for signup
@@ -48,7 +37,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.isActiveAccount = true // New account is active by default
             account.isExpired = false // New account is not expired by default
             try await localRepo.saveAccount(account)
-            currentLoggedInAccount = try await self.getActiveAccount();
+            activeAccount = try await self.getActiveAccount();
             return account
         } catch {
             throw error // No offline fallback for login
@@ -58,50 +47,36 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func logOut(accountId: String?) async throws {
         // Always try API, fallback to local only if network error
         // if accountId is nil, use current logged in account
-        guard let accountId = accountId ?? currentLoggedInAccount?.accountId else {
-            throw NSError(domain: "NoAccount", code: 0)
+        guard let accountId = accountId ?? activeAccount?.accountId else {
+            throw AccountError.noActiveAccount
         }
+        
         do {
-            try await apiRepo.logOut(accountId: accountId, fcmToken: currentLoggedInAccount?.fcmToken)
-            // Logout the account locally
-            if let account = try await localRepo.fetchAccount(byId: accountId) {
-                account.isLoggedIn = false
-                try await localRepo.updateAccount(account)
-            }
+            // Get the FCM token from local repo using the accountId
+            let activeAccount = try await localRepo.fetchAccount(byId: accountId)
+            try await apiRepo.logOut(accountId: accountId, fcmToken: activeAccount?.fcmToken)
         } catch {
-            if NetworkError.isNetworkError(error) {
-                // Optionally mark as logged out locally
-                if let account = try await localRepo.fetchAccount(byId: accountId) {
-                    account.isLoggedIn = false
-                    try await localRepo.updateAccount(account)
-                }
-            } else {
-                throw error
-            }
+            // Continue with local logout even if API call fails
         }
+        // Logout the account locally (happens regardless of API success/failure)
+        try await logOutLocally(accountId: accountId)
     }
 
     func deleteAccount() async throws {
         // if accountId is nil, use current logged in account
-        guard let accountId = currentLoggedInAccount?.accountId else {
-            throw NSError(domain: "NoAccount", code: 0)
+        guard let accountId = activeAccount?.accountId else {
+            throw AccountError.noActiveAccount
         }
         do {
             try await apiRepo.deleteAccount(accountId: accountId)
             try await localRepo.deleteAccount(byId: accountId)
         } catch {
-            if NetworkError.isNetworkError(error) {
-                // Mark as not synced, will retry delete on next sync
-                if let account = try await localRepo.fetchAccount(byId: accountId) {
-                    account.isSynced = false
-                    try await localRepo.updateAccount(account)
-                }
-            } else {
-                throw error
-            }
+            throw error // Handle any errors that occur during deletion
         }
     }
 
+    // MARK: - Account Switching
+    /// Switches to a different account by setting it as the active account.
     func switchAccount(to account: Account) async throws {
         try await setActiveAccount(account)
     }
@@ -115,13 +90,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await localRepo.updateAccount(acc)
         }
         try await localRepo.updateAccount(account)
-        currentLoggedInAccount = try await self.getActiveAccount();
+        activeAccount = try await self.getActiveAccount();
     }
 
-    // MARK: - Account State
+     // MARK: - Account State
     func getActiveAccount() async throws -> Account? {
         let all = try await localRepo.fetchAllAccounts()
-        return all.first(where: { $0.isActiveAccount == true })
+        activeAccount =  all.first(where: { $0.isActiveAccount == true })
+        return activeAccount
     }
 
     func getAllLoggedInAccounts() async throws -> [Account] {
@@ -158,14 +134,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     func patchStoredAccount(_ updatedFields: [PartialKeyPath<Account>: Any]) async throws {
-        // Not implemented: requires reflection or custom logic
-        // You can implement this if you want partial updates
-        throw NSError(domain: "NotImplemented", code: 0)
+        throw AccountError.notImplemented
     }
 
     func updateProfile(_ profile: Profile) async throws -> Account {
-        guard let accountId = currentLoggedInAccount?.accountId, let account = try await localRepo.fetchAccount(byId: accountId) else {
-            throw NSError(domain: "NoAccount", code: 0)
+        guard let accountId = activeAccount?.accountId, let account = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
         }
         do {
             let response = try await apiRepo.patchProfile(profile)
@@ -189,8 +163,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     func updateBodyComp(_ bodyComp: BodyComp) async throws -> Account {
-        guard let accountId = currentLoggedInAccount?.accountId, let account = try await localRepo.fetchAccount(byId: accountId) else {
-            throw NSError(domain: "NoAccount", code: 0)
+        guard let accountId = activeAccount?.accountId, let account = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
         }
         do {
             let response = try await apiRepo.patchBodyComp(bodyComp)
@@ -214,8 +188,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
     func updateTokens(_ tokens: Tokens) async throws {
         // Update token in current logged in account
-        guard let account = currentLoggedInAccount else {
-            throw NSError(domain: "NoAccount", code: 0)
+        guard let account = activeAccount else {
+            throw AccountError.noActiveAccount
         }
         account.accessToken = tokens.accessToken
         account.refreshToken = tokens.refreshToken
@@ -241,8 +215,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     func updateIntegrations(accountId: String, integrations: Integrations) async throws {
-        // Not implemented: depends on Integrations model
-        throw NSError(domain: "NotImplemented", code: 0)
+        throw AccountError.notImplemented
     }
 
     func updateNotifications(accountId: String, notifications: Notifications) async throws {
@@ -279,8 +252,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     // MARK: - Sync & Offline
     func refreshAccount(accountId: String?) async throws -> Account {
         // If accountId is nil, use current logged in account
-        guard let accountId = accountId ?? currentLoggedInAccount?.accountId else {
-            throw NSError(domain: "NoAccount", code: 0)
+        guard let accountId = accountId ?? activeAccount?.accountId else {
+            throw AccountError.noActiveAccount
         }
         let dto = try await apiRepo.fetchAccount(accountId: accountId)
         let account = Account(from: dto)
@@ -290,12 +263,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     func clearOfflineData(for account: Account) async throws {
-        // Not implemented: depends on what offline data means
-        throw NSError(domain: "NotImplemented", code: 0)
+        throw AccountError.notImplemented
     }
 
-    func deleteAllAccounts() async throws {
-        try await localRepo.deleteAllAccounts()
+    func deleteAllAccountsLocally() async throws {
+        do {
+            try await localRepo.deleteAllAccounts()
+            activeAccount = nil // Clear active account reference
+        } catch {
+            throw error // Handle any errors that occur during deletion
+        }
     }
 
     // Call this on app launch to sync unsynced accounts
@@ -315,6 +292,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 // If still network error, leave as unsynced
                 continue
             }
+        }
+    }
+    
+    private func logOutLocally(accountId: String) async throws {
+        do {
+            if let account = try await localRepo.fetchAccount(byId: accountId) {
+                account.isLoggedIn = false
+                try await localRepo.updateAccount(account)
+            }
+        } catch {
+            throw error
         }
     }
 } 

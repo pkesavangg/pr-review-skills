@@ -3,7 +3,7 @@ import Foundation
 /// Protocol defining the service interface for managing user accounts, including authentication, state, updates, security, and sync/offline operations.
 @MainActor
 protocol AccountServiceProtocol {
-    var currentLoggedInAccount : Account? { get set }
+    var activeAccount : Account? { get set }
     // MARK: - Account Lifecycle
 
     /// Registers a new user account with the given email, password, and profile.
@@ -120,6 +120,6 @@ protocol AccountServiceProtocol {
     /// - Parameter account: The account whose offline data should be cleared.
     func clearOfflineData(for account: Account) async throws
 
-    /// Deletes all accounts from the device.
-    func deleteAllAccounts() async throws
+    /// Deletes all accounts stored locally on the device.
+    func deleteAllAccountsLocally() async throws
 }

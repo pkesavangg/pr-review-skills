@@ -7,6 +7,7 @@ import Foundation
 /// dashboard configuration, streak/weightless updates, and scale token management.
 ///
 /// Implementations of this protocol should handle all networking, serialization, and error handling for these operations.
+@MainActor
 protocol AccountRepositoryAPIProtocol {
     /// Creates a new account with the given email, password, and profile. (POST /account)
     /// - Parameters:

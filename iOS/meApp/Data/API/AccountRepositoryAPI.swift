@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     private let httpClient = HTTPClient.shared
 
