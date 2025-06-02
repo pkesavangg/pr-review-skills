@@ -22,7 +22,6 @@ enum Endpoint {
     case deleteAccount
     case changePassword
     case requestPasswordReset
-    case checkPasswordResetToken
     case confirmPasswordReset
     case setGoal
     case updateProfile
@@ -64,8 +63,6 @@ enum Endpoint {
             return request(path: "/account/password/")
         case .requestPasswordReset:
             return request(path: "/account/password-reset/request")
-        case .checkPasswordResetToken:
-            return request(path: "/account/password-reset/check")
         case .confirmPasswordReset:
             return request(path: "/account/password-reset/confirm")
         case .setGoal:
