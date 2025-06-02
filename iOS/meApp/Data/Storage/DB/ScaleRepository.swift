@@ -64,7 +64,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// - Returns: The created ScaleDTO.
     func createScale(_ scale: ScaleDTO) async throws -> ScaleDTO {
         let device = Device(from: scale)
-        device.isSynced = false // Mark as unsynced initially
+        device.isSynced = false 
         context.insert(device)
         try context.save()
         return device.toDTO()
@@ -94,7 +94,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         if let sku = properties["sku"] as? String { device.sku = sku }
         if let broadcastIdString = properties["broadcastIdString"] as? String { device.broadcastIdString = broadcastIdString }
         if let createdAt = properties["createdAt"] as? String { device.createdAt = createdAt }
-        device.isSynced = false // Mark as unsynced after update
+        device.isSynced = false
         try context.save()
         return device.toDTO()
     }
@@ -117,7 +117,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
             device.metaData = DeviceMetaData(from: metaData)
-            device.isSynced = false // Mark as unsynced after update
+            device.isSynced = false
             try context.save()
         }
     }
@@ -128,7 +128,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == preference.scaleId })
         if let device = try context.fetch(descriptor).first {
             device.r4ScalePreference = R4ScalePreference(from: preference)
-            device.isSynced = false // Mark as unsynced after update
+            device.isSynced = false
             try context.save()
         }
     }
