@@ -64,13 +64,28 @@ object NetworkModule {
     fun provideBaseUrlInterceptor(): BaseUrlInterceptor = BaseUrlInterceptor()
 
     /**
+     * Provides the appropriate IConnectivityObserver implementation based on SDK version.
+     */
+    @Provides
+    @Singleton
+    fun provideConnectivityObserver(
+        @ApplicationContext context: Context,
+    ): IConnectivityObserver =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            NetworkConnectivityObserver(context)
+        } else {
+            LegacyNetworkConnectivityObserver(context)
+        }
+
+    /**
      * Provides a network interceptor that observes connectivity changes. Requires API 23+.
      */
     @RequiresApi(Build.VERSION_CODES.M)
     @Provides
     @Singleton
-    fun provideNetworkInterceptor(networkConnectivityObserver: NetworkConnectivityObserver): NetworkInterceptor =
-        NetworkInterceptor(networkConnectivityObserver)
+    fun provideNetworkInterceptor(
+        connectivityObserver: IConnectivityObserver
+    ): NetworkInterceptor = NetworkInterceptor(connectivityObserver)
 
     /**
      * Provides an authentication token interceptor for OkHttp.
