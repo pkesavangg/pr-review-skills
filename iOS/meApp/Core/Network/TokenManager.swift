@@ -3,26 +3,26 @@ import Foundation
 @MainActor
 final class TokenManager {
     static let shared = TokenManager()
+    @Injector var accountService: AccountService
     private var isRefreshing = false
     private var refreshContinuations: [CheckedContinuation<Void, Error>] = []
-    private let maxRetries = 3
     
     func checkTokenExpiration(expiresAt: String?) -> Bool {
         guard let expiresAt = expiresAt,
               let expirationDate = DateTimeTools.parse(expiresAt) else {
             return true
         }
-        return Date().addingTimeInterval(5 * 60) >= expirationDate
+        return Date().addingTimeInterval(AppConstants.Account.tokenExpirationBuffer) >= expirationDate
     }
     
-    func refreshToken(customToken: String? = nil, retryCount: Int = 0) async throws -> Tokens {
+    func refreshToken(customToken: String? = nil, accountId: String? =  nil, retryCount: Int = 0) async throws -> Tokens {
         if isRefreshing {
             try await waitForRefresh()
-            return try await AccountService.shared.getActiveTokens()
+            return try await accountService.getActiveTokens()
         }
         
-        if retryCount >= maxRetries {
-            try await AccountService.shared.logOut(accountId: nil)
+        if retryCount >= AppConstants.Account.tokenRefreshMaxRetries {
+            try await accountService.logOut(accountId: nil)
             throw NetworkError.statusCode(401)
         }
         
@@ -30,8 +30,8 @@ final class TokenManager {
         defer { isRefreshing = false }
         
         do {
-            let tokens = try await AccountService.shared.refreshTokens(customToken: customToken)
-            try await AccountService.shared.updateTokens(tokens)
+            let tokens = try await accountService.refreshTokens(customToken: customToken)
+            try await accountService.updateTokens(tokens)
             resumeWaitingRequests()
             return tokens
         } catch {
@@ -40,10 +40,10 @@ final class TokenManager {
             if let networkError = error as? NetworkError {
                 switch networkError {
                 case .statusCode(let code):
-                    if code == 401 {
-                        try await AccountService.shared.logOut(accountId: nil)
+                    if code == HTTPStatusCode.unauthorized.rawValue {
+                        try await accountService.logOut(accountId: nil)
                         throw error
-                    } else if code >= 501 || code == 0 {
+                    } else if code >= 501 || code == HTTPStatusCode.networkError.rawValue {
                         return try await refreshToken(customToken: customToken, retryCount: retryCount + 1)
                     }
                 case .noInternet:
@@ -52,8 +52,7 @@ final class TokenManager {
                     break
                 }
             }
-            
-            try await AccountService.shared.logOut(accountId: nil)
+            try await accountService.logOut(accountId: accountId)
             throw error
         }
     }
@@ -74,4 +73,4 @@ final class TokenManager {
         }
         refreshContinuations.removeAll()
     }
-} 
+}

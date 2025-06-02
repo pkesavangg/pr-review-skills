@@ -7,6 +7,7 @@
 
 
 enum HTTPStatusCode: Int {
+    case networkError = 0
     case ok = 200
     case created = 201
     case accepted = 202

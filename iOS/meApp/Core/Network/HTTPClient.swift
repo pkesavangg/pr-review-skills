@@ -10,10 +10,8 @@ import Foundation
 @MainActor
 final class HTTPClient {
     static let shared = HTTPClient()
-    // Singleton instance for shared access
     @Injector var accountService: AccountService
     private let tokenManager = TokenManager.shared
-    private let maxRetries = 3
     private init() {}
     
     private var accessToken: String {
@@ -72,14 +70,14 @@ final class HTTPClient {
     ) async throws -> T {
         // Skip token check for logout and refresh token endpoints
         let skipTokenCheck = request.url?.path.contains("/refresh-token") == true ||
-                           request.url?.path.contains("/logout") == true
+        request.url?.path.contains("/logout") == true
         
         // Only check token expiration if needed and not skipped
         if needsAuth && !skipTokenCheck {
             if let account = customToken != nil ? try await getAccountForToken(customToken!) : accountService.activeAccount,
                tokenManager.checkTokenExpiration(expiresAt: account.expiresAt)
             {
-                let tokens = try await tokenManager.refreshToken(customToken: customToken)
+                let tokens = try await tokenManager.refreshToken(customToken: customToken, accountId: account.accountId)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                 return try await performRequest(newRequest)
@@ -92,7 +90,7 @@ final class HTTPClient {
             if let networkError = error as? NetworkError {
                 switch networkError {
                 case .statusCode(let code):
-                    if code == 401 && needsAuth && !skipTokenCheck {
+                    if code == HTTPStatusCode.unauthorized.rawValue && needsAuth && !skipTokenCheck {
                         // Try to refresh token and retry request
                         let tokens = try await tokenManager.refreshToken(customToken: customToken)
                         var newRequest = request
