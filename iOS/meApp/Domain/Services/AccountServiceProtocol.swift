@@ -28,10 +28,6 @@ protocol AccountServiceProtocol {
     /// Deletes the currently active account.
     func deleteAccount() async throws
 
-    /// Removes an account from local storage only.
-    /// - Parameter accountId: The ID of the account to remove locally.
-    func removeAccountLocally(accountId: String) async throws
-
     /// Switches the active session to the specified account.
     /// - Parameter account: The account to switch to.
     func switchAccount(to account: Account) async throws

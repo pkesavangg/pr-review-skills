@@ -40,13 +40,12 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         return try await httpClient.send(.login, method: .post, body: req)
     }
 
-    func logOut(accountId: String, fcmToken: String?) async throws {
+    func logOut(fcmToken: String?, accessToken: String? = nil) async throws {
         struct LogoutRequest: Codable {
-            let accountId: String
             let fcmToken: String?
         }
-        let req = LogoutRequest(accountId: accountId, fcmToken: fcmToken)
-        _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true) as EmptyResponse
+        let req = LogoutRequest(fcmToken: fcmToken)
+        _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true, customToken: accessToken) as EmptyResponse
     }
 
     func fetchAccount(accountId: String) async throws -> AccountDTO {

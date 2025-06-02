@@ -26,9 +26,9 @@ protocol AccountRepositoryAPIProtocol {
 
     /// Logs out the account with the given ID and optional FCM token.
     /// - Parameters:
-    ///   - accountId: The ID of the account to log out.
     ///   - fcmToken: The FCM token to unregister (optional).
-    func logOut(accountId: String, fcmToken: String?) async throws
+    ///   - Parameter accessToken: The access token for authentication.
+    func logOut(fcmToken: String?, accessToken: String?) async throws
 
     /// Fetches the current account's details from the backend. (GET /account)
     /// - Parameter accountId: The ID of the account to fetch.

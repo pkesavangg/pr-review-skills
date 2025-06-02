@@ -65,13 +65,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         
         do {
             // Get the FCM token from local repo using the accountId
-            let activeAccount = try await localRepo.fetchAccount(byId: accountId)
-            try await apiRepo.logOut(accountId: accountId, fcmToken: activeAccount?.fcmToken)
+            let account = try await localRepo.fetchAccount(byId: accountId)
+            try await apiRepo.logOut(fcmToken: activeAccount?.fcmToken, accessToken: account?.accessToken)
         } catch {
             // Continue with local logout even if API call fails
         }
         // Logout the account locally (happens regardless of API success/failure)
-        try await logOutLocally(accountId: accountId)
+        try await deleteAccountLocally(accountId: accountId)
     }
     
     func deleteAccount() async throws {
@@ -85,21 +85,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             throw error // Handle any errors that occur during deletion
         }
-    }
-    
-    func removeAccountLocally(accountId: String) async throws {
-        // Get the account to ensure it exists
-        guard let account = try await localRepo.fetchAccount(byId: accountId) else {
-            throw AccountError.accountNotFound(id: accountId)
-        }
-        do {
-            // Logout the account
-            try await logOut(accountId: accountId)
-        } catch {
-            
-        }
-        // Remove the account locally
-        try await localRepo.deleteAccount(byId: accountId)
     }
     
     // MARK: - Account Switching
@@ -286,18 +271,15 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     func deleteAllAccountsLocally() async throws {
         do {
-            // Loop all local accounts and log out each one
-            do {
-                let allAccounts = try await localRepo.fetchAllAccounts()
-                for account in allAccounts {
+            let allAccounts = try await localRepo.fetchAllAccounts()
+            for account in allAccounts {
+                do {
                     try await logOut(accountId: account.accountId)
+                } catch  {
+                    continue // Ignore errors during logout
                 }
-            } catch {}
-            // Now delete all accounts locally
-            try await localRepo.deleteAllAccounts()
-        } catch {
-            throw error // Handle any errors that occur during deletion
-        }
+            }
+        } catch {}
     }
     
     // Call this on app launch to sync unsynced accounts
@@ -320,13 +302,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
-    private func logOutLocally(accountId: String) async throws {
+    private func deleteAccountLocally(accountId: String) async throws {
         do {
-            if let account = try await localRepo.fetchAccount(byId: accountId) {
-                account.isLoggedIn = false
-                account.isActiveAccount = false
-                try await localRepo.updateAccount(account)
-            }
+            // delete the account from local storage
+            try await localRepo.deleteAccount(byId: accountId)
         } catch {
             throw error
         }

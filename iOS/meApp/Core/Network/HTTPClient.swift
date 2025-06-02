@@ -23,11 +23,12 @@ final class HTTPClient {
     func get<T: Decodable>(
         _ endpoint: Endpoint,
         headers: [String: String]? = nil,
-        needsAuth: Bool = false
+        needsAuth: Bool = false,
+        customToken: String? = nil
     ) async throws -> T {
         try await checkConnectivity()
         
-        let request = try makeRequest(for: endpoint, method: .get, headers: headers, needsAuth: needsAuth)
+        let request = try makeRequest(for: endpoint, method: .get, headers: headers, needsAuth: needsAuth, customToken: customToken)
         return try await send(request: request)
     }
     
@@ -37,11 +38,12 @@ final class HTTPClient {
         method: HTTPMethod,
         body: T,
         headers: [String: String]? = nil,
-        needsAuth: Bool = false
+        needsAuth: Bool = false,
+        customToken: String? = nil
     ) async throws -> R {
         try await checkConnectivity()
         
-        var request = try makeRequest(for: endpoint, method: method, headers: headers, needsAuth: needsAuth)
+        var request = try makeRequest(for: endpoint, method: method, headers: headers, needsAuth: needsAuth, customToken: customToken)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
         return try await send(request: request)
@@ -105,7 +107,8 @@ final class HTTPClient {
         for endpoint: Endpoint,
         method: HTTPMethod,
         headers: [String: String]? = nil,
-        needsAuth: Bool = false
+        needsAuth: Bool = false,
+        customToken: String? = nil
     ) throws -> URLRequest {
         guard var request = endpoint.urlRequest else {
             throw NetworkError.invalidRequest
@@ -114,8 +117,11 @@ final class HTTPClient {
         request.httpMethod = method.rawValue
         
         var allHeaders = headers ?? [:]
-        if needsAuth && !accessToken.isEmpty {
-            allHeaders["Authorization"] = "Bearer \(accessToken)"
+        if needsAuth {
+            let token = customToken ?? accessToken
+            if !token.isEmpty {
+                allHeaders["Authorization"] = "Bearer \(token)"
+            }
         }
         
         allHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
@@ -125,7 +131,7 @@ final class HTTPClient {
     
     // MARK: - Connectivity Check
     private func checkConnectivity() async throws {
-        if await !NetworkMonitor.shared.isConnected {
+        if !NetworkMonitor.shared.isConnected {
             throw NetworkError.noInternet
         }
     }
