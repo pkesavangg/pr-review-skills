@@ -11,6 +11,7 @@ import SwiftData
 /// Service for managing paired scale devices, including sync, CRUD, and connection management.
 /// Handles local/remote sync, per-account operations, and robust error handling.
 final class ScaleService: ScaleServiceProtocol {
+    @MainActor
     private lazy var remoteRepo: ScaleAPIRepository = {
         // Ensure this is always created on the main actor
         return _apiRepository
@@ -68,7 +69,12 @@ final class ScaleService: ScaleServiceProtocol {
                     logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device \(device.id) to API: \(error.localizedDescription)")
                 }
             }
-            _ = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+            let lastSync = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+            logger.log(
+                level: lastSync != nil ? .info : .error,
+                tag: "ScaleService",
+                message: "Last sync timestamp for account \(accountId): \(lastSync ?? "Unavailable")"
+            )
             let remoteScales = try await remoteRepo.listScales()
             await mergeRemoteScales(remoteScales, accountId: accountId)
             let now = ISO8601DateFormatter().string(from: Date())
@@ -123,7 +129,16 @@ final class ScaleService: ScaleServiceProtocol {
             } else {
                 let newDevice = Device(from: remoteDTO)
                 newDevice.isSynced = true
-                try? await localRepository.updateDevice(newDevice)
+                do {
+                    try await localRepository.createScale(newDevice.toDTO())
+                } catch {
+                    logger.log(
+                        level: .error,
+                        tag: "ScaleService",
+                        message: "Failed to create new device \(String(describing: remoteDTO.id)): \(error.localizedDescription)",
+                        data: error
+                    )
+                }
             }
         }
     }
@@ -149,7 +164,7 @@ final class ScaleService: ScaleServiceProtocol {
         try await localRepository.patchScalePreference(preferenceDTO)
         do {
             try await remoteRepo.patchScalePreference(preferenceDTO)
-            if let device = try await localRepository.getDevice(preference.displayName) {
+            if let device = try await localRepository.getDevice(preference.id) {
                 device.isSynced = true
                 try await localRepository.updateDevice(device)
             }
