@@ -61,10 +61,6 @@ protocol AccountServiceProtocol {
     /// - Parameter updatedAccount: The updated Account object.
     func updateAccount(_ updatedAccount: Account) async throws
 
-    /// Patches the stored account with the specified fields.
-    /// - Parameter updatedFields: A dictionary of key paths and values to update.
-    func patchStoredAccount(_ updatedFields: [PartialKeyPath<Account>: Any]) async throws
-
     /// Updates the user's profile information.
     /// - Parameter profile: The updated Profile object.
     /// - Returns: The updated Account object.
@@ -77,7 +73,8 @@ protocol AccountServiceProtocol {
 
     /// Updates the user's authentication tokens.
     /// - Parameter tokens: The updated Tokens object.
-    func updateTokens(_ tokens: Tokens) async throws
+    /// - Parameter accountId: The ID of the account to update. If nil, updates the currently active account.
+    func updateTokens(_ tokens: Tokens, _ accountId: String?) async throws
 
     /// Updates the dashboard type for the specified account.
     /// - Parameters:

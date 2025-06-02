@@ -7,6 +7,7 @@ enum AccountError: LocalizedError {
     case networkError(Error)
     case notImplemented
     case unknown(Error)
+    case maxAccountsReached
     
     var errorDescription: String? {
         switch self {
@@ -22,6 +23,8 @@ enum AccountError: LocalizedError {
             return "This feature is not implemented yet"
         case .unknown(let error):
             return "Unknown error: \(error.localizedDescription)"
+        case .maxAccountsReached:
+            return "Maximum number of accounts (10) reached. Please remove an account before adding a new one."
         }
     }
 } 
