@@ -24,11 +24,8 @@ object NotificationModule {
      */
     @Provides
     @Singleton
-    fun provideNotificationService(
-        notificationHandler: NotificationHandler,
-    ): NotificationService {
-        return NotificationService(notificationHandler)
-    }
+    fun provideNotificationService(notificationHandler: NotificationHandler): NotificationService =
+        NotificationService(notificationHandler)
 
     /**
      * Provides a singleton instance of [NotificationHandler].
@@ -39,7 +36,5 @@ object NotificationModule {
     @Singleton
     fun provideNotificationHandler(
         @ApplicationContext context: Context,
-    ): NotificationHandler {
-        return NotificationHandler(context)
-    }
+    ): NotificationHandler = NotificationHandler(context)
 }

@@ -3,7 +3,19 @@ package com.greatergoods.meapp.core.network.interfaces
 import com.greatergoods.meapp.core.network.utility.NetworkState
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Interface for observing network connectivity changes and retrieving current network state.
+ */
 interface IConnectivityObserver {
-        fun observe(): Flow<NetworkState>
-        fun getCurrentNetworkState(): NetworkState
+    /**
+     * Observes network state changes as a Flow.
+     * @return Flow emitting the current [NetworkState].
+     */
+    fun observe(): Flow<NetworkState>
+
+    /**
+     * Gets the current network state synchronously.
+     * @return The current [NetworkState].
+     */
+    fun getCurrentNetworkState(): NetworkState
 }

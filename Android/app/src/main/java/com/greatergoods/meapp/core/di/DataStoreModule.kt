@@ -10,6 +10,9 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import android.content.Context
 
+/**
+ * Dagger Hilt module for providing theme-related dependencies.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object DataStoreModule {
@@ -19,6 +22,11 @@ object DataStoreModule {
         @ApplicationContext context: Context,
     ): ThemeDataStore = ThemeDataStore(context)
 
+    /**
+     * Provides a singleton instance of [ThemeRepository].
+     * @param themeDataStore The data store for theme preferences.
+     * @return [ThemeRepository] instance.
+     */
     @Provides
     @Singleton
     fun provideFcmDataStore(

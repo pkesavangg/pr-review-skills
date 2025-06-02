@@ -1,9 +1,8 @@
 package com.greatergoods.meapp.features.sample
 
-import android.content.res.Configuration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
+import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
@@ -14,18 +13,10 @@ fun DeviceSettingsScreen() {
     Text("Device Settings Screen")
 }
 
-@Preview(name = "DeviceSettingsScreen Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@PreviewTheme
 @Composable
-private fun PreviewDeviceSettingsScreenLight() {
-    MeAppTheme(darkTheme = false) {
+private fun PreviewDeviceSettingsScreen() {
+    MeAppTheme {
         DeviceSettingsScreen()
     }
 }
-
-@Preview(name = "DeviceSettingsScreen Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun PreviewDeviceSettingsScreenDark() {
-    MeAppTheme(darkTheme = true) {
-        DeviceSettingsScreen()
-    }
-} 
