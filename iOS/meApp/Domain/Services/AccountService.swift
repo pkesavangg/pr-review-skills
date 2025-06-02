@@ -40,6 +40,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.isSynced = true
             account.isActiveAccount = true // New account is active by default
             account.isExpired = false // New account is not expired by default
+            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
             try await makeOtherAccountsInactive(except: account)
             try await localRepo.saveAccount(account)
             try await updatePublishedState()
@@ -63,6 +64,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.isSynced = true
             account.isActiveAccount = true // New account is active by default
             account.isExpired = false // New account is not expired by default
+            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
             try await makeOtherAccountsInactive(except: account)
             try await localRepo.saveAccount(account)
             try await updatePublishedState()
@@ -122,6 +124,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     func setActiveAccount(_ account: Account) async throws {
         account.isActiveAccount = true
+        account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
         try await makeOtherAccountsInactive(except: account)
         try await localRepo.updateAccount(account)
         try await updatePublishedState()
