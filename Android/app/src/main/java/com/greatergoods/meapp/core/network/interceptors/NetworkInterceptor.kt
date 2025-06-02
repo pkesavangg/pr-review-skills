@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.network.interceptors
 
 import androidx.annotation.RequiresApi
-import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol
@@ -21,7 +21,7 @@ import android.os.Build
 class NetworkInterceptor
     @Inject
     constructor(
-        private val networkConnectivityObserver: NetworkConnectivityObserver,
+        private val networkConnectivityObserver: IConnectivityObserver,
     ) : Interceptor {
         /**
          * Intercepts each HTTP request to check for network availability.
