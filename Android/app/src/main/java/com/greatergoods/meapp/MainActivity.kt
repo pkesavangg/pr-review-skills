@@ -4,7 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
-import com.greatergoods.meapp.core.navigation.AppNavigation
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
 import dagger.hilt.android.AndroidEntryPoint
@@ -12,7 +11,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import timber.log.Timber
 
 /**
  * Main entry point for the MeApp application.
@@ -20,7 +19,6 @@ import android.util.Log
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     /**
      * Injected service for handling app-level navigation events.
      */
@@ -35,7 +33,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AppNavigation()
+            MeApp()
         }
         handleIntentNavigationIfNeeded(intent)
     }
@@ -56,7 +54,7 @@ class MainActivity : ComponentActivity() {
     private fun handleIntentNavigationIfNeeded(intent: Intent?) {
         lifecycleScope.launch {
             val destination = intent?.getStringExtra("destination")
-            Log.i("MainActivityNavigation", "Destination: $destination")
+            Timber.i("Destination: $destination")
             when (destination) {
                 "productDetail" -> {
                     eventService.addTopLevelRoute(AppRoute.Product.ProductList)

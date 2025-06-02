@@ -9,7 +9,7 @@ import javax.inject.Inject
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import timber.log.Timber
 
 const val ME_APP = "ME_APP"
 
@@ -31,7 +31,7 @@ class PushNotificationService : FirebaseMessagingService() {
      * @param token The new FCM token.
      */
     override fun onNewToken(token: String) {
-        Log.i(ME_APP, "New FCM token: $token")
+        Timber.i("New FCM token: $token")
         // Send token to server if needed
     }
 

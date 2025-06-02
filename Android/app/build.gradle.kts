@@ -29,6 +29,8 @@ android {
     }
 
     buildTypes {
+        debug {
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -46,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     android.applicationVariants.all {
         val variantName = this.name // get the variant name here
@@ -121,7 +124,10 @@ dependencies {
 
     // Protobuf dependencies
     implementation(libs.protobuf.javalite)
-    implementation(libs.androidx.datastore.v100)
+    implementation(libs.androidx.datastore)
+
+    // Timber
+    implementation(libs.timber)
 
     // modules
     implementation(project(":notification"))
