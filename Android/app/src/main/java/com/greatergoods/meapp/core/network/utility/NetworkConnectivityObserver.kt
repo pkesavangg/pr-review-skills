@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.content.getSystemService
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -22,29 +23,25 @@ data class NetworkState (
 )
 @RequiresApi(Build.VERSION_CODES.M)
 class NetworkConnectivityObserver @Inject constructor(
-    private val context: Context
-): IConnectivityObserver {
+    @ApplicationContext private val context: Context
+) : IConnectivityObserver {
 
     override fun observe(): Flow<NetworkState> = callbackFlow {
         val connectivityManager = context.getSystemService<ConnectivityManager>()
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                super.onAvailable(network)
                 trySend(NetworkState(available = true, unAvailable = false))
             }
 
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                super.onCapabilitiesChanged(network, capabilities)
-                val capabilities = connectivityManager?.getNetworkCapabilities(network)
-                val state = capabilities?.let { hasCapabilitiesChanged(it) }
-                    ?: NetworkState(available = false, unAvailable = true) // fallback when capabilities are null
+                val updatedCapabilities = connectivityManager?.getNetworkCapabilities(network)
+                val state = updatedCapabilities?.let { hasCapabilitiesChanged(it) }
+                    ?: NetworkState(available = false, unAvailable = true)
                 trySend(state)
             }
 
-
             override fun onLost(network: Network) {
-                super.onLost(network)
                 trySend(NetworkState(available = false, unAvailable = true))
             }
         }
@@ -56,9 +53,8 @@ class NetworkConnectivityObserver @Inject constructor(
 
         connectivityManager?.registerNetworkCallback(networkRequest, callback)
 
-        // Set initial value
-        val currentState = getCurrentNetworkState(connectivityManager)
-        trySend(currentState)
+        // Emit initial state
+        getCurrentNetworkState(connectivityManager)?.let { trySend(it) }
 
         awaitClose {
             connectivityManager?.unregisterNetworkCallback(callback)
@@ -66,20 +62,20 @@ class NetworkConnectivityObserver @Inject constructor(
     }.distinctUntilChanged()
 
     override fun getCurrentNetworkState(): NetworkState {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager = context.getSystemService<ConnectivityManager>()
         return getCurrentNetworkState(connectivityManager)
+            ?: NetworkState(available = false, unAvailable = true) // fallback
     }
 
-    private fun getCurrentNetworkState(connectivityManager: ConnectivityManager?): NetworkState {
+    private fun getCurrentNetworkState(connectivityManager: ConnectivityManager?): NetworkState? {
         val network = connectivityManager?.activeNetwork
         val capabilities = connectivityManager?.getNetworkCapabilities(network)
-        return hasCapabilitiesChanged(capabilities!!)
+        return capabilities?.let { hasCapabilitiesChanged(it) }
     }
 
-    private fun hasCapabilitiesChanged(capabilities: NetworkCapabilities): NetworkState{
-        val isConnected  = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-        return NetworkState(available = isConnected, unAvailable = isConnected)
+    private fun hasCapabilitiesChanged(capabilities: NetworkCapabilities): NetworkState {
+        val isConnected = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return NetworkState(available = isConnected, unAvailable = !isConnected)
     }
-
 }

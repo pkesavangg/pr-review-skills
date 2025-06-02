@@ -54,7 +54,7 @@ final class Device {
     var token: String? // Token for scale authentication
 
     // Relationships
-    @Relationship(deleteRule: .cascade) var bathScale: BathScaleEntry?
+    @Relationship(deleteRule: .cascade) var bathScale: BathScale?
     @Relationship(deleteRule: .cascade) var r4ScalePreference: R4ScalePreference?
     @Relationship(deleteRule: .cascade) var metaData: DeviceMetaData?
 
@@ -79,7 +79,7 @@ final class Device {
          wifiMac: String? = nil,
          isWifiConfigured: Bool? = nil,
          token: String? = nil,
-         bathScale: BathScaleEntry? = nil,
+         bathScale: BathScale? = nil,
          r4ScalePreference: R4ScalePreference? = nil,
          metaData: DeviceMetaData? = nil) {
         self.id = id
@@ -107,6 +107,41 @@ final class Device {
         self.r4ScalePreference = r4ScalePreference
         self.metaData = metaData
     }
+    convenience init(from dto: ScaleDTO,
+                     protocolType: String? = nil,
+                     isSynced: Bool? = nil,
+                     lastModified: Int? = nil,
+                     isConnected: Bool? = nil,
+                     isWifiConfigured: Bool? = nil,
+                     scaleType: String? = nil,
+                     bodyComp: Bool? = nil) {
+        self.init(
+            id: dto.id ?? UUID().uuidString,
+            accountId: dto.userId ?? "",
+            peripheralIdentifier: dto.peripheralIdentifier,
+            nickname: dto.nickname,
+            sku: dto.sku,
+            mac: dto.mac,
+            password: dto.password.map { String($0) },
+            isDeleted: dto.isDeleted,
+            deviceName: dto.name,
+            deviceType: dto.type,
+            broadcastId: dto.broadcastId.map { String($0) },
+            broadcastIdString: dto.broadcastIdString,
+            userNumber: dto.userNumber.map { String($0) },
+            protocolType: protocolType,
+            createdAt: dto.createdAt,
+            lastModified: lastModified,
+            isSynced: isSynced,
+            isConnected: dto.isConnected,
+            wifiMac: dto.metaData?.wifiMac,
+            isWifiConfigured: dto.isWifiConfigured,
+            token: dto.scaleToken,
+            bathScale: BathScale(scaleType: scaleType, bodyComp: bodyComp),
+            r4ScalePreference: dto.preference.map { R4ScalePreference(from: $0) },
+            metaData: dto.metaData.map { DeviceMetaData(from: $0) }
+        )
+    }
 
     func toDTO() -> ScaleDTO {
         return ScaleDTO(
@@ -117,7 +152,7 @@ final class Device {
             isConnected: self.isConnected,
             isDeleted: self.isDeleted,
             isTemporary: nil,
-            isWeighOnlyModeEnabledByOthers: nil, 
+            isWeighOnlyModeEnabledByOthers: nil,
             isWifiConfigured: self.isWifiConfigured,
             latestVersion: self.metaData?.latestVersion,
             mac: self.mac,
