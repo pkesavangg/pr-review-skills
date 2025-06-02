@@ -28,6 +28,10 @@ protocol AccountServiceProtocol {
     /// Deletes the currently active account.
     func deleteAccount() async throws
 
+    /// Removes an account from local storage only.
+    /// - Parameter accountId: The ID of the account to remove locally.
+    func removeAccountLocally(accountId: String) async throws
+
     /// Switches the active session to the specified account.
     /// - Parameter account: The account to switch to.
     func switchAccount(to account: Account) async throws
@@ -119,4 +123,8 @@ protocol AccountServiceProtocol {
 
     /// Deletes all accounts stored locally on the device.
     func deleteAllAccountsLocally() async throws
+    
+    /// Syncs all unsynced accounts with the backend.
+    /// - Note: This should be called on app launch to ensure all local changes are synchronized.
+    func syncUnsyncedAccounts() async throws
 }

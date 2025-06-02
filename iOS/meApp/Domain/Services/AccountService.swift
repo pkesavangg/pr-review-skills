@@ -4,7 +4,6 @@ import Foundation
 final class AccountService: AccountServiceProtocol, ObservableObject {
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
-    private let maxAccounts = 10 // Maximum number of accounts allowed
     
     @Published var activeAccount: Account? = nil
     
@@ -333,7 +332,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     private func hasReachedMaxAccounts() async throws -> Bool {
         let count = try await getAccountCount()
-        return count >= maxAccounts
+        return count >= AppConstants.Account.maxAccounts
     }
     
     private func getAccountCount() async throws -> Int {
