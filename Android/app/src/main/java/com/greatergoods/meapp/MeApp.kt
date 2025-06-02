@@ -8,19 +8,26 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
-import com.greatergoods.meapp.features.common.components.NavHost
+import com.greatergoods.meapp.features.common.components.DialogQueueHost
+import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.theme.ThemeViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 
+/**
+ * Main app composable. Sets up theme, navigation, and global dialog queue host.
+ */
 @Composable
 fun MeApp() {
     val themeViewModel: ThemeViewModel = hiltViewModel()
+    val dialogQueueViewModel: DialogQueueViewModel = hiltViewModel()
     val themeMode by themeViewModel.themeMode.collectAsState()
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
 
     MeAppTheme(themeMode = themeMode) {
+        // Global dialog host
+        DialogQueueHost(dialogQueueViewModel)
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-            NavHost(topLevelBackStack, themeViewModel)
+            com.greatergoods.meapp.features.common.components.NavHost(topLevelBackStack, themeViewModel)
         }
     }
 }
