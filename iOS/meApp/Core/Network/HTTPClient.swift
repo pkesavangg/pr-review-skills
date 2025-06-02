@@ -12,6 +12,8 @@ final class HTTPClient {
     static let shared = HTTPClient()
     // Singleton instance for shared access
     @Injector var accountService: AccountService
+    private let tokenManager = TokenManager.shared
+    private let maxRetries = 3
     private init() {}
     
     private var accessToken: String {
@@ -28,8 +30,14 @@ final class HTTPClient {
     ) async throws -> T {
         try await checkConnectivity()
         
-        let request = try makeRequest(for: endpoint, method: .get, headers: headers, needsAuth: needsAuth, customToken: customToken)
-        return try await send(request: request)
+        let request = try makeRequest(
+            for: endpoint,
+            method: .get,
+            headers: headers,
+            needsAuth: needsAuth,
+            customToken: customToken
+        )
+        return try await send(request: request, needsAuth: needsAuth, customToken: customToken)
     }
     
     // MARK: - POST/PUT/PATCH/DELETE with Body
@@ -43,14 +51,49 @@ final class HTTPClient {
     ) async throws -> R {
         try await checkConnectivity()
         
-        var request = try makeRequest(for: endpoint, method: method, headers: headers, needsAuth: needsAuth, customToken: customToken)
+        var request = try makeRequest(
+            for: endpoint,
+            method: method,
+            headers: headers,
+            needsAuth: needsAuth,
+            customToken: customToken
+        )
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
-        return try await send(request: request)
+        return try await send(request: request, needsAuth: needsAuth, customToken: customToken)
     }
     
     // MARK: - Core Send Logic
-    private func send<T: Decodable>(request: URLRequest) async throws -> T {
+    private func send<T: Decodable>(
+        request: URLRequest,
+        needsAuth: Bool,
+        customToken: String?,
+        retryCount: Int = 0
+    ) async throws -> T {
+        // Skip token check for logout and refresh token endpoints
+        let skipTokenCheck = request.url?.path.contains("/refresh-token") == true ||
+                           request.url?.path.contains("/logout") == true
+        
+        // Only check token expiration if needed and not skipped
+        if needsAuth && !skipTokenCheck {
+            if let account = customToken != nil ? try await getAccountForToken(customToken!) : accountService.activeAccount,
+               tokenManager.checkTokenExpiration(expiresAt: account.expiresAt)
+            {
+                let tokens = try await tokenManager.refreshToken(customToken: customToken)
+                var newRequest = request
+                newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
+                return try await performRequest(newRequest)
+            }
+        }
+        
+        do {
+            return try await performRequest(request)
+        } catch {
+            throw error
+        }
+    }
+    
+    private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -102,6 +145,11 @@ final class HTTPClient {
         }
     }
     
+    private func getAccountForToken(_ token: String) async throws -> Account? {
+        // Find account matching the custom token
+        return try await accountService.fetchAllAccounts().first { $0.accessToken == token }
+    }
+    
     // MARK: - Request Constructor
     private func makeRequest(
         for endpoint: Endpoint,
@@ -118,7 +166,7 @@ final class HTTPClient {
         
         var allHeaders = headers ?? [:]
         if needsAuth {
-            let token = customToken ?? accessToken
+            let token = customToken ?? accountService.activeAccount?.accessToken ?? ""
             if !token.isEmpty {
                 allHeaders["Authorization"] = "Bearer \(token)"
             }

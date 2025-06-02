@@ -106,4 +106,15 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         struct Request: Codable { let oldPassword: String; let newPassword: String }
         return try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true)
     }
+    
+    func refreshToken(refreshToken: String, accessToken: String?) async throws -> Tokens {
+        struct Request: Codable { let refreshToken: String }
+        return try await httpClient.send(
+            .refreshToken,
+            method: .post,
+            body: Request(refreshToken: refreshToken),
+            needsAuth: true,
+            customToken: accessToken
+        )
+    }
 }

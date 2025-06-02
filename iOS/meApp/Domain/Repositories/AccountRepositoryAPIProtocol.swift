@@ -93,5 +93,12 @@ protocol AccountRepositoryAPIProtocol {
     ///   - newPassword: The new password to set.
     ///   - Returns: Tokens (access and refresh tokens)
     func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens
+    
+    /// Refreshes the access token using the provided refresh token. (POST /account/refresh-token)
+    /// - Parameters:
+    ///  - refreshToken: The refresh token to use for refreshing the session.
+    ///  - accessToken: The current access token, if available (optional).
+    ///  - Returns: Tokens (access and refresh tokens)
+    func refreshToken(refreshToken: String, accessToken: String?) async throws -> Tokens
 }
 

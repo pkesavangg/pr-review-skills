@@ -624,4 +624,35 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         allAccounts = try await localRepo.fetchAllAccounts()
         activeAccount = allAccounts.first(where: { $0.isActiveAccount == true })
     }
+    
+    func refreshTokens(customToken: String? = nil) async throws -> Tokens {
+        let account = customToken != nil ? 
+            try await fetchAccountByToken(customToken!) : 
+            activeAccount
+        
+        guard let account = account,
+              let refreshToken = account.refreshToken else {
+            throw AccountError.noActiveAccount
+        }
+        
+        return try await apiRepo.refreshToken(
+            refreshToken: refreshToken,
+            accessToken: customToken ?? account.accessToken
+        )
+    }
+    
+    func getActiveTokens() async throws -> Tokens {
+        guard let account = activeAccount else {
+            throw AccountError.noActiveAccount
+        }
+        return Tokens(
+            accessToken: account.accessToken ?? "",
+            refreshToken: account.refreshToken ?? "",
+            expiresAt: account.expiresAt ?? ""
+        )
+    }
+    
+    private func fetchAccountByToken(_ token: String) async throws -> Account? {
+        return try await fetchAllAccounts().first { $0.accessToken == token }
+    }
 }
