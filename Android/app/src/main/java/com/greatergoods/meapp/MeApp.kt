@@ -8,7 +8,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
-import com.greatergoods.meapp.features.common.components.NavGraph
+import com.greatergoods.meapp.features.common.components.NavHost
 import com.greatergoods.meapp.features.theme.ThemeViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 
@@ -20,7 +20,7 @@ fun MeApp() {
 
     MeAppTheme(themeMode = themeMode) {
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-            NavGraph(topLevelBackStack, themeViewModel)
+            NavHost(topLevelBackStack, themeViewModel)
         }
     }
 }

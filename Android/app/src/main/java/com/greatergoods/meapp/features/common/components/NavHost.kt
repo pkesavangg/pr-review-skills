@@ -8,13 +8,16 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.core.navigation.TopLevelBackStack
 import com.greatergoods.meapp.features.theme.ThemeViewModel
+import com.greatergoods.meapp.initEntries
+import com.greatergoods.meapp.mainEntries
+import com.greatergoods.meapp.productEntries
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
  *
  */
 @Composable
-fun NavGraph(
+fun NavHost(
     backStack: TopLevelBackStack<NavKey>,
     themeViewModel: ThemeViewModel,
 ) {
