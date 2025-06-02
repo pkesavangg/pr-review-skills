@@ -1,12 +1,17 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
-import androidx.room.*
-import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceDetails
+import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceDetails
+import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -76,7 +81,10 @@ interface DeviceDao {
      * @return A Flow of devices of the specified type
      */
     @Query("SELECT * FROM device WHERE accountId = :accountId AND deviceType = :deviceType")
-    fun getDevicesByType(accountId: String, deviceType: String): Flow<List<DeviceEntity>>
+    fun getDevicesByType(
+        accountId: String,
+        deviceType: String,
+    ): Flow<List<DeviceEntity>>
 
     /**
      * Get connected devices for a specific user.
@@ -93,7 +101,10 @@ interface DeviceDao {
      * @return The number of rows updated
      */
     @Query("UPDATE device SET isConnected = :isConnected WHERE id = :id")
-    suspend fun updateConnectionStatus(id: String, isConnected: Boolean): Int
+    suspend fun updateConnectionStatus(
+        id: String,
+        isConnected: Boolean,
+    ): Int
 
     /**
      * Update device sync status.
@@ -102,7 +113,10 @@ interface DeviceDao {
      * @return The number of rows updated
      */
     @Query("UPDATE device SET isSynced = :isSynced WHERE id = :id")
-    suspend fun updateSyncStatus(id: String, isSynced: Boolean): Int
+    suspend fun updateSyncStatus(
+        id: String,
+        isSynced: Boolean,
+    ): Int
 
     /**
      * Update device WiFi configuration status.
@@ -111,7 +125,10 @@ interface DeviceDao {
      * @return The number of rows updated
      */
     @Query("UPDATE device SET isWifiConfigured = :isWifiConfigured WHERE id = :id")
-    suspend fun updateWifiConfigStatus(id: String, isWifiConfigured: Boolean): Int
+    suspend fun updateWifiConfigStatus(
+        id: String,
+        isWifiConfigured: Boolean,
+    ): Int
 
     /**
      * Update device deletion status.
@@ -120,7 +137,10 @@ interface DeviceDao {
      * @return The number of rows updated
      */
     @Query("UPDATE device SET isDeleted = :isDeleted WHERE id = :id")
-    suspend fun updateDeletionStatus(id: String, isDeleted: Boolean): Int
+    suspend fun updateDeletionStatus(
+        id: String,
+        isDeleted: Boolean,
+    ): Int
 
     /**
      * Get device by MAC address.
@@ -153,7 +173,10 @@ interface DeviceDao {
      * @return The number of rows updated
      */
     @Query("UPDATE device SET nickname = :nickname WHERE id = :id")
-    suspend fun updateNickname(id: String, nickname: String): Int
+    suspend fun updateNickname(
+        id: String,
+        nickname: String,
+    ): Int
 
     /**
      * Update device token.
@@ -162,7 +185,10 @@ interface DeviceDao {
      * @return The number of rows updated
      */
     @Query("UPDATE device SET token = :token WHERE id = :id")
-    suspend fun updateToken(id: String, token: String): Int
+    suspend fun updateToken(
+        id: String,
+        token: String,
+    ): Int
 
     /**
      * Delete all devices for a specific user.
@@ -182,7 +208,10 @@ interface DeviceDao {
 
     @Transaction
     @Query("SELECT * FROM device WHERE deviceType = :deviceType AND accountId = :accountId")
-    fun getDevicesByTypeWithAccount(deviceType: String, accountId: String): Flow<List<DeviceDetails>>
+    fun getDevicesByTypeWithAccount(
+        deviceType: String,
+        accountId: String,
+    ): Flow<List<DeviceDetails>>
 
     @Transaction
     @Query("SELECT * FROM device WHERE isConnected = 1 AND accountId = :accountId")
@@ -190,7 +219,10 @@ interface DeviceDao {
 
     @Transaction
     @Query("SELECT * FROM device WHERE mac = :mac AND accountId = :accountId")
-    suspend fun getDeviceByMacWithAccount(mac: String, accountId: String): DeviceDetails?
+    suspend fun getDeviceByMacWithAccount(
+        mac: String,
+        accountId: String,
+    ): DeviceDetails?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertScale(scale: ScaleEntity)
@@ -217,7 +249,10 @@ interface DeviceDao {
     suspend fun deleteDevice(deviceId: String)
 
     @Transaction
-    suspend fun updateDeviceConnection(deviceId: String, isConnected: Boolean) {
+    suspend fun updateDeviceConnection(
+        deviceId: String,
+        isConnected: Boolean,
+    ) {
         // Update the device's connection status
         // You might want to add a specific query for this
     }

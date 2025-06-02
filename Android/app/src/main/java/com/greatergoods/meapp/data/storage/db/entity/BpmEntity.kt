@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.data.storage.db.entity
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -16,13 +15,12 @@ import androidx.room.PrimaryKey
             entity = DeviceEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class BpmEntity(
     @PrimaryKey
     val id: String,
-
-    val hasNumericUsers: Boolean = false
-) 
+    val hasNumericUsers: Boolean = false,
+)

@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
  * supporting both weight scale and blood pressure monitor functionalities.
  */
 interface IEntryRepository {
-    // Basic CRUD Operations
     /**
      * Retrieves all entries from the data source.
      * @return Flow of list of EntryDTO objects
@@ -45,13 +44,17 @@ interface IEntryRepository {
     suspend fun deleteEntry(id: String): Flow<Boolean>
 
     // Time-based Queries
+
     /**
      * Retrieves entries within a specific date range.
      * @param startDate The start date of the range
      * @param endDate The end date of the range
      * @return Flow of list of EntryDTO objects within the date range
      */
-    fun getEntriesByDateRange(startDate: Long, endDate: Long): Flow<List<EntryDTO>>
+    fun getEntriesByDateRange(
+        startDate: Long,
+        endDate: Long,
+    ): Flow<List<EntryDTO>>
 
     /**
      * Retrieves the most recent entry.
@@ -67,6 +70,7 @@ interface IEntryRepository {
     fun getLastNDaysEntries(days: Int): Flow<List<EntryDTO>>
 
     // Device-specific Operations
+
     /**
      * Retrieves entries for a specific device type.
      * @param deviceType The type of device (e.g., "scale", "bpm")
@@ -82,6 +86,7 @@ interface IEntryRepository {
     fun getEntriesBySource(source: String): Flow<List<EntryDTO>>
 
     // Sync Operations
+
     /**
      * Retrieves all unsynced entries.
      * @return Flow of list of unsynced EntryDTO objects
@@ -103,6 +108,7 @@ interface IEntryRepository {
     suspend fun markEntriesSynced(ids: List<String>): Flow<Boolean>
 
     // Account-specific Operations
+
     /**
      * Retrieves all entries for a specific account.
      * @param accountId The account ID
@@ -116,4 +122,4 @@ interface IEntryRepository {
      * @return Flow of Boolean indicating success
      */
     suspend fun deleteAllEntriesForAccount(accountId: String): Flow<Boolean>
-} 
+}
