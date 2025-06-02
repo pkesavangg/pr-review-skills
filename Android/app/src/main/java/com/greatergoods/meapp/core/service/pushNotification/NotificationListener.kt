@@ -10,7 +10,6 @@ import android.service.notification.StatusBarNotification
  */
 @AndroidEntryPoint
 class NotificationListener : NotificationListenerService() {
-
     @Inject
     lateinit var notificationService: NotificationService
 

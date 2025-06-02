@@ -79,7 +79,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.firebase.messaging.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -113,6 +112,7 @@ dependencies {
     // Firebase
     // Import the Firebase BoM
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging.ktx)
     // When using the BoM, you don't specify versions in Firebase library dependencies
     // Add the dependency for the Firebase SDK for Google Analytics
     implementation(libs.firebase.analytics)
