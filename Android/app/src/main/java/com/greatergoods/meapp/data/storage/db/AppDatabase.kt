@@ -17,10 +17,9 @@ import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
+import android.content.Context
 
 /**
  * Main database class for the MeApp application.

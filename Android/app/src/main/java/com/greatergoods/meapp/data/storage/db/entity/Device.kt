@@ -36,16 +36,6 @@ data class DeviceDetails(
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
-    )
-    val bpm: BpmEntity? = null,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
-    )
-    val meta: DeviceMetaDataEntity? = null,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
         entity = R4ScalePreferenceEntity::class,
     )
     val r4Preference: R4ScalePreferenceEntity? = null,
