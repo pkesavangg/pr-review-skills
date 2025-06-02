@@ -11,14 +11,14 @@ import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.WeightScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.WeightScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 
 /**
@@ -28,13 +28,13 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
     entities = [
         AccountEntity::class,
         DeviceEntity::class,
-        WeightScaleEntity::class,
+        BodyScaleEntity::class,
         DeviceMetaDataEntity::class,
         BpmEntity::class,
         R4ScalePreferenceEntity::class,
         EntryEntity::class,
-        WeightScaleEntryEntity::class,
-        ScaleEntryMetricEntity::class,
+        BodyScaleEntryEntity::class,
+        BodyScaleEntryMetricEntity::class,
         BpmEntryEntity::class
     ],
     version = 1,

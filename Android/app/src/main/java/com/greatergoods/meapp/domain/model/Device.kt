@@ -28,7 +28,7 @@ data class Device(
     val isWifiConfigured: Boolean,
     val token: String?,
 
-    // Scale properties
+    // Body Scale properties
     val scaleType: String?,
     val bodyComp: Boolean,
 
@@ -55,4 +55,4 @@ data class Device(
 
     // BPM
     val hasNumericUsers: Boolean?
-) 
+)
