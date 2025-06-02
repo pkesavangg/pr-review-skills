@@ -4,10 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.core.navigation.TopLevelBackStack
-import com.greatergoods.meapp.features.theme.ThemeViewModel
+import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
 import com.greatergoods.meapp.initEntries
 import com.greatergoods.meapp.mainEntries
 import com.greatergoods.meapp.productEntries
@@ -19,19 +18,18 @@ import com.greatergoods.meapp.productEntries
 @Composable
 fun NavHost(
     backStack: TopLevelBackStack<NavKey>,
-    themeViewModel: ThemeViewModel,
+    appViewModel: AppViewModel,
 ) {
     NavigationObserver(
-        themeViewModel.appEventService.navigationIntent,
+        appViewModel.appEventService.navigationIntent,
         backStack,
     )
-    val selectedRoute = backStack.topLevelKey as AppRoute
     NavDisplay(
         backStack = backStack.backStack,
         onBack = { backStack.removeLast() },
         entryProvider =
             entryProvider {
-                initEntries(themeViewModel)
+                initEntries(appViewModel)
                 mainEntries()
                 productEntries()
             },
