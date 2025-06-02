@@ -1,9 +1,26 @@
 package com.greatergoods.meapp
 
 import androidx.compose.runtime.Composable
-import com.greatergoods.meapp.core.navigation.AppNavigation
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
+import com.greatergoods.meapp.features.common.components.NavGraph
+import com.greatergoods.meapp.features.theme.ThemeViewModel
+import com.greatergoods.meapp.theme.MeAppTheme
 
 @Composable
 fun MeApp() {
-    AppNavigation()
+    val themeViewModel: ThemeViewModel = hiltViewModel()
+    val themeMode by themeViewModel.themeMode.collectAsState()
+    val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
+
+    MeAppTheme(themeMode = themeMode) {
+        CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
+            NavGraph(topLevelBackStack, themeViewModel)
+        }
+    }
 }
