@@ -1,6 +1,5 @@
 import Foundation
 
-@MainActor
 final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     private let httpClient = HTTPClient.shared
 
@@ -103,8 +102,8 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         _ = try await httpClient.send(.requestPasswordReset, method: .post, body: Request(email: email)) as EmptyResponse
     }
 
-    func updatePassword(oldPassword: String, newPassword: String) async throws {
+    func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens {
         struct Request: Codable { let oldPassword: String; let newPassword: String }
-        _ = try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true) as EmptyResponse
+        return try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true)
     }
-} 
+}

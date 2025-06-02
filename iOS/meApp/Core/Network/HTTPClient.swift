@@ -7,14 +7,13 @@
 
 import Foundation
 
-@MainActor
 final class HTTPClient {
     static let shared = HTTPClient()
     private init() {}
     
     private var accessToken: String {
         // TODO: Retrieve the access token from the AccountService for the logged-in user
-        ""
+        "z8WLH3sYfnxa1jgaE+8yVEMMsoydMXkwpHW+aSLwPRQf90Au7Xd6Ow8BVGbFTM9F/aV0f3r+L9AnFPQj8Up0Cw=="
     }
     
     // MARK: - GET Request
@@ -116,7 +115,7 @@ final class HTTPClient {
     
     // MARK: - Connectivity Check
     private func checkConnectivity() async throws {
-        if !NetworkMonitor.shared.isConnected {
+        if await !NetworkMonitor.shared.isConnected {
             throw NetworkError.noInternet
         }
     }

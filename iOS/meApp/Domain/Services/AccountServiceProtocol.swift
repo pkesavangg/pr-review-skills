@@ -1,7 +1,9 @@
 import Foundation
 
 /// Protocol defining the service interface for managing user accounts, including authentication, state, updates, security, and sync/offline operations.
+@MainActor
 protocol AccountServiceProtocol {
+    var currentLoggedInAccount : Account? { get set }
     // MARK: - Account Lifecycle
 
     /// Registers a new user account with the given email, password, and profile.
@@ -20,12 +22,11 @@ protocol AccountServiceProtocol {
     func logIn(email: String, password: String) async throws -> Account
 
     /// Logs out the account with the specified ID.
-    /// - Parameter accountId: The ID of the account to log out.
-    func logOut(accountId: String) async throws
+    /// - Parameter accountId: The ID of the account to log out. If nil, logs out the currently active account.
+    func logOut(accountId: String?) async throws
 
-    /// Deletes the account with the specified ID.
-    /// - Parameter accountId: The ID of the account to delete.
-    func deleteAccount(accountId: String) async throws
+    /// Deletes the currently active account.
+    func deleteAccount() async throws
 
     /// Switches the active session to the specified account.
     /// - Parameter account: The account to switch to.
@@ -111,9 +112,9 @@ protocol AccountServiceProtocol {
     // MARK: - Sync & Offline
 
     /// Refreshes the account data from the backend for the specified account ID.
-    /// - Parameter accountId: The ID of the account to refresh.
+    /// - Parameter accountId: The ID of the account to refresh. If nil, refreshes the currently active account.
     /// - Returns: The refreshed Account object.
-    func refreshAccount(accountId: String) async throws -> Account
+    func refreshAccount(accountId: String?) async throws -> Account
 
     /// Clears all offline data for the specified account.
     /// - Parameter account: The account whose offline data should be cleared.

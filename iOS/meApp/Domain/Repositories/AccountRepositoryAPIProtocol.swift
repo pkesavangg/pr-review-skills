@@ -90,6 +90,7 @@ protocol AccountRepositoryAPIProtocol {
     /// - Parameters:
     ///   - oldPassword: The current password.
     ///   - newPassword: The new password to set.
-    func updatePassword(oldPassword: String, newPassword: String) async throws
+    ///   - Returns: Tokens (access and refresh tokens)
+    func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens
 }
 
