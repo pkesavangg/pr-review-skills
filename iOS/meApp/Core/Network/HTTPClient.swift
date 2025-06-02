@@ -89,6 +89,20 @@ final class HTTPClient {
         do {
             return try await performRequest(request)
         } catch {
+            if let networkError = error as? NetworkError {
+                switch networkError {
+                case .statusCode(let code):
+                    if code == 401 && needsAuth && !skipTokenCheck {
+                        // Try to refresh token and retry request
+                        let tokens = try await tokenManager.refreshToken(customToken: customToken)
+                        var newRequest = request
+                        newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
+                        return try await send(request: newRequest, needsAuth: needsAuth, customToken: customToken)
+                    }
+                default:
+                    break
+                }
+            }
             throw error
         }
     }
