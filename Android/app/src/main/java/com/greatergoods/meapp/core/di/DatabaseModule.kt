@@ -5,6 +5,7 @@ import com.greatergoods.meapp.data.storage.db.AppDatabase
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
+import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,10 +19,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+
     /**
-     * Provides a singleton instance of [AccountDao].
-     * @param database The app's Room database.
-     * @return [AccountDao] instance.
+     * Provides a singleton instance of [AppDatabase].
+     * @param context The application context.
+     * @return [AppDatabase] instance.
      */
     @Provides
     @Singleton
@@ -29,6 +31,11 @@ object DatabaseModule {
         @ApplicationContext context: Context
     ): AppDatabase = AppDatabase.getInstance(context)
 
+    /**
+     * Provides a singleton instance of [AccountDao].
+     * @param database The app's Room database.
+     * @return [AccountDao] instance.
+     */
     @Provides
     @Singleton
     fun provideAccountDao(
@@ -54,4 +61,15 @@ object DatabaseModule {
     fun provideEntryDao(
         database: AppDatabase
     ): EntryDao = database.entryDao()
+
+    /**
+     * Provides a singleton instance of [LogDao].
+     * @param database The app's Room database.
+     * @return [LogDao] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideLogDao(
+        database: AppDatabase
+    ): LogDao = database.logDao()
 }

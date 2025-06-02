@@ -191,6 +191,22 @@ Stores user blood glucose monitor details for connected BGM devices.
 | id                | string  | Unique BGM ID (PK, FK to device.id)             |
 | has_numeric_users | boolean | If device supports numeric users(e.g. User A/B) |
 
+## Table: logs
+
+Stores application logs for debugging, monitoring, and auditing purposes.
+
+| Column Name | Type   | Description                                       |
+| ----------- | ------ | ------------------------------------------------- |
+| id          | string | Unique identifier for the log entry (PK)          |
+| account_id  | string | ID of the account associated with this log        |
+| session_id  | string | Session identifier, generated on app launch       |
+| tag         | string | Class name or component that generated the log    |
+| tag_id      | string | Function or method name that generated the log    |
+| type        | string | Type of log (i=info, e=error, d=debug, s=success) |
+| message     | string | Short message describing the log entry            |
+| timestamp   | long   | Timestamp when the log was created                |
+| data        | string | Additional data associated with the log entry     |
+
 ## Entity Relationship Diagram
 
 ```mermaid
@@ -244,6 +260,18 @@ erDiagram
         string zipcode
     }
 
+    logs {
+        string id PK
+        string account_id FK
+        string session_id
+        string tag
+        string tag_id
+        string type
+        string message
+        long timestamp
+        string data
+    }
+
     entry {
         INTEGER id PK
         TEXT user_id FK
@@ -265,7 +293,7 @@ erDiagram
         TEXT source
     }
 
-    body_body_scale_entry_metric {
+    body_scale_entry_metric {
         INTEGER id PK
         INTEGER bmr
         INTEGER metabolic_age
@@ -349,9 +377,10 @@ erDiagram
 
     account ||--|{ entry : "FK entry.user_id -> account.account_id"
     account ||--|{ device : "FK device.user_id -> account.account_id"
+    account ||--|{ logs : "FK logs.account_id -> account.account_id"
 
     entry ||--||  Body_scale_entry : "FK Body_scale_entry.id -> entry.id"
-    Body_scale_entry ||--|| body_scale_entry_metric : "FK body_body_scale_entry_metric.id ->  Body_scale_entry.id"
+    Body_scale_entry ||--|| body_scale_entry_metric : "FK body_scale_entry_metric.id ->  Body_scale_entry.id"
     entry ||--|| bpm_entry : "FK bpm_entry.id -> entry.id"
 
     device ||--|| Body_scale : "FK  Body_scale.id -> device.id"
