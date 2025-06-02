@@ -1,5 +1,4 @@
 // ScaleRepository.swift
-// Business logic service for scale management and local storage operations.
 
 import Foundation
 import SwiftData
