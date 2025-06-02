@@ -1,8 +1,8 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
-import com.greatergoods.meapp.domain.interfaces.IDeviceRepository
-import com.greatergoods.meapp.domain.model.Device
+import com.greatergoods.meapp.domain.repository.IDeviceRepository
+import com.greatergoods.meapp.domain.model.storage.Device
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject

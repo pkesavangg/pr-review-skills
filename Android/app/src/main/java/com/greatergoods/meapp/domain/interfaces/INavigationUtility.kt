@@ -9,9 +9,7 @@ import kotlinx.coroutines.flow.Flow
 interface INavigationUtility {
     val navigationIntent: Flow<NavigationIntent>
 
-    suspend fun navigateTo(
-        route: AppRoute,
-    )
+    suspend fun navigateTo(route: AppRoute)
 
     suspend fun navigateBack(
         route: AppRoute? = null,
@@ -19,9 +17,11 @@ interface INavigationUtility {
     )
 
     suspend fun navigateToRoot(currentRoute: AppRoute)
+
     suspend fun navigateTo(destinations: List<AppRoute>)
 
     suspend fun replaceStack(destinations: List<AppRoute>)
+
     suspend fun addTopLevelRoute(route: AppRoute)
 }
 
@@ -29,7 +29,6 @@ interface INavigationUtility {
  * Represents navigation intents for the app.
  */
 sealed interface NavigationIntent {
-
     /**
      * Represents a navigation action to a specific route.
      *
@@ -61,5 +60,3 @@ sealed interface NavigationIntent {
         val route: AppRoute,
     ) : NavigationIntent
 }
-
-

@@ -8,10 +8,10 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import android.content.Intent
 import android.os.Bundle
-import timber.log.Timber
 
 /**
  * Main entry point for the MeApp application.

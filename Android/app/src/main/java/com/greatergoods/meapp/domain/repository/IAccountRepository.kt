@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.domain.interfaces
+package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import kotlinx.coroutines.flow.Flow
@@ -14,14 +14,20 @@ interface IAccountRepository {
      * @param password User's password
      * @return The authenticated account entity
      */
-    suspend fun login(email: String, password: String): AccountEntity
+    suspend fun login(
+        email: String,
+        password: String,
+    ): AccountEntity
 
     /**
      * Logs out a specific user account.
      * @param accountId ID of the account to log out
      * @param showLogoutAlert Whether to show a logout confirmation alert
      */
-    suspend fun logout(accountId: String, showLogoutAlert: Boolean = false)
+    suspend fun logout(
+        accountId: String,
+        showLogoutAlert: Boolean = false,
+    )
 
     /**
      * Logs out all user accounts.
@@ -54,7 +60,10 @@ interface IAccountRepository {
      * @param oldPassword Current password
      * @param newPassword New password
      */
-    suspend fun updatePassword(oldPassword: String, newPassword: String)
+    suspend fun updatePassword(
+        oldPassword: String,
+        newPassword: String,
+    )
 
     /**
      * Requests a password reset for an account.
@@ -102,4 +111,4 @@ interface IAccountRepository {
      * Clears all offline data for the current account.
      */
     suspend fun clearOfflineData()
-} 
+}
