@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey
     tableName = "scale_entry_metric",
     foreignKeys = [
         ForeignKey(
-            entity = ScaleEntryEntity::class,
+            entity = WeightScaleEntryEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
             onDelete = ForeignKey.CASCADE

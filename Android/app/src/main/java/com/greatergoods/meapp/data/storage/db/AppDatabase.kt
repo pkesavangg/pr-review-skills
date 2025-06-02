@@ -12,12 +12,12 @@ import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.WeightScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.WeightScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.ScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 
@@ -28,12 +28,12 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
     entities = [
         AccountEntity::class,
         DeviceEntity::class,
-        ScaleEntity::class,
+        WeightScaleEntity::class,
         DeviceMetaDataEntity::class,
         BpmEntity::class,
         R4ScalePreferenceEntity::class,
         EntryEntity::class,
-        ScaleEntryEntity::class,
+        WeightScaleEntryEntity::class,
         ScaleEntryMetricEntity::class,
         BpmEntryEntity::class
     ],

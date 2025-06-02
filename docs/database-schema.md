@@ -70,7 +70,7 @@ Stores all user entry records with common properties for all device types.
 | device_type      | TEXT NOT NULL                     | Device type (eg., 'scale', 'bgm' )                  |
 | is_synced        | BOOLEAN                           | Whether entry is synced online                      |
 
-## Table: scale_entry
+## Table: weight_scale_entry
 
 Stores scale-specific data for each entry.
 
@@ -143,7 +143,7 @@ Stores user device details for connected devices.
 | is_wifi_configured    | boolean | If WiFi is configured               |
 | token                 | string  | Token for scale authentication      |
 
-## Table: scale
+## Table: weight_scale
 
 Stores user scale details for connected scales.
 
@@ -255,7 +255,7 @@ erDiagram
         BOOLEAN is_synced
     }
 
-    scale_entry {
+    weight_scale_entry {
         INTEGER id PK
         INTEGER weight
         INTEGER body_fat
@@ -311,7 +311,7 @@ erDiagram
         string token
     }
 
-    scale {
+    weight_scale {
         string id PK
         string scale_type
         boolean body_comp
@@ -350,12 +350,12 @@ erDiagram
     account ||--|{ entry : "FK entry.user_id -> account.account_id"
     account ||--|{ device : "FK device.user_id -> account.account_id"
 
-    entry ||--|| scale_entry : "FK scale_entry.id -> entry.id"
-    scale_entry ||--|| scale_entry_metric : "FK scale_entry_metric.id -> scale_entry.id"
+    entry ||--||  weight_scale_entry : "FK weight_scale_entry.id -> entry.id"
+    weight_scale_entry ||--|| scale_entry_metric : "FK scale_entry_metric.id ->  weight_scale_entry.id"
     entry ||--|| bpm_entry : "FK bpm_entry.id -> entry.id"
 
-    device ||--|| scale : "FK scale.id -> device.id"
-    scale ||--|| r4_scale_preference : "FK r4_scale_preference.id -> scale.id"
+    device ||--|| weight_scale : "FK  weight_scale.id -> device.id"
+    weight_scale ||--|| r4_scale_preference : "FK r4_scale_preference.id ->  weight_scale.id"
 
     device ||--|| device_meta_data : "FK device_meta_data.id -> device.id"
     device ||--|| bpm : "FK bpm.id -> device.id"

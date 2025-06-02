@@ -22,7 +22,7 @@ data class Entry(
         parentColumn = "id",
         entityColumn = "id"
     )
-    val scaleEntry: ScaleEntryEntity?,
+    val scaleEntry: WeightScaleEntryEntity?,
 
     @Relation(
         parentColumn = "id",

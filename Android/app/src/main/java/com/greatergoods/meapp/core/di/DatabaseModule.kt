@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.core.di
 
+import android.content.Context
 import com.greatergoods.meapp.data.storage.db.AppDatabase
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
@@ -7,13 +8,19 @@ import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-
 
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+
+    @Provides
+    @Singleton
+    fun provideAppDatabase(
+        @ApplicationContext context: Context
+    ): AppDatabase = AppDatabase.getInstance(context)
 
     @Provides
     @Singleton
@@ -32,5 +39,4 @@ object DatabaseModule {
     fun provideEntryDao(
         database: AppDatabase
     ): EntryDao = database.entryDao()
-    
 }

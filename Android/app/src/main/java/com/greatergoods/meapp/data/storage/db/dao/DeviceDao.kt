@@ -2,11 +2,11 @@ package com.greatergoods.meapp.data.storage.db.dao
 
 import androidx.room.*
 import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceDetails
+import com.greatergoods.meapp.data.storage.db.entity.WeightScaleEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -193,7 +193,7 @@ interface DeviceDao {
     suspend fun getDeviceByMacWithAccount(mac: String, accountId: String): DeviceDetails?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertScale(scale: ScaleEntity)
+    suspend fun insertScale(scale: WeightScaleEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBpm(bpm: BpmEntity)

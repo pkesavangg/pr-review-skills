@@ -6,11 +6,11 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 /**
- * Entity class representing a scale in the database.
+ * Entity class representing a weight scale in the database.
  * Extends DeviceEntity through a one-to-one relationship.
  */
 @Entity(
-    tableName = "scale",
+    tableName = "weight_scale",
     foreignKeys = [
         ForeignKey(
             entity = DeviceEntity::class,
@@ -20,9 +20,8 @@ import androidx.room.PrimaryKey
         )
     ]
 )
-data class ScaleEntity(
+data class WeightScaleEntity(
     @PrimaryKey
-
     val id: String, // This is both PK and FK to device.id
 
     val scaleType: String?,

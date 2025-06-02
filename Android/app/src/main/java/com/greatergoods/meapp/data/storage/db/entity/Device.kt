@@ -5,12 +5,12 @@ import androidx.room.Relation
 import com.greatergoods.meapp.domain.model.Device
 
 /**
- * Room relation class that combines DeviceEntity with its related entities (Scale, BPM, Meta, R4Prefs).
+ * Room relation class that combines DeviceEntity with its related entities (WeightScale, BPM, Meta, R4Prefs).
  * This makes it easier to fetch related data in a single query.
  *
  * The class uses Room's @Embedded and @Relation annotations to establish relationships:
  * - DeviceEntity is the parent entity
- * - ScaleEntity, BpmEntity, DeviceMetaDataEntity, and R4ScalePreferenceEntity are related entities
+ * - WeightScaleEntity, BpmEntity, DeviceMetaDataEntity, and R4ScalePreferenceEntity are related entities
  * - All relationships are one-to-one, linked by the 'id' field
  */
 data class DeviceDetails(
@@ -19,9 +19,9 @@ data class DeviceDetails(
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
-        entity = ScaleEntity::class
+        entity = WeightScaleEntity::class
     )
-    val scale: ScaleEntity? = null,
+    val scale: WeightScaleEntity? = null,
 
     @Relation(
         parentColumn = "id",
@@ -44,9 +44,9 @@ data class DeviceDetails(
 ) {
     /**
      * Computed property that returns the appropriate scale data.
-     * For R4 scales, returns R4ScalePreferenceEntity, otherwise returns ScaleEntity.
+     * For R4 scales, returns R4ScalePreferenceEntity, otherwise returns WeightScaleEntity.
      */
-    val scaleData: ScaleEntity? get() = scale
+    val scaleData: WeightScaleEntity? get() = scale
 
     /**
      * Converts this DeviceDetails to a DTO for database operations.
