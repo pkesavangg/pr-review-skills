@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.presentation.viewmodel
+package com.greatergoods.meapp.features.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,7 +23,8 @@ class LoginViewModel
         private val _loginState = MutableStateFlow<LoginState>(LoginState.Initial)
         val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
 
-        private val _refreshTokenState = MutableStateFlow<RefreshTokenState>(RefreshTokenState.Initial)
+        private val _refreshTokenState =
+            MutableStateFlow<RefreshTokenState>(RefreshTokenState.Initial)
         val refreshTokenState: StateFlow<RefreshTokenState> = _refreshTokenState.asStateFlow()
 
         fun login(
