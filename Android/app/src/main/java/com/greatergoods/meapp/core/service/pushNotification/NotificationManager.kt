@@ -2,8 +2,12 @@ package com.greatergoods.meapp.core.service.pushNotification
 
 import com.greatergoods.meapp.R
 import com.greatergoods.meapp.core.config.NotificationConfig
+import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.notification.NotificationService
 import com.greatergoods.notification.model.BuilderConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import android.content.Context
 import android.widget.Toast
@@ -18,6 +22,7 @@ import android.widget.Toast
 class NotificationManager(
     private val context: Context,
     private val notificationService: NotificationService,
+    private val appRepository: IAppRepository
 ) {
     init {
         createChannels()
@@ -40,6 +45,9 @@ class NotificationManager(
         notificationService.fetchFCMToken(
             onSuccess = { token ->
                 Timber.Forest.d("FCM Token: $token")
+                CoroutineScope(IO).launch {
+                    appRepository.setFcmToken(token)
+                }
                 // TODO: Here, you can handle the token as needed (e.g., send it to your server)
             },
             onError = { exception ->

@@ -12,6 +12,7 @@ import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.greatergoods.meapp.data.storage.datastore.ThemeMode
+import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
 import com.greatergoods.meapp.features.sample.DeviceOverviewScreen
 import com.greatergoods.meapp.features.sample.DeviceSettingsScreen
 import com.greatergoods.meapp.features.sample.FeedsScreen
@@ -20,27 +21,26 @@ import com.greatergoods.meapp.features.sample.MyScalesScreen
 import com.greatergoods.meapp.features.sample.ProductDetailScreen
 import com.greatergoods.meapp.features.sample.ProductListScreen
 import com.greatergoods.meapp.features.sample.SampleThemeScreen
-import com.greatergoods.meapp.features.theme.ThemeViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
  *
- * @param navigationViewModel The ViewModel managing navigation intents and state.
+ * @param appViewModel The ViewModel managing navigation intents and state.
  */
 @Composable
 fun AppNavigation() {
-    val themeViewModel: ThemeViewModel = hiltViewModel()
-    val themeMode by themeViewModel.themeMode.collectAsState()
+    val appViewModel: AppViewModel = hiltViewModel()
+    val uiState by appViewModel.uiState.collectAsState()
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
     NavigationObserver(
-        themeViewModel.appEventService.navigationIntent,
+        appViewModel.appEventService.navigationIntent,
         topLevelBackStack,
     )
     val selectedRoute = topLevelBackStack.topLevelKey as AppRoute
     MeAppTheme(
         darkTheme =
-            when (themeMode) {
+            when (uiState.themeMode) {
                 ThemeMode.DARK -> true
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -57,7 +57,7 @@ fun AppNavigation() {
                     onBack = { topLevelBackStack.removeLast() },
                     entryProvider =
                         entryProvider {
-                            initEntries(themeViewModel)
+                            initEntries(appViewModel)
                             mainEntries()
                             productEntries()
                         },
@@ -70,14 +70,14 @@ fun AppNavigation() {
 /**
  * Registers the entry for the initial theme sample screen.
  *
- * @param themeViewModel The ThemeViewModel for theme state and updates.
+ * @param appViewModel The AppViewModel for app-wide state and updates.
  */
-fun EntryProviderBuilder<NavKey>.initEntries(themeViewModel: ThemeViewModel) {
+fun EntryProviderBuilder<NavKey>.initEntries(appViewModel: AppViewModel) {
     entry<AppRoute.Init.SampleScreen> {
-        val themeMode by themeViewModel.themeMode.collectAsState()
+        val uiState by appViewModel.uiState.collectAsState()
         SampleThemeScreen(
-            selectedMode = themeMode,
-            onModeSelected = { themeViewModel.setThemeMode(it) },
+            selectedMode = uiState.themeMode,
+            onModeSelected = { appViewModel.setThemeMode(it) },
         )
     }
 }

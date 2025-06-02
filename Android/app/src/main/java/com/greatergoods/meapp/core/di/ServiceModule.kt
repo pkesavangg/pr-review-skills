@@ -3,6 +3,7 @@ package com.greatergoods.meapp.core.di
 import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
+import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.notification.NotificationService
 import dagger.Module
 import dagger.Provides
@@ -24,5 +25,6 @@ object ServiceModule {
     fun provideNotificationManager(
         @ApplicationContext context: Context,
         notificationService: NotificationService,
-    ): GGNotificationManager = GGNotificationManager(context, notificationService)
+        appRepository: IAppRepository
+    ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
 }
