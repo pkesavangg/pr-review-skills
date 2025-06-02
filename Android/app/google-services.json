@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "749899150862",
+    "project_id": "me-app-85955",
+    "storage_bucket": "me-app-85955.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749899150862:android:33cff33bd431b7ecf06e5f",
+        "android_client_info": {
+          "package_name": "com.greatergoods.meapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDk6Znsa3N44qBn7dKtw9CwiN5sjetYti0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

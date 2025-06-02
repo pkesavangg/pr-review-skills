@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_package = "com.greatergoods.meapp.data.storage.datastore";
+option java_multiple_files = true;
+
+/**
+ * Represents the user's theme preference for the app.
+ * - LIGHT: Always use light theme
+ * - DARK: Always use dark theme
+ * - SYSTEM: Follow system theme
+ */
+enum ThemeMode {
+    UNSET = 0; // Default value, not set
+    SYSTEM = 1;
+    LIGHT = 2;
+    DARK = 3;
+}
+
+message ThemePreference {
+    ThemeMode mode = 1;
+}

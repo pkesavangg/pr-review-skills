@@ -80,12 +80,19 @@ final class HTTPClient {
         do {
             // 🔹 Print raw JSON or text response for debugging
             if let rawString = String(data: data, encoding: .utf8) {
-                print("🔍 Raw Response: \(rawString)")
+#if DEBUG
+                print("🔍 HTTPClient Raw Response: \(rawString)")
+#endif
             } else {
-                print("⚠️ Unable to decode data to string")
+#if DEBUG
+                print("⚠️ HTTPClient Unable to decode data to string")
+#endif
             }
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
+#if DEBUG
+            print("🔍 HTTPClient Decoding Error: \(error)")
+#endif
             throw NetworkError.decodingError
         }
     }
