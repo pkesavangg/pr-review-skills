@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.proto)
     kotlin("kapt")
 }
 
@@ -118,6 +119,10 @@ dependencies {
     implementation(libs.androidx.datastore.preferences.core)
     implementation(libs.gson)
 
+    // Protobuf dependencies
+    implementation(libs.protobuf.javalite)
+    implementation(libs.androidx.datastore.v100)
+
     // modules
     implementation(project(":notification"))
 }
@@ -125,4 +130,19 @@ dependencies {
 // Allow references to generated code
 kapt {
     correctErrorTypes = true
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.24.0"
+    }
+    generateProtoTasks {
+        all().forEach {
+            it.builtins {
+                create("java") {
+                    option("lite")
+                }
+            }
+        }
+    }
 }

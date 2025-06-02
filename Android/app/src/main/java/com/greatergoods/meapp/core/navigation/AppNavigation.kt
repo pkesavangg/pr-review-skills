@@ -1,15 +1,17 @@
 package com.greatergoods.meapp.core.navigation
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderBuilder
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import com.greatergoods.meapp.features.common.viewmodel.NavigationViewmodel
+import com.greatergoods.meapp.data.storage.datastore.ThemeMode
 import com.greatergoods.meapp.features.sample.DeviceOverviewScreen
 import com.greatergoods.meapp.features.sample.DeviceSettingsScreen
 import com.greatergoods.meapp.features.sample.FeedsScreen
@@ -18,6 +20,8 @@ import com.greatergoods.meapp.features.sample.MyScalesScreen
 import com.greatergoods.meapp.features.sample.ProductDetailScreen
 import com.greatergoods.meapp.features.sample.ProductListScreen
 import com.greatergoods.meapp.features.sample.SampleThemeScreen
+import com.greatergoods.meapp.features.theme.ThemeViewModel
+import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -25,29 +29,40 @@ import com.greatergoods.meapp.features.sample.SampleThemeScreen
  * @param navigationViewModel The ViewModel managing navigation intents and state.
  */
 @Composable
-fun AppNavigation(
-    navigationViewModel: NavigationViewmodel,
-) {
+fun AppNavigation() {
+    val themeViewModel: ThemeViewModel = hiltViewModel()
+    val themeMode by themeViewModel.themeMode.collectAsState()
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
-    val isDark = remember { mutableStateOf(false) }
     NavigationObserver(
-        navigationViewModel.appEventService.navigationIntent,
+        themeViewModel.appEventService.navigationIntent,
         topLevelBackStack,
     )
     val selectedRoute = topLevelBackStack.topLevelKey as AppRoute
-    CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-        HomeScreen(
-            selectedRoute = selectedRoute,
-        ) {
-            NavDisplay(
-                backStack = topLevelBackStack.backStack,
-                onBack = { topLevelBackStack.removeLast() },
-                entryProvider = entryProvider {
-                    initEntries(isDark.value) { isDark.value = !isDark.value }
-                    mainEntries()
-                    productEntries()
-                },
-            )
+    MeAppTheme(
+        darkTheme =
+            when (themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
+                ThemeMode.UNSET -> isSystemInDarkTheme()
+            },
+    ) {
+        CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
+            HomeScreen(
+                selectedRoute = selectedRoute,
+            ) {
+                NavDisplay(
+                    backStack = topLevelBackStack.backStack,
+                    onBack = { topLevelBackStack.removeLast() },
+                    entryProvider =
+                        entryProvider {
+                            initEntries(themeViewModel)
+                            mainEntries()
+                            productEntries()
+                        },
+                )
+            }
         }
     }
 }
@@ -55,15 +70,15 @@ fun AppNavigation(
 /**
  * Registers the entry for the initial theme sample screen.
  *
- * @param isDark Whether the theme is dark mode.
- * @param toggleTheme Callback to toggle the theme.
+ * @param themeViewModel The ThemeViewModel for theme state and updates.
  */
-fun EntryProviderBuilder<NavKey>.initEntries(
-    isDark: Boolean,
-    toggleTheme: () -> Unit
-) {
+fun EntryProviderBuilder<NavKey>.initEntries(themeViewModel: ThemeViewModel) {
     entry<AppRoute.Init.SampleScreen> {
-        SampleThemeScreen(isDark = isDark, onToggleTheme = toggleTheme)
+        val themeMode by themeViewModel.themeMode.collectAsState()
+        SampleThemeScreen(
+            selectedMode = themeMode,
+            onModeSelected = { themeViewModel.setThemeMode(it) },
+        )
     }
 }
 
