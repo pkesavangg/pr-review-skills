@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.common.components
+package com.greatergoods.meapp
 
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
