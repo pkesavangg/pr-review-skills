@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.data.storage.db.entity
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -16,15 +15,13 @@ import androidx.room.PrimaryKey
             entity = DeviceEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class BodyScaleEntity(
     @PrimaryKey
     val id: String, // This is both PK and FK to device.id
-
     val scaleType: String?,
-
-    val bodyComp: Boolean = false
+    val bodyComp: Boolean = false,
 )

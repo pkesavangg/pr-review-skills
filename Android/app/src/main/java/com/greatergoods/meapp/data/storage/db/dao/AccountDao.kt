@@ -1,6 +1,11 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -63,7 +68,10 @@ interface AccountDao {
      * @return The number of rows updated
      */
     @Query("UPDATE account SET lastActiveTime = :lastActiveTime WHERE accountId = :id")
-    suspend fun updateLastActiveTime(id: String, lastActiveTime: String): Int
+    suspend fun updateLastActiveTime(
+        id: String,
+        lastActiveTime: String,
+    ): Int
 
     /**
      * Update the dashboard type for an account.
@@ -72,7 +80,10 @@ interface AccountDao {
      * @return The number of rows updated
      */
     @Query("UPDATE account SET dashboardType = :dashboardType WHERE accountId = :id")
-    suspend fun updateDashboardType(id: String, dashboardType: String): Int
+    suspend fun updateDashboardType(
+        id: String,
+        dashboardType: String,
+    ): Int
 
     /**
      * Update the FCM token for an account.
@@ -81,7 +92,10 @@ interface AccountDao {
      * @return The number of rows updated
      */
     @Query("UPDATE account SET fcmToken = :fcmToken WHERE accountId = :id")
-    suspend fun updateFcmToken(id: String, fcmToken: String): Int
+    suspend fun updateFcmToken(
+        id: String,
+        fcmToken: String,
+    ): Int
 
     /**
      * Update the tokens for an account.
@@ -91,15 +105,24 @@ interface AccountDao {
      * @param expiresAt The new expiration time
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET accessToken = :accessToken, refreshToken = :refreshToken, expiresAt = :expiresAt WHERE accountId = :id")
-    suspend fun updateTokens(id: String, accessToken: String, refreshToken: String, expiresAt: String): Int
+    @Query(
+        "UPDATE account SET accessToken = :accessToken, refreshToken = :refreshToken, expiresAt = :expiresAt WHERE accountId = :id",
+    )
+    suspend fun updateTokens(
+        id: String,
+        accessToken: String,
+        refreshToken: String,
+        expiresAt: String,
+    ): Int
 
     /**
      * Clear tokens and login status for an account.
      * @param id The account ID
      * @return The number of rows updated
      */
-    @Query("UPDATE account SET accessToken = '', refreshToken = '', expiresAt = '', isActiveAccount = 0, isLoggedIn = 0, isExpired = 0 WHERE accountId = :id")
+    @Query(
+        "UPDATE account SET accessToken = '', refreshToken = '', expiresAt = '', isActiveAccount = 0, isLoggedIn = 0, isExpired = 0 WHERE accountId = :id",
+    )
     suspend fun clearAccountTokens(id: String): Int
 
     /**
@@ -117,7 +140,10 @@ interface AccountDao {
      * @return The number of rows updated
      */
     @Query("UPDATE account SET isLoggedIn = :isLoggedIn WHERE accountId = :id")
-    suspend fun updateLoggedInStatus(id: String, isLoggedIn: Boolean): Int
+    suspend fun updateLoggedInStatus(
+        id: String,
+        isLoggedIn: Boolean,
+    ): Int
 
     /**
      * Update the profile information for an account.
@@ -132,8 +158,9 @@ interface AccountDao {
      * @param activityLevel The new activity level
      * @return The number of rows updated
      */
-    @Query("""
-        UPDATE account 
+    @Query(
+        """
+        UPDATE account
         SET firstName = :firstName,
             lastName = :lastName,
             email = :email,
@@ -143,7 +170,8 @@ interface AccountDao {
             zipcode = :zipcode,
             activityLevel = :activityLevel
         WHERE accountId = :id
-    """)
+    """,
+    )
     suspend fun updateProfile(
         id: String,
         firstName: String,
@@ -153,7 +181,7 @@ interface AccountDao {
         gender: String,
         height: String,
         zipcode: String,
-        activityLevel: String
+        activityLevel: String,
     ): Int
 
     /**
@@ -164,18 +192,20 @@ interface AccountDao {
      * @param initialWeight The new initial weight
      * @return The number of rows updated
      */
-    @Query("""
-        UPDATE account 
+    @Query(
+        """
+        UPDATE account
         SET goalType = :goalType,
             goalWeight = :goalWeight,
             initialWeight = :initialWeight
         WHERE accountId = :id
-    """)
+    """,
+    )
     suspend fun updateGoal(
         id: String,
         goalType: String,
         goalWeight: String,
-        initialWeight: Float
+        initialWeight: Float,
     ): Int
 
     /**
@@ -185,7 +215,10 @@ interface AccountDao {
      * @return The number of rows updated
      */
     @Query("UPDATE account SET dashboardMetrics = :dashboardMetrics WHERE accountId = :id")
-    suspend fun updateDashboardMetrics(id: String, dashboardMetrics: String): Int
+    suspend fun updateDashboardMetrics(
+        id: String,
+        dashboardMetrics: String,
+    ): Int
 
     /**
      * Update the weight unit for an account.
@@ -194,7 +227,10 @@ interface AccountDao {
      * @return The number of rows updated
      */
     @Query("UPDATE account SET weightUnit = :weightUnit WHERE accountId = :id")
-    suspend fun updateWeightUnit(id: String, weightUnit: String): Int
+    suspend fun updateWeightUnit(
+        id: String,
+        weightUnit: String,
+    ): Int
 
     /**
      * Update the integration status for an account.
@@ -209,8 +245,9 @@ interface AccountDao {
      * @param isUAValid Under Armour validity status
      * @return The number of rows updated
      */
-    @Query("""
-        UPDATE account 
+    @Query(
+        """
+        UPDATE account
         SET isFitbitOn = :isFitbitOn,
             isFitbitValid = :isFitbitValid,
             isGoogleFitOn = :isGoogleFitOn,
@@ -220,7 +257,8 @@ interface AccountDao {
             isUAOn = :isUAOn,
             isUAValid = :isUAValid
         WHERE accountId = :id
-    """)
+    """,
+    )
     suspend fun updateIntegrationStatus(
         id: String,
         isFitbitOn: Boolean,
@@ -230,7 +268,7 @@ interface AccountDao {
         isMFPOn: Boolean,
         isMFPValid: Boolean,
         isUAOn: Boolean,
-        isUAValid: Boolean
+        isUAValid: Boolean,
     ): Int
 
     /**
@@ -240,16 +278,18 @@ interface AccountDao {
      * @param shouldSendWeightInEntryNotifications Whether to send weight entry notifications
      * @return The number of rows updated
      */
-    @Query("""
-        UPDATE account 
+    @Query(
+        """
+        UPDATE account
         SET shouldSendEntryNotifications = :shouldSendEntryNotifications,
             shouldSendWeightInEntryNotifications = :shouldSendWeightInEntryNotifications
         WHERE accountId = :id
-    """)
+    """,
+    )
     suspend fun updateNotificationSettings(
         id: String,
         shouldSendEntryNotifications: Boolean,
-        shouldSendWeightInEntryNotifications: Boolean
+        shouldSendWeightInEntryNotifications: Boolean,
     ): Int
 
     /**
@@ -261,20 +301,22 @@ interface AccountDao {
      * @param weightlessTimestamp The weightless timestamp
      * @return The number of rows updated
      */
-    @Query("""
-        UPDATE account 
+    @Query(
+        """
+        UPDATE account
         SET weightlessWeight = :weightlessWeight,
             weightlessBodyFat = :weightlessBodyFat,
             weightlessMuscle = :weightlessMuscle,
             weightlessTimestamp = :weightlessTimestamp
         WHERE accountId = :id
-    """)
+    """,
+    )
     suspend fun updateWeightlessData(
         id: String,
         weightlessWeight: Float,
         weightlessBodyFat: Float,
         weightlessMuscle: Float,
-        weightlessTimestamp: String
+        weightlessTimestamp: String,
     ): Int
 
     /**
@@ -284,7 +326,10 @@ interface AccountDao {
      * @return The number of rows updated
      */
     @Query("UPDATE account SET isSynced = :isSynced WHERE accountId = :id")
-    suspend fun updateSyncStatus(id: String, isSynced: Boolean): Int
+    suspend fun updateSyncStatus(
+        id: String,
+        isSynced: Boolean,
+    ): Int
 
     /**
      * Get all accounts that need syncing.
@@ -315,4 +360,4 @@ interface AccountDao {
      */
     @Query("UPDATE account SET isSynced = 0 WHERE accountId = :id")
     suspend fun markAccountUnsynced(id: String): Int
-} 
+}

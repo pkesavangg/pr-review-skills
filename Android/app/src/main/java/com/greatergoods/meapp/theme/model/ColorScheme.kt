@@ -36,7 +36,7 @@ data class ColorScheme(
     val streak: Color,
     val utility: Color,
     // Brand
-    val brand: Color
+    val brand: Color,
 ) {
     /**
      * Holds all semantic color roles for the app's theme.

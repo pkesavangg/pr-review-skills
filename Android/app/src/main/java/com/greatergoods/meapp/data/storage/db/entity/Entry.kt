@@ -10,22 +10,20 @@ import com.greatergoods.meapp.domain.model.storage.EntryDTO
  */
 data class Entry(
     @Embedded val entry: EntryEntity,
-
     @Relation(
         parentColumn = "id",
-        entityColumn = "id"
+        entityColumn = "id",
     )
     val bpmEntry: BpmEntryEntity?,
-
     @Relation(
         parentColumn = "id",
-        entityColumn = "id"
+        entityColumn = "id",
     )
     val scaleEntry: BodyScaleEntryEntity?,
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "id"
+        entityColumn = "id",
     )
     val scaleEntryMetric: BodyScaleEntryMetricEntity?
 ) {
@@ -33,18 +31,19 @@ data class Entry(
      * Converts this Entry wrapper to its database entities.
      * This is used when saving data back to the database.
      */
-    fun toDTO(): EntryDTO = EntryDTO (
+    fun toDTO(): EntryDTO =
+        EntryDTO(
             entry,
             bpmEntry,
             scaleEntry,
-            scaleEntryMetric
-    )
+            scaleEntryMetric,
+        )
 }
 
-
-fun fromDTO(dto: EntryDTO): Entry = Entry(
-    entry = dto.entry,
-    bpmEntry = dto.bpmEntry,
-    scaleEntry = dto.scaleEntry,
-    scaleEntryMetric = dto.scaleEntryMetric
-)
+fun fromDTO(dto: EntryDTO): Entry =
+    Entry(
+        entry = dto.entry,
+        bpmEntry = dto.bpmEntry,
+        scaleEntry = dto.scaleEntry,
+        scaleEntryMetric = dto.scaleEntryMetric,
+    )

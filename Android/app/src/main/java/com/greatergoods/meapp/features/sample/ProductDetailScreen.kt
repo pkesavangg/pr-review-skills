@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
@@ -16,18 +17,10 @@ fun ProductDetailScreen(productId: String) {
     Text("Product Detail for $productId")
 }
 
-@Preview(name = "ProductDetailScreen Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@PreviewTheme
 @Composable
-private fun PreviewProductDetailScreenLight() {
-    MeAppTheme(darkTheme = false) {
+private fun PreviewProductDetailScreen() {
+    MeAppTheme {
         ProductDetailScreen(productId = "p1")
     }
 }
-
-@Preview(name = "ProductDetailScreen Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun PreviewProductDetailScreenDark() {
-    MeAppTheme(darkTheme = true) {
-        ProductDetailScreen(productId = "p1")
-    }
-} 

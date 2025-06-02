@@ -15,31 +15,21 @@ import androidx.room.PrimaryKey
             entity = BodyScaleEntryEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class BodyScaleEntryMetricEntity(
     @PrimaryKey
     val id: Long,
-
     val bmr: Int,
-
     val metabolicAge: Int,
-
     val proteinPercent: Int,
-
     val pulse: Int,
-
     val skeletalMusclePercent: Int,
-
     val subcutaneousFatPercent: Int,
-
     val visceralFatLevel: Int,
-
     val boneMass: Int,
-
     val impedance: Int,
-
-    val unit: String
+    val unit: String,
 )

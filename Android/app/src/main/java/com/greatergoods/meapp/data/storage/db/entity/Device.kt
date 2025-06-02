@@ -14,7 +14,6 @@ import androidx.room.Relation
  */
 data class DeviceDetails(
     @Embedded val device: DeviceEntity,
-
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
@@ -37,9 +36,19 @@ data class DeviceDetails(
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
-        entity = R4ScalePreferenceEntity::class
     )
-    val r4Preference: R4ScalePreferenceEntity? = null
+    val bpm: BpmEntity? = null,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "id",
+    )
+    val meta: DeviceMetaDataEntity? = null,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "id",
+        entity = R4ScalePreferenceEntity::class,
+    )
+    val r4Preference: R4ScalePreferenceEntity? = null,
 ) {
     /**
      * Computed property that returns the appropriate scale data.
@@ -50,22 +59,24 @@ data class DeviceDetails(
     /**
      * Converts this DeviceDetails to a DTO for database operations.
      */
-    fun toDTO() = DeviceDTO(
-        device = device,
-        scale = scale,
-        bpm = bpm,
-        meta = meta,
-        r4Preference = r4Preference
-    )
+    fun toDTO() =
+        DeviceDTO(
+            device = device,
+            scale = scale,
+            bpm = bpm,
+            meta = meta,
+            r4Preference = r4Preference,
+        )
 }
 
 /**
  * Creates a DeviceDetails from a DTO.
  */
-fun fromDTO(dto: DeviceDTO) = DeviceDetails(
-    device = dto.device,
-    scale = dto.scale,
-    bpm = dto.bpm,
-    meta = dto.meta,
-    r4Preference = dto.r4Preference
-)
+fun fromDTO(dto: DeviceDTO) =
+    DeviceDetails(
+        device = dto.device,
+        scale = dto.scale,
+        bpm = dto.bpm,
+        meta = dto.meta,
+        r4Preference = dto.r4Preference,
+    )

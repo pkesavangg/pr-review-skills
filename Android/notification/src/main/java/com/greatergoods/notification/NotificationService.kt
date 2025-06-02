@@ -1,14 +1,15 @@
-package com.greatergoods.meapp.core.service.pushNotification
+package com.greatergoods.notification
 
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.asFlow
 import com.example.notification.NotificationHandler
+import com.google.firebase.messaging.FirebaseMessaging
 import com.greatergoods.notification.model.BuilderConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.Notification
@@ -20,10 +21,14 @@ import android.os.Build
  * Provides various methods to show, update, and cancel notifications, as well as subscribe to notification status changes.
  * @property notificationHandler The handler responsible for notification operations.
  */
-class NotificationService @Inject constructor(
+class NotificationService
+@Inject
+constructor(
     private val notificationHandler: NotificationHandler,
 ) {
-    private val _statusMap = MutableLiveData<MutableMap<String, Boolean>>(mutableMapOf())
+    // Use a private CoroutineScope for background work (consider proper lifecycle management)
+    private val serviceScope = CoroutineScope(Dispatchers.IO)
+    private val statusMap: MutableStateFlow<Map<String, Boolean>> = MutableStateFlow(emptyMap())
 
     /**
      * Initializes multiple notification channels.
@@ -47,7 +52,7 @@ class NotificationService @Inject constructor(
      */
     @RequiresApi(Build.VERSION_CODES.O)
     fun activeNotification(channelId: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             notificationHandler.activeNotifications(channelId).collect {
                 update(it.tag, it.isOngoing)
             }
@@ -59,16 +64,17 @@ class NotificationService @Inject constructor(
      * @param channelId The channel ID.
      * @return NotificationCompat.Builder instance.
      */
-    fun getBuilder(channelId: String): NotificationCompat.Builder {
-        return notificationHandler.getBuilder(channelId)
-    }
+    fun getBuilder(channelId: String): NotificationCompat.Builder = notificationHandler.getBuilder(channelId)
 
     /**
      * Shows a notification with the given ID and Notification object.
      * @param notificationId The notification ID.
      * @param notification The Notification object.
      */
-    fun showNotification(notificationId: Int, notification: Notification) {
+    fun showNotification(
+        notificationId: Int,
+        notification: Notification,
+    ) {
         notificationHandler.showNotification(
             notificationId = notificationId,
             notification = notification,
@@ -81,7 +87,10 @@ class NotificationService @Inject constructor(
      * @param groupId The group ID.
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    fun cancelGroupedNotification(notificationId: Int, groupId: Int) {
+    fun cancelGroupedNotification(
+        notificationId: Int,
+        groupId: Int,
+    ) {
         notificationHandler.cancelGroupedNotification(notificationId, groupId)
     }
 
@@ -90,7 +99,10 @@ class NotificationService @Inject constructor(
      * @param notificationId The notification ID.
      * @param tag The notification tag (optional).
      */
-    fun cancelNotification(notificationId: Int, tag: String? = null) {
+    fun cancelNotification(
+        notificationId: Int,
+        tag: String? = null,
+    ) {
         notificationHandler.cancelNotification(notificationId, tag)
         tag?.let { update(it, false) }
     }
@@ -100,7 +112,7 @@ class NotificationService @Inject constructor(
      */
     fun cancelAll() {
         notificationHandler.cancelAll()
-        _statusMap.value?.map { update(it.key, false) }
+        statusMap.value.keys.forEach { update(it, false) }
     }
 
     /**
@@ -109,29 +121,28 @@ class NotificationService @Inject constructor(
      * @return True if no active notifications, false otherwise.
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    fun checkNoActiveNotification(channelId: Int): Boolean {
-        return notificationHandler.checkNoActiveNotifications(channelId)
-    }
+    fun checkNoActiveNotification(channelId: Int): Boolean =
+        notificationHandler.checkNoActiveNotifications(channelId)
 
     /**
      * Updates the status of a notification in the status map.
      * @param notificationId The notification ID or tag.
      * @param status True if active, false otherwise.
      */
-    fun update(notificationId: String, status: Boolean) {
-        val map = _statusMap.value?.apply {
-            put(notificationId, status)
-        }
-        _statusMap.postValue(map!!)
+    fun update(
+        notificationId: String,
+        status: Boolean,
+    ) {
+        val map = statusMap.value.toMutableMap()
+        map[notificationId] = status
+        statusMap.value = map.toMap() // Always emit a new immutable map
     }
 
     /**
-     * Subscribes to notification status changes as a Flow.
-     * @return Flow of notification status map.
+     * Subscribes to notification status changes as a StateFlow.
+     * @return StateFlow of notification status map.
      */
-    fun subscribeStatus(): Flow<Map<String, Boolean>> {
-        return _statusMap.asFlow()
-    }
+    fun subscribeStatus(): StateFlow<Map<String, Boolean>> = statusMap.asStateFlow()
 
     /**
      * Shows a simple text notification.
@@ -293,5 +304,44 @@ class NotificationService @Inject constructor(
             priority = priority,
         )
         update(notificationName, true)
+    }
+
+    /**
+     * Retrieves the Firebase Cloud Messaging (FCM) token for the device.
+     * @param onSuccess Callback invoked with the token on success.
+     * @param onError Callback invoked with the exception on error.
+     */
+    fun fetchFCMToken(
+        onSuccess: (token: String) -> Unit,
+        onError: (exception: Exception?) -> Unit,
+    ) {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                onSuccess(token)
+            } else {
+                onError(task.exception)
+            }
+        }
+    }
+
+    /**
+     * Subscribes the device to a topic for FCM notifications.
+     * @param topic The topic to subscribe to.
+     * @param onSuccess Callback invoked on successful subscription.
+     * @param onError Callback invoked with the exception on error.
+     */
+    fun subscribeToTopic(
+        topic: String,
+        onSuccess: () -> Unit,
+        onError: (exception: Exception?) -> Unit,
+    ) {
+        FirebaseMessaging.getInstance().subscribeToTopic(topic).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                onSuccess()
+            } else {
+                onError(task.exception)
+            }
+        }
     }
 }

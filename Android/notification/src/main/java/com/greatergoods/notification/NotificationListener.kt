@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core.service.pushNotification
+package com.greatergoods.notification
 
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -10,7 +10,6 @@ import android.service.notification.StatusBarNotification
  */
 @AndroidEntryPoint
 class NotificationListener : NotificationListenerService() {
-
     @Inject
     lateinit var notificationService: NotificationService
 
