@@ -1,7 +1,8 @@
 package com.greatergoods.meapp
 
+import com.google.firebase.BuildConfig
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
-import com.greatergoods.meapp.core.service.pushNotification.NotificationService
+import com.greatergoods.notification.NotificationService
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject
