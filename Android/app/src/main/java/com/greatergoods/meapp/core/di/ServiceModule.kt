@@ -3,7 +3,7 @@ package com.greatergoods.meapp.core.di
 import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
-import com.greatergoods.meapp.core.service.pushNotification.NotificationService
+import com.greatergoods.notification.NotificationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

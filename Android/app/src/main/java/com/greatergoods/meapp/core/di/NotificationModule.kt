@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.di
 
 import com.example.notification.NotificationHandler
-import com.greatergoods.meapp.core.service.pushNotification.NotificationService
+import com.greatergoods.notification.NotificationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,7 +15,7 @@ import android.content.Context
  */
 @Module
 @InstallIn(SingletonComponent::class)
-class NotificationModule {
+object NotificationModule {
 
     /**
      * Provides a singleton instance of [NotificationService].
@@ -42,6 +42,4 @@ class NotificationModule {
     ): NotificationHandler {
         return NotificationHandler(context)
     }
-
-
 }

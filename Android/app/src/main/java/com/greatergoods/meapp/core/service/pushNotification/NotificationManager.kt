@@ -1,8 +1,8 @@
 package com.greatergoods.meapp.core.service.pushNotification
 
-import com.google.firebase.messaging.FirebaseMessaging
 import com.greatergoods.meapp.R
 import com.greatergoods.meapp.core.config.NotificationConfig
+import com.greatergoods.notification.NotificationService
 import com.greatergoods.notification.model.BuilderConfig
 import timber.log.Timber
 import android.content.Context
@@ -21,7 +21,7 @@ class NotificationManager(
 ) {
     init {
         createChannels()
-        retrieveFCMToken()
+        fetchFCMToken()
     }
 
     /**
@@ -34,40 +34,38 @@ class NotificationManager(
     }
 
     /**
-     * Retrieves the Firebase Cloud Messaging (FCM) token for the device.
-     * Logs the token or an error if retrieval fails.
+     * Requests the FCM token using NotificationService and logs/shows result.
      */
-    private fun retrieveFCMToken() {
-        FirebaseMessaging
-            .getInstance()
-            .token
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val token = task.result
-                    Timber.Forest.d("FCM Token: $token")
-                    // TODO: Here, you can handle the token as needed (e.g., send it to your server)
-                } else {
-                    Timber.Forest.e(task.exception, "Fetching FCM token failed")
-                }
-            }
+    private fun fetchFCMToken() {
+        notificationService.fetchFCMToken(
+            onSuccess = { token ->
+                Timber.Forest.d("FCM Token: $token")
+                // TODO: Here, you can handle the token as needed (e.g., send it to your server)
+            },
+            onError = { exception ->
+                Timber.Forest.e(exception, "Fetching FCM token failed")
+            },
+        )
     }
 
     /**
-     * Subscribes the device to the "meApp" topic for FCM notifications.
+     * Subscribes the device to the "meApp" topic for FCM notifications using NotificationService.
      * Shows a Toast and logs the result.
      */
-    private fun subscribeTopics() {
-        FirebaseMessaging
-            .getInstance()
-            .subscribeToTopic("meApp")
-            .addOnCompleteListener { task ->
-                var msg = "Subscribed"
-                if (!task.isSuccessful) {
-                    msg = "Subscribe failed"
-                }
+    fun subscribeToMeAppTopic() {
+        notificationService.subscribeToTopic(
+            topic = "meApp",
+            onSuccess = {
+                val msg = "Subscribed"
                 Timber.Forest.d(msg)
                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-            }
+            },
+            onError = { exception ->
+                val msg = "Subscribe failed"
+                Timber.Forest.e(exception, msg)
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            },
+        )
     }
 
     /**

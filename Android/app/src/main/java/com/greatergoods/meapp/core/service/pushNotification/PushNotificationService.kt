@@ -4,6 +4,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.greatergoods.meapp.MainActivity
 import com.greatergoods.meapp.domain.enum.NotificationChannel
+import com.greatergoods.notification.NotificationService
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
