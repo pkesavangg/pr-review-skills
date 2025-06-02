@@ -8,6 +8,8 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.greatergoods.meapp.data.storage.db.entity.Entry
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -205,4 +207,34 @@ interface EntryDao {
     @Transaction
     @Query("SELECT * FROM entry WHERE deviceType = 'scale'")
     suspend fun getScaleEntries(): List<Entry>
-}
+
+    /**
+     * Insert a list of metric entries into the database.
+     * @param metrics The list of BodyScaleEntryMetricEntity objects to insert
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMetrics(metrics: List<BodyScaleEntryMetricEntity>)
+
+    /**
+     * Get metrics for a specific entry.
+     * @param entryId The ID of the entry
+     * @return Flow of BodyScaleEntryMetricEntity for the entry
+     */
+    @Query("SELECT * FROM body_scale_entry_metric WHERE id = :entryId")
+    fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity?>
+
+    /**
+     * Insert a list of scale entries into the database.
+     * @param entries The list of BodyScaleEntryEntity objects to insert
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScaleEntries(entries: List<BodyScaleEntryEntity>)
+
+    /**
+     * Get a scale entry by its ID.
+     * @param entryId The ID of the entry
+     * @return The BodyScaleEntryEntity if found, null otherwise
+     */
+    @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
+    suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
+} 

@@ -6,8 +6,8 @@ package com.greatergoods.meapp.data.storage.db.entity
  */
 data class DeviceDTO(
     val device: DeviceEntity,
-    val scale: ScaleEntity? = null,
+    val scale: BodyScaleEntity? = null,
     val bpm: BpmEntity? = null,
     val meta: DeviceMetaDataEntity? = null,
     val r4Preference: R4ScalePreferenceEntity? = null
-) 
+)

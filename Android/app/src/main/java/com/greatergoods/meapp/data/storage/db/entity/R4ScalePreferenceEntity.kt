@@ -8,13 +8,13 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 
 /**
  * Entity class representing R4 scale preferences in the database.
- * Extends ScaleEntity through a one-to-one relationship.
+ * Extends BodyScaleEntity through a one-to-one relationship.
  */
 @Entity(
     tableName = "r4_scale_preference",
     foreignKeys = [
         ForeignKey(
-            entity = ScaleEntity::class,
+            entity = BodyScaleEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
             onDelete = ForeignKey.CASCADE,

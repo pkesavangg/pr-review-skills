@@ -2,7 +2,7 @@ package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
-import com.greatergoods.meapp.domain.interfaces.IAccountRepository
+import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 

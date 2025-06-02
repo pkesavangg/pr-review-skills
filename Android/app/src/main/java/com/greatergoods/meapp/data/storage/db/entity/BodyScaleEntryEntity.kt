@@ -5,11 +5,11 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 /**
- * Entity class representing a scale entry in the database.
- * Maps to the 'scale_entry' table in the SQLite database.
+ * Entity class representing a body scale entry in the database.
+ * Maps to the 'body_scale_entry' table in the SQLite database.
  */
 @Entity(
-    tableName = "scale_entry",
+    tableName = "body_scale_entry",
     foreignKeys = [
         ForeignKey(
             entity = EntryEntity::class,
@@ -19,7 +19,7 @@ import androidx.room.PrimaryKey
         ),
     ],
 )
-data class ScaleEntryEntity(
+data class BodyScaleEntryEntity(
     @PrimaryKey
     val id: Long,
     val weight: Int,

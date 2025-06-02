@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
+import androidx.room.*
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -7,11 +8,11 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceDetails
 import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
 import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
-import com.greatergoods.meapp.data.storage.db.entity.ScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceDetails
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -225,7 +226,7 @@ interface DeviceDao {
     ): DeviceDetails?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertScale(scale: ScaleEntity)
+    suspend fun insertScale(scale: BodyScaleEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBpm(bpm: BpmEntity)

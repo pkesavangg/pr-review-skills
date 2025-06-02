@@ -5,21 +5,21 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 /**
- * Entity class representing scale entry metrics in the database.
- * Maps to the 'scale_entry_metric' table in the SQLite database.
+ * Entity class representing body scale entry metrics in the database.
+ * Maps to the 'body_scale_entry_metric' table in the SQLite database.
  */
 @Entity(
-    tableName = "scale_entry_metric",
+    tableName = "body_scale_entry_metric",
     foreignKeys = [
         ForeignKey(
-            entity = ScaleEntryEntity::class,
+            entity = BodyScaleEntryEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
 )
-data class ScaleEntryMetricEntity(
+data class BodyScaleEntryMetricEntity(
     @PrimaryKey
     val id: Long,
     val bmr: Int,

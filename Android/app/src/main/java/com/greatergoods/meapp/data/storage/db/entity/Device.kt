@@ -4,12 +4,12 @@ import androidx.room.Embedded
 import androidx.room.Relation
 
 /**
- * Room relation class that combines DeviceEntity with its related entities (Scale, BPM, Meta, R4Prefs).
+ * Room relation class that combines DeviceEntity with its related entities (BodyScale, BPM, Meta, R4Prefs).
  * This makes it easier to fetch related data in a single query.
  *
  * The class uses Room's @Embedded and @Relation annotations to establish relationships:
  * - DeviceEntity is the parent entity
- * - ScaleEntity, BpmEntity, DeviceMetaDataEntity, and R4ScalePreferenceEntity are related entities
+ * - BodyScaleEntity, BpmEntity, DeviceMetaDataEntity, and R4ScalePreferenceEntity are related entities
  * - All relationships are one-to-one, linked by the 'id' field
  */
 data class DeviceDetails(
@@ -17,19 +17,22 @@ data class DeviceDetails(
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
-        entity = ScaleEntity::class,
+        entity = BodyScaleEntity::class
     )
-    val scale: ScaleEntity? = null,
+    val scale: BodyScaleEntity? = null,
+
     @Relation(
         parentColumn = "id",
-        entityColumn = "id",
+        entityColumn = "id"
     )
     val bpm: BpmEntity? = null,
+
     @Relation(
         parentColumn = "id",
-        entityColumn = "id",
+        entityColumn = "id"
     )
     val meta: DeviceMetaDataEntity? = null,
+
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
@@ -39,9 +42,9 @@ data class DeviceDetails(
 ) {
     /**
      * Computed property that returns the appropriate scale data.
-     * For R4 scales, returns R4ScalePreferenceEntity, otherwise returns ScaleEntity.
+     * For R4 scales, returns R4ScalePreferenceEntity, otherwise returns BodyScaleEntity.
      */
-    val scaleData: ScaleEntity? get() = scale
+    val scaleData: BodyScaleEntity? get() = scale
 
     /**
      * Converts this DeviceDetails to a DTO for database operations.

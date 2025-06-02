@@ -2,7 +2,7 @@ package com.greatergoods.meapp.data.storage.db.entity
 
 import androidx.room.Embedded
 import androidx.room.Relation
-import com.greatergoods.meapp.domain.model.EntryDTO
+import com.greatergoods.meapp.domain.model.storage.EntryDTO
 
 /**
  * Wrapper class that combines EntryEntity with its related entities (BpmEntry, ScaleEntry, ScaleEntryMetric).
@@ -19,12 +19,13 @@ data class Entry(
         parentColumn = "id",
         entityColumn = "id",
     )
-    val scaleEntry: ScaleEntryEntity?,
+    val scaleEntry: BodyScaleEntryEntity?,
+
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
     )
-    val scaleEntryMetric: ScaleEntryMetricEntity?,
+    val scaleEntryMetric: BodyScaleEntryMetricEntity?
 ) {
     /**
      * Converts this Entry wrapper to its database entities.
