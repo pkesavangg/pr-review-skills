@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core.service.pushNotification
+package com.greatergoods.notification
 
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
