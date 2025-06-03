@@ -10,6 +10,8 @@ import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
 import com.greatergoods.meapp.initEntries
 import com.greatergoods.meapp.mainEntries
 import com.greatergoods.meapp.productEntries
+import com.greatergoods.meapp.core.logging.LogManager
+import javax.inject.Inject
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -19,6 +21,7 @@ import com.greatergoods.meapp.productEntries
 fun NavHost(
     backStack: TopLevelBackStack<NavKey>,
     appViewModel: AppViewModel,
+    logManager: LogManager
 ) {
     NavigationObserver(
         appViewModel.appEventService.navigationIntent,
@@ -29,7 +32,7 @@ fun NavHost(
         onBack = { backStack.removeLast() },
         entryProvider =
             entryProvider {
-                initEntries(appViewModel)
+                initEntries(themeViewModel, logManager)
                 mainEntries()
                 productEntries()
             },

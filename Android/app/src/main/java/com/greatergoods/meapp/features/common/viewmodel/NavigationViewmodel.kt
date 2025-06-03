@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.core.logging.LogManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,9 @@ import android.content.Intent
  * ViewModel for handling navigation events and intent-based navigation in the app.
  */
 @HiltViewModel
-open class NavigationViewmodel @Inject constructor() : ViewModel() {
+open class NavigationViewmodel @Inject constructor(
+    private val logManager: LogManager
+) : ViewModel() {
 
     @Inject
     lateinit var appEventService: IAppEventService
@@ -35,6 +38,14 @@ open class NavigationViewmodel @Inject constructor() : ViewModel() {
             else -> AppRoute.Init.SampleScreen
         }
         _startDestination.value = route
+        viewModelScope.launch {
+            logManager.logWithData(
+                "NavigationViewModel",
+                "Handling intent navigation",
+                "i",
+                "Destination: $destination, Route: $route"
+            )
+        }
     }
 
     /**
@@ -45,6 +56,12 @@ open class NavigationViewmodel @Inject constructor() : ViewModel() {
         route: AppRoute,
     ) {
         viewModelScope.launch {
+            logManager.logWithData(
+                "NavigationViewModel",
+                "Navigating to route",
+                "i",
+                "Route: $route"
+            )
             appEventService.navigateTo(route)
         }
     }
@@ -59,6 +76,12 @@ open class NavigationViewmodel @Inject constructor() : ViewModel() {
         inclusive: Boolean = false,
     ) {
         viewModelScope.launch {
+            logManager.logWithData(
+                "NavigationViewModel",
+                "Navigating back",
+                "i",
+                "Route: $route, Inclusive: $inclusive"
+            )
             appEventService.navigateBack(route, inclusive)
         }
     }
@@ -71,6 +94,12 @@ open class NavigationViewmodel @Inject constructor() : ViewModel() {
         destinations: List<AppRoute>,
     ) {
         viewModelScope.launch {
+            logManager.logWithData(
+                "NavigationViewModel",
+                "Navigating to multiple destinations",
+                "i",
+                "Destinations: ${destinations.joinToString()}"
+            )
             appEventService.navigateTo(destinations)
         }
     }
@@ -83,6 +112,12 @@ open class NavigationViewmodel @Inject constructor() : ViewModel() {
         destinations: List<AppRoute>,
     ) {
         viewModelScope.launch {
+            logManager.logWithData(
+                "NavigationViewModel",
+                "Replacing navigation stack",
+                "i",
+                "New stack: ${destinations.joinToString()}"
+            )
             appEventService.replaceStack(destinations)
         }
     }
@@ -95,6 +130,12 @@ open class NavigationViewmodel @Inject constructor() : ViewModel() {
         currentRoute: AppRoute,
     ) {
         viewModelScope.launch {
+            logManager.logWithData(
+                "NavigationViewModel",
+                "Navigating to root",
+                "i",
+                "Current route: $currentRoute"
+            )
             appEventService.navigateToRoot(currentRoute)
         }
     }

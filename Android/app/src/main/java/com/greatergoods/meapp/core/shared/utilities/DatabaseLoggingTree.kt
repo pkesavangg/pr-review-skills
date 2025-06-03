@@ -3,24 +3,23 @@ package com.greatergoods.meapp.core.shared.utilities
 import android.util.Log
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.core.logging.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.util.UUID
 
 /**
- * Custom Timber Tree that stores logs in the database.
- * This class handles the conversion of Timber logs to database entries.
+ * Custom logging tree that stores logs in the database.
+ * This class handles the conversion of logs to database entries.
  */
 class DatabaseLoggingTree(
     private val logDao: LogDao,
     private val currentAccountId: String,
     private val sessionId: String?,
     private val ioScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
-) : Timber.Tree() {
-
-    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+) {
+    fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         // Skip if session ID is not set
         val currentSessionId = sessionId ?: return
 
@@ -37,9 +36,15 @@ class DatabaseLoggingTree(
             else -> "i"
         }
 
-        val stackTrace = Throwable().stackTrace.getOrNull(6) // Skip Timber's internal calls
-        val tagId = stackTrace?.methodName ?: "unknown"
-        val className = stackTrace?.className?.substringAfterLast('.') ?: (tag ?: "unknown")
+        // Get the caller information more reliably
+        val stackTrace = Throwable().stackTrace
+        val callerIndex = stackTrace.indexOfFirst { 
+            it.className.contains("android.util.Log") 
+        }.let { if (it == -1) 0 else it + 1 }
+        
+        val caller = stackTrace.getOrNull(callerIndex)
+        val tagId = caller?.methodName ?: "unknown"
+        val className = caller?.className?.substringAfterLast('.') ?: (tag ?: "unknown")
 
         val logEntry = LogEntity(
             id = UUID.randomUUID().toString(),
@@ -50,7 +55,17 @@ class DatabaseLoggingTree(
             type = type,
             message = message,
             timestamp = System.currentTimeMillis(),
-            data = t?.stackTraceToString()
+            data = t?.let { 
+                buildString {
+                    append(it.toString())
+                    append("\n")
+                    append(it.stackTraceToString())
+                    if (it.cause != null) {
+                        append("\nCaused by: ")
+                        append(it.cause.toString())
+                    }
+                }
+            }
         )
 
         ioScope.launch {
@@ -58,7 +73,7 @@ class DatabaseLoggingTree(
                 logDao.insertLog(logEntry)
             } catch (e: Exception) {
                 // Use Android's Log directly to avoid infinite recursion
-                Log.e("DatabaseLoggingTree", "Failed to insert log: ${e.message}")
+                AppLog.e("DatabaseLoggingTree", "Failed to insert log: ${e.message}", e.toString())
             }
         }
     }

@@ -146,4 +146,20 @@ interface LogDao {
      */
     @Query("SELECT * FROM logs WHERE accountId = :accountId AND type = :type ORDER BY timestamp DESC")
     fun getLogsByAccountIdAndType(accountId: String, type: String): Flow<List<LogEntity>>
+
+    /**
+     * Get all logs from the database with pagination.
+     * @param limit Maximum number of logs to return
+     * @param offset Number of logs to skip
+     * @return A Flow of logs
+     */
+    @Query("SELECT * FROM logs ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    fun getAllLogsPaginated(limit: Int, offset: Int): Flow<List<LogEntity>>
+
+    /**
+     * Get total count of logs in the database.
+     * @return Flow of total log count
+     */
+    @Query("SELECT COUNT(*) FROM logs")
+    fun getLogCount(): Flow<Int>
 } 

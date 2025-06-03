@@ -6,54 +6,77 @@ This document describes the database schema for the MeApp project.
 
 Stores user account details such as personal info, tokens, and app settings.
 
-| Column Name                               | Type    | Description                                       |
-| ----------------------------------------- | ------- | ------------------------------------------------- |
-| account_id                                | string  | Primary key for the account                       |
-| access_token                              | string  | OAuth or app-specific access token                |
-| activity_level                            | string  | User's activity level (e.g., low, moderate, high) |
-| dashboard_metrics                         | string  | Metrics selected for dashboard display            |
-| dashboard_type                            | string  | Layout type of the user's dashboard               |
-| dob                                       | string  | Date of birth                                     |
-| email                                     | string  | User email address                                |
-| expires_at                                | string  | Access token expiration time                      |
-| fcm_token                                 | string  | Firebase Cloud Messaging token                    |
-| first_name                                | string  | First name of the user                            |
-| gender                                    | string  | Gender of the user                                |
-| goal_type                                 | string  | Type of health/fitness goal (e.g., weight loss)   |
-| goal_weight                               | string  | Target weight as defined by the user              |
-| height                                    | string  | Height of the user                                |
-| initial_weight                            | float   | Weight at account creation or goal start          |
-| is_active_account                         | boolean | Indicates if the account is currently active      |
-| is_fitbit_on                              | boolean | Whether Fitbit integration is enabled             |
-| is_fitbit_valid                           | boolean | Whether Fitbit integration is valid/authenticated |
-| is_google_fit_on                          | boolean | Whether Google Fit is enabled                     |
-| is_google_fit_valid                       | boolean | Whether Google Fit integration is valid           |
-| is_health_connect_on                      | boolean | Whether Health Connect integration is enabled     |
-| is_health_kit_on                          | boolean | Whether Apple HealthKit is enabled                |
-| is_logged_in                              | boolean | If the user is logged in with active session      |
-| is_expired                                | boolean | Whether the account/session is expired            |
-| is_mfp_on                                 | boolean | Whether MyFitnessPal integration is enabled       |
-| is_mfp_valid                              | boolean | Whether MFP integration is valid                  |
-| is_streak_on                              | boolean | If streak tracking is enabled                     |
-| is_synced                                 | boolean | Is account details are synced online              |
-| is_ua_on                                  | boolean | Under Armour connection enabled                   |
-| is_ua_valid                               | boolean | Under Armour connection valid                     |
-| is_weightless_on                          | boolean | Weightless mode enabled (app-specific)            |
-| last_active_time                          | string  | Timestamp of last activity                        |
-| last_name                                 | string  | Last name of the user                             |
-| met_previous_goal                         | boolean | If the user achieved the last set goal            |
-| percent                                   | float   | Goal completion or progress percent               |
-| preferred_input_method                    | string  | User's preferred data entry method                |
-| refresh_token                             | string  | OAuth refresh token                               |
-| should_send_entry_notifications           | boolean | Whether to send reminders for entries             |
-| should_send_weight_in_entry_notifications | boolean | Whether to send reminders for weight-ins          |
-| streak_timestamp                          | string  | Timestamp for streak tracking                     |
-| weight_unit                               | string  | Unit of weight measurement (kg/lb)                |
-| weightless_body_fat                       | float   | Variant body fat value                            |
-| weightless_muscle                         | float   | Variant muscle mass value                         |
-| weightless_timestamp                      | string  | Last updated timestamp for weightless data        |
-| weightless_weight                         | float   | Variant weight value                              |
-| zipcode                                   | string  | User's zip/postal code                            |
+| Column Name       | Type    | Description                                  |
+| ----------------- | ------- | -------------------------------------------- |
+| account_id        | string  | Primary key for the account                  |
+| first_name        | string  | First name of the user                       |
+| last_name         | string  | Last name of the user                        |
+| dob               | string  | Date of birth                                |
+| email             | string  | User email address                           |
+| expires_at        | string  | Access token expiration time                 |
+| fcm_token         | string  | Firebase Cloud Messaging token               |
+| gender            | string  | Gender of the user                           |
+| height            | string  | Height of the user                           |
+| initial_weight    | float   | Weight at account creation or goal start     |
+| is_active_account | boolean | Indicates if the account is currently active |
+| is_logged_in      | boolean | If the user is logged in with active session |
+| is_expired        | boolean | Whether the account/session is expired       |
+| is_synced         | boolean | Is account details are synced online         |
+| last_active_time  | string  | Timestamp of last activity                   |
+| zipcode           | string  | User's zip/postal code                       |
+
+## Table: account_weight_settings
+
+| Column Name          | Type    | Description                                       |
+| -------------------- | ------- | ------------------------------------------------- |
+| account_id           | string  | Foreign key for referencing account.account_id    |
+| activity_level       | string  | User's activity level (e.g., low, moderate, high) |
+| goal_type            | string  | Type of health/fitness goal (e.g., weight loss)   |
+| goal_weight          | string  | Target weight as defined by the user              |
+| is_streak_on         | boolean | If streak tracking is enabled                     |
+| is_weightless_on     | boolean | Weightless mode enabled (app-specific)            |
+| met_previous_goal    | boolean | If the user achieved the last set goal            |
+| percent              | float   | Goal completion or progress percent               |
+| streak_timestamp     | string  | Timestamp for streak tracking                     |
+| weight_unit          | string  | Unit of weight measurement (kg/lb)                |
+| weightless_body_fat  | float   | Variant body fat value                            |
+| weightless_muscle    | float   | Variant muscle mass value                         |
+| weightless_timestamp | string  | Last updated timestamp for weightless data        |
+| weightless_weight    | float   | Variant weight value                              |
+
+## Table: notification_settings
+
+| Column Name                               | Type    | Description                                    |
+| ----------------------------------------- | ------- | ---------------------------------------------- |
+| account_id                                | string  | Foreign key for referencing account.account_id |
+| should_send_entry_notifications           | boolean | Whether to send reminders for entries          |
+| should_send_weight_in_entry_notifications | boolean | Whether to send reminders for weight-ins       |
+
+
+## Table: dashboard_settings
+
+| Column Name       | Type   | Description                                    |
+| ----------------- | ------ | ---------------------------------------------- |
+| account_id        | string | Foreign key for referencing account.account_id |
+| dashboard_metrics | string | Metrics selected for dashboard display         |
+| dashboard_type    | string | Layout type of the user's dashboard            |
+
+## Table: integrations_settings
+
+| Column Name          | Type    | Description                                       |
+| -------------------- | ------- | ------------------------------------------------- |
+| account_id           | string  | Foreign key for referencing account.account_id    |
+| is_fitbit_on         | boolean | Whether Fitbit integration is enabled             |
+| is_fitbit_valid      | boolean | Whether Fitbit integration is valid/authenticated |
+| is_google_fit_on     | boolean | Whether Google Fit is enabled                     |
+| is_google_fit_valid  | boolean | Whether Google Fit integration is valid           |
+| is_health_connect_on | boolean | Whether Health Connect integration is enabled     |
+| is_health_kit_on     | boolean | Whether Apple HealthKit is enabled                |
+| is_ua_on             | boolean | Under Armour connection enabled                   |
+| is_ua_valid          | boolean | Under Armour connection valid                     |
+| is_mfp_on            | boolean | Whether MyFitnessPal integration is enabled       |
+| is_mfp_valid         | boolean | Whether MFP integration is valid                  |
+
 
 ## Table: entry
 
@@ -213,51 +236,64 @@ Stores application logs for debugging, monitoring, and auditing purposes.
 erDiagram
     account {
         string account_id PK
-        string access_token
-        string activity_level
-        string dashboard_metrics
-        string dashboard_type
+        string first_name
+        string last_name
         string dob
         string email
         string expires_at
         string fcm_token
-        string first_name
         string gender
-        string goal_type
-        string goal_weight
         string height
         float initial_weight
         boolean is_active_account
-        boolean is_fitbit_on
-        boolean is_fitbit_valid
-        boolean is_google_fit_on
-        boolean is_google_fit_valid
-        boolean is_health_connect_on
-        boolean is_health_kit_on
         boolean is_logged_in
         boolean is_expired
-        boolean is_mfp_on
-        boolean is_mfp_valid
-        boolean is_streak_on
         boolean is_synced
-        boolean is_ua_on
-        boolean is_ua_valid
-        boolean is_weightless_on
         string last_active_time
-        string last_name
+        string zipcode
+    }
+
+    account_weight_settings {
+        string account_id FK
+        string activity_level
+        string goal_type
+        string goal_weight
+        boolean is_streak_on
+        boolean is_weightless_on
         boolean met_previous_goal
         float percent
-        string preferred_input_method
-        string refresh_token
-        boolean should_send_entry_notifications
-        boolean should_send_weight_in_entry_notifications
         string streak_timestamp
         string weight_unit
         float weightless_body_fat
         float weightless_muscle
         string weightless_timestamp
         float weightless_weight
-        string zipcode
+    }
+
+    notification_settings {
+        string account_id FK
+        boolean should_send_entry_notifications
+        boolean should_send_weight_in_entry_notifications
+    }
+
+    dashboard_settings {
+        string account_id FK
+        string dashboard_metrics
+        string dashboard_type
+    }
+
+    integrations_settings {
+        string account_id FK
+        boolean is_fitbit_on
+        boolean is_fitbit_valid
+        boolean is_google_fit_on
+        boolean is_google_fit_valid
+        boolean is_health_connect_on
+        boolean is_health_kit_on
+        boolean is_ua_on
+        boolean is_ua_valid
+        boolean is_mfp_on
+        boolean is_mfp_valid
     }
 
     logs {
@@ -274,7 +310,7 @@ erDiagram
 
     entry {
         INTEGER id PK
-        TEXT user_id FK
+        TEXT account_id FK
         TEXT entry_timestamp
         TEXT server_timestamp
         TEXT op_timestamp
@@ -283,7 +319,7 @@ erDiagram
         BOOLEAN is_synced
     }
 
-    Body_scale_entry {
+    BodyScaleEntry {
         INTEGER id PK
         INTEGER weight
         INTEGER body_fat
@@ -293,7 +329,7 @@ erDiagram
         TEXT source
     }
 
-    body_scale_entry_metric {
+    BodyScaleEntryMetric {
         INTEGER id PK
         INTEGER bmr
         INTEGER metabolic_age
@@ -307,7 +343,7 @@ erDiagram
         TEXT unit
     }
 
-    bpm_entry {
+    BpmEntry {
         INTEGER id PK
         INTEGER systolic
         INTEGER diastolic
@@ -318,28 +354,29 @@ erDiagram
 
     device {
         string id PK
-        string user_id FK
+        string account_id FK
         string peripheral_identifier
         string nickname
-        string device_name
         string sku
         string mac
-        boolean is_connected
         string password
         boolean is_deleted
+        string device_name
         string device_type
-        string protocol_type
         string broadcast_id
+        string broadcast_id_string
         string user_number
+        string protocol_type
         string created_at
         integer last_modified
+        boolean is_synced
+        boolean is_connected
         string wifi_mac
         boolean is_wifi_configured
-        boolean is_synced
         string token
     }
 
-    Body_scale {
+    BodyScale {
         string id PK
         string scale_type
         boolean body_comp
@@ -349,12 +386,12 @@ erDiagram
         string id PK
         string model_number
         string serial_number
-        string latest_version
         string firmware_revision
         string hardware_revision
         string software_revision
         string manufacturer_name
         string system_id
+        string latest_version
     }
 
     r4_scale_preference {
@@ -375,17 +412,21 @@ erDiagram
         boolean has_numeric_users
     }
 
-    account ||--|{ entry : "FK entry.user_id -> account.account_id"
-    account ||--|{ device : "FK device.user_id -> account.account_id"
-    account ||--|{ logs : "FK logs.account_id -> account.account_id"
+    %% Relationships
+    account ||--o{ account_weight_settings : has
+    account ||--o{ notification_settings : has
+    account ||--o{ dashboard_settings : has
+    account ||--o{ integrations_settings : has
+    account ||--o{ logs : generates
+    account ||--o{ entry : creates
+    account ||--o{ device : owns
 
-    entry ||--||  Body_scale_entry : "FK Body_scale_entry.id -> entry.id"
-    Body_scale_entry ||--|| body_scale_entry_metric : "FK body_scale_entry_metric.id ->  Body_scale_entry.id"
-    entry ||--|| bpm_entry : "FK bpm_entry.id -> entry.id"
+    entry ||--o| BodyScaleEntry : extends
+    BodyScaleEntry ||--o| BodyScaleEntryMetric : has
+    entry ||--o| BpmEntry : extends
 
-    device ||--|| Body_scale : "FK  Body_scale.id -> device.id"
-    Body_scale ||--|| r4_scale_preference : "FK r4_scale_preference.id ->  Body_scale.id"
-
-    device ||--|| device_meta_data : "FK device_meta_data.id -> device.id"
-    device ||--|| bpm : "FK bpm.id -> device.id"
+    device ||--o| BodyScale : extends
+    device ||--o| device_meta_data : has
+    device ||--o| bpm : extends
+    BodyScale ||--o| r4_scale_preference : has
 ```

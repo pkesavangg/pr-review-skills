@@ -81,4 +81,24 @@ interface ILogRepository {
      * @param days Number of days to keep
      */
     suspend fun deleteLogsOlderThanDays(days: Int)
+
+    /**
+     * Log a message
+     * @param tag Tag for the log entry
+     * @param message Log message
+     * @param type Log type
+     * @param data Optional additional data
+     */
+    suspend fun log(tag: String, message: String, type: String, data: String?)
+
+    /**
+     * Get all logs from the database
+     * @return Flow of all log entries
+     */
+    fun getAllLogs(): Flow<List<LogEntity>>
+
+    /**
+     * Clear all logs from the database
+     */
+    suspend fun clearLogs()
 } 
