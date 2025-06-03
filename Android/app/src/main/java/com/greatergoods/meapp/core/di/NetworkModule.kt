@@ -8,6 +8,7 @@ import com.greatergoods.meapp.core.network.interceptors.AuthTokenInterceptor
 import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
 import com.greatergoods.meapp.core.network.interceptors.NetworkInterceptor
 import com.greatergoods.meapp.core.network.interceptors.ResponseInterceptor
+import com.greatergoods.meapp.core.network.interceptors.TokenAuthenticator
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.network.utility.LegacyNetworkConnectivityObserver
 import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
@@ -99,6 +100,11 @@ object NetworkModule {
             LegacyNetworkConnectivityObserver(context)
         }
 
+    @Provides
+    @Singleton
+    fun provideTokenAuthenticator(): TokenAuthenticator = TokenAuthenticator()
+
+
     /**
      * Provides a configured OkHttpClient with all required interceptors.
      * Logging is only added if the app is debuggable.
@@ -112,6 +118,7 @@ object NetworkModule {
         baseUrlInterceptor: BaseUrlInterceptor,
         responseInterceptor: ResponseInterceptor,
         networkInterceptor: NetworkInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient {
         val okHttpClient = OkHttpClient.Builder()
         // Only add logging interceptor if the app is debuggable
@@ -123,6 +130,7 @@ object NetworkModule {
             .addInterceptor(baseUrlInterceptor)
             .addInterceptor(authTokenInterceptor)
             .addInterceptor(responseInterceptor)
+            .authenticator(tokenAuthenticator)
         return okHttpClient.build()
     }
 }

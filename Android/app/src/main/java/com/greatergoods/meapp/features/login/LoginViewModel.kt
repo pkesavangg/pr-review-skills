@@ -6,9 +6,9 @@ import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
-import com.greatergoods.meapp.domain.model.api.auth.Profile
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,7 +122,7 @@ class LoginViewModel
             object Loading : ProfileState()
 
             data class Success(
-                val profile: Profile,
+                val profile: ProfileUpdateRequest,
             ) : ProfileState()
 
             data class Error(
