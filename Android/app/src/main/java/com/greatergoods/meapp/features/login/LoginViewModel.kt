@@ -2,7 +2,6 @@ package com.greatergoods.meapp.features.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
@@ -21,7 +20,6 @@ class LoginViewModel
     @Inject
     constructor(
         private val authAPI: IAuthAPI,
-        private val tokenManager: TokenManager
     ) : ViewModel() {
         private val _loginState = MutableStateFlow<LoginState>(LoginState.Initial)
         val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
@@ -42,11 +40,7 @@ class LoginViewModel
                 try {
                     val response = authAPI.login(LoginRequest(email, password))
                     // Store tokens in TokenManager
-                    tokenManager.setTokens(
-                        response.accessToken,
-                        response.refreshToken,
-                        response.expiresAt
-                    )
+
                     _loginState.value = LoginState.Success(response)
                     // After successful login, fetch profile to test token refresh
                     fetchProfile()
@@ -62,11 +56,7 @@ class LoginViewModel
                 try {
                     val response = authAPI.refreshToken(RefreshTokenRequest(refreshToken))
                     // Update tokens in TokenManager
-                    tokenManager.setTokens(
-                        response.accessToken,
-                        response.refreshToken,
-                        response.expiresAt
-                    )
+
                     _refreshTokenState.value = RefreshTokenState.Success(response)
                     // After token refresh, try fetching profile again
                     fetchProfile()
