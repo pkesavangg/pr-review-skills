@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.data.repository.ThemeRepository
+import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.ThemeDataStore
 import dagger.Module
 import dagger.Provides
@@ -15,12 +15,7 @@ import android.content.Context
  */
 @Module
 @InstallIn(SingletonComponent::class)
-object ThemeModule {
-    /**
-     * Provides a singleton instance of [ThemeDataStore].
-     * @param context The application context.
-     * @return [ThemeDataStore] instance.
-     */
+object DataStoreModule {
     @Provides
     @Singleton
     fun provideThemeDataStore(
@@ -34,5 +29,8 @@ object ThemeModule {
      */
     @Provides
     @Singleton
-    fun provideThemeRepository(themeDataStore: ThemeDataStore): ThemeRepository = ThemeRepository(themeDataStore)
+    fun provideFcmDataStore(
+        @ApplicationContext context: Context,
+    ): FcmDataStore =
+        FcmDataStore(context)
 }
