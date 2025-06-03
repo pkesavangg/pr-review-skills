@@ -1,7 +1,9 @@
 import Foundation
 
 /// Protocol defining the service interface for managing user accounts, including authentication, state, updates, security, and sync/offline operations.
+@MainActor
 protocol AccountServiceProtocol {
+    var activeAccount : Account? { get set }
     // MARK: - Account Lifecycle
 
     /// Registers a new user account with the given email, password, and profile.
@@ -20,12 +22,11 @@ protocol AccountServiceProtocol {
     func logIn(email: String, password: String) async throws -> Account
 
     /// Logs out the account with the specified ID.
-    /// - Parameter accountId: The ID of the account to log out.
-    func logOut(accountId: String) async throws
+    /// - Parameter accountId: The ID of the account to log out. If nil, logs out the currently active account.
+    func logOut(accountId: String?) async throws
 
-    /// Deletes the account with the specified ID.
-    /// - Parameter accountId: The ID of the account to delete.
-    func deleteAccount(accountId: String) async throws
+    /// Deletes the currently active account.
+    func deleteAccount() async throws
 
     /// Switches the active session to the specified account.
     /// - Parameter account: The account to switch to.
@@ -58,11 +59,7 @@ protocol AccountServiceProtocol {
 
     /// Updates the entire account object in the data store and/or backend.
     /// - Parameter updatedAccount: The updated Account object.
-    func updateAccount(_ updatedAccount: Account) async throws
-
-    /// Patches the stored account with the specified fields.
-    /// - Parameter updatedFields: A dictionary of key paths and values to update.
-    func patchStoredAccount(_ updatedFields: [PartialKeyPath<Account>: Any]) async throws
+    func updateAccount(_ updatedAccount: Account) async throws -> Account
 
     /// Updates the user's profile information.
     /// - Parameter profile: The updated Profile object.
@@ -76,25 +73,47 @@ protocol AccountServiceProtocol {
 
     /// Updates the user's authentication tokens.
     /// - Parameter tokens: The updated Tokens object.
-    func updateTokens(_ tokens: Tokens) async throws
+    /// - Parameter accountId: The ID of the account to update. If nil, updates the currently active account.
+    func updateTokens(_ tokens: Tokens, _ accountId: String?) async throws
 
     /// Updates the dashboard type for the specified account.
     /// - Parameters:
-    ///   - accountId: The ID of the account to update.
     ///   - type: The new dashboard type.
-    func updateDashboardType(accountId: String, type: DashboardType) async throws
+    ///   - Returns: The updated Account object.
+    func updateDashboardType(type: DashboardType) async throws -> Account
 
     /// Updates the integrations for the specified account.
     /// - Parameters:
-    ///   - accountId: The ID of the account to update.
     ///   - integrations: The new Integrations object.
-    func updateIntegrations(accountId: String, integrations: Integrations) async throws
+    ///   - Returns: The updated Account object.
+    func updateIntegrations(integrations: Integrations) async throws -> Account
 
     /// Updates the notification settings for the specified account.
     /// - Parameters:
-    ///   - accountId: The ID of the account to update.
     ///   - notifications: The new Notifications object.
-    func updateNotifications(accountId: String, notifications: Notifications) async throws
+    ///   - Returns: The updated Account object.
+    func updateNotifications(notifications: Notifications) async throws -> Account
+
+    /// Updates the dashboard metrics for the specified account.
+    /// - Parameters:
+    ///   - metrics: Array of metric strings to display on dashboard.
+    ///   - Returns: The updated Account object.
+    func updateDashboardMetrics(metrics: [String]) async throws -> Account
+
+    /// Updates the streak status for the specified account.
+    /// - Parameters:
+    ///   - isStreakOn: Whether streak tracking is enabled.
+    ///   - streakTimestamp: The timestamp of the last streak update.
+    /// - Returns: The updated Account object.
+    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws -> Account
+
+    /// Updates the weightless mode settings for the specified account.
+    /// - Parameters:
+    ///   - isWeightlessOn: Whether weightless mode is enabled.
+    ///   - weightlessTimestamp: The timestamp of the last weightless update.
+    ///   - weightlessWeight: The weight value for weightless mode.
+    /// - Returns: The updated Account object.
+    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws -> Account
 
     // MARK: - Password & Security
 
@@ -109,16 +128,24 @@ protocol AccountServiceProtocol {
     func updatePassword(oldPassword: String, newPassword: String) async throws
 
     // MARK: - Sync & Offline
+    
+    /// Refreshes all accounts from the backend.
+    /// - Note: This should be called on app launch to ensure all accounts are up-to-date.
+    func refreshAllAccounts() async throws
 
     /// Refreshes the account data from the backend for the specified account ID.
-    /// - Parameter accountId: The ID of the account to refresh.
+    /// - Parameter accountId: The ID of the account to refresh. If nil, refreshes the currently active account.
     /// - Returns: The refreshed Account object.
-    func refreshAccount(accountId: String) async throws -> Account
+    func refreshAccount(accountId: String?) async throws -> Account
 
     /// Clears all offline data for the specified account.
     /// - Parameter account: The account whose offline data should be cleared.
     func clearOfflineData(for account: Account) async throws
 
-    /// Deletes all accounts from the device.
-    func deleteAllAccounts() async throws
+    /// Deletes all accounts stored locally on the device.
+    func deleteAllAccountsLocally() async throws
+    
+    /// Syncs all unsynced accounts with the backend.
+    /// - Note: This should be called on app launch to ensure all local changes are synchronized.
+    func syncUnsyncedAccounts() async throws
 }

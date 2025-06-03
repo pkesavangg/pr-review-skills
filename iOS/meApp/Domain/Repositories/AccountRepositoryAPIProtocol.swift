@@ -7,6 +7,7 @@ import Foundation
 /// dashboard configuration, streak/weightless updates, and scale token management.
 ///
 /// Implementations of this protocol should handle all networking, serialization, and error handling for these operations.
+@MainActor
 protocol AccountRepositoryAPIProtocol {
     /// Creates a new account with the given email, password, and profile. (POST /account)
     /// - Parameters:
@@ -25,14 +26,14 @@ protocol AccountRepositoryAPIProtocol {
 
     /// Logs out the account with the given ID and optional FCM token.
     /// - Parameters:
-    ///   - accountId: The ID of the account to log out.
     ///   - fcmToken: The FCM token to unregister (optional).
-    func logOut(accountId: String, fcmToken: String?) async throws
+    ///   - Parameter accessToken: The access token for authentication.
+    func logOut(fcmToken: String?, accessToken: String?) async throws
 
     /// Fetches the current account's details from the backend. (GET /account)
-    /// - Parameter accountId: The ID of the account to fetch.
+    /// - Parameter accessToken: The access token for authentication, defaults to nil.
     /// - Returns: AccountDTO (from { account })
-    func fetchAccount(accountId: String) async throws -> AccountDTO
+    func fetchAccount(accessToken: String?) async throws -> AccountDTO
 
     /// Edits the account with the given updated Account object (PUT /account).
     /// - Parameter updatedAccount: The updated Account object.
@@ -90,6 +91,7 @@ protocol AccountRepositoryAPIProtocol {
     /// - Parameters:
     ///   - oldPassword: The current password.
     ///   - newPassword: The new password to set.
-    func updatePassword(oldPassword: String, newPassword: String) async throws
+    ///   - Returns: Tokens (access and refresh tokens)
+    func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens
 }
 
