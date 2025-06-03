@@ -13,6 +13,11 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     private let userDefaults: UserDefaults
     private let logger = AppLogger.shared
     
+    private enum Keys {
+        static let integrationInfo = "integration_info_"
+        static let integrationKeys = "integration_keys"
+    }
+    
     // MARK: - Initialization
     
     init(userDefaults: UserDefaults = .standard) {
@@ -71,14 +76,19 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
         let integrationKeys = getIntegrationKeys()
         
         for key in integrationKeys {
-            guard let data = userDefaults.data(forKey: key),
-                  let info = try? JSONDecoder().decode(IntegrationInfo.self, from: data) else {
+            guard let data = userDefaults.data(forKey: key) else {
                 continue
             }
             
-            // Check if this integration is used by another account
-            if info.type == type && info.isIntegrated && info.assignedTo != accountId {
-                return true
+            do {
+                let info = try JSONDecoder().decode(IntegrationInfo.self, from: data)
+                if info.type == type && info.isIntegrated && info.assignedTo != accountId {
+                    return true
+                }
+            } catch {
+                logger.log(level: .error, tag: "IntegrationRepository", 
+                          message: "Failed to decode integration info for key \(key): \(error.localizedDescription)")
+                continue
             }
         }
         
