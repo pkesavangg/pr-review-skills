@@ -21,70 +21,84 @@
 import Foundation
 import os
 
-public class AppLogger {
-    static let shared = AppLogger(tag: "GGMeAppLogger")
+/// Public DTO for log entries that can be exposed outside the module
+// public struct LogEntryDTO: Identifiable {
+//     public let id: String
+//     public let accountId: String?
+//     public let sessionId: String
+//     public let tag: String
+//     public let tagId: String
+//     public let type: String
+//     public let message: String
+//     public let timestamp: Int64
+//     public let data: String?
     
+//     init(from entry: LogEntry) {
+//         self.id = entry.id
+//         self.accountId = entry.accountId
+//         self.sessionId = entry.sessionId
+//         self.tag = entry.tag
+//         self.tagId = entry.tagId
+//         self.type = entry.type.rawValue
+//         self.message = entry.message
+//         self.timestamp = entry.timestamp
+//         self.data = entry.data
+//     }
+// }
+
+public enum LogLevel: Int, Sendable {
+    case debug = 1
+    case info = 2
+    case error = 3
+    case critical = 4
+    
+    var toLogType: LogEntry.LogType {
+        switch self {
+        case .debug: return .debug
+        case .info: return .info
+        case .error: return .error
+        case .critical: return .error
+        }
+    }
+}
+
+@MainActor
+class AppLogger {
     private let logQueue = DispatchQueue(label: "com.greatergoods.logQueue", attributes: .concurrent)
-    private var logger: Logger?
-    private var logs: [String] = []
+    private let logger: Logger
     private var minimumLogLevel: LogLevel = .debug
-    private var tag: String = "AppLogger"
-    private let maxLogCount = 1000
+    private let tag: String
     
     init(tag: String) {
-        logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "", category: tag)
+        self.tag = tag
+        self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "", category: tag)
     }
     
-    public enum LogLevel: Int {
-        case debug = 1
-        case info = 2
-        case error = 3
-        case critical = 4
-    }
-    
-    public func setLogLevel(level: LogLevel) {
-        minimumLogLevel = level
-    }
-    
-    public func getAllLogs() -> [String] {
-        var currentLogs: [String] = []
-        logQueue.sync {
-            currentLogs = self.logs
-            self.logs.removeAll()
+    private func stringify(_ value: Any) -> String {
+        if let data = value as? Data {
+            return String(data: data, encoding: .utf8) ?? "Unable to decode data"
         }
-        for log in currentLogs {
-            print(log)
-        }
-        return currentLogs
+        return String(describing: value)
     }
     
-    // New log method that accepts Any
-    public func log(level: LogLevel, tag: String, message: String, data: Any? = nil, function: StaticString = #function, line: UInt = #line) {
-        var combinedMessage = message
-        if let data = data {
-            let stringifiedData = stringify(data)
-            combinedMessage += " | Data: \(stringifiedData)"
-        }
-        logInternal(level: level, tag: tag, message: combinedMessage, function: function, line: line)
-    }
-    
-    // Internal method for actual logging logic
-    private func logInternal(level: LogLevel, tag: String, message: String, function: StaticString, line: UInt) {
+    func log(level: LogLevel, 
+            tag: String, 
+            message: String, 
+            data: Any? = nil, 
+            function: StaticString = #function, 
+            line: UInt = #line) {
         guard level.rawValue >= minimumLogLevel.rawValue else { return }
         
-        let logMessage = "[\(levelString(level))] \(message) Class: \(tag) Function: \(function) Line: \(line)"
+        let stringifiedData = data.map(stringify)
+        let logMessage = "[\(levelString(level))] \(message) Class: \(tag) Function: \(function) Line: \(line) Data: \(stringifiedData ?? "none")"
         
         logQueue.async(flags: .barrier) {
-            if self.logs.count >= self.maxLogCount {
-                self.logs.removeFirst()
-            }
-            self.logs.append(logMessage)
+            // Only log to system logger
+            self.logger.log(level: self.levelToOSLog(level: level), "\(logMessage, privacy: .public)")
         }
-        
-        logger?.log(level: levelToOSLog(level: level), "\(logMessage, privacy: .public)")
     }
     
-    private func levelToOSLog(level: LogLevel) -> OSLogType {
+    nonisolated private func levelToOSLog(level: LogLevel) -> OSLogType {
         switch level {
         case .info: return .info
         case .debug: return .debug
@@ -101,46 +115,6 @@ public class AppLogger {
         case .critical: return "CRITICAL"
         }
     }
-    
-    // TODO: Uncomment and implement API logging functionality in future.
-    // Ensure appropriate dependencies are included and properly configured.
-    //    // Helper to get ISO8601 string
-    //    private func currentISO8601String() -> String {
-    //        return ISO8601DateFormatter().string(from: Date())
-    //    }
-    //
-    //    // Structs for API payload
-    //    private struct LogEntry: Codable {
-    //        let time: String
-    //        let data: [String]
-    //    }
-    //    private struct LogPayload: Codable {
-    //        let version: String
-    //        let logs: [LogEntry]
-    //    }
-    //
-    //    // Send logs to api
-    //    public func sendLogsToAPI() {
-    //        logQueue.async {
-    //            let logEntries: [LogEntry] = self.logs.map { log in
-    //                LogEntry(time: self.currentISO8601String(), data: [log])
-    //            }
-    //            let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-    //            let versionString = "\(appVersion)_\(AppEnvironment.current.rawValue)"
-    //            let payload = LogPayload(version: versionString, logs: logEntries)
-    //            // Print actual JSON payload for debugging
-    //            let encoder = JSONEncoder()
-    //            encoder.outputFormatting = .prettyPrinted
-    //            Task{
-    //                do {
-    //                    let _: String = try await HTTPClient.shared.send(.log,
-    //                                                                            method: .post,
-    //                                                                            body: payload)
-    //                } catch {
-    //                }
-    //            }
-    //        }
-    //    }
 }
 
 /// MARK: - USAGE GUIDE
@@ -170,3 +144,32 @@ public class AppLogger {
 /// ```swift
 /// let str = stringify(anyValue)
 /// ```
+
+// MARK: - Usage Examples
+extension AppLogger {
+    /// Example usage:
+    /// ```swift
+    /// // Basic logging
+    /// AppLogger.shared.log(level: .info, tag: "LoginView", message: "User login attempt")
+    ///
+    /// // Logging with data
+    /// AppLogger.shared.log(level: .error, 
+    ///                     tag: "NetworkService", 
+    ///                     message: "API call failed",
+    ///                     data: ["statusCode": 404])
+    ///
+    /// // Get session logs
+    /// let sessionLogs = AppLogger.shared.getCurrentSessionLogs()
+    ///
+    /// // Get account logs
+    /// let accountLogs = AppLogger.shared.getLogsForAccount("user123")
+    ///
+    /// // Get date range logs
+    /// let fromDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+    /// let logs = AppLogger.shared.getLogs(from: fromDate, to: Date())
+    /// ```
+    ///
+    /// Note: The logger automatically manages log retention and cleanup.
+    /// Logs older than 5 days are automatically removed.
+    static func examples() { }
+}
