@@ -1,8 +1,12 @@
 package com.greatergoods.meapp.features.common.viewmodel
 
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
+import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
+import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,8 +37,11 @@ data class AppUiState(
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
-    private val userRepository: IUserRepository
-) : NavigationViewmodel() {
+    private val userRepository: IUserRepository,
+    private val dialogQueueService: DialogQueueService
+) : ViewModel(),
+    INavigationHandler by NavigationViewmodel(),
+    IDialogQueueHandler by DialogQueueViewModel(dialogQueueService) {
 
     private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState

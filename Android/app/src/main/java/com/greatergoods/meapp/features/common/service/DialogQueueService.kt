@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.service
 
 import com.greatergoods.meapp.features.common.model.DialogModel
+import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -14,7 +15,7 @@ import java.util.PriorityQueue
  * Service for managing a global dialog queue with priority and delay support.
  * Exposes enqueue, dismiss, clear, and currentDialog as StateFlow for Compose integration.
  */
-class DialogQueueService {
+class DialogQueueService @Inject constructor() {
     private val dialogQueue: PriorityQueue<DialogModel> = PriorityQueue()
     private val _currentDialog = MutableStateFlow<DialogModel?>(null)
     val currentDialog: StateFlow<DialogModel?> = _currentDialog.asStateFlow()
@@ -54,6 +55,19 @@ class DialogQueueService {
     fun clear() {
         dialogQueue.clear()
         _currentDialog.value = null
+    }
+
+    /**
+     * Get the current queue size (excluding current dialog)
+     */
+    fun getQueueSize(): Int = dialogQueue.size
+
+    /**
+     * Get the next dialog in the queue without removing it
+     */
+    fun peekNextDialog(): DialogModel? {
+        val current = _currentDialog.value
+        return dialogQueue.peek()?.takeUnless { it == current }
     }
 
     /**

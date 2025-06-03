@@ -15,14 +15,14 @@ import kotlinx.coroutines.flow.Flow
  */
 @Composable
 fun NavigationObserver(
-    navigationIntentFlow: Flow<NavigationIntent>,
+    navigationIntentFlow: Flow<NavigationIntent>?,
     backStack: TopLevelBackStack<NavKey>,
 ) {
     val activity = LocalActivity.current
 
     LaunchedEffect(activity) {
         navigationIntentFlow
-            .collect { intent ->
+            ?.collect { intent ->
                 when (intent) {
                     is NavigationIntent.NavigateTo -> {
                         backStack.add(intent.route)

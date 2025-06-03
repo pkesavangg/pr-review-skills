@@ -44,6 +44,19 @@ fun SampleThemeScreen(
         Button(onClick = { appViewModel.createRandomAccount() }) {
             Text("Generate Random Account")
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = {
+            appViewModel.enqueueAlert(
+                title = "Test Alert",
+                message = "This is a test alert dialog",
+                dismissText = "OK",
+                onDismiss = { /* Handle dismiss if needed */ },
+                priority = 100,
+                delayMillis = 0L
+            )
+        }) {
+            Text("Show Test Alert")
+        }
         Spacer(modifier = Modifier.height(24.dp))
         Text("Accounts:", style = MeAppTheme.typography.body1, color = MeAppTheme.colorScheme.body)
         accounts.forEach { (accountId, account) ->

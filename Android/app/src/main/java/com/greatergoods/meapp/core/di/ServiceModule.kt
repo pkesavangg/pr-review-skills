@@ -4,6 +4,7 @@ import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.notification.NotificationService
 import dagger.Module
 import dagger.Provides
@@ -40,4 +41,14 @@ object ServiceModule {
         notificationService: NotificationService,
         appRepository: IAppRepository
     ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
+
+    /**
+     * Provides a singleton instance of [DialogQueueService] for managing dialog queues.
+     * @return [DialogQueueService] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideDialogQueueService(): DialogQueueService {
+        return DialogQueueService()
+    }
 }
