@@ -154,6 +154,8 @@ final class HTTPClient {
         }
     }
     
+    // MARK: - Account Handling
+    /// Retrieves the active account or a specific account by ID.
     private func getAccount(_ accountId: String?) async throws -> Account {
         if let accountId = accountId {
             guard let account = try await accountService.fetchAccount(byId: accountId) else {
