@@ -12,14 +12,24 @@ final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
     private let httpClient = HTTPClient.shared
     
     func removeIntegration(accountId: String, provider: IntegrationType) async throws {
-        // DELETE /integrations/{provider}
-        let endpoint = Endpoint.integrationProvider(provider.rawValue)
-        _ = try await httpClient.send(
-            endpoint,
-            method: .delete,
-            body: EmptyBody(),
-            needsAuth: true
-        ) as EmptyResponse
-    }    
+        switch provider {
+        case .healthKit, .healthConnect:
+            let endpoint = Endpoint.integrationHealthDevice(accountId)
+            _ = try await httpClient.send(
+                endpoint,
+                method: .delete,
+                body: EmptyBody(),
+                needsAuth: true
+            ) as EmptyResponse
+        default:
+            let endpoint = Endpoint.integrationProvider(provider.rawValue)
+            _ = try await httpClient.send(
+                endpoint,
+                method: .delete,
+                body: EmptyBody(),
+                needsAuth: true
+            ) as EmptyResponse
+        }
+    }
 }
 

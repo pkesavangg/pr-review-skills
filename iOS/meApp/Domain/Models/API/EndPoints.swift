@@ -46,6 +46,7 @@ enum Endpoint {
     case pairedScaleInfo(String)
     case scaleR4Preference
     case integrationProvider(String) 
+    case integrationHealthDevice(String) 
 
     var urlRequest: URLRequest? {
         switch self {
@@ -135,7 +136,9 @@ enum Endpoint {
         case .scaleR4Preference:
             return request(path: "/scale-r4/preference")
         case .integrationProvider(let provider):
-            return request(path: "/v3/integrations/\(provider)")
+            return request(path: "/integrations/\(provider)")
+        case .integrationHealthDevice(let deviceId):
+            return request(path: "/integrations/health/\(deviceId)")
         }
     }
 
