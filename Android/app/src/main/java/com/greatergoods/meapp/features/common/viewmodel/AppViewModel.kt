@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
 import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.repository.IAppRepository
@@ -38,9 +39,10 @@ data class AppUiState(
 class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
     private val userRepository: IUserRepository,
+    private val navigationService: IAppEventService,
     private val dialogQueueService: DialogQueueService
 ) : ViewModel(),
-    INavigationHandler by NavigationViewmodel(),
+    INavigationHandler by NavigationViewmodel(navigationService),
     IDialogQueueHandler by DialogQueueViewModel(dialogQueueService) {
 
     private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())

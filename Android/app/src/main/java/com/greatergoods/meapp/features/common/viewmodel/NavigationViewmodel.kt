@@ -15,34 +15,20 @@ import javax.inject.Inject
  * ViewModel for handling navigation events and intent-based navigation in the app.
  */
 @HiltViewModel
-class NavigationViewmodel @Inject constructor() : ViewModel(), INavigationHandler {
-
-    /** App event service for navigation, must be initialized before use. */
-    lateinit var appEventService: IAppEventService
-        private set
+class NavigationViewmodel @Inject constructor(private val appEventService: IAppEventService) : ViewModel(),
+    INavigationHandler {
 
     /** Navigation state flow, emits navigation intents. */
-    override var navigationState: Flow<NavigationIntent>? = null
-        private set
-
-    /**
-     * Initializes the app event service. Must be called before using navigation methods.
-     * @param service The IAppEventService instance to use.
-     */
-    fun initAppEventService(service: IAppEventService) {
-        appEventService = service
-        navigationState = appEventService.navigationIntent
-    }
+    override val navigationState: Flow<NavigationIntent>?
+        get() = appEventService.navigationIntent
 
     /**
      * Navigates to the specified route.
      * @param route The destination route.
      */
     override suspend fun navigateTo(route: AppRoute) {
-        if (::appEventService.isInitialized) {
-            viewModelScope.launch {
-                appEventService.navigateTo(route)
-            }
+        viewModelScope.launch {
+            appEventService.navigateTo(route)
         }
     }
 
@@ -51,10 +37,8 @@ class NavigationViewmodel @Inject constructor() : ViewModel(), INavigationHandle
      * @param destinations The list of routes to navigate to.
      */
     override suspend fun navigateTo(destinations: List<AppRoute>) {
-        if (::appEventService.isInitialized) {
-            viewModelScope.launch {
-                appEventService.navigateTo(destinations)
-            }
+        viewModelScope.launch {
+            appEventService.navigateTo(destinations)
         }
     }
 
@@ -63,10 +47,8 @@ class NavigationViewmodel @Inject constructor() : ViewModel(), INavigationHandle
      * @param currentRoute The current route to set as root.
      */
     override suspend fun navigateToRoot(currentRoute: AppRoute) {
-        if (::appEventService.isInitialized) {
-            viewModelScope.launch {
-                appEventService.navigateToRoot(currentRoute)
-            }
+        viewModelScope.launch {
+            appEventService.navigateToRoot(currentRoute)
         }
     }
 
@@ -75,10 +57,8 @@ class NavigationViewmodel @Inject constructor() : ViewModel(), INavigationHandle
      * @param destinations The new stack of routes.
      */
     override suspend fun replaceStack(destinations: List<AppRoute>) {
-        if (::appEventService.isInitialized) {
-            viewModelScope.launch {
-                appEventService.replaceStack(destinations)
-            }
+        viewModelScope.launch {
+            appEventService.replaceStack(destinations)
         }
     }
 
@@ -87,10 +67,8 @@ class NavigationViewmodel @Inject constructor() : ViewModel(), INavigationHandle
      * @param route The route to add.
      */
     override suspend fun addTopLevelRoute(route: AppRoute) {
-        if (::appEventService.isInitialized) {
-            viewModelScope.launch {
-                appEventService.addTopLevelRoute(route)
-            }
+        viewModelScope.launch {
+            appEventService.addTopLevelRoute(route)
         }
     }
 
@@ -103,10 +81,8 @@ class NavigationViewmodel @Inject constructor() : ViewModel(), INavigationHandle
         route: AppRoute?,
         inclusive: Boolean
     ) {
-        if (::appEventService.isInitialized) {
-            viewModelScope.launch {
-                appEventService.navigateBack(route, inclusive)
-            }
+        viewModelScope.launch {
+            appEventService.navigateBack(route, inclusive)
         }
     }
 }
