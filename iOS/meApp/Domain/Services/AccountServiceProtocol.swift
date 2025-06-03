@@ -79,21 +79,25 @@ protocol AccountServiceProtocol {
     /// Updates the dashboard type for the specified account.
     /// - Parameters:
     ///   - type: The new dashboard type.
+    ///   - Returns: The updated Account object.
     func updateDashboardType(type: DashboardType) async throws -> Account
 
     /// Updates the integrations for the specified account.
     /// - Parameters:
     ///   - integrations: The new Integrations object.
-    func updateIntegrations(integrations: Integrations) async throws
+    ///   - Returns: The updated Account object.
+    func updateIntegrations(integrations: Integrations) async throws -> Account
 
     /// Updates the notification settings for the specified account.
     /// - Parameters:
     ///   - notifications: The new Notifications object.
+    ///   - Returns: The updated Account object.
     func updateNotifications(notifications: Notifications) async throws -> Account
 
     /// Updates the dashboard metrics for the specified account.
     /// - Parameters:
     ///   - metrics: Array of metric strings to display on dashboard.
+    ///   - Returns: The updated Account object.
     func updateDashboardMetrics(metrics: [String]) async throws -> Account
 
     /// Updates the streak status for the specified account.

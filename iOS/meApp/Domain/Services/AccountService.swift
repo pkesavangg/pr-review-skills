@@ -286,7 +286,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     /// Updates the integrations for the active account.
-    func updateIntegrations(integrations: Integrations) async throws  {
+    func updateIntegrations(integrations: Integrations) async throws -> Account {
         throw AccountError.notImplemented
     }
     

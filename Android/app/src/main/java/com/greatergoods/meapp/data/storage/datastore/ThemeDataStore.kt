@@ -23,9 +23,11 @@ val Context.themePreferenceStore: DataStore<ThemePreference> by dataStore(
  * @constructor Creates a ThemeDataStore with the given context.
  * @param context The application context.
  */
-class ThemeDataStore(context: Context) : BaseProtoDataStore<ThemePreference>(
-    dataStore = context.themePreferenceStore,
-) {
+class ThemeDataStore(
+    context: Context,
+) : BaseProtoDataStore<ThemePreference>(
+        dataStore = context.themePreferenceStore,
+    ) {
     /**
      * Clears the theme preference by resetting to SYSTEM.
      */
@@ -51,13 +53,16 @@ class ThemeDataStore(context: Context) : BaseProtoDataStore<ThemePreference>(
  * Serializer for ThemePreference proto.
  */
 object ThemePreferenceSerializer : Serializer<ThemePreference> {
-    override val defaultValue: ThemePreference = ThemePreference.newBuilder()
-        .setMode(ThemeMode.SYSTEM)
-        .build()
+    override val defaultValue: ThemePreference =
+        ThemePreference
+            .newBuilder()
+            .setMode(ThemeMode.SYSTEM)
+            .build()
 
-    override suspend fun readFrom(input: InputStream): ThemePreference =
-        ThemePreference.parseFrom(input)
+    override suspend fun readFrom(input: InputStream): ThemePreference = ThemePreference.parseFrom(input)
 
-    override suspend fun writeTo(t: ThemePreference, output: OutputStream) =
-        t.writeTo(output)
+    override suspend fun writeTo(
+        t: ThemePreference,
+        output: OutputStream,
+    ) = t.writeTo(output)
 }

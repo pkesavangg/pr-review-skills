@@ -40,6 +40,10 @@ enum Endpoint {
     case feed
     case markFeedAs(elementId: String)
     case log
+    case pairedScale
+    case pairedScaleId(String)
+    case pairedScaleInfo(String)
+    case scaleR4Preference
 
     var urlRequest: URLRequest? {
         switch self {
@@ -118,6 +122,14 @@ enum Endpoint {
             return request(path: "/account/")
         case .log:
             return request(path: "/support/log")
+        case .pairedScale:
+            return request(path: "/paired-scale")
+        case .pairedScaleId(let id):
+            return request(path: "/paired-scale/\(id)")
+        case .pairedScaleInfo(let id):
+            return request(path: "/paired-scale/\(id)/info")
+        case .scaleR4Preference:
+            return request(path: "/scale-r4/preference")
         }
     }
 
