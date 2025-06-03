@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.datastore.ThemeMode
+import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -25,7 +25,7 @@ interface IAppRepository {
     /**
      * Sets the [ThemeMode].
      */
-    suspend fun setThemeMode(mode: ThemeMode)
+    suspend fun setThemeMode(accountId: String, mode: ThemeMode)
 
     /**
      * Clears the theme mode data.

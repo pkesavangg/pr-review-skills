@@ -5,7 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
-import com.greatergoods.meapp.data.storage.datastore.ThemeMode
+import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.theme.model.Animation
 import com.greatergoods.meapp.theme.model.ColorScheme
 import com.greatergoods.meapp.theme.model.Spacing
@@ -30,7 +30,6 @@ fun MeAppTheme(
             ThemeMode.LIGHT -> false
             ThemeMode.SYSTEM -> isSystemInDarkTheme()
             ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
-            ThemeMode.UNSET -> isSystemInDarkTheme()
         }
 
     val meAppColorScheme =
