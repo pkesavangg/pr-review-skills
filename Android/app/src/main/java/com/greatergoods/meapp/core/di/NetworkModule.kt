@@ -102,23 +102,12 @@ object NetworkModule {
     fun provideResponseInterceptor(): ResponseInterceptor = ResponseInterceptor()
 
     /**
-     * Provides the appropriate IConnectivityObserver implementation based on SDK version.
+     * Provides a token authenticator for OkHttp.
      */
-    @Provides
-    @Singleton
-    fun provideConnectivityObserver(
-        @ApplicationContext context: Context,
-    ): IConnectivityObserver =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            NetworkConnectivityObserver(context)
-        } else {
-            LegacyNetworkConnectivityObserver(context)
-        }
 
     @Provides
     @Singleton
     fun provideTokenAuthenticator(): TokenAuthenticator = TokenAuthenticator()
-
 
     /**
      * Provides a configured OkHttpClient with all required interceptors.
