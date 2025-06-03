@@ -42,7 +42,6 @@
 /// | shouldSendEntryNotifications             | boolean | Whether to send reminders for entries             |
 /// | shouldSendWeightInEntryNotifications     | boolean | Whether to send reminders for weight-ins          |
 /// | streakTimestamp                          | string  | Timestamp for streak tracking                     |
-/// | type                                     | string  | Account type or role                              |
 /// | weightUnit                               | string  | Unit of weight measurement (kg/lb)                |
 /// | weightlessBodyFat                        | float   | Offline/stored body fat value                     |
 /// | weightlessMuscle                         | float   | Offline/stored muscle mass value                  |
@@ -60,11 +59,11 @@ final class Account {
     /// OAuth or app-specific access token
     var accessToken: String?
     /// User's activity level (e.g., low, moderate, high)
-    var activityLevel: String?
+    var activityLevel: ActivityLevel?
     /// Metrics selected for dashboard display
     var dashboardMetrics: String?
     /// Layout type of the user's dashboard
-    var dashboardType: String?
+    var dashboardType: DashboardType?
     /// Date of birth
     var dob: String?
     /// User email address
@@ -76,9 +75,9 @@ final class Account {
     /// First name of the user
     var firstName: String?
     /// Gender of the user
-    var gender: String?
+    var gender: Sex?
     /// Type of health/fitness goal (e.g., weight loss)
-    var goalType: String?
+    var goalType: GoalType?
     /// Target weight as defined by the user
     var goalWeight: String?
     /// Height of the user
@@ -135,10 +134,8 @@ final class Account {
     var shouldSendWeightInEntryNotifications: Bool?
     /// Timestamp for streak tracking
     var streakTimestamp: String?
-    /// Account type or role
-    var type: String?
     /// Unit of weight measurement (kg/lb)
-    var weightUnit: String?
+    var weightUnit: WeightUnit?
     /// Offline/stored body fat value
     var weightlessBodyFat: Double?
     /// Offline/stored muscle mass value
@@ -155,15 +152,14 @@ final class Account {
         self.email = dto.email
         self.firstName = dto.firstName
         self.lastName = dto.lastName
-        self.gender = String(describing: dto.gender)
+        self.gender = dto.gender
         self.zipcode = dto.zipcode
         self.dob = dto.dob
         self.weightUnit = dto.weightUnit
         self.height = String(dto.height)
-        self.activityLevel = dto.activityLevel.map { String(describing: $0) }
+        self.activityLevel = dto.activityLevel
         self.goalWeight = dto.goalWeight.map { String($0) }
-        self.goalType = dto.goalType.map { String(describing: $0) }
-        self.type = dto.goalType.map { String(describing: $0) } // or dto.type if present
+        self.goalType = dto.goalType
         self.initialWeight = dto.initialWeight
         self.metPreviousGoal = nil
         self.percent = nil
@@ -188,9 +184,8 @@ final class Account {
         self.refreshToken = nil
         self.expiresAt = nil
         self.isStreakOn = dto.isStreakOn
-        self.streakTimestamp = nil
         self.dashboardMetrics = dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ",")
-        self.dashboardType = dto.dashboardType.map { String(describing: $0) }
+        self.dashboardType = dto.dashboardType
         self.isLoggedIn = nil
         self.isActiveAccount = nil
         self.isExpired = nil
@@ -205,22 +200,22 @@ final class Account {
             email: self.email,
             firstName: self.firstName ?? "",
             lastName: self.lastName,
-            gender: Sex(rawValue: self.gender ?? "") ?? .male,
+            gender: self.gender ?? .male,
             zipcode: self.zipcode,
-            weightUnit: self.weightUnit ?? "",
+            weightUnit: self.weightUnit ?? .lb,
             isWeightlessOn: self.isWeightlessOn,
             preferredInputMethod: self.preferredInputMethod,
             height: Double(self.height ?? "0") ?? 0.0,
-            activityLevel: self.activityLevel.flatMap { ActivityLevel(rawValue: $0) },
+            activityLevel: self.activityLevel,
             dob: self.dob ?? "",
             weightlessBodyFat: self.weightlessBodyFat,
             weightlessMuscle: self.weightlessMuscle,
             weightlessTimestamp: self.weightlessTimestamp,
             weightlessWeight: self.weightlessWeight,
             isStreakOn: self.isStreakOn,
-            dashboardType: self.dashboardType.flatMap { DashboardType(rawValue: $0) },
+            dashboardType: self.dashboardType,
             dashboardMetrics: self.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
-            goalType: self.goalType.flatMap { GoalType(rawValue: $0) },
+            goalType: self.goalType,
             goalWeight: self.goalWeight.flatMap { Double($0) },
             initialWeight: self.initialWeight,
             shouldSendEntryNotifications: self.shouldSendEntryNotifications,
@@ -232,7 +227,9 @@ final class Account {
             isMFPOn: self.isMfpOn,
             isMFPValid: self.isMfpValid,
             isUAOn: self.isUaOn,
-            isUAValid: self.isUaValid
+            isUAValid: self.isUaValid,
+            isHealthKitOn: self.isHealthKitOn,
+            isHealthConnectOn: self.isHealthConnectOn
         )
     }
 }
