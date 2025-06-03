@@ -88,6 +88,9 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.hilt.navigation.compose)
 
+    //browser
+    implementation(libs.androidx.browser)
+
     // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.android.compiler)
