@@ -15,22 +15,39 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
     @Provides
     @Singleton
-    fun provideAppRepository(themeDataStore: ThemeDataStore, fcmDataStore: FcmDataStore): IAppRepository =
-        AppRepository(themeDataStore, fcmDataStore)
+    fun provideAppRepository(
+        themeDataStore: ThemeDataStore,
+        fcmDataStore: FcmDataStore
+    ): IAppRepository {
+        return AppRepository(themeDataStore, fcmDataStore)
+    }
 
     @Provides
     @Singleton
     fun provideHealthConnectRepository(
         healthConnectDataStore: HealthConnectDataStore
-    ): IHealthConnectRepository =
-        HealthConnectRepository(healthConnectDataStore)
+    ): IHealthConnectRepository {
+        return HealthConnectRepository(healthConnectDataStore)
+    }
 
+    @Provides
+    fun provideCurrentAccountId(): String {
+        return "current_account_id"
+    }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryBindsModule {
     /**
      * Provides a singleton instance of [ILogRepository].
      * @param repository The implementation of [ILogRepository].
@@ -38,15 +55,5 @@ object RepositoryModule {
      */
     @Binds
     @Singleton
-    abstract fun bindLogRepository(repository: LogRepository): ILogRepository
-
-    companion object {
-        /**
-         * Provides the current account ID for logging.
-         * @return The current account ID as a String.
-         */
-        @Provides
-        @Singleton
-        fun provideCurrentAccountId(): String = "default" // TODO: Replace with actual account ID
-    }
+    abstract fun bindLogRepository(logRepository: LogRepository): ILogRepository
 } 

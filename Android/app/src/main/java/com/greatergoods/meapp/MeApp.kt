@@ -10,20 +10,24 @@ import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
 import com.greatergoods.meapp.features.common.components.DialogQueueHost
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
-import com.greatergoods.meapp.features.theme.ThemeViewModel
+import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
+import com.greatergoods.meapp.features.common.viewmodel.NavigationViewmodel
 import com.greatergoods.meapp.theme.MeAppTheme
 import androidx.compose.ui.platform.LocalContext
 import dagger.hilt.android.EntryPointAccessors
 import com.greatergoods.meapp.core.di.LogManagerEntryPoint
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.DisposableEffect
 
 /**
  * Main app composable. Sets up theme, navigation, and global dialog queue host.
  */
 @Composable
 fun MeApp() {
-    val themeViewModel: ThemeViewModel = hiltViewModel()
+    val appViewModel: AppViewModel = hiltViewModel()
     val dialogQueueViewModel: DialogQueueViewModel = hiltViewModel()
-    val themeMode by themeViewModel.themeMode.collectAsState()
+    val uiState by appViewModel.uiState.collectAsState()
+    val themeMode = uiState.themeMode
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
     val context = LocalContext.current
     val logManager = EntryPointAccessors.fromApplication(
@@ -35,7 +39,7 @@ fun MeApp() {
         // Global dialog host
         DialogQueueHost(dialogQueueViewModel)
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-            com.greatergoods.meapp.features.common.components.NavHost(topLevelBackStack, themeViewModel, logManager)
+            com.greatergoods.meapp.features.common.components.NavHost(topLevelBackStack, appViewModel, logManager)
         }
     }
 }

@@ -14,20 +14,17 @@ import com.greatergoods.meapp.features.sample.MyScalesScreen
 import com.greatergoods.meapp.features.sample.ProductDetailScreen
 import com.greatergoods.meapp.features.sample.ProductListScreen
 import com.greatergoods.meapp.features.sample.SampleThemeScreen
-import com.greatergoods.meapp.features.theme.ThemeViewModel
 import com.greatergoods.meapp.core.logging.LogManager
 import javax.inject.Inject
 
 /**
  * Registers the entry for the initial theme sample screen.
  *
- * @param appViewModel The ThemeViewModel for theme state and updates. 
- * @param themeViewModel The ThemeViewModel for theme state and updates.
+ * @param appViewModel The AppViewModel for app state and updates.
  * @param logManager The LogManager for logging events.
  */
 fun EntryProviderBuilder<NavKey>.initEntries(
     appViewModel: AppViewModel,
-    themeViewModel: ThemeViewModel,
     logManager: LogManager
 ) {
     entry<AppRoute.Init.SampleScreen> {
