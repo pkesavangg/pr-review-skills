@@ -1,10 +1,13 @@
 package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.core.service.AppEventService
+import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.features.common.service.DialogQueueService
+import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.services.IDeviceService
 import com.greatergoods.notification.NotificationService
 import dagger.Module
 import dagger.Provides
@@ -29,10 +32,10 @@ object ServiceModule {
     fun provideAppEventService(): IAppEventService = AppEventService()
 
     /**
-     * Provides a singleton instance of [NotificationManager] for notification operations.
+     * Provides a singleton instance of [GGNotificationManager] for notification operations.
      * @param context The application context.
      * @param notificationService The notification service dependency.
-     * @return [NotificationManager] instance.
+     * @return [GGNotificationManager] instance.
      */
     @Provides
     @Singleton
@@ -51,4 +54,12 @@ object ServiceModule {
     fun provideDialogQueueService(): DialogQueueService {
         return DialogQueueService()
     }
+
+    @Provides
+    @Singleton
+    fun provideDeviceInfoService(
+        @ApplicationContext context: Context,
+        deviceRepository: IDeviceInfoRepository,
+        notificationService: NotificationService,
+    ): IDeviceService = DeviceInfoService(context, deviceRepository, notificationService)
 }
