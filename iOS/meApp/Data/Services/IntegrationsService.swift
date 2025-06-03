@@ -1,5 +1,5 @@
 //
-//  IntegrationService.swift
+//  IntegrationsService.swift
 //  meApp
 //
 //  Created by Lakshmi Priya on 03/06/25.
@@ -8,7 +8,7 @@
 import Foundation
 
 @MainActor
-final class IntegrationService: IntegrationServiceProtocol {
+final class IntegrationsService: IntegrationServiceProtocol {
     // MARK: - Properties
     private let apiRepository: IntegrationRepositoryAPIProtocol
     private let localRepository: IntegrationRepositoryProtocol
