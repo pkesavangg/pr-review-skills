@@ -167,7 +167,7 @@ final class DateTimeTools {
     
     /// Attempts to parse a date string using ISO8601 and several common formats.
     /// Returns a Date if successful, or nil if parsing fails.
-    private static func parse(_ dateString: String) -> Date? {
+    static func parse(_ dateString: String) -> Date? {
         // Try ISO8601 first
         if let date = isoFormatter.date(from: dateString) {
             return date

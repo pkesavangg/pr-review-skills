@@ -40,16 +40,16 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         return try await httpClient.send(.login, method: .post, body: req)
     }
 
-    func logOut(fcmToken: String?, accessToken: String? = nil) async throws {
+    func logOut(fcmToken: String?, accountId: String? = nil) async throws {
         struct LogoutRequest: Codable {
             let fcmToken: String?
         }
         let req = LogoutRequest(fcmToken: fcmToken)
-        _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true, customToken: accessToken) as EmptyResponse
+        _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true, accountId: accountId) as EmptyResponse
     }
 
-    func fetchAccount(accessToken: String? = nil) async throws -> AccountDTO {
-        return try await httpClient.get(.accountInfo, needsAuth: true, customToken: accessToken)
+    func fetchAccount(accountId: String? = nil) async throws -> AccountDTO {
+        return try await httpClient.get(.accountInfo, needsAuth: true, accountId: accountId)
     }
 
     func editAccount(_ updatedAccount: Account) async throws -> AccountResponse {
@@ -105,5 +105,16 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens {
         struct Request: Codable { let oldPassword: String; let newPassword: String }
         return try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true)
+    }
+    
+    func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens {
+        struct Request: Codable { let refreshToken: String }
+        return try await httpClient.send(
+            .refreshToken,
+            method: .post,
+            body: Request(refreshToken: refreshToken),
+            needsAuth: true,
+            accountId: accountId
+        )
     }
 }

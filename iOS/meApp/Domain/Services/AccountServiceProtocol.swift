@@ -148,4 +148,15 @@ protocol AccountServiceProtocol {
     /// Syncs all unsynced accounts with the backend.
     /// - Note: This should be called on app launch to ensure all local changes are synchronized.
     func syncUnsyncedAccounts() async throws
+    
+    // MARK: - Authentication Tokens
+    
+    /// Retrieves the currently active authentication tokens.
+    /// - Returns: The Tokens object containing access and refresh tokens.
+    func getActiveTokens() async throws -> Tokens
+    
+    /// Refreshes the authentication tokens for the specified account ID.
+    /// - Parameter accountId: The ID of the account to refresh tokens for. If nil, uses the currently active account.
+    /// - Returns: The refreshed Tokens object.
+    func refreshTokens(accountId: String?) async throws -> Tokens
 }
