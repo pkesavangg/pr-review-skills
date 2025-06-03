@@ -27,7 +27,7 @@ class DialogQueueService @Inject constructor() {
     fun enqueue(dialog: DialogModel) {
         dialogQueue.add(dialog)
         if (_currentDialog.value == null) {
-            showNext()
+            _currentDialog.value = dialogQueue.peek()
         }
     }
 
@@ -38,13 +38,7 @@ class DialogQueueService @Inject constructor() {
         val dismissed = _currentDialog.value
         if (dialogQueue.isNotEmpty()) {
             dialogQueue.remove(dismissed)
-        }
-        if ((dismissed?.delayMillis ?: 0L) > 0L) {
-            scope.launch {
-                delay(dismissed!!.delayMillis)
-                showNext()
-            }
-        } else {
+            _currentDialog.value = null
             showNext()
         }
     }
@@ -74,6 +68,12 @@ class DialogQueueService @Inject constructor() {
      * Show the next dialog in the queue, or null if empty.
      */
     private fun showNext() {
-        _currentDialog.value = dialogQueue.peek()
+        if (dialogQueue.isNotEmpty()) {
+            val next = dialogQueue.peek()
+            scope.launch {
+                delay(next!!.delayMillis)
+                _currentDialog.value = next
+            }
+        }
     }
 }

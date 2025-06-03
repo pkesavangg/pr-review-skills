@@ -45,25 +45,99 @@ fun SampleThemeScreen(
             Text("Generate Random Account")
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = {
-            appViewModel.enqueueAlert(
-                title = "Test Alert",
-                message = "This is a test alert dialog",
-                dismissText = "OK",
-                onDismiss = { /* Handle dismiss if needed */ },
-                priority = 100,
-                delayMillis = 0L
-            )
-        }) {
-            Text("Show Test Alert")
+        Button(
+            onClick = {
+                appViewModel.enqueueAlert(
+                    title = "High Priority Alert",
+                    message = "This is a high priority alert that will show immediately",
+                    dismissText = "OK",
+                    onDismiss = {},
+                    priority = 1,  // Lower number means higher priority
+                    delayMillis = 0L,  // No delay
+                )
+            },
+        ) {
+            Text("Show High Priority Alert")
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                appViewModel.enqueueAlert(
+                    title = "Medium Priority Alert",
+                    message = "This is a medium priority alert with 2 second delay",
+                    dismissText = "OK",
+                    onDismiss = {},
+                    priority = 50,  // Medium priority
+                    delayMillis = 2000L,  // 2 second delay
+                )
+            },
+        ) {
+            Text("Show Medium Priority Alert")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                appViewModel.enqueueAlert(
+                    title = "Low Priority Alert",
+                    message = "This is a low priority alert with 5 second delay",
+                    dismissText = "OK",
+                    onDismiss = {},
+                    priority = 100,  // Lower priority
+                    delayMillis = 5000L,  // 5 second delay
+                )
+            },
+        ) {
+            Text("Show Low Priority Alert")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                // Enqueue multiple dialogs with different priorities
+                appViewModel.enqueueAlert(
+                    title = "Low Priority Alert",
+                    message = "This should show last",
+                    dismissText = "OK",
+                    onDismiss = {},
+                    priority = 100,
+                    delayMillis = 1000L,
+                )
+                appViewModel.enqueueAlert(
+                    title = "Medium Priority Alert",
+                    message = "This should show second",
+                    dismissText = "OK",
+                    onDismiss = {},
+                    priority = 50,
+                    delayMillis = 1000L,
+                )
+                appViewModel.enqueueCustomDialog(
+                    contentKey = "custom_dialog",
+                    onDismiss = {},
+                    priority = 1,
+                    delayMillis = 1000L
+                )
+
+            },
+        ) {
+            Text("Enqueue Multiple Alerts")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                // Clear all dialogs
+                appViewModel.clear()
+            },
+        ) {
+            Text("Clear All Dialogs")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
         Spacer(modifier = Modifier.height(24.dp))
         Text("Accounts:", style = MeAppTheme.typography.body1, color = MeAppTheme.colorScheme.body)
         accounts.forEach { (accountId, account) ->
             Column(
                 modifier = Modifier
                     .background(MeAppTheme.colorScheme.secondary)
-                    .padding(8.dp)
+                    .padding(8.dp),
             ) {
                 Text("ID: $accountId", style = MeAppTheme.typography.body2)
                 Text("Theme: ${account.themeMode}", style = MeAppTheme.typography.body2)

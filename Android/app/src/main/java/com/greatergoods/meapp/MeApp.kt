@@ -1,9 +1,13 @@
 package com.greatergoods.meapp
 
+import androidx.compose.foundation.background
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
@@ -26,7 +30,20 @@ fun MeApp() {
 
     MeAppTheme(themeMode = themeMode) {
         // Global dialog host
-        DialogQueueHost(dialogQueueViewModel)
+        DialogQueueHost(dialogQueueViewModel) { dialog ->
+            // Custom dialog content can be provided here if needed
+            when (dialog.contentKey) {
+                "custom_dialog" -> {
+                    Text("Custom dialog: ${dialog.params}", modifier = Modifier.background(Red))
+                }
+
+                else -> {
+                    // Default dialog handling
+                    // This can be a placeholder or a default dialog implementation
+                }
+            }
+
+        }
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
             com.greatergoods.meapp.features.common.components.NavHost(topLevelBackStack, appViewModel)
         }
