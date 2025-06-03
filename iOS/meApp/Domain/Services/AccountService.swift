@@ -72,9 +72,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await makeOtherAccountsInactive(except: account)
             try await localRepo.saveAccount(account)
             try await updatePublishedState()
-            let rs = try await fetchAccount(byId: account.accountId) // Refresh active account state
-            print(rs?.isHealthConnectOn ?? "No Health Connect status", rs?.isActiveAccount, "Refreshing account")
-            
             try await refreshAccount()
             return account
         } catch {
@@ -167,19 +164,21 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     // MARK: - Account Updates
     /// Updates the active account with the provided updated account data.
     func updateAccount(_ updatedAccount: Account) async throws -> Account {
+        guard let localAccount = try await localRepo.fetchAccount(byId: updatedAccount.accountId) else {
+            throw AccountError.accountNotFound(id: updatedAccount.accountId)
+        }
+        
         do {
             let response = try await apiRepo.editAccount(updatedAccount)
-            let account = Account(from: response.account)
-            account.accessToken = response.accessToken
-            account.refreshToken = response.refreshToken
-            account.expiresAt = response.expiresAt
-            account.isSynced = true
-            try await localRepo.updateAccount(account)
+            localAccount.update(from: response)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return account
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                updatedAccount.isSynced = false
+                localAccount.update(from: updatedAccount.toAccountDTO())
+                localAccount.isSynced = false
                 try await localRepo.updateAccount(updatedAccount)
                 try await updatePublishedState()
                 return updatedAccount
@@ -192,26 +191,23 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the profile of the active account with the provided profile data.
     @discardableResult
     func updateProfile(_ profile: Profile) async throws -> Account {
-        guard let accountId = activeAccount?.accountId, let account = try await localRepo.fetchAccount(byId: accountId) else {
+        guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
         }
         do {
             let response = try await apiRepo.patchProfile(profile)
-            let updated = Account(from: response.account)
-            updated.accessToken = response.accessToken
-            updated.refreshToken = response.refreshToken
-            updated.expiresAt = response.expiresAt
-            updated.isSynced = true
-            try await localRepo.updateAccount(updated)
+            localAccount.update(from: response)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return updated
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                account.isSynced = false
-                // Optionally update local profile fields
-                try await localRepo.updateAccount(account)
+                localAccount.update(from: profile)
+                localAccount.isSynced = false
+                try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                return account
+                return localAccount
             } else {
                 throw error
             }
@@ -221,25 +217,25 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the body composition of the active account with the provided bodyComp data.
     @discardableResult
     func updateBodyComp(_ bodyComp: BodyComp) async throws -> Account {
-        guard let accountId = activeAccount?.accountId, let account = try await localRepo.fetchAccount(byId: accountId) else {
+        guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
         }
         do {
             let response = try await apiRepo.patchBodyComp(bodyComp)
-            let updated = Account(from: response.account)
-            updated.accessToken = response.accessToken
-            updated.refreshToken = response.refreshToken
-            updated.expiresAt = response.expiresAt
-            updated.isSynced = true
-            try await localRepo.updateAccount(updated)
+            localAccount.update(from: response)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return updated
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                account.isSynced = false
-                try await localRepo.updateAccount(account)
+                localAccount.isSynced = false
+                localAccount.weightUnit = bodyComp.weightUnit
+                localAccount.height = String(bodyComp.height)
+                localAccount.activityLevel = bodyComp.activityLevel
+                try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                return account
+                return localAccount
             } else {
                 throw error
             }
@@ -249,13 +245,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the tokens for the active account or a specific account by ID.
     func updateTokens( _ tokens: Tokens, _ accountId: String? = nil) async throws {
         // Update tokens for the active account if accountId is nil
-        guard let account = accountId == nil ? activeAccount : try await localRepo.fetchAccount(byId: accountId!) else {
+        guard let accountId = accountId ?? activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        account.accessToken = tokens.accessToken
-        account.refreshToken = tokens.refreshToken
-        account.expiresAt = tokens.expiresAt
-        try await localRepo.updateAccount(account)
+        
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
+        }
+        
+        localAccount.update(from: tokens)
+        try await localRepo.updateAccount(localAccount)
         try await updatePublishedState()
     }
     
@@ -266,20 +265,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        guard let account = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
             let response = try await apiRepo.patchDashboardType(type)
-            let updated = Account(from: response.account)
-            updated.isSynced = true
-            try await localRepo.updateAccount(updated)
+            localAccount.update(from: response)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return updated
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                account.isSynced = false
-                try await localRepo.updateAccount(account)
+                localAccount.isSynced = false
+                try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                return account
+                return localAccount
             } else {
                 throw error
             }
@@ -298,20 +297,22 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        guard let account = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
             let response = try await apiRepo.patchNotification(notifications)
-            let updated = Account(from: response.account)
-            updated.isSynced = true
-            try await localRepo.updateAccount(updated)
+            localAccount.update(from: response)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return updated
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                account.isSynced = false
-                try await localRepo.updateAccount(account)
+                localAccount.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
+                localAccount.shouldSendEntryNotifications = notifications.shouldSendWeightInEntryNotifications
+                localAccount.isSynced = false
+                try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                return account
+                return localAccount
             } else {
                 throw error
             }
@@ -384,8 +385,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            let rs = try await fetchAccount(byId: accountId) // Refresh active account state
-            print(rs?.isHealthConnectOn ?? "No Health Connect status", rs?.isActiveAccount, "Refreshing account")
             return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
@@ -446,9 +445,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Body Composition updates
-            if let weightUnit = account.weightUnit?.rawValue,
+            if let weightUnit = account.weightUnit,
                let height = Double(account.height ?? "0"),
-               let activityLevel = account.activityLevel?.rawValue,
+               let activityLevel = account.activityLevel,
                !isSynced {
                 let bodyComp = BodyComp(
                     weightUnit: weightUnit,
@@ -518,20 +517,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        guard let account = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
             let response = try await apiRepo.patchDashboardMetrics(metrics)
-            let updated = Account(from: response.account)
-            updated.isSynced = true
-            try await localRepo.updateAccount(updated)
+            localAccount.update(from: response)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return updated
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                account.isSynced = false
-                try await localRepo.updateAccount(account)
+                localAccount.isSynced = false
+                try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                return account
+                return localAccount
             } else {
                 throw error
             }
@@ -544,23 +543,23 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        guard let account = try await localRepo.fetchAccount(byId: accountId) else {
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.accountNotFound(id: accountId)
         }
         do {
             let response = try await apiRepo.patchStreak(isStreakOn, streakTimestamp)
-            account.update(from: response)
-            try await localRepo.updateAccount(account)
+            localAccount.update(from: response)
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return account
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                account.isSynced = false
-                account.isStreakOn = isStreakOn
-                account.streakTimestamp = streakTimestamp
-                try await localRepo.updateAccount(account)
+                localAccount.isSynced = false
+                localAccount.isStreakOn = isStreakOn
+                localAccount.streakTimestamp = streakTimestamp
+                try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                return account
+                return localAccount
             } else {
                 throw error
             }
@@ -575,20 +574,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.noActiveAccount
         }
         
-        guard let account = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
             let response = try await apiRepo.patchWeightless(isWeightlessOn, weightlessTimestamp, Int(weightlessWeight))
-            let updated = Account(from: response.account)
-            updated.isSynced = true
-            try await localRepo.updateAccount(updated)
+            localAccount.update(from: response)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return updated
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                account.isSynced = false
-                try await localRepo.updateAccount(account)
+                localAccount.isSynced = false
+                try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                return account
+                return localAccount
             } else {
                 throw error
             }
@@ -662,19 +661,5 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private func updatePublishedState() async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
         activeAccount = allAccounts.first(where: { $0.isActiveAccount == true })
-    }
-    
-    /// Forces a refresh of the local account from the database
-    func refreshLocalAccount() async throws {
-        guard let accountId = activeAccount?.accountId else {
-            throw AccountError.noActiveAccount
-        }
-        
-        if let refreshedAccount = try await localRepo.fetchAccount(byId: accountId) {
-            activeAccount = refreshedAccount
-            try await updatePublishedState()
-        } else {
-            throw AccountError.accountNotFound(id: accountId)
-        }
     }
 }

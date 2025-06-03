@@ -1,7 +1,7 @@
 import Foundation
 
 struct BodyComp: Codable {
-    var weightUnit: String
+    var weightUnit: WeightUnit
     var height: Double
-    var activityLevel: String
+    var activityLevel: ActivityLevel
 }

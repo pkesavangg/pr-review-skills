@@ -28,5 +28,14 @@ enum HTTPStatusCode: Int {
     var isSuccess: Bool {
         return (200...299).contains(self.rawValue)
     }
+    
+    var isRetryable: Bool {
+        switch self {
+        case .networkError, .badGateway, .serviceUnavailable:
+            return true
+        default:
+            return false
+        }
+    }
 }
 

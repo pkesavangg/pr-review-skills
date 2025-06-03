@@ -100,6 +100,8 @@ final class HTTPClient {
         }
     }
     
+    // MARK: - Request Execution
+    /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -204,28 +206,41 @@ final class HTTPClient {
 
 // MARK: - USAGE GUIDE
 //
-// To make an API call using HTTPClient:
+// 🔹 GET request:
+// let result: YourDecodableType = try await HTTPClient.shared.get(
+//     .yourEndpoint,
+//     needsAuth: true
+// )
 //
-// 1. For GET (no body, possibly with auth):
-//    let result: YourDecodableType = try await HTTPClient.shared.get(.yourEndpoint, needsAuth: true)
+// 🔹 POST/PUT/PATCH/DELETE with body:
+// let body = YourEncodableRequest(...)
+// let result: YourDecodableType = try await HTTPClient.shared.send(
+//     .yourEndpoint,
+//     method: .post,
+//     body: body,
+//     needsAuth: true
+// )
 //
-// 2. For POST/PUT/PATCH/DELETE with request body:
-//    let requestBody = YourEncodableRequest(...)
-//    let result: YourDecodableResponse = try await HTTPClient.shared.send(
-//        .yourEndpoint,
-//        method: .post, // or .put, .patch, .delete
-//        body: requestBody,
-//        needsAuth: true // default is false
-//    )
+// 🔐 Auth Handling:
+// - Automatically adds Bearer token if `needsAuth` is true.
+// - Refreshes expired tokens and retries the request once.
+// - Skips token check for login/logout/refresh-token endpoints.
 //
-// Notes:
-// - Set `needsAuth` to true if the endpoint requires an Authorization header.
-// - Ensure your model types conform to Codable.
-// - Handle errors using try-catch for proper feedback.
+// 🔁 Retryable Errors:
+// - Automatically retries for `.networkError`, `502`, and `503`.
+// - Customize in `HTTPStatusCode.isRetryable`.
 //
-// Example in a ViewModel:
+// ⚠️ Error Handling:
+// Use `do-catch` to handle `NetworkError`, e.g.:
+// ```swift
 // do {
-//     let response: SomeResponse = try await HTTPClient.shared.get(.someEndpoint, needsAuth: true)
+//     let response = try await HTTPClient.shared.get(.endpoint, needsAuth: true)
 // } catch {
-//     print("API Error: \(error.localizedDescription)")
+//     print("Error: \(error)")
 // }
+// ```
+//
+// ✅ Notes:
+// - Request/response models must conform to `Codable`.
+// - 204 responses support `EmptyResponse` type.
+

@@ -234,43 +234,98 @@ final class Account {
     }
 }
 
-
+// MARK: - Update Methods
 extension Account {
     func update(from response: AccountDTO) {
         self.accountId = response.id
         self.email = response.email
         self.firstName = response.firstName
-        self.lastName = response.lastName
         self.gender = response.gender
-        self.zipcode = response.zipcode
         self.weightUnit = response.weightUnit
-        self.isWeightlessOn = response.isWeightlessOn
-        self.preferredInputMethod = response.preferredInputMethod
         self.height = String(response.height)
-        self.activityLevel = response.activityLevel
         self.dob = response.dob
-        self.weightlessBodyFat = response.weightlessBodyFat
-        self.weightlessMuscle = response.weightlessMuscle
-        self.weightlessTimestamp = response.weightlessTimestamp
-        self.weightlessWeight = response.weightlessWeight
-        self.isStreakOn = response.isStreakOn
-        self.dashboardType = response.dashboardType
-        self.dashboardMetrics = response.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ",")
-        self.goalType = response.goalType
-        self.goalWeight = response.goalWeight.map { String($0) }
-        self.initialWeight = response.initialWeight
-        self.shouldSendEntryNotifications = response.shouldSendEntryNotifications
-        self.shouldSendWeightInEntryNotifications = response.shouldSendWeightInEntryNotifications
-        self.isGoogleFitOn = response.isGoogleFitOn
-        self.isGoogleFitValid = response.isGoogleFitValid
-        self.isFitbitOn = response.isFitbitOn
-        self.isFitbitValid = response.isFitbitValid
-        self.isMfpOn = response.isMFPOn
-        self.isMfpValid = response.isMFPValid
-        self.isUaOn = response.isUAOn
-        self.isUaValid = response.isUAValid
-        self.isHealthKitOn = response.isHealthKitOn
-        self.isHealthConnectOn = response.isHealthConnectOn
+
+        if let lastName = response.lastName {
+            self.lastName = lastName
+        }
+        if let zipcode = response.zipcode {
+            self.zipcode = zipcode
+        }
+        if let isWeightlessOn = response.isWeightlessOn {
+            self.isWeightlessOn = isWeightlessOn
+        }
+        if let preferredInputMethod = response.preferredInputMethod {
+            self.preferredInputMethod = preferredInputMethod
+        }
+        if let activityLevel = response.activityLevel {
+            self.activityLevel = activityLevel
+        }
+        if let weightlessBodyFat = response.weightlessBodyFat {
+            self.weightlessBodyFat = weightlessBodyFat
+        }
+        if let weightlessMuscle = response.weightlessMuscle {
+            self.weightlessMuscle = weightlessMuscle
+        }
+        if let weightlessTimestamp = response.weightlessTimestamp {
+            self.weightlessTimestamp = weightlessTimestamp
+        }
+        if let weightlessWeight = response.weightlessWeight {
+            self.weightlessWeight = weightlessWeight
+        }
+        if let isStreakOn = response.isStreakOn {
+            self.isStreakOn = isStreakOn
+        }
+        if let dashboardType = response.dashboardType {
+            self.dashboardType = dashboardType
+        }
+        if let dashboardMetrics = response.dashboardMetrics {
+            self.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
+        }
+        if let goalType = response.goalType {
+            self.goalType = goalType
+        }
+        if let goalWeight = response.goalWeight {
+            self.goalWeight = String(goalWeight)
+        }
+        if let initialWeight = response.initialWeight {
+            self.initialWeight = initialWeight
+        }
+        if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {
+            self.shouldSendEntryNotifications = shouldSendEntryNotifications
+        }
+        if let shouldSendWeightInEntryNotifications = response.shouldSendWeightInEntryNotifications {
+            self.shouldSendWeightInEntryNotifications = shouldSendWeightInEntryNotifications
+        }
+        if let isGoogleFitOn = response.isGoogleFitOn {
+            self.isGoogleFitOn = isGoogleFitOn
+        }
+        if let isGoogleFitValid = response.isGoogleFitValid {
+            self.isGoogleFitValid = isGoogleFitValid
+        }
+        if let isFitbitOn = response.isFitbitOn {
+            self.isFitbitOn = isFitbitOn
+        }
+        if let isFitbitValid = response.isFitbitValid {
+            self.isFitbitValid = isFitbitValid
+        }
+        if let isMFPOn = response.isMFPOn {
+            self.isMfpOn = isMFPOn
+        }
+        if let isMFPValid = response.isMFPValid {
+            self.isMfpValid = isMFPValid
+        }
+        if let isUAOn = response.isUAOn {
+            self.isUaOn = isUAOn
+        }
+        if let isUAValid = response.isUAValid {
+            self.isUaValid = isUAValid
+        }
+        if let isHealthKitOn = response.isHealthKitOn {
+            self.isHealthKitOn = isHealthKitOn
+        }
+        if let isHealthConnectOn = response.isHealthConnectOn {
+            self.isHealthConnectOn = isHealthConnectOn
+        }
     }
     
     // Add a separate method for updating from AccountResponse
@@ -290,5 +345,24 @@ extension Account {
         }
         
         self.isSynced = true
+    }
+    
+    // Add a method to update from Tokens
+    func update(from tokens: Tokens) {
+        self.accessToken = tokens.accessToken
+        self.refreshToken = tokens.refreshToken
+        self.expiresAt = tokens.expiresAt
+    }
+    
+    // Add a method to update from Profile
+    func update(from profile: Profile) {
+        self.firstName = profile.firstName
+        self.lastName = profile.lastName
+        self.gender = profile.gender
+        self.zipcode = profile.zipcode
+        self.dob = profile.dob
+        self.weightUnit = profile.weightUnit
+        self.height = String(profile.height)
+        self.activityLevel = profile.activityLevel
     }
 }
