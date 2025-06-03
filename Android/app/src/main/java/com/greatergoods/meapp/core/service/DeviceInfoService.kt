@@ -15,7 +15,7 @@ import android.content.Context
 
 /**
  * Service for managing device operations and device info, including FCM token management.
- * Interacts with the IDeviceRepository and NotificationService.
+ * Interacts with the IDeviceInfoRepository and NotificationService.
  */
 @Singleton
 class DeviceInfoService
@@ -25,38 +25,43 @@ class DeviceInfoService
         private val deviceInfoRepository: IDeviceInfoRepository,
         private val notificationService: NotificationService,
     ) : IDeviceService {
-        private var fcmToken: String? = null
+    /**
+     * The current FCM token for this device (cached after retrieval).
+     */
+    private var fcmToken: String? = null
 
-        /**
-         * Returns a DeviceInfo object with local device information.
-         * @param context The application context.
-         * @return DeviceInfo with app and device details.
-         */
-        override fun getDeviceInfo(): DeviceInfo =
-            DeviceInfo(
-                appVersion = DeviceInfoUtil.getAppVersion(),
-                deviceManufacturer = DeviceInfoUtil.getManufacturer(),
-                deviceOSName = DeviceInfoUtil.getOSName(),
-                deviceOSVersion = DeviceInfoUtil.getOSVersion(),
-                deviceUUID = DeviceInfoUtil.getDeviceUUID(context),
-                deviceModel = DeviceInfoUtil.getModel(),
-                fcmToken = fcmToken,
-            )
+    /**
+     * Returns a DeviceInfo object with local device and app information, including the FCM token if available.
+     * @return DeviceInfo with app and device details.
+     */
+    override fun getDeviceInfo(): DeviceInfo =
+        DeviceInfo(
+            appVersion = DeviceInfoUtil.getAppVersion(),
+            deviceManufacturer = DeviceInfoUtil.getManufacturer(),
+            deviceOSName = DeviceInfoUtil.getOSName(),
+            deviceOSVersion = DeviceInfoUtil.getOSVersion(),
+            deviceUUID = DeviceInfoUtil.getDeviceUUID(context),
+            deviceModel = DeviceInfoUtil.getModel(),
+            fcmToken = fcmToken,
+        )
 
-        override suspend fun updateDeviceInfo() {
-            fcmToken = getFcmToken()
-            deviceInfoRepository.updateDeviceInfo(getDeviceInfo())
-        }
-
-        /**
-         * Gets the FCM token for this device using NotificationService.
-         * @return The FCM token as a String.
-         */
-        override suspend fun getFcmToken(): String =
-            suspendCancellableCoroutine { cont ->
-                notificationService.fetchFCMToken(
-                    onSuccess = { token -> cont.resume(token) },
-                    onError = { exception -> cont.resumeWithException(exception ?: Exception("Unknown error")) },
-                )
-            }
+    /**
+     * Updates the device info by fetching the latest FCM token and sending device info to the API.
+     */
+    override suspend fun updateDeviceInfo() {
+        fcmToken = getFcmToken()
+        deviceInfoRepository.updateDeviceInfo(getDeviceInfo())
     }
+
+    /**
+     * Gets the FCM token for this device using NotificationService.
+     * @return The FCM token as a String.
+     */
+    override suspend fun getFcmToken(): String =
+        suspendCancellableCoroutine { cont ->
+            notificationService.fetchFCMToken(
+                onSuccess = { token -> cont.resume(token) },
+                onError = { exception -> cont.resumeWithException(exception ?: Exception("Unknown error")) },
+            )
+        }
+}

@@ -8,6 +8,7 @@ import javax.inject.Singleton
 
 /**
  * Repository for updating device info via the API.
+ * Implements [IDeviceInfoRepository].
  */
 @Singleton
 class DeviceInfoRepository @Inject constructor(

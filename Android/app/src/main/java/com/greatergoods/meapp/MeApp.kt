@@ -26,10 +26,9 @@ fun MeApp() {
     val appViewModel: AppViewModel = hiltViewModel()
     val uiState by appViewModel.uiState.collectAsState()
     val dialogQueueViewModel: DialogQueueViewModel = hiltViewModel()
-    val themeMode = uiState.themeMode
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
 
-    MeAppTheme(themeMode = themeMode) {
+    MeAppTheme(themeMode = uiState.themeMode) {
         // Global dialog host
         DialogQueueHost(dialogQueueViewModel) { dialog ->
             // Custom dialog content can be provided here if needed
