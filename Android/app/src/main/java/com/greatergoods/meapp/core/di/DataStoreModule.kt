@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
+import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
 import com.greatergoods.meapp.data.storage.datastore.ThemeDataStore
 import dagger.Module
 import dagger.Provides
@@ -33,4 +34,14 @@ object DataStoreModule {
         @ApplicationContext context: Context,
     ): FcmDataStore =
         FcmDataStore(context)
+
+    /**
+     * Provides a singleton instance of [HealthConnectDataStore].
+     */
+    @Provides
+    @Singleton
+    fun provideHealthConnectDataStore(
+        @ApplicationContext context: Context,
+    ): HealthConnectDataStore =
+        HealthConnectDataStore(context)
 }
