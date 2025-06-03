@@ -39,7 +39,7 @@ fun MeApp() {
         // Global dialog host
         DialogQueueHost(dialogQueueViewModel)
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-            com.greatergoods.meapp.features.common.components.NavHost(topLevelBackStack, appViewModel, logManager)
+            NavHost(topLevelBackStack, appViewModel, logManager)
         }
     }
 }

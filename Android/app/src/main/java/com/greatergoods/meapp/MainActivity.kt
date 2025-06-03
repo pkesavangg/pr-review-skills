@@ -6,7 +6,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
-import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.core.logging.AppLog
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -27,7 +26,7 @@ class MainActivity : ComponentActivity() {
     lateinit var eventService: IAppEventService
 
     @Inject
-    lateinit var logRepository: ILogRepository
+    lateinit var logManager: LogManager
 
     /**
      * Called when the activity is starting. Sets up Compose content and handles navigation intents.
@@ -37,23 +36,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        // Add test logs
+        // Clean up logs older than 5 days
         lifecycleScope.launch {
             try {
-                // Test different log types
-                logRepository.log("MainActivity", "App started", "i", null)
-                logRepository.log("MainActivity", "Test warning", "w", "Test warning data")
-                logRepository.log("MainActivity", "Test error", "e", "Test error data")
-                
-                // Log the current session ID
-                logRepository.getSessionId()?.let { sessionId ->
-                    AppLog.d("MainActivity", "Current session ID: $sessionId")
-                }
+                logManager.cleanupOldLogs(5)
+                AppLog.i("MainActivity", "Cleaning up old logs")
             } catch (e: Exception) {
-                AppLog.e("MainActivity", "Failed to add test logs", e.toString())
+                AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
             }
         }
-
+        
         setContent {
             MeApp()
         }

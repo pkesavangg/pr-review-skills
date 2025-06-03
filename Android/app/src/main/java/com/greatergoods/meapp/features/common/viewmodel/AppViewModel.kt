@@ -3,7 +3,7 @@ package com.greatergoods.meapp.features.common.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.data.storage.datastore.ThemeMode
 import com.greatergoods.meapp.domain.repository.IAppRepository
-import com.greatergoods.meapp.core.logging.LogManager
+import com.greatergoods.meapp.core.logging.AppLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,14 +26,12 @@ data class AppUiState(
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
  *
  * @property appRepository The repository providing theme and FCM token flows and actions.
- * @property logManager The LogManager for logging.
- * @constructor Injects the AppRepository and LogManager dependencies.
+ * @constructor Injects the AppRepository dependency.
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    private val appRepository: IAppRepository,
-    logManager: LogManager
-) : NavigationViewmodel(logManager) {
+    private val appRepository: IAppRepository
+) : NavigationViewmodel() {
 
     private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState

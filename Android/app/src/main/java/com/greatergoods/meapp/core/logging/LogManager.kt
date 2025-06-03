@@ -52,16 +52,6 @@ class LogManager @Inject constructor(
     }
 
     /**
-     * Log a message with additional data
-     * @param message Log message
-     * @param type Log type (String)
-     * @param data Additional data to store with the log
-     */
-    suspend fun logWithData(tag: String, message: String, type: String = "i", data: String? = null) {
-        logRepository.log(tag, message, type, data)
-    }
-
-    /**
      * Log an error with exception
      * @param message Log message
      * @param throwable Exception to log

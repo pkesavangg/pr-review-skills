@@ -4,9 +4,16 @@ import android.util.Log
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 object AppLog {
+    private val loggingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    
+    @Inject
     lateinit var logRepository: ILogRepository
 
     fun i(tag: String, message: String, data: String? = null) {
@@ -30,12 +37,17 @@ object AppLog {
     }
 
     private fun logToDb(tag: String, message: String, type: String, data: String?) {
-        if (!::logRepository.isInitialized) return
-        CoroutineScope(Dispatchers.IO).launch {
+        if (!::logRepository.isInitialized) {
+            Log.w("AppLog", "LogRepository not initialized, skipping DB log")
+            return
+        }
+        
+        loggingScope.launch {
             try {
                 logRepository.log(tag, message, type, data)
             } catch (e: Exception) {
-                Log.e("AppLog", "Failed to log to DB", e)
+                // Log to system logs only since DB logging failed
+                Log.e("AppLog", "Failed to log to DB: ${e.message}")
             }
         }
     }
