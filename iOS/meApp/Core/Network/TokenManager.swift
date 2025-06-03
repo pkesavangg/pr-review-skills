@@ -15,14 +15,14 @@ final class TokenManager {
         return Date().addingTimeInterval(AppConstants.Account.tokenExpirationBuffer) >= expirationDate
     }
     
-    func refreshToken(customToken: String? = nil, accountId: String? =  nil, retryCount: Int = 0) async throws -> Tokens {
+    func refreshToken(accountId: String? = nil, retryCount: Int = 0) async throws -> Tokens {
         if isRefreshing {
             try await waitForRefresh()
             return try await accountService.getActiveTokens()
         }
         
         if retryCount >= AppConstants.Account.tokenRefreshMaxRetries {
-            try await accountService.logOut(accountId: nil)
+            try await accountService.logOut(accountId: accountId)
             throw NetworkError.statusCode(401)
         }
         
@@ -30,8 +30,8 @@ final class TokenManager {
         defer { isRefreshing = false }
         
         do {
-            let tokens = try await accountService.refreshTokens(customToken: customToken)
-            try await accountService.updateTokens(tokens)
+            let tokens = try await accountService.refreshTokens(accountId: accountId)
+            try await accountService.updateTokens(tokens, accountId)
             resumeWaitingRequests()
             return tokens
         } catch {
@@ -41,18 +41,24 @@ final class TokenManager {
                 switch networkError {
                 case .statusCode(let code):
                     if code == HTTPStatusCode.unauthorized.rawValue {
-                        try await accountService.logOut(accountId: nil)
+                        // Unauthorized error, attempt to refresh token
+                        if accountId == accountService.activeAccount?.accountId {
+                            try await accountService.logOut(accountId: accountId)
+                        }
                         throw error
                     } else if code >= 501 || code == HTTPStatusCode.networkError.rawValue {
-                        return try await refreshToken(customToken: customToken, retryCount: retryCount + 1)
+                        return try await refreshToken(accountId: accountId, retryCount: retryCount + 1)
                     }
                 case .noInternet:
-                    return try await refreshToken(customToken: customToken, retryCount: retryCount + 1)
+                    return try await refreshToken(accountId: accountId, retryCount: retryCount + 1)
                 default:
                     break
                 }
             }
-            try await accountService.logOut(accountId: accountId)
+            // If we reach here, it means we couldn't refresh the token
+            if accountId == accountService.activeAccount?.accountId {
+                try await accountService.logOut(accountId: accountId)
+            }
             throw error
         }
     }

@@ -27,13 +27,13 @@ protocol AccountRepositoryAPIProtocol {
     /// Logs out the account with the given ID and optional FCM token.
     /// - Parameters:
     ///   - fcmToken: The FCM token to unregister (optional).
-    ///   - Parameter accessToken: The access token for authentication.
-    func logOut(fcmToken: String?, accessToken: String?) async throws
+    ///   - accountId: The ID of the account to log out (optional, defaults to nil).
+    func logOut(fcmToken: String?, accountId: String?) async throws
 
     /// Fetches the current account's details from the backend. (GET /account)
-    /// - Parameter accessToken: The access token for authentication, defaults to nil.
+    /// - Parameter accountId: Optional account ID to fetch specific account details.
     /// - Returns: AccountDTO (from { account })
-    func fetchAccount(accessToken: String?) async throws -> AccountDTO
+    func fetchAccount(accountId: String?) async throws -> AccountDTO
 
     /// Edits the account with the given updated Account object (PUT /account).
     /// - Parameter updatedAccount: The updated Account object.
@@ -97,8 +97,8 @@ protocol AccountRepositoryAPIProtocol {
     /// Refreshes the access token using the provided refresh token. (POST /account/refresh-token)
     /// - Parameters:
     ///  - refreshToken: The refresh token to use for refreshing the session.
-    ///  - accessToken: The current access token, if available (optional).
+    ///  - accountId: Optional account ID to associate with the refresh request.
     ///  - Returns: Tokens (access and refresh tokens)
-    func refreshToken(refreshToken: String, accessToken: String?) async throws -> Tokens
+    func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens
 }
 

@@ -14,28 +14,23 @@ final class HTTPClient {
     private let tokenManager = TokenManager.shared
     private init() {}
     
-    private var accessToken: String {
-        // Retrieve the access token from the AccountService for the logged-in user
-        accountService.activeAccount?.accessToken ?? ""
-    }
-    
     // MARK: - GET Request
     func get<T: Decodable>(
         _ endpoint: Endpoint,
         headers: [String: String]? = nil,
         needsAuth: Bool = false,
-        customToken: String? = nil
+        accountId: String? = nil
     ) async throws -> T {
         try await checkConnectivity()
         
-        let request = try makeRequest(
+        let request = try await makeRequest(
             for: endpoint,
             method: .get,
             headers: headers,
             needsAuth: needsAuth,
-            customToken: customToken
+            accountId: accountId
         )
-        return try await send(request: request, needsAuth: needsAuth, customToken: customToken)
+        return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
     
     // MARK: - POST/PUT/PATCH/DELETE with Body
@@ -45,39 +40,39 @@ final class HTTPClient {
         body: T,
         headers: [String: String]? = nil,
         needsAuth: Bool = false,
-        customToken: String? = nil
+        accountId: String? = nil
     ) async throws -> R {
         try await checkConnectivity()
         
-        var request = try makeRequest(
+        var request = try await makeRequest(
             for: endpoint,
             method: method,
             headers: headers,
             needsAuth: needsAuth,
-            customToken: customToken
+            accountId: accountId
         )
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
-        return try await send(request: request, needsAuth: needsAuth, customToken: customToken)
+        return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
     
     // MARK: - Core Send Logic
     private func send<T: Decodable>(
         request: URLRequest,
         needsAuth: Bool,
-        customToken: String?,
+        accountId: String?,
         retryCount: Int = 0
     ) async throws -> T {
         // Skip token check for logout and refresh token endpoints
         let skipTokenCheck = request.url?.path.contains("/refresh-token") == true ||
-        request.url?.path.contains("/logout") == true
+        request.url?.path.contains("/logout") == true || request.url?.path.contains("/login") == true
         
         // Only check token expiration if needed and not skipped
         if needsAuth && !skipTokenCheck {
-            if let account = customToken != nil ? try await getAccountForToken(customToken!) : accountService.activeAccount,
-               tokenManager.checkTokenExpiration(expiresAt: account.expiresAt)
+            let account = try await getAccount(accountId)
+            if tokenManager.checkTokenExpiration(expiresAt: account.expiresAt)
             {
-                let tokens = try await tokenManager.refreshToken(customToken: customToken, accountId: account.accountId)
+                let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                 return try await performRequest(newRequest)
@@ -91,11 +86,11 @@ final class HTTPClient {
                 switch networkError {
                 case .statusCode(let code):
                     if code == HTTPStatusCode.unauthorized.rawValue && needsAuth && !skipTokenCheck {
-                        // Try to refresh token and retry request
-                        let tokens = try await tokenManager.refreshToken(customToken: customToken)
+                        let account = try await getAccount(accountId)
+                        let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
                         var newRequest = request
                         newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
-                        return try await send(request: newRequest, needsAuth: needsAuth, customToken: customToken)
+                        return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId)
                     }
                 default:
                     break
@@ -157,9 +152,18 @@ final class HTTPClient {
         }
     }
     
-    private func getAccountForToken(_ token: String) async throws -> Account? {
-        // Find account matching the custom token
-        return try await accountService.fetchAllAccounts().first { $0.accessToken == token }
+    private func getAccount(_ accountId: String?) async throws -> Account {
+        if let accountId = accountId {
+            guard let account = try await accountService.fetchAccount(byId: accountId) else {
+                throw AccountError.accountNotFound(id: accountId)
+            }
+            return account
+        } else {
+            guard let account = accountService.activeAccount else {
+                throw AccountError.noActiveAccount
+            }
+            return account
+        }
     }
     
     // MARK: - Request Constructor
@@ -168,8 +172,8 @@ final class HTTPClient {
         method: HTTPMethod,
         headers: [String: String]? = nil,
         needsAuth: Bool = false,
-        customToken: String? = nil
-    ) throws -> URLRequest {
+        accountId: String? = nil
+    ) async throws -> URLRequest {
         guard var request = endpoint.urlRequest else {
             throw NetworkError.invalidRequest
         }
@@ -178,8 +182,9 @@ final class HTTPClient {
         
         var allHeaders = headers ?? [:]
         if needsAuth {
-            let token = customToken ?? accountService.activeAccount?.accessToken ?? ""
-            if !token.isEmpty {
+            if let account = try? await getAccount(accountId),
+               let token = account.accessToken,
+               !token.isEmpty {
                 allHeaders["Authorization"] = "Bearer \(token)"
             }
         }
@@ -224,4 +229,3 @@ final class HTTPClient {
 // } catch {
 //     print("API Error: \(error.localizedDescription)")
 // }
-

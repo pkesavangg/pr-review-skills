@@ -72,6 +72,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await makeOtherAccountsInactive(except: account)
             try await localRepo.saveAccount(account)
             try await updatePublishedState()
+            let rs = try await fetchAccount(byId: account.accountId) // Refresh active account state
+            print(rs?.isHealthConnectOn ?? "No Health Connect status", rs?.isActiveAccount, "Refreshing account")
+            
+            try await refreshAccount()
             return account
         } catch {
             throw error // No offline fallback for login
@@ -89,7 +93,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             // Get the FCM token from local repo using the accountId
             let account = try await localRepo.fetchAccount(byId: accountId)
-            try await apiRepo.logOut(fcmToken: activeAccount?.fcmToken, accessToken: account?.accessToken)
+            try await apiRepo.logOut(fcmToken: activeAccount?.fcmToken, accountId: account?.accountId)
         } catch {
             // Continue with local logout even if API call fails
         }
@@ -323,7 +327,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the password for the active account or a specific account by ID.
     func updatePassword(oldPassword: String, newPassword: String) async throws {
         do {
-            let tokens =  try await apiRepo.updatePassword(oldPassword: oldPassword, newPassword: newPassword)
+            let tokens = try await apiRepo.updatePassword(oldPassword: oldPassword, newPassword: newPassword)
             try await self.updateTokens(tokens)
         } catch {
             throw error
@@ -363,25 +367,26 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     /// Refreshes a specific account by fetching from API and updating local storage.
+    @discardableResult
     func refreshAccount(accountId: String? = nil) async throws -> Account {
-        // If accountId is nil, use current logged in account
         guard let accountId = accountId ?? activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
         
-        // First get the local account
         guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.accountNotFound(id: accountId)
         }
         
         do {
             // Try to fetch from API
-            let dto = try await apiRepo.fetchAccount(accessToken: localAccount.accessToken)
-            let account = Account(from: dto)
-            account.isSynced = true
-            try await localRepo.updateAccount(account)
+            let dto = try await apiRepo.fetchAccount(accountId: localAccount.accountId)
+            localAccount.update(from: dto)
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            return account
+            let rs = try await fetchAccount(byId: accountId) // Refresh active account state
+            print(rs?.isHealthConnectOn ?? "No Health Connect status", rs?.isActiveAccount, "Refreshing account")
+            return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
                 // On network error, return local account
@@ -533,23 +538,26 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    /// Updates the streak status for the active account or a specific account by ID.
     @discardableResult
     func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws -> Account {
-        // use current logged in account
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        guard let account = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
+        guard let account = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
+        }
         do {
             let response = try await apiRepo.patchStreak(isStreakOn, streakTimestamp)
-            let updated = Account(from: response.account)
-            updated.isSynced = true
-            try await localRepo.updateAccount(updated)
+            account.update(from: response)
+            try await localRepo.updateAccount(account)
             try await updatePublishedState()
-            return updated
+            return account
         } catch {
             if NetworkError.isNetworkError(error) {
                 account.isSynced = false
+                account.isStreakOn = isStreakOn
+                account.streakTimestamp = streakTimestamp
                 try await localRepo.updateAccount(account)
                 try await updatePublishedState()
                 return account
@@ -559,6 +567,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    /// Updates the weightless mode for the active account or a specific account by ID.
     @discardableResult
     func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws -> Account {
         // use current logged in account
@@ -584,6 +593,36 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 throw error
             }
         }
+    }
+    
+    // MARK: - Token Management
+    /// Refreshes the access token using the refresh token of the active account or a specific account by ID.
+    func refreshTokens(accountId: String? = nil) async throws -> Tokens {
+        let account = accountId != nil ?
+        try await fetchAccount(byId: accountId!) :
+        activeAccount
+        
+        guard let account = account,
+              let refreshToken = account.refreshToken else {
+            throw AccountError.noActiveAccount
+        }
+        
+        return try await apiRepo.refreshToken(
+            refreshToken: refreshToken,
+            accountId: account.accountId
+        )
+    }
+    
+    /// Gets the active tokens (access and refresh) for the current active account.
+    func getActiveTokens() async throws -> Tokens {
+        guard let account = activeAccount else {
+            throw AccountError.noActiveAccount
+        }
+        return Tokens(
+            accessToken: account.accessToken ?? "",
+            refreshToken: account.refreshToken ?? "",
+            expiresAt: account.expiresAt ?? ""
+        )
     }
     
     // MARK: - Private Helpers
@@ -625,34 +664,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         activeAccount = allAccounts.first(where: { $0.isActiveAccount == true })
     }
     
-    func refreshTokens(customToken: String? = nil) async throws -> Tokens {
-        let account = customToken != nil ? 
-            try await fetchAccountByToken(customToken!) : 
-            activeAccount
-        
-        guard let account = account,
-              let refreshToken = account.refreshToken else {
+    /// Forces a refresh of the local account from the database
+    func refreshLocalAccount() async throws {
+        guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
         
-        return try await apiRepo.refreshToken(
-            refreshToken: refreshToken,
-            accessToken: customToken ?? account.accessToken
-        )
-    }
-    
-    func getActiveTokens() async throws -> Tokens {
-        guard let account = activeAccount else {
-            throw AccountError.noActiveAccount
+        if let refreshedAccount = try await localRepo.fetchAccount(byId: accountId) {
+            activeAccount = refreshedAccount
+            try await updatePublishedState()
+        } else {
+            throw AccountError.accountNotFound(id: accountId)
         }
-        return Tokens(
-            accessToken: account.accessToken ?? "",
-            refreshToken: account.refreshToken ?? "",
-            expiresAt: account.expiresAt ?? ""
-        )
-    }
-    
-    private func fetchAccountByToken(_ token: String) async throws -> Account? {
-        return try await fetchAllAccounts().first { $0.accessToken == token }
     }
 }

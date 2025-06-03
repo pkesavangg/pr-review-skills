@@ -233,3 +233,62 @@ final class Account {
         )
     }
 }
+
+
+extension Account {
+    func update(from response: AccountDTO) {
+        self.accountId = response.id
+        self.email = response.email
+        self.firstName = response.firstName
+        self.lastName = response.lastName
+        self.gender = response.gender
+        self.zipcode = response.zipcode
+        self.weightUnit = response.weightUnit
+        self.isWeightlessOn = response.isWeightlessOn
+        self.preferredInputMethod = response.preferredInputMethod
+        self.height = String(response.height)
+        self.activityLevel = response.activityLevel
+        self.dob = response.dob
+        self.weightlessBodyFat = response.weightlessBodyFat
+        self.weightlessMuscle = response.weightlessMuscle
+        self.weightlessTimestamp = response.weightlessTimestamp
+        self.weightlessWeight = response.weightlessWeight
+        self.isStreakOn = response.isStreakOn
+        self.dashboardType = response.dashboardType
+        self.dashboardMetrics = response.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ",")
+        self.goalType = response.goalType
+        self.goalWeight = response.goalWeight.map { String($0) }
+        self.initialWeight = response.initialWeight
+        self.shouldSendEntryNotifications = response.shouldSendEntryNotifications
+        self.shouldSendWeightInEntryNotifications = response.shouldSendWeightInEntryNotifications
+        self.isGoogleFitOn = response.isGoogleFitOn
+        self.isGoogleFitValid = response.isGoogleFitValid
+        self.isFitbitOn = response.isFitbitOn
+        self.isFitbitValid = response.isFitbitValid
+        self.isMfpOn = response.isMFPOn
+        self.isMfpValid = response.isMFPValid
+        self.isUaOn = response.isUAOn
+        self.isUaValid = response.isUAValid
+        self.isHealthKitOn = response.isHealthKitOn
+        self.isHealthConnectOn = response.isHealthConnectOn
+    }
+    
+    // Add a separate method for updating from AccountResponse
+    func update(from response: AccountResponse) {
+        // Update account data
+        update(from: response.account)
+        
+        // Update tokens
+        if let accessToken = response.accessToken {
+            self.accessToken = accessToken
+        }
+        if let refreshToken = response.refreshToken {
+            self.refreshToken = refreshToken
+        }
+        if let expiresAt = response.expiresAt {
+            self.expiresAt = expiresAt
+        }
+        
+        self.isSynced = true
+    }
+}
