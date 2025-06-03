@@ -308,7 +308,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if NetworkError.isNetworkError(error) {
                 localAccount.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
-                localAccount.shouldSendEntryNotifications = notifications.shouldSendWeightInEntryNotifications
+                localAccount.shouldSendWeightInEntryNotifications = notifications.shouldSendWeightInEntryNotifications
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
