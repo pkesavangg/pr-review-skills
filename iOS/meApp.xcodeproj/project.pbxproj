@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		481FF1E72DEF2B7900799EAA /* HealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 481FF1E62DEF2B7900799EAA /* HealthKitPackage */; };
+		481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 481F009E2DF0122300799EAA /* ggHealthKitPackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,7 +90,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				481FF1E72DEF2B7900799EAA /* HealthKitPackage in Frameworks */,
+				481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -151,7 +151,7 @@
 			);
 			name = meApp;
 			packageProductDependencies = (
-				481FF1E62DEF2B7900799EAA /* HealthKitPackage */,
+				481F009E2DF0122300799EAA /* ggHealthKitPackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -236,7 +236,7 @@
 			mainGroup = 105A1F912DE585B800FBB764;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				481FF1E52DEF2B7900799EAA /* XCLocalSwiftPackageReference "../../iOS/meApp/HealthKitPackage" */,
+				481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -931,17 +931,22 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		481FF1E52DEF2B7900799EAA /* XCLocalSwiftPackageReference "../../iOS/meApp/HealthKitPackage" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../iOS/meApp/HealthKitPackage;
+/* Begin XCRemoteSwiftPackageReference section */
+		481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/dmdbrands/ggHealthKitPackage.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		481FF1E62DEF2B7900799EAA /* HealthKitPackage */ = {
+		481F009E2DF0122300799EAA /* ggHealthKitPackage */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = HealthKitPackage;
+			package = 481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */;
+			productName = ggHealthKitPackage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
