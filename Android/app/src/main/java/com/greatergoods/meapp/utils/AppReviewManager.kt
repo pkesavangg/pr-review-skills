@@ -10,15 +10,16 @@ import android.content.Context
 
 interface AppReviewManager {
     suspend fun shouldPromptForReview(): Boolean
-    suspend fun launchReviewFlow(activity: Activity): Boolean
+    suspend fun launchReviewFlow(): Boolean
 }
 
 class AppReviewManagerImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext  private val context: Context,
 ) : AppReviewManager {
 
     private val manager: ReviewManager =
       ReviewManagerFactory.create(context)
+    val activity = context as Activity
 
     private var reviewInfo: com.google.android.play.core.review.ReviewInfo? = null
 
@@ -32,7 +33,7 @@ class AppReviewManagerImpl @Inject constructor(
         }
     }
 
-    override suspend fun launchReviewFlow(activity: Activity): Boolean {
+    override suspend fun launchReviewFlow(): Boolean {
         return try {
             reviewInfo?.let {
                 manager.launchReviewFlow(activity, it).await()
