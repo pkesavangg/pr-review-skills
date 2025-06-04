@@ -4,60 +4,75 @@
 //
 //  Created by Kesavan Panchabakesan on 29/05/25.
 //
-
-/**
- AppLogger provides thread-safe, leveled logging for debugging and analytics in the meApp project.
- 
- - Features:
- - Thread-safe logging using a concurrent queue with barrier writes.
- - Supports log levels: debug, info, error, critical.
- - Optional data serialization for structured logging.
- - OSLog integration for system-level logging.
- - In-memory log buffer with configurable maximum size.
- - Usage guide included at the end of this file.
- */
 /// AppLogger provides thread-safe, leveled logging with optional data serialization for debugging and analytics.
 
 import Foundation
 import os
 
-@MainActor
-class AppLogger {
+public class AppLogger {
+    static let shared = AppLogger(tag: "GGMeAppLogger")
+
     private let logQueue = DispatchQueue(label: "com.greatergoods.logQueue", attributes: .concurrent)
-    private let logger: Logger
+    private var logger: Logger?
+    private var logs: [String] = []
     private var minimumLogLevel: LogLevel = .debug
-    private let tag: String
-    
+    private var tag: String = "AppLogger"
+    private let maxLogCount = 1000
+
     init(tag: String) {
-        self.tag = tag
-        self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "", category: tag)
+        logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "=", category: tag)
     }
-    
-    private func stringify(_ value: Any) -> String {
-        if let data = value as? Data {
-            return String(data: data, encoding: .utf8) ?? "Unable to decode data"
+
+    public enum LogLevel: Int {
+        case debug = 1
+        case info = 2
+        case error = 3
+        case critical = 4
+    }
+
+    public func setLogLevel(level: LogLevel) {
+        minimumLogLevel = level
+    }
+
+    public func getAllLogs() -> [String] {
+        var currentLogs: [String] = []
+        logQueue.sync {
+            currentLogs = self.logs
+            self.logs.removeAll()
         }
-        return String(describing: value)
+        for log in currentLogs {
+            print(log)
+        }
+        return currentLogs
     }
-    
-    func log(level: LogLevel, 
-            tag: String, 
-            message: String, 
-            data: Any? = nil, 
-            function: StaticString = #function, 
-            line: UInt = #line) {
+
+    // New log method that accepts Any
+    public func log(level: LogLevel, tag: String, message: String, data: Any? = nil, function: StaticString = #function, line: UInt = #line) {
+        var combinedMessage = message
+        if let data = data {
+            let stringifiedData = stringify(data)
+            combinedMessage += " | Data: \(stringifiedData)"
+        }
+        logInternal(level: level, tag: tag, message: combinedMessage, function: function, line: line)
+    }
+
+    // Internal method for actual logging logic
+    private func logInternal(level: LogLevel, tag: String, message: String, function: StaticString, line: UInt) {
         guard level.rawValue >= minimumLogLevel.rawValue else { return }
-        
-        let stringifiedData = data.map(stringify)
-        let logMessage = "[\(levelString(level))] \(message) Class: \(tag) Function: \(function) Line: \(line) Data: \(stringifiedData ?? "none")"
-        
+
+        let logMessage = "[\(levelString(level))] \(message) Class: \(tag) Function: \(function) Line: \(line)"
+
         logQueue.async(flags: .barrier) {
-            // Only log to system logger
-            self.logger.log(level: self.levelToOSLog(level: level), "\(logMessage, privacy: .public)")
+            if self.logs.count >= self.maxLogCount {
+                self.logs.removeFirst()
+            }
+            self.logs.append(logMessage)
         }
+
+        logger?.log(level: levelToOSLog(level: level), "\(logMessage, privacy: .public)")
     }
-    
-    nonisolated private func levelToOSLog(level: LogLevel) -> OSLogType {
+
+    private func levelToOSLog(level: LogLevel) -> OSLogType {
         switch level {
         case .info: return .info
         case .debug: return .debug
@@ -65,7 +80,7 @@ class AppLogger {
         case .critical: return .fault
         }
     }
-    
+
     private func levelString(_ level: LogLevel) -> String {
         switch level {
         case .info: return "INFO"
@@ -75,3 +90,31 @@ class AppLogger {
         }
     }
 }
+
+/// MARK: - USAGE GUIDE
+///
+/// Log a simple message:
+/// ```swift
+/// AppLogger.shared.log(level: .info, tag: "MyView", message: "View loaded")
+/// ```
+///
+/// Log a message with custom data:
+/// ```swift
+/// let data = ["email": "user@example.com", "status": "active"]
+/// AppLogger.shared.log(level: .error, tag: "LoginService", message: "Login failed", data: data)
+/// ```
+///
+/// Change log level to suppress low-priority logs:
+/// ```swift
+/// AppLogger.shared.setLogLevel(level: .error)
+/// ```
+///
+/// Retrieve and clear all logs:
+/// ```swift
+/// let allLogs = AppLogger.shared.getAllLogs()
+/// ```
+///
+/// To stringify any value for logging, use:
+/// ```swift
+/// let str = stringify(anyValue)
+/// ```

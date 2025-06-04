@@ -6,7 +6,16 @@ import SwiftData
 @MainActor
 final class AccountRepository: AccountRepositoryProtocol {
     // MARK: - Properties
-    private let context: ModelContext = PersistenceController.shared.context
+    private let container: ModelContainer
+    private let context: ModelContext
+
+    /// Initializes the repository with a private SwiftData container.
+    init() {
+        let schema = Schema([Account.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        self.container = try! ModelContainer(for: schema, configurations: [config])
+        self.context = ModelContext(container)
+    }
 
 
     /// Fetches an account by its unique ID.
