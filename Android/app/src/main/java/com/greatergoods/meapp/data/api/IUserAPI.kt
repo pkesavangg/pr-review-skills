@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.data.api
 
 import StreakRequest
-import com.greatergoods.meapp.domain.model.api.AccountResponse
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.dashboard.DashboardMetricsRequest

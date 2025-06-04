@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.data.storage.db.entity
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -16,21 +15,16 @@ import androidx.room.PrimaryKey
             entity = EntryEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class BpmEntryEntity(
     @PrimaryKey
     val id: Long,
-
     val systolic: Int,
-
     val diastolic: Int,
-
     val pulse: Int,
-
     val meanArterial: String,
-
-    val note: String?
+    val note: String?,
 )
