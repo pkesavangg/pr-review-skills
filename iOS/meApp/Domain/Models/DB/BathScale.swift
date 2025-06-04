@@ -21,3 +21,6 @@ final class BathScale {
         self.bodyComp = bodyComp
     }
 }
+
+/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+extension BathScale: @unchecked Sendable {}

@@ -27,6 +27,10 @@ class ServiceRegistry {
     /// Registers services required at app launch (before login)
     @MainActor private func registerEssentialServices() {
         DependencyContainer.shared.register(AccountService())
+        DependencyContainer.shared.register(ScaleService())
+        DependencyContainer.shared.register(IntegrationsService())
+        DependencyContainer.shared.register(HealthKitService())
+        DependencyContainer.shared.register(KvStorageService())
     }
     
     /// Registers services needed after login
@@ -42,6 +46,10 @@ class ServiceRegistry {
     /// Deregisters essential services (called during deinit or app shutdown)
     nonisolated private func deregisterEssentialServices() {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ScaleService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: IntegrationsService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: HealthKitService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: KvStorageService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)

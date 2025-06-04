@@ -4,16 +4,15 @@ import ggHealthKitPackage
 import SwiftData
 
 @MainActor
-public final class HealthKitService: HealthKitServiceProtocol {
-    
+public final class HealthKitService: HealthKitServiceProtocol {    
+    static let shared = HealthKitService()
+    @Injector private var integrationService: IntegrationsService
     private let healthKitService = ggHealthKitPackage.HealthKitService.shared
-    private let integrationService: IntegrationServiceProtocol
     private let context: ModelContext
     
     // MARK: - Initialization
     
-    init(integrationService: IntegrationServiceProtocol) {
-        self.integrationService = integrationService
+    init() {
         self.context = PersistenceController.shared.context
     }
     
