@@ -41,7 +41,7 @@
             </intent-filter>
         </service>
         <service
-            android:name=".core.service.pushNotification.NotificationListener"
+            android:name="com.greatergoods.notification.NotificationListener"
             android:exported="false"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>

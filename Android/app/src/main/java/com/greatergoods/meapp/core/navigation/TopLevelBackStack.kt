@@ -17,11 +17,13 @@ import androidx.navigation3.runtime.NavKey
  * @property topLevelKey The currently selected top-level key.
  * @property backStack The combined navigation back stack for all top-level stacks.
  */
-class TopLevelBackStack<T : NavKey>(startKey: NavKey) {
-
-    private var topLevelStacks: LinkedHashMap<NavKey, SnapshotStateList<NavKey>> = linkedMapOf(
-        startKey to mutableStateListOf(startKey)
-    )
+class TopLevelBackStack<T : NavKey>(
+    startKey: NavKey,
+) {
+    private var topLevelStacks: LinkedHashMap<NavKey, SnapshotStateList<NavKey>> =
+        linkedMapOf(
+            startKey to mutableStateListOf(startKey),
+        )
 
     var topLevelKey by mutableStateOf(startKey)
         private set
@@ -116,4 +118,4 @@ class TopLevelBackStack<T : NavKey>(startKey: NavKey) {
  */
 @Composable
 fun <T : NavKey> rememberTopLevelBackStack(startKey: T): TopLevelBackStack<NavKey> =
-    remember(startKey) { TopLevelBackStack(startKey) } 
+    remember(startKey) { TopLevelBackStack(startKey) }

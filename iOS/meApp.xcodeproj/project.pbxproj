@@ -37,7 +37,6 @@
 				Core/Navigation/.gitkeep,
 				Core/Shared/Extensions/.gitkeep,
 				Core/Shared/Utilities/.gitkeep,
-				Data/API/.gitkeep,
 				Data/Services/.gitkeep,
 				Data/Storage/Persistence/.gitkeep,
 				Features/Auth/Enums/.gitkeep,

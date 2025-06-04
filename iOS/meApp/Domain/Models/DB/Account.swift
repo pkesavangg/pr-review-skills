@@ -42,7 +42,6 @@
 /// | shouldSendEntryNotifications             | boolean | Whether to send reminders for entries             |
 /// | shouldSendWeightInEntryNotifications     | boolean | Whether to send reminders for weight-ins          |
 /// | streakTimestamp                          | string  | Timestamp for streak tracking                     |
-/// | type                                     | string  | Account type or role                              |
 /// | weightUnit                               | string  | Unit of weight measurement (kg/lb)                |
 /// | weightlessBodyFat                        | float   | Offline/stored body fat value                     |
 /// | weightlessMuscle                         | float   | Offline/stored muscle mass value                  |
@@ -60,11 +59,11 @@ final class Account {
     /// OAuth or app-specific access token
     var accessToken: String?
     /// User's activity level (e.g., low, moderate, high)
-    var activityLevel: String?
+    var activityLevel: ActivityLevel?
     /// Metrics selected for dashboard display
     var dashboardMetrics: String?
     /// Layout type of the user's dashboard
-    var dashboardType: String?
+    var dashboardType: DashboardType?
     /// Date of birth
     var dob: String?
     /// User email address
@@ -76,9 +75,9 @@ final class Account {
     /// First name of the user
     var firstName: String?
     /// Gender of the user
-    var gender: String?
+    var gender: Sex?
     /// Type of health/fitness goal (e.g., weight loss)
-    var goalType: String?
+    var goalType: GoalType?
     /// Target weight as defined by the user
     var goalWeight: String?
     /// Height of the user
@@ -135,10 +134,8 @@ final class Account {
     var shouldSendWeightInEntryNotifications: Bool?
     /// Timestamp for streak tracking
     var streakTimestamp: String?
-    /// Account type or role
-    var type: String?
     /// Unit of weight measurement (kg/lb)
-    var weightUnit: String?
+    var weightUnit: WeightUnit?
     /// Offline/stored body fat value
     var weightlessBodyFat: Double?
     /// Offline/stored muscle mass value
@@ -155,15 +152,14 @@ final class Account {
         self.email = dto.email
         self.firstName = dto.firstName
         self.lastName = dto.lastName
-        self.gender = String(describing: dto.gender)
+        self.gender = dto.gender
         self.zipcode = dto.zipcode
         self.dob = dto.dob
         self.weightUnit = dto.weightUnit
         self.height = String(dto.height)
-        self.activityLevel = dto.activityLevel.map { String(describing: $0) }
+        self.activityLevel = dto.activityLevel
         self.goalWeight = dto.goalWeight.map { String($0) }
-        self.goalType = dto.goalType.map { String(describing: $0) }
-        self.type = dto.goalType.map { String(describing: $0) } // or dto.type if present
+        self.goalType = dto.goalType
         self.initialWeight = dto.initialWeight
         self.metPreviousGoal = nil
         self.percent = nil
@@ -188,9 +184,8 @@ final class Account {
         self.refreshToken = nil
         self.expiresAt = nil
         self.isStreakOn = dto.isStreakOn
-        self.streakTimestamp = nil
         self.dashboardMetrics = dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ",")
-        self.dashboardType = dto.dashboardType.map { String(describing: $0) }
+        self.dashboardType = dto.dashboardType
         self.isLoggedIn = nil
         self.isActiveAccount = nil
         self.isExpired = nil
@@ -205,22 +200,22 @@ final class Account {
             email: self.email,
             firstName: self.firstName ?? "",
             lastName: self.lastName,
-            gender: Sex(rawValue: self.gender ?? "") ?? .male,
+            gender: self.gender ?? .male,
             zipcode: self.zipcode,
-            weightUnit: self.weightUnit ?? "",
+            weightUnit: self.weightUnit ?? .lb,
             isWeightlessOn: self.isWeightlessOn,
             preferredInputMethod: self.preferredInputMethod,
             height: Double(self.height ?? "0") ?? 0.0,
-            activityLevel: self.activityLevel.flatMap { ActivityLevel(rawValue: $0) },
+            activityLevel: self.activityLevel,
             dob: self.dob ?? "",
             weightlessBodyFat: self.weightlessBodyFat,
             weightlessMuscle: self.weightlessMuscle,
             weightlessTimestamp: self.weightlessTimestamp,
             weightlessWeight: self.weightlessWeight,
             isStreakOn: self.isStreakOn,
-            dashboardType: self.dashboardType.flatMap { DashboardType(rawValue: $0) },
+            dashboardType: self.dashboardType,
             dashboardMetrics: self.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
-            goalType: self.goalType.flatMap { GoalType(rawValue: $0) },
+            goalType: self.goalType,
             goalWeight: self.goalWeight.flatMap { Double($0) },
             initialWeight: self.initialWeight,
             shouldSendEntryNotifications: self.shouldSendEntryNotifications,
@@ -232,7 +227,142 @@ final class Account {
             isMFPOn: self.isMfpOn,
             isMFPValid: self.isMfpValid,
             isUAOn: self.isUaOn,
-            isUAValid: self.isUaValid
+            isUAValid: self.isUaValid,
+            isHealthKitOn: self.isHealthKitOn,
+            isHealthConnectOn: self.isHealthConnectOn
         )
+    }
+}
+
+// MARK: - Update Methods
+extension Account {
+    func update(from response: AccountDTO) {
+        self.accountId = response.id
+        self.email = response.email
+        self.firstName = response.firstName
+        self.gender = response.gender
+        self.weightUnit = response.weightUnit
+        self.height = String(response.height)
+        self.dob = response.dob
+
+        if let lastName = response.lastName {
+            self.lastName = lastName
+        }
+        if let zipcode = response.zipcode {
+            self.zipcode = zipcode
+        }
+        if let isWeightlessOn = response.isWeightlessOn {
+            self.isWeightlessOn = isWeightlessOn
+        }
+        if let preferredInputMethod = response.preferredInputMethod {
+            self.preferredInputMethod = preferredInputMethod
+        }
+        if let activityLevel = response.activityLevel {
+            self.activityLevel = activityLevel
+        }
+        if let weightlessBodyFat = response.weightlessBodyFat {
+            self.weightlessBodyFat = weightlessBodyFat
+        }
+        if let weightlessMuscle = response.weightlessMuscle {
+            self.weightlessMuscle = weightlessMuscle
+        }
+        if let weightlessTimestamp = response.weightlessTimestamp {
+            self.weightlessTimestamp = weightlessTimestamp
+        }
+        if let weightlessWeight = response.weightlessWeight {
+            self.weightlessWeight = weightlessWeight
+        }
+        if let isStreakOn = response.isStreakOn {
+            self.isStreakOn = isStreakOn
+        }
+        if let dashboardType = response.dashboardType {
+            self.dashboardType = dashboardType
+        }
+        if let dashboardMetrics = response.dashboardMetrics {
+            self.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
+        }
+        if let goalType = response.goalType {
+            self.goalType = goalType
+        }
+        if let goalWeight = response.goalWeight {
+            self.goalWeight = String(goalWeight)
+        }
+        if let initialWeight = response.initialWeight {
+            self.initialWeight = initialWeight
+        }
+        if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {
+            self.shouldSendEntryNotifications = shouldSendEntryNotifications
+        }
+        if let shouldSendWeightInEntryNotifications = response.shouldSendWeightInEntryNotifications {
+            self.shouldSendWeightInEntryNotifications = shouldSendWeightInEntryNotifications
+        }
+        if let isGoogleFitOn = response.isGoogleFitOn {
+            self.isGoogleFitOn = isGoogleFitOn
+        }
+        if let isGoogleFitValid = response.isGoogleFitValid {
+            self.isGoogleFitValid = isGoogleFitValid
+        }
+        if let isFitbitOn = response.isFitbitOn {
+            self.isFitbitOn = isFitbitOn
+        }
+        if let isFitbitValid = response.isFitbitValid {
+            self.isFitbitValid = isFitbitValid
+        }
+        if let isMFPOn = response.isMFPOn {
+            self.isMfpOn = isMFPOn
+        }
+        if let isMFPValid = response.isMFPValid {
+            self.isMfpValid = isMFPValid
+        }
+        if let isUAOn = response.isUAOn {
+            self.isUaOn = isUAOn
+        }
+        if let isUAValid = response.isUAValid {
+            self.isUaValid = isUAValid
+        }
+        if let isHealthKitOn = response.isHealthKitOn {
+            self.isHealthKitOn = isHealthKitOn
+        }
+        if let isHealthConnectOn = response.isHealthConnectOn {
+            self.isHealthConnectOn = isHealthConnectOn
+        }
+    }
+    
+    // Add a separate method for updating from AccountResponse
+    func update(from response: AccountResponse) {
+        // Update account data
+        update(from: response.account)
+        
+        // Update tokens
+        if let accessToken = response.accessToken {
+            self.accessToken = accessToken
+        }
+        if let refreshToken = response.refreshToken {
+            self.refreshToken = refreshToken
+        }
+        if let expiresAt = response.expiresAt {
+            self.expiresAt = expiresAt
+        }
+        
+        self.isSynced = true
+    }
+    
+    // Add a method to update from Tokens
+    func update(from tokens: Tokens) {
+        self.accessToken = tokens.accessToken
+        self.refreshToken = tokens.refreshToken
+        self.expiresAt = tokens.expiresAt
+    }
+    
+    // Add a method to update from Profile
+    func update(from profile: Profile) {
+        self.firstName = profile.firstName
+        self.lastName = profile.lastName
+        self.gender = profile.gender
+        self.zipcode = profile.zipcode
+        self.dob = profile.dob
+        self.weightUnit = profile.weightUnit
+        self.height = String(profile.height)
+        self.activityLevel = profile.activityLevel
     }
 }

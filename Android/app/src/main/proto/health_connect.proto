@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_package = "com.greatergoods.meapp.data.storage.datastore";
+option java_multiple_files = true;
+
+// Represents a single HealthConnectData record.
+message HealthConnectData {
+    bool integrated = 2;
+    bool alertSeen = 3;
+    bool open = 4;
+    bool outOfSync = 5;
+    bool modalState = 6;
+    optional string updatedAt = 7;
+    optional string integratedAt = 8;
+    repeated string grantedPermission = 9;
+}
+
+// Represents a map of string to HealthConnectData.
+message HealthConnectDataMap {
+    map<string, HealthConnectData> data = 1;
+}
