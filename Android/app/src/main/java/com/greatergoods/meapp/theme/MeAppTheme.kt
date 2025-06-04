@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.theme.model.Animation
 import com.greatergoods.meapp.theme.model.ColorScheme
 import com.greatergoods.meapp.theme.model.Spacing
@@ -20,23 +21,32 @@ import com.greatergoods.meapp.theme.token.SpacingToken
  */
 @Composable
 fun MeAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable (() -> Unit),
 ) {
-    val meAppColorScheme = if (darkTheme) {
-        DarkColorScheme
-    } else {
-        LightColorScheme
-    }
+    val darkTheme =
+        when (themeMode) {
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
+        }
+
+    val meAppColorScheme =
+        if (darkTheme) {
+            DarkColorScheme
+        } else {
+            LightColorScheme
+        }
 
     CompositionLocalProvider(
         LocalColorScheme provides meAppColorScheme,
         LocalTypography provides AppTypography,
         LocalSpacing provides SpacingToken,
-        LocalAnimation provides AnimationToken
+        LocalAnimation provides AnimationToken,
     ) {
         MaterialTheme(
-            content = content
+            content = content,
         )
     }
 }
@@ -47,17 +57,21 @@ fun MeAppTheme(
 object MeAppTheme {
     // Color
     val colorScheme: ColorScheme
-        @Composable @ReadOnlyComposable get() = LocalColorScheme.current
+        @Composable @ReadOnlyComposable
+        get() = LocalColorScheme.current
 
     // Typography
     val typography: Typography
-        @Composable @ReadOnlyComposable get() = LocalTypography.current
+        @Composable @ReadOnlyComposable
+        get() = LocalTypography.current
 
     // Spacing
     val spacing: Spacing
-        @Composable @ReadOnlyComposable get() = LocalSpacing.current
+        @Composable @ReadOnlyComposable
+        get() = LocalSpacing.current
 
     // Animation
     val animation: Animation
-        @Composable @ReadOnlyComposable get() = LocalAnimation.current
+        @Composable @ReadOnlyComposable
+        get() = LocalAnimation.current
 }

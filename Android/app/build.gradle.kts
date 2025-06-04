@@ -29,6 +29,8 @@ android {
     }
 
     buildTypes {
+        debug {
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -46,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     android.applicationVariants.all {
         val variantName = this.name // get the variant name here
@@ -76,7 +79,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.firebase.messaging.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -85,6 +87,9 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.hilt.navigation.compose)
+
+    //browser
+    implementation(libs.androidx.browser)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -110,6 +115,7 @@ dependencies {
     // Firebase
     // Import the Firebase BoM
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging.ktx)
     // When using the BoM, you don't specify versions in Firebase library dependencies
     // Add the dependency for the Firebase SDK for Google Analytics
     implementation(libs.firebase.analytics)
@@ -121,7 +127,10 @@ dependencies {
 
     // Protobuf dependencies
     implementation(libs.protobuf.javalite)
-    implementation(libs.androidx.datastore.v100)
+    implementation(libs.androidx.datastore)
+
+    // Timber
+    implementation(libs.timber)
 
     // modules
     implementation(project(":notification"))

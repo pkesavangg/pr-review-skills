@@ -80,4 +80,4 @@ internal object DarkColorToken {
 
     // Brand
     val brand = ColorPalette.Teal200
-} 
+}

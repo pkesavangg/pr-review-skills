@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.model.api.auth
 
-import com.greatergoods.meapp.domain.model.api.AccountResponse
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 
 data class LoginResponse(
     val id: String,

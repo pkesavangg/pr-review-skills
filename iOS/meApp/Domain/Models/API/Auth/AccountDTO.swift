@@ -7,7 +7,7 @@ struct AccountDTO: Codable {
     let lastName: String?
     let gender: Sex
     let zipcode: String?
-    let weightUnit: String
+    let weightUnit: WeightUnit
     let isWeightlessOn: Bool?
     let preferredInputMethod: String?
     let height: Double
@@ -33,4 +33,6 @@ struct AccountDTO: Codable {
     let isMFPValid: Bool?
     let isUAOn: Bool?
     let isUAValid: Bool?
+    let isHealthKitOn: Bool?
+    let isHealthConnectOn: Bool?
 }
