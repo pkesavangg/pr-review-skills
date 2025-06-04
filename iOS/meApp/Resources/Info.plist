@@ -12,8 +12,8 @@
 		<string>OpenSans-Regular.ttf</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>meApp syncs weight and body composition data with Apple Health.</string>
+	<string>meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>meApp syncs weight and body composition data with Apple Health.</string>
+	<string>meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.</string>
 </dict>
 </plist>
