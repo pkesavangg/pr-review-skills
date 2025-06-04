@@ -11,41 +11,43 @@ import SwiftData
 
 @MainActor
 final class LoggerRepository: LoggerRepositoryProtocol {
-    private let modelContext: ModelContext
+    // MARK: - Properties
+    
+    private let context: ModelContext
+    let modelContext : ModelContext = DataStore.shared.context
 
     init() {
-        let schema = Schema([LogEntry.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        let container = try! ModelContainer(for: schema, configurations: [config])
-        self.modelContext = ModelContext(container)
+        self.context = modelContext
     }
 
+    // MARK: - Saving
     func saveLogEntry(_ entry: LogEntry) async {
-        modelContext.insert(entry)
+        context.insert(entry)
         do {
-            try modelContext.save()
+            try context.save()
         } catch {
             print("LoggerRepository save failed: \(error.localizedDescription)")
         }
     }
 
+    // MARK: - Fetching
     func fetchAllLogs() async throws -> [LogEntry] {
         let descriptor = FetchDescriptor<LogEntry>()
-        return try modelContext.fetch(descriptor)
+        return try context.fetch(descriptor)
     }
 
     func fetchLogs(forSession sessionId: String) async throws -> [LogEntry] {
         let descriptor = FetchDescriptor<LogEntry>(
             predicate: #Predicate { $0.sessionId == sessionId }
         )
-        return try modelContext.fetch(descriptor)
+        return try context.fetch(descriptor)
     }
 
     func fetchLogs(forAccount accountId: String) async throws -> [LogEntry] {
         let descriptor = FetchDescriptor<LogEntry>(
             predicate: #Predicate { $0.accountId == accountId }
         )
-        return try modelContext.fetch(descriptor)
+        return try context.fetch(descriptor)
     }
 
     func fetchLogs(from: Date, to: Date) async throws -> [LogEntry] {
@@ -54,19 +56,32 @@ final class LoggerRepository: LoggerRepositoryProtocol {
         let descriptor = FetchDescriptor<LogEntry>(
             predicate: #Predicate { $0.timestamp >= start && $0.timestamp <= end }
         )
-        return try modelContext.fetch(descriptor)
+        return try context.fetch(descriptor)
     }
 
+    // MARK: - Deleting
     func deleteLogs(forAccount accountId: String) async throws {
         let logs = try await fetchLogs(forAccount: accountId)
-        logs.forEach { modelContext.delete($0) }
-        try modelContext.save()
+        logs.forEach { context.delete($0) }
+        try context.save()
     }
     
     func deleteAllLogs() async throws {
         for log in try await fetchAllLogs() {
-            modelContext.delete(log)
+            context.delete(log)
         }
-        try modelContext.save()
+        try context.save()
+    }
+    
+    func deleteLogsOlderThan(olderThanDays days: Int) async throws {
+        let cutoffTimestamp = DateTimeTools.getTimestampDaysAgo(days)
+        
+        let descriptor = FetchDescriptor<LogEntry>(
+            predicate: #Predicate { $0.timestamp < cutoffTimestamp }
+        )
+        
+        let oldLogs = try context.fetch(descriptor)
+        oldLogs.forEach { context.delete($0) }
+        try context.save()
     }
 }

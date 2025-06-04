@@ -1,10 +1,26 @@
 import Foundation
 import SwiftData
 
+import SwiftData
+
+@MainActor
+final class DataStore {
+    static let shared = DataStore()
+
+    let container: ModelContainer
+    let context: ModelContext
+
+    private init() {
+        let schema = Schema([Account.self, Device.self, LogEntry.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        self.container = try! ModelContainer(for: schema, configurations: [config])
+        self.context = ModelContext(container)
+    }
+}
+
 @MainActor
 final class LoggerService: LoggerServiceProtocol {
     public static let shared = LoggerService()
-    
     @Injector var accountService: AccountService
     
     private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
@@ -14,6 +30,12 @@ final class LoggerService: LoggerServiceProtocol {
     init() {
         self.sessionId = UUID().uuidString
         self.systemLogger = AppLogger(tag: "GGMeAppLogger")
+        Task {
+            // Initialize the logger repository and delete old logs on startup
+            do {
+                try await deleteOldLogs()
+            } catch {}
+        }
     }
 
     public func log(level: LogLevel,
@@ -43,7 +65,6 @@ final class LoggerService: LoggerServiceProtocol {
             message: message,
             data: stringifiedData
         )
-
         await loggerRepository.saveLogEntry(entry)
     }
 
@@ -70,9 +91,47 @@ final class LoggerService: LoggerServiceProtocol {
     public func deleteAllLogs() async throws {
         try await loggerRepository.deleteAllLogs()
     }
-        
+    
+    public func deleteOldLogs(_ olderThanDays: Int = AppConstants.logRetentionDays) async throws {
+        try await loggerRepository.deleteLogsOlderThan(olderThanDays: olderThanDays)
+    }
+    
     public func getCurrentSessionId() -> String {
         return sessionId
     }
 }
+
+/*
+ ==================================================================================
+ ✅ LoggerService Usage Guide
+ ==================================================================================
+ 📝 Logging:
+ // Basic log
+ await logger.log(level: .info, tag: "Startup", message: "App launched")
+
+ // Log with additional data
+ await logger.log(level: .debug, tag: "Network", message: "Response received", data: ["code": 200])
+
+ // Log with a specific account ID
+ await logger.log(level: .error, tag: "Auth", message: "Login failed", accountId: "user-123")
+
+ 📥 Fetching Logs:
+ let allLogs = try await logger.getAllLogs()
+ let sessionLogs = try await logger.getCurrentSessionLogs()
+ let userLogs = try await logger.getLogsForAccount("user-123")
+ let rangedLogs = try await logger.getLogs(from: startDate, to: endDate)
+
+ 🧹 Deleting Logs:
+ try await logger.deleteLogsForAccount("user-123")
+ try await logger.deleteAllLogs()
+
+ 🔍 Current Session ID:
+ let sessionId = logger.getCurrentSessionId()
+
+ 🧠 Notes:
+ - All logs are stored using SwiftData via LoggerRepository.
+ - Each log includes session ID and function name for context.
+ - System logs are mirrored using AppLogger for debugging.
+ ==================================================================================
+*/
 

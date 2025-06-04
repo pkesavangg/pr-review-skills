@@ -6,15 +6,13 @@ import SwiftData
 @MainActor
 final class AccountRepository: AccountRepositoryProtocol {
     // MARK: - Properties
-    private let container: ModelContainer
     private let context: ModelContext
 
-    /// Initializes the repository with a private SwiftData container.
+    /// The model context for the account repository.
+    let modelContext : ModelContext = DataStore.shared.context
+
     init() {
-        let schema = Schema([Account.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        self.container = try! ModelContainer(for: schema, configurations: [config])
-        self.context = ModelContext(container)
+        self.context = modelContext
     }
 
     /// Fetches an account by its unique ID.

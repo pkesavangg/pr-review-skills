@@ -53,7 +53,7 @@ final class LogEntry {
          tagId: String,
          type: LogType,
          message: String,
-         timestamp: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+         timestamp: Int64 = DateTimeTools.getCurrentTimestampMillis(),
          data: String? = nil) {
         self.id = id
         self.accountId = accountId

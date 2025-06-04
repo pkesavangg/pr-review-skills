@@ -33,10 +33,7 @@
 		105A208B2DE5998800FBB764 /* Exceptions for "meApp" folder in "meApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Core/DI/.gitkeep,
-				Core/Navigation/.gitkeep,
 				Core/Shared/Extensions/.gitkeep,
-				Core/Shared/Utilities/.gitkeep,
 				Data/Services/.gitkeep,
 				Data/Storage/Persistence/.gitkeep,
 				Features/Auth/Enums/.gitkeep,

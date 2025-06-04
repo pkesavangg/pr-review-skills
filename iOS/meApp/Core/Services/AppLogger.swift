@@ -21,47 +21,6 @@
 import Foundation
 import os
 
-/// Public DTO for log entries that can be exposed outside the module
-// public struct LogEntryDTO: Identifiable {
-//     public let id: String
-//     public let accountId: String?
-//     public let sessionId: String
-//     public let tag: String
-//     public let tagId: String
-//     public let type: String
-//     public let message: String
-//     public let timestamp: Int64
-//     public let data: String?
-    
-//     init(from entry: LogEntry) {
-//         self.id = entry.id
-//         self.accountId = entry.accountId
-//         self.sessionId = entry.sessionId
-//         self.tag = entry.tag
-//         self.tagId = entry.tagId
-//         self.type = entry.type.rawValue
-//         self.message = entry.message
-//         self.timestamp = entry.timestamp
-//         self.data = entry.data
-//     }
-// }
-
-public enum LogLevel: Int, Sendable {
-    case debug = 1
-    case info = 2
-    case error = 3
-    case critical = 4
-    
-    var toLogType: LogEntry.LogType {
-        switch self {
-        case .debug: return .debug
-        case .info: return .info
-        case .error: return .error
-        case .critical: return .error
-        }
-    }
-}
-
 @MainActor
 class AppLogger {
     private let logQueue = DispatchQueue(label: "com.greatergoods.logQueue", attributes: .concurrent)
@@ -115,61 +74,4 @@ class AppLogger {
         case .critical: return "CRITICAL"
         }
     }
-}
-
-/// MARK: - USAGE GUIDE
-///
-/// Log a simple message:
-/// ```swift
-/// AppLogger.shared.log(level: .info, tag: "MyView", message: "View loaded")
-/// ```
-///
-/// Log a message with custom data:
-/// ```swift
-/// let data = ["email": "user@example.com", "status": "active"]
-/// AppLogger.shared.log(level: .error, tag: "LoginService", message: "Login failed", data: data)
-/// ```
-///
-/// Change log level to suppress low-priority logs:
-/// ```swift
-/// AppLogger.shared.setLogLevel(level: .error)
-/// ```
-///
-/// Retrieve and clear all logs:
-/// ```swift
-/// let allLogs = AppLogger.shared.getAllLogs()
-/// ```
-///
-/// To stringify any value for logging, use:
-/// ```swift
-/// let str = stringify(anyValue)
-/// ```
-
-// MARK: - Usage Examples
-extension AppLogger {
-    /// Example usage:
-    /// ```swift
-    /// // Basic logging
-    /// AppLogger.shared.log(level: .info, tag: "LoginView", message: "User login attempt")
-    ///
-    /// // Logging with data
-    /// AppLogger.shared.log(level: .error, 
-    ///                     tag: "NetworkService", 
-    ///                     message: "API call failed",
-    ///                     data: ["statusCode": 404])
-    ///
-    /// // Get session logs
-    /// let sessionLogs = AppLogger.shared.getCurrentSessionLogs()
-    ///
-    /// // Get account logs
-    /// let accountLogs = AppLogger.shared.getLogsForAccount("user123")
-    ///
-    /// // Get date range logs
-    /// let fromDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-    /// let logs = AppLogger.shared.getLogs(from: fromDate, to: Date())
-    /// ```
-    ///
-    /// Note: The logger automatically manages log retention and cleanup.
-    /// Logs older than 5 days are automatically removed.
-    static func examples() { }
 }
