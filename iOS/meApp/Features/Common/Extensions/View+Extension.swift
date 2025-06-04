@@ -29,4 +29,11 @@ extension View {
             self
         }
     }
+    
+    /// Presents a toast notification with the provided toast data.
+    /// - Parameter data: A binding to the `ToastModel?` that contains the toast configuration.
+    /// - Returns: A view that presents the toast when `data` is not nil.
+    func presentToast(data: Binding<ToastModel?>) -> some View {
+        self.modifier(ToastModifier(toastData: data))
+    }
 }
