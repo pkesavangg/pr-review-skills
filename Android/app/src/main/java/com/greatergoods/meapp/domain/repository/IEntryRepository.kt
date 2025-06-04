@@ -1,8 +1,8 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity // Changed import
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryEntity // Changed import
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -53,6 +53,7 @@ interface IEntryRepository {
     suspend fun deleteEntry(entry: EntryEntity): Flow<Int> // Changed parameter type and return type
 
     // Time-based Queries
+
     /**
      * Retrieves entries within a specific date range for a given account.
      * @param accountId The account ID
@@ -60,7 +61,11 @@ interface IEntryRepository {
      * @param endDate The end date of the range (timestamp as String)
      * @return Flow of list of EntryEntity objects within the date range
      */
-    fun getEntriesByDateRange(accountId: String, startDate: String, endDate: String): Flow<List<EntryEntity>> // Changed parameter types and return type
+    fun getEntriesByDateRange(
+        accountId: String,
+        startDate: String,
+        endDate: String,
+    ): Flow<List<EntryEntity>> // Changed parameter types and return type
 
     /**
      * Retrieves the most recent entry for a given account.
@@ -75,9 +80,13 @@ interface IEntryRepository {
      * @param days Number of days to look back
      * @return Flow of list of EntryEntity objects
      */
-    fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<EntryEntity>> // Added accountId, changed return type
+    fun getLastNDaysEntries(
+        accountId: String,
+        days: Int,
+    ): Flow<List<EntryEntity>> // Added accountId, changed return type
 
     // Device-specific Operations
+
     /**
      * Retrieves entries for a specific device type for a given account.
      * @param accountId The account ID
@@ -94,6 +103,7 @@ interface IEntryRepository {
     // fun getEntriesBySource(accountId: String, source: String): Flow<List<EntryEntity>>
 
     // Sync Operations
+
     /**
      * Retrieves all unsynced entries.
      * @return Flow of list of unsynced EntryEntity objects
@@ -115,6 +125,7 @@ interface IEntryRepository {
     suspend fun markEntriesSynced(ids: List<Long>): Flow<Int> // Changed parameter type and return type
 
     // Account-specific Operations
+
     /**
      * Retrieves all entries for a specific account.
      * @param accountId The account ID

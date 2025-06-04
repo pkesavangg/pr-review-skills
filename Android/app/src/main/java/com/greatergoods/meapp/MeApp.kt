@@ -14,6 +14,7 @@ import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
 import com.greatergoods.meapp.features.common.components.DialogQueueHost
 import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
+import com.greatergoods.meapp.features.common.components.NavHost
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 
@@ -25,10 +26,9 @@ fun MeApp() {
     val appViewModel: AppViewModel = hiltViewModel()
     val uiState by appViewModel.uiState.collectAsState()
     val dialogQueueViewModel: DialogQueueViewModel = hiltViewModel()
-    val themeMode = uiState.themeMode
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
 
-    MeAppTheme(themeMode = themeMode) {
+    MeAppTheme(themeMode = uiState.themeMode) {
         // Global dialog host
         DialogQueueHost(dialogQueueViewModel) { dialog ->
             // Custom dialog content can be provided here if needed
@@ -45,7 +45,7 @@ fun MeApp() {
 
         }
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-            com.greatergoods.meapp.features.common.components.NavHost(topLevelBackStack, appViewModel)
+            NavHost(topLevelBackStack, appViewModel)
         }
     }
 }
