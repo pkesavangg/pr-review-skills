@@ -15,5 +15,7 @@
 	<string>meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
