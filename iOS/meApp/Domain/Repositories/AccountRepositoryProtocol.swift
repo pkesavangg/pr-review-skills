@@ -9,6 +9,7 @@
 ///
 /// This protocol defines the contract for interacting with account data sources (e.g., local database, cache).
 /// It includes CRUD operations for accounts, as well as bulk deletion.
+@MainActor
 protocol AccountRepositoryProtocol {
     /// Fetches an account by its unique ID.
     /// - Parameter id: The ID of the account to fetch.

@@ -10,23 +10,27 @@ import Foundation
 @MainActor
 final class HTTPClient {
     static let shared = HTTPClient()
+    @Injector var accountService: AccountService
+    private let tokenManager = TokenManager.shared
     private init() {}
-    
-    private var accessToken: String {
-        // TODO: Retrieve the access token from the AccountService for the logged-in user
-        ""
-    }
     
     // MARK: - GET Request
     func get<T: Decodable>(
         _ endpoint: Endpoint,
         headers: [String: String]? = nil,
-        needsAuth: Bool = false
+        needsAuth: Bool = false,
+        accountId: String? = nil
     ) async throws -> T {
         try await checkConnectivity()
         
-        let request = try makeRequest(for: endpoint, method: .get, headers: headers, needsAuth: needsAuth)
-        return try await send(request: request)
+        let request = try await makeRequest(
+            for: endpoint,
+            method: .get,
+            headers: headers,
+            needsAuth: needsAuth,
+            accountId: accountId
+        )
+        return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
     
     // MARK: - POST/PUT/PATCH/DELETE with Body
@@ -35,18 +39,70 @@ final class HTTPClient {
         method: HTTPMethod,
         body: T,
         headers: [String: String]? = nil,
-        needsAuth: Bool = false
+        needsAuth: Bool = false,
+        accountId: String? = nil
     ) async throws -> R {
         try await checkConnectivity()
         
-        var request = try makeRequest(for: endpoint, method: method, headers: headers, needsAuth: needsAuth)
+        var request = try await makeRequest(
+            for: endpoint,
+            method: method,
+            headers: headers,
+            needsAuth: needsAuth,
+            accountId: accountId
+        )
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
-        return try await send(request: request)
+        return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
     
     // MARK: - Core Send Logic
-    private func send<T: Decodable>(request: URLRequest) async throws -> T {
+    private func send<T: Decodable>(
+        request: URLRequest,
+        needsAuth: Bool,
+        accountId: String?,
+        retryCount: Int = 0
+    ) async throws -> T {
+        // Skip token check for logout and refresh token endpoints
+        let skipTokenCheck = request.url?.path.contains("/refresh-token") == true ||
+        request.url?.path.contains("/logout") == true || request.url?.path.contains("/login") == true
+        
+        // Only check token expiration if needed and not skipped
+        if needsAuth && !skipTokenCheck {
+            let account = try await getAccount(accountId)
+            if tokenManager.checkTokenExpiration(expiresAt: account.expiresAt)
+            {
+                let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
+                var newRequest = request
+                newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
+                return try await performRequest(newRequest)
+            }
+        }
+        
+        do {
+            return try await performRequest(request)
+        } catch {
+            if let networkError = error as? NetworkError {
+                switch networkError {
+                case .statusCode(let code):
+                    if code == HTTPStatusCode.unauthorized.rawValue && needsAuth && !skipTokenCheck {
+                        let account = try await getAccount(accountId)
+                        let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
+                        var newRequest = request
+                        newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
+                        return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId)
+                    }
+                default:
+                    break
+                }
+            }
+            throw error
+        }
+    }
+    
+    // MARK: - Request Execution
+    /// Performs the actual network request and handles response decoding.
+    private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -98,13 +154,30 @@ final class HTTPClient {
         }
     }
     
+    // MARK: - Account Handling
+    /// Retrieves the active account or a specific account by ID.
+    private func getAccount(_ accountId: String?) async throws -> Account {
+        if let accountId = accountId {
+            guard let account = try await accountService.fetchAccount(byId: accountId) else {
+                throw AccountError.accountNotFound(id: accountId)
+            }
+            return account
+        } else {
+            guard let account = accountService.activeAccount else {
+                throw AccountError.noActiveAccount
+            }
+            return account
+        }
+    }
+    
     // MARK: - Request Constructor
     private func makeRequest(
         for endpoint: Endpoint,
         method: HTTPMethod,
         headers: [String: String]? = nil,
-        needsAuth: Bool = false
-    ) throws -> URLRequest {
+        needsAuth: Bool = false,
+        accountId: String? = nil
+    ) async throws -> URLRequest {
         guard var request = endpoint.urlRequest else {
             throw NetworkError.invalidRequest
         }
@@ -112,8 +185,12 @@ final class HTTPClient {
         request.httpMethod = method.rawValue
         
         var allHeaders = headers ?? [:]
-        if needsAuth && !accessToken.isEmpty {
-            allHeaders["Authorization"] = "Bearer \(accessToken)"
+        if needsAuth {
+            if let account = try? await getAccount(accountId),
+               let token = account.accessToken,
+               !token.isEmpty {
+                allHeaders["Authorization"] = "Bearer \(token)"
+            }
         }
         
         allHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
@@ -131,29 +208,41 @@ final class HTTPClient {
 
 // MARK: - USAGE GUIDE
 //
-// To make an API call using HTTPClient:
+// 🔹 GET request:
+// let result: YourDecodableType = try await HTTPClient.shared.get(
+//     .yourEndpoint,
+//     needsAuth: true
+// )
 //
-// 1. For GET (no body, possibly with auth):
-//    let result: YourDecodableType = try await HTTPClient.shared.get(.yourEndpoint, needsAuth: true)
+// 🔹 POST/PUT/PATCH/DELETE with body:
+// let body = YourEncodableRequest(...)
+// let result: YourDecodableType = try await HTTPClient.shared.send(
+//     .yourEndpoint,
+//     method: .post,
+//     body: body,
+//     needsAuth: true
+// )
 //
-// 2. For POST/PUT/PATCH/DELETE with request body:
-//    let requestBody = YourEncodableRequest(...)
-//    let result: YourDecodableResponse = try await HTTPClient.shared.send(
-//        .yourEndpoint,
-//        method: .post, // or .put, .patch, .delete
-//        body: requestBody,
-//        needsAuth: true // default is false
-//    )
+// 🔐 Auth Handling:
+// - Automatically adds Bearer token if `needsAuth` is true.
+// - Refreshes expired tokens and retries the request once.
+// - Skips token check for login/logout/refresh-token endpoints.
 //
-// Notes:
-// - Set `needsAuth` to true if the endpoint requires an Authorization header.
-// - Ensure your model types conform to Codable.
-// - Handle errors using try-catch for proper feedback.
+// 🔁 Retryable Errors:
+// - Automatically retries for `.networkError`, `502`, and `503`.
+// - Customize in `HTTPStatusCode.isRetryable`.
 //
-// Example in a ViewModel:
+// ⚠️ Error Handling:
+// Use `do-catch` to handle `NetworkError`, e.g.:
+// ```swift
 // do {
-//     let response: SomeResponse = try await HTTPClient.shared.get(.someEndpoint, needsAuth: true)
+//     let response = try await HTTPClient.shared.get(.endpoint, needsAuth: true)
 // } catch {
-//     print("API Error: \(error.localizedDescription)")
+//     print("Error: \(error)")
 // }
+// ```
+//
+// ✅ Notes:
+// - Request/response models must conform to `Codable`.
+// - 204 responses support `EmptyResponse` type.
 

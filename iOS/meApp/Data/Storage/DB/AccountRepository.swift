@@ -3,6 +3,7 @@ import SwiftData
 
 /// Concrete implementation of AccountRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Account entities in a thread-safe manner.
+@MainActor
 final class AccountRepository: AccountRepositoryProtocol {
     // MARK: - Properties
     private let container: ModelContainer

@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 
@@ -27,7 +28,7 @@ import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 @Composable
 fun DialogQueueHost(
     dialogQueueViewModel: DialogQueueViewModel,
-    customDialogContent: (@Composable (DialogModel.Custom, onDismiss: () -> Unit) -> Unit)? = null,
+    customDialogContent: (@Composable (DialogModel.Custom) -> Unit)? = null,
 ) {
     val currentDialog by dialogQueueViewModel.currentDialog.collectAsState()
     currentDialog?.let { dialog ->
@@ -88,10 +89,17 @@ fun DialogQueueHost(
 
             is DialogModel.Custom -> {
                 if (customDialogContent != null) {
-                    customDialogContent(dialog) {
-                        dialog.onDismiss()
-                        dialogQueueViewModel.dismissCurrent()
-                    }
+                    Dialog(
+                        onDismissRequest = {
+                            dialog.onDismiss()
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                        content = {
+                            customDialogContent(
+                                dialog,
+                            )
+                        },
+                    )
                 } else {
                     // Fallback: treat as alert
                     AlertDialog(

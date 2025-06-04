@@ -30,7 +30,7 @@ fun NavHost(
     val navViewModel: NavigationViewmodel = hiltViewModel()
 
     NavigationObserver(
-        appViewModel.appEventService.navigationIntent,
+        appViewModel.navigationState,
         topLevelBackStack,
     )
     NavDisplay(

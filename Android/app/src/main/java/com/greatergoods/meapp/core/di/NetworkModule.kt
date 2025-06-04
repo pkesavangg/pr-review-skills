@@ -8,6 +8,7 @@ import com.greatergoods.meapp.core.network.interceptors.AuthTokenInterceptor
 import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
 import com.greatergoods.meapp.core.network.interceptors.NetworkInterceptor
 import com.greatergoods.meapp.core.network.interceptors.ResponseInterceptor
+import com.greatergoods.meapp.core.network.interceptors.TokenAuthenticator
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.network.utility.LegacyNetworkConnectivityObserver
 import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
@@ -63,13 +64,28 @@ object NetworkModule {
     fun provideBaseUrlInterceptor(): BaseUrlInterceptor = BaseUrlInterceptor()
 
     /**
+     * Provides the appropriate IConnectivityObserver implementation based on SDK version.
+     */
+    @Provides
+    @Singleton
+    fun provideConnectivityObserver(
+        @ApplicationContext context: Context,
+    ): IConnectivityObserver =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            NetworkConnectivityObserver(context)
+        } else {
+            LegacyNetworkConnectivityObserver(context)
+        }
+
+    /**
      * Provides a network interceptor that observes connectivity changes. Requires API 23+.
      */
     @RequiresApi(Build.VERSION_CODES.M)
     @Provides
     @Singleton
-    fun provideNetworkInterceptor(networkConnectivityObserver: NetworkConnectivityObserver): NetworkInterceptor =
-        NetworkInterceptor(networkConnectivityObserver)
+    fun provideNetworkInterceptor(
+        connectivityObserver: IConnectivityObserver
+    ): NetworkInterceptor = NetworkInterceptor(connectivityObserver)
 
     /**
      * Provides an authentication token interceptor for OkHttp.
@@ -86,18 +102,12 @@ object NetworkModule {
     fun provideResponseInterceptor(): ResponseInterceptor = ResponseInterceptor()
 
     /**
-     * Provides the appropriate IConnectivityObserver implementation based on SDK version.
+     * Provides a token authenticator for OkHttp.
      */
+
     @Provides
     @Singleton
-    fun provideConnectivityObserver(
-        @ApplicationContext context: Context,
-    ): IConnectivityObserver =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            NetworkConnectivityObserver(context)
-        } else {
-            LegacyNetworkConnectivityObserver(context)
-        }
+    fun provideTokenAuthenticator(): TokenAuthenticator = TokenAuthenticator()
 
     /**
      * Provides a configured OkHttpClient with all required interceptors.
@@ -112,6 +122,7 @@ object NetworkModule {
         baseUrlInterceptor: BaseUrlInterceptor,
         responseInterceptor: ResponseInterceptor,
         networkInterceptor: NetworkInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient {
         val okHttpClient = OkHttpClient.Builder()
         // Only add logging interceptor if the app is debuggable
@@ -123,6 +134,7 @@ object NetworkModule {
             .addInterceptor(baseUrlInterceptor)
             .addInterceptor(authTokenInterceptor)
             .addInterceptor(responseInterceptor)
+            .authenticator(tokenAuthenticator)
         return okHttpClient.build()
     }
 }

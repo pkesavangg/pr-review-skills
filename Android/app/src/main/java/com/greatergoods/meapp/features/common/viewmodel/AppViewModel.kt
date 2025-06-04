@@ -1,13 +1,21 @@
 package com.greatergoods.meapp.features.common.viewmodel
 
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.data.storage.datastore.ThemeMode
+import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
+import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.core.logging.AppLog
+import com.greatergoods.meapp.domain.repository.IUserRepository
+import com.greatergoods.meapp.features.common.service.DialogQueueService
+import com.greatergoods.meapp.proto.ThemeMode
+import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,8 +38,13 @@ data class AppUiState(
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    private val appRepository: IAppRepository
-) : NavigationViewmodel() {
+    private val appRepository: IAppRepository,
+    private val userRepository: IUserRepository,
+    private val navigationService: IAppEventService,
+    private val dialogQueueService: DialogQueueService
+) : ViewModel(),
+    INavigationHandler by NavigationViewmodel(navigationService),
+    IDialogQueueHandler by DialogQueueViewModel(dialogQueueService) {
 
     private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState
@@ -50,12 +63,13 @@ class AppViewModel @Inject constructor(
     }
 
     /**
-     * Sets the app's theme mode.
+     * Sets the app's theme mode for a specific account.
+     * @param accountId The account ID to update.
      * @param mode The new theme mode to set.
      */
-    fun setThemeMode(mode: ThemeMode) {
+    fun setThemeMode(accountId: String, mode: ThemeMode) {
         viewModelScope.launch {
-            appRepository.setThemeMode(mode)
+            appRepository.setThemeMode(accountId, mode)
         }
     }
 
@@ -75,6 +89,30 @@ class AppViewModel @Inject constructor(
     fun clearFcmToken() {
         viewModelScope.launch {
             appRepository.clearFcmToken()
+        }
+    }
+
+    /**
+     * Flow of all user accounts, keyed by account ID.
+     */
+    val accountsFlow: StateFlow<Map<String, UserAccount>> = userRepository.accountsFlow
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, emptyMap())
+
+    /**
+     * Creates a new random account and saves it to UserDataStore.
+     */
+    fun createRandomAccount() {
+        viewModelScope.launch {
+            userRepository.createRandomAccount()
+        }
+    }
+
+    /**
+     * Sets the given account as active in UserDataStore.
+     */
+    fun setActiveAccount(accountId: String) {
+        viewModelScope.launch {
+            userRepository.setActiveAccount(accountId)
         }
     }
 }

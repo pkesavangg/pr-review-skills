@@ -1,31 +1,39 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
-import com.greatergoods.meapp.data.storage.datastore.ThemeDataStore
-import com.greatergoods.meapp.data.storage.datastore.ThemeMode
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.proto.ThemeMode
 import jakarta.inject.Inject
+import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Implementation of [IAppRepository] for app-wide data operations.
  */
+@Singleton
 class AppRepository @Inject constructor(
-    private val themeDataStore: ThemeDataStore,
+    private val userDataStore: UserDataStore,
     private val fcmDataStore: FcmDataStore
 ) : IAppRepository {
 
-    override val themeModeFlow: Flow<ThemeMode> = themeDataStore.themeModeFlow
+    override val themeModeFlow: Flow<ThemeMode> = userDataStore.currentThemeModeFlow
+
     override val fcmTokenFlow: Flow<String> = fcmDataStore.tokenFlow
 
-    override suspend fun getThemeMode(): ThemeMode = themeDataStore.getData().mode
+    override suspend fun getThemeMode(): ThemeMode = userDataStore.getCurrentThemeMode()
 
-    override suspend fun setThemeMode(mode: ThemeMode) {
-        themeDataStore.setThemeMode(mode)
+    /**
+     * Sets the theme mode for a specific account.
+     * @param accountId The account ID to update.
+     * @param mode The ThemeMode to set.
+     */
+    override suspend fun setThemeMode(accountId: String, mode: ThemeMode) {
+        userDataStore.setThemeMode(accountId, mode)
     }
 
     override suspend fun clearThemeMode() {
-        themeDataStore.clearData()
+        userDataStore.clearData()
     }
 
     override suspend fun getFcmToken(): String = fcmDataStore.getData().token

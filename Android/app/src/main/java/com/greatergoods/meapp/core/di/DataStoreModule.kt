@@ -2,7 +2,7 @@ package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
-import com.greatergoods.meapp.data.storage.datastore.ThemeDataStore
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,9 +19,9 @@ import android.content.Context
 object DataStoreModule {
     @Provides
     @Singleton
-    fun provideThemeDataStore(
-        @ApplicationContext context: Context,
-    ): ThemeDataStore = ThemeDataStore(context)
+    fun provideUserDataStore(
+        @ApplicationContext context: Context
+    ): UserDataStore = UserDataStore(context)
 
     /**
      * Provides a singleton instance of [ThemeRepository].

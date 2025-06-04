@@ -5,50 +5,72 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.INavigationHandler
+import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.content.Intent
 
 /**
  * ViewModel for handling navigation events and intent-based navigation in the app.
  */
 @HiltViewModel
-open class NavigationViewmodel @Inject constructor() : ViewModel() {
+class NavigationViewmodel @Inject constructor(private val appEventService: IAppEventService) : ViewModel(),
+    INavigationHandler {
 
-    @Inject
-    lateinit var appEventService: IAppEventService
-
-    private val _startDestination = MutableStateFlow<AppRoute>(AppRoute.Init.SampleScreen)
-    val startDestination: StateFlow<AppRoute> = _startDestination
-
-    /**
-     * Handles navigation based on the provided intent.
-     * @param intent The intent to parse for navigation destination.
-     */
-    fun handleIntent(intent: Intent?) {
-        val destination = intent?.getStringExtra("destination")
-        val route = when (destination) {
-            "productDetail" -> AppRoute.Product.ProductList
-            // Add more cases as needed
-            else -> AppRoute.Init.SampleScreen
-        }
-        _startDestination.value = route
-        viewModelScope.launch {
-            AppLog.i("NavigationViewModel", "Handling intent navigation", "Destination: $destination, Route: $route")
-        }
-    }
+    /** Navigation state flow, emits navigation intents. */
+    override val navigationState: Flow<NavigationIntent>?
+        get() = appEventService.navigationIntent
 
     /**
      * Navigates to the specified route.
      * @param route The destination route.
      */
-    fun navigateTo(route: AppRoute) {
+    override suspend fun navigateTo(route: AppRoute) {
         viewModelScope.launch {
             AppLog.i("NavigationViewModel", "Navigating to route", "Route: $route")
             appEventService.navigateTo(route)
+        }
+    }
+
+    /**
+     * Navigates to multiple destinations in sequence.
+     * @param destinations The list of routes to navigate to.
+     */
+    override suspend fun navigateTo(destinations: List<AppRoute>) {
+        viewModelScope.launch {
+            appEventService.navigateTo(destinations)
+        }
+    }
+
+    /**
+     * Navigates to the root of the navigation stack.
+     * @param currentRoute The current route to set as root.
+     */
+    override suspend fun navigateToRoot(currentRoute: AppRoute) {
+        viewModelScope.launch {
+            appEventService.navigateToRoot(currentRoute)
+        }
+    }
+
+    /**
+     * Replaces the navigation stack with the provided destinations.
+     * @param destinations The new stack of routes.
+     */
+    override suspend fun replaceStack(destinations: List<AppRoute>) {
+        viewModelScope.launch {
+            appEventService.replaceStack(destinations)
+        }
+    }
+
+    /**
+     * Adds a new top-level route to the navigation stack.
+     * @param route The route to add.
+     */
+    override suspend fun addTopLevelRoute(route: AppRoute) {
+        viewModelScope.launch {
+            appEventService.addTopLevelRoute(route)
         }
     }
 
@@ -57,46 +79,13 @@ open class NavigationViewmodel @Inject constructor() : ViewModel() {
      * @param route The route to navigate back to (optional).
      * @param inclusive Whether to include the specified route in the pop.
      */
-    fun navigateBack(
-        route: AppRoute? = null,
-        inclusive: Boolean = false,
+    override suspend fun navigateBack(
+        route: AppRoute?,
+        inclusive: Boolean
     ) {
         viewModelScope.launch {
             AppLog.i("NavigationViewModel", "Navigating back", "Route: $route, Inclusive: $inclusive")
             appEventService.navigateBack(route, inclusive)
-        }
-    }
-
-    /**
-     * Navigates to multiple destinations in sequence.
-     * @param destinations The list of routes to navigate to.
-     */
-    fun navigateTo(destinations: List<AppRoute>) {
-        viewModelScope.launch {
-            AppLog.i("NavigationViewModel", "Navigating to multiple destinations", "Destinations: ${destinations.joinToString()}")
-            appEventService.navigateTo(destinations)
-        }
-    }
-
-    /**
-     * Replaces the navigation stack with the provided destinations.
-     * @param destinations The new stack of routes.
-     */
-    fun replaceStack(destinations: List<AppRoute>) {
-        viewModelScope.launch {
-            AppLog.i("NavigationViewModel", "Replacing navigation stack", "New stack: ${destinations.joinToString()}")
-            appEventService.replaceStack(destinations)
-        }
-    }
-
-    /**
-     * Navigates to the root of the navigation stack.
-     * @param currentRoute The current route to set as root.
-     */
-    fun navigateToRoot(currentRoute: AppRoute) {
-        viewModelScope.launch {
-            AppLog.i("NavigationViewModel", "Navigating to root", "Current route: $currentRoute")
-            appEventService.navigateToRoot(currentRoute)
         }
     }
 }

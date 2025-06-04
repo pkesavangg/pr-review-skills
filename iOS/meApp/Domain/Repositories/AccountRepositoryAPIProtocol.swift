@@ -7,6 +7,7 @@ import Foundation
 /// dashboard configuration, streak/weightless updates, and scale token management.
 ///
 /// Implementations of this protocol should handle all networking, serialization, and error handling for these operations.
+@MainActor
 protocol AccountRepositoryAPIProtocol {
     /// Creates a new account with the given email, password, and profile. (POST /account)
     /// - Parameters:
@@ -25,14 +26,14 @@ protocol AccountRepositoryAPIProtocol {
 
     /// Logs out the account with the given ID and optional FCM token.
     /// - Parameters:
-    ///   - accountId: The ID of the account to log out.
     ///   - fcmToken: The FCM token to unregister (optional).
-    func logOut(accountId: String, fcmToken: String?) async throws
+    ///   - accountId: The ID of the account to log out (optional, defaults to nil).
+    func logOut(fcmToken: String?, accountId: String?) async throws
 
     /// Fetches the current account's details from the backend. (GET /account)
-    /// - Parameter accountId: The ID of the account to fetch.
+    /// - Parameter accountId: Optional account ID to fetch specific account details.
     /// - Returns: AccountDTO (from { account })
-    func fetchAccount(accountId: String) async throws -> AccountDTO
+    func fetchAccount(accountId: String?) async throws -> AccountDTO
 
     /// Edits the account with the given updated Account object (PUT /account).
     /// - Parameter updatedAccount: The updated Account object.
@@ -90,6 +91,14 @@ protocol AccountRepositoryAPIProtocol {
     /// - Parameters:
     ///   - oldPassword: The current password.
     ///   - newPassword: The new password to set.
-    func updatePassword(oldPassword: String, newPassword: String) async throws
+    ///   - Returns: Tokens (access and refresh tokens)
+    func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens
+    
+    /// Refreshes the access token using the provided refresh token. (POST /account/refresh-token)
+    /// - Parameters:
+    ///  - refreshToken: The refresh token to use for refreshing the session.
+    ///  - accountId: Optional account ID to associate with the refresh request.
+    ///  - Returns: Tokens (access and refresh tokens)
+    func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens
 }
 

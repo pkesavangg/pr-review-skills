@@ -40,17 +40,16 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         return try await httpClient.send(.login, method: .post, body: req)
     }
 
-    func logOut(accountId: String, fcmToken: String?) async throws {
+    func logOut(fcmToken: String?, accountId: String? = nil) async throws {
         struct LogoutRequest: Codable {
-            let accountId: String
             let fcmToken: String?
         }
-        let req = LogoutRequest(accountId: accountId, fcmToken: fcmToken)
-        _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true) as EmptyResponse
+        let req = LogoutRequest(fcmToken: fcmToken)
+        _ = try await httpClient.send(.logout, method: .post, body: req, needsAuth: true, accountId: accountId) as EmptyResponse
     }
 
-    func fetchAccount(accountId: String) async throws -> AccountDTO {
-        return try await httpClient.get(.accountInfo, needsAuth: true)
+    func fetchAccount(accountId: String? = nil) async throws -> AccountDTO {
+        return try await httpClient.get(.accountInfo, needsAuth: true, accountId: accountId)
     }
 
     func editAccount(_ updatedAccount: Account) async throws -> AccountResponse {
@@ -103,8 +102,19 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         _ = try await httpClient.send(.requestPasswordReset, method: .post, body: Request(email: email)) as EmptyResponse
     }
 
-    func updatePassword(oldPassword: String, newPassword: String) async throws {
+    func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens {
         struct Request: Codable { let oldPassword: String; let newPassword: String }
-        _ = try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true) as EmptyResponse
+        return try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true)
     }
-} 
+    
+    func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens {
+        struct Request: Codable { let refreshToken: String }
+        return try await httpClient.send(
+            .refreshToken,
+            method: .post,
+            body: Request(refreshToken: refreshToken),
+            needsAuth: true,
+            accountId: accountId
+        )
+    }
+}
