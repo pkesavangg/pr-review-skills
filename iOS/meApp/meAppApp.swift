@@ -4,14 +4,6 @@
 //
 //  Created by Barath Chittibabu on 27/05/25.
 //
-
-import SwiftUI
-//  meAppApp.swift
-//  meApp
-//
-//  Created by Barath Chittibabu on 27/05/25.
-//
-
 import SwiftUI
 
 // MARK: - meApp

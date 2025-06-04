@@ -20,6 +20,14 @@ class PassThroughWindow: UIWindow {
         // If the returned view is the `UIHostingController`'s view, ignore.
         
         // If the root view controller's view is the hit view, check if a overlay is active.
-        return rootViewController?.view == hitView ? notificationHelperService.isOverlayActive ? hitView : nil : hitView
+        if rootViewController?.view == hitView {
+            if notificationHelperService.isOverlayActive {
+                return hitView
+            } else {
+                return nil
+            }
+        } else {
+            return hitView
+        }
     }
 }
