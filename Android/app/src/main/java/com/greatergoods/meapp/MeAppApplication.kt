@@ -38,7 +38,7 @@ class MeAppApplication : Application() {
         super.onCreate()
         
         // Initialize AppLog for dual logging
-        com.greatergoods.meapp.core.logging.AppLog.logRepository = logRepository
+        AppLog.logRepository = logRepository
         
         // Initialize logging system and get session ID
         applicationScope.launch {

@@ -35,6 +35,9 @@ class LogRepository @Inject constructor(
     override fun getLogsByAccountId(accountId: String): Flow<List<LogEntity>> =
         logDao.getLogsByAccountId(accountId)
 
+    override fun getLogsBySessionId(): Flow<List<LogEntity>> =
+        currentSessionId?.let { logDao.getLogsBySessionId(it) } ?: logDao.getAllLogs()
+
     override suspend fun log(tag: String, message: String, type: String, data: String?) {
         val logEntry = LogEntity(
             id = UUID.randomUUID().toString(),
@@ -54,9 +57,6 @@ class LogRepository @Inject constructor(
 
     override fun getLogsByType(type: ILogRepository.LogType): Flow<List<LogEntity>> =
         logDao.getLogsByType(type.name)
-
-    override fun getLogsBySessionId(): Flow<List<LogEntity>> =
-        currentSessionId?.let { logDao.getLogsBySessionId(it) } ?: logDao.getAllLogs()
 
     override fun getLogsForLastDays(days: Int): Flow<List<LogEntity>> {
         val startTimestamp = System.currentTimeMillis() - (days * 24 * 60 * 60 * 1000L)

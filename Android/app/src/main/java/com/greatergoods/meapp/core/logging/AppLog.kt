@@ -6,14 +6,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
 object AppLog {
     private val loggingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    
-    @Inject
     lateinit var logRepository: ILogRepository
 
     fun i(tag: String, message: String, data: String? = null) {

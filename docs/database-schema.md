@@ -16,8 +16,6 @@ Stores user account details such as personal info, tokens, and app settings.
 | expires_at        | string  | Access token expiration time                 |
 | fcm_token         | string  | Firebase Cloud Messaging token               |
 | gender            | string  | Gender of the user                           |
-| height            | string  | Height of the user                           |
-| initial_weight    | float   | Weight at account creation or goal start     |
 | is_active_account | boolean | Indicates if the account is currently active |
 | is_logged_in      | boolean | If the user is logged in with active session |
 | is_expired        | boolean | Whether the account/session is expired       |
@@ -30,28 +28,26 @@ Stores user account details such as personal info, tokens, and app settings.
 | Column Name          | Type    | Description                                       |
 | -------------------- | ------- | ------------------------------------------------- |
 | account_id           | string  | Foreign key for referencing account.account_id    |
+| height               | string  | Height of the user                                |
+| weight               | float   | Weight at account creation or goal start          |
 | activity_level       | string  | User's activity level (e.g., low, moderate, high) |
 | goal_type            | string  | Type of health/fitness goal (e.g., weight loss)   |
 | goal_weight          | string  | Target weight as defined by the user              |
 | is_streak_on         | boolean | If streak tracking is enabled                     |
 | is_weightless_on     | boolean | Weightless mode enabled (app-specific)            |
-| met_previous_goal    | boolean | If the user achieved the last set goal            |
-| percent              | float   | Goal completion or progress percent               |
+| goal_percent         | float   | Goal completion or progress percent               |
 | streak_timestamp     | string  | Timestamp for streak tracking                     |
 | weight_unit          | string  | Unit of weight measurement (kg/lb)                |
-| weightless_body_fat  | float   | Variant body fat value                            |
-| weightless_muscle    | float   | Variant muscle mass value                         |
 | weightless_timestamp | string  | Last updated timestamp for weightless data        |
 | weightless_weight    | float   | Variant weight value                              |
 
 ## Table: notification_settings
 
-| Column Name                               | Type    | Description                                    |
-| ----------------------------------------- | ------- | ---------------------------------------------- |
-| account_id                                | string  | Foreign key for referencing account.account_id |
-| should_send_entry_notifications           | boolean | Whether to send reminders for entries          |
-| should_send_weight_in_entry_notifications | boolean | Whether to send reminders for weight-ins       |
-
+| Column Name                  | Type    | Description                                      |
+| ---------------------------- | ------- | ------------------------------------------------ |
+| account_id                   | string  | Foreign key for referencing account.account_id   |
+| entry_notifications_enabled  | boolean | Whether to display notifications for entries     |
+| show_weight_in_notifications | boolean | Whether to include weight in entry notifications |
 
 ## Table: dashboard_settings
 
@@ -76,7 +72,6 @@ Stores user account details such as personal info, tokens, and app settings.
 | is_ua_valid          | boolean | Under Armour connection valid                     |
 | is_mfp_on            | boolean | Whether MyFitnessPal integration is enabled       |
 | is_mfp_valid         | boolean | Whether MFP integration is valid                  |
-
 
 ## Table: entry
 
@@ -243,8 +238,6 @@ erDiagram
         string expires_at
         string fcm_token
         string gender
-        string height
-        float initial_weight
         boolean is_active_account
         boolean is_logged_in
         boolean is_expired
@@ -255,25 +248,24 @@ erDiagram
 
     account_weight_settings {
         string account_id FK
+        string height
+        float weight
         string activity_level
         string goal_type
         string goal_weight
         boolean is_streak_on
         boolean is_weightless_on
-        boolean met_previous_goal
-        float percent
+        float goal_percent
         string streak_timestamp
         string weight_unit
-        float weightless_body_fat
-        float weightless_muscle
         string weightless_timestamp
         float weightless_weight
     }
 
     notification_settings {
         string account_id FK
-        boolean should_send_entry_notifications
-        boolean should_send_weight_in_entry_notifications
+        boolean entry_notifications_enabled
+        boolean show_weight_in_notifications
     }
 
     dashboard_settings {
