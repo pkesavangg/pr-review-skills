@@ -12,12 +12,7 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     
     private let userDefaults: UserDefaults
     private let logger = AppLogger.shared
-    
-    private enum Keys {
-        static let integrationInfo = "integration_info_"
-        static let integrationKeys = "integration_keys"
-    }
-    
+        
     // MARK: - Initialization
     
     init(userDefaults: UserDefaults = .standard) {
@@ -30,7 +25,7 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     /// - Parameter accountId: The account/user ID.
     /// - Returns: The stored IntegratedDeviceInfo, if any.
     func getIntegrationData(accountId: String) throws -> IntegrationInfo? {
-        let key = Keys.integrationInfo + accountId
+        let key = makeIntegrationKey(for: accountId)
         guard let data = userDefaults.data(forKey: key) else {
             return nil
         }
@@ -49,7 +44,7 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     ///   - accountId: The account/user ID.
     ///   - info: The device info to store.
     func setIntegrationData(accountId: String, info: IntegrationInfo?) throws {
-        let key = Keys.integrationInfo + accountId
+        let key = makeIntegrationKey(for: accountId)
         
         if let info = info {
             do {
@@ -98,12 +93,19 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     /// Clears the integration status for the given account (e.g., on account deletion).
     /// - Parameter accountId: The account/user ID.
     func clearIntegrationStatus(accountId: String) throws {
-        let key = Keys.integrationInfo + accountId
+        let key = makeIntegrationKey(for: accountId)
         userDefaults.removeObject(forKey: key)
         removeIntegrationKey(key)
     }
     
     // MARK: - Private Helper Methods
+    
+    /// Creates a UserDefaults key for an integration with the given account ID
+    /// - Parameter accountId: The account/user ID
+    /// - Returns: The constructed key string
+    private func makeIntegrationKey(for accountId: String) -> String {
+        return Keys.integrationInfo + "_" + accountId
+    }
     
     /// Gets the set of all integration keys stored in UserDefaults
     private func getIntegrationKeys() -> Set<String> {
