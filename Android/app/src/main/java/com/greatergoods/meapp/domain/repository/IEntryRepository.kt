@@ -165,4 +165,44 @@ interface IEntryRepository {
      * @return The BodyScaleEntryEntity if found, null otherwise
      */
     suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
+
+    // Sync Operations
+    /**
+     * Sends an operation to the API for synchronization.
+     * @param operation The EntryEntity representing the operation to sync
+     */
+    suspend fun sendOperationToAPI(operation: EntryEntity)
+
+    /**
+     * Gets operations from the API since a specific timestamp.
+     * @param lastUpdated The timestamp to get operations since
+     * @return List of EntryEntity objects from the API
+     */
+    suspend fun getOperationsFromAPI(lastUpdated: Long?): List<EntryEntity>
+
+    // Opstack Operations
+    /**
+     * Gets the current opstack for an account.
+     * @param accountId The account ID
+     * @return List of EntryEntity objects in the opstack
+     */
+    suspend fun getOpstack(accountId: String): List<EntryEntity>
+
+    /**
+     * Adds an operation to the opstack.
+     * @param operation The EntryEntity representing the operation to add
+     */
+    suspend fun addToOpstack(operation: EntryEntity)
+
+    /**
+     * Removes an operation from the opstack.
+     * @param operation The EntryEntity representing the operation to remove
+     */
+    suspend fun removeFromOpstack(operation: EntryEntity)
+
+    /**
+     * Increments the attempts count for an operation in the opstack.
+     * @param operation The EntryEntity representing the operation
+     */
+    suspend fun incrementOpstackAttempts(operation: EntryEntity)
 }

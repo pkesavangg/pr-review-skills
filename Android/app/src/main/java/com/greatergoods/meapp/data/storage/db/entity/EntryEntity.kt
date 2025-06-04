@@ -31,5 +31,6 @@ data class EntryEntity(
     val operationType: String,
     val deviceType: String,
     val deviceId: String,
+    val attempts: Int = 0,
     val isSynced: Boolean = false,
 )

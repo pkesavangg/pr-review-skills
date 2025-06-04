@@ -7,9 +7,9 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -237,4 +237,37 @@ interface EntryDao {
      */
     @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
     suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
-} 
+
+    // Opstack Operations
+    /**
+     * Get all operations in the opstack for an account.
+     * @param accountId The account ID
+     * @return List of EntryEntity objects in the opstack
+     */
+    @Query("SELECT * FROM entry WHERE accountId = :accountId AND isSynced = 0 ORDER BY entryTimestamp ASC")
+    suspend fun getOpstack(accountId: String): List<EntryEntity>
+
+    /**
+     * Update the attempts count for an operation in the opstack.
+     * @param entry The EntryEntity to update attempts for
+     * @return The number of rows updated
+     */
+    @Query("UPDATE entry SET attempts = attempts + 1 WHERE id = :id")
+    suspend fun incrementAttempts(id: Long): Int
+
+    /**
+     * Get operations from the opstack that have exceeded the maximum attempts.
+     * @param maxAttempts The maximum number of attempts allowed
+     * @return List of EntryEntity objects that have exceeded max attempts
+     */
+    @Query("SELECT * FROM entry WHERE attempts >= :maxAttempts AND isSynced = 0")
+    suspend fun getFailedOperations(maxAttempts: Int): List<EntryEntity>
+
+    /**
+     * Clear the opstack for an account.
+     * @param accountId The account ID
+     * @return The number of rows deleted
+     */
+    @Query("DELETE FROM entry WHERE accountId = :accountId AND isSynced = 0")
+    suspend fun clearOpstack(accountId: String): Int
+}

@@ -1,19 +1,24 @@
+// data/repository/EntryRepository.kt
 package com.greatergoods.meapp.data.repository
 
+import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import java.util.Calendar // Added for date manipulation
+import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class EntryRepository @Inject constructor(private val entryDao: EntryDao) : IEntryRepository {
-    override fun getAllEntries(): Flow<List<EntryEntity>> = entryDao.getEntriesByAccountId("dummy_account_id") // Assuming a default or active accountId
+class EntryRepository @Inject constructor(
+    private val entryDao: EntryDao,
+    private val entryApi: EntryApi
+) : IEntryRepository {
+    override fun getAllEntries(): Flow<List<EntryEntity>> = entryDao.getEntriesByAccountId("dummy_account_id")
 
     override fun getEntryById(id: Long): Flow<EntryEntity?> = flow {
         emit(entryDao.getEntryById(id))
@@ -40,11 +45,8 @@ class EntryRepository @Inject constructor(private val entryDao: EntryDao) : IEnt
     }
 
     override fun getLatestEntry(accountId: String): Flow<EntryEntity?> = flow {
-        // This would ideally be a specific DAO query, like `getLatestEntryByAccountId`
-        // For now, fetching all and taking the last, assuming entries are ordered by time or ID.
-        // A more robust solution would be to add a specific query to EntryDao.
-        val entries = entryDao.getEntriesByAccountId(accountId) // This is a Flow
-        entries.collect { list -> // Collect the flow to get the list
+        val entries = entryDao.getEntriesByAccountId(accountId)
+        entries.collect { list ->
             emit(list.maxByOrNull { it.entryTimestamp })
         }
     }
@@ -78,16 +80,6 @@ class EntryRepository @Inject constructor(private val entryDao: EntryDao) : IEnt
     }
 
     override suspend fun deleteAllEntriesForAccount(accountId: String): Flow<Int> = flow {
-        // EntryDao doesn't have a direct deleteAllEntriesForAccount(accountId): Int method.
-        // It would require a @Query like "DELETE FROM entry WHERE accountId = :accountId"
-        // For now, let's assume we'd fetch and then delete, or this needs a DAO update.
-        // This is a placeholder for how it might be implemented if DAO was updated.
-        // val entriesToDelete = entryDao.getEntriesByAccountId(accountId).first() // Get current entries
-        // entriesToDelete.forEach { entryDao.delete(it) }
-        // emit(entriesToDelete.size)
-        // Since direct DAO method is missing, and to avoid complex flow operations here for deletion count,
-        // this part needs refinement based on exact requirements or DAO capabilities.
-        // For now, returning 0 as a placeholder, indicating this needs a proper implementation.
         emit(0) // Placeholder
     }
 
@@ -105,5 +97,48 @@ class EntryRepository @Inject constructor(private val entryDao: EntryDao) : IEnt
 
     override suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity? {
         return entryDao.getScaleEntryById(entryId)
+    }
+
+    // New API related functions
+    override suspend fun sendOperationToAPI(operation: EntryEntity) {
+        try {
+            entryApi.sendOperation(operation)
+            // Mark as synced if successful
+            entryDao.update(operation.copy(isSynced = true))
+        } catch (e: Exception) {
+            // If API call fails, add to opstack
+            addToOpstack(operation)
+            throw e
+        }
+    }
+
+    override suspend fun getOperationsFromAPI(lastUpdated: Long?): List<EntryEntity> {
+        return try {
+            val response = if (lastUpdated != null) {
+                entryApi.getOperations(lastUpdated)
+            } else {
+                entryApi.getAllOperations()
+            }
+            response.operations.map { it }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    // New Opstack related functions
+    override suspend fun getOpstack(accountId: String): List<EntryEntity> {
+        return entryDao.getOpstack(accountId)
+    }
+
+    override suspend fun addToOpstack(operation: EntryEntity) {
+        entryDao.insert(operation.copy(isSynced = false))
+    }
+
+    override suspend fun removeFromOpstack(operation: EntryEntity) {
+        entryDao.delete(operation)
+    }
+
+    override suspend fun incrementOpstackAttempts(operation: EntryEntity) {
+        entryDao.incrementAttempts(operation.id)
     }
 }
