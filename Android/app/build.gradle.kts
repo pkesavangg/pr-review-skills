@@ -134,6 +134,10 @@ dependencies {
 
     // modules
     implementation(project(":notification"))
+
+    // Play Store Review
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
 }
 
 // Allow references to generated code
