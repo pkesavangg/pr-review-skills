@@ -23,23 +23,44 @@ Stores user account details such as personal info, tokens, and app settings.
 | last_active_time  | string  | Timestamp of last activity                   |
 | zipcode           | string  | User's zip/postal code                       |
 
-## Table: account_weight_settings
+## Table: weight_comp_settings
 
-| Column Name          | Type    | Description                                       |
-| -------------------- | ------- | ------------------------------------------------- |
-| account_id           | string  | Foreign key for referencing account.account_id    |
-| height               | string  | Height of the user                                |
-| weight               | float   | Weight at account creation or goal start          |
-| activity_level       | string  | User's activity level (e.g., low, moderate, high) |
-| goal_type            | string  | Type of health/fitness goal (e.g., weight loss)   |
-| goal_weight          | string  | Target weight as defined by the user              |
-| is_streak_on         | boolean | If streak tracking is enabled                     |
-| is_weightless_on     | boolean | Weightless mode enabled (app-specific)            |
-| goal_percent         | float   | Goal completion or progress percent               |
-| streak_timestamp     | string  | Timestamp for streak tracking                     |
-| weight_unit          | string  | Unit of weight measurement (kg/lb)                |
-| weightless_timestamp | string  | Last updated timestamp for weightless data        |
-| weightless_weight    | float   | Variant weight value                              |
+| Column Name    | Type    | Description                                       |
+| -------------- | ------- | ------------------------------------------------- |
+| account_id     | string  | Foreign key for referencing account.account_id    |
+| height         | string  | Height of the user                                |
+| activity_level | string  | User's activity level (e.g., low, moderate, high) |
+| weight_unit    | string  | Unit of weight measurement (kg/lb)                |
+| is_synced      | boolean | Is weight composition settings are synced online  |
+
+## Table: goal_settings
+
+| Column Name  | Type    | Description                                     |
+| ------------ | ------- | ----------------------------------------------- |
+| account_id           | string  | Foreign key for referencing account.account_id   |
+| goal_type    | string  | Type of health/fitness goal (e.g., weight loss) |
+| weight       | float   | Weight at account creation or goal start        |
+| goal_weight  | string  | Target weight as defined by the user            |
+| goal_percent | float   | Goal completion or progress percent             |
+| is_synced    | boolean | Is goal settings are synced online              |
+
+## Table: streaks_settings
+| Column Name          | Type    | Description                                      |
+| -------------------- | ------- | ------------------------------------------------ |
+| account_id           | string  | Foreign key for referencing account.account_id   |
+| is_streak_on | boolean | If streak tracking is enabled |
+| streak_timestamp | string | Timestamp for streak tracking |
+| is_synced | boolean | Is streaks settings are synced online |
+
+## Table: weightless_settings
+
+| Column Name          | Type    | Description                                      |
+| -------------------- | ------- | ------------------------------------------------ |
+| account_id           | string  | Foreign key for referencing account.account_id   |
+| is_weightless_on     | boolean | Weightless mode enabled (app-specific)           |
+| weightless_timestamp | string  | Last updated timestamp for weightless data       |
+| weightless_weight    | float   | Variant weight value                             |
+| is_synced            | boolean | Is weightless settings are synced online         |
 
 ## Table: notification_settings
 
@@ -48,14 +69,16 @@ Stores user account details such as personal info, tokens, and app settings.
 | account_id                   | string  | Foreign key for referencing account.account_id   |
 | entry_notifications_enabled  | boolean | Whether to display notifications for entries     |
 | show_weight_in_notifications | boolean | Whether to include weight in entry notifications |
+| is_synced                    | boolean | Is notification settings are synced online       |
 
 ## Table: dashboard_settings
 
-| Column Name       | Type   | Description                                    |
-| ----------------- | ------ | ---------------------------------------------- |
-| account_id        | string | Foreign key for referencing account.account_id |
-| dashboard_metrics | string | Metrics selected for dashboard display         |
-| dashboard_type    | string | Layout type of the user's dashboard            |
+| Column Name       | Type    | Description                                    |
+| ----------------- | ------- | ---------------------------------------------- |
+| account_id        | string  | Foreign key for referencing account.account_id |
+| dashboard_metrics | string  | Metrics selected for dashboard display         |
+| dashboard_type    | string  | Layout type of the user's dashboard            |
+| is_synced         | boolean | Is dashboard settings are synced online        |
 
 ## Table: integrations_settings
 
@@ -72,6 +95,7 @@ Stores user account details such as personal info, tokens, and app settings.
 | is_ua_valid          | boolean | Under Armour connection valid                     |
 | is_mfp_on            | boolean | Whether MyFitnessPal integration is enabled       |
 | is_mfp_valid         | boolean | Whether MFP integration is valid                  |
+| is_synced            | boolean | Is integrations settings are synced online        |
 
 ## Table: entry
 
@@ -246,32 +270,50 @@ erDiagram
         string zipcode
     }
 
-    account_weight_settings {
+    weight_comp_settings {
         string account_id FK
         string height
-        float weight
         string activity_level
-        string goal_type
-        string goal_weight
-        boolean is_streak_on
-        boolean is_weightless_on
-        float goal_percent
-        string streak_timestamp
         string weight_unit
+        boolean is_synced
+    }
+
+    goal_settings {
+        string account_id FK
+        string goal_type
+        float weight
+        string goal_weight
+        float goal_percent
+        boolean is_synced
+    }
+
+    streaks_settings {
+        string account_id FK
+        boolean is_streak_on
+        string streak_timestamp
+        boolean is_synced
+    }
+
+    weightless_settings {
+        string account_id FK
+        boolean is_weightless_on
         string weightless_timestamp
         float weightless_weight
+        boolean is_synced
     }
 
     notification_settings {
         string account_id FK
         boolean entry_notifications_enabled
         boolean show_weight_in_notifications
+        boolean is_synced
     }
 
     dashboard_settings {
         string account_id FK
         string dashboard_metrics
         string dashboard_type
+        boolean is_synced
     }
 
     integrations_settings {
@@ -286,6 +328,7 @@ erDiagram
         boolean is_ua_valid
         boolean is_mfp_on
         boolean is_mfp_valid
+        boolean is_synced
     }
 
     logs {
@@ -311,8 +354,8 @@ erDiagram
         BOOLEAN is_synced
     }
 
-    BodyScaleEntry {
-        INTEGER id PK
+    Body_scale_entry {
+        INTEGER id PK, FK
         INTEGER weight
         INTEGER body_fat
         INTEGER muscle_mass
@@ -321,8 +364,8 @@ erDiagram
         TEXT source
     }
 
-    BodyScaleEntryMetric {
-        INTEGER id PK
+    body_body_scale_entry_metric {
+        INTEGER id PK, FK
         INTEGER bmr
         INTEGER metabolic_age
         INTEGER protein_percent
@@ -335,8 +378,8 @@ erDiagram
         TEXT unit
     }
 
-    BpmEntry {
-        INTEGER id PK
+    bpm_entry {
+        INTEGER id PK, FK
         INTEGER systolic
         INTEGER diastolic
         INTEGER pulse
@@ -368,14 +411,14 @@ erDiagram
         string token
     }
 
-    BodyScale {
-        string id PK
+    Body_scale {
+        string id PK, FK
         string scale_type
         boolean body_comp
     }
 
     device_meta_data {
-        string id PK
+        string id PK, FK
         string model_number
         string serial_number
         string firmware_revision
@@ -387,7 +430,7 @@ erDiagram
     }
 
     r4_scale_preference {
-        string id PK
+        string id PK, FK
         string display_name
         string[] display_metrics
         boolean should_factory_reset
@@ -399,13 +442,16 @@ erDiagram
         string updated_at
     }
 
-    bpm {
-        string id PK
+    bgm {
+        string id PK, FK
         boolean has_numeric_users
     }
 
     %% Relationships
-    account ||--o{ account_weight_settings : has
+    account ||--o{ weight_comp_settings : has
+    account ||--o{ goal_settings : has
+    account ||--o{ streaks_settings : has
+    account ||--o{ weightless_settings : has
     account ||--o{ notification_settings : has
     account ||--o{ dashboard_settings : has
     account ||--o{ integrations_settings : has
@@ -413,12 +459,12 @@ erDiagram
     account ||--o{ entry : creates
     account ||--o{ device : owns
 
-    entry ||--o| BodyScaleEntry : extends
-    BodyScaleEntry ||--o| BodyScaleEntryMetric : has
-    entry ||--o| BpmEntry : extends
+    entry ||--o| Body_scale_entry : extends
+    Body_scale_entry ||--o| body_body_scale_entry_metric : has
+    entry ||--o| bpm_entry : extends
 
-    device ||--o| BodyScale : extends
+    device ||--o| Body_scale : extends
     device ||--o| device_meta_data : has
-    device ||--o| bpm : extends
-    BodyScale ||--o| r4_scale_preference : has
+    device ||--o| bgm : extends
+    Body_scale ||--o| r4_scale_preference : has
 ```

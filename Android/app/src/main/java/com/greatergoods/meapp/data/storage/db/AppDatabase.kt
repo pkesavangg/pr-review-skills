@@ -22,6 +22,13 @@ import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 import android.content.Context
 import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.WeightlessSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.DashboardSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.IntegrationsSettingsEntity
 
 /**
  * Main database class for the MeApp application.
@@ -38,7 +45,14 @@ import com.greatergoods.meapp.data.storage.db.entity.LogEntity
         BodyScaleEntryEntity::class,
         BodyScaleEntryMetricEntity::class,
         BpmEntryEntity::class,
-        LogEntity::class
+        LogEntity::class,
+        WeightCompSettingsEntity::class,
+        GoalSettingsEntity::class,
+        StreaksSettingsEntity::class,
+        WeightlessSettingsEntity::class,
+        NotificationSettingsEntity::class,
+        DashboardSettingsEntity::class,
+        IntegrationsSettingsEntity::class
     ],
     version = 1,
     exportSchema = false,
