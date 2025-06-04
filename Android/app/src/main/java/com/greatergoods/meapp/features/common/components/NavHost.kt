@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
@@ -12,6 +13,14 @@ import com.greatergoods.meapp.core.navigation.TopLevelBackStack
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.sample.LoadingScreen
 import com.greatergoods.meapp.homeEntries
+import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
+import com.greatergoods.meapp.features.common.viewmodel.NavigationViewmodel
+import com.greatergoods.meapp.initEntries
+import com.greatergoods.meapp.mainEntries
+import com.greatergoods.meapp.productEntries
+import com.greatergoods.meapp.core.logging.LogManager
+import javax.inject.Inject
+import androidx.hilt.navigation.compose.hiltViewModel
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -19,21 +28,25 @@ import com.greatergoods.meapp.homeEntries
  */
 @Composable
 fun NavHost(
-    backStack: TopLevelBackStack<NavKey>,
+    topLevelBackStack: TopLevelBackStack<NavKey>,
     appViewModel: AppViewModel,
+    logManager: LogManager
 ) {
+    val navController = rememberNavController()
+    val navViewModel: NavigationViewmodel = hiltViewModel()
+
     NavigationObserver(
         appViewModel.navigationService.navigationIntent,
         backStack,
     )
     NavDisplay(
-        backStack = backStack.backStack,
-        onBack = { backStack.removeLast() },
+        backStack = topLevelBackStack.backStack,
+        onBack = { topLevelBackStack.removeLast() },
         entryProvider =
             entryProvider {
-                entry<AppRoute.Init.Loading> { LoadingScreen() }
-                homeEntries()
-                authEntries()
+                initEntries(appViewModel, logManager)
+                mainEntries()
+                productEntries()
             },
     )
 }
