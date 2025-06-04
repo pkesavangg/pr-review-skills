@@ -2,6 +2,7 @@ package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity // Changed import
 import kotlinx.coroutines.flow.Flow
 
@@ -14,16 +15,16 @@ interface IEntryRepository {
     // Basic CRUD Operations
     /**
      * Retrieves all entries from the data source.
-     * @return Flow of list of EntryEntity objects
+     * @return Flow of list of Entry objects
      */
-    fun getAllEntries(): Flow<List<EntryEntity>> // Changed return type
+    fun getAllEntries(): Flow<List<Entry>>
 
     /**
      * Retrieves a specific entry by its ID.
      * @param id The unique identifier of the entry
-     * @return Flow of EntryEntity object, or null if not found
+     * @return Flow of Entry object, or null if not found
      */
-    fun getEntryById(id: Long): Flow<EntryEntity?> // Changed parameter type and return type
+    fun getEntryById(id: Long): Flow<Entry?>
 
     /**
      * Saves a new entry to the data source.
@@ -59,31 +60,31 @@ interface IEntryRepository {
      * @param accountId The account ID
      * @param startDate The start date of the range (timestamp as String)
      * @param endDate The end date of the range (timestamp as String)
-     * @return Flow of list of EntryEntity objects within the date range
+     * @return Flow of list of Entry objects within the date range
      */
     fun getEntriesByDateRange(
         accountId: String,
         startDate: String,
         endDate: String,
-    ): Flow<List<EntryEntity>> // Changed parameter types and return type
+    ): Flow<List<Entry>>
 
     /**
      * Retrieves the most recent entry for a given account.
      * @param accountId The account ID
-     * @return Flow of the latest EntryEntity object, or null if no entries exist
+     * @return Flow of the latest Entry object, or null if no entries exist
      */
-    fun getLatestEntry(accountId: String): Flow<EntryEntity?> // Added accountId, changed return type
+    fun getLatestEntry(accountId: String): Flow<Entry?>
 
     /**
      * Retrieves entries for the last N days for a given account.
      * @param accountId The account ID
      * @param days Number of days to look back
-     * @return Flow of list of EntryEntity objects
+     * @return Flow of list of Entry objects
      */
     fun getLastNDaysEntries(
         accountId: String,
         days: Int,
-    ): Flow<List<EntryEntity>> // Added accountId, changed return type
+    ): Flow<List<Entry>>
 
     // Device-specific Operations
 
@@ -91,9 +92,9 @@ interface IEntryRepository {
      * Retrieves entries for a specific device type for a given account.
      * @param accountId The account ID
      * @param deviceType The type of device (e.g., "scale", "bpm")
-     * @return Flow of list of EntryEntity objects for the device type
+     * @return Flow of list of Entry objects for the device type
      */
-    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<EntryEntity>> // Changed return type
+    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 
     /**
      * Retrieves entries from a specific data source for a given account.
@@ -106,9 +107,9 @@ interface IEntryRepository {
 
     /**
      * Retrieves all unsynced entries.
-     * @return Flow of list of unsynced EntryEntity objects
+     * @return Flow of list of unsynced Entry objects
      */
-    fun getUnsyncedEntries(): Flow<List<EntryEntity>> // Changed return type
+    fun getUnsyncedEntries(): Flow<List<Entry>>
 
     /**
      * Marks an entry as synced.
@@ -129,9 +130,9 @@ interface IEntryRepository {
     /**
      * Retrieves all entries for a specific account.
      * @param accountId The account ID
-     * @return Flow of list of EntryEntity objects for the account
+     * @return Flow of list of Entry objects for the account
      */
-    fun getEntriesByAccount(accountId: String): Flow<List<EntryEntity>> // Changed return type
+    fun getEntriesByAccount(accountId: String): Flow<List<Entry>>
 
     /**
      * Deletes all entries for a specific account.
