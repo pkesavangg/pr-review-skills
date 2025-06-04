@@ -37,7 +37,7 @@ final class ScaleService: ScaleServiceProtocol {
     @Sendable
     private func getAccountId() async throws -> String {
         guard let account = try await accountService.getActiveAccount() else {
-            throw NSError(domain: "ScaleService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
+            throw AccountError.noActiveAccount
         }
         return String(describing: account.id)
     }
@@ -146,6 +146,9 @@ final class ScaleService: ScaleServiceProtocol {
     // MARK: - ScaleServiceProtocol Implementation
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {
         let metaDataDTO = metaData.toDTO()
+        guard let _ = try? await localRepository.getDevice(deviceId) else {
+            throw ScaleError.deviceNotFound(id: deviceId)
+        }
         try await localRepository.patchScaleMeta(deviceId, metaData: metaDataDTO)
         do {
             try await remoteRepo.patchScaleMeta(deviceId, metaData: metaDataDTO)
@@ -154,8 +157,8 @@ final class ScaleService: ScaleServiceProtocol {
                 try await localRepository.updateDevice(device)
             }
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync scale meta to API: \(error.localizedDescription)")
-            throw error
+            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync scale meta to API")
+            throw ScaleError.apiSyncFailed(error)
         }
     }
     
@@ -253,16 +256,31 @@ final class ScaleService: ScaleServiceProtocol {
     }
     
     func syncDevices(tempDevice: Device?) async throws {
-        let apiScales = try await remoteRepo.listScales()
-        _ = try await localRepository.listScales()
-        for dto in apiScales {
-            _ = try? await localRepository.createScale(dto)
+        do {
+            let apiScales = try await remoteRepo.listScales()
+            _ = try await localRepository.listScales()
+            for dto in apiScales {
+                do {
+                    _ = try await localRepository.createScale(dto)
+                } catch {
+                    logger.log(level: .error, tag: "ScaleService", message: "Failed to create scale from API: \(error.localizedDescription)")
+                    throw ScaleError.apiSyncFailed(error)
+                }
+            }
+            if let tempDevice = tempDevice {
+                let dto = tempDevice.toDTO()
+                do {
+                    _ = try await localRepository.createScale(dto)
+                } catch {
+                    logger.log(level: .error, tag: "ScaleService", message: "Failed to create temp device: \(error.localizedDescription)")
+                    throw ScaleError.apiSyncFailed(error)
+                }
+            }
+            await syncUnsyncedDevices()
+        } catch {
+            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync devices: \(error.localizedDescription)")
+            throw ScaleError.apiSyncFailed(error)
         }
-        if let tempDevice = tempDevice {
-            let dto = tempDevice.toDTO()
-            _ = try? await localRepository.createScale(dto)
-        }
-        await syncUnsyncedDevices()
     }
     
     func createDevice(_ device: Device) async throws -> Device {
@@ -276,12 +294,15 @@ final class ScaleService: ScaleServiceProtocol {
             }
             return Device(from: apiDTO)
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync new device to API: \(error.localizedDescription)")
-            throw error
+            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync new device to API")
+            throw ScaleError.apiSyncFailed(error)
         }
     }
     
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device {
+        guard let _ = try? await localRepository.getDevice(deviceId) else {
+            throw ScaleError.deviceNotFound(id: deviceId)
+        }
         _ = try await localRepository.editScale(deviceId, properties: properties)
         do {
             let apiDTO = try await remoteRepo.editScale(deviceId, properties: properties)
@@ -291,18 +312,21 @@ final class ScaleService: ScaleServiceProtocol {
             }
             return Device(from: apiDTO)
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device edit to API: \(error.localizedDescription)")
-            throw error
+            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device edit to API")
+            throw ScaleError.apiSyncFailed(error)
         }
     }
     
     func deleteDevice(_ deviceId: String, showToast: Bool) async throws {
+        guard let _ = try? await localRepository.getDevice(deviceId) else {
+            throw ScaleError.deviceNotFound(id: deviceId)
+        }
         try await localRepository.deleteScale(deviceId)
         do {
             try await remoteRepo.deleteScale(deviceId)
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device deletion to API: \(error.localizedDescription)")
-            throw error
+            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device deletion to API")
+            throw ScaleError.apiSyncFailed(error)
         }
     }
 }
