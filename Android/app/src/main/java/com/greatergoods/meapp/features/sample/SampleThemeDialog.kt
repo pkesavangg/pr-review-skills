@@ -16,11 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.data.storage.datastore.ThemeMode
+import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.theme.MeAppTheme
-import android.content.res.Configuration
 
 /**
  * Dialog for selecting the theme mode.
@@ -33,7 +32,7 @@ import android.content.res.Configuration
 fun SampleThemeDialog(
     selectedMode: ThemeMode,
     onModeSelected: (ThemeMode) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     var localSelectedMode by remember { mutableStateOf(selectedMode) }
     AlertDialog(
@@ -42,7 +41,10 @@ fun SampleThemeDialog(
         text = {
             Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.Start) {
                 if (localSelectedMode == ThemeMode.UNRECOGNIZED) {
-                    Text("Unknown theme mode selected! Please choose a valid option.", color = MeAppTheme.colorScheme.error)
+                    Text(
+                        "Unknown theme mode selected! Please choose a valid option.",
+                        color = MeAppTheme.colorScheme.error,
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 ThemeMode.entries.filter { it != ThemeMode.UNRECOGNIZED }.forEach { mode ->
@@ -57,10 +59,12 @@ fun SampleThemeDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                onModeSelected(localSelectedMode)
-                onDismiss()
-            }) {
+            Button(
+                onClick = {
+                    onModeSelected(localSelectedMode)
+                    onDismiss()
+                },
+            ) {
                 Text("OK")
             }
         },
@@ -68,22 +72,14 @@ fun SampleThemeDialog(
             Button(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
     )
 }
 
-@Preview(name = "SampleThemeDialog Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
+@PreviewTheme
 @Composable
-private fun PreviewSampleThemeDialogLight() {
-    MeAppTheme(darkTheme = false) {
+private fun PreviewSampleThemeDialog() {
+    MeAppTheme {
         SampleThemeDialog(selectedMode = ThemeMode.LIGHT, onModeSelected = {}, onDismiss = {})
-    }
-}
-
-@Preview(name = "SampleThemeDialog Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun PreviewSampleThemeDialogDark() {
-    MeAppTheme(darkTheme = true) {
-        SampleThemeDialog(selectedMode = ThemeMode.DARK, onModeSelected = {}, onDismiss = {})
     }
 }
