@@ -23,8 +23,8 @@ class DeviceInfoService
     constructor(
         @ApplicationContext private val context: Context,
         private val deviceInfoRepository: IDeviceInfoRepository,
-        private val notificationService: NotificationService,
-    ) : IDeviceService {
+    private val notificationService: NotificationService,
+) : IDeviceService {
     /**
      * The current FCM token for this device (cached after retrieval).
      */
@@ -59,9 +59,9 @@ class DeviceInfoService
      */
     override suspend fun getFcmToken(): String =
         suspendCancellableCoroutine { cont ->
-            notificationService.fetchFCMToken(
-                onSuccess = { token -> cont.resume(token) },
+        notificationService.fetchFCMToken(
+            onSuccess = { token -> cont.resume(token) },
                 onError = { exception -> cont.resumeWithException(exception ?: Exception("Unknown error")) },
-            )
-        }
+        )
+    }
 }
