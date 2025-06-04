@@ -26,38 +26,34 @@ import com.greatergoods.meapp.theme.token.LightColorToken
  * Maps each semantic color role (background, action, text, etc.) to the appropriate token from [LightColorToken].
  * These tokens are derived from the design system's color palette (see reference image).
  */
-val LightColorScheme = ColorScheme(
-    // Background
-    primary = LightColorToken.primary,
-    secondary = LightColorToken.secondary,
-
-    // Support
-    overlay = LightColorToken.overlay,
-    toastBackground = LightColorToken.toastBackground,
-
-    // Action
-    primaryAction = LightColorToken.primaryAction,
-    primaryDisabled = LightColorToken.primaryActionDisabled,
-    secondaryAction = LightColorToken.secondaryAction,
-    secondaryDisabled = LightColorToken.secondaryDisabled,
-
-    // Text
-    heading = LightColorToken.heading,
-    body = LightColorToken.body,
-    subheading = LightColorToken.subheading,
-    error = LightColorToken.error,
-    errorDisabled = LightColorToken.errorDisabled,
-    inverse = LightColorToken.inverse,
-    inverseSecondary = LightColorToken.inverseSecondary,
-
-    // Icon
-    goal = LightColorToken.goal,
-    streak = LightColorToken.streak,
-    utility = LightColorToken.utility,
-
-    // Brand
-    brand = LightColorToken.brand
-)
+val LightColorScheme =
+    ColorScheme(
+        // Background
+        primary = LightColorToken.primary,
+        secondary = LightColorToken.secondary,
+        // Support
+        overlay = LightColorToken.overlay,
+        toastBackground = LightColorToken.toastBackground,
+        // Action
+        primaryAction = LightColorToken.primaryAction,
+        primaryDisabled = LightColorToken.primaryActionDisabled,
+        secondaryAction = LightColorToken.secondaryAction,
+        secondaryDisabled = LightColorToken.secondaryDisabled,
+        // Text
+        heading = LightColorToken.heading,
+        body = LightColorToken.body,
+        subheading = LightColorToken.subheading,
+        error = LightColorToken.error,
+        errorDisabled = LightColorToken.errorDisabled,
+        inverse = LightColorToken.inverse,
+        inverseSecondary = LightColorToken.inverseSecondary,
+        // Icon
+        goal = LightColorToken.goal,
+        streak = LightColorToken.streak,
+        utility = LightColorToken.utility,
+        // Brand
+        brand = LightColorToken.brand,
+    )
 
 /**
  * Semantic color mapping for the dark theme.
@@ -65,38 +61,34 @@ val LightColorScheme = ColorScheme(
  * Maps each semantic color role (background, action, text, etc.) to the appropriate token from [DarkColorToken].
  * These tokens are derived from the design system's color palette (see reference image).
  */
-val DarkColorScheme = ColorScheme(
-    // Background
-    primary = DarkColorToken.background,
-    secondary = DarkColorToken.secondary,
-
-    // Support
-    overlay = DarkColorToken.overlay,
-    toastBackground = DarkColorToken.toastBackground,
-
-    // Action
-    primaryAction = DarkColorToken.primaryAction,
-    primaryDisabled = DarkColorToken.primaryActionDisabled,
-    secondaryAction = DarkColorToken.secondaryAction,
-    secondaryDisabled = DarkColorToken.secondaryDisabled,
-
-    // Text
-    heading = DarkColorToken.heading,
-    body = DarkColorToken.body,
-    subheading = DarkColorToken.subheading,
-    error = DarkColorToken.error,
-    errorDisabled = DarkColorToken.errorDisabled,
-    inverse = DarkColorToken.inverse,
-    inverseSecondary = DarkColorToken.inverseSecondary,
-
-    // Icon
-    goal = DarkColorToken.goal,
-    streak = DarkColorToken.streak,
-    utility = DarkColorToken.utility,
-
-    // Brand
-    brand = DarkColorToken.brand
-)
+val DarkColorScheme =
+    ColorScheme(
+        // Background
+        primary = DarkColorToken.background,
+        secondary = DarkColorToken.secondary,
+        // Support
+        overlay = DarkColorToken.overlay,
+        toastBackground = DarkColorToken.toastBackground,
+        // Action
+        primaryAction = DarkColorToken.primaryAction,
+        primaryDisabled = DarkColorToken.primaryActionDisabled,
+        secondaryAction = DarkColorToken.secondaryAction,
+        secondaryDisabled = DarkColorToken.secondaryDisabled,
+        // Text
+        heading = DarkColorToken.heading,
+        body = DarkColorToken.body,
+        subheading = DarkColorToken.subheading,
+        error = DarkColorToken.error,
+        errorDisabled = DarkColorToken.errorDisabled,
+        inverse = DarkColorToken.inverse,
+        inverseSecondary = DarkColorToken.inverseSecondary,
+        // Icon
+        goal = DarkColorToken.goal,
+        streak = DarkColorToken.streak,
+        utility = DarkColorToken.utility,
+        // Brand
+        brand = DarkColorToken.brand,
+    )
 
 /**
  * CompositionLocal for accessing the current [ColorScheme] instance in the Compose hierarchy.
@@ -104,5 +96,3 @@ val DarkColorScheme = ColorScheme(
  * Use this to retrieve the current semantic color scheme (light or dark) throughout the UI.
  */
 val LocalColorScheme = staticCompositionLocalOf<ColorScheme> { error("No AppColors provided") }
-
-

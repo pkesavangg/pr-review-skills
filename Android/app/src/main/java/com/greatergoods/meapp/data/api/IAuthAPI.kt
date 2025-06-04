@@ -6,7 +6,9 @@ import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface IAuthAPI {
@@ -37,4 +39,7 @@ interface IAuthAPI {
     suspend fun requestPasswordReset(
         @Body request: PasswordResetRequest,
     )
+//TODO: FOR TESTING PURPOSE LATER IT WILL BE REMOVED.
+    @GET(ACCOUNT)
+    suspend fun getProfile(): ProfileUpdateRequest
 }

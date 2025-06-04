@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.domain.model.api
+package com.greatergoods.meapp.domain.model.api.user
 
 data class AccountResponse(
     val id: String,
