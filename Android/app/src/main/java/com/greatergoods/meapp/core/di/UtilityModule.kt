@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.utils.AppReviewManagerImpl
-import com.greatergoods.meapp.utils.AppReviewManager
+import com.greatergoods.meapp.utils.IAppReviewManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,5 +16,5 @@ object UtilityModule {
     @Provides
     fun provideReviewManager(
         @ApplicationContext context: Context
-    ): AppReviewManager = AppReviewManagerImpl(context)
+    ): IAppReviewManager = AppReviewManagerImpl(context)
 }

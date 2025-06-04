@@ -8,14 +8,14 @@ import javax.inject.Inject
 import android.app.Activity
 import android.content.Context
 
-interface AppReviewManager {
+interface IAppReviewManager {
     suspend fun shouldPromptForReview(): Boolean
     suspend fun launchReviewFlow(): Boolean
 }
 
 class AppReviewManagerImpl @Inject constructor(
     @ApplicationContext  private val context: Context,
-) : AppReviewManager {
+) : IAppReviewManager {
 
     private val manager: ReviewManager =
       ReviewManagerFactory.create(context)
