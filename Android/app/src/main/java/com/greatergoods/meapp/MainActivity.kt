@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MeApp()
+
         }
         handleIntentNavigationIfNeeded(intent)
     }

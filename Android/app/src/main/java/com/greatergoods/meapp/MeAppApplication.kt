@@ -21,8 +21,14 @@ class MeAppApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+    }
+
+    companion object {
+        lateinit var instance: MeAppApplication
+            private set
     }
 }

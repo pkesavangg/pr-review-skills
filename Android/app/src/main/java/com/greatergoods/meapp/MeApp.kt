@@ -12,8 +12,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
+import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.common.components.DialogQueueHost
-import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
 import com.greatergoods.meapp.features.common.components.NavHost
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -24,9 +24,10 @@ import com.greatergoods.meapp.theme.MeAppTheme
 @Composable
 fun MeApp() {
     val appViewModel: AppViewModel = hiltViewModel()
-    val uiState by appViewModel.uiState.collectAsState()
     val dialogQueueViewModel: DialogQueueViewModel = hiltViewModel()
-    val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
+    val uiState by appViewModel.uiState.collectAsState()
+    val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.Loading)
+
 
     MeAppTheme(themeMode = uiState.themeMode) {
         // Global dialog host

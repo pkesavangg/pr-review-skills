@@ -46,9 +46,9 @@ class NavigationViewmodel @Inject constructor(private val appEventService: IAppE
      * Navigates to the root of the navigation stack.
      * @param currentRoute The current route to set as root.
      */
-    override suspend fun navigateToRoot(currentRoute: AppRoute) {
+    override suspend fun navigateToRoot() {
         viewModelScope.launch {
-            appEventService.navigateToRoot(currentRoute)
+            appEventService.navigateToRoot()
         }
     }
 
