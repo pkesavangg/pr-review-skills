@@ -95,7 +95,7 @@ struct ToastModifier: ViewModifier {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
-                if let buttonTextView = data.buttonView {
+                if let buttonTextView = data.btnTextView {
                     Button {
                         data.onClick()
                         if let firstToast = activeToasts.first {
