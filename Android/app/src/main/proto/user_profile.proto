@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package com.greatergoods.meapp.proto;
+
+option java_multiple_files = true;
+option java_package = "com.greatergoods.meapp.proto";
+
+// Theme preferences
+enum ThemeMode {
+    SYSTEM = 0;
+    LIGHT = 1;
+    DARK = 2;
+}
+
+// User account information
+message UserAccount {
+    bool is_active = 1;
+    string sync_timestamp = 2;
+    string refresh_token = 3;
+    string access_token = 4;
+    ThemeMode theme_mode = 5;
+}
+
+// User preferences message
+message UserPreferences {
+    string isActive = 1;
+    map<string, UserAccount> accounts = 2;
+}

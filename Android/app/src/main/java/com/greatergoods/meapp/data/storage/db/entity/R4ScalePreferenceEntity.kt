@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.data.storage.db.entity
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -9,39 +8,30 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 
 /**
  * Entity class representing R4 scale preferences in the database.
- * Extends ScaleEntity through a one-to-one relationship.
+ * Extends BodyScaleEntity through a one-to-one relationship.
  */
 @Entity(
     tableName = "r4_scale_preference",
     foreignKeys = [
         ForeignKey(
-            entity = ScaleEntity::class,
+            entity = BodyScaleEntity::class,
             parentColumns = ["id"],
             childColumns = ["id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 @TypeConverters(JsonConverter::class)
 data class R4ScalePreferenceEntity(
     @PrimaryKey
     val id: String,
-
     val displayName: String?,
-
     val displayMetrics: List<String>?,
-
     val shouldFactoryReset: Boolean = false,
-
     val shouldMeasureImpedance: Boolean = false,
-
     val shouldMeasurePulse: Boolean = false,
-
     val timeFormat: String?,
-
     val tzOffset: Int?,
-
     val wifiFotaScheduleTime: Int?,
-
-    val updatedAt: String?
-) 
+    val updatedAt: String?,
+)
