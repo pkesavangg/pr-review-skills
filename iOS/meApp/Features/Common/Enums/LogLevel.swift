@@ -11,6 +11,7 @@ public enum LogLevel: Int, Sendable {
     case info = 2
     case error = 3
     case critical = 4
+    case success = 5
     
     var toLogType: LogEntry.LogType {
         switch self {
@@ -18,6 +19,7 @@ public enum LogLevel: Int, Sendable {
         case .info: return .info
         case .error: return .error
         case .critical: return .error
+        case .success: return .success
         }
     }
 }
