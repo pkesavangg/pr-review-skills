@@ -34,7 +34,7 @@ class NetworkInterceptor
             // Get the current network state
             val networkState = networkConnectivityObserver.getCurrentNetworkState()
 
-            if (networkState.available) {
+            if (networkState.unAvailable) {
                 // TODO: need to show toast
                 // Return a pre-made error response instead of proceeding
                 val mediaType = "text/plain".toMediaType()

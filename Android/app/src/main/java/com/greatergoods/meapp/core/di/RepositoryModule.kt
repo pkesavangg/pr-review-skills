@@ -1,12 +1,11 @@
 package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.data.repository.AppRepository
-import com.greatergoods.meapp.data.repository.HealthConnectRepository
+import com.greatergoods.meapp.data.repository.UserRepository
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
-import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
-import com.greatergoods.meapp.data.storage.datastore.ThemeDataStore
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.repository.IAppRepository
-import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
+import com.greatergoods.meapp.domain.repository.IUserRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,13 +17,11 @@ import javax.inject.Singleton
 object RepositoryModule {
     @Provides
     @Singleton
-    fun provideAppRepository(themeDataStore: ThemeDataStore, fcmDataStore: FcmDataStore): IAppRepository =
-        AppRepository(themeDataStore, fcmDataStore)
+    fun provideAppRepository(userDataStore: UserDataStore, fcmDataStore: FcmDataStore): IAppRepository =
+        AppRepository(userDataStore, fcmDataStore)
 
     @Provides
     @Singleton
-    fun provideHealthConnectRepository(
-        healthConnectDataStore: HealthConnectDataStore
-    ): IHealthConnectRepository =
-        HealthConnectRepository(healthConnectDataStore)
+    fun provideUserRepository(userDataStore: UserDataStore): IUserRepository =
+        UserRepository(userDataStore)
 }

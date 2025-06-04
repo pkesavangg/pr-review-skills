@@ -4,48 +4,27 @@ import com.greatergoods.meapp.data.storage.datastore.HealthConnectData
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Interface for HealthConnectDataStore repository.
+ * Repository interface for account data operations, abstracting HealthConnectDataStore.
  */
 interface IHealthConnectRepository {
-    /**
-     * Returns a [kotlinx.coroutines.flow.Flow] of the current map of HealthConnectData.
-     */
-    val dataMapFlow: Flow<Map<String, HealthConnectData>>
+    /** Emits a Flow of the current map of account data. */
+    val accountDataFlow: Flow<Map<String, HealthConnectData>>
 
-    /**
-     * Gets the current map of HealthConnectData.
-     */
-    suspend fun getDataMap(): Map<String, HealthConnectData>
+    /** Gets the current map of account data. */
+    suspend fun getAccountDataMap(): Map<String, HealthConnectData>
 
-    /**
-     * Sets or updates a HealthConnectData entry for the given key.
-     */
-    suspend fun setEntry(key: String, value: HealthConnectData)
+    /** Sets or updates an account data entry for the given accountId. */
+    suspend fun addAccount(accountId: String, data: HealthConnectData)
 
-    /**
-     * Removes a HealthConnectData entry for the given key.
-     */
-    suspend fun removeEntry(key: String)
+    /** Removes an account data entry for the given accountId. */
+    suspend fun removeAccount(accountId: String)
 
-    /**
-     * Clears all HealthConnectData entries.
-     */
+    /** Clears all account data entries. */
     suspend fun clearData()
 
-    /**
-     * Gets a HealthConnectData entry by its account id (key).
-     * @param accountId The key for the HealthConnectData entry.
-     * @return The HealthConnectData if present, or null.
-     */
-    suspend fun getByAccountId(accountId: String): HealthConnectData?
+    /** Gets an account data entry by its accountId. */
+    suspend fun getAccountByID(accountId: String): HealthConnectData?
 
-    /**
-     * Checks if a HealthConnectData entry exists for the given key.
-     */
-    suspend fun containsKey(key: String): Boolean
-
-    /**
-     * Gets the count of all HealthConnectData entries.
-     */
-    suspend fun getEntryCount(): Int
+    /** Checks if an account data entry exists for the given accountId. */
+    suspend fun hasAccountData(accountId: String): Boolean
 }

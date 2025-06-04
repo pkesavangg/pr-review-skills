@@ -5,6 +5,8 @@ import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.io.InputStream
+import java.io.OutputStream
 import android.content.Context
 
 /**
@@ -16,57 +18,188 @@ val Context.healthConnectDataStore: DataStore<HealthConnectDataMap> by dataStore
 )
 
 /**
- * DataStore for persisting a map of HealthConnectData.
- *
- * @constructor Creates a HealthConnectDataStore with the given context.
- * @param context The application context.
+ * DataStore for managing Health Connect integration and sync status.
  */
 class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnectDataMap>(
     dataStore = context.healthConnectDataStore,
 ) {
     /**
-     * Returns a [Flow] of the current map of HealthConnectData.
+     * Emits a Flow of all HealthConnectData entries keyed by accountId.
      */
-    val dataMapFlow: Flow<Map<String, HealthConnectData>> = dataFlow.map { it.dataMap }
+    val healthConnectDataFlow: Flow<Map<String, HealthConnectData>> = dataFlow.map { it.dataMap }
+
+    /**
+     * Returns a Flow of the current active account ID.
+     */
+    val activeAccountIdFlow: Flow<String?> = dataFlow.map {
+        it.dataMap.entries.firstOrNull { entry -> entry.value.integrated }?.key
+    }
+
+    /**
+     * Returns a Flow of HealthConnectData for a specific account.
+     */
+    fun getHealthConnectDataFlow(accountId: String): Flow<HealthConnectData?> =
+        dataFlow.map { it.dataMap[accountId] }
 
     /**
      * Gets the current map of HealthConnectData.
      */
-    suspend fun getDataMap(): Map<String, HealthConnectData> = getData().dataMap
+    suspend fun healthConnectData(): Map<String, HealthConnectData> = getData().dataMap
 
     /**
-     * Sets or updates a HealthConnectData entry for the given key.
+     * Sets or updates a HealthConnectData entry for the given accountId.
      */
-    suspend fun setEntry(key: String, value: HealthConnectData) {
+    suspend fun setHealthConnectData(accountId: String, data: HealthConnectData) {
         updateData { current ->
-            current.toBuilder().putData(key, value).build()
+            current.toBuilder().putData(accountId, data).build()
         }
     }
 
     /**
-     * Removes a HealthConnectData entry for the given key.
+     * Removes a HealthConnectData entry for the given accountId.
      */
-    suspend fun removeEntry(key: String) {
+    suspend fun removeHealthConnectData(accountId: String) {
         updateData { current ->
-            val builder = current.toBuilder()
-            builder.removeData(key)
-            builder.build()
+            current.toBuilder().removeData(accountId).build()
         }
     }
 
     /**
-     * Clears all HealthConnectData entries.
+     * Gets a HealthConnectData entry by its accountId.
+     */
+    suspend fun getHealthConnectData(accountId: String): HealthConnectData? = getData().dataMap[accountId]
+
+    /**
+     * Checks if a HealthConnectData entry exists for the given accountId.
+     */
+    suspend fun hasHealthConnectData(accountId: String): Boolean = getData().dataMap.containsKey(accountId)
+
+    /**
+     * Clears all data.
      */
     override suspend fun clearData() {
-        updateData { it.toBuilder().clearData().build() }
+        updateData { HealthConnectDataMap.getDefaultInstance() }
     }
 
     /**
-     * Gets a HealthConnectData entry by its account id (key).
-     * @param accountId The key for the HealthConnectData entry.
-     * @return The HealthConnectData if present, or null.
+     * Updates the integration status for an account.
      */
-    suspend fun getByAccountId(accountId: String): HealthConnectData? = getData().dataMap[accountId]
+    suspend fun updateIntegrationStatus(accountId: String, integrated: Boolean) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setIntegrated(integrated)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setIntegrated(integrated)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Updates the alert seen status for an account.
+     */
+    suspend fun updateAlertSeen(accountId: String, seen: Boolean) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setAlertSeen(seen)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setAlertSeen(seen)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Updates the out of sync status for an account.
+     */
+    suspend fun updateOutOfSync(accountId: String, outOfSync: Boolean) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setOutOfSync(outOfSync)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setOutOfSync(outOfSync)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Updates the modal state for an account.
+     */
+    suspend fun updateModalState(accountId: String, state: Boolean) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setModalState(state)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setModalState(state)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Updates the update timestamp for an account.
+     */
+    suspend fun updateTimestamp(accountId: String, timestamp: String) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setUpdatedAt(timestamp)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setUpdatedAt(timestamp)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Updates the integration timestamp for an account.
+     */
+    suspend fun updateIntegrationTimestamp(accountId: String, timestamp: String) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setIntegratedAt(timestamp)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setIntegratedAt(timestamp)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Updates the granted permissions for an account.
+     */
+    suspend fun updatePermissions(accountId: String, permissions: List<String>) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.clearGrantedPermission()
+                    ?.addAllGrantedPermission(permissions)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .addAllGrantedPermission(permissions)
+                        .build(),
+            ).build()
+        }
+    }
 }
 
 /**
@@ -75,9 +208,11 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
 object HealthConnectDataMapSerializer : Serializer<HealthConnectDataMap> {
     override val defaultValue: HealthConnectDataMap = HealthConnectDataMap.getDefaultInstance()
 
-    override suspend fun readFrom(input: java.io.InputStream): HealthConnectDataMap =
+    override suspend fun readFrom(input: InputStream): HealthConnectDataMap =
         HealthConnectDataMap.parseFrom(input)
 
-    override suspend fun writeTo(t: HealthConnectDataMap, output: java.io.OutputStream) =
-        t.writeTo(output)
+    override suspend fun writeTo(
+        t: HealthConnectDataMap,
+        output: OutputStream,
+    ) = t.writeTo(output)
 }

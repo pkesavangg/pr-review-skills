@@ -8,34 +8,38 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implementation of IHealthConnectDataStoreRepository.
+ * Implementation of IHealthConnectRepository for account data.
  */
-
 @Singleton
 class HealthConnectRepository @Inject constructor(
     private val dataStore: HealthConnectDataStore
 ) : IHealthConnectRepository {
-    override val dataMapFlow: Flow<Map<String, HealthConnectData>> = dataStore.dataMapFlow
+    /** Emits a Flow of the current map of account data. */
+    override val accountDataFlow: Flow<Map<String, HealthConnectData>> = dataStore.healthConnectDataFlow
 
-    override suspend fun getDataMap(): Map<String, HealthConnectData> = dataStore.getDataMap()
+    /** Gets the current map of account data. */
+    override suspend fun getAccountDataMap(): Map<String, HealthConnectData> = dataStore.healthConnectData()
 
-    override suspend fun setEntry(key: String, value: HealthConnectData) {
-        dataStore.setEntry(key, value)
+    /** Sets or updates an account data entry for the given accountId. */
+    override suspend fun addAccount(accountId: String, data: HealthConnectData) {
+        dataStore.setHealthConnectData(accountId, data)
     }
 
-    override suspend fun removeEntry(key: String) {
-        dataStore.removeEntry(key)
+    /** Removes an account data entry for the given accountId. */
+    override suspend fun removeAccount(accountId: String) {
+        dataStore.removeHealthConnectData(accountId)
     }
 
+    /** Clears all account data entries. */
     override suspend fun clearData() {
         dataStore.clearData()
     }
 
-    override suspend fun getByAccountId(accountId: String): HealthConnectData? =
-        dataStore.getByAccountId(accountId)
+    /** Gets an account data entry by its accountId. */
+    override suspend fun getAccountByID(accountId: String): HealthConnectData? =
+        dataStore.getHealthConnectData(accountId)
 
-    override suspend fun containsKey(key: String): Boolean =
-        dataStore.getDataMap().containsKey(key)
-
-    override suspend fun getEntryCount(): Int = dataStore.getDataMap().size
+    /** Checks if an account data entry exists for the given accountId. */
+    override suspend fun hasAccountData(accountId: String): Boolean =
+        dataStore.hasHealthConnectData(accountId)
 }

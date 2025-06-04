@@ -21,7 +21,7 @@ fun NavHost(
     appViewModel: AppViewModel,
 ) {
     NavigationObserver(
-        appViewModel.appEventService.navigationIntent,
+        appViewModel.navigationState,
         backStack,
     )
     NavDisplay(
