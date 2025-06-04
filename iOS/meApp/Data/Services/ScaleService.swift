@@ -34,7 +34,6 @@ final class ScaleService: ScaleServiceProtocol {
     }
     
     /// Initializes the scale service with required dependencies.
-    /// Use this initializer for testing or custom dependency injection.
     init(accountService: AccountServiceProtocol,
          apiRepository: ScaleAPIRepository,
          localRepository: ScaleRepository,
