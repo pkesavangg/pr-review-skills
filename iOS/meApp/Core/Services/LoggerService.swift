@@ -4,8 +4,8 @@ import SwiftData
 import SwiftData
 
 @MainActor
-final class DataStore {
-    static let shared = DataStore()
+final class PersistenceController {
+    static let shared = PersistenceController()
 
     let container: ModelContainer
     let context: ModelContext

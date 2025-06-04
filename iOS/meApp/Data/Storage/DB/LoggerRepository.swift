@@ -13,12 +13,7 @@ import SwiftData
 final class LoggerRepository: LoggerRepositoryProtocol {
     // MARK: - Properties
     
-    private let context: ModelContext
-    let modelContext : ModelContext = DataStore.shared.context
-
-    init() {
-        self.context = modelContext
-    }
+    private let context: ModelContext = PersistenceController.shared.context
 
     // MARK: - Saving
     func saveLogEntry(_ entry: LogEntry) async {

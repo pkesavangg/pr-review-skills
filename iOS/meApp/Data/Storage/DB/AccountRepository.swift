@@ -6,14 +6,8 @@ import SwiftData
 @MainActor
 final class AccountRepository: AccountRepositoryProtocol {
     // MARK: - Properties
-    private let context: ModelContext
+    private let context: ModelContext = PersistenceController.shared.context
 
-    /// The model context for the account repository.
-    let modelContext : ModelContext = DataStore.shared.context
-
-    init() {
-        self.context = modelContext
-    }
 
     /// Fetches an account by its unique ID.
     /// - Parameter id: The ID of the account to fetch.
