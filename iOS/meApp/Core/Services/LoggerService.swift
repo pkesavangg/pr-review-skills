@@ -17,7 +17,8 @@ final class LoggerService: LoggerServiceProtocol {
     private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
     private let sessionId: String = UUID().uuidString
     private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
-    
+    private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
+
     init() {
         Task {
             do {
@@ -32,7 +33,8 @@ final class LoggerService: LoggerServiceProtocol {
                     data: Any? = nil,
                     function: StaticString = #function,
                     line: UInt = #line,
-                    accountId: String? = nil) async {
+                    accountId: String? = nil) {
+        
         systemLogger.log(level: level,
                          tag: tag,
                          message: message,
@@ -40,21 +42,29 @@ final class LoggerService: LoggerServiceProtocol {
                          function: function,
                          line: line)
 
-        let stringifiedData = data.map {
-            ($0 as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? String(describing: $0)
+        // Capture values in MainActor before entering the queue
+        let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
+        let sessionId = self.sessionId
+
+        logQueue.async(flags: .barrier) {
+            let stringifiedData = data.map {
+                ($0 as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? String(describing: $0)
+            }
+
+            let entry = LogEntry(
+                accountId: resolvedAccountId,
+                sessionId: sessionId,
+                tag: tag,
+                tagId: String(describing: function),
+                type: level.toLogType,
+                message: message,
+                data: stringifiedData
+            )
+
+            Task {
+                await self.loggerRepository.saveLogEntry(entry)
+            }
         }
-
-        let entry = LogEntry(
-            accountId: accountId ?? accountService.activeAccount?.accountId,
-            sessionId: self.sessionId,
-            tag: tag,
-            tagId: String(describing: function),
-            type: level.toLogType,
-            message: message,
-            data: stringifiedData
-        )
-
-        await loggerRepository.saveLogEntry(entry)
     }
 
     public func getAllLogs() async throws -> [LogEntry] {
@@ -93,7 +103,7 @@ final class LoggerService: LoggerServiceProtocol {
 // MARK: - USAGE GUIDE
 //
 // 📝 Log:
-// await LoggerService.shared.log(
+// LoggerService.shared.log(
 //     level: .info,
 //     tag: "MyView",
 //     message: "Something happened",

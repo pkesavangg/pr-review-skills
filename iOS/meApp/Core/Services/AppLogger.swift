@@ -23,7 +23,7 @@ import os
 
 @MainActor
 class AppLogger {
-    private let logQueue = DispatchQueue(label: "com.greatergoods.logQueue", attributes: .concurrent)
+    private let logQueue = DispatchQueue(label: "com.greatergoods.appLoggerQueue", attributes: .concurrent)
     private let logger: Logger
     private var minimumLogLevel: LogLevel = .debug
     private let tag: String
