@@ -67,24 +67,12 @@ protocol EntryRepositoryProtocol {
     /// - Returns: The oldest Entry object, or nil if none exist.
     func fetchOldestEntry(forUserId userId: String) async throws -> Entry?
 
-    /// Calculates and retrieves the user's progress statistics (e.g., weight change, streaks).
-    /// - Parameter userId: The user ID to calculate progress for.
-    /// - Returns: A Progress object containing progress data.
-    func fetchProgress(forUserId userId: String) async throws -> Progress
-
-    /// Calculates and retrieves the user's current streak (consecutive days with entries).
-    /// - Parameter userId: The user ID to calculate streak for.
-    /// - Returns: The current streak count.
-    func fetchStreak(forUserId userId: String) async throws -> Int
-
     // MARK: - Sync
 
     /// Syncs new and deleted entries with the local data store.
     /// - Parameters:
     ///   - newEntries: Entries to create.
     ///   - deleteOps: Entries to delete.
-    func syncEntries(newEntries: [Entry], deleteOps: [Entry]) async throws
+    func syncEntries(newEntries: [Entry]) async throws
 
-    /// Clears all entry-related data from the local data store.
-    func clearAllData() async throws
 }
