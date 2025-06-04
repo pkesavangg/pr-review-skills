@@ -14,6 +14,6 @@ enum IntegrationType: String, Codable {
 }
 
 enum Keys {
-    static let integrationInfo = "integration_info_"
+    static let integrationInfo = "integration_info"
     static let integrationKeys = "integration_keys"
 }
