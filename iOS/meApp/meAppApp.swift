@@ -11,6 +11,8 @@ import SwiftUI
 struct meApp: App {
     /// The shared app state, injected as an environment object to enable global service access.
     private var appState = AppState()
+    // Register app delegate for Firebase setup
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     var body: some Scene {
         WindowGroup {

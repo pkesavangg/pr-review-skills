@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 481F009E2DF0122300799EAA /* ggHealthKitPackage */; };
+		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
+		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,6 +91,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
+				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
 				481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -151,6 +155,8 @@
 			name = meApp;
 			packageProductDependencies = (
 				481F009E2DF0122300799EAA /* ggHealthKitPackage */,
+				481F096C2DF05C8D00799EAA /* FirebaseCore */,
+				481F096E2DF05C8D00799EAA /* FirebaseMessaging */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -236,6 +242,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
+				481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -939,6 +946,14 @@
 				kind = branch;
 			};
 		};
+		481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.14.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -946,6 +961,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */;
 			productName = ggHealthKitPackage;
+		};
+		481F096C2DF05C8D00799EAA /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		481F096E2DF05C8D00799EAA /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
