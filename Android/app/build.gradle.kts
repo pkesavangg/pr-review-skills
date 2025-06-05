@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "com.greatergoods.meapp"
-        minSdk = 21
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -88,7 +88,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.hilt.navigation.compose)
 
-    //browser
+    // browser
     implementation(libs.androidx.browser)
 
     // Hilt
@@ -134,6 +134,7 @@ dependencies {
 
     // modules
     implementation(project(":notification"))
+    implementation(project(":app:healthconnect"))
 }
 
 // Allow references to generated code

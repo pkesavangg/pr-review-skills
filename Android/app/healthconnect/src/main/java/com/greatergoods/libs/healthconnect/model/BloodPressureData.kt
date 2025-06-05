@@ -5,4 +5,7 @@ package com.greatergoods.libs.healthconnect.model
  * @param systolic Systolic pressure.
  * @param diastolic Diastolic pressure.
  */
-data class BloodPressureValue(val systolic: Double, val diastolic: Double)
+data class BloodPressureData(
+    val systolic: Double,
+    val diastolic: Double,
+)

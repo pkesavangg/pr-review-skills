@@ -13,6 +13,6 @@ import java.time.Instant
 data class HealthConnectData(
     val type: DataType,
     val value: Double? = null,
-    val bloodPressure: BloodPressureValue? = null,
-    val timeStamp: Instant
+    val bloodPressure: BloodPressureData? = null,
+    val timeStamp: Instant,
 )
