@@ -3,14 +3,17 @@ package com.greatergoods.meapp.domain.service
 
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.Entry.Companion.fromScaleEntry
+import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.services.IEntryService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.time.LocalDate
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -52,7 +55,7 @@ class EntryService @Inject constructor(
             val last7DaysFlow = entryRepository.getLastNDaysEntries(accountId, 7)
             val last30DaysFlow = entryRepository.getLastNDaysEntries(accountId, 30)
 
-            latestEntryFlow.collect { entry ->
+            latestEntryFlow?.collect { entry ->
                 _latestEntry.value = entry
             }
 
@@ -74,9 +77,9 @@ class EntryService @Inject constructor(
      * If remote sync fails, adds the entry to the opstack for retry.
      * @param entry The entry to save.
      */
-    override suspend fun saveNewEntry(entry: EntryEntity) {
+    override suspend fun addEntry(entry: Entry) {
         try {
-            entryRepository.saveEntry(entry)
+            entryRepository.insert(entry)
             val operation = EntryServiceHelper.createOperation(entry, OperationType.CREATE)
             entryRepository.sendOperationToAPI(operation)
             _lastUpdated.value = System.currentTimeMillis()
@@ -91,9 +94,9 @@ class EntryService @Inject constructor(
      * If remote sync fails, adds the entries to the opstack for retry.
      * @param entries The list of entries to save.
      */
-    override suspend fun saveNewEntries(entries: List<EntryEntity>) {
+    override suspend fun addEntry(entries: List<Entry>) {
         try {
-            entryRepository.saveEntries(entries)
+            entryRepository.insert(entries)
             val operations = entries.map { EntryServiceHelper.createOperation(it, OperationType.CREATE) }
             operations.forEach { entryRepository.sendOperationToAPI(it) }
             _lastUpdated.value = System.currentTimeMillis()
@@ -108,9 +111,9 @@ class EntryService @Inject constructor(
      * If remote sync fails, adds the entry to the opstack for retry.
      * @param entry The entry to delete.
      */
-    override suspend fun deleteEntry(entry: EntryEntity) {
+    override suspend fun deleteEntry(entry: Entry) {
         try {
-            entryRepository.deleteEntry(entry)
+            entryRepository.delete(entry)
             val operation = EntryServiceHelper.createOperation(entry, OperationType.DELETE)
             entryRepository.sendOperationToAPI(operation)
             _lastUpdated.value = System.currentTimeMillis()
@@ -121,22 +124,33 @@ class EntryService @Inject constructor(
     }
 
     /**
+     * Retrieves entries by device type for the specified account.
+     * @param accountId The account ID to filter entries by.
+     * @param deviceType The device type to filter entries by.
+     * @return Flow of list of entries matching the device type.
+     */
+    override fun getEntriesByDeviceType(accountId: String, deviceType: String) =
+        entryRepository.getEntriesByDeviceType(accountId, deviceType)
+
+    /**
      * Synchronizes unsynced entries with the server and executes new operations from the server.
      * Updates the last updated timestamp after successful sync.
      */
     override suspend fun syncEntries() {
         try {
-            val opstack = entryRepository.getOpstack(accountId ?: return)
-            opstack.forEach { operation ->
+            val unSynced = entryRepository.getUnSynced(accountId ?: return)
+            unSynced.forEach { operation ->
                 try {
-                    entryRepository.sendOperationToAPI(operation)
-                    entryRepository.removeFromOpstack(operation)
+                    entryRepository.sendOperationToAPI(operation.toScaleEntry())
+                    entryRepository.deleteById(operation.entry.id)
                 } catch (e: Exception) {
                     AppLog.e("EntryService", "Error syncing operation", e.toString())
-                    entryRepository.incrementOpstackAttempts(operation)
+                    entryRepository.incrementAttempts(operation.entry.id)
                 }
             }
-            val operations = entryRepository.getOperationsFromAPI(_lastUpdated.value)
+            val operations =
+                entryRepository.getOperationsFromAPI(_lastUpdated.value)
+                    .map { fromScaleEntry(it, accountId = accountId ?: "") }
             EntryServiceHelper.executeOperations(entryRepository, operations)
             _lastUpdated.value = System.currentTimeMillis()
         } catch (e: Exception) {
@@ -148,9 +162,8 @@ class EntryService @Inject constructor(
      * Updates the progress state for the current account.
      * @param accountId The account ID to update progress for.
      */
-    private suspend fun updateProgress(accountId: String) {
+    private fun updateProgress(accountId: String) {
         EntryServiceHelper.updateProgress(
-            accountId = accountId,
             latestEntry = _latestEntry.value,
             last7Days = _last7Days.value,
             last30Days = _last30Days.value,
@@ -169,9 +182,6 @@ class EntryService @Inject constructor(
             setProgress = { _progress.value = it },
         )
     }
-
-    override fun getEntriesByDeviceType(accountId: String, deviceType: String) =
-        entryRepository.getEntriesByDeviceType(accountId, deviceType)
 }
 
 enum class OperationType {
@@ -189,11 +199,14 @@ internal object EntryServiceHelper {
      * @param type The operation type (CREATE or DELETE).
      * @return The operation entry.
      */
-    fun createOperation(entry: EntryEntity, type: OperationType): EntryEntity {
-        return entry.copy(
+    fun createOperation(entry: Entry, type: OperationType): ScaleEntry? {
+        val updatedEntry = entry.entry.copy(
             operationType = type.name,
             isSynced = false,
         )
+        return entry.copy(
+            entry = updatedEntry,
+        ).toScaleEntry()
     }
 
     /**
@@ -202,13 +215,7 @@ internal object EntryServiceHelper {
      * @param entry The entry to add.
      * @param type The operation type.
      */
-    suspend fun addToOpstack(entryRepository: IEntryRepository, entry: EntryEntity, type: OperationType) {
-        try {
-            val operation = createOperation(entry, type)
-            entryRepository.addToOpstack(operation)
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error adding to opstack", e.toString())
-        }
+    suspend fun addToOpstack(entryRepository: IEntryRepository, entry: Entry, type: OperationType) {
     }
 
     /**
@@ -216,21 +223,11 @@ internal object EntryServiceHelper {
      * @param entryRepository The entry repository.
      * @param operations The list of operations to execute.
      */
-    suspend fun executeOperations(entryRepository: IEntryRepository, operations: List<EntryEntity>) {
+    suspend fun executeOperations(entryRepository: IEntryRepository, operations: List<Entry>) {
         if (operations.isEmpty()) return
         try {
-            val sortedOperations = operations.sortedBy { it.serverTimestamp }
-            sortedOperations.forEach { operation ->
-                when (operation.operationType) {
-                    OperationType.CREATE.name -> {
-                        entryRepository.saveEntry(operation)
-                    }
-
-                    OperationType.DELETE.name -> {
-                        entryRepository.deleteEntry(operation)
-                    }
-                }
-            }
+            val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
+            entryRepository.insert(sortedOperations)
         } catch (e: Exception) {
             AppLog.e("EntryService", "Error executing operations", e.toString())
         }
@@ -243,18 +240,27 @@ internal object EntryServiceHelper {
      */
     fun calculateCurrentStreak(entries: List<Entry>): Int {
         if (entries.isEmpty()) return 0
+
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val today = Calendar.getInstance()
+        var currentDate = today.clone() as Calendar
         var streak = 0
-        val today = LocalDate.now()
-        var currentDate = today
-        for (entry in entries.sortedByDescending { it.entry.entryTimestamp }) {
-            val entryDate = LocalDate.parse(entry.entry.entryTimestamp)
-            if (entryDate == currentDate) {
+
+        val sortedEntries = entries.sortedByDescending { it.entry.entryTimestamp }
+        for (entry in sortedEntries) {
+            val entryDate = Calendar.getInstance()
+            entryDate.time = dateFormat.parse(entry.entry.entryTimestamp)!!
+
+            if (entryDate.get(Calendar.YEAR) == currentDate.get(Calendar.YEAR) &&
+                entryDate.get(Calendar.DAY_OF_YEAR) == currentDate.get(Calendar.DAY_OF_YEAR)
+            ) {
                 streak++
-                currentDate = currentDate.minusDays(1)
+                currentDate.add(Calendar.DAY_OF_YEAR, -1)
             } else {
                 break
             }
         }
+
         return streak
     }
 
@@ -265,21 +271,36 @@ internal object EntryServiceHelper {
      */
     fun calculateLongestStreak(entries: List<Entry>): Int {
         if (entries.isEmpty()) return 0
-        var longestStreak = 0
+
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val sortedEntries = entries
+            .map { dateFormat.parse(it.entry.entryTimestamp)!! }
+            .map { date ->
+                Calendar.getInstance().apply { time = date }
+            }
+            .distinctBy { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }
+            .sortedByDescending { it.timeInMillis }
+
+        var longestStreak = 1
         var currentStreak = 1
-        val sortedEntries = entries.sortedByDescending { it.entry.entryTimestamp }
-        if (sortedEntries.isEmpty()) return 0
-        var previousDate = LocalDate.parse(sortedEntries[0].entry.entryTimestamp)
+
         for (i in 1 until sortedEntries.size) {
-            val currentDate = LocalDate.parse(sortedEntries[i].entry.entryTimestamp)
-            if (currentDate == previousDate.minusDays(1)) {
+            val previous = sortedEntries[i - 1]
+            val current = sortedEntries[i]
+
+            val expected = previous.clone() as Calendar
+            expected.add(Calendar.DAY_OF_YEAR, -1)
+
+            if (current.get(Calendar.YEAR) == expected.get(Calendar.YEAR) &&
+                current.get(Calendar.DAY_OF_YEAR) == expected.get(Calendar.DAY_OF_YEAR)
+            ) {
                 currentStreak++
             } else {
                 longestStreak = maxOf(longestStreak, currentStreak)
                 currentStreak = 1
             }
-            previousDate = currentDate
         }
+
         return maxOf(longestStreak, currentStreak)
     }
 
@@ -291,8 +312,7 @@ internal object EntryServiceHelper {
      * @param last30Days The last 30 days of entries.
      * @param setProgress Lambda to set the progress value.
      */
-    suspend fun updateProgress(
-        accountId: String,
+    fun updateProgress(
         latestEntry: Entry?,
         last7Days: List<Entry>?,
         last30Days: List<Entry>?,

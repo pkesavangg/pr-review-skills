@@ -14,14 +14,15 @@ import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryViewEntity
+import com.greatergoods.meapp.data.storage.db.entity.LogEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 import android.content.Context
-import com.greatergoods.meapp.data.storage.db.entity.LogEntity
 
 /**
  * Main database class for the MeApp application.
@@ -38,8 +39,9 @@ import com.greatergoods.meapp.data.storage.db.entity.LogEntity
         BodyScaleEntryEntity::class,
         BodyScaleEntryMetricEntity::class,
         BpmEntryEntity::class,
-        LogEntity::class
+        LogEntity::class,
     ],
+    views = [EntryViewEntity::class],
     version = 1,
     exportSchema = false,
 )
@@ -51,7 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun entryDao(): EntryDao
     abstract fun logDao(): LogDao
-    
+
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
         This helps make sure the value of INSTANCE is always up-to-date and the same for all execution threads.

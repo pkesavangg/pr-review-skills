@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -9,9 +8,12 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.EntryView
 import kotlinx.coroutines.flow.Flow
+import java.util.Map.entry
 
 /**
  * Data Access Object (DAO) for the entry table.
@@ -21,28 +23,143 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface EntryDao {
     /**
-     * Insert a new entry into the database.
-     * @param entry The entry entity to insert
-     * @return The row ID of the inserted entry
+     * Insert an Entry with related BpmEntry and BodyScaleEntry in a single transaction.
+     * @param entry The complete entry data to insert
+     * @return The row ID of the inserted EntryEntity
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(entry: EntryEntity): Long
+    @Transaction
+    suspend fun insert(entry: Entry): Long {
+        val entryId = insertEntryEntity(entry.entry)
+
+        entry.bpmEntry?.let {
+            insertBpm(it.copy(id = entryId))
+        }
+
+        entry.scaleEntry?.let {
+            insertBodyScale(it.copy(id = entryId))
+        }
+
+        entry.scaleEntryMetric?.let {
+            insertBodyScaleMetric(it.copy(id = entryId))
+        }
+
+        return entryId
+    }
 
     /**
-     * Update an existing entry in the database.
-     * @param entry The entry entity to update
-     * @return The number of rows updated
+     * Insert a list of entries with their related details in a single transaction.
+     * @param entries The list of Entry objects to insert
      */
-    @Update
-    suspend fun update(entry: EntryEntity): Int
+    @Transaction
+    suspend fun insert(entries: List<Entry>) {
+        // Step 1: Insert all EntryEntity items and get their generated IDs
+        val entryEntities = entries.map { it.entry }
+        val entryIds = insertEntryEntity(entryEntities)
+
+        // Step 2: Insert related BpmEntryEntity
+        val bpmEntries = entries.mapIndexedNotNull { index, entry ->
+            entry.bpmEntry?.copy(id = entryIds[index])
+        }
+        if (bpmEntries.isNotEmpty()) insertBpm(bpmEntries)
+
+        // Step 3: Insert related BodyScaleEntryEntity
+        val scaleEntries = entries.mapIndexedNotNull { index, entry ->
+            entry.scaleEntry?.copy(id = entryIds[index])
+        }
+        if (scaleEntries.isNotEmpty()) insertBodyScale(scaleEntries)
+
+        // Step 4: Insert related BodyScaleEntryMetricEntity
+        val metricEntries = entries.mapIndexedNotNull { index, entry ->
+            entry.scaleEntryMetric?.copy(id = entryIds[index])
+        }
+        if (metricEntries.isNotEmpty()) insertBodyScaleMetric(metricEntries)
+    }
+
+    @Transaction
+    suspend fun update(entry: Entry) {
+        update(entry.entry)
+        entry.bpmEntry?.let {
+            updateBpm(it)
+        }
+        entry.scaleEntry?.let {
+            updateBodyScale(it)
+        }
+        entry.scaleEntryMetric?.let {
+            updateBodyScaleMetric(it)
+        }
+    }
 
     /**
-     * Delete an entry from the database.
-     * @param entry The entry entity to delete
-     * @return The number of rows deleted
+     * Marks an entry as deleted if it is not already marked as deleted.
+     * Inserts a new delete operation entry with the current timestamp if needed.
+     * @param entry The entry to mark as deleted.
      */
-    @Delete
-    suspend fun delete(entry: EntryEntity): Int
+    @Transaction
+    suspend fun delete(entry: Entry) {
+        val timestamp = System.currentTimeMillis().toString()
+        val deleteEntry = entry.entry.copy(
+            id = 0,
+            operationType = "DELETE",
+            opTimestamp = timestamp,
+        )
+        insertEntryEntity(deleteEntry)
+    }
+
+    /**
+     * Deletes an entry by its ID.
+     * @param id The ID of the entry to delete.
+     */
+    @Transaction
+    @Query("DELETE FROM entry WHERE id = :id")
+    suspend fun deleteById(id: Long): Int
+
+    // Get Methods
+    /**
+     * Get the latest entry for a specific account with all related details.
+     * @param accountId The account ID
+     * @return The latest Entry with relations if found, null otherwise
+     */
+    @Transaction
+    @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY entryTimestamp DESC LIMIT 1")
+    fun getLatestEntry(accountId: String): Flow<EntryView>?
+
+    /**
+     * Get all entries with their related details for a specific account.
+     * This method uses @Transaction to ensure all related data is fetched atomically.
+     * @param accountId The account ID
+     * @return List of Entry containing entries and their related data for the account
+     */
+    @Transaction
+    @Query("SELECT * FROM entry_view WHERE accountId = :accountId")
+    suspend fun getEntriesByAccount(accountId: String): List<EntryView>
+
+    /**
+     * Get entries within a time range for a specific account with all related details.
+     * @param accountId The account ID
+     * @param startTime The start timestamp
+     * @param endTime The end timestamp
+     * @return A Flow of entries within the time range with relations
+     */
+    @Transaction
+    @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND entryTimestamp BETWEEN :startTime AND :endTime")
+    fun getEntriesByTimeRange(
+        accountId: String,
+        startTime: String,
+        endTime: String,
+    ): Flow<List<EntryView>>
+
+    /**
+     * Get entries by device type for a specific account with all related details.
+     * @param accountId The account ID
+     * @param deviceType The device type
+     * @return A Flow of entries for the specified device type with relations
+     */
+    @Transaction
+    @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND deviceType = :deviceType")
+    fun getEntriesByDeviceType(
+        accountId: String,
+        deviceType: String,
+    ): Flow<List<EntryView>>
 
     /**
      * Get an entry by its ID with all related details.
@@ -54,207 +171,31 @@ interface EntryDao {
     suspend fun getEntryById(id: Long): Entry?
 
     /**
-     * Get all entries for a specific account with all related details.
-     * @param accountId The account ID
-     * @return A Flow of all entries for the account with relations
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId")
-    fun getEntriesByAccountId(accountId: String): Flow<List<Entry>>
-
-    /**
-     * Get all unsynced entries with all related details.
-     * @return A Flow of all unsynced entries with relations
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE isSynced = 0")
-    fun getUnsyncedEntries(): Flow<List<Entry>>
-
-    /**
-     * Get entries by device type for a specific account with all related details.
-     * @param accountId The account ID
-     * @param deviceType The device type
-     * @return A Flow of entries for the specified device type with relations
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId AND deviceType = :deviceType")
-    fun getEntriesByDeviceType(
-        accountId: String,
-        deviceType: String,
-    ): Flow<List<Entry>>
-
-    /**
-     * Get entries within a time range for a specific account with all related details.
-     * @param accountId The account ID
-     * @param startTime The start timestamp
-     * @param endTime The end timestamp
-     * @return A Flow of entries within the time range with relations
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId AND entryTimestamp BETWEEN :startTime AND :endTime")
-    fun getEntriesByTimeRange(
-        accountId: String,
-        startTime: String,
-        endTime: String,
-    ): Flow<List<Entry>>
-
-    /**
-     * Mark an entry as synced.
-     * @param id The entry ID
-     * @return The number of rows updated
-     */
-    @Query("UPDATE entry SET isSynced = 1 WHERE id = :id")
-    suspend fun markEntrySynced(id: Long): Int
-
-    /**
-     * Mark multiple entries as synced.
-     * @param ids List of entry IDs
-     * @return The number of rows updated
-     */
-    @Query("UPDATE entry SET isSynced = 1 WHERE id IN (:ids)")
-    suspend fun markEntriesSynced(ids: List<Long>): Int
-
-    /**
-     * Get the latest entry for a specific account with all related details.
-     * @param accountId The account ID
-     * @return The latest Entry with relations if found, null otherwise
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId ORDER BY entryTimestamp DESC LIMIT 1")
-    suspend fun getLatestEntry(accountId: String): Entry?
-
-    /**
-     * Delete all entries for a specific account.
-     * @param accountId The account ID
-     * @return The number of rows deleted
-     */
-    @Query("DELETE FROM entry WHERE accountId = :accountId")
-    suspend fun deleteAllEntriesForAccount(accountId: String): Int
-
-    /**
      * Get entries by operation type for a specific account.
      * @param accountId The account ID
      * @param operationType The operation type
      * @return A Flow of entries with the specified operation type
      */
+    @Transaction
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND operationType = :operationType")
     fun getEntriesByOperationType(
         accountId: String,
         operationType: String,
-    ): Flow<List<EntryEntity>>
+    ): Flow<List<Entry>>
+
+    // UnSynced Operations
 
     /**
-     * Get entries by source type.
+     * Get all operations in the UnSynced for an account.
      * @param accountId The account ID
-     * @param source The source type (manual, bluetooth scale, wifi scale, etc.)
-     * @return A Flow of entries from the specified source
-     */
-    @Query("SELECT * FROM entry WHERE accountId = :accountId AND deviceType = :source")
-    fun getEntriesBySource(
-        accountId: String,
-        source: String,
-    ): Flow<List<EntryEntity>>
-
-    // ----------- ENTRY METHODS -----------
-
-    /**
-     * Get all entries with their related details (BPM, Scale, ScaleMetric).
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @return List of Entry containing entries and their related data
+     * @return List of EntryEntity objects in the UnSynced
      */
     @Transaction
-    @Query("SELECT * FROM entry")
-    suspend fun getAllEntries(): List<Entry>
-
-    /**
-     * Get a specific entry with all its related details by ID.
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @param entryId The ID of the entry to fetch
-     * @return Entry containing the entry and its related data, or null if not found
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE id = :entryId")
-    suspend fun getEntry(entryId: Long): Entry?
-
-    /**
-     * Get all entries with their related details for a specific account.
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @param accountId The account ID
-     * @return List of Entry containing entries and their related data for the account
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId")
-    suspend fun getEntriesByAccount(accountId: String): List<Entry>
-
-    /**
-     * Get all entries with their related details by operation type.
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @param operationType The operation type to filter by
-     * @return List of Entry containing entries and their related data
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE operationType = :operationType")
-    suspend fun getEntriesByOperationType(operationType: String): List<Entry>
-
-    /**
-     * Get all BPM entries with their related details.
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @return List of Entry containing BPM entries and their related data
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE deviceType = 'bpm'")
-    suspend fun getBpmEntries(): List<Entry>
-
-    /**
-     * Get all Scale entries with their related details.
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @return List of Entry containing Scale entries and their related data
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE deviceType = 'scale'")
-    suspend fun getScaleEntries(): List<Entry>
-
-    /**
-     * Insert a list of metric entries into the database.
-     * @param metrics The list of BodyScaleEntryMetricEntity objects to insert
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMetrics(metrics: List<BodyScaleEntryMetricEntity>)
-
-    /**
-     * Get metrics for a specific entry.
-     * @param entryId The ID of the entry
-     * @return Flow of BodyScaleEntryMetricEntity for the entry
-     */
-    @Query("SELECT * FROM body_scale_entry_metric WHERE id = :entryId")
-    fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity?>
-
-    /**
-     * Insert a list of scale entries into the database.
-     * @param entries The list of BodyScaleEntryEntity objects to insert
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertScaleEntries(entries: List<BodyScaleEntryEntity>)
-
-    /**
-     * Get a scale entry by its ID.
-     * @param entryId The ID of the entry
-     * @return The BodyScaleEntryEntity if found, null otherwise
-     */
-    @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
-    suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
-
-    // Opstack Operations
-    /**
-     * Get all operations in the opstack for an account.
-     * @param accountId The account ID
-     * @return List of EntryEntity objects in the opstack
-     */
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND isSynced = 0 ORDER BY entryTimestamp ASC")
-    suspend fun getOpstack(accountId: String): List<EntryEntity>
+    suspend fun getUnSynced(accountId: String): List<Entry>
 
     /**
-     * Update the attempts count for an operation in the opstack.
+     * Update the attempts count for an operation in the UnSynced.
      * @param entry The EntryEntity to update attempts for
      * @return The number of rows updated
      */
@@ -262,30 +203,47 @@ interface EntryDao {
     suspend fun incrementAttempts(id: Long): Int
 
     /**
-     * Get operations from the opstack that have exceeded the maximum attempts.
-     * @param maxAttempts The maximum number of attempts allowed
-     * @return List of EntryEntity objects that have exceeded max attempts
+     * Get failed operations in the UnSynced for an account.
+     * @param accountId The account ID
+     * @param maxAttempts The maximum number of attempts to consider an operation as failed
+     * @return List of EntryEntity objects that have failed operations
      */
-    @Query("SELECT * FROM entry WHERE attempts >= :maxAttempts AND isSynced = 0")
-    suspend fun getFailedOperations(maxAttempts: Int): List<EntryEntity>
+    @Transaction
+    @Query("SELECT * FROM entry WHERE accountId = :accountId AND attempts >= :maxAttempts AND isSynced = 0")
+    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry>
 
     /**
-     * Clear the opstack for an account.
+     * Clear the UnSynced for an account.
      * @param accountId The account ID
      * @return The number of rows deleted
      */
     @Query("DELETE FROM entry WHERE accountId = :accountId AND isSynced = 0")
-    suspend fun clearOpstack(accountId: String): Int
+    suspend fun clearUnSynced(accountId: String): Int
 
     /**
-     * Get all entries with their related details for a given device type as a Flow.
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @param deviceType The device type (e.g., 'bpm', 'scale', etc.)
-     * @return Flow of List<Entry> containing entries and their related data for the device type
+     * Delete all entries for an account.
+     * @param accountId The account ID
+     * @return The number of rows deleted
      */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE deviceType = :deviceType")
-    fun getEntriesByDeviceTypeAsEntry(deviceType: String): Flow<List<Entry>>
+    @Query("DELETE FROM entry WHERE accountId = :accountId")
+    suspend fun deleteAllEntriesForAccount(accountId: String): Int
+
+    // Update methods for EntryEntity
+    /**
+     * Insert a new entry into the database.
+     * @param entry The entry entity to insert
+     * @return The row ID of the inserted entry
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEntryEntity(entry: EntryEntity): Long
+
+    /**
+     * Insert a list of entry entities into the database.
+     * @param entries The list of entry entities to insert
+     * @return List of row IDs of the inserted entries
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEntryEntity(entries: List<EntryEntity>): List<Long>
 
     /**
      * Insert a new BPM entity into the database.
@@ -293,23 +251,14 @@ interface EntryDao {
      * @return The row ID of the inserted entity.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBpm(bpm: com.greatergoods.meapp.data.storage.db.entity.BpmEntity): Long
+    suspend fun insertBpm(bpm: BpmEntryEntity): Long
 
     /**
-     * Update an existing BPM entity in the database.
-     * @param bpm The BpmEntity to update.
-     * @return The number of rows updated.
+     * Insert a list of BPM entities into the database.
+     * @param bpm The list of BpmEntryEntity to insert.
      */
-    @Update
-    suspend fun updateBpm(bpm: com.greatergoods.meapp.data.storage.db.entity.BpmEntity): Int
-
-    /**
-     * Delete a BPM entity from the database.
-     * @param bpm The BpmEntity to delete.
-     * @return The number of rows deleted.
-     */
-    @Delete
-    suspend fun deleteBpm(bpm: com.greatergoods.meapp.data.storage.db.entity.BpmEntity): Int
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBpm(bpm: List<BpmEntryEntity>)
 
     /**
      * Insert a new BodyScaleEntry entity into the database.
@@ -317,7 +266,46 @@ interface EntryDao {
      * @return The row ID of the inserted entity.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBodyScale(scale: com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity): Long
+    suspend fun insertBodyScale(scale: BodyScaleEntryEntity): Long
+
+    /**
+     * Insert a list of BodyScaleEntry entities into the database.
+     * @param scales The list of BodyScaleEntryEntity to insert.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBodyScale(scales: List<BodyScaleEntryEntity>)
+
+    /**
+     * Insert a new BodyScaleEntryMetric entity into the database.
+     * @param metric The BodyScaleEntryMetricEntity to insert.
+     * @return The row ID of the inserted entity.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Long
+
+    /**
+     * Insert a list of BodyScaleEntryMetric entities into the database.
+     * @param metrics The list of BodyScaleEntryMetricEntity to insert.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBodyScaleMetric(metrics: List<BodyScaleEntryMetricEntity>)
+
+    // Update methods for EntryEntity
+    /**
+     * Update an existing entry in the database.
+     * @param entry The entry entity to update
+     * @return The number of rows updated
+     */
+    @Update
+    suspend fun update(entry: EntryEntity): Int
+
+    /**
+     * Update an existing BPM entity in the database.
+     * @param bpm The BpmEntity to update.
+     * @return The number of rows updated.
+     */
+    @Update
+    suspend fun updateBpm(bpm: BpmEntryEntity): Int
 
     /**
      * Update an existing BodyScaleEntry entity in the database.
@@ -325,13 +313,16 @@ interface EntryDao {
      * @return The number of rows updated.
      */
     @Update
-    suspend fun updateBodyScale(scale: com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity): Int
+    suspend fun updateBodyScale(scale: BodyScaleEntryEntity): Int
 
     /**
-     * Delete a BodyScaleEntry entity from the database.
-     * @param scale The BodyScaleEntryEntity to delete.
-     * @return The number of rows deleted.
+     * Update an existing BodyScaleEntryMetric entity in the database.
+     * @param metric The BodyScaleEntryMetricEntity to update.
+     * @return The number of rows updated.
      */
-    @Delete
-    suspend fun deleteBodyScale(scale: com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity): Int
+    @Update
+    suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
 }
+
+
+

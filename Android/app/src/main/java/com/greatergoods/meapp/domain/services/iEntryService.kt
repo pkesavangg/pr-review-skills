@@ -2,7 +2,6 @@
 package com.greatergoods.meapp.domain.services
 
 import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import com.greatergoods.meapp.domain.model.common.Progress
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,9 +15,9 @@ interface IEntryService {
     val lastUpdated: StateFlow<Long?>
 
     suspend fun updateAllData(accountId: String)
-    suspend fun saveNewEntry(entry: EntryEntity)
-    suspend fun saveNewEntries(entries: List<EntryEntity>)
-    suspend fun deleteEntry(entry: EntryEntity)
+    suspend fun addEntry(entry: Entry)
+    suspend fun addEntry(entries: List<Entry>)
+    suspend fun deleteEntry(entry: Entry)
     suspend fun syncEntries()
     fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 }

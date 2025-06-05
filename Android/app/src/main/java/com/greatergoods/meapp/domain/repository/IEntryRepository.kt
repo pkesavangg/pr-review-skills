@@ -1,79 +1,120 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity // Changed import
+import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Interface defining operations for managing entries in the application.
- * This interface provides a contract for data operations related to entries,
- * supporting both weight scale and blood pressure monitor functionalities.
+ * Only supports the 14 direct functions from EntryDao.
  */
 interface IEntryRepository {
-    // Basic CRUD Operations
     /**
-     * Retrieves all entries from the data source.
-     * @return Flow of list of Entry objects
+     * Inserts a single entry.
+     * @param entry The entry to insert.
+     * @return The row ID of the inserted entry.
      */
-    fun getAllEntries(): Flow<List<Entry>>
+    suspend fun insert(entry: Entry): Long
 
     /**
-     * Retrieves a specific entry by its ID.
-     * @param id The unique identifier of the entry
-     * @return Flow of Entry object, or null if not found
+     * Inserts a list of entries.
+     * @param entries The list of entries to insert.
      */
-    fun getEntryById(id: Long): Flow<Entry?>
+    suspend fun insert(entries: List<Entry>)
 
     /**
-     * Saves a new entry to the data source.
-     * @param entry The EntryEntity object to be saved
-     * @return Flow of the saved EntryEntity object's ID
+     * Updates an entry and its related data.
+     * @param entry The entry to update.
      */
-    suspend fun saveEntry(entry: EntryEntity): Flow<Long> // Changed parameter type and return type
+    suspend fun update(entry: Entry)
 
     /**
-     * Saves a list of new entries to the data source.
-     * @param entries The list of EntryEntity objects to be saved
+     * Marks an entry as deleted.
+     * @param entry The entry to delete.
      */
-    suspend fun saveEntries(entries: List<EntryEntity>) // New method
+    suspend fun delete(entry: Entry)
 
     /**
-     * Updates an existing entry in the data source.
-     * @param entry The EntryEntity object with updated information
-     * @return Flow of Int indicating number of updated rows
+     * Gets the latest valid entry for an account.
+     * @param accountId The account ID.
+     * @return The latest valid entry, or null if not found.
      */
-    suspend fun updateEntry(entry: EntryEntity): Flow<Int> // Changed parameter type and return type
+    suspend fun getLatestEntry(accountId: String): Flow<Entry>?
 
     /**
-     * Deletes an entry from the data source.
-     * @param entry The EntryEntity to be deleted
-     * @return Flow of Int indicating number of deleted rows
+     * Gets all valid entries for an account.
+     * @param accountId The account ID.
+     * @return List of valid entries.
      */
-    suspend fun deleteEntry(entry: EntryEntity): Flow<Int> // Changed parameter type and return type
-
-    // Time-based Queries
+    suspend fun getEntriesByAccount(accountId: String): List<Entry>
 
     /**
-     * Retrieves entries within a specific date range for a given account.
-     * @param accountId The account ID
-     * @param startDate The start date of the range (timestamp as String)
-     * @param endDate The end date of the range (timestamp as String)
-     * @return Flow of list of Entry objects within the date range
+     * Gets valid entries for an account within a time range.
+     * @param accountId The account ID.
+     * @param startTime The start timestamp.
+     * @param endTime The end timestamp.
+     * @return Flow of valid entries in the time range.
      */
-    fun getEntriesByDateRange(
-        accountId: String,
-        startDate: String,
-        endDate: String,
-    ): Flow<List<Entry>>
+    fun getEntriesByTimeRange(accountId: String, startTime: String, endTime: String): Flow<List<Entry>>
 
     /**
-     * Retrieves the most recent entry for a given account.
-     * @param accountId The account ID
-     * @return Flow of the latest Entry object, or null if no entries exist
+     * Gets valid entries for an account by device type.
+     * @param accountId The account ID.
+     * @param deviceType The device type.
+     * @return Flow of valid entries for the device type.
      */
-    fun getLatestEntry(accountId: String): Flow<Entry?>
+    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
+
+    /**
+     * Gets an entry by its ID.
+     * @param id The entry ID.
+     * @return The entry, or null if not found.
+     */
+    suspend fun getEntryById(id: Long): Entry?
+
+    /**
+     * Gets entries for an account by operation type.
+     * @param accountId The account ID.
+     * @param operationType The operation type.
+     * @return Flow of entries with the specified operation type.
+     */
+    fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>>
+
+    /**
+     * Gets all unsynced entries for an account.
+     * @param accountId The account ID.
+     * @return List of unsynced entries.
+     */
+    suspend fun getUnSynced(accountId: String): List<Entry>
+
+    /**
+     * Increments the attempts count for an entry.
+     * @param id The entry ID.
+     * @return The number of rows updated.
+     */
+    suspend fun incrementAttempts(id: Long): Int
+
+    /**
+     * Gets failed operations for an account.
+     * @param accountId The account ID.
+     * @param maxAttempts The maximum number of attempts.
+     * @return List of failed operations.
+     */
+    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry>
+
+    /**
+     * Clears all unsynced entries for an account.
+     * @param accountId The account ID.
+     * @return The number of rows deleted.
+     */
+    suspend fun clearUnSynced(accountId: String): Int
+
+    /**
+     * Deletes an entry by its ID.
+     * @param id The entry ID.
+     * @return The number of rows deleted.
+     */
+    suspend fun deleteById(id: Long): Int
 
     /**
      * Retrieves entries for the last N days for a given account.
@@ -86,124 +127,24 @@ interface IEntryRepository {
         days: Int,
     ): Flow<List<Entry>>
 
-    // Device-specific Operations
-
-    /**
-     * Retrieves entries for a specific device type for a given account.
-     * @param accountId The account ID
-     * @param deviceType The type of device (e.g., "scale", "bpm")
-     * @return Flow of list of Entry objects for the device type
-     */
-    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
-
-    /**
-     * Retrieves entries from a specific data source for a given account.
-     * This might need re-evaluation as EntryEntity doesn't directly have a 'source' field.
-     * For now, it's removed. If source is a property of a related entity, the query needs to be adapted.
-     */
-    // fun getEntriesBySource(accountId: String, source: String): Flow<List<EntryEntity>>
-
-    // Sync Operations
-
-    /**
-     * Retrieves all unsynced entries.
-     * @return Flow of list of unsynced Entry objects
-     */
-    fun getUnsyncedEntries(): Flow<List<Entry>>
-
-    /**
-     * Marks an entry as synced.
-     * @param id The ID of the entry to mark as synced
-     * @return Flow of Int indicating number of updated rows
-     */
-    suspend fun markEntrySynced(id: Long): Flow<Int> // Changed parameter type and return type
-
-    /**
-     * Marks multiple entries as synced.
-     * @param ids List of entry IDs to mark as synced
-     * @return Flow of Int indicating number of updated rows
-     */
-    suspend fun markEntriesSynced(ids: List<Long>): Flow<Int> // Changed parameter type and return type
-
-    // Account-specific Operations
-
-    /**
-     * Retrieves all entries for a specific account.
-     * @param accountId The account ID
-     * @return Flow of list of Entry objects for the account
-     */
-    fun getEntriesByAccount(accountId: String): Flow<List<Entry>>
-
     /**
      * Deletes all entries for a specific account.
      * @param accountId The account ID
      * @return Flow of Int indicating number of deleted rows
      */
-    suspend fun deleteAllEntriesForAccount(accountId: String): Flow<Int> // Changed return type
-
-    /**
-     * Saves a list of metric entries to the database.
-     * @param metrics The list of BodyScaleEntryMetricEntity objects to be saved
-     */
-    suspend fun saveMetrics(metrics: List<BodyScaleEntryMetricEntity>)
-
-    /**
-     * Retrieves metrics for a specific entry.
-     * @param entryId The ID of the entry
-     * @return Flow of BodyScaleEntryMetricEntity objects for the entry
-     */
-    fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity?>
-
-    /**
-     * Saves a list of scale entries to the database.
-     * @param entries The list of BodyScaleEntryEntity objects to be saved
-     */
-    suspend fun saveScaleEntries(entries: List<BodyScaleEntryEntity>)
-
-    /**
-     * Retrieves a scale entry by its ID.
-     * @param entryId The ID of the entry
-     * @return The BodyScaleEntryEntity if found, null otherwise
-     */
-    suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
+    suspend fun deleteAllEntriesForAccount(accountId: String): Flow<Int>
 
     // Sync Operations
     /**
      * Sends an operation to the API for synchronization.
      * @param operation The EntryEntity representing the operation to sync
      */
-    suspend fun sendOperationToAPI(operation: EntryEntity)
+    suspend fun sendOperationToAPI(operation: ScaleEntry?)
 
     /**
      * Gets operations from the API since a specific timestamp.
      * @param lastUpdated The timestamp to get operations since
      * @return List of EntryEntity objects from the API
      */
-    suspend fun getOperationsFromAPI(lastUpdated: Long?): List<EntryEntity>
-
-    // Opstack Operations
-    /**
-     * Gets the current opstack for an account.
-     * @param accountId The account ID
-     * @return List of EntryEntity objects in the opstack
-     */
-    suspend fun getOpstack(accountId: String): List<EntryEntity>
-
-    /**
-     * Adds an operation to the opstack.
-     * @param operation The EntryEntity representing the operation to add
-     */
-    suspend fun addToOpstack(operation: EntryEntity)
-
-    /**
-     * Removes an operation from the opstack.
-     * @param operation The EntryEntity representing the operation to remove
-     */
-    suspend fun removeFromOpstack(operation: EntryEntity)
-
-    /**
-     * Increments the attempts count for an operation in the opstack.
-     * @param operation The EntryEntity representing the operation
-     */
-    suspend fun incrementOpstackAttempts(operation: EntryEntity)
+    suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleEntry>
 }
