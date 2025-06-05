@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
 import androidx.room.*
-import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -162,4 +162,4 @@ interface LogDao {
      */
     @Query("SELECT COUNT(*) FROM logs")
     fun getLogCount(): Flow<Int>
-} 
+}

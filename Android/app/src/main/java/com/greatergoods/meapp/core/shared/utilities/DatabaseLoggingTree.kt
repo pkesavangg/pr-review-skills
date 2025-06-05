@@ -2,7 +2,7 @@ package com.greatergoods.meapp.core.shared.utilities
 
 import android.util.Log
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
-import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import com.greatergoods.meapp.core.logging.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,10 +38,10 @@ class DatabaseLoggingTree(
 
         // Get the caller information more reliably
         val stackTrace = Throwable().stackTrace
-        val callerIndex = stackTrace.indexOfFirst { 
-            it.className.contains("android.util.Log") 
+        val callerIndex = stackTrace.indexOfFirst {
+            it.className.contains("android.util.Log")
         }.let { if (it == -1) 0 else it + 1 }
-        
+
         val caller = stackTrace.getOrNull(callerIndex)
         val tagId = caller?.methodName ?: "unknown"
         val className = caller?.className?.substringAfterLast('.') ?: (tag ?: "unknown")
@@ -55,7 +55,7 @@ class DatabaseLoggingTree(
             type = type,
             message = message,
             timestamp = System.currentTimeMillis(),
-            data = t?.let { 
+            data = t?.let {
                 buildString {
                     append(it.toString())
                     append("\n")
@@ -77,4 +77,4 @@ class DatabaseLoggingTree(
             }
         }
     }
-} 
+}

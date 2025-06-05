@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.data.storage.db.entity
+package com.greatergoods.meapp.data.storage.db.entity.account
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

@@ -1,7 +1,15 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
 import androidx.room.*
-import com.greatergoods.meapp.data.storage.db.entity.*
+import com.greatergoods.meapp.data.storage.db.entity.account.Account
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.DashboardSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -30,15 +38,15 @@ interface AccountDao {
     // Account Queries
     @Transaction
     @Query("SELECT * FROM account WHERE accountId = :accountId")
-    fun getAccountSettings(accountId: String): Flow<AccountSettings?>
+    fun getAccount(accountId: String): Flow<Account?>
 
     @Transaction
     @Query("SELECT * FROM account WHERE isActiveAccount = 1")
-    fun getActiveAccountSettings(): Flow<AccountSettings?>
+    fun getActiveAccount(): Flow<Account?>
 
     @Transaction
     @Query("SELECT * FROM account WHERE isLoggedIn = 1")
-    fun getAllLoggedInAccountSettings(): Flow<List<AccountSettings>>
+    fun getAllLoggedInAccounts(): Flow<List<Account>>
 
     // Account State Management
     @Query("UPDATE account SET isActiveAccount = 0 WHERE accountId != :accountId")

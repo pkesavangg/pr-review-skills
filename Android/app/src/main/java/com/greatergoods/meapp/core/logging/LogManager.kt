@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.logging
 
 import android.util.Log
-import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -59,4 +59,4 @@ class LogManager @Inject constructor(
     fun logError(message: String, throwable: Throwable) {
         AppLog.e("LogManager", message, throwable?.toString())
     }
-} 
+}

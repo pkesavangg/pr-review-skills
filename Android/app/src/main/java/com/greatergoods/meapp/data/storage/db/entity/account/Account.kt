@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.data.storage.db.entity
+package com.greatergoods.meapp.data.storage.db.entity.account
 
 import androidx.room.Embedded
 import androidx.room.Relation
@@ -8,45 +8,45 @@ import androidx.room.Relation
  * This class is used to handle the one-to-one relationships between an account
  * and its various settings entities.
  */
-data class AccountSettings(
+data class Account(
     @Embedded val account: AccountEntity,
-    
+
     @Relation(
         parentColumn = "accountId",
         entityColumn = "accountId"
     )
     val weightCompSettings: WeightCompSettingsEntity?,
-    
+
     @Relation(
         parentColumn = "accountId",
         entityColumn = "accountId"
     )
     val goalSettings: GoalSettingsEntity?,
-    
+
     @Relation(
         parentColumn = "accountId",
         entityColumn = "accountId"
     )
     val streaksSettings: StreaksSettingsEntity?,
-    
+
     @Relation(
         parentColumn = "accountId",
         entityColumn = "accountId"
     )
     val weightlessSettings: WeightlessSettingsEntity?,
-    
+
     @Relation(
         parentColumn = "accountId",
         entityColumn = "accountId"
     )
     val notificationSettings: NotificationSettingsEntity?,
-    
+
     @Relation(
         parentColumn = "accountId",
         entityColumn = "accountId"
     )
     val dashboardSettings: DashboardSettingsEntity?,
-    
+
     @Relation(
         parentColumn = "accountId",
         entityColumn = "accountId"

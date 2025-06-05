@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -12,12 +12,12 @@ interface IAccountRepository {
      * Authenticates a user with email and password.
      * @param email User's email address
      * @param password User's password
-     * @return The authenticated account entity
+     * @return The authenticated account
      */
     suspend fun login(
         email: String,
         password: String,
-    ): AccountEntity
+    ): Account
 
     /**
      * Logs out a specific user account.
@@ -37,23 +37,23 @@ interface IAccountRepository {
     /**
      * Creates a new user account.
      * @param accountData Account data for the new user
-     * @return The created account entity
+     * @return The created account
      */
-    suspend fun createAccount(accountData: Map<String, Any>): AccountEntity
+    suspend fun createAccount(accountData: Map<String, Any>): Account
 
     /**
      * Updates an existing account's profile information.
      * @param profile Updated profile data
-     * @return The updated account entity
+     * @return The updated account
      */
-    suspend fun updateProfile(profile: Map<String, Any>): AccountEntity
+    suspend fun updateProfile(profile: Map<String, Any>): Account
 
     /**
      * Updates an account's body composition data.
      * @param bodyComp Updated body composition data
-     * @return The updated account entity
+     * @return The updated account
      */
-    suspend fun updateBodyComp(bodyComp: Map<String, Any>): AccountEntity
+    suspend fun updateBodyComp(bodyComp: Map<String, Any>): Account
 
     /**
      * Updates an account's password.
@@ -75,31 +75,31 @@ interface IAccountRepository {
      * Switches the active account.
      * @param accountData Account data to switch to
      */
-    suspend fun switchAccount(accountData: AccountEntity?)
+    suspend fun switchAccount(accountData: Account?)
 
     /**
      * Deletes a user account.
      * @param account Account to delete
      */
-    suspend fun deleteAccount(account: AccountEntity)
+    suspend fun deleteAccount(account: Account)
 
     /**
      * Gets the currently active account.
-     * @return Flow of the active account entity
+     * @return Flow of the active account
      */
-    fun getActiveAccount(): Flow<AccountEntity?>
+    fun getActiveAccount(): Flow<Account?>
 
     /**
      * Gets all logged-in accounts.
-     * @return Flow of list of logged-in account entities
+     * @return Flow of list of logged-in accounts
      */
-    fun getAllLoggedInAccounts(): Flow<List<AccountEntity>>
+    fun getAllLoggedInAccounts(): Flow<List<Account>>
 
     /**
      * Refreshes the current account data from the server.
-     * @return The refreshed account entity
+     * @return The refreshed account
      */
-    suspend fun refreshAccount(): AccountEntity
+    suspend fun refreshAccount(): Account
 
     /**
      * Updates the account's tokens.
