@@ -1,11 +1,7 @@
 import Foundation
 import FirebaseMessaging
 
-/// NotificationService manages Firebase Cloud Messaging (FCM) token operations.
-/// It provides functionality for:
-/// - Token refresh handling
-/// - Token retrieval
-/// - Token management
+/// Manages FCM token operations and notifications
 @MainActor
 class NotificationService {
     /// Shared instance for accessing the NotificationService throughout the app

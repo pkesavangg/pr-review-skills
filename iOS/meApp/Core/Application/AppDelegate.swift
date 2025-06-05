@@ -12,18 +12,10 @@ import FirebaseMessaging
 import UserNotifications
 
 // MARK: - AppDelegate
-/// The AppDelegate class is responsible for handling application-level events.
-/// It works alongside SceneDelegate when using UIKit lifecycle within a SwiftUI app.
-/// It also manages:
-/// - Firebase initialization
-/// - FCM token management
-/// - Push notification handling
-/// - Analytics tracking
+/// Handles app lifecycle, Firebase setup, and push notifications
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
     var window: UIWindow?
     static var shared: AppDelegate?
-    
-    /// Key used to identify FCM message IDs in notification payloads
     private let gcmMessageIDKey = "gcm.message_id"
     
     /// Initializes Firebase and sets up notification handling
@@ -32,24 +24,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         AppDelegate.shared = self
         
-        // Configure Firebase
+        // Initialize Firebase and notifications
         FirebaseApp.configure()
-        
-        // Set up FCM delegate for token management
         Messaging.messaging().delegate = self
-        
-        // Set up notification center delegate for handling notifications
         UNUserNotificationCenter.current().delegate = self
         
-        // Request notification permissions (alert, badge, sound)
+        // Request notification permissions
         let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
         UNUserNotificationCenter.current().requestAuthorization(
             options: authOptions,
-            completionHandler: { granted, error in
-            }
+            completionHandler: { granted, error in }
         )
         
-        // Register for remote notifications
         application.registerForRemoteNotifications()
         return true
     }
@@ -71,18 +57,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                               willPresent notification: UNNotification,
                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let userInfo = notification.request.content.userInfo
-        
-        // Track notification for Analytics
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        // Notify observers about received notification
         NotificationCenter.default.post(
             name: Notification.Name("ReceivedNotification"),
             object: nil,
             userInfo: userInfo
         )
         
-        // Present notification with banner, badge, and sound
         completionHandler([[.banner, .badge, .sound]])
     }
     
@@ -95,11 +77,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-        
-        // Track notification for Analytics
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        // Notify observers about notification response
         NotificationCenter.default.post(
             name: Notification.Name("ReceivedNotification"),
             object: nil,
@@ -116,7 +95,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     ///   - messaging: The messaging instance
     ///   - fcmToken: The new FCM token
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // Notify observers about new FCM token
         let dataDict: [String: String] = ["token": fcmToken ?? ""]
         NotificationCenter.default.post(
             name: Notification.Name("FCMToken"),
@@ -133,7 +111,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     ///   - deviceToken: The APNs device token
     func application(_ application: UIApplication,
                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        // Associate APNs token with FCM
         Messaging.messaging().apnsToken = deviceToken
     }
     
@@ -154,15 +131,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     func application(_ application: UIApplication,
                     didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        // Track notification for Analytics
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        // Notify observers about received notification
         NotificationCenter.default.post(
             name: Notification.Name("ReceivedNotification"),
             object: nil,
             userInfo: userInfo
-        )        
+        )
+        
         completionHandler(UIBackgroundFetchResult.newData)
     }
 }
