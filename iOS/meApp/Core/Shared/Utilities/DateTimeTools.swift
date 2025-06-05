@@ -167,7 +167,7 @@ final class DateTimeTools {
     
     /// Attempts to parse a date string using ISO8601 and several common formats.
     /// Returns a Date if successful, or nil if parsing fails.
-    private static func parse(_ dateString: String) -> Date? {
+    static func parse(_ dateString: String) -> Date? {
         // Try ISO8601 first
         if let date = isoFormatter.date(from: dateString) {
             return date
@@ -186,5 +186,17 @@ final class DateTimeTools {
             }
         }
         return nil
+    }
+    
+    /// Returns the current timestamp in milliseconds since 1970.
+    static func getCurrentTimestampMillis() -> Int64 {
+        return Int64(Date().timeIntervalSince1970 * 1000)
+    }
+    
+    /// Returns a timestamp (in ms) representing the date `days` ago from now.
+    /// Useful for log cleanup cutoff comparison.
+    static func getTimestampDaysAgo(_ days: Int) -> Int64 {
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        return Int64(cutoffDate.timeIntervalSince1970 * 1000)
     }
 }

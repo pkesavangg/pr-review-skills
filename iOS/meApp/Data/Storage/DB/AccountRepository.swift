@@ -3,18 +3,11 @@ import SwiftData
 
 /// Concrete implementation of AccountRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Account entities in a thread-safe manner.
+@MainActor
 final class AccountRepository: AccountRepositoryProtocol {
     // MARK: - Properties
-    private let container: ModelContainer
-    private let context: ModelContext
+    private let context: ModelContext = PersistenceController.shared.context
 
-    /// Initializes the repository with a private SwiftData container.
-    init() {
-        let schema = Schema([Account.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        self.container = try! ModelContainer(for: schema, configurations: [config])
-        self.context = ModelContext(container)
-    }
 
     /// Fetches an account by its unique ID.
     /// - Parameter id: The ID of the account to fetch.

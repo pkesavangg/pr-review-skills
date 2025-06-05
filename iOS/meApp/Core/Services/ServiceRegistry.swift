@@ -26,11 +26,9 @@ class ServiceRegistry {
     
     /// Registers services required at app launch (before login)
     @MainActor private func registerEssentialServices() {
-        // Example placeholder registration:
-        // DependencyContainer.shared.register(AccountService())
-        //
-        // Note: AccountService is not implemented yet.
-        // This line is included as a reference for how to register essential services.
+        DependencyContainer.shared.register(AccountService())
+        DependencyContainer.shared.register(LoggerService())
+        DependencyContainer.shared.register(NotificationHelperService())
     }
     
     /// Registers services needed after login
@@ -45,11 +43,9 @@ class ServiceRegistry {
 
     /// Deregisters essential services (called during deinit or app shutdown)
     nonisolated private func deregisterEssentialServices() {
-        // Example placeholder deregistration:
-        // DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountService.self))
-        //
-        // Note: AccountService is not implemented yet.
-        // This line is included as a reference for how to clean up essential services.
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: LoggerService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: NotificationHelperService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)

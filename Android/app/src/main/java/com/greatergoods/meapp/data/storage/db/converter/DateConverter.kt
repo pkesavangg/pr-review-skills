@@ -14,9 +14,7 @@ class DateConverter {
      * @return The Date object, or null if the timestamp is null
      */
     @TypeConverter
-    fun fromTimestamp(timestamp: String?): Date? {
-        return timestamp?.let { Date(it.toLong()) }
-    }
+    fun fromTimestamp(timestamp: String?): Date? = timestamp?.let { Date(it.toLong()) }
 
     /**
      * Convert a Date object to a timestamp string.
@@ -25,7 +23,5 @@ class DateConverter {
      * @return The timestamp string, or null if the date is null
      */
     @TypeConverter
-    fun dateToTimestamp(date: Date?): String? {
-        return date?.time?.toString()
-    }
-} 
+    fun dateToTimestamp(date: Date?): String? = date?.time?.toString()
+}

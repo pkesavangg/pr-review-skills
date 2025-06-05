@@ -22,7 +22,6 @@ enum Endpoint {
     case deleteAccount
     case changePassword
     case requestPasswordReset
-    case checkPasswordResetToken
     case confirmPasswordReset
     case setGoal
     case updateProfile
@@ -41,6 +40,12 @@ enum Endpoint {
     case feed
     case markFeedAs(elementId: String)
     case log
+    case pairedScale
+    case pairedScaleId(String)
+    case pairedScaleInfo(String)
+    case scaleR4Preference
+    case integrationProvider(String) 
+    case integrationHealthDevice(String) 
 
     var urlRequest: URLRequest? {
         switch self {
@@ -60,8 +65,6 @@ enum Endpoint {
             return request(path: "/account/password/")
         case .requestPasswordReset:
             return request(path: "/account/password-reset/request")
-        case .checkPasswordResetToken:
-            return request(path: "/account/password-reset/check")
         case .confirmPasswordReset:
             return request(path: "/account/password-reset/confirm")
         case .setGoal:
@@ -121,6 +124,18 @@ enum Endpoint {
             return request(path: "/account/")
         case .log:
             return request(path: "/support/log")
+        case .pairedScale:
+            return request(path: "/paired-scale")
+        case .pairedScaleId(let id):
+            return request(path: "/paired-scale/\(id)")
+        case .pairedScaleInfo(let id):
+            return request(path: "/paired-scale/\(id)/info")
+        case .scaleR4Preference:
+            return request(path: "/scale-r4/preference")
+        case .integrationProvider(let provider):
+            return request(path: "/integrations/\(provider)")
+        case .integrationHealthDevice(let deviceId):
+            return request(path: "/integrations/health/\(deviceId)")
         }
     }
 
