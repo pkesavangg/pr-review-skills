@@ -51,7 +51,6 @@
 				Features/Settings/.gitkeep,
 				Resources/Info.plist,
 				Tests/.gitkeep,
-				Theme/.gitkeep,
 			);
 			target = 105A1F992DE585B800FBB764 /* meApp */;
 		};

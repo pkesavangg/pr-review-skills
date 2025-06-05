@@ -28,6 +28,7 @@ class ServiceRegistry {
     @MainActor private func registerEssentialServices() {
         DependencyContainer.shared.register(AccountService())
         DependencyContainer.shared.register(LoggerService())
+        DependencyContainer.shared.register(NotificationHelperService())
     }
     
     /// Registers services needed after login
@@ -44,6 +45,7 @@ class ServiceRegistry {
     nonisolated private func deregisterEssentialServices() {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: LoggerService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: NotificationHelperService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)
