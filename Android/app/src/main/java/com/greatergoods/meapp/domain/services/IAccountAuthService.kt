@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.domain.services
 
+import com.greatergoods.meapp.data.model.request.CreateAccountRequest
 import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,17 +16,17 @@ interface IAccountAuthService {
     val isLoginFlow: SharedFlow<Boolean>
     val isSwitchAccountFlow: SharedFlow<Boolean>
 
-    suspend fun login(email: String, password: String): Account
-    suspend fun logout(accountId: String)
-    suspend fun logoutAll()
-    suspend fun addAccount(accountData: Map<String, Any>): Account
-    suspend fun removeAccount(accountId: String)
-    suspend fun switchAccount(account: Account)
+    suspend fun login(email: String, password: String): Account?
+    suspend fun logout(accountId: String): Boolean
+    suspend fun logoutAll(): Boolean
+    suspend fun addAccount(request: CreateAccountRequest): Account?
+    suspend fun removeAccount(accountId: String): Boolean
+    suspend fun switchAccount(account: Account): Boolean
     suspend fun getCurrentAccount(): Account?
     suspend fun isSessionValid(): Boolean
-    suspend fun refreshSession()
-    suspend fun updateTokens(tokens: Map<String, String>)
-    suspend fun checkForLoggedInUser()
+    suspend fun refreshSession(): Boolean
+    suspend fun updateTokens(tokens: Map<String, String>): Boolean
+    suspend fun checkForLoggedInUser(): Boolean
 }
 
 /**
