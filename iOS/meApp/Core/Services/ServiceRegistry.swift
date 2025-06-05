@@ -31,6 +31,8 @@ class ServiceRegistry {
         DependencyContainer.shared.register(IntegrationsService.shared)
         DependencyContainer.shared.register(HealthKitService.shared)
         DependencyContainer.shared.register(KvStorageService.shared)
+        DependencyContainer.shared.register(LoggerService.shared)
+        DependencyContainer.shared.register(NotificationHelperService.shared)
     }
     
     /// Registers services needed after login
@@ -50,6 +52,8 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: IntegrationsService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: HealthKitService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: KvStorageService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: LoggerService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: NotificationHelperService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)

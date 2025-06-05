@@ -5,9 +5,9 @@ import com.google.firebase.messaging.RemoteMessage
 import com.greatergoods.meapp.MainActivity
 import com.greatergoods.meapp.domain.enum.NotificationChannel
 import com.greatergoods.notification.NotificationService
+import com.greatergoods.meapp.core.logging.AppLog
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
-import timber.log.Timber
 import javax.inject.Inject
 import android.app.PendingIntent
 import android.content.Context
@@ -30,7 +30,7 @@ class PushNotificationService : FirebaseMessagingService() {
      * @param token The new FCM token.
      */
     override fun onNewToken(token: String) {
-        Timber.i("New FCM token: $token")
+        AppLog.i("PushNotificationService", "New FCM token: $token")
         // Send token to server if needed
     }
 

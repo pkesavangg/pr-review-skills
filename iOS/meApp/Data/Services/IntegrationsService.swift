@@ -15,7 +15,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
     private let apiRepository: IntegrationRepositoryAPIProtocol
     private let localRepository: IntegrationRepositoryProtocol
     private let accountService: AccountServiceProtocol
-    private let logger = AppLogger.shared
+    private let logger = LoggerService.shared
     
     /// Default initializer that creates its own dependencies.
     init() {
