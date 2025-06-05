@@ -47,16 +47,19 @@ struct LoaderModifier: ViewModifier {
                 theme.supportOverlay
                     .ignoresSafeArea()
                 HStack(spacing: .spacingXS) {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: theme.textHeading))
-                        .scaleEffect(1)
-                    Text(loader.text)
-                        .fontWeight(.bold)
-                        .fontOpenSans(.body1)
-                        .foregroundColor(theme.textHeading)
-                        .frame(maxWidth: 200)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    HStack {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: theme.textHeading))
+                            .scaleEffect(1)
+                        Text(loader.text)
+                            .fontWeight(.bold)
+                            .fontOpenSans(.body1)
+                            .foregroundColor(theme.textHeading)
+                    }
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 200)
+
                 }
                 .frame(width: 269, height: 88)
                 .background(theme.backgroundPrimary)

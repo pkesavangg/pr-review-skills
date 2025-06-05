@@ -43,4 +43,11 @@ extension View {
     func presentLoader(loaderData: Binding<LoaderModel?>) -> some View {
         self.modifier(LoaderModifier(loaderData: loaderData))
     }
+    
+    /// Presents a modal view with the provided modal view data.
+    /// - Parameter modalViewData: A binding to the `ModalData?` that contains the modal configuration.
+    /// - Returns: A view that presents the modal when `modalViewData` is not nil.
+    func presentModal(modalViewData: Binding<[ModalData]>) -> some View {
+        self.modifier(ModalViewModifier(modalStack: modalViewData))
+    }
 }
