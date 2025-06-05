@@ -6,7 +6,7 @@ final class EntryService: EntryServiceProtocol {
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
     private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
-
+    static let shared = EntryService(accountService: AccountService.shared)
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
     }
