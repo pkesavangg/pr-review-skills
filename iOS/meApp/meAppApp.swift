@@ -16,12 +16,13 @@ import SwiftUI
 @main
 struct meApp: App {
     /// The shared app state, injected as an environment object to enable global service access.
-    private var appState = AppState()
+    @StateObject private var appState = AppState()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
         WindowGroup {
             EmptyView()
+                .environmentObject(appState)
         }
     }
 }

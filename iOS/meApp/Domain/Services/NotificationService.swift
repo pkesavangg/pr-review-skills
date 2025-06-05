@@ -6,6 +6,7 @@ import FirebaseMessaging
 class NotificationService {
     /// Shared instance for accessing the NotificationService throughout the app
     static let shared = NotificationService()
+    static let fcmTokenDidRefresh = Notification.Name("FCMToken")
     
     /// Private initializer to enforce singleton pattern
     private init() {
@@ -17,7 +18,7 @@ class NotificationService {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(tokenRefreshNotification),
-            name: Notification.Name("FCMToken"),
+            name: Notification.Name(NotificationService.fcmTokenDidRefresh.rawValue),
             object: nil
         )
     }
