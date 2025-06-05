@@ -187,4 +187,16 @@ final class DateTimeTools {
         }
         return nil
     }
+    
+    /// Returns the current timestamp in milliseconds since 1970.
+    static func getCurrentTimestampMillis() -> Int64 {
+        return Int64(Date().timeIntervalSince1970 * 1000)
+    }
+    
+    /// Returns a timestamp (in ms) representing the date `days` ago from now.
+    /// Useful for log cleanup cutoff comparison.
+    static func getTimestampDaysAgo(_ days: Int) -> Int64 {
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        return Int64(cutoffDate.timeIntervalSince1970 * 1000)
+    }
 }

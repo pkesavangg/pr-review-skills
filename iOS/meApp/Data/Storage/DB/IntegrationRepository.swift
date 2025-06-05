@@ -7,11 +7,12 @@
 
 import Foundation
 
+@MainActor
 final class IntegrationRepository: IntegrationRepositoryProtocol {
     // MARK: - Properties
     
     private let userDefaults: UserDefaults
-    private let logger = AppLogger.shared
+    private let logger = LoggerService.shared
         
     // MARK: - Initialization
     

@@ -9,7 +9,7 @@ import SwiftData
 final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
     let context: ModelContext = PersistenceController.shared.context
-    private let logger = AppLogger.shared
+    let logger = LoggerService.shared
     
     /// Fetches all scales stored locally.
     /// - Returns: An array of all ScaleDTO objects.
