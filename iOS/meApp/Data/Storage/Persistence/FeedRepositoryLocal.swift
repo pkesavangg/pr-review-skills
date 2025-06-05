@@ -14,10 +14,10 @@ final class FeedRepositoryLocal {
         let key = makeFeedInfoKey(accountId: accountId)
         guard let value = kv.getValue(forKey: key) as? String,
               let data = value.data(using: .utf8) else {
-            throw FeedError.invalidStorageValue
+            throw FeedError.localStorageInvalidValue
         }
         guard let settings = try? JSONDecoder().decode(FeedSetting.self, from: data) else {
-            throw FeedError.failedToDecodeFeedSettings
+            throw FeedError.localStorageDecodingFailed
         }
         return settings
     }
@@ -30,7 +30,7 @@ final class FeedRepositoryLocal {
         let key = makeFeedInfoKey(accountId: accountId)
         let data = try JSONEncoder().encode(settings)
         guard let value = String(data: data, encoding: .utf8) else {
-            throw FeedError.failedToEncodeFeedSettings
+            throw FeedError.localStorageEncodingFailed
         }
         kv.setValue(value, forKey: key)
     }
