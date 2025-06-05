@@ -103,7 +103,7 @@ class DialogQueueViewModel @Inject constructor(
         title: String?,
         action: ActionButton?
     ) {
-        dialogQueueService.enqueueToast(
+        dialogQueueService.showToast(
             Toast(
                 message = message,
                 title = title,

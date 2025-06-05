@@ -15,12 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.theme.MeAppTheme
-import android.content.res.Configuration
 
 /**
  * Stateless UI for displaying a toast card.
@@ -81,16 +79,5 @@ fun ToastCard(
 
             }
         }
-    }
-}
-
-@Preview(name = "ToastCard Light", uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "ToastCard Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun PreviewToastCard() {
-    MeAppTheme {
-        ToastCard(
-            toast = Toast(title = "Success", message = "Operation completed"),
-        )
     }
 }

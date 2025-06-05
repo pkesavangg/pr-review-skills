@@ -13,19 +13,18 @@ import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 
 /**
- * Composable host that observes a DialogQueueViewModel and displays dialogs reactively as the queue changes.
- * Supports Alert, Confirm, and Custom dialog types.
+ * Composable host that observes a DialogQueueViewModel and displays dialogs and toasts reactively as the queue changes.
  *
- * Note: Each dialog's onDismiss() must be called when the dialog is closed (confirm, cancel, or dismiss).
+ * Supports Alert, Confirm, and Custom dialog types, as well as toast notifications. Handles dialog and toast dismissal.
  *
- * Usage:
+ * Usage example:
  * ```kotlin
  * val dialogQueueViewModel: DialogQueueViewModel = ...
  * DialogQueueHost(dialogQueueViewModel)
  * ```
  *
- * @param dialogQueueViewModel The dialog queue ViewModel to observe.
- * @param customDialogContent Optional composable for rendering custom dialogs.
+ * @param dialogQueueViewModel The dialog queue ViewModel to observe for dialog and toast state.
+ * @param customDialogContent Optional composable for rendering custom dialogs. If null, custom dialogs fall back to alert style.
  */
 @Composable
 fun DialogQueueHost(
@@ -35,11 +34,15 @@ fun DialogQueueHost(
     val snackBarHostState = remember { SnackbarHostState() }
     val currentDialog by dialogQueueViewModel.currentDialog.collectAsState()
     val currentToast by dialogQueueViewModel.currentToast.collectAsState()
+
+
     currentToast?.let { dialog ->
         ToastHandler(hostState = snackBarHostState, toast = dialog) {
             dialogQueueViewModel.dismissToast()
         }
     }
+
+
     currentDialog?.let { dialog ->
         when (dialog) {
             is DialogModel.Alert -> {
