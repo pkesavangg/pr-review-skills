@@ -35,7 +35,6 @@ import SwiftUI
 /// .primary → Default button with input field value (if any)
 
 struct AlertModifier: ViewModifier {
-    @Environment(\.appTheme) private var theme
     @Binding var alertData: AlertModel?
 
     var isAlertPresented: Binding<Bool> {
@@ -76,12 +75,11 @@ struct AlertModifier: ViewModifier {
                     ForEach(alert.buttons.indices, id: \.self) { index in
                         let button = alert.buttons[index]
                         Button(button.title.uppercased(), role: buttonRole(for: button.type)) {
-                            if button.type == .primary {
-                                button.action(alertData?.inputField?.value)
-                            }
+                            let inputValue = button.type == .primary ? alertData?.inputField?.value : nil
+                            button.action(inputValue)
                             alertData = nil
                         }
-                        .if(index == alert.buttons.count - 1) { view in
+                        .if(button.type == .primary)  { view in
                             view.keyboardShortcut(.defaultAction)
                         }
                     }
