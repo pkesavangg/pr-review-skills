@@ -2,6 +2,10 @@ import Foundation
 
 /// Protocol defining the service interface for managing user entries, including CRUD, queries, and progress/statistics.
 protocol EntryServiceProtocol {
+
+    /// Syncs all entries with the remote backend.
+    func syncAllEntriesWithRemote() async
+
     /// Clears all entry-related data from the service (memory/cache/state).
     func clearAllData() async
 
@@ -73,5 +77,5 @@ protocol EntryServiceProtocol {
 
     /// Calculates and retrieves the user's current streak (consecutive days with entries).
     /// - Returns: The current streak count.
-    func getStreak() async throws -> Int
+    func getStreak() async throws -> Streak
 }
