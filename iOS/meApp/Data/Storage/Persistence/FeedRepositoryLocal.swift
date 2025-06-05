@@ -3,9 +3,11 @@ import Foundation
 /// Repository for managing local feed data and settings using KvStorageService.
 final class FeedRepositoryLocal {
     private let kv: KvStorageService = KvStorageService.shared
-    private let feedInfoKey = "feedInfo"
-    private let feedLastTriggeredAtKey = "feedLastTriggeredAt"
     
+    private enum FeedStorageKey {
+        static let feedInfo = "feedInfo"
+        static let lastTriggeredAt = "feedLastTriggeredAt"
+    }
     
     /// Gets the feed notification settings for the given account.
     /// - Parameter accountId: The account ID
@@ -64,10 +66,10 @@ final class FeedRepositoryLocal {
     // MARK: - Private Helpers
     
     private func makeFeedInfoKey(accountId: String) -> String {
-        return "\(feedInfoKey)_\(accountId)"
+        return "\(FeedStorageKey.feedInfo)_\(accountId)"
     }
     
     private func makeLastTriggeredKey(accountId: String) -> String {
-        return "\(feedLastTriggeredAtKey)_\(accountId)"
+        return "\(FeedStorageKey.lastTriggeredAt)_\(accountId)"
     }
 }
