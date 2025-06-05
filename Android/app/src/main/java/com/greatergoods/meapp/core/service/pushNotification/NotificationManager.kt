@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import android.content.Context
 import android.widget.Toast
+import com.greatergoods.meapp.core.logging.AppLog
 
 /**
  * Manages notification-related operations such as creating channels, retrieving FCM tokens,
@@ -44,14 +45,14 @@ class NotificationManager(
     private fun fetchFCMToken() {
         notificationService.fetchFCMToken(
             onSuccess = { token ->
-                Timber.Forest.d("FCM Token: $token")
+                AppLog.d("NotificationManager", "FCM Token: $token")
                 CoroutineScope(IO).launch {
                     appRepository.setFcmToken(token)
                 }
                 // TODO: Here, you can handle the token as needed (e.g., send it to your server)
             },
             onError = { exception ->
-                Timber.Forest.e(exception, "Fetching FCM token failed")
+                AppLog.e("NotificationManager", "Fetching FCM token failed", exception.toString())
             },
         )
     }
@@ -65,12 +66,12 @@ class NotificationManager(
             topic = "meApp",
             onSuccess = {
                 val msg = "Subscribed"
-                Timber.Forest.d(msg)
+                AppLog.d("NotificationManager", msg)
                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             },
             onError = { exception ->
                 val msg = "Subscribe failed"
-                Timber.Forest.e(exception, msg)
+                AppLog.e("NotificationManager", msg, exception.toString())
                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             },
         )

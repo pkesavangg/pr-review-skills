@@ -9,6 +9,8 @@ import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.services.IDeviceService
 import com.greatergoods.notification.NotificationService
+import com.greatergoods.meapp.core.logging.LogManager
+import com.greatergoods.meapp.domain.repository.ILogRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -44,6 +46,15 @@ object ServiceModule {
         notificationService: NotificationService,
         appRepository: IAppRepository
     ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
+
+    /**
+     * Provides a singleton instance of [LogManager] for logging operations.
+     * @param logRepository The repository for storing logs.
+     * @return [LogManager] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideLogManager(logRepository: ILogRepository): LogManager = LogManager(logRepository)
 
     /**
      * Provides a singleton instance of [DialogQueueService] for managing dialog queues.

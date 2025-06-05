@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +29,7 @@ class NavigationViewmodel @Inject constructor(private val appEventService: IAppE
      */
     override suspend fun navigateTo(route: AppRoute) {
         viewModelScope.launch {
+            AppLog.i("NavigationViewModel", "Navigating to route", "Route: $route")
             appEventService.navigateTo(route)
         }
     }
@@ -82,6 +84,7 @@ class NavigationViewmodel @Inject constructor(private val appEventService: IAppE
         inclusive: Boolean
     ) {
         viewModelScope.launch {
+            AppLog.i("NavigationViewModel", "Navigating back", "Route: $route, Inclusive: $inclusive")
             appEventService.navigateBack(route, inclusive)
         }
     }
