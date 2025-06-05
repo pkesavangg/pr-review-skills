@@ -35,7 +35,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
                 // Return existing items on network error
                throw NetworkError.noInternet
             }
-            throw error
+            throw FeedError.networkError(error)
         }
     }
     
@@ -47,12 +47,10 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             
             // Update local state if item is marked as read
             if actionType == .read {
-                await MainActor.run {
-                    if let index = self.feedItems.firstIndex(where: { $0.elementId == feedItem.elementId }) {
-                        var updatedItem = self.feedItems[index]
-                        updatedItem.isUnread = false
-                        self.feedItems[index] = updatedItem
-                    }
+                if let index = self.feedItems.firstIndex(where: { $0.elementId == feedItem.elementId }) {
+                    var updatedItem = self.feedItems[index]
+                    updatedItem.isUnread = false
+                    self.feedItems[index] = updatedItem
                 }
             }
         } catch {
@@ -60,7 +58,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
                 // Handle offline case if needed
                 throw NetworkError.noInternet
             }
-            throw error
+            throw FeedError.networkError(error)
         }
     }
     
@@ -137,24 +135,25 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             let cooldownTime = lastTriggeredTimeDouble + oneWeek
             
             if cooldownTime < currentTime {
-                return try await handleFeedModal(feedItem, currentTime: currentTime)
+                return await handleFeedModal(feedItem, currentTime: currentTime)
             }
             return false
         } else {
-            return try await handleFeedModal(feedItem, currentTime: currentTime)
+            return await handleFeedModal(feedItem, currentTime: currentTime)
         }
     }
     
     // MARK: - Cleanup
     
-    func clearFeedData() async throws {
+    func clearFeedData() async {
         guard let accountId = accountService.activeAccount?.accountId else {
-            throw AccountError.noActiveAccount
+           return
         }
-        
-        try await localRepo.clearFeedData(accountId: accountId)
-        self.feedItems = []
-        self.feedSettings = nil
+        do {
+            try await localRepo.clearFeedData(accountId: accountId)
+            self.feedItems = []
+            self.feedSettings = nil
+        } catch {}
     }
     
     // MARK: - Private Helpers
@@ -169,17 +168,18 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         )
     }
     
-    private func handleFeedModal(_ feedItem: FeedItem, currentTime: Double) async throws -> Bool {
-        // Set last triggered timestamp
-        try await setLastTriggeredTimestamp(String(Int(currentTime)))
-        
-        // Mark as triggered
-        try await updateFeedItem(feedItem, actionType: .trigger, variationId: nil)
-        
-        // Show modal using your preferred UI framework
-        // This is where you'd implement the actual modal presentation
-        // For example, using SwiftUI or UIKit
-        
-        return true
+    private func handleFeedModal(_ feedItem: FeedItem, currentTime: Double) async -> Bool {
+        do {
+            // Set last triggered timestamp
+            try await setLastTriggeredTimestamp(String(Int(currentTime)))
+            // Mark as triggered
+            try await updateFeedItem(feedItem, actionType: .trigger, variationId: nil)
+            // Show modal using your preferred UI framework
+            // This is where you'd implement the actual modal presentation
+            // For example, using SwiftUI or UIKit
+            return true
+        } catch {
+            return false
+        }
     }
 } 

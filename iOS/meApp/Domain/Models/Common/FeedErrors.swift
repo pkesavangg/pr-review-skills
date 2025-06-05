@@ -6,6 +6,8 @@ enum FeedError: LocalizedError {
     case localStorageEncodingFailed
     case localStorageDecodingFailed
     case localStorageInvalidValue
+    case networkError(Error)
+    case unknown(Error)
     
     var errorDescription: String? {
         switch self {
@@ -15,6 +17,10 @@ enum FeedError: LocalizedError {
             return "Failed to decode feed settings from local storage"
         case .localStorageInvalidValue:
             return "Invalid value found in local storage"
+        case .networkError(let error):
+            return "Network error: \(error.localizedDescription)"
+        case .unknown(let error):
+            return "Unknown error: \(error.localizedDescription)"
         }
     }
 }
