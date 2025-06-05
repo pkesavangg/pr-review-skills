@@ -8,9 +8,9 @@ import SwiftData
 @MainActor
 final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
-    private let container: ModelContainer
-    private let context: ModelContext
-    private let logger = LoggerService.shared
+    let container: ModelContainer
+    let context: ModelContext
+    let logger = LoggerService.shared
     
     /// Initializes the repository with a SwiftData context.
     /// - Parameter context: The SwiftData model context to use.
