@@ -5,11 +5,12 @@ import SwiftData
 
 /// Concrete implementation of ScaleRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Device (scale) entities in a thread-safe manner.
+@MainActor
 final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
     let container: ModelContainer
     let context: ModelContext
-    private let logger = AppLogger.shared
+    let logger = LoggerService.shared
     
     /// Initializes the repository with a SwiftData context.
     /// - Parameter context: The SwiftData model context to use.

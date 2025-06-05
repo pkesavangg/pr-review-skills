@@ -9,6 +9,7 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
+import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
@@ -20,6 +21,7 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 import android.content.Context
+import com.greatergoods.meapp.data.storage.db.entity.LogEntity
 
 /**
  * Main database class for the MeApp application.
@@ -35,7 +37,8 @@ import android.content.Context
         EntryEntity::class,
         BodyScaleEntryEntity::class,
         BodyScaleEntryMetricEntity::class,
-        BpmEntryEntity::class
+        BpmEntryEntity::class,
+        LogEntity::class
     ],
     version = 1,
     exportSchema = false,
@@ -47,7 +50,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun deviceDao(): DeviceDao
 
     abstract fun entryDao(): EntryDao
-
+    abstract fun logDao(): LogDao
+    
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
         This helps make sure the value of INSTANCE is always up-to-date and the same for all execution threads.
