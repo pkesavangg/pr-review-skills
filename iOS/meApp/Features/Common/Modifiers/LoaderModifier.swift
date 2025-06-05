@@ -59,7 +59,6 @@ struct LoaderModifier: ViewModifier {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: 200)
-
                 }
                 .frame(width: 269, height: 88)
                 .background(theme.backgroundPrimary)

@@ -9,9 +9,14 @@
 import SwiftUI
 
 struct NotificationContainerView: View {
+    @StateObject var viewModel = NotificationContainerViewModel()
     @EnvironmentObject var themeManager: Theme
-    @Environment(\.appTheme) private var theme
     var body: some View {
         VStack{}
+        .presentAlert(alertData: $viewModel.alertData)
+        .presentToast(data: $viewModel.toastData)
+        .presentLoader(loaderData: $viewModel.loaderData)
+        .presentModal(modalStack: $viewModel.modalViewData)
+        .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }
 }
