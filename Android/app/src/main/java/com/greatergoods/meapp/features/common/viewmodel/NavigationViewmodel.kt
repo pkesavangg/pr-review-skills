@@ -2,9 +2,9 @@ package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
-import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import dagger.hilt.android.lifecycle.HiltViewModel

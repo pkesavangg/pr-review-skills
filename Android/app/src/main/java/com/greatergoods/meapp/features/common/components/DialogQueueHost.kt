@@ -2,10 +2,12 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
@@ -30,7 +32,14 @@ fun DialogQueueHost(
     dialogQueueViewModel: DialogQueueViewModel,
     customDialogContent: (@Composable (DialogModel.Custom) -> Unit)? = null,
 ) {
+    val snackBarHostState = remember { SnackbarHostState() }
     val currentDialog by dialogQueueViewModel.currentDialog.collectAsState()
+    val currentToast by dialogQueueViewModel.currentToast.collectAsState()
+    currentToast?.let { dialog ->
+        ToastHandler(hostState = snackBarHostState, toast = dialog) {
+            dialogQueueViewModel.dismissToast()
+        }
+    }
     currentDialog?.let { dialog ->
         when (dialog) {
             is DialogModel.Alert -> {

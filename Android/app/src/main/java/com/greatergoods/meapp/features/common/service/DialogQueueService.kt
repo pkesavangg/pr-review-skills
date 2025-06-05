@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.service
 
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,9 @@ class DialogQueueService @Inject constructor() {
     private val dialogQueue: PriorityQueue<DialogModel> = PriorityQueue()
     private val _currentDialog = MutableStateFlow<DialogModel?>(null)
     val currentDialog: StateFlow<DialogModel?> = _currentDialog.asStateFlow()
+
+    private val _currentToast = MutableStateFlow<Toast?>(null)
+    val currentToast: StateFlow<Toast?> = _currentToast.asStateFlow()
     private val scope = CoroutineScope(Dispatchers.Main)
 
     /**
@@ -29,6 +33,14 @@ class DialogQueueService @Inject constructor() {
         if (_currentDialog.value == null) {
             _currentDialog.value = dialogQueue.peek()
         }
+    }
+
+    fun enqueueToast(dialog: Toast) {
+        _currentToast.value = dialog
+    }
+
+    fun dismissToast() {
+        _currentToast.value = null
     }
 
     /**

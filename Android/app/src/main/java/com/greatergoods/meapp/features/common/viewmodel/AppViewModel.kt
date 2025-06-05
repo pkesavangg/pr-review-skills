@@ -6,7 +6,6 @@ import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
 import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.repository.IAppRepository
-import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.meapp.proto.ThemeMode

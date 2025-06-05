@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 
@@ -59,20 +60,29 @@ fun SampleThemeScreen(
         ) {
             Text("Show High Priority Alert")
         }
+        var count by remember { mutableStateOf(0) }
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
-                appViewModel.enqueueAlert(
-                    title = "Medium Priority Alert",
-                    message = "This is a medium priority alert with 2 second delay",
-                    dismissText = "OK",
-                    onDismiss = {},
-                    priority = 50,  // Medium priority
-                    delayMillis = 2000L,  // 2 second delay
+                appViewModel.enqueueToast(
+                    title = "Toast Heading",
+                    message = "This is a toast message #${++count}",
+                    action = ActionButton(
+                        text = "Action",
+                        action = {
+                            appViewModel.enqueueAlert(
+                                title = "Toast Action",
+                                message = "You clicked the toast action!",
+                                dismissText = "OK",
+                                onDismiss = {},
+                            )
+                        },
+                    ),
                 )
+                count = count + 1 // Reset count after 10 toasts
             },
         ) {
-            Text("Show Medium Priority Alert")
+            Text("Show Toast Message")
         }
         Spacer(modifier = Modifier.height(16.dp))
         Button(
@@ -113,7 +123,7 @@ fun SampleThemeScreen(
                     contentKey = "custom_dialog",
                     onDismiss = {},
                     priority = 1,
-                    delayMillis = 1000L
+                    delayMillis = 1000L,
                 )
 
             },

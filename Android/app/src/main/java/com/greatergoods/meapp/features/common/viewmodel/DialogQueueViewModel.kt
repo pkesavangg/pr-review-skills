@@ -2,7 +2,9 @@ package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
+import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +20,7 @@ class DialogQueueViewModel @Inject constructor(
 ) : IDialogQueueHandler, ViewModel() {
 
     override val currentDialog: StateFlow<DialogModel?> = dialogQueueService.currentDialog
+    override val currentToast: StateFlow<Toast?> = dialogQueueService.currentToast
 
     /**
      * Enqueue an alert dialog
@@ -93,6 +96,23 @@ class DialogQueueViewModel @Inject constructor(
     }
 
     /**
+     * Enqueue a toast message
+     */
+    override fun enqueueToast(
+        message: String,
+        title: String?,
+        action: ActionButton?
+    ) {
+        dialogQueueService.enqueueToast(
+            Toast(
+                message = message,
+                title = title,
+                action = action,
+            ),
+        )
+    }
+
+    /**
      * Dismiss the current dialog and optionally show the next one
      */
     override fun dismissCurrent(showNext: Boolean) {
@@ -100,6 +120,10 @@ class DialogQueueViewModel @Inject constructor(
         if (!showNext) {
             dialogQueueService.clear()
         }
+    }
+
+    override fun dismissToast() {
+        dialogQueueService.dismissToast()
     }
 
     /**
@@ -163,6 +187,8 @@ class DialogQueueViewModel @Inject constructor(
                     priority = current.customPriority,
                     delayMillis = delayMillis,
                 )
+
+                else -> {}
             }
         }
     }
@@ -203,6 +229,8 @@ class DialogQueueViewModel @Inject constructor(
                     priority = priority,
                     delayMillis = current.customDelayMillis,
                 )
+
+                else -> {}
             }
         }
     }
