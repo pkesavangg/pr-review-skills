@@ -7,36 +7,47 @@
 
 import SwiftUI
 
-/// A view modifier that presents a customizable modal overlay with optional backdrop tap-to-dismiss behavior.
+/// A view modifier that presents stackable modal overlays with individual backdrop tap-to-dismiss behavior.
 ///
 /// Usage:
-/// 1. Define your `ModalData` containing a `presentedView` to be shown as the modal.
-/// 2. Optionally specify:
-///    - `backdropDismiss`: whether tapping the dimmed background dismisses the modal.
-///    - `onDismiss`: a closure executed after the modal is dismissed.
-/// 3. Attach `.presentModal(modalViewData: $modalViewData)` to your root view.
+/// 1. Define multiple `ModalData` instances to be shown as stacked modals.
+/// 2. For each modal, optionally specify:
+///    - `backdropDismiss`: whether tapping that modal's dimmed background dismisses it.
+///    - `onDismiss`: a closure executed after that specific modal is dismissed.
+/// 3. Attach `.presentModal(modalStack: $modalStack)` to your root view.
 ///
 /// Example:
 /// ```swift
-/// @State private var modalViewData: ModalData? = nil
+/// @State private var modalStack: [ModalData] = []
 ///
-/// modalViewData = ModalData(
-///     presentedView: AnyView(YourCustomModalView()),
+/// // Add first modal
+/// modalStack.append(ModalData(
+///     presentedView: AnyView(FirstModalView()),
 ///     backdropDismiss: true,
-///     onDismiss: { print("Modal closed") }
-/// )
+///     onDismiss: { print("First modal closed") }
+/// ))
+///
+/// // Stack second modal on top
+/// modalStack.append(ModalData(
+///     presentedView: AnyView(SecondModalView()),
+///     backdropDismiss: true,
+///     onDismiss: { print("Second modal closed") }
+/// ))
 /// ```
 ///
 /// Features:
-/// - Presents any custom view as a modal overlay
-/// - Tap outside to dismiss (if `backdropDismiss` is true)
-/// - Optional `onDismiss` callback
-/// - Smooth scale transition animation
-/// - Configurable from any view that owns the state
+/// - Presents multiple modals stacked on top of each other
+/// - Each modal has its own backdrop and dismiss behavior
+/// - Independent tap-to-dismiss for each modal's backdrop
+/// - Optional onDismiss callback per modal
+/// - Smooth scale and opacity transitions
+/// - Proper z-index stacking for visual layering
 ///
 /// Notes:
-/// - For consistent styling, ensure `presentedView` has appropriate padding or background.
-/// - You can customize the `.transition()` used inside `ModalViewModifier` as needed.
+/// - For consistent styling, ensure each `presentedView` has appropriate padding or background.
+/// - Modals are stacked in order of addition, with newer modals appearing on top.
+/// - Each modal can be dismissed independently by tapping its backdrop.
+/// - You can customize the `.transition()` effects used inside `ModalViewModifier` as needed.
 
 struct ModalViewModifier: ViewModifier {
     @Binding var modalStack: [ModalData]
