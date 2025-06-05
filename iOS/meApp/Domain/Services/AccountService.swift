@@ -41,6 +41,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.refreshToken = response.refreshToken
             account.expiresAt = response.expiresAt
             account.isSynced = true
+            account.isLoggedIn = true // New account is logged in by default
             account.isActiveAccount = true // New account is active by default
             account.isExpired = false // New account is not expired by default
             account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
@@ -66,6 +67,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             account.refreshToken = response.refreshToken
             account.expiresAt = response.expiresAt
             account.isSynced = true
+            account.isLoggedIn = true // New account is logged in by default
             account.isActiveAccount = true // New account is active by default
             account.isExpired = false // New account is not expired by default
             account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
