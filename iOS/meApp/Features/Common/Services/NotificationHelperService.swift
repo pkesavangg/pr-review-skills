@@ -130,3 +130,66 @@ class NotificationHelperService: ObservableObject {
         }
     }
 }
+
+/// NotificationHelperService is a MainActor class that manages all notification states and operations.
+/// It provides a centralized way to show/dismiss different types of notifications:
+/// - Alerts: For important user decisions/confirmations
+/// - Toasts: For temporary informational messages
+/// - Loaders: For loading states
+/// - Modals: For modal views
+///
+/// Usage Example:
+/// ```swift
+/// class SomeViewModel {
+///     @Injector var notificationService: NotificationHelperService
+///
+///     func showSampleAlert() {
+///         let alert = AlertModel(
+///             title: "Confirm Action",
+///             message: "Are you sure?",
+///             buttons: [
+///                 AlertButtonModel(title: "Yes", type: .primary) { _ in
+///                     print("Confirmed")
+///                 },
+///                 AlertButtonModel(title: "Cancel", type: .secondary) { _ in
+///                     print("Cancelled")
+///                 }
+///             ]
+///         )
+///         notificationService.showAlert(alert)
+///     }
+///
+///     func showSampleToast() {
+///         let toast = ToastModel(
+///             title: "Success",
+///             message: "Operation completed",
+///             duration: 3
+///         )
+///         notificationService.showToast(toast)
+///     }
+///
+///     func showSampleLoader() {
+///         notificationService.showLoader(LoaderModel(text: "Loading..."))
+///         // Later:
+///         notificationService.dismissLoader()
+///     }
+///
+///     func showSampleModal() {
+///         let modal = ModalData(
+///             presentedView: AnyView(YourModalView()),
+///             backdropDismiss: true,
+///             onDismiss: {
+///                 print("Modal dismissed")
+///             }
+///         )
+///         notificationService.showModal(modal)
+///     }
+/// }
+/// ```
+///
+/// Key Features:
+/// 1. Thread-safe: All operations are performed on the main thread via @MainActor
+/// 2. State Management: Tracks visibility state of all notification types
+/// 3. Multiple Modals: Supports stacking of multiple modal views
+/// 4. Automatic Cleanup: Handles proper cleanup of notifications
+/// 5. Theme Support: Integrates with the app's theming system
