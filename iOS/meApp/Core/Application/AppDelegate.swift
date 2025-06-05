@@ -23,65 +23,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     var window: UIWindow?
     static var shared: AppDelegate?
     
-    // Firebase message ID key
+    /// Key used to identify FCM message IDs in notification payloads
     private let gcmMessageIDKey = "gcm.message_id"
     
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        print("Application launching...")
+    /// Initializes Firebase and sets up notification handling
+    /// - Returns: true if initialization was successful
+    func application(_ application: UIApplication,
+                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         AppDelegate.shared = self
         
         // Configure Firebase
         FirebaseApp.configure()
-        print("Firebase configured")
         
-        // Set up FCM
+        // Set up FCM delegate for token management
         Messaging.messaging().delegate = self
-        print("FCM delegate set")
         
-        // Set up notifications
+        // Set up notification center delegate for handling notifications
         UNUserNotificationCenter.current().delegate = self
-        print("Notification center delegate set")
         
-        // Check current notification settings
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            print("==========================================")
-            print("Notification Settings:")
-            print("Authorization Status: \(settings.authorizationStatus.rawValue)")
-            print("Alert Setting: \(settings.alertSetting.rawValue)")
-            print("Badge Setting: \(settings.badgeSetting.rawValue)")
-            print("Sound Setting: \(settings.soundSetting.rawValue)")
-            print("Notification Center Setting: \(settings.notificationCenterSetting.rawValue)")
-            print("Lock Screen Setting: \(settings.lockScreenSetting.rawValue)")
-            print("==========================================")
-        }
-        
+        // Request notification permissions (alert, badge, sound)
         let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
         UNUserNotificationCenter.current().requestAuthorization(
             options: authOptions,
             completionHandler: { granted, error in
-                if let error = error {
-                    print("Notification authorization error: \(error)")
-                }
-                print("Notification authorization granted: \(granted)")
-                
-                // Verify settings after authorization
-                UNUserNotificationCenter.current().getNotificationSettings { settings in
-                    print("==========================================")
-                    print("Updated Notification Settings:")
-                    print("Authorization Status: \(settings.authorizationStatus.rawValue)")
-                    print("Alert Setting: \(settings.alertSetting.rawValue)")
-                    print("Badge Setting: \(settings.badgeSetting.rawValue)")
-                    print("Sound Setting: \(settings.soundSetting.rawValue)")
-                    print("Notification Center Setting: \(settings.notificationCenterSetting.rawValue)")
-                    print("Lock Screen Setting: \(settings.lockScreenSetting.rawValue)")
-                    print("==========================================")
-                }
             }
         )
         
+        // Register for remote notifications
         application.registerForRemoteNotifications()
-        print("Registered for remote notifications")
-        
         return true
     }
     
@@ -93,58 +62,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     // MARK: - UNUserNotificationCenterDelegate
     
+    /// Handles notifications when the app is in the foreground
+    /// - Parameters:
+    ///   - center: The notification center
+    ///   - notification: The notification to be presented
+    ///   - completionHandler: Callback to specify how to present the notification
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                               willPresent notification: UNNotification,
                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let userInfo = notification.request.content.userInfo
         
-        // With swizzling disabled, we must let Messaging know about the message for Analytics
+        // Track notification for Analytics
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        // Print message ID
-        if let messageID = userInfo[gcmMessageIDKey] {
-            print("Message ID: \(messageID)")
-        }
-        
-        print("==========================================")
-        print("Received notification in foreground:")
-        print("Title: \(notification.request.content.title)")
-        print("Body: \(notification.request.content.body)")
-        print("UserInfo: \(userInfo)")
-        print("Raw UserInfo: \(String(describing: userInfo))")
-        print("==========================================")
-        
+        // Notify observers about received notification
         NotificationCenter.default.post(
             name: Notification.Name("ReceivedNotification"),
             object: nil,
             userInfo: userInfo
         )
         
-        // Change this to your preferred presentation option
+        // Present notification with banner, badge, and sound
         completionHandler([[.banner, .badge, .sound]])
     }
     
+    /// Handles user interaction with notifications
+    /// - Parameters:
+    ///   - center: The notification center
+    ///   - response: The user's response to the notification
+    ///   - completionHandler: Callback to indicate completion
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         
-        // With swizzling disabled, we must let Messaging know about the message for Analytics
+        // Track notification for Analytics
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        // Print message ID
-        if let messageID = userInfo[gcmMessageIDKey] {
-            print("Message ID: \(messageID)")
-        }
-        
-        print("==========================================")
-        print("Received notification response:")
-        print("Title: \(response.notification.request.content.title)")
-        print("Body: \(response.notification.request.content.body)")
-        print("UserInfo: \(userInfo)")
-        print("Raw UserInfo: \(String(describing: userInfo))")
-        print("==========================================")
-        
+        // Notify observers about notification response
         NotificationCenter.default.post(
             name: Notification.Name("ReceivedNotification"),
             object: nil,
@@ -156,12 +111,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     // MARK: - MessagingDelegate
     
+    /// Called when FCM token is refreshed
+    /// - Parameters:
+    ///   - messaging: The messaging instance
+    ///   - fcmToken: The new FCM token
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        print("==========================================")
-        print("FIREBASE FCM TOKEN:")
-        print(fcmToken ?? "No token received")
-        print("==========================================")
-        
+        // Notify observers about new FCM token
         let dataDict: [String: String] = ["token": fcmToken ?? ""]
         NotificationCenter.default.post(
             name: Notification.Name("FCMToken"),
@@ -172,40 +127,42 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     // MARK: - Remote Notifications
     
+    /// Called when APNs token is received
+    /// - Parameters:
+    ///   - application: The application instance
+    ///   - deviceToken: The APNs device token
     func application(_ application: UIApplication,
                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        print("APNs token received: \(deviceToken.map { String(format: "%02.2hhx", $0) }.joined())")
+        // Associate APNs token with FCM
         Messaging.messaging().apnsToken = deviceToken
     }
     
+    /// Called when remote notification registration fails
+    /// - Parameters:
+    ///   - application: The application instance
+    ///   - error: The error that occurred
     func application(_ application: UIApplication,
                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("Failed to register for remote notifications: \(error)")
+        // TODO: Handle error
     }
     
+    /// Handles background notifications
+    /// - Parameters:
+    ///   - application: The application instance
+    ///   - userInfo: The notification payload
+    ///   - completionHandler: Callback to indicate completion
     func application(_ application: UIApplication,
                     didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        // With swizzling disabled, we must let Messaging know about the message for Analytics
+        // Track notification for Analytics
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        // Print message ID
-        if let messageID = userInfo[gcmMessageIDKey] {
-            print("Message ID: \(messageID)")
-        }
-        
-        print("==========================================")
-        print("Received remote notification:")
-        print("UserInfo: \(userInfo)")
-        print("Raw UserInfo: \(String(describing: userInfo))")
-        print("==========================================")
-        
+        // Notify observers about received notification
         NotificationCenter.default.post(
             name: Notification.Name("ReceivedNotification"),
             object: nil,
             userInfo: userInfo
-        )
-        
+        )        
         completionHandler(UIBackgroundFetchResult.newData)
     }
 }

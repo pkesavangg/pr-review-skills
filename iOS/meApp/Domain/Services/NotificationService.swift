@@ -1,14 +1,22 @@
 import Foundation
 import FirebaseMessaging
 
+/// NotificationService manages Firebase Cloud Messaging (FCM) token operations.
+/// It provides functionality for:
+/// - Token refresh handling
+/// - Token retrieval
+/// - Token management
 @MainActor
 class NotificationService {
+    /// Shared instance for accessing the NotificationService throughout the app
     static let shared = NotificationService()
     
+    /// Private initializer to enforce singleton pattern
     private init() {
         setupTokenRefresh()
     }
     
+    /// Sets up observer for FCM token refresh notifications
     private func setupTokenRefresh() {
         NotificationCenter.default.addObserver(
             self,
@@ -18,13 +26,17 @@ class NotificationService {
         )
     }
     
+    /// Handles FCM token refresh notifications
+    /// - Parameter notification: The notification containing the new token
     @objc private func tokenRefreshNotification(_ notification: Notification) {
-        if let token = notification.userInfo?["token"] as? String {
-            print("FCM Token: \(token)")
+        if notification.userInfo?["token"] is String {
             // TODO: Send token to your server
         }
     }
     
+    /// Retrieves the current FCM token
+    /// - Returns: The current FCM token as a string
+    /// - Throws: Error if token retrieval fails
     func getFCMToken() async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             Messaging.messaging().token { token, error in
@@ -35,26 +47,6 @@ class NotificationService {
                 } else {
                     continuation.resume(throwing: NSError(domain: "NotificationService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get FCM token"]))
                 }
-            }
-        }
-    }
-    
-    func subscribeToTopic(_ topic: String) {
-        Messaging.messaging().subscribe(toTopic: topic) { error in
-            if let error = error {
-                print("Error subscribing to topic: \(error)")
-            } else {
-                print("Subscribed to topic: \(topic)")
-            }
-        }
-    }
-    
-    func unsubscribeFromTopic(_ topic: String) {
-        Messaging.messaging().unsubscribe(fromTopic: topic) { error in
-            if let error = error {
-                print("Error unsubscribing from topic: \(error)")
-            } else {
-                print("Unsubscribed from topic: \(topic)")
             }
         }
     }
