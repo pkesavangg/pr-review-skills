@@ -4,6 +4,8 @@ import Foundation
 final class FeedService: FeedServiceProtocol, ObservableObject {
     static let shared = FeedService()
     
+    @Injector var logger: LoggerService
+    
     private let apiRepo: FeedRepositoryAPIProtocol = FeedRepositoryAPI()
     private let localRepo = FeedRepositoryLocal()
     private let networkMonitor = NetworkMonitor.shared
@@ -12,11 +14,15 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     @Published private(set) var feedItems: [FeedItem] = []
     @Published private(set) var feedSettings: FeedSetting?
     
+    private let tag = "FeedService"
+    
     init() {
         Task {
             do {
                try await getFeedSettings()
-            } catch {}            
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to get feed settings during init", data: error)
+            }
         }
     }
     
@@ -24,17 +30,20 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     
     func fetchFeedItems() async throws {
         guard networkMonitor.isConnected else {
+            logger.log(level: .error, tag: tag, message: "No internet connection while fetching feed items")
             throw NetworkError.noInternet
         }
         
         do {
             let items = try await apiRepo.fetchFeedItems()
             self.feedItems = items
+            logger.log(level: .info, tag: tag, message: "Successfully fetched feed items", data: ["count": items.count])
         } catch {
             if NetworkError.isNetworkError(error) {
-                // Return existing items on network error
-               throw NetworkError.noInternet
+                logger.log(level: .error, tag: tag, message: "Network error while fetching feed items", data: error)
+                throw NetworkError.noInternet
             }
+            logger.log(level: .error, tag: tag, message: "Failed to fetch feed items", data: error)
             throw FeedError.networkError(error)
         }
     }
@@ -44,6 +53,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         
         do {
             try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
+            logger.log(level: .info, tag: tag, message: "Successfully updated feed item", data: ["feedPostId": feedItem.feedPostId, "actionType": actionType])
             
             // Update local state if item is marked as read
             if actionType == .read {
@@ -55,9 +65,10 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             }
         } catch {
             if NetworkError.isNetworkError(error) {
-                // Handle offline case if needed
+                logger.log(level: .error, tag: tag, message: "Network error while updating feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
                 throw NetworkError.noInternet
             }
+            logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
             throw FeedError.networkError(error)
         }
     }
@@ -77,21 +88,25 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     
     func storeFeedSettings(_ settings: FeedSetting) async throws {
         guard let accountId = accountService.activeAccount?.accountId else {
+            logger.log(level: .error, tag: tag, message: "No active account while storing feed settings")
             throw AccountError.noActiveAccount
         }
         
         try await localRepo.storeFeedSettings(accountId: accountId, settings: settings)
         self.feedSettings = settings
+        logger.log(level: .info, tag: tag, message: "Successfully stored feed settings", data: ["accountId": accountId])
     }
     
     @discardableResult
     func getFeedSettings() async throws -> FeedSetting? {
         guard let accountId = accountService.activeAccount?.accountId else {
+            logger.log(level: .error, tag: tag, message: "No active account while getting feed settings")
             throw AccountError.noActiveAccount
         }
         
         let settings = try await localRepo.getFeedSettings(accountId: accountId)
         self.feedSettings = settings
+        logger.log(level: .info, tag: tag, message: "Successfully retrieved feed settings", data: ["accountId": accountId])
         return settings
     }
     
@@ -147,13 +162,17 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     
     func clearFeedData() async {
         guard let accountId = accountService.activeAccount?.accountId else {
+           logger.log(level: .error, tag: tag, message: "No active account while clearing feed data")
            return
         }
         do {
             try await localRepo.clearFeedData(accountId: accountId)
             self.feedItems = []
             self.feedSettings = nil
-        } catch {}
+            logger.log(level: .info, tag: tag, message: "Successfully cleared feed data", data: ["accountId": accountId])
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to clear feed data", data: ["accountId": accountId, "error": error])
+        }
     }
     
     // MARK: - Private Helpers
