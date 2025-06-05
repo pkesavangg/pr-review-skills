@@ -17,4 +17,4 @@ enum FeedError: LocalizedError {
             return "Invalid value found in local storage"
         }
     }
-} 
+}

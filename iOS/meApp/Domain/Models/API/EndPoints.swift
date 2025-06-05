@@ -116,9 +116,9 @@ enum Endpoint {
         case .clearFlag(let flagId):
             return request(path: "/account/flag/\(flagId)")
         case .feed:
-            return request(path: "/feed")
+            return request(path: "/feed/iam")
         case .markFeedAs(let elementId):
-            guard let url = URL(string: "\(API.baseURL)/feed/\(elementId)") else { return nil }
+            guard let url = URL(string: "\(API.baseURL)/feed/iam/\(elementId)") else { return nil }
             return URLRequest(url: url)
         case .deleteAccount:
             return request(path: "/account/")
