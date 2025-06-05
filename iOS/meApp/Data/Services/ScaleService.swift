@@ -10,7 +10,10 @@ import SwiftData
 
 /// Service for managing paired scale devices, including sync, CRUD, and connection management.
 /// Handles local/remote sync, per-account operations, and robust error handling.
+@MainActor
 final class ScaleService: ScaleServiceProtocol {
+    static let shared = ScaleService()
+    
     @MainActor
     private lazy var remoteRepo: ScaleAPIRepository = {
         // Ensure this is always created on the main actor
@@ -21,6 +24,14 @@ final class ScaleService: ScaleServiceProtocol {
     private let localKVRepo: ScaleRepositoryLocal
     private let accountService: AccountServiceProtocol
     private let logger = AppLogger.shared
+    
+    /// Default initializer that creates its own dependencies.
+    init() {
+        self.accountService = AccountService.shared
+        self._apiRepository = ScaleAPIRepository()
+        self.localRepository = ScaleRepository()
+        self.localKVRepo = ScaleRepositoryLocal()
+    }
     
     /// Initializes the scale service with required dependencies.
     init(accountService: AccountServiceProtocol,
