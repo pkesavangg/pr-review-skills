@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "integrationsSettings",
+    tableName = "integrations_settings",
     foreignKeys = [
         ForeignKey(
             entity = AccountEntity::class,

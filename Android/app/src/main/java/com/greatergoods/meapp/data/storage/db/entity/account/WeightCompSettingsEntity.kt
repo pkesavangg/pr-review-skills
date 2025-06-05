@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "weightCompSettings",
+    tableName = "weight_comp_settings",
     foreignKeys = [
         ForeignKey(
             entity = AccountEntity::class,
