@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.core.service
 
-import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthException
 import com.greatergoods.meapp.domain.services.AuthState
@@ -31,10 +31,10 @@ class AccountAuthService @Inject constructor(
     override val authStateFlow: SharedFlow<AuthState> = _authStateFlow
 
     // Current active account flow
-    override val activeAccountFlow: Flow<AccountEntity?> = accountRepository.getActiveAccount()
+    override val activeAccountFlow: Flow<Account?> = accountRepository.getActiveAccount()
 
     // All logged in accounts flow
-    override val loggedInAccountsFlow: Flow<List<AccountEntity>> = accountRepository.getAllLoggedInAccounts()
+    override val loggedInAccountsFlow: Flow<List<Account>> = accountRepository.getAllLoggedInAccounts()
 
     // Account status flows
     private val _isSignUpFlow = MutableSharedFlow<Boolean>()
@@ -53,7 +53,7 @@ class AccountAuthService @Inject constructor(
      * @return The authenticated account
      * @throws AuthException if login fails
      */
-    override suspend fun login(email: String, password: String): AccountEntity {
+    override suspend fun login(email: String, password: String): Account {
         try {
             val account = accountRepository.login(email, password)
             _authStateFlow.emit(AuthState.LoggedIn(account))
@@ -100,7 +100,7 @@ class AccountAuthService @Inject constructor(
      * @return The created account
      * @throws AuthException if account limit reached or creation fails
      */
-    override suspend fun addAccount(accountData: Map<String, Any>): AccountEntity {
+    override suspend fun addAccount(accountData: Map<String, Any>): Account {
         val currentAccounts = loggedInAccountsFlow.first()
         if (currentAccounts.size >= MAX_ACCOUNTS) {
             throw AuthException("Maximum account limit reached")
@@ -143,7 +143,7 @@ class AccountAuthService @Inject constructor(
      * Switches to a different account.
      * @param account Account to switch to
      */
-    override suspend fun switchAccount(account: AccountEntity) {
+    override suspend fun switchAccount(account: Account) {
         try {
             accountRepository.switchAccount(account)
             _authStateFlow.emit(AuthState.AccountSwitched(account))
@@ -158,7 +158,7 @@ class AccountAuthService @Inject constructor(
      * Gets the current active account.
      * @return The active account or null if none
      */
-    override suspend fun getCurrentAccount(): AccountEntity? = activeAccountFlow.first()
+    override suspend fun getCurrentAccount(): Account? = activeAccountFlow.first()
 
     /**
      * Checks if the current session is valid.

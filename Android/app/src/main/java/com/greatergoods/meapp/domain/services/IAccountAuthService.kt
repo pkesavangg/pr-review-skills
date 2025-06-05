@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.services
 
-import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -9,19 +9,19 @@ import kotlinx.coroutines.flow.SharedFlow
  */
 interface IAccountAuthService {
     val authStateFlow: SharedFlow<AuthState>
-    val activeAccountFlow: Flow<AccountEntity?>
-    val loggedInAccountsFlow: Flow<List<AccountEntity>>
+    val activeAccountFlow: Flow<Account?>
+    val loggedInAccountsFlow: Flow<List<Account>>
     val isSignUpFlow: SharedFlow<Boolean>
     val isLoginFlow: SharedFlow<Boolean>
     val isSwitchAccountFlow: SharedFlow<Boolean>
 
-    suspend fun login(email: String, password: String): AccountEntity
+    suspend fun login(email: String, password: String): Account
     suspend fun logout(accountId: String)
     suspend fun logoutAll()
-    suspend fun addAccount(accountData: Map<String, Any>): AccountEntity
+    suspend fun addAccount(accountData: Map<String, Any>): Account
     suspend fun removeAccount(accountId: String)
-    suspend fun switchAccount(account: AccountEntity)
-    suspend fun getCurrentAccount(): AccountEntity?
+    suspend fun switchAccount(account: Account)
+    suspend fun getCurrentAccount(): Account?
     suspend fun isSessionValid(): Boolean
     suspend fun refreshSession()
     suspend fun updateTokens(tokens: Map<String, String>)
@@ -32,12 +32,12 @@ interface IAccountAuthService {
  * Sealed class representing different authentication states.
  */
 sealed class AuthState {
-    data class LoggedIn(val account: AccountEntity) : AuthState()
+    data class LoggedIn(val account: Account) : AuthState()
     data class LoggedOut(val message: String? = null) : AuthState()
-    data class AccountAdded(val account: AccountEntity) : AuthState()
+    data class AccountAdded(val account: Account) : AuthState()
     data class AccountRemoved(val accountId: String) : AuthState()
-    data class AccountSwitched(val account: AccountEntity) : AuthState()
-    data class SessionRefreshed(val account: AccountEntity) : AuthState()
+    data class AccountSwitched(val account: Account) : AuthState()
+    data class SessionRefreshed(val account: Account) : AuthState()
     object TokensUpdated : AuthState()
     data class Error(val message: String) : AuthState()
 }
