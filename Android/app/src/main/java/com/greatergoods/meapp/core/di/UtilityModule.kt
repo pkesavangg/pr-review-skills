@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.utils.AppReviewManagerImpl
+import com.greatergoods.meapp.utils.AppReviewManager
 import com.greatergoods.meapp.utils.IAppReviewManager
 import dagger.Module
 import dagger.Provides
@@ -11,10 +11,13 @@ import android.content.Context
 
 @Module
 @InstallIn(SingletonComponent::class)
-object UtilityModule {
+object ReviewManagerModule {
 
     @Provides
     fun provideReviewManager(
         @ApplicationContext context: Context
-    ): IAppReviewManager = AppReviewManagerImpl(context)
+    ): IAppReviewManager {
+        return AppReviewManager(context)
+    }
 }
+
