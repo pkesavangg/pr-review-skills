@@ -3,19 +3,12 @@ import SwiftData
 
 /// Concrete implementation of EntryRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Entry entities in a thread-safe manner.
+///
+@MainActor
 final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
-    private let container: ModelContainer
-    private let context: ModelContext
-
-    /// Initializes the repository with a private SwiftData container.
-    init() {
-        let schema = Schema([Entry.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        self.container = try! ModelContainer(for: schema, configurations: [config])
-        self.context = ModelContext(container)
-    }
+    private let context: ModelContext = PersistenceController.shared.context
 
     // MARK: - CRUD
 

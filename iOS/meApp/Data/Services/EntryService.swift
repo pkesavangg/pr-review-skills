@@ -1,18 +1,14 @@
 import Foundation
 
+@MainActor
 final class EntryService: EntryServiceProtocol {
     private let accountService: AccountServiceProtocol
-    private let localRepo: EntryRepositoryProtocol
-    private let localKVRepo: EntryRepositoryLocal
-    private lazy var remoteRepo: EntryRepositoryAPIProtocol = {
-        // Ensure this is always created on the main actor
-        return EntryRepositoryAPI()
-    }()
+    private let localRepo: EntryRepositoryProtocol = EntryRepository()
+    private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
+    private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
 
-    init(accountService: AccountServiceProtocol, localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()) {
+    init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
-        self.localRepo = EntryRepository()
-        self.localKVRepo = localKVRepo
     }
 
     // MARK: - Helper
