@@ -3,16 +3,12 @@ import SwiftData
 
 /// Concrete implementation of EntryRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Entry entities in a thread-safe manner.
+///
 @MainActor
 final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
-    private let context: ModelContext
-
-    /// Initializes the repository with the shared SwiftData context.
-    init() {
-        self.context = PersistenceController.shared.context
-    }
+    private let context: ModelContext = PersistenceController.shared.context
 
     // MARK: - CRUD
 
@@ -74,6 +70,16 @@ final class EntryRepository: EntryRepositoryProtocol {
         return try context.fetch(descriptor)
     }
 
+    /// Fetches all entries for a specific user and timestamp.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - timestamp: The timestamp to filter entries by.
+    /// - Returns: An array of Entry objects for the user and timestamp.
+    func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry] {
+        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
+        return try context.fetch(descriptor)
+    }
+
     /// Fetches all entries for a specific month and user.
     /// - Parameters:
     ///   - month: The month in 'YYYY-MM' format (e.g., "2025-05").
@@ -97,6 +103,13 @@ final class EntryRepository: EntryRepositoryProtocol {
             $0.entryTimestamp >= startString &&
             $0.entryTimestamp < endString
         })
+        return try context.fetch(descriptor)
+    }
+
+    /// Fetches all unsynced entries from the local data store.
+    /// - Returns: An array of Entry objects that are not synced.
+    func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry] {
+        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
         return try context.fetch(descriptor)
     }
 
@@ -145,6 +158,16 @@ final class EntryRepository: EntryRepositoryProtocol {
             sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .forward)]
         )
         return try context.fetch(descriptor).first
+    }
+
+    /// Checks if an entry with a specific timestamp exists for a user.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - entryTimestamp: The timestamp to check for.
+    /// - Returns: True if the entry exists, false otherwise.
+    func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool {
+        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == entryTimestamp })
+        return try context.fetch(descriptor).first != nil
     }
 
     // MARK: - Sync
