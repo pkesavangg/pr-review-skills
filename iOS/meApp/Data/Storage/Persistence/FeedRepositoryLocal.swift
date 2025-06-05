@@ -55,9 +55,9 @@ final class FeedRepositoryLocal {
     /// Clears all feed data for the given account.
     /// - Parameter accountId: The account ID
     func clearFeedData(accountId: String) async throws {
-        let feedInfoKey = makeFeedInfoKey(accountId: accountId)
+        let feedInfoKeyForAccount = makeFeedInfoKey(accountId: accountId)
         let lastTriggeredKey = makeLastTriggeredKey(accountId: accountId)
-        kv.clearValue(forKey: feedInfoKey)
+        kv.clearValue(forKey: feedInfoKeyForAccount)
         kv.clearValue(forKey: lastTriggeredKey)
     }
     
