@@ -26,11 +26,11 @@ class ServiceRegistry {
     
     /// Registers services required at app launch (before login)
     @MainActor private func registerEssentialServices() {
-        DependencyContainer.shared.register(AccountService())
-        DependencyContainer.shared.register(ScaleService())
-        DependencyContainer.shared.register(IntegrationsService())
-        DependencyContainer.shared.register(HealthKitService())
-        DependencyContainer.shared.register(KvStorageService())
+        DependencyContainer.shared.register(AccountService.shared)
+        DependencyContainer.shared.register(ScaleService.shared)
+        DependencyContainer.shared.register(IntegrationsService.shared)
+        DependencyContainer.shared.register(HealthKitService.shared)
+        DependencyContainer.shared.register(KvStorageService.shared)
     }
     
     /// Registers services needed after login
