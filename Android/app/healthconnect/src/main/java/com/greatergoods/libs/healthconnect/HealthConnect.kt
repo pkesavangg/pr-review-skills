@@ -31,6 +31,7 @@ import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
 import java.time.Instant
 import kotlin.reflect.KClass
+import android.app.Activity
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -230,12 +231,36 @@ class HealthConnect(
             when {
                 granted.containsAll(allPermissions) -> HealthConnectRequestStatus.CONNECTED
                 granted.intersect(allPermissions).isNotEmpty() -> HealthConnectRequestStatus.PARTIAL
-                else -> HealthConnectRequestStatus.CANCELLED
+                else -> {
+                    launchHealthConnect(context as Activity, false)
+                    HealthConnectRequestStatus.CANCELLED
+                }
             }
         } catch (e: Exception) {
             Log.e("sdfsdf", e.toString())
             HealthConnectRequestStatus.CANCELLED
         }
+
+    /**
+     * Requests Health Connect permissions and returns the result.
+     * @param activity The Activity context to use for launching the permission UI.
+     * @param options The HealthConnectOptions specifying which permissions to request.
+     * @return HealthConnectRequestStatus (CONNECTED, PARTIAL, CANCELLED)
+     */
+    suspend fun requestPermissionsWithResult(
+        activity: android.app.Activity,
+        options: HealthConnectOptions,
+    ): HealthConnectRequestStatus {
+        val permissions = getPermissions(options)
+        //
+        // // Now check what was granted
+        // return when {
+        //     granted.containsAll(permissions) -> HealthConnectRequestStatus.CONNECTED
+        //     granted.isNotEmpty() -> HealthConnectRequestStatus.PARTIAL
+        //     else -> HealthConnectRequestStatus.CANCELLED
+        // }
+        return HealthConnectRequestStatus.CANCELLED
+    }
 
     /**
      * Revokes all Health Connect permissions.
@@ -258,6 +283,42 @@ class HealthConnect(
             HealthConnectResult.Success(Unit)
         } catch (e: Exception) {
             HealthConnectResult.Error(e)
+        }
+
+    /**
+     * Launches the Health Connect app or settings screen. If not installed, optionally opens the Play Store.
+     * @param activity The Activity context to use for launching the intent.
+     * @param forcePlayStore If true, always open the Play Store even if installed.
+     * @return true if an intent was started, false otherwise.
+     */
+    override fun launchHealthConnect(
+        activity: Activity,
+        forcePlayStore: Boolean,
+    ): Boolean =
+        try {
+            val isInstalled = isAppInstalled()
+            if (isInstalled && !forcePlayStore) {
+                val intent =
+                    android.content.Intent(
+                        HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS,
+                    )
+                activity.startActivity(intent)
+                true
+            } else {
+                val providerPackageName = HealthConnectConfig.HealthConnectPackageName
+                val uriString =
+                    "market://details?id=$providerPackageName&url=healthconnect%3A%2F%2Fonboarding"
+                val intent =
+                    android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        setPackage("com.android.vending")
+                        data = android.net.Uri.parse(uriString)
+                    }
+                activity.startActivity(intent)
+                true
+            }
+        } catch (e: Exception) {
+            Log.e(Tag, "Failed to launch Health Connect: ${e.message}")
+            false
         }
 
     // --- Private/helper functions (sorted alphabetically) ---

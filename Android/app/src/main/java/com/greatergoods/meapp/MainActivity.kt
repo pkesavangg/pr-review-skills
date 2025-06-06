@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.greatergoods.libs.healthconnect.HealthConnect
 import com.greatergoods.libs.healthconnect.enum.DataType
 import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
+import com.greatergoods.libs.healthconnect.ui.HealthConnectOnboardingScreen
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -65,29 +66,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val coroutineScope = rememberCoroutineScope()
             val context = this
-            // MeApp()
-            Column {
-                Spacer(modifier = Modifier.height(500.dp))
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            val a =
-                                HealthConnect(context).getPermissions(
-                                    HealthConnectOptions(
-                                        readTypes =
-                                            setOf(
-                                                DataType.Weight,
-                                            ),
-                                        writeTypes = setOf(),
-                                    ),
-                                )
-                            Log.e("sdfsdf", a.toString())
-                        }
-                    },
-                ) {
-                    Text("Click")
-                }
-            }
+            MeApp()
         }
         handleIntentNavigationIfNeeded(intent)
     }

@@ -92,6 +92,14 @@ interface IHealthConnect {
      */
     suspend fun saveData(data: List<HealthConnectData>): HealthConnectResult<Unit>
 
+    /**
+     * Launches the Health Connect app or settings screen. If not installed, optionally opens the Play Store.
+     * @param activity The Activity context to use for launching the intent.
+     * @param forcePlayStore If true, always open the Play Store even if installed.
+     * @return true if an intent was started, false otherwise.
+     */
+    fun launchHealthConnect(activity: android.app.Activity, forcePlayStore: Boolean = false): Boolean
+
     // Optionally, add Flow-based APIs for background sync or live updates
     // fun observeSyncStatus(): Flow<SyncStatus>
 }
