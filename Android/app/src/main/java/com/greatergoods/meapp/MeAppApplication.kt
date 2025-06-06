@@ -1,8 +1,8 @@
 package com.greatergoods.meapp
 
-import com.greatergoods.meapp.core.logging.AppLog
-import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.domain.repository.ILogRepository
+import com.greatergoods.meapp.data.storage.db.dao.LogDao
+import com.greatergoods.meapp.core.logging.AppLog
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
