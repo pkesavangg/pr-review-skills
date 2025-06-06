@@ -8,10 +8,22 @@ package com.greatergoods.meapp.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.greatergoods.meapp.R
 import com.greatergoods.meapp.theme.model.Typography
+
+// Define OpenSans font family using all relevant weights
+val OpenSansFontFamily = FontFamily(
+    Font(R.font.open_sans_light, FontWeight.W300),
+    Font(R.font.open_sans_regular, FontWeight.W400),
+    Font(R.font.open_sans_medium, FontWeight.W500),
+    Font(R.font.open_sans_semi_bold, FontWeight.W600),
+    Font(R.font.open_sans_bold, FontWeight.W700),
+    Font(R.font.open_sans_extra_bold, FontWeight.W800),
+)
 
 /**
  * App-wide typography definitions, mapping semantic roles to TextStyle values.
@@ -21,7 +33,7 @@ val AppTypography =
         // Heading
         heading1 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 60.sp,
                 lineHeight = 68.sp,
@@ -29,7 +41,7 @@ val AppTypography =
             ),
         heading2 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 50.sp,
                 lineHeight = 58.sp,
@@ -37,7 +49,7 @@ val AppTypography =
             ),
         heading3 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 36.sp,
                 lineHeight = 44.sp,
@@ -45,7 +57,7 @@ val AppTypography =
             ),
         heading4 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
                 lineHeight = 32.sp,
@@ -53,7 +65,7 @@ val AppTypography =
             ),
         heading5 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
@@ -62,7 +74,7 @@ val AppTypography =
         // Subheading
         subHeading1 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
@@ -70,7 +82,7 @@ val AppTypography =
             ),
         subHeading2 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
@@ -79,7 +91,7 @@ val AppTypography =
         // Body
         body1 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 20.sp,
                 lineHeight = 28.sp,
@@ -87,7 +99,7 @@ val AppTypography =
             ),
         body2 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
@@ -95,7 +107,7 @@ val AppTypography =
             ),
         body3 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
@@ -104,7 +116,7 @@ val AppTypography =
         // Link
         link1 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
@@ -112,7 +124,7 @@ val AppTypography =
             ),
         link2 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
@@ -121,7 +133,7 @@ val AppTypography =
         // Button
         button1 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
@@ -129,7 +141,7 @@ val AppTypography =
             ),
         button2 =
             TextStyle(
-                fontFamily = FontFamily.Default,
+                fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
