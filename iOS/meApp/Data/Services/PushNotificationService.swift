@@ -21,7 +21,7 @@ class PushNotificationService: NSObject {
     private var notificationHandlers: [String: (([AnyHashable: Any]) -> Void)] = [:]
     private var isDeviceInfoUpdating: Bool = false
     private var isFetchingEntries: Bool = false
-    private var processedMessageIds: [String] = [] // Use array for FIFO
+    private var processedMessageIds: [String] = []
     private var isProcessingNotification: Bool = false
     private let logger = LoggerService.shared
     
@@ -192,9 +192,7 @@ class PushNotificationService: NSObject {
             do {
                 await fetchEntries(showToast: true)
                 await syncDevices()
-                // Only create a new notification if we're in the background
                 if UIApplication.shared.applicationState == .background {
-                    // Extract notification content from FCM payload
                     let aps = userInfo["aps"] as? [String: Any]
                     let alert = aps?["alert"] as? [String: Any]
                     let title = alert?["title"] as? String ?? "New Notification"
