@@ -23,6 +23,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         AppDelegate.shared = self
         
+        // TODO: Remove this code once the permission service is implemented.
+        
         // Initialize Firebase and notifications
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
