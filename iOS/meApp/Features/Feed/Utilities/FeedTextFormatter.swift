@@ -4,6 +4,12 @@ import UIKit
 struct FeedTextFormatter {
     
     // MARK: - Expiration Date Formatting
+    /// Formats an ISO8601 date string into a human-readable expiration message
+    /// - If more than 7 days: Shows "Offer valid through MM/dd/yyyy"
+    /// - If less than 7 days: Shows "Offer expires in X days"
+    /// - If invalid or expired: Returns empty string
+    /// - Parameter expiresAtString: ISO8601 formatted date string
+    /// - Returns: Formatted expiration message
     static func formatExpirationDate(_ expiresAtString: String?) -> String {
         guard let expiresAtString = expiresAtString,
               let expiresAt = ISO8601DateFormatter().date(from: expiresAtString) else {
@@ -25,6 +31,13 @@ struct FeedTextFormatter {
     }
     
     // MARK: - Feed Template Formatting
+    /// Processes a template string containing variables in {{variable}} format
+    /// Supports formatting types like {{bold[text]}}, {{italic[text]}}, etc.
+    /// Also handles special variables like {{expiresAt}}
+    /// - Parameters:
+    ///   - inputString: Template string with variables
+    ///   - feedItem: FeedItem containing data to populate variables
+    /// - Returns: Formatted NSAttributedString with applied styles
     static func formatFeedTemplate(_ inputString: String, feedItem: FeedItem) -> NSAttributedString {
         let attributedString = NSMutableAttributedString(string: inputString)
         
@@ -66,6 +79,11 @@ struct FeedTextFormatter {
     }
     
     // MARK: - No Widow Prevention
+    /// Prevents single words from appearing alone on the last line (widows)
+    /// by joining the last two words with a non-breaking space
+    /// Only applies if the last two words are less than half the total text length
+    /// - Parameter text: Input text to process
+    /// - Returns: Text with widow prevention applied
     static func preventWidow(_ text: String) -> String {
         let words = text.components(separatedBy: " ")
         guard words.count > 3 else { return text }
@@ -80,6 +98,11 @@ struct FeedTextFormatter {
     }
     
     // MARK: - Truncate Text
+    /// Truncates text to specified length and adds ellipsis
+    /// - Parameters:
+    ///   - text: Text to truncate
+    ///   - limit: Maximum length (default: 20)
+    /// - Returns: Truncated text with ellipsis if needed
     static func truncate(_ text: String, limit: Int = 20) -> String {
         guard text.count > limit else { return text }
         let index = text.index(text.startIndex, offsetBy: limit)
@@ -87,6 +110,9 @@ struct FeedTextFormatter {
     }
     
     // MARK: - Helper Methods
+    /// Formats text attributes based on the specified format type
+    /// - Parameter formatType: String representing the format type (e.g., "bold", "italic", "underline")
+    /// - Returns: Dictionary of attributes for the specified format type
     private static func formatTypeAttributes(_ formatType: String) -> [NSAttributedString.Key: Any] {
         var attributes: [NSAttributedString.Key: Any] = [:]
         var traits: UIFontDescriptor.SymbolicTraits = []
@@ -129,6 +155,9 @@ struct FeedTextFormatter {
         return attributes
     }
     
+    /// Formats a date string into a human-readable time remaining message
+    /// - Parameter dateString: ISO8601 formatted date string
+    /// - Returns: Formatted time remaining message
     private static func formatDateToText(_ dateString: String) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -144,6 +173,9 @@ struct FeedTextFormatter {
         return formatTimeRemaining(from: date)
     }
     
+    /// Formats a date into a human-readable time remaining message
+    /// - Parameter date: Date to format
+    /// - Returns: Formatted time remaining message
     private static func formatTimeRemaining(from date: Date) -> String {
         let now = Date()
         let diff = date.timeIntervalSince(now)
@@ -163,18 +195,5 @@ struct FeedTextFormatter {
             }
         }
         return "Expired"
-    }
-}
-
-// MARK: - Feed Item Extension
-extension FeedItem {
-    func getValue(for key: String) -> Date? {
-        let mirror = Mirror(reflecting: self)
-        for child in mirror.children {
-            if child.label == key, let date = child.value as? Date {
-                return date
-            }
-        }
-        return nil
     }
 } 
