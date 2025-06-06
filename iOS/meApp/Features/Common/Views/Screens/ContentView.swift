@@ -10,6 +10,8 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
+    @State private var showBrowser = false
+
     var body: some View {
         VStack {
             // Testing purpose it will replace by the actual content
@@ -19,6 +21,17 @@ struct ContentView: View {
                 .onTapGesture {
                     themeManager.isDarkMode.toggle()
                 }
+            
+            // Revert these changes when giving PR:
+            Button("Open InAppBrowser") {
+                showBrowser = true
+            }
+        }
+        .customInAppBrowser(
+            url: URL(string: "https://greatergoods.com/service")!,
+            isPresented: $showBrowser
+        ) {
+            print("Browser was dismissed")
         }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }
