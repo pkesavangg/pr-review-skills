@@ -31,6 +31,7 @@ googleService = "4.4.2"
 protobuf = "0.9.5"
 timber = "5.0.1"
 browser = "1.8.0"
+play-review = "2.0.2"
 
 
 
@@ -78,6 +79,8 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
+play-review = { group = "com.google.android.play", name = "review", version.ref = "play-review" }
+play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "play-review" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -44,6 +44,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".utils.webview.InAppWebViewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MeApp" />
+
         <service
             android:name=".core.service.pushNotification.PushNotificationService"
             android:exported="false">
