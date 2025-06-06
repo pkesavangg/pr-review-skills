@@ -14,6 +14,7 @@ import com.greatergoods.meapp.core.di.LogManagerEntryPoint
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
+import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.common.components.DialogQueueHost
 import com.greatergoods.meapp.features.common.components.NavHost
 import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
@@ -29,7 +30,7 @@ fun MeApp() {
     val appViewModel: AppViewModel = hiltViewModel()
     val dialogQueueViewModel: DialogQueueViewModel = hiltViewModel()
     val uiState by appViewModel.uiState.collectAsState()
-    val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.SampleScreen)
+    val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.Loading)
     val context = LocalContext.current
     val logManager =
         EntryPointAccessors

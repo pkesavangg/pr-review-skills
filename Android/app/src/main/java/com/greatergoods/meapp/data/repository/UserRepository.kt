@@ -20,7 +20,7 @@ class UserRepository @Inject constructor(
     override val accountsFlow: Flow<Map<String, UserAccount>> = userDataStore.accountsFlow
 
     /** Emits a Flow of the currently active UserAccount, or null if none is active. */
-    override val currentAccountFlow: Flow<UserAccount?> = userDataStore.currentAccountFlow
+    override var currentAccountFlow: Flow<UserAccount?> = userDataStore.currentAccountFlow
 
     /** Gets the currently active UserAccount, or null if none is active. */
     override suspend fun getCurrentAccount(): UserAccount? = userDataStore.currentAccountFlow
@@ -54,4 +54,10 @@ class UserRepository @Inject constructor(
 
     /** Clears all user data (removes all accounts). */
     override suspend fun clearData() = userDataStore.clearData()
+
+    /** Logs out the current account by removing it from UserDataStore. */
+    override suspend fun logoutCurrentAccount() {
+        userDataStore.logoutCurrentAccount()
+        currentAccountFlow = userDataStore.currentAccountFlow
+    }
 }

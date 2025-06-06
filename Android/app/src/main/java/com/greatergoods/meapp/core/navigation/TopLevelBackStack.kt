@@ -104,8 +104,26 @@ class TopLevelBackStack<T : NavKey>(
      * @param keys The navigation keys to set as the new stack.
      */
     fun replaceStack(keys: List<T>) {
-        topLevelStacks[topLevelKey]?.clear()
-        topLevelStacks[topLevelKey]?.addAll(keys)
+        val currentStack = topLevelStacks[topLevelKey] ?: mutableListOf()
+
+        // If any key already exists, retain those and add only the new ones
+        if (keys.any { currentStack.contains(it) }) {
+            val updatedStack = currentStack.toMutableList()
+
+            // Add keys that are not already present
+            keys.forEach { key ->
+                if (!updatedStack.contains(key)) {
+                    updatedStack.add(key)
+                }
+            }
+
+            topLevelStacks[topLevelKey]?.addAll(updatedStack)
+        } else {
+            // No overlap — do a full replacement
+            topLevelStacks[topLevelKey]?.clear()
+            topLevelStacks[topLevelKey]?.addAll(keys)
+        }
+
         updateBackStack()
     }
 }
