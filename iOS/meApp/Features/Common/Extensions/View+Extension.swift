@@ -35,4 +35,18 @@ extension View {
     func presentToast(data: Binding<ToastModel?>) -> some View {
         self.modifier(ToastModifier(toastData: data))
     }
+    
+    /// Presents a loader with the provided loader data.
+    /// - Parameter loaderData: A binding to the `LoaderModel?` that contains the loader configuration.
+    /// - Returns: A view that presents the loader when `loaderData` is not nil.
+    func presentLoader(loaderData: Binding<LoaderModel?>) -> some View {
+        self.modifier(LoaderModifier(loaderData: loaderData))
+    }
+    
+    /// Presents a modal view with the provided modal view data.
+    /// - Parameter modalViewData: A binding to an array of `ModalData` that contains the modal configuration.
+    /// - Returns: A view that presents the modal when `modalViewData` is not empty.
+    func presentModal(modalViewData: Binding<[ModalData]>) -> some View {
+        self.modifier(ModalViewModifier(modalStack: modalViewData))
+    }
 }
