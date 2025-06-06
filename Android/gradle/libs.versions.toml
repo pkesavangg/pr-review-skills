@@ -1,5 +1,6 @@
 [versions]
 agp = "8.12.0-alpha03"
+coreSplashscreen = "1.0.1"
 firebaseBom = "33.14.0"
 hiltNavigationFragment = "1.2.0"
 kotlin = "2.1.21"
@@ -38,6 +39,7 @@ play-review = "2.0.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-hilt-navigation-fragment = { module = "androidx.hilt:hilt-navigation-fragment", version.ref = "hiltNavigationFragment" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }

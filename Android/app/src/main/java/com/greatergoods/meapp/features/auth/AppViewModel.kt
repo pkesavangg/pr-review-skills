@@ -6,6 +6,7 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
 import com.greatergoods.meapp.proto.ThemeMode
+import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,37 +43,49 @@ class AppViewModel @Inject constructor(
     private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
-    private var previousAccountId: String? = null
+    private var currentAccount: UserAccount? = null
 
     init {
         viewModelScope.launch {
-            userRepository.currentAccountFlow.collectLatest { account ->
-                navigationService.replaceStack(
-                    listOf(
-                        AppRoute.Init.Loading,
-                    ),
+            delay(3000)
+            navigationService.replaceStack(
+                listOf(
+                    AppRoute.Auth.LoginScreen,
                 )
-                if (account != null) {
-                    val currentAccountId = userRepository.accountsFlow.firstOrNull()
-                        ?.entries
-                        ?.find { it.value == account }
-                        ?.key
+            )
+        }
+    }
 
-                    _uiState.value = _uiState.value.copy(
-                        themeMode = account.themeMode,
-                    )
+    private fun initLogic() {
+        viewModelScope.launch {
+            userRepository.currentThemeModeFlow.collectLatest { themeMode ->
+                _uiState.value = _uiState.value.copy(
+                    themeMode = themeMode,
+                )
+            }
+        }
+        viewModelScope.launch {
+            userRepository.currentAccountFlow.collectLatest { account ->
+                if (currentAccount != account) {
+                    if (account != null) {
+                        currentAccount = account
+                        val currentAccountId = userRepository.accountsFlow.firstOrNull()
+                            ?.entries
+                            ?.find { it.value == account }
+                            ?.key
 
-                    initLoadingData(currentAccountId)
-                } else {
-                    val destinationState = if (userRepository.hasAccounts()) {
-                        AppRoute.Auth.UserListScreen
+                        initLoadingData(currentAccountId)
                     } else {
-                        AppRoute.Auth.LoginScreen
+                        val destinationState = if (userRepository.hasAccounts()) {
+                            AppRoute.Auth.UserListScreen
+                        } else {
+                            AppRoute.Auth.LoginScreen
+                        }
+                        _uiState.value = _uiState.value.copy(
+                            themeMode = ThemeMode.SYSTEM,
+                        )
+                        navigationService.replaceStack(listOf(destinationState))
                     }
-                    _uiState.value = _uiState.value.copy(
-                        themeMode = ThemeMode.SYSTEM,
-                    )
-                    navigationService.replaceStack(listOf(destinationState))
                 }
             }
         }

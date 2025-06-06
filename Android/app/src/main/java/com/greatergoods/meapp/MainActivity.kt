@@ -3,15 +3,17 @@ package com.greatergoods.meapp
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.lifecycleScope
-import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.core.logging.LogManager
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.service.IAppEventService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 
 /**
@@ -33,10 +35,11 @@ class MainActivity : ComponentActivity() {
      * Called when the activity is starting. Sets up Compose content and handles navigation intents.
      * @param savedInstanceState The previously saved instance state, if any.
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+        splashScreen
         // Clean up logs older than 5 days
         lifecycleScope.launch {
             try {
@@ -46,7 +49,7 @@ class MainActivity : ComponentActivity() {
                 AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
             }
         }
-        
+
         setContent {
             MeApp()
 
