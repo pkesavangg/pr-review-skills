@@ -59,7 +59,7 @@ struct ModalViewModifier: ViewModifier {
             
             ForEach(Array(modalStack.enumerated()), id: \.element.id) { index, modal in
                 ZStack {
-                    theme.backgroundPrimary.opacity(0.5)
+                    theme.supportOverlay
                         .ignoresSafeArea()
                         .contentShape(Rectangle())
                         .onTapGesture {

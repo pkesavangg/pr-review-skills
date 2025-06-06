@@ -9,7 +9,7 @@ import SwiftUI
 struct ModalData: Identifiable, Equatable {
     let id = UUID()
     var presentedView: AnyView = AnyView(EmptyView())
-    var backdropDismiss: Bool = false
+    var backdropDismiss: Bool = true
     var onDismiss: (() -> Void)? = nil
     
     static func == (lhs: ModalData, rhs: ModalData) -> Bool {
