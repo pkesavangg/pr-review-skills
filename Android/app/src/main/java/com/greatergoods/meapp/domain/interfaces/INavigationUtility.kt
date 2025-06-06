@@ -16,7 +16,7 @@ interface INavigationUtility {
         inclusive: Boolean = false,
     )
 
-    suspend fun navigateToRoot(currentRoute: AppRoute)
+    suspend fun navigateToRoot()
 
     suspend fun navigateTo(destinations: List<AppRoute>)
 
@@ -44,9 +44,7 @@ sealed interface NavigationIntent {
         val inclusive: Boolean = false,
     ) : NavigationIntent
 
-    data class NavigateToRoot(
-        val currentRoute: AppRoute,
-    ) : NavigationIntent
+    data object NavigateToRoot : NavigationIntent
 
     data class NavigateToMultiple(
         val routes: List<AppRoute>,
