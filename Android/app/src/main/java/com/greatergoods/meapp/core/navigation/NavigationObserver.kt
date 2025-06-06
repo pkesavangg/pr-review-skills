@@ -33,7 +33,7 @@ fun NavigationObserver(
                     }
 
                     is NavigationIntent.NavigateToRoot -> {
-                        (backStack).clearStack()
+                        backStack.clearStack()
                     }
 
                     is NavigationIntent.NavigateToMultiple -> {
