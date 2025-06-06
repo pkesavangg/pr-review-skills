@@ -33,6 +33,3 @@ struct FeedItem: Codable, Equatable {
     /// Optional: The landing page data if feedType is landing.
     let landingPage: LandingPage?
 }
-
-
-
