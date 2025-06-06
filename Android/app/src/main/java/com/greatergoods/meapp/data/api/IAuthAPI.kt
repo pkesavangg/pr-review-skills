@@ -10,6 +10,9 @@ import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.PATCH
+import retrofit2.http.DELETE
 
 interface IAuthAPI {
     companion object {
@@ -18,6 +21,7 @@ interface IAuthAPI {
         private const val LOGOUT = "logout"
         private const val PASSWORD_RESET = "password-reset/request"
         private const val REFRESH_TOKEN = "refresh-token"
+        private const val PASSWORD_UPDATE = "password"
     }
 
     @POST(ACCOUNT + LOGIN)
@@ -38,8 +42,22 @@ interface IAuthAPI {
     @POST(ACCOUNT + PASSWORD_RESET)
     suspend fun requestPasswordReset(
         @Body request: PasswordResetRequest,
-    )
-//TODO: FOR TESTING PURPOSE LATER IT WILL BE REMOVED.
+    ): Map<String, Any>
+
+    @POST(ACCOUNT)
+    suspend fun createAccount(
+        @Body request: Map<String, String>
+    ): Map<String, Any>
+
+    @PUT(ACCOUNT + PASSWORD_UPDATE)
+    suspend fun updatePassword(
+        @Body request: Map<String, String>
+    ): Map<String, Any>
+
+    @DELETE(ACCOUNT)
+    suspend fun deleteAccount(): Map<String, Any>
+
+    //TODO: FOR TESTING PURPOSE LATER IT WILL BE REMOVED.
     @GET(ACCOUNT)
     suspend fun getProfile(): ProfileUpdateRequest
 }

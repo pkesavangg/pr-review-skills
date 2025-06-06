@@ -48,3 +48,9 @@ final class BathScaleEntry {
         )
     }
 }
+
+/// @unchecked Sendable is used because BathScaleEntry is a SwiftData @Model with thread-safe properties.
+/// SwiftData handles synchronization internally, allowing safe use in async contexts like
+/// HealthKit sync and background operations. We explicitly mark it Sendable to enable
+/// concurrent access without data races.
+extension BathScaleEntry: @unchecked Sendable {}

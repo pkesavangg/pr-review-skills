@@ -7,10 +7,10 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.Entry
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -237,4 +237,4 @@ interface EntryDao {
      */
     @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
     suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
-} 
+}

@@ -15,11 +15,14 @@ import SwiftUI
 /// deferring actual UI rendering and dependency injection to the UIKit layer.
 @main
 struct meApp: App {
+    /// The shared app state, injected as an environment object to enable global service access.
+    @StateObject private var appState = AppState()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
+    
     var body: some Scene {
         WindowGroup {
             EmptyView()
+                .environmentObject(appState)
         }
     }
 }

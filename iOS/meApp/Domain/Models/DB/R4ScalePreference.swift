@@ -57,3 +57,6 @@ final class R4ScalePreference {
         )
     }
 }
+
+/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+extension R4ScalePreference: @unchecked Sendable {}
