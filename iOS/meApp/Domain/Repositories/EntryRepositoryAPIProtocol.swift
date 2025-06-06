@@ -9,9 +9,8 @@ protocol EntryRepositoryAPIProtocol {
 
     /// Fetches all operations (entries) for the given account from the backend, optionally since a given timestamp or count.
     /// - Parameters:
-    ///   - accountId: The account/user ID to fetch operations for.
-    ///   - timestamp: The timestamp to fetch operations since (optional).
+    ///   - startTimestamp: The timestamp to fetch operations since (optional).
     /// - Returns: An array of Entry objects from the backend.
-    func fetchOperations(accountId: String, timestamp: String?) async throws -> [BathScaleOperationListResponse]
+    func fetchOperations(startTimestamp: String?) async throws -> BathScaleOperationListResponse
 
 }

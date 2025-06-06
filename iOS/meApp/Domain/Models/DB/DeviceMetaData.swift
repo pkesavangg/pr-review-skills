@@ -50,3 +50,6 @@ final class DeviceMetaData {
         )
     }
 }
+
+/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+extension DeviceMetaData: @unchecked Sendable {}

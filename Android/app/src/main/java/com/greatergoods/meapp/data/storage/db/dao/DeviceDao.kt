@@ -1,18 +1,17 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
-import androidx.room.*
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
-import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceDetails
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.DeviceDetails
+import com.greatergoods.meapp.data.storage.db.entity.device.BodyScaleEntity
 import kotlinx.coroutines.flow.Flow
 
 /**

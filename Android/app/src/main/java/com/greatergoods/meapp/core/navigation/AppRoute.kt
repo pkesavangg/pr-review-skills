@@ -1,10 +1,5 @@
 package com.greatergoods.meapp.core.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
@@ -18,7 +13,7 @@ sealed class AppRoute : NavKey {
     @Serializable
     sealed class Init : AppRoute() {
         @Serializable
-        data object SampleScreen : Init()
+        data object Loading : Init()
     }
 
     /**
@@ -64,41 +59,19 @@ sealed class AppRoute : NavKey {
         @Serializable
         data object HomeScreen : Home()
     }
-}
 
-/**
- * Interface for top-level navigation routes, each with an icon and associated AppRoute.
- */
-sealed interface TopLevelRoute {
-    val icon: ImageVector
-    val route: AppRoute
-}
+    /**
+     * Authentication-related navigation routes.
+     */
+    @Serializable
+    sealed class Auth : AppRoute() {
+        @Serializable
+        data object AuthScreen : Auth()
 
-/**
- * Top-level route for the initial screen.
- */
-object InitRoute : TopLevelRoute {
-    override val icon = Icons.Default.Home
-    override val route = AppRoute.Init.SampleScreen
-}
+        @Serializable
+        data object LoginScreen : Auth()
 
-/**
- * Top-level route for the main section.
- */
-object MainRoute : TopLevelRoute {
-    override val icon = Icons.Default.Face
-    override val route = AppRoute.Main.Feeds
+        @Serializable
+        data object UserListScreen : Auth()
+    }
 }
-
-/**
- * Top-level route for the product section.
- */
-object ProductRoute : TopLevelRoute {
-    override val icon = Icons.Default.PlayArrow
-    override val route = AppRoute.Product.ProductList
-}
-
-/**
- * List of all top-level routes in the app.
- */
-val TOP_LEVEL_ROUTES = listOf(InitRoute, MainRoute, ProductRoute)

@@ -25,7 +25,7 @@ interface INavigationHandler {
     /**
      * Navigate to the root route
      */
-    suspend fun navigateToRoot(currentRoute: AppRoute)
+    suspend fun navigateToRoot()
 
     /**
      * Replace the current navigation stack with new routes

@@ -10,18 +10,25 @@ import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
-import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceEntity
-import com.greatergoods.meapp.data.storage.db.entity.DeviceMetaDataEntity
-import com.greatergoods.meapp.data.storage.db.entity.BpmEntity
-import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.BodyScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
 import android.content.Context
-import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.DashboardSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSettingsEntity
 
 /**
  * Main database class for the MeApp application.
@@ -38,7 +45,14 @@ import com.greatergoods.meapp.data.storage.db.entity.LogEntity
         BodyScaleEntryEntity::class,
         BodyScaleEntryMetricEntity::class,
         BpmEntryEntity::class,
-        LogEntity::class
+        LogEntity::class,
+        WeightCompSettingsEntity::class,
+        GoalSettingsEntity::class,
+        StreaksSettingsEntity::class,
+        WeightlessSettingsEntity::class,
+        NotificationSettingsEntity::class,
+        DashboardSettingsEntity::class,
+        IntegrationsSettingsEntity::class
     ],
     version = 1,
     exportSchema = false,
@@ -51,7 +65,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun entryDao(): EntryDao
     abstract fun logDao(): LogDao
-    
+
     companion object {
         /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
         This helps make sure the value of INSTANCE is always up-to-date and the same for all execution threads.

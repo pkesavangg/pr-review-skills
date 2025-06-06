@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
             val context = this
             MeApp()
+
         }
         handleIntentNavigationIfNeeded(intent)
     }

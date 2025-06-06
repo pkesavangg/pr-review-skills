@@ -37,6 +37,7 @@ ij_kotlin_line_comment_add_space_on_reformat = true
 ij_kotlin_line_comment_at_first_column = false
 # Force trailing comma.
 ij_kotlin_allow_trailing_comma_on_call_site = true
+ktlint_function_naming_ignore_annotated = Composable,Preview
 
 [*.java]
 indent_size = 4
