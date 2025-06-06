@@ -22,7 +22,6 @@ struct FeedItemView: View {
             // Subtitle with template formatting
             if let modalText = feedItem.subtitleModalText {
                 Text(AttributedString(FeedTextFormatter.formatFeedTemplate(modalText, feedItem: feedItem)))
-                    .fontOpenSans(.body2)
             }
             
             Text(AttributedString(FeedTextFormatter.formatFeedTemplate(feedItem.subtitleFeedText, feedItem: feedItem)))
@@ -93,10 +92,7 @@ struct StaticFeedItems {
             // - "Strike text" -> should have line through
             // - "Bold-Italic" -> should be both bold and slanted
             // - "Strike-Bold-Italic" -> should have line through, be bold and slanted
-            subtitleModalText: """
-            Simple formats: {{bold[Bold text]}} {{italic[Italic text]}} {{strike[Strike text]}}
-            Combined formats: {{bold-italic[Bold-Italic]}} {{strike-bold-italic[Strike-Bold-Italic]}}
-            """,
+            subtitleModalText: " Simple formats: {{bold[Bold text]}} {{italic[Italic text]}} {{strike[Strike text]}} Combined formats: {{bold-italic[Bold-Italic]}} {{strike-bold-italic[Strike-Bold-Italic]}}",
             // Expected output:
             // - "$99.99" -> regular text
             // - "$149.99" -> struck through, bold, and italic
@@ -180,7 +176,7 @@ struct StaticFeedItems {
             trigger: nil,
             expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(7 * 24 * 3600)), // 7 days from now
             feedType: .landing,
-            landingPage: LandingPage(
+            landingPage: FeedLandingPage(
                 feedLandingPageId: "landing_\(UUID().uuidString)",
                 feedPostId: "mockUUID0002",
                 titleText: "Kitchen Scales",
@@ -222,7 +218,7 @@ struct StaticFeedItems {
             trigger: nil,
             expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(30 * 24 * 3600)), // 30 days from now
             feedType: .landing,
-            landingPage: LandingPage(
+            landingPage: FeedLandingPage(
                 feedLandingPageId: "landing_\(UUID().uuidString)",
                 feedPostId: "testUUID20241",
                 titleText: "Verve Smart Scale",
@@ -264,7 +260,7 @@ struct StaticFeedItems {
             trigger: nil,
             expiresAt: "2024-03-31T23:59:59.000Z",
             feedType: .landing,
-            landingPage: LandingPage(
+            landingPage: FeedLandingPage(
                 feedLandingPageId: "landing_\(UUID().uuidString)",
                 feedPostId: "testUUID240312A",
                 titleText: "Burr Coffee Grinder",
@@ -306,7 +302,7 @@ struct StaticFeedItems {
             trigger: nil,
             expiresAt: "2024-05-31T23:59:59.000Z",
             feedType: .landing,
-            landingPage: LandingPage(
+            landingPage: FeedLandingPage(
                 feedLandingPageId: "landing_\(UUID().uuidString)",
                 feedPostId: "testUUID240426A",
                 titleText: "Baby Care Essentials",
@@ -346,7 +342,7 @@ struct StaticFeedItems {
             trigger: nil,
             expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(24 * 3600)), // 24 hours from now
             feedType: .landing,
-            landingPage: LandingPage(
+            landingPage: FeedLandingPage(
                 feedLandingPageId: "veAHqpkemoBrnyyRQKoAFH",
                 feedPostId: "SV7OXT1ywEGGjbHOqLflRq",
                 titleText: "Vacuum Sealers",
