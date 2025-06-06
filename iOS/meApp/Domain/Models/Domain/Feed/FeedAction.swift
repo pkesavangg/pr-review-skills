@@ -11,5 +11,5 @@ struct FeedAction: Codable, Equatable {
 /// Metadata for a feed action.
 struct FeedActionMeta: Codable, Equatable {
     /// The variation ID associated with the action.
-    let variationId: Int
-} 
+    let variationId: Int?
+}
