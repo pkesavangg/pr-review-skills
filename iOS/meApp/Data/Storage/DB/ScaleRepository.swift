@@ -8,28 +8,8 @@ import SwiftData
 @MainActor
 final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
-    let container: ModelContainer
-    let context: ModelContext
+    let context: ModelContext = PersistenceController.shared.context
     let logger = LoggerService.shared
-    
-    /// Initializes the repository with a SwiftData context.
-    /// - Parameter context: The SwiftData model context to use.
-    init() {
-        let schema = Schema([Device.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        do {
-            self.container = try ModelContainer(for: schema, configurations: [config])
-            self.context = ModelContext(container)
-        } catch {
-            logger.log(
-                level: .error,
-                tag: "ScaleRepository",
-                message: "Failed to initialize ModelContainer: \(error.localizedDescription)",
-                data: error
-            )
-            fatalError("Failed to initialize ModelContainer. Check logs for details.")
-        }
-    }
     
     /// Fetches all scales stored locally.
     /// - Returns: An array of all ScaleDTO objects.

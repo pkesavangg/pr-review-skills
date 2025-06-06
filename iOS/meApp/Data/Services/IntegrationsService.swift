@@ -9,13 +9,23 @@ import Foundation
 
 @MainActor
 final class IntegrationsService: IntegrationServiceProtocol {
+    static let shared = IntegrationsService()
+    
     // MARK: - Properties
     private let apiRepository: IntegrationRepositoryAPIProtocol
     private let localRepository: IntegrationRepositoryProtocol
     private let accountService: AccountServiceProtocol
     private let logger = LoggerService.shared
     
-    // MARK: - Initialization
+    /// Default initializer that creates its own dependencies.
+    init() {
+        self.apiRepository = IntegrationAPIRepository()
+        self.localRepository = IntegrationRepository()
+        self.accountService = AccountService.shared
+    }
+    
+    /// Initializes the service with required dependencies.
+    /// Use this initializer for testing or custom dependency injection.
     init(
         apiRepository: IntegrationRepositoryAPIProtocol,
         localRepository: IntegrationRepositoryProtocol,
