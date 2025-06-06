@@ -17,10 +17,12 @@ struct FeedItemView: View {
             // Title with widow prevention
             Text(FeedTextFormatter.preventWidow(feedItem.titleText))
                 .font(.headline)
+                .fontOpenSans(.body2)
             
             // Subtitle with template formatting
             if let modalText = feedItem.subtitleModalText {
                 Text(AttributedString(FeedTextFormatter.formatFeedTemplate(modalText, feedItem: feedItem)))
+                    .fontOpenSans(.body2)
             }
             
             Text(AttributedString(FeedTextFormatter.formatFeedTemplate(feedItem.subtitleFeedText, feedItem: feedItem)))
@@ -77,6 +79,90 @@ import Foundation
 
 struct StaticFeedItems {
     static let items: [FeedItem] = [
+        // Test Case 1: Testing all text formatting combinations
+        FeedItem(
+            feedPostId: "test_formatting_1",
+            elementId: "elem_format_1",
+            accountId: "acc_default",
+            isUnread: true,
+            messageTypeText: "TEXT FORMAT TEST",
+            titleText: "Testing All Text Formats",
+            // Expected output for each format:
+            // - "Bold text" -> should be bold
+            // - "Italic text" -> should be slanted
+            // - "Strike text" -> should have line through
+            // - "Bold-Italic" -> should be both bold and slanted
+            // - "Strike-Bold-Italic" -> should have line through, be bold and slanted
+            subtitleModalText: """
+            Simple formats: {{bold[Bold text]}} {{italic[Italic text]}} {{strike[Strike text]}}
+            Combined formats: {{bold-italic[Bold-Italic]}} {{strike-bold-italic[Strike-Bold-Italic]}}
+            """,
+            // Expected output:
+            // - "$99.99" -> regular text
+            // - "$149.99" -> struck through, bold, and italic
+            subtitleFeedText: "Special price $99.99 {{strike-bold-italic[$149.99]}}",
+            titleImage: "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+            linkTarget: "https://example.com",
+            linkText: "TEST FORMATS",
+            trigger: nil,
+            expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(7 * 24 * 3600)),
+            feedType: .link,
+            landingPage: nil
+        ),
+
+        // Test Case 2: Testing expiration date formatting
+        FeedItem(
+            feedPostId: "test_dates_1",
+            elementId: "elem_dates_1",
+            accountId: "acc_default",
+            isUnread: true,
+            messageTypeText: "DATE FORMAT TEST",
+            titleText: "Testing Date Formats",
+            // Expected output:
+            // - First {{expiresAt}} -> should show "7 days" (or actual remaining time)
+            // - Second {{expiresAt}} -> should show "1 day" (or actual remaining time)
+            subtitleModalText: "Long expiry: {{expiresAt}}\nShort expiry: {{expiresAt}}",
+            // Expected output: Should show actual remaining days
+            subtitleFeedText: "This offer expires in {{expiresAt}}",
+            titleImage: "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+            linkTarget: "https://example.com",
+            linkText: "TEST DATES",
+            trigger: nil,
+            // Setting two different expiration dates for testing
+            expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(24 * 3600)), // 1 day
+            feedType: .link,
+            landingPage: nil
+        ),
+
+        // Test Case 3: Testing price formatting with multiple styles
+        FeedItem(
+            feedPostId: "test_prices_1",
+            elementId: "elem_prices_1",
+            accountId: "acc_default",
+            isUnread: true,
+            messageTypeText: "PRICE FORMAT TEST",
+            titleText: "Testing Price Formats",
+            // Expected output:
+            // - "$25.99" -> bold only
+            // - "$35.99" -> strike-through only
+            // - "$45.99" -> bold and italic
+            // - "$55.99" -> strike-through, bold, and italic
+            subtitleModalText: """
+            Current price {{bold[$25.99]}}
+            Old price {{strike[$35.99]}}
+            Sale price {{bold-italic[$45.99]}}
+            MSRP {{strike-bold-italic[$55.99]}}
+            """,
+            subtitleFeedText: "Save big today!",
+            titleImage: "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+            linkTarget: "https://example.com",
+            linkText: "TEST PRICES",
+            trigger: nil,
+            expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(3 * 24 * 3600)),
+            feedType: .link,
+            landingPage: nil
+        ),
+        
         // Kitchen Scales Deal
         FeedItem(
             feedPostId: "mockUUID0002",
@@ -85,9 +171,10 @@ struct StaticFeedItems {
             isUnread: true,
             messageTypeText: "LIGHTNING DEAL",
             titleText: "Kitchen Scales 40% Off",
-            subtitleModalText: "Be prepare for the holidays! Offer ends in {{expiresAt}}!",
-            subtitleFeedText: "Ends in {{expiresAt}}!",
-            titleImage: "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            subtitleModalText: "Ends in {{expiresAt}} hurry {{bold[15$]}} 14$ {{strike-bold-italic[15$]}}",
+            subtitleFeedText: "Test this price $10 <s>$20</s>",
+            titleImage:
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
             linkTarget: "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
             linkText: "BUY NOW",
             trigger: nil,
