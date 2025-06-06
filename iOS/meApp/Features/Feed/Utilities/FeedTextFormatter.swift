@@ -89,20 +89,40 @@ struct FeedTextFormatter {
     // MARK: - Helper Methods
     private static func formatTypeAttributes(_ formatType: String) -> [NSAttributedString.Key: Any] {
         var attributes: [NSAttributedString.Key: Any] = [:]
+        var traits: UIFontDescriptor.SymbolicTraits = []
+        let fontSize: CGFloat = 16.0
         
         let types = formatType.components(separatedBy: "-")
         for type in types {
             switch FeedTextFormatType(rawValue: type) {
             case .bold:
-                attributes[.font] = UIFont.boldSystemFont(ofSize: UIFont.systemFontSize)
+                traits.insert(.traitBold)
             case .strike:
                 attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
             case .italic:
-                attributes[.font] = UIFont.italicSystemFont(ofSize: UIFont.systemFontSize)
+                traits.insert(.traitItalic)
             case .underline:
                 attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
             case .none:
                 break
+            }
+        }
+        
+        // Determine the appropriate OpenSans font name based on traits
+        var fontName = "OpenSans-Regular"
+        if traits.contains(.traitBold) {
+            fontName = traits.contains(.traitItalic) ? "OpenSans-BoldItalic" : "OpenSans-Bold"
+        } else if traits.contains(.traitItalic) {
+            fontName = "OpenSans-Italic"
+        }
+        
+        // Try to create font with the determined name
+        if let font = UIFont(name: fontName, size: fontSize) {
+            attributes[.font] = font
+        } else {
+            // Fallback to system font if OpenSans is not available
+            if let descriptor = UIFont.systemFont(ofSize: fontSize).fontDescriptor.withSymbolicTraits(traits) {
+                attributes[.font] = UIFont(descriptor: descriptor, size: fontSize)
             }
         }
         
