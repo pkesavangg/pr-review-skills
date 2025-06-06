@@ -3,6 +3,7 @@ package com.greatergoods.meapp
 import androidx.navigation3.runtime.EntryProviderBuilder
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
+import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
 import com.greatergoods.meapp.features.sample.DeviceSettingsScreen
@@ -10,9 +11,8 @@ import com.greatergoods.meapp.features.sample.FeedsScreen
 import com.greatergoods.meapp.features.sample.MyScalesScreen
 import com.greatergoods.meapp.features.sample.ProductDetailScreen
 import com.greatergoods.meapp.features.sample.ProductListScreen
-import com.greatergoods.meapp.features.sample.SampleThemeScreen
-import com.greatergoods.meapp.core.logging.LogManager
-import javax.inject.Inject
+import com.greatergoods.meapp.presentation.screens.AddEntryScreen
+import com.greatergoods.meapp.presentation.screens.EntryScreen
 
 /**
  * Registers the entry for the initial theme sample screen.
@@ -25,7 +25,15 @@ fun EntryProviderBuilder<NavKey>.initEntries(
     logManager: LogManager
 ) {
     entry<AppRoute.Init.SampleScreen> {
-        SampleThemeScreen(appViewModel = appViewModel)
+        EntryScreen(
+            onNavigateToAddEntry = {
+                // Navigate to add entry screen
+            },
+        )
+    }
+
+    entry<AppRoute.Main.AddEntry> {
+        AddEntryScreen()
     }
 }
 

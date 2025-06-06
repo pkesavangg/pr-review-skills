@@ -35,12 +35,16 @@ fun NavHost(
     )
     NavDisplay(
         backStack = topLevelBackStack.backStack,
-        onBack = { topLevelBackStack.removeLast() },
-        entryProvider =
-            entryProvider {
-                initEntries(appViewModel, logManager)
-                mainEntries()
-                productEntries()
-            },
+        onBack = {
+            // Handle back navigation
+            if (topLevelBackStack.backStack.isNotEmpty()) {
+                topLevelBackStack.removeLast()
+            }
+        },
+        entryProvider = entryProvider {
+            initEntries(appViewModel, logManager)
+            mainEntries()
+            productEntries()
+        },
     )
 }

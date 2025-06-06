@@ -12,8 +12,10 @@ import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.EntryView
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import kotlinx.coroutines.flow.Flow
 import java.util.Map.entry
+import android.util.Log
 
 /**
  * Data Access Object (DAO) for the entry table.
@@ -30,6 +32,7 @@ interface EntryDao {
     @Transaction
     suspend fun insert(entry: Entry): Long {
         val entryId = insertEntryEntity(entry.entry)
+        Log.i("CHECKING", "EntryDao inserted entry with ID: $entryId")
 
         entry.bpmEntry?.let {
             insertBpm(it.copy(id = entryId))
@@ -322,6 +325,79 @@ interface EntryDao {
      */
     @Update
     suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
+
+    /**
+     * Get entries for a specific month and year.
+     * @param accountId The account ID
+     * @param month The month in YYYY-MM format
+     * @return Flow of list of entries for the specified month
+     */
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM entry_view
+        WHERE accountId = :accountId
+        AND strftime('%Y-%m', datetime(entryTimestamp/1000, 'unixepoch')) = :month
+        ORDER BY entryTimestamp DESC
+    """,
+    )
+    fun getMonthDetail(accountId: String, month: String): Flow<List<EntryView>>
+
+    /**
+     * Get monthly aggregated data for the last year.
+     * @param accountId The account ID
+     * @return Flow of list of monthly aggregated data
+     */
+    @Transaction
+    @Query(
+        """
+        SELECT
+            MIN(entry_view.id) as id,
+            ROUND(AVG(body_scale_entry.weight)) as weight,
+            COUNT(DISTINCT entry_view.entryTimestamp) as count,
+            GROUP_CONCAT(body_scale_entry.weight || '|' || entry_view.entryTimestamp) as weights,
+            strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch')) as entryTimestamp
+        FROM entry_view
+        INNER JOIN body_scale_entry ON entry_view.id = body_scale_entry.id
+        WHERE entry_view.accountId = :accountId
+        AND entry_view.entryTimestamp >= strftime('%s', 'now', '-1 year') * 1000
+        AND entry_view.entryTimestamp <= strftime('%s', 'now') * 1000
+        GROUP BY strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch'))
+        ORDER BY entryTimestamp DESC
+    """,
+    )
+    fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>>
+
+    /**
+     * Get all monthly aggregated data.
+     * @param accountId The account ID
+     * @return Flow of list of all monthly aggregated data
+     */
+    @Transaction
+    @Query(
+        """
+        SELECT
+            MIN(entry_view.id) as id,
+            ROUND(AVG(body_scale_entry.weight)) as weight,
+            COUNT(DISTINCT entry_view.entryTimestamp) as count,
+            GROUP_CONCAT(body_scale_entry.weight || '|' || entry_view.entryTimestamp) as weights,
+            strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch')) as entryTimestamp
+        FROM entry_view
+        INNER JOIN body_scale_entry ON entry_view.id = body_scale_entry.id
+        WHERE entry_view.accountId = :accountId
+        GROUP BY strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch'))
+        ORDER BY entryTimestamp DESC
+    """,
+    )
+    fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>>
+
+    /**
+     * Get the operation count for an account.
+     * @param accountId The account ID
+     * @return The number of operations
+     */
+    @Query("SELECT COUNT(*) FROM entry WHERE accountId = :accountId")
+    suspend fun getOperationCount(accountId: String): Int
 }
 
 

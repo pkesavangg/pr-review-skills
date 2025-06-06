@@ -6,8 +6,8 @@ import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
 import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.repository.IAppRepository
-import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.domain.repository.IUserRepository
+import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.proto.UserAccount
@@ -15,6 +15,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,6 +41,7 @@ data class AppUiState(
 class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
     private val userRepository: IUserRepository,
+    private val entryService: IEntryService,
     private val navigationService: IAppEventService,
     private val dialogQueueService: DialogQueueService
 ) : ViewModel(),
@@ -53,6 +55,12 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             appRepository.themeModeFlow.collectLatest { mode ->
                 _uiState.value = _uiState.value.copy(themeMode = mode)
+            }
+        }
+        viewModelScope.launch {
+            userRepository.currentAccountFlow.collectLatest { account ->
+                val accountId = userRepository.accountsFlow.firstOrNull { it.values == account }?.keys?.firstOrNull()
+                entryService.updateAllData(accountId ?: "")
             }
         }
         viewModelScope.launch {

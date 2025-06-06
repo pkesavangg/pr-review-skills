@@ -2,6 +2,7 @@ package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -147,4 +148,33 @@ interface IEntryRepository {
      * @return List of EntryEntity objects from the API
      */
     suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleEntry>
+
+    /**
+     * Gets entries for a specific month and year.
+     * @param accountId The account ID
+     * @param month The month in YYYY-MM format
+     * @return Flow of list of entries for the specified month
+     */
+    fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>>
+
+    /**
+     * Gets monthly aggregated data for the last year.
+     * @param accountId The account ID
+     * @return Flow of list of monthly aggregated data
+     */
+    fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>>
+
+    /**
+     * Gets all monthly aggregated data.
+     * @param accountId The account ID
+     * @return Flow of list of all monthly aggregated data
+     */
+    fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>>
+
+    /**
+     * Gets the operation count for an account.
+     * @param accountId The account ID
+     * @return The number of operations
+     */
+    suspend fun getOperationCount(accountId: String): Int
 }

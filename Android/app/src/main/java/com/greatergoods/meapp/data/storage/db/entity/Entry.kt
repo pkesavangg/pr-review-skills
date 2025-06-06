@@ -13,17 +13,19 @@ data class Entry(
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
+        entity = BpmEntryEntity::class
     )
     val bpmEntry: BpmEntryEntity?,
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
+        entity = BodyScaleEntryEntity::class
     )
     val scaleEntry: BodyScaleEntryEntity?,
-
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
+        entity = BodyScaleEntryMetricEntity::class
     )
     val scaleEntryMetric: BodyScaleEntryMetricEntity?
 ) {
@@ -85,7 +87,7 @@ data class Entry(
                 operationType = scaleEntry.operationType,
                 deviceType = "scale",
                 deviceId = "manual",
-                isSynced = false,
+                isSynced = true,
             )
 
             val scaleEntryEntity = BodyScaleEntryEntity(

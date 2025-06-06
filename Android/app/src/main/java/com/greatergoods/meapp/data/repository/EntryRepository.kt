@@ -5,6 +5,7 @@ import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 /**
  * Repository implementation for managing entries.
@@ -20,12 +22,15 @@ import javax.inject.Singleton
 @Singleton
 class EntryRepository @Inject constructor(
     private val entryDao: EntryDao,
-    private val entryApi: EntryApi
+    private val entryApi: EntryApi,
 ) : IEntryRepository {
     /**
      * Inserts a single entry.
      */
-    override suspend fun insert(entry: Entry): Long = entryDao.insert(entry)
+    override suspend fun insert(entry: Entry): Long {
+        Log.i("CHECKING", "Repository inserting entry: $entry")
+        return entryDao.insert(entry)
+    }
 
     /**
      * Inserts a list of entries.
@@ -163,4 +168,39 @@ class EntryRepository @Inject constructor(
             emptyList()
         }
     }
+
+    /**
+     * Gets entries for a specific month and year.
+     * @param accountId The account ID
+     * @param month The month in YYYY-MM format
+     * @return Flow of list of entries for the specified month
+     */
+    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>> =
+        entryDao.getMonthDetail(accountId, month).map { views ->
+            views.map { it.toEntry() }
+        }
+
+    /**
+     * Gets monthly aggregated data for the last year.
+     * @param accountId The account ID
+     * @return Flow of list of monthly aggregated data
+     */
+    override fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>> =
+        entryDao.getMonthsLastYear(accountId)
+
+    /**
+     * Gets all monthly aggregated data.
+     * @param accountId The account ID
+     * @return Flow of list of all monthly aggregated data
+     */
+    override fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>> =
+        entryDao.getMonthsAll(accountId)
+
+    /**
+     * Gets the operation count for an account.
+     * @param accountId The account ID
+     * @return The number of operations
+     */
+    override suspend fun getOperationCount(accountId: String): Int =
+        entryDao.getOperationCount(accountId)
 }
