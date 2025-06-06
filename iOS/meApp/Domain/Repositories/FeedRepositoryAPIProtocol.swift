@@ -13,9 +13,8 @@ protocol FeedRepositoryAPIProtocol {
     func fetchFeedItems() async throws -> [FeedItem]
     
     /// Updates a feed item's state with the given action. (POST /feed/iam/{feedPostId})
-    /// - Parameters:
-    ///   - feedPostId: The ID of the feed post to update
-    ///   - actionType: The type of action (read, trigger, click, etc.)
-    ///   - variationId: Optional variation ID for certain action types
-    func updateFeedItem(feedPostId: String, actionType: FeedActionType, variationId: Int?) async throws
-} 
+    ///  - Parameters:
+    ///  - feedPostId: The ID of the feed item to update.
+    ///  - feedAction: The action to perform on the feed item (e.g., mark as read, trigger, click).
+    func updateFeedItem(feedPostId: String, feedAction: FeedAction) async throws
+}
