@@ -15,14 +15,13 @@ class PushNotificationService: NSObject {
     
     // MARK: - Properties
     private var fcmToken: String?
-    private var isSetupInProgress: Bool = false
     private let networkMonitor = NWPathMonitor()
-    @MainActor private var isNetworkConnected: Bool = false
+    private var isNetworkConnected: Bool = false
     private var deviceInfo: [String: String] = [:]
     private var notificationHandlers: [String: (([AnyHashable: Any]) -> Void)] = [:]
     private var isDeviceInfoUpdating: Bool = false
     private var isFetchingEntries: Bool = false
-    private var processedMessageIds: Set<String> = []
+    private var processedMessageIds: [String] = [] // Use array for FIFO
     private var isProcessingNotification: Bool = false
     private let logger = LoggerService.shared
     
@@ -44,7 +43,7 @@ class PushNotificationService: NSObject {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(tokenRefreshNotification),
-            name: Notification.Name(PushNotificationService.fcmTokenDidRefresh.rawValue),
+            name: PushNotificationService.fcmTokenDidRefresh,
             object: nil
         )
     }
@@ -182,8 +181,7 @@ class PushNotificationService: NSObject {
                 completion()
                 return
             }
-            processedMessageIds.insert(messageId)
-            // Keep the set size manageable
+            processedMessageIds.append(messageId)
             if processedMessageIds.count > 100 {
                 processedMessageIds.removeFirst()
             }
