@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.data.storage.db.entity
+package com.greatergoods.meapp.data.storage.db.entity.device
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.greatergoods.meapp.data.storage.db.converter.DateConverter
 import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
 
 /**
  * Entity class representing a device in the database.

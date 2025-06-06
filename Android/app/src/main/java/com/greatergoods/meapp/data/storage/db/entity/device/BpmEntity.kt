@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.data.storage.db.entity
+package com.greatergoods.meapp.data.storage.db.entity.device
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
