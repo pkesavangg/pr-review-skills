@@ -23,21 +23,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         AppDelegate.shared = self
         
-        // TODO: Remove this code once the permission service is implemented.
+        // Initialize services first
+        Task { @MainActor in
+            // Initialize ServiceRegistry to register all services
+            _ = ServiceRegistry.shared
+            
+            
+            // TODO: Remove this code once the permission service is implemented.
+            
+            // Initialize Firebase and notifications
+            FirebaseApp.configure()
+            Messaging.messaging().delegate = self
+            UNUserNotificationCenter.current().delegate = self
+            
+            // Request notification permissions (async/await version)
+            let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+            Task {
+                 try? await UNUserNotificationCenter.current().requestAuthorization(options: authOptions)
+            }
+            
+            application.registerForRemoteNotifications()
+        }
         
-        // Initialize Firebase and notifications
-        FirebaseApp.configure()
-        Messaging.messaging().delegate = self
-        UNUserNotificationCenter.current().delegate = self
-        
-        // Request notification permissions
-        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: authOptions,
-            completionHandler: { granted, error in }
-        )
-        
-        application.registerForRemoteNotifications()
         return true
     }
     
@@ -60,13 +67,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         let userInfo = notification.request.content.userInfo
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        NotificationCenter.default.post(
-            name: Notification.Name("ReceivedNotification"),
-            object: nil,
-            userInfo: userInfo
-        )
-        
-        completionHandler([[.banner, .badge, .sound]])
+        // Let PushNotificationService handle the notification
+        Task { @MainActor in
+           PushNotificationService.shared.handleNotification(userInfo) {
+                completionHandler([[.banner, .badge, .sound]])
+            }
+        }
     }
     
     /// Handles user interaction with notifications
@@ -80,13 +86,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         let userInfo = response.notification.request.content.userInfo
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        NotificationCenter.default.post(
-            name: Notification.Name("ReceivedNotification"),
-            object: nil,
-            userInfo: userInfo
-        )
-        
-        completionHandler()
+        // Only handle tap if it's a new notification
+        if userInfo["gcm.message_id"] as? String != nil {
+            Task { @MainActor in
+                 PushNotificationService.shared.handleNotification(userInfo) {
+                    completionHandler()
+                }
+            }
+        } else {
+            completionHandler()
+        }
     }
     
     // MARK: - MessagingDelegate
@@ -134,12 +143,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
-        NotificationCenter.default.post(
-            name: Notification.Name("ReceivedNotification"),
-            object: nil,
-            userInfo: userInfo
-        )
-        
-        completionHandler(UIBackgroundFetchResult.newData)
+        // Let PushNotificationService handle the notification
+        Task { @MainActor in
+             PushNotificationService.shared.handleNotification(userInfo) {
+                completionHandler(UIBackgroundFetchResult.newData)
+            }
+        }
     }
 }
