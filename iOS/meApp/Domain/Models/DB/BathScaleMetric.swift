@@ -79,3 +79,7 @@ final class BathScaleMetric {
         )
     }
 }
+
+/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+extension BathScaleMetric: @unchecked Sendable {}
+
