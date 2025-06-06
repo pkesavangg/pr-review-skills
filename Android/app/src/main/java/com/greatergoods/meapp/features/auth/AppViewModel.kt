@@ -51,19 +51,12 @@ class AppViewModel @Inject constructor(
             navigationService.replaceStack(
                 listOf(
                     AppRoute.Auth.LoginScreen,
-                )
+                ),
             )
         }
     }
 
     private fun initLogic() {
-        viewModelScope.launch {
-            userRepository.currentThemeModeFlow.collectLatest { themeMode ->
-                _uiState.value = _uiState.value.copy(
-                    themeMode = themeMode,
-                )
-            }
-        }
         viewModelScope.launch {
             userRepository.currentAccountFlow.collectLatest { account ->
                 if (currentAccount != account) {
