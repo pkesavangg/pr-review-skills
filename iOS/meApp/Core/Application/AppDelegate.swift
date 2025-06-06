@@ -33,12 +33,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             Messaging.messaging().delegate = self
             UNUserNotificationCenter.current().delegate = self
             
-            // Request notification permissions
+            // Request notification permissions (async/await version)
             let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-            UNUserNotificationCenter.current().requestAuthorization(
-                options: authOptions,
-                completionHandler: { granted, error in }
-            )
+            Task {
+                 try? await UNUserNotificationCenter.current().requestAuthorization(options: authOptions)
+            }
             
             application.registerForRemoteNotifications()
         }
@@ -63,13 +62,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                               willPresent notification: UNNotification,
                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let userInfo = notification.request.content.userInfo
-        print("[AppDelegate] 📬 Will present notification received: \(userInfo)")
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
         // Let PushNotificationService handle the notification
         Task { @MainActor in
            PushNotificationService.shared.handleNotification(userInfo) {
-                print("[AppDelegate] ✅ PushNotificationService completed handling foreground notification")
                 completionHandler([[.banner, .badge, .sound]])
             }
         }
@@ -84,14 +81,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-        print("[AppDelegate] 👆 Notification tapped with userInfo: \(userInfo)")
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
         // Only handle tap if it's a new notification
-        if let messageId = userInfo["gcm.message_id"] as? String {
+        if userInfo["gcm.message_id"] as? String != nil {
             Task { @MainActor in
-                await PushNotificationService.shared.handleNotification(userInfo) {
-                    print("[AppDelegate] ✅ PushNotificationService completed handling notification tap")
+                 PushNotificationService.shared.handleNotification(userInfo) {
                     completionHandler()
                 }
             }
@@ -143,13 +138,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     func application(_ application: UIApplication,
                     didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        print("[AppDelegate] 📱 Received remote notification in background: \(userInfo)")
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
         // Let PushNotificationService handle the notification
         Task { @MainActor in
-            await PushNotificationService.shared.handleNotification(userInfo) {
-                print("[AppDelegate] ✅ PushNotificationService completed handling background notification")
+             PushNotificationService.shared.handleNotification(userInfo) {
                 completionHandler(UIBackgroundFetchResult.newData)
             }
         }

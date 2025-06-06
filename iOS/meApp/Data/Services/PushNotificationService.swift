@@ -24,14 +24,12 @@ class PushNotificationService: NSObject {
     private var isFetchingEntries: Bool = false
     private var processedMessageIds: Set<String> = []
     private var isProcessingNotification: Bool = false
+    private let logger = LoggerService.shared
     
     // MARK: - Notification Settings
-    struct NotificationSettings: Codable {
-        var shouldSendEntryNotifications: Bool = false
-        var shouldSendWeightInEntryNotifications: Bool = false
-    }
-    
-    private var notificationSettings = NotificationSettings()
+    private var notificationSettings = Notifications(
+        shouldSendEntryNotifications: false,
+        shouldSendWeightInEntryNotifications: false)
     
     /// Private initializer to enforce singleton pattern
     private override init() {
@@ -39,25 +37,6 @@ class PushNotificationService: NSObject {
         fetchDeviceDetails()
         setupTokenRefresh()
         setupNetworkMonitoring()
-        setupNotificationHandlers()
-        setupNotificationCategories()
-    }
-    
-    // MARK: - Notification Categories
-    enum NotificationCategory: String, CaseIterable {
-        case general = "GENERAL"
-        case weight = "WEIGHT"
-        case entry = "ENTRY"
-        case system = "SYSTEM"
-        
-        var displayName: String {
-            switch self {
-            case .general: return "General Notifications"
-            case .weight: return "Weight Updates"
-            case .entry: return "Entry Notifications"
-            case .system: return "System Notifications"
-            }
-        }
     }
     
     // MARK: - Notification Settings
@@ -80,32 +59,6 @@ class PushNotificationService: NSObject {
             }
         }
         networkMonitor.start(queue: DispatchQueue.global())
-    }
-    
-    private func setupNotificationHandlers() {
-        // Handle notification received in foreground
-        Messaging.messaging().delegate = self
-        
-        // Handle notification received in background
-        UNUserNotificationCenter.current().delegate = self
-    }
-    
-    private func setupNotificationCategories() {
-        if #available(iOS 10.0, *) {
-            let center = UNUserNotificationCenter.current()
-            
-            // Create categories with actions
-            let categories = NotificationCategory.allCases.map { category in
-                UNNotificationCategory(
-                    identifier: category.rawValue,
-                    actions: [], // Add custom actions if needed
-                    intentIdentifiers: [],
-                    options: .customDismissAction
-                )
-            }
-            
-            center.setNotificationCategories(Set(categories))
-        }
     }
     
     // MARK: - Device Info Fetching
@@ -132,6 +85,7 @@ class PushNotificationService: NSObject {
             do {
                 if let token = notification.userInfo?["token"] as? String {
                     fcmToken = token
+                    saveFCMTokenIfNeeded(token)
                     await updateDeviceInfo()
                 }
             }
@@ -161,15 +115,6 @@ class PushNotificationService: NSObject {
         isDeviceInfoUpdating = true
         defer { isDeviceInfoUpdating = false }
         fetchDeviceDetails()
-        let updatedDeviceInfo = [
-            "appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
-            "deviceManufacturer": deviceInfo["manufacturer"] ?? "",
-            "deviceOSName": deviceInfo["deviceOSName"] ?? "",
-            "deviceOSVersion": deviceInfo["osVersion"] ?? "",
-            "deviceUUID": deviceInfo["deviceUuid"] ?? "",
-            "deviceModel": deviceInfo["model"] ?? "",
-            "fcmToken": fcmToken ?? ""
-        ]
     }
     
     // MARK: - Push Notification Registration
@@ -192,23 +137,15 @@ class PushNotificationService: NSObject {
             fcmToken = token
             await updateDeviceInfo()
         } catch {
-            print("Error registering for push notifications: \(error)")
         }
     }
-        
+    
     private func networkOperations() async {
         guard isNetworkConnected else {
-            print("[PushNotificationService] ⚠️ Network not connected, skipping operations")
             return
         }
-        
-        do {
-            print("[PushNotificationService] 🌐 Starting network operations")
-            await fetchEntries()
-            await syncDevices()
-        } catch {
-            print("[PushNotificationService] ❌ Network operations failed: \(error)")
-        }
+        await fetchEntries()
+        await syncDevices()
     }
     
     // MARK: - Entry/Operation Syncing
@@ -216,70 +153,32 @@ class PushNotificationService: NSObject {
         guard !isFetchingEntries else { return }
         isFetchingEntries = true
         defer { isFetchingEntries = false }
-        print("[PushNotificationService] fetchEntries called (showToast: \(showToast))")
-        
-        do {
-            await entryService.syncAllEntriesWithRemote()
-        } catch {
-            print("[PushNotificationService] ⚠️ Error syncing entries: \(error)")
-        }
+        await entryService.syncAllEntriesWithRemote()
     }
     
     // MARK: - Device/Scale Syncing
     private func syncDevices() async {
-        print("[PushNotificationService] syncDevices called")
         await ScaleService.shared.syncAllScalesWithRemote()
     }
     
-    // MARK: - Topic Subscription Example
-    private func subscribeToRelevantTopics() {
-        print("[PushNotificationService] subscribeToRelevantTopics called")
-        // Example: subscribe to a topic (replace with actual logic)
-        subscribeToTopic("example_topic")
-    }
-    
     // MARK: - Notification Settings Management
-    func updateNotificationSettings(_ settings: NotificationSettings) async throws {
+    func updateNotificationSettings(_ settings: Notifications) async throws {
         guard isNetworkConnected else {
-            // Store settings for offline sync
             UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: "pendingNotificationSettings")
             return
         }
-        
-        // Update local settings
         notificationSettings = settings
-    }
-    
-    // MARK: - Topic Subscription
-    func subscribeToTopic(_ topic: String) {
-        Messaging.messaging().subscribe(toTopic: topic) { error in
-            if let error = error {
-                print("Error subscribing to topic: \(error)")
-            }
-        }
-    }
-    
-    func unsubscribeFromTopic(_ topic: String) {
-        Messaging.messaging().unsubscribe(fromTopic: topic) { error in
-            if let error = error {
-                print("Error unsubscribing from topic: \(error)")
-            }
-        }
     }
     
     // MARK: - Notification Handling
     func handleNotification(_ userInfo: [AnyHashable: Any], completion: @escaping () -> Void) {
-        // Check if we're already processing a notification
         guard !isProcessingNotification else {
-            print("[PushNotificationService] ⏭️ Skipping notification - already processing one")
             completion()
             return
         }
         
-        // Check if we've already processed this message
         if let messageId = userInfo["gcm.message_id"] as? String {
             if processedMessageIds.contains(messageId) {
-                print("[PushNotificationService] ⏭️ Skipping already processed message: \(messageId)")
                 completion()
                 return
             }
@@ -291,93 +190,40 @@ class PushNotificationService: NSObject {
         }
         
         isProcessingNotification = true
-        print("[PushNotificationService] 🔔 Starting to handle notification with userInfo: \(userInfo)")
-        
         Task {
             do {
-                print("[PushNotificationService] 📥 Fetching entries after notification...")
                 await fetchEntries(showToast: true)
-                
-                print("[PushNotificationService] 🔄 Syncing devices after notification...")
                 await syncDevices()
-                
-                print("[PushNotificationService] 📢 Subscribing to relevant topics...")
-                subscribeToRelevantTopics()
-                
-                // Extract notification content from FCM payload
-                let aps = userInfo["aps"] as? [String: Any]
-                let alert = aps?["alert"] as? [String: Any]
-                let title = alert?["title"] as? String ?? "New Notification"
-                let body = alert?["body"] as? String ?? "You have a new message"
-                let fcmOptions = userInfo["fcm_options"] as? [String: Any]
-                let imageUrl = fcmOptions?["image"] as? String
-                
-                print("[PushNotificationService] 📝 Creating notification with title: \(title), body: \(body)")
-                if let imageUrl = imageUrl {
-                    print("[PushNotificationService] 🖼️ Notification includes image: \(imageUrl)")
+                // Only create a new notification if we're in the background
+                if UIApplication.shared.applicationState == .background {
+                    // Extract notification content from FCM payload
+                    let aps = userInfo["aps"] as? [String: Any]
+                    let alert = aps?["alert"] as? [String: Any]
+                    let title = alert?["title"] as? String ?? "New Notification"
+                    let body = alert?["body"] as? String ?? "You have a new message"
+                    let content = UNMutableNotificationContent()
+                    content.title = title
+                    content.body = body
+                    content.userInfo = userInfo
+                    content.sound = .default
+                    // Create notification request
+                    let request = UNNotificationRequest(
+                        identifier: UUID().uuidString,
+                        content: content,
+                        trigger: nil
+                    )
+                    try await UNUserNotificationCenter.current().add(request)
                 }
-                
-                let content = UNMutableNotificationContent()
-                content.title = title
-                content.body = body
-                content.categoryIdentifier = NotificationCategory.general.rawValue
-                content.userInfo = userInfo
-                content.sound = .default
-                
-                // Handle image if present
-                if let imageUrl = imageUrl {
-                    do {
-                        let attachment = try await downloadAndCreateAttachment(from: imageUrl)
-                        content.attachments = [attachment]
-                    } catch {
-                        print("[PushNotificationService] ⚠️ Failed to download notification image: \(error)")
-                    }
-                }
-                
-                // Create notification request
-                let request = UNNotificationRequest(
-                    identifier: UUID().uuidString,
-                    content: content,
-                    trigger: nil
-                )
-                
-                // Add notification
-                try await UNUserNotificationCenter.current().add(request)
-                print("[PushNotificationService] ✅ Successfully added notification")
-                
             } catch {
-                print("[PushNotificationService] ❌ Error processing notification: \(error)")
             }
-            
             isProcessingNotification = false
             completion()
         }
     }
     
-    // Helper method to download and create notification attachment
-    private func downloadAndCreateAttachment(from urlString: String) async throws -> UNNotificationAttachment {
-        guard let url = URL(string: urlString) else {
-            throw NSError(domain: "PushNotificationService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image URL"])
-        }
-        
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let tempDir = FileManager.default.temporaryDirectory
-        let fileName = url.lastPathComponent
-        let fileURL = tempDir.appendingPathComponent(fileName)
-        
-        try data.write(to: fileURL)
-        
-        return try UNNotificationAttachment(
-            identifier: UUID().uuidString,
-            url: fileURL,
-            options: nil
-        )
-    }
-    
     // MARK: - Notification Tap Handling
     private func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {
         if let destination = userInfo["destination"] as? String {
-            // Post notification for app navigation
             NotificationCenter.default.post(
                 name: .didReceiveNotification,
                 object: nil,
@@ -390,84 +236,17 @@ class PushNotificationService: NSObject {
     deinit {
         networkMonitor.cancel()
     }
-}
-
-// MARK: - Notification Names
-extension Notification.Name {
-    static let didReceiveNotification = Notification.Name("didReceiveNotification")
-}
-
-// MARK: - MessagingDelegate
-extension PushNotificationService: MessagingDelegate {
-    nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        guard let token = fcmToken else { return }
-        Task { @MainActor in
-            self.fcmToken = token
-            await updateDeviceInfo()
-        }
-    }
-}
-
-// MARK: - UNUserNotificationCenterDelegate
-extension PushNotificationService: UNUserNotificationCenterDelegate {
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                              willPresent notification: UNNotification,
-                              withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        let userInfo = notification.request.content.userInfo
-        print("[PushNotificationService] 📬 Will present notification received: \(userInfo)")
-        Task { @MainActor in
-            if let type = userInfo["type"] as? String,
-               let handler = notificationHandlers[type] {
-                print("[PushNotificationService] 🔄 Executing handler for notification type: \(type)")
-                handler(userInfo)
-            }
-            
-            print("[PushNotificationService] 📥 Fetching entries after foreground notification...")
-            await fetchEntries(showToast: true)
-            
-            print("[PushNotificationService] 🔄 Syncing devices after foreground notification...")
-            await syncDevices()
-            
-            print("[PushNotificationService] 📢 Subscribing to relevant topics after foreground notification...")
-            subscribeToRelevantTopics()
-            
-            completionHandler([.banner, .sound, .badge])
-        }
-    }
     
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                              didReceive response: UNNotificationResponse,
-                              withCompletionHandler completionHandler: @escaping () -> Void) {
-        let userInfo = response.notification.request.content.userInfo
-        print("[PushNotificationService] 👆 Notification tapped with userInfo: \(userInfo)")
-        Task { @MainActor in
-            if let type = userInfo["type"] as? String,
-               let handler = notificationHandlers[type] {
-                print("[PushNotificationService] 🔄 Executing handler for tapped notification type: \(type)")
-                handler(userInfo)
-            }
-            
-            print("[PushNotificationService] 📥 Fetching entries after notification tap...")
-            await fetchEntries(showToast: true)
-            
-            print("[PushNotificationService] 🔄 Syncing devices after notification tap...")
-            await syncDevices()
-            
-            print("[PushNotificationService] 📢 Subscribing to relevant topics after notification tap...")
-            subscribeToRelevantTopics()
-        }
-        completionHandler()
-    }
-    
-    // Add method to handle incoming messages
-    nonisolated func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        print("[PushNotificationService] 📱 Received remote notification in background: \(userInfo)")
-        Task { @MainActor in
-            handleNotification(userInfo) {
-                print("[PushNotificationService] ✅ Completed handling background notification")
-                completionHandler(.newData)
+    /// Saves the FCM token to UserDefaults if it has changed
+    func saveFCMTokenIfNeeded(_ token: String) {
+        let defaults = UserDefaults.standard
+        let key = "fcmToken"
+        if let existingToken = defaults.string(forKey: key) {
+            if existingToken == token {
+                return
             }
         }
+        defaults.set(token, forKey: key)
     }
 }
+
