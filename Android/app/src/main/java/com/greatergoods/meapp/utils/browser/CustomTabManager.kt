@@ -5,7 +5,7 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.core.net.toUri
-import android.content.Intent
+import com.greatergoods.meapp.utils.WebViewLauncher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -64,6 +64,7 @@ class CustomTabManager(
     override fun openUrl(url: String, context: Context, showBack: Boolean, showShare: Boolean) {
         val uri = url.toUri()
         try {
+
             if (binder?.session != null && packageName != null) {
                 val intent = intentBuilder.build(binder!!.session, packageName, url, showBack, showShare)
                 context.let {
@@ -77,10 +78,7 @@ class CustomTabManager(
 
         // Fallback
         try {
-            val fallbackIntent = Intent(Intent.ACTION_VIEW, uri).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            this@CustomTabManager.context.startActivity(fallbackIntent)
+            WebViewLauncher.launch(context, url)
         } catch (e: Exception) {
             Log.e(TAG, "Fallback failed: ${e.message}")
         }

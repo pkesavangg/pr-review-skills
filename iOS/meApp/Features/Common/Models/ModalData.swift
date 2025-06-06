@@ -15,9 +15,4 @@ struct ModalData: Identifiable, Equatable {
     static func == (lhs: ModalData, rhs: ModalData) -> Bool {
         lhs.id == rhs.id
     }
-    
-    // Since we can't compare closures, we need to ignore onDismiss in Equatable
-    static func != (lhs: ModalData, rhs: ModalData) -> Bool {
-        lhs.id != rhs.id
-    }
 }

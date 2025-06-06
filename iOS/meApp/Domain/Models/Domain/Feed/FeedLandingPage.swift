@@ -1,5 +1,5 @@
 /// Represents a landing page for a feed item.
-struct LandingPage: Codable, Equatable {
+struct FeedLandingPage: Codable, Equatable {
     /// The unique identifier for the landing page.
     let feedLandingPageId: String
     /// The associated feed post ID.
