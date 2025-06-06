@@ -2,7 +2,6 @@ package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
-import com.greatergoods.meapp.data.model.request.CreateAccountRequest
 import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
@@ -66,9 +65,7 @@ class AccountAuthService @Inject constructor(
         }
 
         return try {
-            val response = accountRepository.loginOnApi(email, password)
-            val account = accountRepository.insertAccount(response.account)
-            AppLog.d(TAG, "Login successful for user: ${account.account.email}")
+            val account = accountRepository.login(email, password)
             _authStateFlow.emit(AuthState.LoggedIn(account))
             _isLoginFlow.emit(true)
             account
@@ -89,13 +86,13 @@ class AccountAuthService @Inject constructor(
             // Try to logout on API if network is available
             if (isNetworkAvailable()) {
                 try {
-                    accountRepository.logoutOnApi(accountId)
+                    // TODO: Implement logout on API in repository
                 } catch (e: Exception) {
                     AppLog.e(TAG, "API logout failed", e.toString())
                     // Continue with local logout even if API fails
                 }
             }
-            
+
             // Always perform local logout
             accountRepository.logoutAccount(accountId)
             AppLog.d(TAG, "Logout successful for account: $accountId")
@@ -126,7 +123,7 @@ class AccountAuthService @Inject constructor(
                 try {
                     if (isNetworkAvailable()) {
                         try {
-                            accountRepository.logoutOnApi(account.account.id)
+                            // TODO: Implement logout on API in repository
                         } catch (e: Exception) {
                             AppLog.e(TAG, "API logout failed for account "+account.account.id, e.toString())
                             // Continue with local logout even if API fails
@@ -154,7 +151,7 @@ class AccountAuthService @Inject constructor(
      * @param request Account creation request data
      * @return The created account or null if creation fails
      */
-    override suspend fun addAccount(request: CreateAccountRequest): Account? {
+    override suspend fun addAccount(request: Map<String, Any>): Account? {
         if (!isNetworkAvailable()) {
             AppLog.e(TAG, "No network connection available")
             _authStateFlow.emit(AuthState.Error("No network connection available"))
@@ -167,19 +164,8 @@ class AccountAuthService @Inject constructor(
             _authStateFlow.emit(AuthState.Error("Maximum account limit reached"))
             return null
         }
-
-        return try {
-            val response = accountRepository.createAccountOnApi(request)
-            val account = accountRepository.insertAccount(response.account)
-            AppLog.d(TAG, "Account created successfully: ${account.account.email}")
-            _authStateFlow.emit(AuthState.AccountAdded(account))
-            _isSignUpFlow.emit(true)
-            account
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Account creation failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Account creation failed"))
-            null
-        }
+        //TODO: Implement account creation on API
+        return null
     }
 
     /**
@@ -271,11 +257,9 @@ class AccountAuthService @Inject constructor(
 
         return try {
             val account = getCurrentAccount() ?: return false
-            val refreshToken = account.account.refreshToken ?: return false
-            val response = accountRepository.refreshAccountOnApi(refreshToken)
-            val updatedAccount = accountRepository.updateAccount(response.account)
-            AppLog.d(TAG, "Session refreshed successfully for account: ${updatedAccount.account.email}")
-            _authStateFlow.emit(AuthState.SessionRefreshed(updatedAccount))
+            val refreshedAccount = accountRepository.refreshAccount()
+            AppLog.d(TAG, "Session refreshed successfully for account: ${refreshedAccount.account.email}")
+            _authStateFlow.emit(AuthState.SessionRefreshed(refreshedAccount))
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Session refresh failed", e.toString())
@@ -291,13 +275,7 @@ class AccountAuthService @Inject constructor(
      */
     override suspend fun updateTokens(tokens: Map<String, String>): Boolean {
         return try {
-            val account = getCurrentAccount() ?: return false
-            val updatedAccount = account.copy(
-                account = account.account.copy(
-                    expiresAt = tokens["expiresAt"]
-                )
-            )
-            accountRepository.updateAccount(updatedAccount)
+            accountRepository.updateTokens(tokens)
             AppLog.d(TAG, "Tokens updated successfully")
             _authStateFlow.emit(AuthState.TokensUpdated)
             true
@@ -314,8 +292,8 @@ class AccountAuthService @Inject constructor(
      */
     override suspend fun checkForLoggedInUser(): Boolean {
         return try {
-            val storedAccount = accountRepository.getActiveAccount().first()
-            if (storedAccount != null && storedAccount.account.id.isNotEmpty() && storedAccount.account.isLoggedIn) {
+            val storedAccount = accountRepository.getStoredActiveAccount()
+            if (storedAccount != null && storedAccount.account.id.isNotEmpty() && !storedAccount.account.isExpired) {
                 // Restore the session
                 if (storedAccount.account.expiresAt != null) {
                     val expirationDate = Date(storedAccount.account.expiresAt.toLong())
@@ -336,9 +314,12 @@ class AccountAuthService @Inject constructor(
                             false
                         }
                     }
+                } else {
+                    false
                 }
+            } else {
+                false
             }
-            false
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to check logged in user", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Failed to check logged in user"))

@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.domain.services
 
-import com.greatergoods.meapp.data.model.request.CreateAccountRequest
 import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,7 +18,7 @@ interface IAccountAuthService {
     suspend fun login(email: String, password: String): Account?
     suspend fun logout(accountId: String): Boolean
     suspend fun logoutAll(): Boolean
-    suspend fun addAccount(request: CreateAccountRequest): Account?
+    suspend fun addAccount(request: Map<String, Any>): Account?
     suspend fun removeAccount(accountId: String): Boolean
     suspend fun switchAccount(account: Account): Boolean
     suspend fun getCurrentAccount(): Account?
@@ -46,4 +45,4 @@ sealed class AuthState {
 /**
  * Custom exception for authentication-related errors.
  */
-class AuthException(message: String, cause: Throwable? = null) : Exception(message, cause) 
+class AuthException(message: String, cause: Throwable? = null) : Exception(message, cause)
