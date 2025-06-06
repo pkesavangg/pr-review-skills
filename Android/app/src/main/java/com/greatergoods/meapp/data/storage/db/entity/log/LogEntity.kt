@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.data.storage.db.entity
+package com.greatergoods.meapp.data.storage.db.entity.log
 
 import androidx.room.Entity
 import androidx.room.Index
@@ -71,4 +71,4 @@ data class LogEntity(
      * Additional data associated with the log entry
      */
     val data: String?
-) 
+)

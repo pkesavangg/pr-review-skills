@@ -1,7 +1,8 @@
-package com.greatergoods.meapp.data.storage.db.entity
+package com.greatergoods.meapp.data.storage.db.entity.device
 
 import androidx.room.Embedded
 import androidx.room.Relation
+import com.greatergoods.meapp.data.storage.db.entity.DeviceDTO
 
 /**
  * Room relation class that combines DeviceEntity with its related entities (BodyScale, BPM, Meta, R4Prefs).

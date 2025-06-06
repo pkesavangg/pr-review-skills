@@ -1,7 +1,6 @@
 package com.greatergoods.meapp
 
 import com.greatergoods.meapp.core.logging.AppLog
-import com.greatergoods.meapp.core.shared.utilities.DatabaseLoggingTree
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import dagger.hilt.android.HiltAndroidApp
@@ -33,18 +32,11 @@ class MeAppApplication : Application() {
         // Initialize AppLog for dual logging
         AppLog.logRepository = logRepository
 
-        // Initialize logging system and get session ID
+        // Initialize logging system
         applicationScope.launch {
             try {
                 logRepository.initialize()
-
-                // Initialize database logging with the session ID from repository
-                logRepository.getSessionId()?.let { sessionId ->
-                    DatabaseLoggingTree(logDao, "default", sessionId)
-                    AppLog.d("MeAppApplication", "Database logging initialized with session ID: $sessionId")
-                } ?: run {
-                    AppLog.e("MeAppApplication", "Failed to initialize database logging: No session ID available")
-                }
+                AppLog.d("MeAppApplication", "Logging system initialized")
             } catch (e: Exception) {
                 AppLog.e("MeAppApplication", "Failed to initialize logging system", e.toString())
             }

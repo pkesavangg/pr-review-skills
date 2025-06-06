@@ -1,87 +1,76 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
-import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
 
 /**
  * Implementation of the IAccountRepository interface.
- * Handles all account-related data operations including authentication, profile management,
- * and data synchronization between local storage and remote server.
+ * Handles account operations using Room database.
  */
-class AccountRepository
-    @Inject
-    constructor(
-        private val accountDao: AccountDao,
-    ) : IAccountRepository {
-        override suspend fun login(
-            email: String,
-            password: String,
-        ): AccountEntity {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun logout(
-            accountId: String,
-            showLogoutAlert: Boolean,
-        ) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun logoutAllAccounts() {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun createAccount(accountData: Map<String, Any>): AccountEntity {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun updateProfile(profile: Map<String, Any>): AccountEntity {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun updateBodyComp(bodyComp: Map<String, Any>): AccountEntity {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun updatePassword(
-            oldPassword: String,
-            newPassword: String,
-        ) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun requestPasswordReset(email: String) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun switchAccount(accountData: AccountEntity?) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun deleteAccount(account: AccountEntity) {
-            TODO("Not yet implemented")
-        }
-
-        override fun getActiveAccount(): Flow<AccountEntity?> {
-            TODO("Not yet implemented")
-        }
-
-        override fun getAllLoggedInAccounts(): Flow<List<AccountEntity>> {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun refreshAccount(): AccountEntity {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun updateTokens(tokens: Map<String, String>) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun clearOfflineData() {
-            TODO("Not yet implemented")
-        }
+class AccountRepository @Inject constructor(
+    private val accountDao: AccountDao,
+) : IAccountRepository {
+    override suspend fun login(email: String, password: String): Account {
+        throw NotImplementedError("Stub")
     }
+
+    override suspend fun logout(accountId: String, showLogoutAlert: Boolean) {
+        // No-op
+    }
+
+    override suspend fun logoutAllAccounts() {
+        // No-op
+    }
+
+    override suspend fun createAccount(accountData: Map<String, Any>): Account {
+        throw NotImplementedError("Stub")
+    }
+
+    override suspend fun updateProfile(profile: Map<String, Any>): Account {
+        throw NotImplementedError("Stub")
+    }
+
+    override suspend fun updateBodyComp(bodyComp: Map<String, Any>): Account {
+        throw NotImplementedError("Stub")
+    }
+
+    override suspend fun updatePassword(oldPassword: String, newPassword: String) {
+        // No-op
+    }
+
+    override suspend fun requestPasswordReset(email: String) {
+        // No-op
+    }
+
+    override suspend fun switchAccount(accountData: Account?) {
+        // No-op
+    }
+
+    override suspend fun deleteAccount(account: Account) {
+        // No-op
+    }
+
+    override fun getActiveAccount(): Flow<Account?> {
+        return flowOf(null)
+    }
+
+    override fun getAllLoggedInAccounts(): Flow<List<Account>> {
+        return flowOf(emptyList())
+    }
+
+    override suspend fun refreshAccount(): Account {
+        throw NotImplementedError("Stub")
+    }
+
+    override suspend fun updateTokens(tokens: Map<String, String>) {
+        // No-op
+    }
+
+    override suspend fun clearOfflineData() {
+        // No-op
+    }
+}

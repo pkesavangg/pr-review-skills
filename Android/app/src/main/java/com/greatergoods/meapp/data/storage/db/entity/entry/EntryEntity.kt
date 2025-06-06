@@ -1,9 +1,10 @@
-package com.greatergoods.meapp.data.storage.db.entity
+package com.greatergoods.meapp.data.storage.db.entity.entry
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
 
 /**
  * Entity class representing an entry in the database.
