@@ -87,12 +87,8 @@ Stores user account details such as personal info, tokens, and app settings.
 | account_id           | string  | Foreign key for referencing account.account_id    |
 | is_fitbit_on         | boolean | Whether Fitbit integration is enabled             |
 | is_fitbit_valid      | boolean | Whether Fitbit integration is valid/authenticated |
-| is_google_fit_on     | boolean | Whether Google Fit is enabled                     |
-| is_google_fit_valid  | boolean | Whether Google Fit integration is valid           |
 | is_health_connect_on | boolean | Whether Health Connect integration is enabled     |
 | is_health_kit_on     | boolean | Whether Apple HealthKit is enabled                |
-| is_ua_on             | boolean | Under Armour connection enabled                   |
-| is_ua_valid          | boolean | Under Armour connection valid                     |
 | is_mfp_on            | boolean | Whether MyFitnessPal integration is enabled       |
 | is_mfp_valid         | boolean | Whether MFP integration is valid                  |
 | is_synced            | boolean | Is integrations settings are synced online        |
@@ -320,12 +316,8 @@ erDiagram
         string account_id FK
         boolean is_fitbit_on
         boolean is_fitbit_valid
-        boolean is_google_fit_on
-        boolean is_google_fit_valid
         boolean is_health_connect_on
         boolean is_health_kit_on
-        boolean is_ua_on
-        boolean is_ua_valid
         boolean is_mfp_on
         boolean is_mfp_valid
         boolean is_synced

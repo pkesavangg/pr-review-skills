@@ -20,12 +20,8 @@ data class IntegrationsSettingsEntity(
     val accountId: String,
     val isFitbitOn: Boolean,
     val isFitbitValid: Boolean,
-    val isGoogleFitOn: Boolean,
-    val isGoogleFitValid: Boolean,
     val isHealthConnectOn: Boolean,
     val isHealthKitOn: Boolean,
-    val isUaOn: Boolean,
-    val isUaValid: Boolean,
     val isMfpOn: Boolean,
     val isMfpValid: Boolean,
     val isSynced: Boolean
