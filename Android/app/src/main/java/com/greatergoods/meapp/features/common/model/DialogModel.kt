@@ -71,3 +71,9 @@ sealed class DialogModel(
 
     override fun compareTo(other: DialogModel): Int = this.priority.compareTo(other.priority)
 }
+
+data class Toast(
+    val message: String,
+    val title: String? = null,
+    val action: ActionButton? = null,
+)
