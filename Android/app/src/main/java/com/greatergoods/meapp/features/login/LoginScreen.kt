@@ -1,163 +1,163 @@
 package com.greatergoods.meapp.features.login
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.features.login.LoginViewModel.ProfileState
-import com.greatergoods.meapp.features.login.LoginViewModel.LoginState
-import com.greatergoods.meapp.features.login.LoginViewModel.RefreshTokenState
-
-
-
+import androidx.compose.ui.unit.sp
+import com.greatergoods.meapp.theme.MeAppTheme
+import android.content.res.Configuration
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = hiltViewModel()
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-
-    val loginState by viewModel.loginState.collectAsState()
-    val profileState by viewModel.profileState.collectAsState()
-    val refreshTokenState by viewModel.refreshTokenState.collectAsState()
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 25.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(MeAppTheme.colorScheme.primaryAction),
     ) {
-        // Login Section
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Button(
-            onClick = { viewModel.login(email, password) },
-            modifier = Modifier.fillMaxWidth()
+        // Main content
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Text("Login")
-        }
-
-        // Profile Section
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Text(
+                text = "weightgurus is now",
+                color = MeAppTheme.colorScheme.inverse,
+                style = MeAppTheme.typography.subHeading1,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Text(
+                text = "my everyday",
+                color = MeAppTheme.colorScheme.inverse,
+                style = MeAppTheme.typography.heading2,
+                fontWeight = FontWeight.W800,
+                fontSize = 50.sp,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = "health",
+                color = MeAppTheme.colorScheme.brand,
+                style = MeAppTheme.typography.heading2,
+                fontWeight = FontWeight.W800,
+                fontSize = 50.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Text(
+                text = "LEARN MORE",
+                color = MeAppTheme.colorScheme.inverse,
+                style = MeAppTheme.typography.button1,
+                fontWeight = FontWeight.W700,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(40.dp))
+            Button(
+                onClick = { /* TODO: Sign up action */ },
+                modifier = Modifier
+                    .widthIn(min = 150.dp)
+                    .height(40.dp),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MeAppTheme.colorScheme.primary,
+                    contentColor = MeAppTheme.colorScheme.primaryAction,
+                ),
             ) {
                 Text(
-                    text = "Profile Section",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "SIGN UP",
+                    style = MeAppTheme.typography.button1,
+                    fontWeight = FontWeight.W700,
+                    fontSize = 16.sp,
                 )
-
-                Button(
-                    onClick = { viewModel.fetchProfile() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Fetch Profile")
-                }
-
-                // Profile State Display
-                when (val state = profileState) {
-                    is ProfileState.Loading -> {
-                        CircularProgressIndicator()
-                    }
-                    is ProfileState.Success -> {
-                        Text("Profile: ${state.profile.firstName} ${state.profile.lastName}")
-                        Text("Email: ${state.profile.email}")
-                        state.profile.height?.let { Text("Height: $it") }
-                        state.profile.weight?.let { Text("Weight: $it") }
-                    }
-                    is ProfileState.Error -> {
-                        Text(
-                            text = "Error: ${state.message}",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    else -> {}
-                }
             }
-        }
-
-        // Token Refresh Section
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = {
+                    // TODO: Log in action},
+                },
+                modifier = Modifier
+                    .widthIn(min = 150.dp)
+                    .height(40.dp),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MeAppTheme.colorScheme.primaryAction,
+                    contentColor = MeAppTheme.colorScheme.inverse,
+                ),
+                border = BorderStroke(
+                    width = 3.dp,
+                    color = MeAppTheme.colorScheme.primary,
+                ),
             ) {
                 Text(
-                    text = "Token Refresh Section",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Button(
-                    onClick = {
-                        // Get refresh token from login response
-                        (loginState as? LoginState.Success)?.response?.refreshToken?.let { token ->
-                            viewModel.refreshToken(token)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = loginState is LoginState.Success
-                ) {
-                    Text("Refresh Token")
-                }
-
-                // Token Refresh State Display
-                when (val state = refreshTokenState) {
-                    is RefreshTokenState.Loading -> {
-                        CircularProgressIndicator()
-                    }
-                    is RefreshTokenState.Success -> {
-                        Text("Token Refreshed Successfully")
-                    }
-                    is RefreshTokenState.Error -> {
-                        Text(
-                            text = "Error: ${state.message}",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    else -> {}
-                }
-            }
-        }
-
-        // Login State Display
-        when (val state = loginState) {
-            is LoginState.Loading -> {
-                CircularProgressIndicator()
-            }
-            is LoginState.Success -> {
-                Text("Login Successful")
-            }
-            is LoginState.Error -> {
-                Text(
-                    text = "Error: ${state.message}",
-                    color = MaterialTheme.colorScheme.error
+                    text = "LOG IN",
+                    style = MeAppTheme.typography.button1,
+                    fontWeight = FontWeight.W700,
+                    fontSize = 16.sp,
                 )
             }
-            else -> {}
         }
+        // Footer
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(bottom = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "me.health by greater goods",
+                color = MeAppTheme.colorScheme.inverse,
+                style = MeAppTheme.typography.subHeading2,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = "version 1.0.0",
+                color = MeAppTheme.colorScheme.inverse,
+                style = MeAppTheme.typography.subHeading2,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
+@Composable
+fun LoginScreenPreviewLight() {
+    MeAppTheme {
+        LoginScreen()
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Composable
+fun LoginScreenPreviewDark() {
+    MeAppTheme {
+        LoginScreen()
     }
 }

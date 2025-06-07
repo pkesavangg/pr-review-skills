@@ -366,3 +366,6 @@ extension Account {
         self.activityLevel = profile.activityLevel
     }
 }
+
+/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+extension Account: @unchecked Sendable {}

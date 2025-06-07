@@ -51,9 +51,9 @@ class AppEventService : IAppEventService {
      * Emits a navigation intent to navigate to the root of the stack.
      * @param currentRoute The current route.
      */
-    override suspend fun navigateToRoot(currentRoute: AppRoute) {
+    override suspend fun navigateToRoot() {
         emitNavigationIntent(
-            NavigationIntent.NavigateToRoot(currentRoute),
+            NavigationIntent.NavigateToRoot,
         )
     }
 

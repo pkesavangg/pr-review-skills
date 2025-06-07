@@ -1,363 +1,122 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import androidx.room.Update
-import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
+import androidx.room.*
+import com.greatergoods.meapp.data.storage.db.entity.account.Account
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.DashboardSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Data Access Object (DAO) for the account table.
- * Provides methods to interact with the account data in the database.
+ * Data Access Object (DAO) for managing account data and related settings.
+ * Provides methods to interact with the account and its associated settings in the database.
  */
 @Dao
 interface AccountDao {
-    /**
-     * Insert a new account into the database.
-     * @param account The account entity to insert
-     * @return The row ID of the inserted account
-     */
+    // Account Operations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(account: AccountEntity): Long
+    suspend fun insertAccount(account: AccountEntity)
 
-    /**
-     * Update an existing account in the database.
-     * @param account The account entity to update
-     * @return The number of rows updated
-     */
     @Update
-    suspend fun update(account: AccountEntity): Int
+    suspend fun updateAccount(account: AccountEntity)
 
-    /**
-     * Delete an account from the database.
-     * @param account The account entity to delete
-     * @return The number of rows deleted
-     */
     @Delete
-    suspend fun delete(account: AccountEntity): Int
+    suspend fun deleteAccount(account: AccountEntity)
 
-    /**
-     * Get an account by its ID.
-     * @param id The account ID
-     * @return The account entity if found, null otherwise
-     */
-    @Query("SELECT * FROM account WHERE accountId = :id")
-    suspend fun getAccountById(id: String): AccountEntity?
+    @Query("DELETE FROM account WHERE accountId = :accountId")
+    suspend fun deleteAccountById(accountId: String)
 
-    /**
-     * Get the active account.
-     * @return The active account entity if found, null otherwise
-     */
-    @Query("SELECT * FROM account WHERE isActiveAccount = 1 LIMIT 1")
-    suspend fun getActiveAccount(): AccountEntity?
+    @Transaction
+    @Query("DELETE FROM account")
+    suspend fun removeAllAccounts()
 
-    /**
-     * Get all logged-in accounts.
-     * @return A Flow of all logged-in account entities
-     */
+    // Account Queries
+    @Transaction
+    @Query("SELECT * FROM account WHERE accountId = :accountId")
+    fun getAccount(accountId: String): Flow<Account?>
+
+    @Transaction
+    @Query("SELECT * FROM account WHERE isActiveAccount = 1")
+    fun getActiveAccount(): Flow<Account?>
+
+    @Transaction
     @Query("SELECT * FROM account WHERE isLoggedIn = 1")
-    fun getAllLoggedInAccounts(): Flow<List<AccountEntity>>
+    fun getAllLoggedInAccounts(): Flow<List<Account>>
 
-    /**
-     * Update the last active time for an account.
-     * @param id The account ID
-     * @param lastActiveTime The new last active time
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET lastActiveTime = :lastActiveTime WHERE accountId = :id")
-    suspend fun updateLastActiveTime(
-        id: String,
-        lastActiveTime: String,
-    ): Int
+    // Account State Management
+    @Query("UPDATE account SET isActiveAccount = 0 WHERE accountId != :accountId")
+    suspend fun deactivateOtherAccounts(accountId: String)
 
-    /**
-     * Update the dashboard type for an account.
-     * @param id The account ID
-     * @param dashboardType The new dashboard type
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET dashboardType = :dashboardType WHERE accountId = :id")
-    suspend fun updateDashboardType(
-        id: String,
-        dashboardType: String,
-    ): Int
+    @Query("UPDATE account SET isLoggedIn = 0 WHERE accountId = :accountId")
+    suspend fun logoutAccount(accountId: String)
 
-    /**
-     * Update the FCM token for an account.
-     * @param id The account ID
-     * @param fcmToken The new FCM token
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET fcmToken = :fcmToken WHERE accountId = :id")
-    suspend fun updateFcmToken(
-        id: String,
-        fcmToken: String,
-    ): Int
+    @Query("UPDATE account SET isLoggedIn = 0")
+    suspend fun logoutAllAccounts()
 
-    /**
-     * Update the tokens for an account.
-     * @param id The account ID
-     * @param accessToken The new access token
-     * @param refreshToken The new refresh token
-     * @param expiresAt The new expiration time
-     * @return The number of rows updated
-     */
-    @Query(
-        "UPDATE account SET accessToken = :accessToken, refreshToken = :refreshToken, expiresAt = :expiresAt WHERE accountId = :id",
-    )
-    suspend fun updateTokens(
-        id: String,
-        accessToken: String,
-        refreshToken: String,
-        expiresAt: String,
-    ): Int
+    @Query("UPDATE account SET isSynced = :isSynced WHERE accountId = :accountId")
+    suspend fun updateSyncStatus(accountId: String, isSynced: Boolean)
 
-    /**
-     * Clear tokens and login status for an account.
-     * @param id The account ID
-     * @return The number of rows updated
-     */
-    @Query(
-        "UPDATE account SET accessToken = '', refreshToken = '', expiresAt = '', isActiveAccount = 0, isLoggedIn = 0, isExpired = 0 WHERE accountId = :id",
-    )
-    suspend fun clearAccountTokens(id: String): Int
+    // Weight Composition Settings
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWeightCompSettings(settings: WeightCompSettingsEntity)
 
-    /**
-     * Update the active account status.
-     * @param id The account ID to set as active
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET isActiveAccount = CASE WHEN accountId = :id THEN 1 ELSE 0 END")
-    suspend fun setActiveAccount(id: String): Int
+    @Update
+    suspend fun updateWeightCompSettings(settings: WeightCompSettingsEntity)
 
-    /**
-     * Update the logged-in status for an account.
-     * @param id The account ID
-     * @param isLoggedIn The new logged-in status
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET isLoggedIn = :isLoggedIn WHERE accountId = :id")
-    suspend fun updateLoggedInStatus(
-        id: String,
-        isLoggedIn: Boolean,
-    ): Int
+    // Goal Settings
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGoalSettings(settings: GoalSettingsEntity)
 
-    /**
-     * Update the profile information for an account.
-     * @param id The account ID
-     * @param firstName The new first name
-     * @param lastName The new last name
-     * @param email The new email
-     * @param dob The new date of birth
-     * @param gender The new gender
-     * @param height The new height
-     * @param zipcode The new zipcode
-     * @param activityLevel The new activity level
-     * @return The number of rows updated
-     */
-    @Query(
-        """
-        UPDATE account
-        SET firstName = :firstName,
-            lastName = :lastName,
-            email = :email,
-            dob = :dob,
-            gender = :gender,
-            height = :height,
-            zipcode = :zipcode,
-            activityLevel = :activityLevel
-        WHERE accountId = :id
-    """,
-    )
-    suspend fun updateProfile(
-        id: String,
-        firstName: String,
-        lastName: String,
-        email: String,
-        dob: String,
-        gender: String,
-        height: String,
-        zipcode: String,
-        activityLevel: String,
-    ): Int
+    @Update
+    suspend fun updateGoalSettings(settings: GoalSettingsEntity)
 
-    /**
-     * Update the goal information for an account.
-     * @param id The account ID
-     * @param goalType The new goal type
-     * @param goalWeight The new goal weight
-     * @param initialWeight The new initial weight
-     * @return The number of rows updated
-     */
-    @Query(
-        """
-        UPDATE account
-        SET goalType = :goalType,
-            goalWeight = :goalWeight,
-            initialWeight = :initialWeight
-        WHERE accountId = :id
-    """,
-    )
-    suspend fun updateGoal(
-        id: String,
-        goalType: String,
-        goalWeight: String,
-        initialWeight: Float,
-    ): Int
+    // Streaks Settings
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStreaksSettings(settings: StreaksSettingsEntity)
 
-    /**
-     * Update the dashboard metrics for an account.
-     * @param id The account ID
-     * @param dashboardMetrics The new dashboard metrics
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET dashboardMetrics = :dashboardMetrics WHERE accountId = :id")
-    suspend fun updateDashboardMetrics(
-        id: String,
-        dashboardMetrics: String,
-    ): Int
+    @Update
+    suspend fun updateStreaksSettings(settings: StreaksSettingsEntity)
 
-    /**
-     * Update the weight unit for an account.
-     * @param id The account ID
-     * @param weightUnit The new weight unit
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET weightUnit = :weightUnit WHERE accountId = :id")
-    suspend fun updateWeightUnit(
-        id: String,
-        weightUnit: String,
-    ): Int
+    // Weightless Settings
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWeightlessSettings(settings: WeightlessSettingsEntity)
 
-    /**
-     * Update the integration status for an account.
-     * @param id The account ID
-     * @param isFitbitOn Fitbit integration status
-     * @param isFitbitValid Fitbit validity status
-     * @param isGoogleFitOn Google Fit integration status
-     * @param isGoogleFitValid Google Fit validity status
-     * @param isMFPOn MyFitnessPal integration status
-     * @param isMFPValid MyFitnessPal validity status
-     * @param isUAOn Under Armour integration status
-     * @param isUAValid Under Armour validity status
-     * @return The number of rows updated
-     */
-    @Query(
-        """
-        UPDATE account
-        SET isFitbitOn = :isFitbitOn,
-            isFitbitValid = :isFitbitValid,
-            isGoogleFitOn = :isGoogleFitOn,
-            isGoogleFitValid = :isGoogleFitValid,
-            isMFPOn = :isMFPOn,
-            isMFPValid = :isMFPValid,
-            isUAOn = :isUAOn,
-            isUAValid = :isUAValid
-        WHERE accountId = :id
-    """,
-    )
-    suspend fun updateIntegrationStatus(
-        id: String,
-        isFitbitOn: Boolean,
-        isFitbitValid: Boolean,
-        isGoogleFitOn: Boolean,
-        isGoogleFitValid: Boolean,
-        isMFPOn: Boolean,
-        isMFPValid: Boolean,
-        isUAOn: Boolean,
-        isUAValid: Boolean,
-    ): Int
+    @Update
+    suspend fun updateWeightlessSettings(settings: WeightlessSettingsEntity)
 
-    /**
-     * Update the notification settings for an account.
-     * @param id The account ID
-     * @param shouldSendEntryNotifications Whether to send entry notifications
-     * @param shouldSendWeightInEntryNotifications Whether to send weight entry notifications
-     * @return The number of rows updated
-     */
-    @Query(
-        """
-        UPDATE account
-        SET shouldSendEntryNotifications = :shouldSendEntryNotifications,
-            shouldSendWeightInEntryNotifications = :shouldSendWeightInEntryNotifications
-        WHERE accountId = :id
-    """,
-    )
-    suspend fun updateNotificationSettings(
-        id: String,
-        shouldSendEntryNotifications: Boolean,
-        shouldSendWeightInEntryNotifications: Boolean,
-    ): Int
+    // Notification Settings
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotificationSettings(settings: NotificationSettingsEntity)
 
-    /**
-     * Update the weightless data for an account.
-     * @param id The account ID
-     * @param weightlessWeight The weightless weight
-     * @param weightlessBodyFat The weightless body fat
-     * @param weightlessMuscle The weightless muscle
-     * @param weightlessTimestamp The weightless timestamp
-     * @return The number of rows updated
-     */
-    @Query(
-        """
-        UPDATE account
-        SET weightlessWeight = :weightlessWeight,
-            weightlessBodyFat = :weightlessBodyFat,
-            weightlessMuscle = :weightlessMuscle,
-            weightlessTimestamp = :weightlessTimestamp
-        WHERE accountId = :id
-    """,
-    )
-    suspend fun updateWeightlessData(
-        id: String,
-        weightlessWeight: Float,
-        weightlessBodyFat: Float,
-        weightlessMuscle: Float,
-        weightlessTimestamp: String,
-    ): Int
+    @Update
+    suspend fun updateNotificationSettings(settings: NotificationSettingsEntity)
 
-    /**
-     * Update the sync status for an account.
-     * @param id The account ID
-     * @param isSynced Whether the account data is synced with the server
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET isSynced = :isSynced WHERE accountId = :id")
-    suspend fun updateSyncStatus(
-        id: String,
-        isSynced: Boolean,
-    ): Int
+    // Dashboard Settings
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDashboardSettings(settings: DashboardSettingsEntity)
 
-    /**
-     * Get all accounts that need syncing.
-     * @return A Flow of account entities that are not synced
-     */
+    @Update
+    suspend fun updateDashboardSettings(settings: DashboardSettingsEntity)
+
+    // Integrations Settings
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIntegrationsSettings(settings: IntegrationsSettingsEntity)
+
+    @Update
+    suspend fun updateIntegrationsSettings(settings: IntegrationsSettingsEntity)
+
+    // Sync Operations
     @Query("SELECT * FROM account WHERE isSynced = 0")
     fun getUnsyncedAccounts(): Flow<List<AccountEntity>>
 
-    /**
-     * Mark all accounts as synced.
-     * @return The number of rows updated
-     */
     @Query("UPDATE account SET isSynced = 1")
-    suspend fun markAllAccountsSynced(): Int
+    suspend fun markAllAccountsSynced()
 
-    /**
-     * Mark a specific account as synced.
-     * @param id The account ID
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET isSynced = 1 WHERE accountId = :id")
-    suspend fun markAccountSynced(id: String): Int
-
-    /**
-     * Mark a specific account as unsynced.
-     * @param id The account ID
-     * @return The number of rows updated
-     */
-    @Query("UPDATE account SET isSynced = 0 WHERE accountId = :id")
-    suspend fun markAccountUnsynced(id: String): Int
+    @Query("UPDATE account SET isSynced = 1 WHERE accountId = :accountId")
+    suspend fun markAccountSynced(accountId: String)
 }
