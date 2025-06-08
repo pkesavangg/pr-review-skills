@@ -27,6 +27,8 @@ private enum Identifier {
     static let max = UUID()
     static let minLength = UUID()
     static let maxLength = UUID()
+    static let futureDate = UUID()
+    static let matches = UUID()
 }
 
 extension Validator where Value == String {
@@ -71,9 +73,31 @@ extension Validator where Value == Int {
     }
 }
 
-extension Validator where Value == Bool? {
-    /// Validator that requires the control's value be true.
-    public static let requiredTrue = Validator(Rule.requiredTrue)
+extension Validator where Value == String {
+    static func matches(_ otherValue: @autoclosure @escaping () -> String) -> Validator {
+        Validator(id: Identifier.matches) { value in
+            value == otherValue()
+        }
+    }
+}
+
+
+
+extension Validator where Value == Bool {
+    public static let requiredTrue = Validator { $0 == true }
+}
+
+extension Validator where Value == String {
+    public static let noWhiteSpace = Validator { value in
+        // Must not be all whitespace
+        !(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !value.isEmpty)
+    }
+}
+
+extension Validator where Value == Date {
+    public static let futureDate = Validator(id: Identifier.futureDate) { value in
+        value <= Date()
+    }
 }
 
 private struct Rule {
