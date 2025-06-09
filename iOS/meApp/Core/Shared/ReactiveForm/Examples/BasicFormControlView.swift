@@ -22,7 +22,8 @@ class BasicProfileForm: ObservableForm {
     var dob = FormControl(Date(), validators: [.futureDate])
     var password = FormControl("", validators: [.required, .minLength(6)])
     var confirmPassword = FormControl("", validators: [.required])
-    
+    var website = FormControl("", validators: [.required, .url])
+
     override func validateForm() {
         var errors = ValidationErrors<Any>()
         
@@ -54,103 +55,32 @@ class BasicProfileForm: ObservableForm {
         validate()
     }
     
-    // Error message getters with priority
-    var nameError: String? {
-        if name.isDirty {
-            if name.errors[.required] {
-                return FormErrorMessages.required
-            }
-            
-            if name.errors[.maxLength] {
-                return FormErrorMessages.maxLength(10)
-            }
-        }
-        return nil
-    }
     
-    var emailError: String? {
-        if email.isDirty {
-            if email.errors[.required] {
-                return FormErrorMessages.required
-            }
-            if email.errors[.email] {
-                return FormErrorMessages.email
-            }
-            if email.errors[.maxLength] {
-                if let maxLength = email.errors.value(for: .maxLength) as? Int {
-                    return FormErrorMessages.maxLength(maxLength)
-                }
-            }
+    func getError<T>(for control: FormControl<T>) -> String? {
+        guard control.isDirty else { return nil }
+        
+        if control.errors[.required] { return FormErrorMessages.required }
+        if control.errors[.email] { return FormErrorMessages.email }
+        if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
+            return FormErrorMessages.minLength(minLength)
         }
-        return nil
-    }
-    
-    var ageError: String? {
-        if age.isDirty {
-            if age.errors[.min] {
-                // Get the minimum value from the validator
-                if let minValue = age.errors.value(for: .min) as? Int {
-                    return FormErrorMessages.min(minValue)
-                }
-            }
+        if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
+            return FormErrorMessages.maxLength(maxLength)
         }
-        return nil
-    }
-    
-    var rememberMeError: String? {
-        if rememberMe.errors[.requiredTrue] {
-            return FormErrorMessages.requiredTrue
+        if control.errors[.min], let minValue = control.errors.value(for: .min) as? Int {
+            return FormErrorMessages.min(minValue)
         }
-        return nil
-    }
-    
-    var usernameError: String? {
-        if username.isDirty {
-            // Priority: required > no whitespace
-            if username.errors[.required] {
-                return FormErrorMessages.required
-            }
-            if username.errors[.noWhiteSpace] {
-                return FormErrorMessages.noWhiteSpace
-            }
+        if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
+        if control.errors[.futureDate] { return FormErrorMessages.futureDate }
+        if control.errors[.requiredTrue] { return FormErrorMessages.requiredTrue }
+        if control === confirmPassword && formErrors[.passwordMatch] { 
+            return FormErrorMessages.passwordMatch 
         }
-        return nil
-    }
-    
-    var dobError: String? {
-        if dob.errors[.futureDate] && dob.isDirty {
-            return FormErrorMessages.futureDate
-        }
-        return nil
-    }
-    
-    var passwordError: String? {
-        if password.isDirty {
-            if password.errors[.required] {
-                return FormErrorMessages.required
-            }
-            if password.errors[.minLength] {
-                if let minLength = password.errors.value(for: .minLength) as? Int {
-                    return FormErrorMessages.minLength(minLength)
-                }
-            }
-        }
-        return nil
-    }
-    
-    var confirmPasswordError: String? {
-        if confirmPassword.isDirty {
-            if confirmPassword.errors[.required] {
-                return FormErrorMessages.required
-            }
-        }
-        if formErrors[.passwordMatch] {
-            return FormErrorMessages.passwordMatch
-        }
+        if control.errors[.url] { return FormErrorMessages.url }
+        
         return nil
     }
 }
-
 
 struct ExamplesTextField: View {
     @State private var text: String = "false"
@@ -165,59 +95,56 @@ struct ExamplesTextField: View {
 
 struct BasicFormControlView: View {
     @StateObject var form = BasicProfileForm()
-    @State private var text: String = "false"
     
     var body: some View {
         Form {
-            
-            TextField("Name", text: $text)
-            
             TextField("Name", text: $form.name.value)
-            if let error = form.nameError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.name) {
+                Text(error).foregroundColor(.red)
+            }
+            
+            TextField("Url", text: $form.website.value)
+            if let error = form.getError(for: form.website) {
+                Text(error).foregroundColor(.red)
             }
             
             TextField("Email", text: $form.email.value)
-            if let error = form.emailError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.email) {
+                Text(error).foregroundColor(.red)
             }
             
             Stepper("Age: \(form.age.value)", value: $form.age.value, in: 0...100)
-            if let error = form.ageError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.age) {
+                Text(error).foregroundColor(.red)
             }
             
             Toggle("Remember Me", isOn: $form.rememberMe.value)
-            if let error = form.rememberMeError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.rememberMe) {
+                Text(error).foregroundColor(.red)
             }
             
             TextField("User Name", text: $form.username.value)
-            if let error = form.usernameError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.username) {
+                Text(error).foregroundColor(.red)
             }
             
             DatePicker("Date of Birth", selection: $form.dob.value, displayedComponents: .date)
-            if let error = form.dobError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.dob) {
+                Text(error).foregroundColor(.red)
             }
             
             TextField("Password", text: $form.password.value)
-            if let error = form.passwordError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.password) {
+                Text(error).foregroundColor(.red)
             }
             
             TextField("Confirm Password", text: $form.confirmPassword.value)
-            if let error = form.confirmPasswordError {
-                Text(error)
-                    .foregroundColor(.red)
+            if let error = form.getError(for: form.confirmPassword) {
+                Text(error).foregroundColor(.red)
+            }
+            
+            Button("mark as pristine") {
+                form.name.markAsPristine()
             }
             
             Button("Submit") {
@@ -227,7 +154,7 @@ struct BasicFormControlView: View {
                     print("Email:", form.email.value)
                 }
             }
-            .disabled(form.isInvalid)
+            .disabled(!form.isValid)
             
             Button("Load Sample Data") {
                 let sampleProfile = ProfileData(
@@ -245,7 +172,7 @@ struct BasicFormControlView: View {
         }
         .navigationTitle("Basic Form Control")
     }
-} 
+}
 
 #Preview {
     BasicFormControlView()

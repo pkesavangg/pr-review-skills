@@ -1,5 +1,5 @@
 import Foundation
-
+import UIKit
 /// A validator that performs synchronous validation.
 public struct Validator<Value>: Identifiable {
     public typealias ValidatorFn = (Value) -> Bool
@@ -54,6 +54,11 @@ extension Validator where Value == String {
             Rule.maxLength(value, maximumLength: maximum)
         }
     }
+    
+    /// Validator that requires the control's value to pass a URL validation test.
+    public static let url = Validator(type: .url) { string in
+        Rule.url(string)
+    }
 }
 
 extension Validator where Value == Int {
@@ -102,6 +107,9 @@ private struct Rule {
     /// A regular expression that matches valid e-mail addresses.
     static let emailPattern = ##"^(?=.{1,254}$)(?=.{1,64}@)[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"##
     
+    /// A regular expression that matches valid URLs.
+    static let urlPattern = ##"^(https?://)?(www\\.)?[a-zA-Z0-9@:%._\\+~#?&//=]{2,256}\\.[a-z]{2,6}\\b(?:[-a-zA-Z0-9@:%._\\+~#?&//=]*)$"##
+    
     static func min(_ value: Int, minimumValue: Int) -> Bool {
         value >= minimumValue
     }
@@ -129,5 +137,10 @@ private struct Rule {
     
     static func requiredTrue(_ value: Bool?) -> Bool {
         value ?? false
+    }
+    
+    static func url(_ string: String) -> Bool {
+        guard let url = URL(string: string) else { return false }
+        return UIApplication.shared.canOpenURL(url)
     }
 } 
