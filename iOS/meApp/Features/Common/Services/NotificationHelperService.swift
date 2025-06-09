@@ -8,7 +8,7 @@ import Foundation
 
 @MainActor
 class NotificationHelperService: ObservableObject {
-
+    public static let shared = NotificationHelperService()
     @Published var alertData: AlertModel? = nil
     @Published var toastData: ToastModel? = nil
     @Published var loaderData: LoaderModel? = nil

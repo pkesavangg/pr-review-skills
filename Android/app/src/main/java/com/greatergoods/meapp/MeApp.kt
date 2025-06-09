@@ -17,7 +17,6 @@ import com.greatergoods.meapp.core.navigation.rememberTopLevelBackStack
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.common.components.DialogQueueHost
 import com.greatergoods.meapp.features.common.components.NavHost
-import com.greatergoods.meapp.features.common.viewmodel.AppViewModel
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import dagger.hilt.android.EntryPointAccessors

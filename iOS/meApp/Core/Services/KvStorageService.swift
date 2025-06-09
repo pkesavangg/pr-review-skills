@@ -3,7 +3,7 @@ import Foundation
 class KvStorageService {
     static let shared = KvStorageService()
 
-    private init() {}
+    init() {}
 
     func getValue(forKey key: String) -> Any? {
         return UserDefaults.standard.object(forKey: key)

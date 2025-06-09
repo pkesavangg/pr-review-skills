@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "com.greatergoods.meapp"
-        minSdk = 21
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.androidx.hilt.navigation.fragment)
+    implementation(libs.androidx.core.splashscreen)
     // Existing dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -88,7 +89,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.hilt.navigation.compose)
 
-    //browser
+    // browser
     implementation(libs.androidx.browser)
 
     // Hilt
@@ -134,6 +135,7 @@ dependencies {
 
     // modules
     implementation(project(":notification"))
+    implementation(project(":app:healthconnect"))
 
     // Play Store Review
     implementation(libs.play.review)

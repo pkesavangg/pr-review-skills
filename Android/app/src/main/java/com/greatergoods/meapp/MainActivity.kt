@@ -3,16 +3,36 @@ package com.greatergoods.meapp
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
+import androidx.core.animation.doOnEnd
 import androidx.lifecycle.lifecycleScope
-import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.core.service.IAppEventService
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
+import com.greatergoods.libs.healthconnect.HealthConnect
+import com.greatergoods.libs.healthconnect.enum.DataType
+import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
+import com.greatergoods.libs.healthconnect.ui.HealthConnectOnboardingScreen
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.core.logging.LogManager
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.service.IAppEventService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.View
+import android.view.animation.AnticipateOvershootInterpolator
 
 /**
  * Main entry point for the MeApp application.
@@ -33,10 +53,37 @@ class MainActivity : ComponentActivity() {
      * Called when the activity is starting. Sets up Compose content and handles navigation intents.
      * @param savedInstanceState The previously saved instance state, if any.
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+        splashScreen.setOnExitAnimationListener { splashScreenView ->
+            // 1. Zoom out: scale from 1 → 1.2 → 0.8 → 1
+            val scaleX = ObjectAnimator.ofFloat(
+                splashScreenView, View.SCALE_X, 1f, 1.2f, 0.9f, 1f,
+            )
+            val scaleY = ObjectAnimator.ofFloat(
+                splashScreenView, View.SCALE_Y, 1f, 1.2f, 0.9f, 1f,
+            )
+
+            // 2. Fade out: alpha from 1 → 0
+            val fadeOut = ObjectAnimator.ofFloat(
+                splashScreenView, View.ALPHA, 1f, 0f,
+            )
+
+            // 3. Combine all with a clean, springy interpolator
+            val animatorSet = AnimatorSet().apply {
+                playTogether(scaleX, scaleY, fadeOut)
+                interpolator = AnticipateOvershootInterpolator()
+                duration = 600L
+
+                // 4. Remove the splash screen view at the end
+                doOnEnd { splashScreenView.remove() }
+            }
+
+            animatorSet.start()
+        }
+
         // Clean up logs older than 5 days
         lifecycleScope.launch {
             try {
@@ -46,8 +93,9 @@ class MainActivity : ComponentActivity() {
                 AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
             }
         }
-        
         setContent {
+            val coroutineScope = rememberCoroutineScope()
+            val context = this
             MeApp()
 
         }

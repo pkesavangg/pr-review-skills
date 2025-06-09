@@ -26,9 +26,15 @@ class ServiceRegistry {
     
     /// Registers services required at app launch (before login)
     @MainActor private func registerEssentialServices() {
-        DependencyContainer.shared.register(AccountService())
-        DependencyContainer.shared.register(LoggerService())
-        DependencyContainer.shared.register(NotificationHelperService())
+        DependencyContainer.shared.register(AccountService.shared)
+        DependencyContainer.shared.register(ScaleService.shared)
+        DependencyContainer.shared.register(IntegrationsService.shared)
+        DependencyContainer.shared.register(HealthKitService.shared)
+        DependencyContainer.shared.register(KvStorageService.shared)
+        DependencyContainer.shared.register(LoggerService.shared)
+        DependencyContainer.shared.register(NotificationHelperService.shared)
+        DependencyContainer.shared.register(EntryService.shared)
+        DependencyContainer.shared.register(PushNotificationService.shared)
     }
     
     /// Registers services needed after login
@@ -44,8 +50,14 @@ class ServiceRegistry {
     /// Deregisters essential services (called during deinit or app shutdown)
     nonisolated private func deregisterEssentialServices() {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ScaleService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: IntegrationsService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: HealthKitService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: KvStorageService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: LoggerService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: NotificationHelperService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: EntryService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PushNotificationService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)
