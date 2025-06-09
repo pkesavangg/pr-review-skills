@@ -1,5 +1,46 @@
 import Foundation
 import UIKit
+
+
+/// A validator that performs synchronous validation.
+///
+/// ## Adding Custom Validators
+/// To add a new custom validator:
+/// 1. Add a new case to `ValidatorType` enum if needed
+/// 2. Create an extension for the appropriate Value type
+/// 3. Add your validation logic
+///
+/// Example:
+/// ```swift
+/// // 1. Add to ValidatorType (in ValidationErrors.swift)
+/// case phoneNumber
+///
+/// // 2. Add extension for String validators
+/// extension Validator where Value == String {
+///     /// Custom phone number validator
+///     public static let phoneNumber = Validator(type: .phoneNumber) { value in
+///         // 3. Add validation logic
+///         let pattern = "^\\d{10}$"
+///         return NSPredicate(format: "SELF MATCHES %@", pattern)
+///             .evaluate(with: value)
+///     }
+///
+///     /// Custom validator with parameters
+///     public static func customRange(_ min: Int, _ max: Int) -> Validator {
+///         Validator(type: .custom, value: [min, max]) { value in
+///             guard let length = Int(value) else { return false }
+///             return length >= min && length <= max
+///         }
+///     }
+/// }
+/// ```
+///
+/// Usage:
+/// ```swift
+/// var control = FormControl("", validators: [.required, .phoneNumber])
+/// var rangeControl = FormControl("", validators: [.customRange(5, 10)])
+/// ``
+
 /// A validator that performs synchronous validation.
 public struct Validator<Value>: Identifiable {
     public typealias ValidatorFn = (Value) -> Bool
