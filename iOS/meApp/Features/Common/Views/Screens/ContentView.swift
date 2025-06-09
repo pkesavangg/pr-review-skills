@@ -13,12 +13,8 @@ struct ContentView: View {
     var body: some View {
         VStack {
             // Testing purpose it will replace by the actual content
-            Text("Hello World!")
-                .fontOpenSans(.heading1) // 60pt, Extra Bold
-                .foregroundColor(theme.supportToastBackground)
-                .onTapGesture {
-                    themeManager.isDarkMode.toggle()
-                }
+            BasicFormControlView()
+                
         }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }
