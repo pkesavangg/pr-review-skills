@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.map
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.greatergoods.meapp.core.network.TokenManager
+import com.greatergoods.meapp.core.network.Token
+import com.greatergoods.meapp.core.network.CreateAccountRequest
 
 /**
  * Service for managing account authentication and session state.
@@ -22,7 +25,8 @@ import javax.inject.Singleton
 @Singleton
 class AccountAuthService @Inject constructor(
     private val accountRepository: IAccountRepository,
-    private val connectivityObserver: IConnectivityObserver
+    private val connectivityObserver: IConnectivityObserver,
+    private val tokenManager: TokenManager
 ) : IAccountAuthService {
 
     companion object {
@@ -65,10 +69,39 @@ class AccountAuthService @Inject constructor(
         }
 
         return try {
-            val account = accountRepository.login(email, password)
-            _authStateFlow.emit(AuthState.LoggedIn(account))
+            val loginResponse = accountRepository.loginInAPI(email, password)
+            
+            // Create account entity from response
+            val account = Account(
+                account = AccountEntity(
+                    id = loginResponse.id,
+                    email = email,
+                    firstName = loginResponse.firstName,
+                    lastName = loginResponse.lastName,
+                    isActiveAccount = true,
+                    isLoggedIn = true,
+                    expiresAt = loginResponse.expiresAt,
+                    lastActiveTime = Date().time.toString()
+                )
+            )
+
+            // Add account to database
+            val savedAccount = accountRepository.addAccount(account)
+            
+            // Set as active account
+            accountRepository.setActiveAccount(savedAccount.account.id)
+            
+            // Update tokens in TokenManager
+            tokenManager.setTokens(Token(
+                id = savedAccount.account.id,
+                accessToken = loginResponse.accessToken,
+                refreshToken = loginResponse.refreshToken,
+                expiresAt = loginResponse.expiresAt
+            ))
+
+            _authStateFlow.emit(AuthState.LoggedIn(savedAccount))
             _isLoginFlow.emit(true)
-            account
+            savedAccount
         } catch (e: Exception) {
             AppLog.e(TAG, "Login failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Login failed"))
@@ -86,7 +119,7 @@ class AccountAuthService @Inject constructor(
             // Try to logout on API if network is available
             if (isNetworkAvailable()) {
                 try {
-                    // TODO: Implement logout on API in repository
+                    accountRepository.logoutInAPI(null)
                 } catch (e: Exception) {
                     AppLog.e(TAG, "API logout failed", e.toString())
                     // Continue with local logout even if API fails
@@ -94,7 +127,8 @@ class AccountAuthService @Inject constructor(
             }
 
             // Always perform local logout
-            accountRepository.logoutAccount(accountId)
+            accountRepository.removeAccountInDB(accountId)
+            tokenManager.clearTokens()
             AppLog.d(TAG, "Logout successful for account: $accountId")
             _authStateFlow.emit(AuthState.LoggedOut())
             _isLoginFlow.emit(false)
@@ -123,17 +157,23 @@ class AccountAuthService @Inject constructor(
                 try {
                     if (isNetworkAvailable()) {
                         try {
-                            // TODO: Implement logout on API in repository
+                            accountRepository.logoutInAPI(null)
                         } catch (e: Exception) {
-                            AppLog.e(TAG, "API logout failed for account "+account.account.id, e.toString())
+                            AppLog.e(TAG, "API logout failed for account ${account.account.id}", e.toString())
                             // Continue with local logout even if API fails
                         }
                     }
-                    accountRepository.logoutAccount(account.account.id)
+                    accountRepository.removeAccountInDB(account.account.id)
                 } catch (e: Exception) {
-                    AppLog.e(TAG, "Failed to logout account "+account.account.id, e.toString())
+                    AppLog.e(TAG, "Failed to logout account ${account.account.id}", e.toString())
                 }
             }
+
+            // Clear all accounts from database
+            accountRepository.removeAllAccountsInDB()
+            
+            // Clear tokens
+            tokenManager.clearTokens()
 
             AppLog.d(TAG, "All accounts logged out successfully")
             _authStateFlow.emit(AuthState.LoggedOut())
@@ -164,8 +204,57 @@ class AccountAuthService @Inject constructor(
             _authStateFlow.emit(AuthState.Error("Maximum account limit reached"))
             return null
         }
-        //TODO: Implement account creation on API
-        return null
+
+        return try {
+            val createRequest = CreateAccountRequest(
+                email = request["email"] as String,
+                password = request["password"] as String,
+                firstName = request["firstName"] as String,
+                lastName = request["lastName"] as String,
+                dob = request["dob"] as String,
+                gender = request["gender"] as String
+            )
+
+            val response = accountRepository.signupInAPI(createRequest)
+            
+            // Create account entity from response
+            val account = Account(
+                account = AccountEntity(
+                    id = response["id"] as String,
+                    email = createRequest.email,
+                    firstName = createRequest.firstName,
+                    lastName = createRequest.lastName,
+                    dob = createRequest.dob,
+                    gender = createRequest.gender,
+                    isActiveAccount = true,
+                    isLoggedIn = true,
+                    expiresAt = response["expiresAt"] as? String,
+                    lastActiveTime = Date().time.toString()
+                )
+            )
+
+            // Add account to database
+            val savedAccount = accountRepository.addAccount(account)
+            
+            // Set as active account
+            accountRepository.setActiveAccount(savedAccount.account.id)
+            
+            // Update tokens in TokenManager
+            tokenManager.setTokens(Token(
+                id = savedAccount.account.id,
+                accessToken = response["accessToken"] as String,
+                refreshToken = response["refreshToken"] as String,
+                expiresAt = response["expiresAt"] as String
+            ))
+
+            _authStateFlow.emit(AuthState.AccountAdded(savedAccount))
+            _isSignUpFlow.emit(true)
+            savedAccount
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Account creation failed", e.toString())
+            _authStateFlow.emit(AuthState.Error(e.message ?: "Account creation failed"))
+            null
+        }
     }
 
     /**
@@ -201,10 +290,45 @@ class AccountAuthService @Inject constructor(
      */
     override suspend fun switchAccount(account: Account): Boolean {
         return try {
+            val currentAccount = activeAccountFlow.first()
+            val isOtherUser = currentAccount?.account?.id != account.account.id
+
+            // If switching to another user, logout current user first
+            if (isOtherUser && currentAccount != null) {
+                try {
+                    if (isNetworkAvailable()) {
+                        accountRepository.logoutInAPI(null)
+                    }
+                } catch (e: Exception) {
+                    AppLog.e(TAG, "API logout failed during account switch", e.toString())
+                    // Continue with local logout even if API fails
+                }
+                accountRepository.removeAccount(currentAccount.account.id)
+            }
+
+            // Update account states
             accountRepository.deactivateOtherAccounts(account.account.id)
-            accountRepository.updateAccount(account)
-            AppLog.d(TAG, "Switched to account: ${account.account.email}")
-            _authStateFlow.emit(AuthState.AccountSwitched(account))
+            val updatedAccount = account.copy(
+                account = account.account.copy(
+                    isActiveAccount = true,
+                    lastActiveTime = Date().time.toString()
+                )
+            )
+            accountRepository.updateAccount(updatedAccount)
+
+            // Update tokens
+            if (isOtherUser) {
+                tokenManager.clearTokens()
+                tokenManager.setTokens(Token(
+                    id = updatedAccount.account.id,
+                    accessToken = updatedAccount.account.accessToken,
+                    refreshToken = updatedAccount.account.refreshToken,
+                    expiresAt = updatedAccount.account.expiresAt
+                ))
+            }
+
+            AppLog.d(TAG, "Switched to account: ${updatedAccount.account.email}")
+            _authStateFlow.emit(AuthState.AccountSwitched(updatedAccount))
             _isSwitchAccountFlow.emit(true)
             true
         } catch (e: Exception) {

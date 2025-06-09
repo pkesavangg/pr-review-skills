@@ -1,127 +1,123 @@
 package com.greatergoods.meapp.data.repository
 
-import com.greatergoods.meapp.data.api.IAuthAPI
+import android.util.Log
+import com.greatergoods.meapp.core.config.AppConfig
+import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountMapper
+import com.greatergoods.meapp.data.storage.db.entity.account.UserDataStore
+import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
+import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
+import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.domain.repository.IAuthAPI
+import com.greatergoods.meapp.domain.repository.IUserAPI
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Implementation of the IAccountRepository interface.
- * Handles account operations using Room database.
+ * Handles account operations using Room database and API calls.
  */
 @Singleton
 class AccountRepository @Inject constructor(
     private val accountDao: AccountDao,
-    private val authAPI: IAuthAPI
+    private val userDataStore: UserDataStore,
+    private val tokenManager: TokenManager,
+    private val authAPI: IAuthAPI,
+    private val userAPI: IUserAPI,
+    private val accountEntityMapper: AccountEntityMapper,
+    private val accountMapper: AccountMapper
 ) : IAccountRepository {
 
+    companion object {
+        private const val TAG = "AccountRepository"
+    }
+
     // API Operations
-    override suspend fun login(email: String, password: String): Account {
-        TODO("Not yet implemented")
+    override suspend fun loginInAPI(email: String, password: String): LoginResponse {
+        return authAPI.login(email, password)
     }
 
-    override suspend fun createAccount(email: String, password: String): Account {
-        TODO("Not yet implemented")
+    override suspend fun signupInAPI(request: CreateAccountRequest): Map<String, Any> {
+        return userAPI.createAccount(request)
     }
 
-    override suspend fun updateProfile(profile: Map<String, Any>): Account {
-        TODO("Not yet implemented")
+    override suspend fun logoutInAPI(fcmToken: String?) {
+        authAPI.logout(fcmToken)
     }
 
-    override suspend fun updatePassword(oldPassword: String, newPassword: String): Account {
-        TODO("Not yet implemented")
+    override suspend fun getAccountInAPI(): Map<String, Any> {
+        return userAPI.getAccount()
     }
 
-    override suspend fun requestPasswordReset(email: String): Boolean {
-        TODO("Not yet implemented")
+    override suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Map<String, Any> {
+        return userAPI.updatePassword(oldPassword, newPassword)
     }
 
-    override suspend fun logout(accountId: String): Boolean {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun deleteAccount(): Boolean {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun refreshAccount(): Account {
-        TODO("Not yet implemented")
+    override suspend fun resetPasswordInAPI(email: String): Map<String, Any> {
+        return userAPI.resetPassword(email)
     }
 
     // DB Operations
-    override suspend fun insertAccount(account: Account): Account {
-        TODO("Not yet implemented")
+    override suspend fun addAccountInDB(account: Account): Account {
+        Log.d(TAG, "Adding account: ${account.email}")
+        val accountEntity = accountEntityMapper.toEntity(account)
+        accountDao.insertAccount(accountEntity)
+        return account
     }
 
-    override suspend fun updateAccount(account: Account): Account {
-        TODO("Not yet implemented")
+    override suspend fun removeAccountInDB(accountId: String) {
+        Log.d(TAG, "Removing account: $accountId")
+        accountDao.deleteAccountById(accountId)
+        // Also clear tokens from TokenManager if this was the active account
+        if (accountId == userDataStore.getData().activeAccountId) {
+            tokenManager.clearTokens()
+        }
     }
 
-    override suspend fun deleteAccount(account: Account) {
-        TODO("Not yet implemented")
+    override suspend fun removeAllAccountsInDB() {
+        Log.d(TAG, "Removing all accounts")
+        accountDao.deleteAllAccounts()
+        tokenManager.clearTokens()
     }
 
-    override suspend fun deleteAccountById(accountId: String) {
-        TODO("Not yet implemented")
+    override suspend fun getStoredActiveAccountFromDB(): Account? {
+        return accountDao.getActiveAccount()?.let { accountEntityMapper.toDomain(it) }
     }
 
-    override suspend fun removeAllAccounts() {
-        TODO("Not yet implemented")
+    override suspend fun deactivateOtherAccountsInDB(accountId: String) {
+        Log.d(TAG, "Deactivating other accounts except: $accountId")
+        accountDao.deactivateOtherAccounts(accountId)
     }
 
-    // Account Queries
-    override fun getAccount(accountId: String): Flow<Account?> {
-        TODO("Not yet implemented")
+    override fun getLoggedInAccountsFromDB(): Flow<List<Account>> {
+        return accountDao.getLoggedInAccounts().map { accounts ->
+            accounts.map { accountEntityMapper.toDomain(it) }
+        }
     }
 
-    override fun getActiveAccount(): Flow<Account?> {
-        TODO("Not yet implemented")
+    override suspend fun updateTokensInDB(tokens: Map<String, String>) {
+        Log.d(TAG, "Updating tokens for active account")
+        tokenManager.setTokens(
+            accessToken = tokens[AppConfig.ACCESS_TOKEN_KEY] ?: "",
+            refreshToken = tokens[AppConfig.REFRESH_TOKEN_KEY] ?: "",
+            expiresAt = tokens[AppConfig.EXPIRES_AT_KEY] ?: ""
+        )
     }
 
-    override fun getAllLoggedInAccounts(): Flow<List<Account>> {
-        TODO("Not yet implemented")
+    override suspend fun refreshTokenInAPI(refreshToken: String): Token {
+        Log.d(TAG, "Refreshing token")
+        return authAPI.refreshToken(refreshToken)
     }
 
-    override suspend fun getStoredActiveAccount(): Account? {
-        TODO("Not yet implemented")
-    }
-
-    // Account State Management
-    override suspend fun deactivateOtherAccounts(accountId: String) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun logoutAccount(accountId: String) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun logoutAllAccounts() {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun updateSyncStatus(accountId: String, isSynced: Boolean) {
-        TODO("Not yet implemented")
-    }
-
-    // Token Management
-    override suspend fun updateTokens(tokens: Map<String, String>) {
-        TODO("Not yet implemented")
-    }
-
-    // Sync Operations
-    override fun getUnsyncedAccounts(): Flow<List<AccountEntity>> {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun markAllAccountsSynced() {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun markAccountSynced(accountId: String) {
-        TODO("Not yet implemented")
+    override suspend fun updateLastActiveTimeInDB(accountId: String) {
+        Log.d(TAG, "Updating last active time for account: $accountId")
+        accountDao.updateLastActiveTime(accountId, System.currentTimeMillis())
     }
 }

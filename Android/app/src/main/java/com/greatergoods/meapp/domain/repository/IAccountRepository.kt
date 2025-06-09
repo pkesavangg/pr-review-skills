@@ -1,7 +1,9 @@
 package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.data.storage.db.entity.account.Account
-import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
+import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
+import com.greatergoods.meapp.domain.model.api.user.Token
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -10,39 +12,21 @@ import kotlinx.coroutines.flow.Flow
  */
 interface IAccountRepository {
     // API Operations
-    suspend fun login(email: String, password: String): Account
-    suspend fun createAccount(email: String, password: String): Account
-    suspend fun updateProfile(profile: Map<String, Any>): Account
-    suspend fun updatePassword(oldPassword: String, newPassword: String): Account
-    suspend fun requestPasswordReset(email: String): Boolean
-    suspend fun logout(accountId: String): Boolean
-    suspend fun deleteAccount(): Boolean
-    suspend fun refreshAccount(): Account
+    suspend fun loginInAPI(email: String, password: String): LoginResponse
+    suspend fun signupInAPI(request: CreateAccountRequest): Map<String, Any>
+    suspend fun logoutInAPI(fcmToken: String?)
+    suspend fun getAccountInAPI(): Map<String, Any>
+    suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Map<String, Any>
+    suspend fun resetPasswordInAPI(email: String): Map<String, Any>
+    suspend fun refreshTokenInAPI(refreshToken: String): Token
 
     // DB Operations
-    suspend fun insertAccount(account: Account): Account
-    suspend fun updateAccount(account: Account): Account
-    suspend fun deleteAccount(account: Account)
-    suspend fun deleteAccountById(accountId: String)
-    suspend fun removeAllAccounts()
-    
-    // Account Queries
-    fun getAccount(accountId: String): Flow<Account?>
-    fun getActiveAccount(): Flow<Account?>
-    fun getAllLoggedInAccounts(): Flow<List<Account>>
-    suspend fun getStoredActiveAccount(): Account?
-    
-    // Account State Management
-    suspend fun deactivateOtherAccounts(accountId: String)
-    suspend fun logoutAccount(accountId: String)
-    suspend fun logoutAllAccounts()
-    suspend fun updateSyncStatus(accountId: String, isSynced: Boolean)
-    
-    // Token Management
-    suspend fun updateTokens(tokens: Map<String, String>)
-    
-    // Sync Operations
-    fun getUnsyncedAccounts(): Flow<List<AccountEntity>>
-    suspend fun markAllAccountsSynced()
-    suspend fun markAccountSynced(accountId: String)
+    suspend fun addAccountInDB(account: Account): Account
+    suspend fun removeAccountInDB(accountId: String)
+    suspend fun removeAllAccountsInDB()
+    suspend fun getStoredActiveAccountFromDB(): Account?
+    suspend fun deactivateOtherAccountsInDB(accountId: String)
+    fun getLoggedInAccountsFromDB(): Flow<List<Account>>
+    suspend fun updateTokensInDB(tokens: Map<String, String>)
+    suspend fun updateLastActiveTimeInDB(accountId: String)
 }
