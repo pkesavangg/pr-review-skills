@@ -10,8 +10,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    @State private var showBrowser = false
-
     var body: some View {
         VStack {
             // Testing purpose it will replace by the actual content
