@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "Me App"
 include(":app")
 include(":notification")
+include(":app:healthconnect")
