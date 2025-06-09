@@ -3,26 +3,52 @@ package com.greatergoods.meapp.utils.browser
 import androidx.browser.customtabs.CustomTabsCallback
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import androidx.core.net.toUri
 import com.greatergoods.meapp.utils.WebViewLauncher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class CustomTabManager(
+sealed class ChromeTabState {
+    object Idle : ChromeTabState()
+    object TabShown : ChromeTabState()
+    object TabHidden : ChromeTabState()
+    object Loading : ChromeTabState()
+    object Finished : ChromeTabState()
+    data class Failed(val error: Throwable?) : ChromeTabState()
+}
+
+
+class CustomTabManager @Inject constructor(
     private val context: Context,
-    private val eventListener: CustomTabEventListener? = null
-) : CustomTabLauncher {
-
+) : ICustomTabManager {
+private var navigationEvent = MutableStateFlow<ChromeTabState?>(null)
     private val packageResolver = CustomTabPackageResolver(context)
     private val callback = object : CustomTabsCallback() {
         override fun onNavigationEvent(event: Int, extras: Bundle?) {
             when (event) {
-                NAVIGATION_STARTED -> eventListener?.onNavigationStarted()
-                NAVIGATION_FINISHED -> eventListener?.onNavigationFinished()
-                NAVIGATION_FAILED -> eventListener?.onNavigationFailed()
-                TAB_SHOWN -> eventListener?.onTabShown()
-                TAB_HIDDEN -> eventListener?.onTabHidden()
+                NAVIGATION_STARTED -> {
+                    navigationEvent.value = ChromeTabState.Loading
+                }
+                NAVIGATION_FINISHED -> {
+                    navigationEvent.value = ChromeTabState.Finished
+                }
+                TAB_HIDDEN -> {
+                    navigationEvent.value = ChromeTabState.TabHidden
+                }
+                TAB_SHOWN -> {
+                    navigationEvent.value = ChromeTabState.TabShown
+                }
+                NAVIGATION_FAILED -> {
+                    navigationEvent.value = ChromeTabState.Failed(Throwable("Navigation Failed"))
+                }
+                else -> super.onNavigationEvent(event, extras)
             }
         }
     }
@@ -33,19 +59,9 @@ class CustomTabManager(
 
     private var packageName: String? = null
 
-    fun bind() {
-        packageName = packageResolver.resolve()
-        if (packageName == null) return
-
-        binder = CustomTabServiceBinder(context, packageName!!, callback).also {
-            it.bind()
-        }
-    }
-//TODO:Need to remove
-    suspend fun bindService(): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun bindService(): Boolean = withContext(Dispatchers.IO) {
         packageName = packageResolver.resolve()
         if (packageName == null) return@withContext false
-
         binder = CustomTabServiceBinder(context, packageName!!, callback).also {
             it.bind()
         }
@@ -53,7 +69,7 @@ class CustomTabManager(
     }
 
 
-    fun unbind() {
+    override fun unbind() {
         binder?.unbind()
     }
 
@@ -61,10 +77,14 @@ class CustomTabManager(
         binder?.session?.mayLaunchUrl(url.toUri(), null, null)
     }
 
-    override fun openUrl(url: String, context: Context, showBack: Boolean, showShare: Boolean) {
+     fun launchUrl(url: String, showBack: Boolean = false, showShare: Boolean = false) {
+
+         if (url.isBlank()) {
+             navigationEvent.value = ChromeTabState.Failed(Throwable("URL is empty or invalid"))
+             return
+         }
         val uri = url.toUri()
         try {
-
             if (binder?.session != null && packageName != null) {
                 val intent = intentBuilder.build(binder!!.session, packageName, url, showBack, showShare)
                 context.let {
@@ -73,15 +93,27 @@ class CustomTabManager(
                 return
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to launch Custom Tab: ${e.message}")
         }
 
         // Fallback
         try {
             WebViewLauncher.launch(context, url)
         } catch (e: Exception) {
-            Log.e(TAG, "Fallback failed: ${e.message}")
         }
+    }
+
+    override fun openChromeTab(url: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val isBound = bindService()
+            delay(1000)
+            if (isBound) {
+                launchUrl(url)
+            }
+        }
+    }
+
+    override fun subscribeChromeState(): Flow<ChromeTabState?> {
+        return  navigationEvent.asStateFlow()
     }
 
     companion object {
