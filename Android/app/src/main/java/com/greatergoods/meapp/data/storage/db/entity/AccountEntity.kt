@@ -3,6 +3,7 @@ package com.greatergoods.meapp.data.storage.db.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.greatergoods.meapp.domain.model.api.integration.UserAccount
 
 /**
  * Entity class representing the account table in the database.
@@ -58,4 +59,23 @@ data class AccountEntity(
     val weightlessTimestamp: String? = null,
     val weightlessWeight: Float? = null,
     val zipcode: String? = null,
-)
+) {
+    companion object {
+        fun from(response: UserAccount): AccountEntity {
+            return AccountEntity(
+                id = response.id,
+                isFitbitOn = response.isFitbitOn,
+                isFitbitValid = response.isFitbitValid,
+                isGoogleFitOn = response.isGoogleFitOn,
+                isGoogleFitValid = response.isGoogleFitValid,
+                isMFPOn = response.isMFPOn,
+                isMFPValid = response.isMFPValid,
+                isUAOn = response.isUAOn,
+                isUAValid = response.isUAValid,
+                isHealthConnectOn = response.isHealthConnectOn == true,
+                isHealthKitOn = response.isHealthKitOn == true,
+            )
+        }
+    }
+
+}
