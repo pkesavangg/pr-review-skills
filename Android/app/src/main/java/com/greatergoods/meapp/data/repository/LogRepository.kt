@@ -2,7 +2,7 @@ package com.greatergoods.meapp.data.repository
 
 import android.util.Log
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
-import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.core.logging.AppLog
 import kotlinx.coroutines.flow.Flow
@@ -79,4 +79,4 @@ class LogRepository @Inject constructor(
     override suspend fun clearLogs() {
         logDao.deleteAllLogs()
     }
-} 
+}

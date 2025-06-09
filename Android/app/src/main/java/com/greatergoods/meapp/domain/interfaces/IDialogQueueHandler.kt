@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.domain.interfaces
 
+import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -84,4 +86,12 @@ interface IDialogQueueHandler {
      * Update the delay of the current dialog
      */
     fun updateCurrentDialogDelay(delayMillis: Long)
+    fun enqueueToast(
+        message: String,
+        title: String?,
+        action: ActionButton? = null
+    )
+
+    val currentToast: StateFlow<Toast?>
+    fun dismissToast()
 }

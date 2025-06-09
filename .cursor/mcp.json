@@ -1,20 +1,14 @@
 {
     "mcpServers": {
-        "Framelink Figma MCP": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "figma-developer-mcp",
-                "--figma-api-key=figd_u-PLaYSx6S0HnO9FyZlJ12-w4oN42zwTydgNyhZV",
-                "--stdio"
-            ]
-        },
         "mcp-atlassian": {
             "command": "npx",
             "args": [
                 "mcp-remote",
                 "https://mcp.atlassian.com/v1/sse"
             ]
+        },
+        "Figma": {
+            "url": "http://127.0.0.1:3845/sse"
         }
     }
 }

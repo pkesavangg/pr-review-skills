@@ -23,6 +23,25 @@ import com.greatergoods.meapp.data.storage.db.entity.EntryViewEntity
 import com.greatergoods.meapp.data.storage.db.entity.LogEntity
 import com.greatergoods.meapp.data.storage.db.entity.R4ScalePreferenceEntity
 import android.content.Context
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.BodyScaleEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.DeviceMetaDataEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
+import android.content.Context
+import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.DashboardSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSettingsEntity
 
 /**
  * Main database class for the MeApp application.
@@ -40,6 +59,13 @@ import android.content.Context
         BodyScaleEntryMetricEntity::class,
         BpmEntryEntity::class,
         LogEntity::class,
+        WeightCompSettingsEntity::class,
+        GoalSettingsEntity::class,
+        StreaksSettingsEntity::class,
+        WeightlessSettingsEntity::class,
+        NotificationSettingsEntity::class,
+        DashboardSettingsEntity::class,
+        IntegrationsSettingsEntity::class
     ],
     views = [EntryViewEntity::class],
     version = 1,

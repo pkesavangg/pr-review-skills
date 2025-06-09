@@ -3,6 +3,9 @@ package com.greatergoods.meapp.domain.repository
 import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity // Changed import
 import kotlinx.coroutines.flow.Flow
 
 /**

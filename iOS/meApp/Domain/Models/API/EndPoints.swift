@@ -44,6 +44,8 @@ enum Endpoint {
     case pairedScaleId(String)
     case pairedScaleInfo(String)
     case scaleR4Preference
+    case integrationProvider(String) 
+    case integrationHealthDevice(String) 
 
     var urlRequest: URLRequest? {
         switch self {
@@ -114,9 +116,9 @@ enum Endpoint {
         case .clearFlag(let flagId):
             return request(path: "/account/flag/\(flagId)")
         case .feed:
-            return request(path: "/feed")
+            return request(path: "/feed/iam")
         case .markFeedAs(let elementId):
-            guard let url = URL(string: "\(API.baseURL)/feed/\(elementId)") else { return nil }
+            guard let url = URL(string: "\(API.baseURL)/feed/iam/\(elementId)") else { return nil }
             return URLRequest(url: url)
         case .deleteAccount:
             return request(path: "/account/")
@@ -130,6 +132,10 @@ enum Endpoint {
             return request(path: "/paired-scale/\(id)/info")
         case .scaleR4Preference:
             return request(path: "/scale-r4/preference")
+        case .integrationProvider(let provider):
+            return request(path: "/integrations/\(provider)")
+        case .integrationHealthDevice(let deviceId):
+            return request(path: "/integrations/health/\(deviceId)")
         }
     }
 

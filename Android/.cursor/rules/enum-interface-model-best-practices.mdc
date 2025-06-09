@@ -1,0 +1,63 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Enum, Interface, and Model Best Practices (MeApp Android)
+
+## 1. Enum
+- Define enums in `domain/enum/` or `theme/enums/`.
+- Use `enum class` for enums.
+- Name enums and values in PascalCase.
+- Document each enum and value with KDoc.
+
+## 2. Interface
+- Define interfaces in `domain/interfaces/` or `domain/services/`.
+- Use `interface` keyword.
+- Name interfaces with an `I` prefix (e.g., `IAccountRepository`).
+- Document each interface and method with KDoc.
+
+## 3. Model
+- Define models in `domain/model/` or feature-specific model folders.
+- Use data classes for models.
+- Name models in PascalCase.
+- Document each model and property with KDoc.
+
+---
+
+**Example:**
+
+```kotlin
+// domain/enum/ExampleEnum.kt
+/**
+ * Example enum for demonstration.
+ */
+enum class ExampleEnum {
+    /** Example value. */
+    ValueOne,
+    /** Another value. */
+    ValueTwo
+}
+
+// domain/interfaces/IExampleInterface.kt
+/**
+ * Example interface for demonstration.
+ */
+interface IExampleInterface {
+    /**
+     * Example method.
+     */
+    fun doSomething(): Boolean
+}
+
+// domain/model/ExampleModel.kt
+/**
+ * Example model for demonstration.
+ */
+data class ExampleModel(
+    /** Example property. */
+    val id: String,
+    /** Another property. */
+    val name: String
+)
+```

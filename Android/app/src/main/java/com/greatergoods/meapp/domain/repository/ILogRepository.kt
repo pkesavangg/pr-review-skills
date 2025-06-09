@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.db.entity.LogEntity
+import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -101,4 +101,4 @@ interface ILogRepository {
      * Clear all logs from the database
      */
     suspend fun clearLogs()
-} 
+}

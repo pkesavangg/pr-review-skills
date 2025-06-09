@@ -141,6 +141,20 @@ class UserDataStore(
     }
 
     /**
+     * Logs out the current account by removing it from UserDataStore.
+     */
+    suspend fun logoutCurrentAccount() {
+        val current = getData()
+        val updated = current.toBuilder().apply {
+            // Deactivate all accounts
+            accountsMap.forEach { (id, account) ->
+                putAccounts(id, account.toBuilder().setIsActive(false).build())
+            }
+        }.build()
+        updateData { updated }
+    }
+
+    /**
      * Checks if any account exists in the DataStore.
      * @return True if at least one account exists, false otherwise.
      */

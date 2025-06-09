@@ -12,7 +12,7 @@ import Combine
 /// A centralized app state object responsible for managing and exposing shared services.
 /// This allows for easier dependency injection and access to global services across the app.
 @MainActor
-final class AppState {
+final class AppState: ObservableObject {
     /// Manages the app's visual theme.
     let themeManager = Theme.shared
     

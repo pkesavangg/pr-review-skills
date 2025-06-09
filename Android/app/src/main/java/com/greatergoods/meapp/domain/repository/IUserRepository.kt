@@ -36,4 +36,7 @@ interface IUserRepository {
 
     /** Clears all user data (removes all accounts). */
     suspend fun clearData()
+
+    /** Deletes a specific account by its ID. */
+    suspend fun logoutCurrentAccount()
 }

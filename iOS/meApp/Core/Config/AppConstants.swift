@@ -2,6 +2,7 @@ import Foundation
 
 /// Application-wide constants
 struct AppConstants {
+    static let logRetentionDays = 5 // Number of days to retain logs
     struct Account {
         /// Maximum number of accounts that can be stored locally
         static let maxAccounts = 10
