@@ -13,6 +13,32 @@ struct ProfileData {
     let confirmPassword: String
 }
 
+class BasicProfileForm2: ObservableForm {
+    var name = FormControl("", validators: [.required, .maxLength(10)])
+    
+    func getError<T>(for control: FormControl<T>) -> String? {
+        guard control.isDirty else { return nil }
+        
+        if control.errors[.required] { return FormErrorMessages.required }
+        if control.errors[.email] { return FormErrorMessages.email }
+        if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
+            return FormErrorMessages.minLength(minLength)
+        }
+        if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
+            return FormErrorMessages.maxLength(maxLength)
+        }
+        if control.errors[.min], let minValue = control.errors.value(for: .min) as? Int {
+            return FormErrorMessages.min(minValue)
+        }
+        if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
+        if control.errors[.futureDate] { return FormErrorMessages.futureDate }
+        if control.errors[.requiredTrue] { return FormErrorMessages.requiredTrue }
+        if control.errors[.url] { return FormErrorMessages.url }
+        
+        return nil
+    }
+}
+
 class BasicProfileForm: ObservableForm {
     var name = FormControl("", validators: [.required, .maxLength(10)])
     var email = FormControl("", validators: [.required, .email, .maxLength(100)])
@@ -176,4 +202,16 @@ struct BasicFormControlView: View {
 
 #Preview {
     BasicFormControlView()
+}
+
+
+struct BasicFormControlView2: View {
+    @StateObject var form = BasicProfileForm2()
+
+    var body: some View {
+        TextField("Name", text: $form.name.value)
+        if let error = form.getError(for: form.name) {
+            Text(error).foregroundColor(.red)
+        }
+    }
 }

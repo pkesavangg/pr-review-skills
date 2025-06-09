@@ -14,6 +14,8 @@ struct ContentView: View {
         VStack {
             // Testing purpose it will replace by the actual content
             BasicFormControlView()
+            
+            BasicFormControlView2()
         }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }

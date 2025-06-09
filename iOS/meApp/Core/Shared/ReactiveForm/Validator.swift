@@ -21,15 +21,7 @@ public struct Validator<Value>: Identifiable {
     }
 }
 
-private enum Identifier {
-    static let min = UUID()
-    static let max = UUID()
-    static let minLength = UUID()
-    static let maxLength = UUID()
-    static let futureDate = UUID()
-    static let matches = UUID()
-}
-
+// MARK: - String Validators
 extension Validator where Value == String {
     /// Validator that requires the control have a non-empty value.
     public static let required = Validator(type: .required) { !$0.isEmpty }
@@ -37,6 +29,16 @@ extension Validator where Value == String {
     /// Validator that requires the control's value pass an email validation test.
     public static let email = Validator(type: .email) { string in
         Rule.email(string)
+    }
+    
+    /// Validator that requires the control's value to pass a URL validation test.
+    public static let url = Validator(type: .url) { string in
+        Rule.url(string)
+    }
+    
+    /// Validator that prevents whitespace-only values
+    public static let noWhiteSpace = Validator(type: .noWhiteSpace) { value in
+        !(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !value.isEmpty)
     }
     
     /// Validator that requires the length of the control's value to be greater than
@@ -55,12 +57,15 @@ extension Validator where Value == String {
         }
     }
     
-    /// Validator that requires the control's value to pass a URL validation test.
-    public static let url = Validator(type: .url) { string in
-        Rule.url(string)
+    /// Validator that checks if the value matches another string value
+    static func matches(_ otherValue: @autoclosure @escaping () -> String) -> Validator {
+        Validator(type: .matches) { value in
+            value == otherValue()
+        }
     }
 }
 
+// MARK: - Integer Validators
 extension Validator where Value == Int {
     /// Validator that requires the control's value to be greater than
     /// or equal to the provided number.
@@ -79,30 +84,21 @@ extension Validator where Value == Int {
     }
 }
 
-extension Validator where Value == String {
-    static func matches(_ otherValue: @autoclosure @escaping () -> String) -> Validator {
-        Validator(type: .matches) { value in
-            value == otherValue()
-        }
-    }
-}
-
+// MARK: - Boolean Validators
 extension Validator where Value == Bool {
+    /// Validator that requires the boolean value to be true
     public static let requiredTrue = Validator(type: .requiredTrue) { $0 == true }
 }
 
-extension Validator where Value == String {
-    public static let noWhiteSpace = Validator(type: .noWhiteSpace) { value in
-        !(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !value.isEmpty)
-    }
-}
-
+// MARK: - Date Validators
 extension Validator where Value == Date {
+    /// Validator that ensures the date is not in the future
     public static let futureDate = Validator(type: .futureDate) { value in
         value <= Date()
     }
 }
 
+// MARK: - Validation Rules
 private struct Rule {
     /// A regular expression that matches valid e-mail addresses.
     static let emailPattern = ##"^(?=.{1,254}$)(?=.{1,64}@)[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"##
