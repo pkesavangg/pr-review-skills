@@ -1,8 +1,20 @@
 import SwiftUI
 import Combine
 
+// Add Profile Data Model
+struct ProfileData {
+    let name: String
+    let email: String
+    let age: Int
+    let rememberMe: Bool
+    let username: String
+    let dob: Date
+    let password: String
+    let confirmPassword: String
+}
+
 class BasicProfileForm: ObservableForm {
-    var name = FormControl("", validators: [.required])
+    var name = FormControl("", validators: [.required, .maxLength(10)])
     var email = FormControl("", validators: [.required, .email, .maxLength(100)])
     var age = FormControl(5, validators: [.min(10)])
     var rememberMe = FormControl(false, validators: [.requiredTrue])
@@ -11,11 +23,30 @@ class BasicProfileForm: ObservableForm {
     var password = FormControl("", validators: [.required, .minLength(6)])
     var confirmPassword = FormControl("", validators: [])
     
+    // Function to update form values
+    func updateFormValues(with profile: ProfileData) {
+        name.value = profile.name
+        email.value = profile.email
+        age.value = profile.age
+        rememberMe.value = profile.rememberMe
+        username.value = profile.username
+        dob.value = profile.dob
+        password.value = profile.password
+        confirmPassword.value = profile.confirmPassword
+        
+        // Validate all fields after update
+        validate()
+    }
+    
     // Error message getters with priority
     var nameError: String? {
         if name.isDirty {
             if name.errors[.required] {
                 return FormErrorMessages.required
+            }
+            
+            if name.errors[.maxLength] {
+                return FormErrorMessages.maxLength(10)
             }
         }
         return nil
@@ -23,23 +54,29 @@ class BasicProfileForm: ObservableForm {
     
     var emailError: String? {
         if email.isDirty {
-            // Priority: required > email pattern > min length
             if email.errors[.required] {
                 return FormErrorMessages.required
             }
             if email.errors[.email] {
                 return FormErrorMessages.email
             }
-            if email.errors[.minLength(100)] {
-                return FormErrorMessages.minLength(100)
+            if email.errors[.maxLength] {
+                if let maxLength = email.errors.value(for: .maxLength) as? Int {
+                    return FormErrorMessages.maxLength(maxLength)
+                }
             }
         }
         return nil
     }
     
     var ageError: String? {
-        if age.errors[.min(10)] {
-            return FormErrorMessages.min(10)
+        if age.isDirty {
+            if age.errors[.min] {
+                // Get the minimum value from the validator
+                if let minValue = age.errors.value(for: .min) as? Int {
+                    return FormErrorMessages.min(minValue)
+                }
+            }
         }
         return nil
     }
@@ -77,9 +114,9 @@ class BasicProfileForm: ObservableForm {
             if password.errors[.required] {
                 return FormErrorMessages.required
             }
-            if password.errors[.minLength(6)] {
-                return FormErrorMessages.minLength(6)
-            }
+//            if password.errors[.minLength(6)] {
+//                return FormErrorMessages.minLength(6)
+//            }
         }
         return nil
     }
@@ -89,11 +126,27 @@ class BasicProfileForm: ObservableForm {
     }
 }
 
+
+struct ExamplesTextField: View {
+    @State private var text: String = "false"
+    var body: some View {
+        TextField("Name", text: $text)
+    }
+}
+
+#Preview {
+    ExamplesTextField()
+}
+
 struct BasicFormControlView: View {
     @StateObject var form = BasicProfileForm()
+    @State private var text: String = "false"
     
     var body: some View {
         Form {
+            
+            TextField("Name", text: $text)
+            
             TextField("Name", text: $form.name.value)
             if let error = form.nameError {
                 Text(error)
@@ -150,6 +203,20 @@ struct BasicFormControlView: View {
                 }
             }
             .disabled(form.isInvalid)
+            
+            Button("Load Sample Data") {
+                let sampleProfile = ProfileData(
+                    name: "John Doe",
+                    email: "john.doe@example.com",
+                    age: 25,
+                    rememberMe: true,
+                    username: "johndoe",
+                    dob: Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date(),
+                    password: "password123",
+                    confirmPassword: "password123"
+                )
+                form.updateFormValues(with: sampleProfile)
+            }
         }
         .navigationTitle("Basic Form Control")
     }

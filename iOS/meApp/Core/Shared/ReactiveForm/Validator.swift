@@ -4,20 +4,19 @@ import Foundation
 public struct Validator<Value>: Identifiable {
     public typealias ValidatorFn = (Value) -> Bool
     
-    /// Identifier of a validator of the same type.
-    public private(set) var id: UUID
+    /// Type of the validator
+    public let type: ValidatorType
+    /// Value used in validation (e.g. minimum length, maximum value)
+    public let value: Any?
     /// Validator function.
     public private(set) var fn: ValidatorFn
+    /// Identifier of a validator of the same type.
+    public var id: String { String(describing: type) }
     
-    /// Creates a validator with the provided identifier.
-    public init(id: UUID, fn: @escaping ValidatorFn) {
-        self.id = id
-        self.fn = fn
-    }
-    
-    /// Creates a validator with a unique identifier.
-    public init(_ fn: @escaping ValidatorFn) {
-        self.id = UUID()
+    /// Creates a validator with the provided type and validation value.
+    public init(type: ValidatorType, value: Any? = nil, fn: @escaping ValidatorFn) {
+        self.type = type
+        self.value = value
         self.fn = fn
     }
 }
@@ -33,15 +32,17 @@ private enum Identifier {
 
 extension Validator where Value == String {
     /// Validator that requires the control have a non-empty value.
-    public static let required = Validator(Rule.required)
+    public static let required = Validator(type: .required) { !$0.isEmpty }
     
     /// Validator that requires the control's value pass an email validation test.
-    public static let email = Validator(Rule.email)
+    public static let email = Validator(type: .email) { string in
+        Rule.email(string)
+    }
     
     /// Validator that requires the length of the control's value to be greater than
     /// or equal to the provided minimum length.
     public static func minLength(_ minimum: Int) -> Validator {
-        Validator(id: Identifier.minLength) { value in
+        Validator(type: .minLength, value: minimum) { value in
             Rule.minLength(value, minimumLength: minimum)
         }
     }
@@ -49,7 +50,7 @@ extension Validator where Value == String {
     /// Validator that requires the length of the control's value to be less than
     /// or equal to the provided maximum length.
     public static func maxLength(_ maximum: Int) -> Validator {
-        Validator(id: Identifier.maxLength) { value in
+        Validator(type: .maxLength, value: maximum) { value in
             Rule.maxLength(value, maximumLength: maximum)
         }
     }
@@ -59,7 +60,7 @@ extension Validator where Value == Int {
     /// Validator that requires the control's value to be greater than
     /// or equal to the provided number.
     public static func min(_ minimum: Int) -> Validator {
-        Validator(id: Identifier.min) { value in
+        Validator(type: .min, value: minimum) { value in
             Rule.min(value, minimumValue: minimum)
         }
     }
@@ -67,7 +68,7 @@ extension Validator where Value == Int {
     /// Validator that requires the control's value to be less than
     /// or equal to the provided number.
     public static func max(_ maximum: Int) -> Validator {
-        Validator(id: Identifier.max) { value in
+        Validator(type: .max, value: maximum) { value in
             Rule.max(value, maximumValue: maximum)
         }
     }
@@ -75,27 +76,24 @@ extension Validator where Value == Int {
 
 extension Validator where Value == String {
     static func matches(_ otherValue: @autoclosure @escaping () -> String) -> Validator {
-        Validator(id: Identifier.matches) { value in
+        Validator(type: .matches) { value in
             value == otherValue()
         }
     }
 }
 
-
-
 extension Validator where Value == Bool {
-    public static let requiredTrue = Validator { $0 == true }
+    public static let requiredTrue = Validator(type: .requiredTrue) { $0 == true }
 }
 
 extension Validator where Value == String {
-    public static let noWhiteSpace = Validator { value in
-        // Must not be all whitespace
+    public static let noWhiteSpace = Validator(type: .noWhiteSpace) { value in
         !(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !value.isEmpty)
     }
 }
 
 extension Validator where Value == Date {
-    public static let futureDate = Validator(id: Identifier.futureDate) { value in
+    public static let futureDate = Validator(type: .futureDate) { value in
         value <= Date()
     }
 }
