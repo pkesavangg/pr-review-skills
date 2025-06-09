@@ -24,8 +24,8 @@ struct SegmentedPickerView<T: CaseIterable & RawRepresentable & Identifiable & H
                         .padding(.horizontal, 12)
                         .background(
                             selectedSegment == segment
-                            ? Color(theme.actionSecondary)
-                            : Color(theme.textInverse)
+                            ? theme.actionSecondary
+                            : theme.textInverse
                         )
                         .cornerRadius(12)
                 }
