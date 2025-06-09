@@ -31,26 +31,21 @@ struct SafariView: UIViewControllerRepresentable {
 
 // MARK: - Usage Example
 /*
-// Example 1: Using SafariView directly in a SwiftUI view
+// Example: Using the .inAppBrowser view modifier in a SwiftUI view
+import SwiftUI
+
 struct ContentView: View {
     @State private var showBrowser = false
     var body: some View {
         Button("Open Browser") {
             showBrowser = true
         }
-        .fullScreenCover(isPresented: $showBrowser) {
-            SafariView(url: URL(string: "https://example.com")!) {
-                print("Browser was dismissed")
-            }
+        .inAppBrowser(
+            url: URL(string: "https://example.com")!,
+            isPresented: $showBrowser
+        ) {
+            print("Browser was dismissed")
         }
     }
 }
-
-// Example 2: Using a custom view modifier (if implemented)
-// .inAppBrowser(
-//     url: URL(string: "https://example.com")!,
-//     isPresented: $showBrowser
-// ) {
-//     print("Browser was dismissed")
-// }
 */
