@@ -32,9 +32,9 @@ interface IEntryRepository {
     /**
      * Updates an existing entry.
      * @param entry The entry to update.
-     * @return The row ID of the updated entry.
+     * @return The number of rows updated.
      */
-    suspend fun update(entry: Entry): Long
+    suspend fun update(entry: Entry): Int
 
     /**
      * Gets the latest valid entry for an account.
@@ -48,7 +48,7 @@ interface IEntryRepository {
      * @param accountId The account ID.
      * @return List of valid entries.
      */
-    suspend fun getEntriesByAccount(accountId: String): List<Entry>?
+    suspend fun getEntriesByAccount(accountId: String): List<Entry>
 
     /**
      * Gets valid entries for an account within a time range.
@@ -57,7 +57,7 @@ interface IEntryRepository {
      * @param endTime The end timestamp.
      * @return Flow of valid entries in the time range.
      */
-    fun getEntriesByTimeRange(accountId: String, startTime: String, endTime: String): Flow<List<Entry>?>
+    fun getEntriesByTimeRange(accountId: String, startTime: String, endTime: String): Flow<List<Entry>>
 
     /**
      * Gets valid entries for an account by device type.
@@ -65,7 +65,7 @@ interface IEntryRepository {
      * @param deviceType The device type.
      * @return Flow of valid entries for the device type.
      */
-    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>?>
+    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 
     /**
      * Gets an entry by its ID.
@@ -80,7 +80,7 @@ interface IEntryRepository {
      * @param operationType The operation type.
      * @return Flow of entries with the specified operation type.
      */
-    fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>?>
+    fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>>
 
     /**
      * Gets all unsynced entries for an account.
@@ -102,7 +102,7 @@ interface IEntryRepository {
      * @param maxAttempts The maximum number of attempts.
      * @return List of failed operations.
      */
-    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry>?
+    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry>
 
     /**
      * Clears all unsynced entries for an account.
@@ -127,7 +127,7 @@ interface IEntryRepository {
     fun getLastNDaysEntries(
         accountId: String,
         days: Int,
-    ): Flow<List<Entry>?>
+    ): Flow<List<Entry>>
 
     /**
      * Deletes all entries for a specific account.

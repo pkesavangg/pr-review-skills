@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.model.common
 
-import com.greatergoods.meapp.data.storage.db.entity.Entry
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
 
 data class Progress(
     val latest: Entry? = null,

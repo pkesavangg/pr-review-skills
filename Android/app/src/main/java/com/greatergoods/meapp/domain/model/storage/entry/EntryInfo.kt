@@ -9,36 +9,11 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricE
 import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 
-/**
- * Wrapper class that combines an entry entity with its related entities.
- * This provides a complete view of an entry with all associated data.
- */
-data class EntryInfo<T : BaseEntryEntity>(
-    @Embedded val entry: T,
-
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
-    )
-    val bpmEntry: BpmEntryEntity?,
-
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
-    )
-    val scaleEntry: BodyScaleEntryEntity?,
-
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
-    )
-    val scaleEntryMetric: BodyScaleEntryMetricEntity?
-) {
-
-    /**
-     * Converts this EntryWithRelations to the appropriate Entry domain model.
-     * @return The appropriate Entry subclass (BpmEntry or ScaleEntry), or null if data is insufficient.
-     */
+sealed class EntryInfo<T : BaseEntryEntity> {
+    abstract val entry: T
+    abstract val bpmEntry: BpmEntryEntity?
+    abstract val scaleEntry: BodyScaleEntryEntity?
+    abstract val scaleEntryMetric: BodyScaleEntryMetricEntity?
     fun toEntry(): Entry {
         val entryEntity = EntryEntity(
             id = entry.id,
@@ -53,6 +28,9 @@ data class EntryInfo<T : BaseEntryEntity>(
             attempts = entry.attempts,
         )
 
+        val bpmEntry = this.bpmEntry
+        val scaleEntry = this.scaleEntry
+        val scaleEntryMetric = this.scaleEntryMetric
         return when {
             bpmEntry != null -> BpmEntry(
                 entry = entryEntity,
@@ -70,26 +48,30 @@ data class EntryInfo<T : BaseEntryEntity>(
             else -> throw IllegalStateException("Unexpected null: both bpmEntry and scaleEntry are null.")
         }
     }
-
-    /**
-     * Checks if this entry has BPM data.
-     */
-    val hasBpmData: Boolean
-        get() = bpmEntry != null
-
-    /**
-     * Checks if this entry has scale data.
-     */
-    val hasScaleData: Boolean
-        get() = scaleEntry != null && scaleEntryMetric != null
-
-    /**
-     * Gets the device type from the entry.
-     */
-    val deviceType: String
-        get() = entry.deviceType
 }
 
-// Type alias for common usage
-typealias PopulatedEntry = EntryInfo<EntryEntity>
-typealias PopulatedActiveEntry = EntryInfo<ActiveEntryEntity>
+/**
+ * Concrete class for Room: PopulatedEntry (EntryEntity)
+ */
+data class PopulatedEntry(
+    @Embedded override val entry: EntryEntity,
+    @Relation(parentColumn = "id", entityColumn = "id")
+    override val bpmEntry: BpmEntryEntity?,
+    @Relation(parentColumn = "id", entityColumn = "id")
+    override val scaleEntry: BodyScaleEntryEntity?,
+    @Relation(parentColumn = "id", entityColumn = "id")
+    override val scaleEntryMetric: BodyScaleEntryMetricEntity?
+) : EntryInfo<EntryEntity>()
+
+/**
+ * Concrete class for Room: PopulatedActiveEntry (ActiveEntryEntity)
+ */
+data class PopulatedActiveEntry(
+    @Embedded override val entry: ActiveEntryEntity,
+    @Relation(parentColumn = "id", entityColumn = "id")
+    override val bpmEntry: BpmEntryEntity?,
+    @Relation(parentColumn = "id", entityColumn = "id")
+    override val scaleEntry: BodyScaleEntryEntity?,
+    @Relation(parentColumn = "id", entityColumn = "id")
+    override val scaleEntryMetric: BodyScaleEntryMetricEntity?
+) : EntryInfo<ActiveEntryEntity>()

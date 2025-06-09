@@ -32,10 +32,10 @@ class EntryService @Inject constructor(
     private val _latestEntry = MutableStateFlow<Entry?>(null)
     override val latestEntry: StateFlow<Entry?> = _latestEntry.asStateFlow()
 
-    private val _last7Days = MutableStateFlow<List<Entry>?>(listOf())
+    private val _last7Days = MutableStateFlow<List<Entry>>(listOf())
     override val last7Days = _last7Days.asStateFlow()
 
-    private val _last30Days = MutableStateFlow<List<Entry>?>(listOf())
+    private val _last30Days = MutableStateFlow<List<Entry>>(listOf())
     override val last30Days = _last30Days.asStateFlow()
 
     private val _monthsLastYear = MutableStateFlow<List<HistoryMonth>?>(null)
@@ -151,7 +151,7 @@ class EntryService @Inject constructor(
      * @param deviceType The device type to filter entries by.
      * @return Flow of list of entries matching the device type.
      */
-    override fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>?> =
+    override fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>> =
         entryRepository.getEntriesByDeviceType(accountId, deviceType)
 
     /**
@@ -276,16 +276,8 @@ class EntryService @Inject constructor(
     private fun clearAllData() {
         EntryServiceHelper.clearAllData(
             setLatestEntry = { _latestEntry.value = it },
-            setLast7Days = {
-                if (it != null) {
-                    _last7Days.value = it
-                }
-            },
-            setLast30Days = {
-                if (it != null) {
-                    _last30Days.value = it
-                }
-            },
+            setLast7Days = { _last7Days.value = it ?: emptyList() },
+            setLast30Days = { _last30Days.value = it ?: emptyList() },
             setProgress = { _progress.value = it },
         )
     }
@@ -461,14 +453,14 @@ internal object EntryServiceHelper {
      */
     fun updateProgress(
         latestEntry: ScaleEntry?,
-        last7Days: List<Entry>?,
-        last30Days: List<Entry>?,
+        last7Days: List<Entry>,
+        last30Days: List<Entry>,
         initialWeight: Double?,
         setProgress: (Progress) -> Unit
     ) {
         // Filter only non-null ScaleEntry for calculations
-        val last7ScaleEntries = last7Days?.map { it as ScaleEntry } ?: emptyList()
-        val last30ScaleEntries = last30Days?.map { it as ScaleEntry } ?: emptyList()
+        val last7ScaleEntries = last7Days.map { it as ScaleEntry }
+        val last30ScaleEntries = last30Days.map { it as ScaleEntry }
 
         // Get the oldest (last) scale entry in each period for comparison
         val initWeek = last7ScaleEntries.lastOrNull()
@@ -519,13 +511,13 @@ internal object EntryServiceHelper {
      */
     fun clearAllData(
         setLatestEntry: (Entry?) -> Unit,
-        setLast7Days: (List<Entry>?) -> Unit,
-        setLast30Days: (List<Entry>?) -> Unit,
+        setLast7Days: (List<Entry>) -> Unit,
+        setLast30Days: (List<Entry>) -> Unit,
         setProgress: (Progress?) -> Unit
     ) {
         setLatestEntry(null)
-        setLast7Days(null)
-        setLast30Days(null)
+        setLast7Days(emptyList())
+        setLast30Days(emptyList())
         setProgress(null)
     }
 }

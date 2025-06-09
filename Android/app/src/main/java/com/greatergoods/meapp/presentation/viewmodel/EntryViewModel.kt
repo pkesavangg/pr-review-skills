@@ -2,8 +2,8 @@ package com.greatergoods.meapp.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.services.IEntryService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

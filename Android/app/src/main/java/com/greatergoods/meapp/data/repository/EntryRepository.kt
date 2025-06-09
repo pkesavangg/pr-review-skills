@@ -33,8 +33,8 @@ class EntryRepository @Inject constructor(
     /**
      * Updates a single entry.
      */
-    override suspend fun update(entry: Entry): Long {
-        return entryDao.update(entry)
+    override suspend fun update(entry: Entry): Int {
+        return entryDao.update(entry.entry)
     }
 
     /**
@@ -190,16 +190,22 @@ class EntryRepository @Inject constructor(
      * @param accountId The account ID
      * @return Flow of list of monthly aggregated data
      */
-    override fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>> =
-        entryDao.getMonthsLastYear(accountId)
+    override fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>> {
+        return flow {
+            emit(listOf())
+        }
+    }
 
     /**
      * Gets all monthly aggregated data.
      * @param accountId The account ID
      * @return Flow of list of all monthly aggregated data
      */
-    override fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>> =
-        entryDao.getMonthsAll(accountId)
+    override fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>> {
+        return flow {
+            emit(listOf())
+        }
+    }
 
     /**
      * Gets the operation count for an account.

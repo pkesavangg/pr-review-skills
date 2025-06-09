@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
-import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.presentation.viewmodel.EntryUiState
 import com.greatergoods.meapp.presentation.viewmodel.EntryViewModel
 import java.text.SimpleDateFormat
@@ -111,7 +111,6 @@ fun MonthList(
         items(months) { month ->
             MonthItem(
                 month = month,
-                isSelected = month == selectedMonth,
                 onClick = { onMonthSelected(month) },
             )
         }
@@ -121,7 +120,6 @@ fun MonthList(
 @Composable
 fun MonthItem(
     month: HistoryMonth,
-    isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Card(
@@ -196,29 +194,6 @@ fun EntryItem(
                     style = MaterialTheme.typography.titleMedium,
                 )
 
-                // Display scale entry data if available
-                entry.scaleEntry?.let { scale ->
-                    Text(
-                        text = "Weight: ${scale.weight} kg",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = "Body Fat: ${scale.bodyFat}%",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = "Muscle Mass: ${scale.muscleMass}%",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-
-                // Display BPM entry data if available
-                entry.bpmEntry?.let { bpm ->
-                    Text(
-                        text = "Pulse: ${bpm.pulse} bpm",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
             }
 
             if (isSelected) {

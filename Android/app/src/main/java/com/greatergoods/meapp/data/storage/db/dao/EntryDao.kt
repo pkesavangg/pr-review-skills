@@ -10,7 +10,6 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
-import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.BpmEntry
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PopulatedActiveEntry
@@ -58,7 +57,7 @@ interface EntryDao {
 
     @Transaction
     suspend fun update(entry: Entry): Long {
-        val updatedId = update(entry.entry)
+        val updatedId = update(entry.entry).toLong()
 
         if (entry is BpmEntry) {
             updateBpm(entry.bpmEntry.copy(id = updatedId))
@@ -279,7 +278,7 @@ interface EntryDao {
      * @return The number of rows updated
      */
     @Update
-    suspend fun update(entry: EntryEntity): Long
+    suspend fun update(entry: EntryEntity): Int
 
     /**
      * Update an existing BPM entity in the database.
@@ -287,7 +286,7 @@ interface EntryDao {
      * @return The number of rows updated.
      */
     @Update
-    suspend fun updateBpm(bpm: BpmEntryEntity): Long
+    suspend fun updateBpm(bpm: BpmEntryEntity): Int
 
     /**
      * Update an existing BodyScaleEntry entity in the database.
@@ -295,7 +294,7 @@ interface EntryDao {
      * @return The number of rows updated.
      */
     @Update
-    suspend fun updateBodyScale(scale: BodyScaleEntryEntity): Long
+    suspend fun updateBodyScale(scale: BodyScaleEntryEntity): Int
 
     /**
      * Update an existing BodyScaleEntryMetric entity in the database.
@@ -303,7 +302,7 @@ interface EntryDao {
      * @return The number of rows updated.
      */
     @Update
-    suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Long
+    suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
 
     /**
      * Get entries for a specific month and year.
@@ -321,54 +320,6 @@ interface EntryDao {
     """,
     )
     fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
-
-    /**
-     * Get monthly aggregated data for the last year.
-     * @param accountId The account ID
-     * @return Flow of list of monthly aggregated data
-     */
-    @Transaction
-    @Query(
-        """
-        SELECT
-            MIN(entry_view.id) as id,
-            ROUND(AVG(body_scale_entry.weight)) as weight,
-            COUNT(DISTINCT entry_view.entryTimestamp) as count,
-            GROUP_CONCAT(body_scale_entry.weight || '|' || entry_view.entryTimestamp) as weights,
-            strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch')) as entryTimestamp
-        FROM entry_view
-        INNER JOIN body_scale_entry ON entry_view.id = body_scale_entry.id
-        WHERE entry_view.accountId = :accountId
-        AND entry_view.entryTimestamp >= strftime('%s', 'now', '-1 year') * 1000
-        AND entry_view.entryTimestamp <= strftime('%s', 'now') * 1000
-        GROUP BY strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch'))
-        ORDER BY entryTimestamp DESC
-    """,
-    )
-    fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>>
-
-    /**
-     * Get all monthly aggregated data.
-     * @param accountId The account ID
-     * @return Flow of list of all monthly aggregated data
-     */
-    @Transaction
-    @Query(
-        """
-        SELECT
-            MIN(entry_view.id) as id,
-            ROUND(AVG(body_scale_entry.weight)) as weight,
-            COUNT(DISTINCT entry_view.entryTimestamp) as count,
-            GROUP_CONCAT(body_scale_entry.weight || '|' || entry_view.entryTimestamp) as weights,
-            strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch')) as entryTimestamp
-        FROM entry_view
-        INNER JOIN body_scale_entry ON entry_view.id = body_scale_entry.id
-        WHERE entry_view.accountId = :accountId
-        GROUP BY strftime('%Y-%m', datetime(entry_view.entryTimestamp/1000, 'unixepoch'))
-        ORDER BY entryTimestamp DESC
-    """,
-    )
-    fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>>
 
     /**
      * Get the operation count for an account.

@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 interface IEntryService {
     val isUpdating: StateFlow<Boolean>
     val latestEntry: StateFlow<Entry?>
-    val last7Days: StateFlow<List<Entry>?>
-    val last30Days: StateFlow<List<Entry>?>
+    val last7Days: StateFlow<List<Entry>>
+    val last30Days: StateFlow<List<Entry>>
     val progress: StateFlow<Progress?>
     val lastUpdated: StateFlow<Long?>
     val monthsLastYear: StateFlow<List<HistoryMonth>?>
@@ -26,5 +26,5 @@ interface IEntryService {
         deleteOps: List<Entry> = emptyList()
     )
 
-    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>?>
+    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 }
