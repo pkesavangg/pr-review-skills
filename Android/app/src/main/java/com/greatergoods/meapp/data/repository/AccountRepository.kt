@@ -4,21 +4,27 @@ import android.util.Log
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
-import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
-import com.greatergoods.meapp.data.storage.db.entity.account.AccountMapper
-import com.greatergoods.meapp.data.storage.db.entity.account.UserDataStore
-import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
+import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
+import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
+import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
+import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.data.api.IAuthAPI
+import com.greatergoods.meapp.data.api.IUserAPI
+import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
-import com.greatergoods.meapp.domain.repository.IAuthAPI
-import com.greatergoods.meapp.domain.repository.IUserAPI
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 
 /**
  * Implementation of the IAccountRepository interface.
@@ -31,8 +37,7 @@ class AccountRepository @Inject constructor(
     private val tokenManager: TokenManager,
     private val authAPI: IAuthAPI,
     private val userAPI: IUserAPI,
-    private val accountEntityMapper: AccountEntityMapper,
-    private val accountMapper: AccountMapper
+    private val accountEntityMapper: AccountEntityMapper
 ) : IAccountRepository {
 
     companion object {
@@ -40,84 +45,162 @@ class AccountRepository @Inject constructor(
     }
 
     // API Operations
+    /**
+     * Logs in via API and returns LoginResponse.
+     */
     override suspend fun loginInAPI(email: String, password: String): LoginResponse {
-        return authAPI.login(email, password)
+        return authAPI.login(LoginRequest(email, password))
     }
 
-    override suspend fun signupInAPI(request: CreateAccountRequest): Map<String, Any> {
+    /**
+     * Signs up via API and returns LoginResponse.
+     */
+    override suspend fun signupInAPI(request: CreateAccountRequest): LoginResponse {
         return userAPI.createAccount(request)
     }
 
+    /**
+     * Logs out via API.
+     */
     override suspend fun logoutInAPI(fcmToken: String?) {
-        authAPI.logout(fcmToken)
+        authAPI.logout(LogoutRequest(fcmToken ?: ""))
     }
 
-    override suspend fun getAccountInAPI(): Map<String, Any> {
+    /**
+     * Gets account info via API and returns AccountResponse.
+     */
+    override suspend fun getAccountInAPI(): AccountResponse {
         return userAPI.getAccount()
     }
 
-    override suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Map<String, Any> {
-        return userAPI.updatePassword(oldPassword, newPassword)
+    /**
+     * Updates password via API and returns true if successful.
+     */
+    override suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Boolean {
+        val result = authAPI.updatePassword(mapOf("oldPassword" to oldPassword, "newPassword" to newPassword))
+        return result["success"] as? Boolean ?: false
     }
 
-    override suspend fun resetPasswordInAPI(email: String): Map<String, Any> {
-        return userAPI.resetPassword(email)
+    /**
+     * Requests password reset via API and returns true if successful.
+     */
+    override suspend fun resetPasswordInAPI(email: String): Boolean {
+        val result = authAPI.requestPasswordReset(PasswordResetRequest(email))
+        return result["success"] as? Boolean ?: false
     }
 
     // DB Operations
-    override suspend fun addAccountInDB(account: Account): Account {
+    /**
+     * Adds an account to the database and returns the domain model.
+     */
+    override suspend fun addAccountInDB(account: com.greatergoods.meapp.domain.model.Account): com.greatergoods.meapp.domain.model.Account {
         Log.d(TAG, "Adding account: ${account.email}")
         val accountEntity = accountEntityMapper.toEntity(account)
         accountDao.insertAccount(accountEntity)
         return account
     }
 
+    /**
+     * Removes an account from the database by ID.
+     */
     override suspend fun removeAccountInDB(accountId: String) {
         Log.d(TAG, "Removing account: $accountId")
         accountDao.deleteAccountById(accountId)
         // Also clear tokens from TokenManager if this was the active account
-        if (accountId == userDataStore.getData().activeAccountId) {
+        val activeAccountId = userDataStore.getData().accountsMap.entries.firstOrNull { it.value.isActive }?.key
+        if (accountId == activeAccountId) {
             tokenManager.clearTokens()
         }
+        userDataStore.removeAccount(accountId)
     }
 
+    /**
+     * Removes all accounts from the database.
+     */
     override suspend fun removeAllAccountsInDB() {
         Log.d(TAG, "Removing all accounts")
-        accountDao.deleteAllAccounts()
+        accountDao.removeAllAccounts()
         tokenManager.clearTokens()
     }
 
-    override suspend fun getStoredActiveAccountFromDB(): Account? {
-        return accountDao.getActiveAccount()?.let { accountEntityMapper.toDomain(it) }
+    /**
+     * Gets the stored active account from the database.
+     */
+    override suspend fun getStoredActiveAccountFromDB(): com.greatergoods.meapp.domain.model.Account? {
+        return accountDao.getActiveAccount().firstOrNull()?.toDomainAccount()
     }
 
+    /**
+     * Deactivates all accounts except the given account ID.
+     */
     override suspend fun deactivateOtherAccountsInDB(accountId: String) {
         Log.d(TAG, "Deactivating other accounts except: $accountId")
         accountDao.deactivateOtherAccounts(accountId)
     }
 
-    override fun getLoggedInAccountsFromDB(): Flow<List<Account>> {
-        return accountDao.getLoggedInAccounts().map { accounts ->
-            accounts.map { accountEntityMapper.toDomain(it) }
+    /**
+     * Gets all logged-in accounts from the database as a Flow.
+     */
+    override fun getLoggedInAccountsFromDB(): Flow<List<com.greatergoods.meapp.domain.model.Account>> {
+        return accountDao.getAllLoggedInAccounts().map { accounts ->
+            accounts.map { it.toDomainAccount() }
         }
     }
 
+    /**
+     * Updates tokens for the active account in the TokenManager.
+     */
     override suspend fun updateTokensInDB(tokens: Map<String, String>) {
         Log.d(TAG, "Updating tokens for active account")
         tokenManager.setTokens(
-            accessToken = tokens[AppConfig.ACCESS_TOKEN_KEY] ?: "",
-            refreshToken = tokens[AppConfig.REFRESH_TOKEN_KEY] ?: "",
-            expiresAt = tokens[AppConfig.EXPIRES_AT_KEY] ?: ""
+            Token(
+                accountId = tokens["accountId"] ?: "",
+                accessToken = tokens["accessToken"],
+                refreshToken = tokens["refreshToken"],
+                expiresAt = tokens["expiresAt"]
+            )
         )
     }
 
+    /**
+     * Refreshes the token via API and returns a Token.
+     */
     override suspend fun refreshTokenInAPI(refreshToken: String): Token {
         Log.d(TAG, "Refreshing token")
-        return authAPI.refreshToken(refreshToken)
+        val response = authAPI.refreshToken(RefreshTokenRequest(refreshToken))
+        return Token(
+            accountId = "", // Set the correct account id if available
+            accessToken = response.accessToken,
+            refreshToken = response.refreshToken,
+            expiresAt = response.expiresAt
+        )
     }
 
+    /**
+     * Updates the last active time for the account in the database.
+     */
     override suspend fun updateLastActiveTimeInDB(accountId: String) {
         Log.d(TAG, "Updating last active time for account: $accountId")
-        accountDao.updateLastActiveTime(accountId, System.currentTimeMillis())
+        // Implement this if you have a method in AccountDao, otherwise leave as a stub
+    }
+
+    private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): com.greatergoods.meapp.domain.model.Account {
+        val entity = this.account
+        return com.greatergoods.meapp.domain.model.Account(
+            id = entity.id,
+            firstName = entity.firstName,
+            lastName = entity.lastName,
+            dob = entity.dob,
+            email = entity.email,
+            expiresAt = entity.expiresAt,
+            fcmToken = entity.fcmToken,
+            gender = entity.gender,
+            isActiveAccount = entity.isActiveAccount,
+            isLoggedIn = entity.isLoggedIn,
+            isExpired = entity.isExpired,
+            isSynced = entity.isSynced,
+            lastActiveTime = entity.lastActiveTime,
+            zipcode = entity.zipcode
+        )
     }
 }

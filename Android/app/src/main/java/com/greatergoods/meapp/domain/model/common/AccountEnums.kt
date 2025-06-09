@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.model.common
 
-enum class Sex {
+enum class Gender {
     MALE,
     FEMALE
 }

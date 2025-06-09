@@ -17,6 +17,13 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import com.greatergoods.meapp.data.repository.AccountRepository
+import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.data.api.IAuthAPI
+import com.greatergoods.meapp.data.api.IUserAPI
+import com.greatergoods.meapp.data.storage.db.dao.AccountDao
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.core.network.TokenManager
 
 
 @Module
@@ -48,6 +55,19 @@ object RepositoryModule {
     @Singleton
     fun provideUserRepository(userDataStore: UserDataStore): IUserRepository =
         UserRepository(userDataStore)
+
+
+    @Provides
+    @Singleton
+    fun provideAccountRepository(
+        accountDao: AccountDao,
+        userDataStore: UserDataStore,
+        tokenManager: TokenManager,
+        authAPI: IAuthAPI,
+        userAPI: IUserAPI,
+        accountEntityMapper: AccountEntityMapper
+    ): IAccountRepository =
+        AccountRepository(accountDao, userDataStore, tokenManager, authAPI, userAPI, accountEntityMapper)
 }
 
 @Module

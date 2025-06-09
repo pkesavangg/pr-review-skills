@@ -2,7 +2,7 @@ package com.greatergoods.meapp.core.network.interceptors
 
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.config.NetworkConfig
-import com.greatergoods.meapp.core.network.TokenManager
+import com.greatergoods.meapp.core.network.ITokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -10,7 +10,7 @@ import okhttp3.Response
 import javax.inject.Inject
 // This interceptor adds an Authorization header to every outgoing HTTP request
 class AuthTokenInterceptor @Inject constructor(
-    private val tokenManager: TokenManager
+    private val tokenManager: ITokenManager
 ) : Interceptor {
     companion object {
         private const val TAG = "AuthTokenInterceptor"

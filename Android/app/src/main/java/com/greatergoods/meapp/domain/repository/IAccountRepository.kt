@@ -1,9 +1,10 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.db.entity.account.Account
+import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -12,12 +13,33 @@ import kotlinx.coroutines.flow.Flow
  */
 interface IAccountRepository {
     // API Operations
+    /**
+     * Logs in via API and returns LoginResponse.
+     */
     suspend fun loginInAPI(email: String, password: String): LoginResponse
-    suspend fun signupInAPI(request: CreateAccountRequest): Map<String, Any>
+    /**
+     * Signs up via API and returns LoginResponse.
+     */
+    suspend fun signupInAPI(request: CreateAccountRequest): LoginResponse
+    /**
+     * Logs out via API.
+     */
     suspend fun logoutInAPI(fcmToken: String?)
-    suspend fun getAccountInAPI(): Map<String, Any>
-    suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Map<String, Any>
-    suspend fun resetPasswordInAPI(email: String): Map<String, Any>
+    /**
+     * Gets account info via API and returns AccountResponse.
+     */
+    suspend fun getAccountInAPI(): AccountResponse
+    /**
+     * Updates password via API and returns true if successful.
+     */
+    suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Boolean
+    /**
+     * Requests password reset via API and returns true if successful.
+     */
+    suspend fun resetPasswordInAPI(email: String): Boolean
+    /**
+     * Refreshes the token via API and returns a Token.
+     */
     suspend fun refreshTokenInAPI(refreshToken: String): Token
 
     // DB Operations

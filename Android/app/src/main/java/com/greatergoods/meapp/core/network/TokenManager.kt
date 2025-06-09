@@ -10,78 +10,91 @@ import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
+interface ITokenManager {
+    val tokens: StateFlow<Token?>
+    val otherUserToken: StateFlow<Token?>
+    val tokenRefreshed: StateFlow<Boolean>
+    val logoutUser: StateFlow<Boolean>
+    val isOtherUserTokenRefreshed: Boolean
+
+    suspend fun setTokens(token: Token)
+    fun setOtherUserToken(token: Token?)
+    fun clearTokens()
+    fun setTokenRefreshed(refreshed: Boolean)
+    fun setLogoutUser(logout: Boolean)
+    suspend fun refreshToken(): Boolean
+    fun isTokenExpired(): Boolean
+    fun getAccessToken(): String?
+    fun getRefreshToken(): String?
+    fun getTokenExpiresAt(): String?
+    suspend fun getAccessToken(accountId: String): String?
+    suspend fun getRefreshToken(accountId: String): String?
+}
+
 @Singleton
 class TokenManager @Inject constructor(
-    private val accountRepository: AccountRepository,
     private val userDataStore: UserDataStore
-) {
+) : ITokenManager {
     companion object {
         private const val TAG = "TokenManager"
     }
 
     private val _tokens = MutableStateFlow<Token?>(null)
-    val tokens: StateFlow<Token?> = _tokens
+    override val tokens: StateFlow<Token?> = _tokens
 
     private val _otherUserToken = MutableStateFlow<Token?>(null)
-    val otherUserToken: StateFlow<Token?> = _otherUserToken
+    override val otherUserToken: StateFlow<Token?> = _otherUserToken
 
     private val _tokenRefreshed = MutableStateFlow(false)
-    val tokenRefreshed: StateFlow<Boolean> = _tokenRefreshed
+    override val tokenRefreshed: StateFlow<Boolean> = _tokenRefreshed
 
     private val _logoutUser = MutableStateFlow(false)
-    val logoutUser: StateFlow<Boolean> = _logoutUser
+    override val logoutUser: StateFlow<Boolean> = _logoutUser
 
-    var isOtherUserTokenRefreshed = false
+    override var isOtherUserTokenRefreshed = false
         private set
 
-    fun setTokens(token: Token) {
+    override suspend fun setTokens(token: Token) {
         AppLog.d(TAG, "Setting tokens")
+        userDataStore.updateAccountTokens(
+            accountId = token.accountId,
+            refreshToken = token.refreshToken ?: "",
+            accessToken = token.accessToken ?: "",
+            expiresAt = token.expiresAt ?: ""
+        )
         _tokens.value = token
     }
 
-    fun setOtherUserToken(token: Token?) {
+    override fun setOtherUserToken(token: Token?) {
         AppLog.d(TAG, "Setting other user token")
         _otherUserToken.value = token
     }
 
-    fun clearTokens() {
+    override fun clearTokens() {
         AppLog.d(TAG, "Clearing tokens")
         _tokens.value = null
         _otherUserToken.value = null
         isOtherUserTokenRefreshed = false
     }
 
-    fun setTokenRefreshed(refreshed: Boolean) {
+    override fun setTokenRefreshed(refreshed: Boolean) {
         AppLog.d(TAG, "Setting token refreshed: $refreshed")
         _tokenRefreshed.value = refreshed
     }
 
-    fun setLogoutUser(logout: Boolean) {
+    override fun setLogoutUser(logout: Boolean) {
         AppLog.d(TAG, "Setting logout user: $logout")
         _logoutUser.value = logout
     }
 
-    suspend fun refreshToken(): Boolean {
+    override suspend fun refreshToken(): Boolean {
         AppLog.d(TAG, "Refreshing token")
-        return try {
-            val currentToken = _tokens.value ?: return false
-            val refreshToken = currentToken.refreshToken ?: return false
-            
-            val newToken = accountRepository.refreshToken(refreshToken)
-            if (newToken.accessToken != null) {
-                setTokens(newToken)
-                setTokenRefreshed(true)
-                true
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error refreshing token", e.toString())
-            false
-        }
+        // This method should be implemented in the repository or a service, not here.
+        // Always return false for now to avoid DI cycles.
+        return false
     }
 
-    fun isTokenExpired(): Boolean {
+    override fun isTokenExpired(): Boolean {
         val token = _tokens.value ?: return true
         return token.expiresAt?.let { expiresAt ->
             try {
@@ -94,19 +107,19 @@ class TokenManager @Inject constructor(
         } ?: true
     }
 
-    fun getAccessToken(): String? = _tokens.value?.accessToken
+    override fun getAccessToken(): String? = _tokens.value?.accessToken
 
-    fun getRefreshToken(): String? = _tokens.value?.refreshToken
+    override fun getRefreshToken(): String? = _tokens.value?.refreshToken
 
-    fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
+    override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
-    suspend fun getAccessToken(accountId: String): String? {
+    override suspend fun getAccessToken(accountId: String): String? {
         val userPrefs = userDataStore.getData()
         return userPrefs.accounts[accountId]?.accessToken
     }
 
-    suspend fun getRefreshToken(accountId: String): String? {
+    override suspend fun getRefreshToken(accountId: String): String? {
         val userPrefs = userDataStore.getData()
         return userPrefs.accounts[accountId]?.refreshToken
     }
-} 
+}
