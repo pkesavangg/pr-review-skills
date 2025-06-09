@@ -34,22 +34,4 @@ data class AccountEntity(
     val isSynced: Boolean = false,
     val lastActiveTime: String? = null,
     val zipcode: String? = null
-) {
-    companion object {
-        fun from(response: UserAccount): AccountEntity {
-            return AccountEntity(
-                id = response.id,
-                isFitbitOn = response.isFitbitOn,
-                isFitbitValid = response.isFitbitValid,
-                isGoogleFitOn = response.isGoogleFitOn,
-                isGoogleFitValid = response.isGoogleFitValid,
-                isMFPOn = response.isMFPOn,
-                isMFPValid = response.isMFPValid,
-                isUAOn = response.isUAOn,
-                isUAValid = response.isUAValid,
-                isHealthConnectOn = response.isHealthConnectOn == true,
-                isHealthKitOn = response.isHealthKitOn == true,
-            )
-        }
-    }
-}
+)
