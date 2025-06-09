@@ -25,7 +25,7 @@ struct WeightTrendView: View {
                 selectedSegment: $selectedSegment
             )
         }
-        .background(Color.white)
+        .background(theme.textInverse)
         .edgesIgnoringSafeArea(.all)
     }
 }
