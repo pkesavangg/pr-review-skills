@@ -21,17 +21,6 @@ struct ContentView: View {
                 .onTapGesture {
                     themeManager.isDarkMode.toggle()
                 }
-            
-            // Revert these changes when giving PR:
-            Button("Open InAppBrowser") {
-                showBrowser = true
-            }
-        }
-        .customInAppBrowser(
-            url: URL(string: "https://greatergoods.com/service")!,
-            isPresented: $showBrowser
-        ) {
-            print("Browser was dismissed")
         }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }
