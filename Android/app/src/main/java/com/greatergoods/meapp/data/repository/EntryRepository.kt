@@ -3,9 +3,9 @@ package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
-import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
+import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.map
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Repository implementation for managing entries.
@@ -28,19 +27,20 @@ class EntryRepository @Inject constructor(
      * Inserts a single entry.
      */
     override suspend fun insert(entry: Entry): Long {
-        Log.i("CHECKING", "Repository inserting entry: $entry")
         return entryDao.insert(entry)
+    }
+
+    /**
+     * Updates a single entry.
+     */
+    override suspend fun update(entry: Entry): Long {
+        return entryDao.update(entry)
     }
 
     /**
      * Inserts a list of entries.
      */
     override suspend fun insert(entries: List<Entry>) = entryDao.insert(entries)
-
-    /**
-     * Updates an entry and its related data.
-     */
-    override suspend fun update(entry: Entry) = entryDao.update(entry)
 
     /**
      * Marks an entry as deleted.
@@ -55,13 +55,15 @@ class EntryRepository @Inject constructor(
     /**
      * Gets an entry by its ID.
      */
-    override suspend fun getEntryById(id: Long): Entry? = entryDao.getEntryById(id)
+    override suspend fun getEntryById(id: Long): Entry? = entryDao.getEntryById(id)?.toEntry()
 
     /**
      * Gets the latest valid entry for an account.
      */
     override suspend fun getLatestEntry(accountId: String): Flow<Entry>? =
-        entryDao.getLatestEntry(accountId)?.map { it.toEntry() }
+        entryDao.getLatestEntry(accountId)?.map { flow ->
+            flow.toEntry()
+        }
 
     /**
      * Gets all valid entries for an account.
@@ -112,12 +114,15 @@ class EntryRepository @Inject constructor(
      * Gets entries for an account by operation type.
      */
     override fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>> =
-        entryDao.getEntriesByOperationType(accountId, operationType)
+        entryDao.getEntriesByOperationType(accountId, operationType).map { flow ->
+            flow.map { it.toEntry() }
+        }
 
     /**
      * Gets all unsynced entries for an account.
      */
-    override suspend fun getUnSynced(accountId: String): List<Entry> = entryDao.getUnSynced(accountId)
+    override suspend fun getUnSynced(accountId: String): List<Entry> =
+        entryDao.getUnSynced(accountId).map { it.toEntry() }
 
     /**
      * Increments the attempts count for an entry.
@@ -128,7 +133,7 @@ class EntryRepository @Inject constructor(
      * Gets failed operations for an account.
      */
     override suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry> =
-        entryDao.getFailedOperations(accountId, maxAttempts)
+        entryDao.getFailedOperations(accountId, maxAttempts).map { it.toEntry() }
 
     /**
      * Clears all unsynced entries for an account.
@@ -140,7 +145,7 @@ class EntryRepository @Inject constructor(
      * @param operation The operation entry to send.
      * @throws Exception if the API call fails.
      */
-    override suspend fun sendOperationToAPI(operation: ScaleEntry?) {
+    override suspend fun sendOperationToAPI(operation: ScaleApiEntry?) {
         try {
             if (operation == null) {
                 throw IllegalArgumentException("Operation cannot be null")
@@ -156,7 +161,7 @@ class EntryRepository @Inject constructor(
      * @param lastUpdated The last updated timestamp, or null.
      * @return List of operations.
      */
-    override suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleEntry> {
+    override suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleApiEntry> {
         return try {
             val response = if (lastUpdated != null) {
                 entryApi.getOperations(lastUpdated)
@@ -175,7 +180,7 @@ class EntryRepository @Inject constructor(
      * @param month The month in YYYY-MM format
      * @return Flow of list of entries for the specified month
      */
-    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>> =
+    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>> =
         entryDao.getMonthDetail(accountId, month).map { views ->
             views.map { it.toEntry() }
         }

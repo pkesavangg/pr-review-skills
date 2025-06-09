@@ -1,11 +1,8 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
+import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
-import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
-import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity // Changed import
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -27,16 +24,17 @@ interface IEntryRepository {
     suspend fun insert(entries: List<Entry>)
 
     /**
-     * Updates an entry and its related data.
-     * @param entry The entry to update.
-     */
-    suspend fun update(entry: Entry)
-
-    /**
      * Marks an entry as deleted.
      * @param entry The entry to delete.
      */
     suspend fun delete(entry: Entry)
+
+    /**
+     * Updates an existing entry.
+     * @param entry The entry to update.
+     * @return The row ID of the updated entry.
+     */
+    suspend fun update(entry: Entry): Long
 
     /**
      * Gets the latest valid entry for an account.
@@ -50,7 +48,7 @@ interface IEntryRepository {
      * @param accountId The account ID.
      * @return List of valid entries.
      */
-    suspend fun getEntriesByAccount(accountId: String): List<Entry>
+    suspend fun getEntriesByAccount(accountId: String): List<Entry>?
 
     /**
      * Gets valid entries for an account within a time range.
@@ -59,7 +57,7 @@ interface IEntryRepository {
      * @param endTime The end timestamp.
      * @return Flow of valid entries in the time range.
      */
-    fun getEntriesByTimeRange(accountId: String, startTime: String, endTime: String): Flow<List<Entry>>
+    fun getEntriesByTimeRange(accountId: String, startTime: String, endTime: String): Flow<List<Entry>?>
 
     /**
      * Gets valid entries for an account by device type.
@@ -67,7 +65,7 @@ interface IEntryRepository {
      * @param deviceType The device type.
      * @return Flow of valid entries for the device type.
      */
-    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
+    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>?>
 
     /**
      * Gets an entry by its ID.
@@ -82,7 +80,7 @@ interface IEntryRepository {
      * @param operationType The operation type.
      * @return Flow of entries with the specified operation type.
      */
-    fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>>
+    fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>?>
 
     /**
      * Gets all unsynced entries for an account.
@@ -104,7 +102,7 @@ interface IEntryRepository {
      * @param maxAttempts The maximum number of attempts.
      * @return List of failed operations.
      */
-    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry>
+    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry>?
 
     /**
      * Clears all unsynced entries for an account.
@@ -129,7 +127,7 @@ interface IEntryRepository {
     fun getLastNDaysEntries(
         accountId: String,
         days: Int,
-    ): Flow<List<Entry>>
+    ): Flow<List<Entry>?>
 
     /**
      * Deletes all entries for a specific account.
@@ -143,14 +141,14 @@ interface IEntryRepository {
      * Sends an operation to the API for synchronization.
      * @param operation The EntryEntity representing the operation to sync
      */
-    suspend fun sendOperationToAPI(operation: ScaleEntry?)
+    suspend fun sendOperationToAPI(operation: ScaleApiEntry?)
 
     /**
      * Gets operations from the API since a specific timestamp.
      * @param lastUpdated The timestamp to get operations since
      * @return List of EntryEntity objects from the API
      */
-    suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleEntry>
+    suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleApiEntry>
 
     /**
      * Gets entries for a specific month and year.
@@ -158,7 +156,7 @@ interface IEntryRepository {
      * @param month The month in YYYY-MM format
      * @return Flow of list of entries for the specified month
      */
-    fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>>
+    fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>>
 
     /**
      * Gets monthly aggregated data for the last year.

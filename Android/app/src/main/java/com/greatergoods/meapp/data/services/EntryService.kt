@@ -3,14 +3,14 @@ package com.greatergoods.meapp.data.services
 
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
-import com.greatergoods.meapp.data.storage.db.entity.AccountEntity
-import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.data.storage.db.entity.Entry.Companion.fromScaleEntry
-import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
+import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
+import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.services.IEntryService
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +19,6 @@ import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 @Singleton
 class EntryService @Inject constructor(
@@ -33,11 +32,11 @@ class EntryService @Inject constructor(
     private val _latestEntry = MutableStateFlow<Entry?>(null)
     override val latestEntry: StateFlow<Entry?> = _latestEntry.asStateFlow()
 
-    private val _last7Days = MutableStateFlow<List<Entry>?>(null)
-    override val last7Days: StateFlow<List<Entry>?> = _last7Days.asStateFlow()
+    private val _last7Days = MutableStateFlow<List<Entry>?>(listOf())
+    override val last7Days = _last7Days.asStateFlow()
 
-    private val _last30Days = MutableStateFlow<List<Entry>?>(null)
-    override val last30Days: StateFlow<List<Entry>?> = _last30Days.asStateFlow()
+    private val _last30Days = MutableStateFlow<List<Entry>?>(listOf())
+    override val last30Days = _last30Days.asStateFlow()
 
     private val _monthsLastYear = MutableStateFlow<List<HistoryMonth>?>(null)
     override val monthsLastYear: StateFlow<List<HistoryMonth>?> = _monthsLastYear.asStateFlow()
@@ -97,38 +96,15 @@ class EntryService @Inject constructor(
      * @param entry The entry to save.
      */
     override suspend fun addEntry(entry: Entry) {
-        try {
-            Log.i("CHECKING", "EntryService adding entry: $entry")
-
-            // Ensure we have a default account
-            val defaultAccountId = "default"
-            val defaultAccount = accountDao.getAccountById(defaultAccountId)
-
-            if (defaultAccount == null) {
-                // Create default account if it doesn't exist
-                val newAccount = AccountEntity(
-                    id = defaultAccountId,
-                    isActiveAccount = true,
-                    isLoggedIn = true,
-                )
-                accountDao.insert(newAccount)
-                Log.i("CHECKING", "Created default account")
-            }
-
-            val updatedEntry = entry.copy(
-                entry = entry.entry.copy(
-                    isSynced = false,
-                    operationType = OperationType.CREATE.name,
-                    accountId = defaultAccountId,
-                ),
-            )
-            Log.i("CHECKING", "EntryService updated entry: $updatedEntry")
-            entryRepository.insert(updatedEntry)
-            Log.i("CHECKING", "EntryService entry inserted successfully")
-        } catch (e: Exception) {
-            Log.e("CHECKING", "EntryService error adding entry", e)
-            throw e
-        }
+        val updatedEntry = entry.updateEntry(
+            entry = entry.entry.copy(
+                isSynced = false,
+                operationType = OperationType.CREATE.name,
+                accountId = "",
+            ),
+        )
+        // handle other types if you have them
+        entryRepository.insert(updatedEntry)
     }
 
     /**
@@ -138,7 +114,7 @@ class EntryService @Inject constructor(
     override suspend fun addEntry(entries: List<Entry>) {
         try {
             val updatedEntries = entries.map { entry ->
-                entry.copy(
+                entry.updateEntry(
                     entry = entry.entry.copy(
                         isSynced = false,
                         operationType = OperationType.CREATE.name,
@@ -157,7 +133,7 @@ class EntryService @Inject constructor(
      */
     override suspend fun deleteEntry(entry: Entry) {
         try {
-            val deleteEntry = entry.copy(
+            val deleteEntry = entry.updateEntry(
                 entry = entry.entry.copy(
                     isSynced = false,
                     operationType = OperationType.DELETE.name,
@@ -175,17 +151,14 @@ class EntryService @Inject constructor(
      * @param deviceType The device type to filter entries by.
      * @return Flow of list of entries matching the device type.
      */
-    override fun getEntriesByDeviceType(accountId: String, deviceType: String) =
+    override fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>?> =
         entryRepository.getEntriesByDeviceType(accountId, deviceType)
 
     /**
      * Main sync operations method that handles both new entries and deletions.
      * Matches the TypeScript syncOperations flow exactly.
      */
-    override suspend fun syncOperations(
-        newEntries: List<Entry>,
-        deleteOps: List<Entry>
-    ) {
+    override suspend fun syncOperations(newEntries: List<Entry>, deleteOps: List<Entry>) {
         if (accountId == null) return
 
         try {
@@ -207,9 +180,9 @@ class EntryService @Inject constructor(
             for (operation in unSyncedEntries) {
                 try {
                     // Try to send to API
-                    entryRepository.sendOperationToAPI(operation.toScaleEntry())
+                    entryRepository.sendOperationToAPI((operation as ScaleEntry).toScaleApiEntry())
                     // If successful, mark as synced
-                    val syncedOperation = operation.copy(
+                    val syncedOperation = operation.updateEntry(
                         entry = operation.entry.copy(
                             isSynced = true,
                         ),
@@ -217,10 +190,10 @@ class EntryService @Inject constructor(
                     successfulOperations.add(syncedOperation)
                 } catch (e: Exception) {
                     // If failed, increment attempts and store for retry
-                    val failedOperation = operation.copy(
+                    val failedOperation = operation.updateEntry(
                         entry = operation.entry.copy(
                             isSynced = false,
-                            attempts = operation.entry.attempts + 1,
+                            attempts = operation.entry.attempts.plus(1),
                         ),
                     )
                     failedOperations.add(failedOperation)
@@ -250,7 +223,7 @@ class EntryService @Inject constructor(
             val operationCount = entryRepository.getOperationCount(accountId!!)
             val operationsFromAPI = try {
                 entryRepository.getOperationsFromAPI(_lastUpdated.value)
-                    .map { fromScaleEntry(it, accountId = accountId!!) }
+                    .map { fromScaleApiEntry(it, accountId = accountId ?: "") }
             } catch (e: Exception) {
                 AppLog.e("EntryService", "Error getting operations from API", e.toString())
                 // If API fails, store successful operations as placeholders
@@ -292,7 +265,7 @@ class EntryService @Inject constructor(
 
     private fun updateProgress(accountId: String) {
         EntryServiceHelper.updateProgress(
-            latestEntry = _latestEntry.value,
+            latestEntry = _latestEntry.value as? ScaleEntry,
             last7Days = _last7Days.value,
             last30Days = _last30Days.value,
             initialWeight = initialWeight,
@@ -303,8 +276,16 @@ class EntryService @Inject constructor(
     private fun clearAllData() {
         EntryServiceHelper.clearAllData(
             setLatestEntry = { _latestEntry.value = it },
-            setLast7Days = { _last7Days.value = it },
-            setLast30Days = { _last30Days.value = it },
+            setLast7Days = {
+                if (it != null) {
+                    _last7Days.value = it
+                }
+            },
+            setLast30Days = {
+                if (it != null) {
+                    _last30Days.value = it
+                }
+            },
             setProgress = { _progress.value = it },
         )
     }
@@ -313,7 +294,6 @@ class EntryService @Inject constructor(
 enum class OperationType {
     CREATE,
     DELETE,
-    UPDATE,
 }
 
 internal object EntryServiceHelper {
@@ -323,14 +303,14 @@ internal object EntryServiceHelper {
      * @param type The operation type (CREATE or DELETE).
      * @return The operation entry.
      */
-    fun createOperation(entry: Entry, type: OperationType): ScaleEntry? {
+    fun createOperation(entry: Entry, type: OperationType): Entry? {
         val updatedEntry = entry.entry.copy(
             operationType = type.name,
             isSynced = false,
         )
-        return entry.copy(
+        return entry.updateEntry(
             entry = updatedEntry,
-        ).toScaleEntry()
+        )
     }
 
     /**
@@ -345,6 +325,55 @@ internal object EntryServiceHelper {
             entryRepository.insert(sortedOperations)
         } catch (e: Exception) {
             AppLog.e("EntryService", "Error executing operations", e.toString())
+        }
+    }
+
+    /**
+     * Executes a list of operations, handling both create and delete operations.
+     * @param entryRepository The entry repository.
+     * @param operations The list of operations to execute.
+     * @param userHasOperations Whether the user has existing operations.
+     * @param arePlaceholders Whether the operations are placeholders (not yet synced).
+     */
+    suspend fun executeOperations(
+        entryRepository: IEntryRepository,
+        operations: List<Entry>,
+        userHasOperations: Boolean = true,
+        arePlaceholders: Boolean = false
+    ) {
+        if (operations.isEmpty()) return
+
+        try {
+            // Sort operations by server timestamp
+            val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
+
+            // Separate create and delete operations
+            val createOperations = sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
+            val deleteOperations = sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
+
+            // Handle create operations
+            for (operation in createOperations) {
+                // Check if entry exists
+                val exists = if (userHasOperations) {
+                    entryRepository.getEntryById(operation.entry.id) != null
+                } else false
+
+                if (exists) {
+                    // Update existing entry
+                    entryRepository.update(operation)
+                } else {
+                    // Insert new entry
+                    entryRepository.insert(operation)
+                }
+            }
+
+            // Handle delete operations
+            for (operation in deleteOperations) {
+                entryRepository.delete(operation)
+            }
+        } catch (e: Exception) {
+            AppLog.e("EntryService", "Error executing operations", e.toString())
+            throw e
         }
     }
 
@@ -421,92 +450,58 @@ internal object EntryServiceHelper {
 
     /**
      * Updates the progress state for the current account.
-     * @param accountId The account ID to update progress for.
-     * @param latestEntry The latest entry.
-     * @param last7Days The last 7 days of entries.
-     * @param last30Days The last 30 days of entries.
+     * Calculates week, month, year, and total progress using only ScaleEntry weights.
+     * Ignores non-scale entries (e.g., BpmEntry).
+     *
+     * @param latestEntry The latest scale entry (nullable).
+     * @param last7Days The last 7 days of entries (may include nulls or non-scale entries).
+     * @param last30Days The last 30 days of entries (may include nulls or non-scale entries).
+     * @param initialWeight The initial weight for total progress calculation (nullable).
      * @param setProgress Lambda to set the progress value.
      */
-
-    suspend fun executeOperations(
-        entryRepository: IEntryRepository,
-        operations: List<Entry>,
-        userHasOperations: Boolean = true,
-        arePlaceholders: Boolean = false
-    ) {
-        if (operations.isEmpty()) return
-
-        try {
-            // Sort operations by server timestamp
-            val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
-
-            // Separate create and delete operations
-            val createOperations = sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
-            val deleteOperations = sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
-
-            // Handle create operations
-            for (operation in createOperations) {
-                // Check if entry exists
-                val exists = if (userHasOperations) {
-                    entryRepository.getEntryById(operation.entry.id) != null
-                } else false
-
-                if (exists) {
-                    // Update existing entry
-                    entryRepository.update(operation)
-                } else {
-                    // Insert new entry
-                    entryRepository.insert(operation)
-                }
-            }
-
-            // Handle delete operations
-            for (operation in deleteOperations) {
-                entryRepository.delete(operation)
-            }
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error executing operations", e.toString())
-            throw e
-        }
-    }
-
     fun updateProgress(
-        latestEntry: Entry?,
+        latestEntry: ScaleEntry?,
         last7Days: List<Entry>?,
         last30Days: List<Entry>?,
         initialWeight: Double?,
         setProgress: (Progress) -> Unit
     ) {
-        val initWeek = last7Days?.lastOrNull()
-        val initMonth = last30Days?.lastOrNull()
-        val initYear = last30Days?.lastOrNull()
+        // Filter only non-null ScaleEntry for calculations
+        val last7ScaleEntries = last7Days?.map { it as ScaleEntry } ?: emptyList()
+        val last30ScaleEntries = last30Days?.map { it as ScaleEntry } ?: emptyList()
 
-        val week = if (latestEntry?.scaleEntry != null && initWeek != null) {
-            latestEntry.scaleEntry.weight - (initWeek.scaleEntry?.weight ?: 0)
+        // Get the oldest (last) scale entry in each period for comparison
+        val initWeek = last7ScaleEntries.lastOrNull()
+        val initMonth = last30ScaleEntries.lastOrNull()
+        val initYear = last30ScaleEntries.lastOrNull() // Placeholder: adjust if you have a year list
+
+        // Calculate week, month, year, and total progress (all as Double)
+        val week = if (latestEntry != null && initWeek != null) {
+            latestEntry.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
         } else 0.0
 
-        val month = if (latestEntry?.scaleEntry != null && initMonth != null) {
-            latestEntry.scaleEntry.weight - (initMonth.scaleEntry?.weight ?: 0)
+        val month = if (latestEntry != null && initMonth != null) {
+            latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
         } else 0.0
 
-        val year = if (latestEntry?.scaleEntry != null && initYear != null) {
-            latestEntry.scaleEntry.weight - (initYear.scaleEntry?.weight ?: 0)
+        val year = if (latestEntry != null && initYear != null) {
+            latestEntry.scale.scaleEntry.weight.toDouble() - initYear.scale.scaleEntry.weight.toDouble()
         } else 0.0
 
-        val total = if (latestEntry?.scaleEntry != null && initialWeight != null) {
-            latestEntry.scaleEntry.weight - initialWeight
+        val total = if (latestEntry != null && initialWeight != null) {
+            latestEntry.scale.scaleEntry.weight.toDouble() - initialWeight
         } else 0.0
 
         setProgress(
             Progress(
                 latest = latestEntry,
-                currentStreak = calculateCurrentStreak(last30Days ?: emptyList()),
-                longestStreak = calculateLongestStreak(last30Days ?: emptyList()),
-                count = last30Days?.size ?: 0,
+                currentStreak = calculateCurrentStreak(last30ScaleEntries),
+                longestStreak = calculateLongestStreak(last30ScaleEntries),
+                count = last30ScaleEntries.size,
                 initWt = initialWeight ?: 0.0,
-                week = week.toDouble(),
-                month = month.toDouble(),
-                year = year.toDouble(),
+                week = week,
+                month = month,
+                year = year,
                 total = total,
                 initWeek = initWeek,
                 initMonth = initMonth,

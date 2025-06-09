@@ -1,7 +1,7 @@
 // data/remote/api/EntryApi.kt
 package com.greatergoods.meapp.data.api
 
-import com.greatergoods.meapp.domain.model.api.entry.ScaleEntry
+import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -9,7 +9,7 @@ import retrofit2.http.Query
 
 interface EntryApi {
     @POST("operation/r4")
-    suspend fun sendOperation(@Body operation: ScaleEntry): ScaleEntry
+    suspend fun sendOperation(@Body operation: ScaleApiEntry): ScaleApiEntry
 
     @GET("operation/r4")
     suspend fun getAllOperations(): OperationsResponse
@@ -19,6 +19,6 @@ interface EntryApi {
 }
 
 data class OperationsResponse(
-    val operations: List<ScaleEntry>,
+    val operations: List<ScaleApiEntry>,
     val timestamp: Long
 )

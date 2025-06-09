@@ -6,20 +6,18 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.BodyScaleEntryMetricEntity
-import com.greatergoods.meapp.data.storage.db.entity.BpmEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.Entry
-import com.greatergoods.meapp.data.storage.db.entity.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.EntryView
-import com.greatergoods.meapp.domain.model.common.HistoryMonth
-import com.greatergoods.meapp.data.storage.db.entity.entry.Entry
-import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
+import com.greatergoods.meapp.domain.model.storage.entry.BpmEntry
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
+import com.greatergoods.meapp.domain.model.storage.entry.PopulatedActiveEntry
+import com.greatergoods.meapp.domain.model.storage.entry.PopulatedEntry
+import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import kotlinx.coroutines.flow.Flow
 import java.util.Map.entry
-import android.util.Log
 
 /**
  * Data Access Object (DAO) for the entry table.
@@ -36,20 +34,14 @@ interface EntryDao {
     @Transaction
     suspend fun insert(entry: Entry): Long {
         val entryId = insertEntryEntity(entry.entry)
-        Log.i("CHECKING", "EntryDao inserted entry with ID: $entryId")
 
-        entry.bpmEntry?.let {
-            insertBpm(it.copy(id = entryId))
+        if (entry is BpmEntry) insertBpm(entry.bpmEntry.copy(id = entryId))
+        else if (entry is ScaleEntry) {
+            insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
+            if (entry.scale.scaleEntryMetric != null) {
+                insertBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = entryId))
+            }
         }
-
-        entry.scaleEntry?.let {
-            insertBodyScale(it.copy(id = entryId))
-        }
-
-        entry.scaleEntryMetric?.let {
-            insertBodyScaleMetric(it.copy(id = entryId))
-        }
-
         return entryId
     }
 
@@ -59,41 +51,24 @@ interface EntryDao {
      */
     @Transaction
     suspend fun insert(entries: List<Entry>) {
-        // Step 1: Insert all EntryEntity items and get their generated IDs
-        val entryEntities = entries.map { it.entry }
-        val entryIds = insertEntryEntity(entryEntities)
-
-        // Step 2: Insert related BpmEntryEntity
-        val bpmEntries = entries.mapIndexedNotNull { index, entry ->
-            entry.bpmEntry?.copy(id = entryIds[index])
+        entries.forEach {
+            insert(it)
         }
-        if (bpmEntries.isNotEmpty()) insertBpm(bpmEntries)
-
-        // Step 3: Insert related BodyScaleEntryEntity
-        val scaleEntries = entries.mapIndexedNotNull { index, entry ->
-            entry.scaleEntry?.copy(id = entryIds[index])
-        }
-        if (scaleEntries.isNotEmpty()) insertBodyScale(scaleEntries)
-
-        // Step 4: Insert related BodyScaleEntryMetricEntity
-        val metricEntries = entries.mapIndexedNotNull { index, entry ->
-            entry.scaleEntryMetric?.copy(id = entryIds[index])
-        }
-        if (metricEntries.isNotEmpty()) insertBodyScaleMetric(metricEntries)
     }
 
     @Transaction
-    suspend fun update(entry: Entry) {
-        update(entry.entry)
-        entry.bpmEntry?.let {
-            updateBpm(it)
+    suspend fun update(entry: Entry): Long {
+        val updatedId = update(entry.entry)
+
+        if (entry is BpmEntry) {
+            updateBpm(entry.bpmEntry.copy(id = updatedId))
+        } else if (entry is ScaleEntry) {
+            updateBodyScale(entry.scale.scaleEntry.copy(id = updatedId))
+            if (entry.scale.scaleEntryMetric != null) {
+                updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = updatedId))
+            }
         }
-        entry.scaleEntry?.let {
-            updateBodyScale(it)
-        }
-        entry.scaleEntryMetric?.let {
-            updateBodyScaleMetric(it)
-        }
+        return updatedId
     }
 
     /**
@@ -128,7 +103,7 @@ interface EntryDao {
      */
     @Transaction
     @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY entryTimestamp DESC LIMIT 1")
-    fun getLatestEntry(accountId: String): Flow<EntryView>?
+    fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry>?
 
     /**
      * Get all entries with their related details for a specific account.
@@ -138,7 +113,7 @@ interface EntryDao {
      */
     @Transaction
     @Query("SELECT * FROM entry_view WHERE accountId = :accountId")
-    suspend fun getEntriesByAccount(accountId: String): List<EntryView>
+    suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
 
     /**
      * Get entries within a time range for a specific account with all related details.
@@ -153,7 +128,7 @@ interface EntryDao {
         accountId: String,
         startTime: String,
         endTime: String,
-    ): Flow<List<EntryView>>
+    ): Flow<List<PopulatedActiveEntry>>
 
     /**
      * Get entries by device type for a specific account with all related details.
@@ -166,7 +141,7 @@ interface EntryDao {
     fun getEntriesByDeviceType(
         accountId: String,
         deviceType: String,
-    ): Flow<List<EntryView>>
+    ): Flow<List<PopulatedActiveEntry>>
 
     /**
      * Get an entry by its ID with all related details.
@@ -175,7 +150,7 @@ interface EntryDao {
      */
     @Transaction
     @Query("SELECT * FROM entry WHERE id = :id")
-    suspend fun getEntryById(id: Long): Entry?
+    suspend fun getEntryById(id: Long): PopulatedEntry?
 
     /**
      * Get entries by operation type for a specific account.
@@ -188,7 +163,7 @@ interface EntryDao {
     fun getEntriesByOperationType(
         accountId: String,
         operationType: String,
-    ): Flow<List<Entry>>
+    ): Flow<List<PopulatedEntry>>
 
     // UnSynced Operations
 
@@ -199,7 +174,7 @@ interface EntryDao {
      */
     @Transaction
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND isSynced = 0 ORDER BY entryTimestamp ASC")
-    suspend fun getUnSynced(accountId: String): List<Entry>
+    suspend fun getUnSynced(accountId: String): List<PopulatedEntry>
 
     /**
      * Update the attempts count for an operation in the UnSynced.
@@ -217,7 +192,7 @@ interface EntryDao {
      */
     @Transaction
     @Query("SELECT * FROM entry WHERE accountId = :accountId AND attempts >= :maxAttempts AND isSynced = 0")
-    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry>
+    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<PopulatedEntry>
 
     /**
      * Clear the UnSynced for an account.
@@ -304,7 +279,7 @@ interface EntryDao {
      * @return The number of rows updated
      */
     @Update
-    suspend fun update(entry: EntryEntity): Int
+    suspend fun update(entry: EntryEntity): Long
 
     /**
      * Update an existing BPM entity in the database.
@@ -312,7 +287,7 @@ interface EntryDao {
      * @return The number of rows updated.
      */
     @Update
-    suspend fun updateBpm(bpm: BpmEntryEntity): Int
+    suspend fun updateBpm(bpm: BpmEntryEntity): Long
 
     /**
      * Update an existing BodyScaleEntry entity in the database.
@@ -320,7 +295,7 @@ interface EntryDao {
      * @return The number of rows updated.
      */
     @Update
-    suspend fun updateBodyScale(scale: BodyScaleEntryEntity): Int
+    suspend fun updateBodyScale(scale: BodyScaleEntryEntity): Long
 
     /**
      * Update an existing BodyScaleEntryMetric entity in the database.
@@ -328,7 +303,7 @@ interface EntryDao {
      * @return The number of rows updated.
      */
     @Update
-    suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
+    suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Long
 
     /**
      * Get entries for a specific month and year.
@@ -345,7 +320,7 @@ interface EntryDao {
         ORDER BY entryTimestamp DESC
     """,
     )
-    fun getMonthDetail(accountId: String, month: String): Flow<List<EntryView>>
+    fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
 
     /**
      * Get monthly aggregated data for the last year.
@@ -402,9 +377,6 @@ interface EntryDao {
      */
     @Query("SELECT COUNT(*) FROM entry WHERE accountId = :accountId")
     suspend fun getOperationCount(accountId: String): Int
-}
-
-
 
     /**
      * Get metrics for a specific entry.
@@ -412,7 +384,7 @@ interface EntryDao {
      * @return Flow of BodyScaleEntryMetricEntity for the entry
      */
     @Query("SELECT * FROM body_scale_entry_metric WHERE id = :entryId")
-    fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity?>
+    fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity>
 
     /**
      * Insert a list of scale entries into the database.

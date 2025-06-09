@@ -1,9 +1,9 @@
 // domain/service/IEntryService.kt
 package com.greatergoods.meapp.domain.services
 
-import com.greatergoods.meapp.data.storage.db.entity.Entry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -26,5 +26,5 @@ interface IEntryService {
         deleteOps: List<Entry> = emptyList()
     )
 
-    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
+    fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>?>
 }

@@ -24,14 +24,27 @@ import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
 )
 data class EntryEntity(
     @PrimaryKey(autoGenerate = true)
-    val id: Long,
-    val accountId: String,
-    val entryTimestamp: String,
-    val serverTimestamp: String?,
-    val opTimestamp: String?,
-    val operationType: String,
-    val deviceType: String,
-    val deviceId: String,
-    val attempts: Int = 0,
-    val isSynced: Boolean = false,
-)
+    override val id: Long,
+    override val accountId: String,
+    override val entryTimestamp: String,
+    override val serverTimestamp: String?,
+    override val opTimestamp: String?,
+    override val operationType: String,
+    override val deviceType: String,
+    override val deviceId: String,
+    override val attempts: Int = 0,
+    override val isSynced: Boolean = false,
+) : BaseEntryEntity
+
+sealed interface BaseEntryEntity {
+    val id: Long
+    val accountId: String
+    val entryTimestamp: String
+    val serverTimestamp: String?
+    val opTimestamp: String?
+    val operationType: String
+    val deviceType: String
+    val deviceId: String
+    val attempts: Int
+    val isSynced: Boolean
+}

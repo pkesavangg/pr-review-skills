@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.model.api.entry
 
-data class ScaleEntry(
+data class ScaleApiEntry(
     val operationType: String,
     val entryTimestamp: String,
     val weight: Int,
