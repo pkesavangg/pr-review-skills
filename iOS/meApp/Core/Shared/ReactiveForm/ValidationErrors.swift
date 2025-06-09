@@ -38,6 +38,7 @@ public enum ValidatorType: Hashable {
     case futureDate
     case matches
     case phoneNumber
+    case passwordMatch
     
     public func hash(into hasher: inout Hasher) {
         hasher.combine(String(describing: self))

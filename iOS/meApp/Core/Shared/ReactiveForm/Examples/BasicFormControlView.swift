@@ -21,7 +21,23 @@ class BasicProfileForm: ObservableForm {
     var username = FormControl("", validators: [.noWhiteSpace])
     var dob = FormControl(Date(), validators: [.futureDate])
     var password = FormControl("", validators: [.required, .minLength(6)])
-    var confirmPassword = FormControl("", validators: [])
+    var confirmPassword = FormControl("", validators: [.required])
+    
+    override func validateForm() {
+        var errors = ValidationErrors<Any>()
+        
+        // Check if passwords match when both are filled
+        if !password.errors[.required] && !confirmPassword.errors[.required] {
+            if password.value != confirmPassword.value {
+                errors.update(
+                    for: Validator<Any>(type: .passwordMatch) { _ in false },
+                    value: false
+                )
+            }
+        }
+        
+        updateFormErrors(errors)
+    }
     
     // Function to update form values
     func updateFormValues(with profile: ProfileData) {
@@ -110,18 +126,27 @@ class BasicProfileForm: ObservableForm {
     
     var passwordError: String? {
         if password.isDirty {
-            // Priority: required > min length
             if password.errors[.required] {
                 return FormErrorMessages.required
             }
-//            if password.errors[.minLength(6)] {
-//                return FormErrorMessages.minLength(6)
-//            }
+            if password.errors[.minLength] {
+                if let minLength = password.errors.value(for: .minLength) as? Int {
+                    return FormErrorMessages.minLength(minLength)
+                }
+            }
         }
         return nil
     }
     
     var confirmPasswordError: String? {
+        if confirmPassword.isDirty {
+            if confirmPassword.errors[.required] {
+                return FormErrorMessages.required
+            }
+        }
+        if formErrors[.passwordMatch] {
+            return FormErrorMessages.passwordMatch
+        }
         return nil
     }
 }
