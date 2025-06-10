@@ -160,7 +160,11 @@ class BasicProfileForm: ObservableForm {
     var password = FormControl("", validators: [.required, .minLength(6)])
     var confirmPassword = FormControl("", validators: [.required])
     var website = FormControl("", validators: [.required, .url])
-    var weight = FormControl("", validators: [.required])
+    var weight = FormControl("0.0", validators: [.required]) {
+        didSet {
+            objectWillChange.send()
+        }
+    }
     
     override func validateForm() {
         var errors = ValidationErrors<Any>()
@@ -237,7 +241,18 @@ struct BasicFormControlView: View {
                     maxLength: 4,
                     maxValue: 999.9
                 ),
-                value: $weight,
+                value: $form.weight.value,
+                isFocused: .constant(false)
+            )
+            
+            AppInputField(
+                config: TextInputConfig(
+                    label: "Email",
+                    placeholder: "Enter your email",
+                    inputType: .email,
+                    errorMessage: form.getError(for: form.email),
+                ),
+                value: $form.email.value,
                 isFocused: .constant(false)
             )
             

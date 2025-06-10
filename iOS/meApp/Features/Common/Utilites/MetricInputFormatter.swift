@@ -20,6 +20,11 @@ class MetricFieldFormatter: ObservableObject {
     }
     
     func formatInput(_ input: String) -> String {
+        // Handle empty input by returning initial value
+        if input.isEmpty {
+            return initialValue
+        }
+        
         if config.allowWholeNumbers {
             return formatWholeNumber(input)
         } else {

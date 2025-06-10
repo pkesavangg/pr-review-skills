@@ -70,7 +70,11 @@ struct MetricInputField: View {
             displayValue = initial
             value = initial
         } else {
-            displayValue = value
+            let formatted = formatter.formatInput(value)
+            displayValue = formatted
+            if formatted != value {
+                value = formatted
+            }
         }
     }
     
@@ -87,8 +91,10 @@ struct MetricInputField: View {
             displayValue = formatted
         }
         
-        // Update bound value
-        value = formatted
+        // Only update bound value if it's different
+        if value != formatted {
+            value = formatted
+        }
     }
 }
 

@@ -42,6 +42,7 @@ struct BaseInputField: View {
             }
         }
         .padding(.top, (isFocused || !value.isEmpty) ? 15 : 0)
+        .padding(.trailing, 40)
         .foregroundColor(theme.textBody.opacity(isDisabled ? 0.38 : 1))
         .focused($isFocused)
         .autocorrectionDisabled(true)
@@ -74,7 +75,7 @@ struct BaseInputField: View {
 struct BaseInputTestView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    @State var text: String = "dfsdfsdfs"
+    @State var text: String = ""
     @FocusState private var isFocused: Bool
     var body: some View {
         VStack {

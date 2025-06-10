@@ -151,7 +151,7 @@ struct AppInputField: View {
 struct AppInputTestingField : View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    @State var text: String = ""
+    @State var text: String = "Enter text here"
     @State var email: String = ""
     @State var password: String = ""
     @State var number: String = ""
