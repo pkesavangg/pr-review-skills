@@ -1,7 +1,9 @@
 package com.greatergoods.meapp.core.di
 
+import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.repository.AppRepository
 import com.greatergoods.meapp.data.repository.HealthConnectRepository
+import com.greatergoods.meapp.data.repository.IntegrationRepository
 import com.greatergoods.meapp.data.repository.UserRepository
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
@@ -9,6 +11,8 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.data.repository.LogRepository
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
+import com.greatergoods.meapp.data.storage.db.dao.AccountDao
+import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import dagger.Binds
 import com.greatergoods.meapp.domain.repository.IUserRepository
@@ -37,6 +41,15 @@ object RepositoryModule {
         healthConnectDataStore: HealthConnectDataStore
     ): IHealthConnectRepository {
         return HealthConnectRepository(healthConnectDataStore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideIntegrationRepository(
+        integrationAPI: IIntegrationAPI,
+        accountDao: AccountDao
+    ): IIntegrationRepository {
+        return IntegrationRepository(integrationAPI,accountDao)
     }
 
     @Provides

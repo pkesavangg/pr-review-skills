@@ -6,8 +6,6 @@ import androidx.browser.customtabs.CustomTabsServiceConnection
 import androidx.browser.customtabs.CustomTabsSession
 import android.content.ComponentName
 import android.content.Context
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 
 class CustomTabServiceBinder(
     private val context: Context,
@@ -48,19 +46,4 @@ class CustomTabServiceBinder(
             isBound = false
         }
     }
-}
-
-class LifecycleAwareCustomTabHelper(
-    private val manager: CustomTabManager
-) : DefaultLifecycleObserver {
-
-    override fun onStart(owner: LifecycleOwner) {
-        manager.bind()
-    }
-
-    override fun onStop(owner: LifecycleOwner) {
-        manager.unbind()
-    }
-
-    val launcher: CustomTabLauncher get() = manager
 }
