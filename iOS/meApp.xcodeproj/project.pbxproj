@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 481F009E2DF0122300799EAA /* ggHealthKitPackage */; };
+		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
+		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +86,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
+				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
 				481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -146,6 +150,8 @@
 			name = meApp;
 			packageProductDependencies = (
 				481F009E2DF0122300799EAA /* ggHealthKitPackage */,
+				481F096C2DF05C8D00799EAA /* FirebaseCore */,
+				481F096E2DF05C8D00799EAA /* FirebaseMessaging */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -231,6 +237,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
+				481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -446,10 +453,12 @@
 				INFOPLIST_FILE = meApp/Resources/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes your health data to HealthKit to track your weight and fitness metrics.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -487,10 +496,12 @@
 				INFOPLIST_FILE = meApp/Resources/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes your health data to HealthKit to track your weight and fitness metrics.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -673,10 +684,12 @@
 				INFOPLIST_FILE = meApp/Resources/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes your health data to HealthKit to track your weight and fitness metrics.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -812,10 +825,12 @@
 				INFOPLIST_FILE = meApp/Resources/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes your health data to HealthKit to track your weight and fitness metrics.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -934,6 +949,14 @@
 				kind = branch;
 			};
 		};
+		481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.14.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -941,6 +964,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */;
 			productName = ggHealthKitPackage;
+		};
+		481F096C2DF05C8D00799EAA /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		481F096E2DF05C8D00799EAA /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
