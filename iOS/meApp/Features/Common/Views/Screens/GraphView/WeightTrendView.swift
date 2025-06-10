@@ -50,7 +50,8 @@ struct WeightTrendView: View {
     WeightTrendView()
 }
 
-// Sample data for BathScaleOperationDTO. remove this when implementing real time entries.
+// Temporary mock data for BathScaleOperationDTO used for preview/testing purposes.
+// Remove this block when integrating with live data from the Bluetooth scale or backend.
 func sampleOperations(for segment: String) -> [BathScaleOperationDTO] {
     let calendar = Calendar.current
     let now = Date()
