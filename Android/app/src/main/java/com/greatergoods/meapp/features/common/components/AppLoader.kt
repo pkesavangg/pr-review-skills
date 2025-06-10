@@ -1,12 +1,19 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.theme.MeAppTheme
 
 enum class LoaderStyle {
     CIRCULAR,
@@ -126,44 +133,60 @@ object LoaderDefaults {
  */
 @Composable
 fun AppLoader(
+    modifier: Modifier = Modifier,
     isLoading: Boolean,
+    label: String? = null,
+    labelComposable: @Composable (() -> Unit)? = null,
     loaderStyle: LoaderStyle = LoaderStyle.CIRCULAR,
     loaderConfig: LoaderConfig = LoaderDefaults.defaultFor(loaderStyle),
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
 ) {
-    if (isLoading) {
-        when (loaderConfig) {
-            is LoaderConfig.Circular -> {
-                CircularProgressIndicator(
-                    color = loaderConfig.color,
-                    strokeWidth = loaderConfig.strokeWidth,
-                    modifier = modifier.size(loaderConfig.size.dp),
-                )
-            }
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isLoading) {
+            when (loaderConfig) {
+                is LoaderConfig.Circular -> {
+                    CircularProgressIndicator(
+                        color = loaderConfig.color,
+                        strokeWidth = loaderConfig.strokeWidth,
+                        modifier = modifier.size(loaderConfig.size.dp),
+                    )
+                }
 
-            is LoaderConfig.Dashed -> {
-                DashedCircularLoader(
-                    color = loaderConfig.color,
-                    modifier = modifier.size(loaderConfig.size),
-                    strokeWidth = loaderConfig.strokeWidth,
-                    dashLength = loaderConfig.dashLength,
-                    gapLength = loaderConfig.gapLength,
-                    sweepAngle = loaderConfig.sweepAngle,
-                )
-            }
+                is LoaderConfig.Dashed -> {
+                    DashedCircularLoader(
+                        color = loaderConfig.color,
+                        modifier = modifier.size(loaderConfig.size),
+                        strokeWidth = loaderConfig.strokeWidth,
+                        dashLength = loaderConfig.dashLength,
+                        gapLength = loaderConfig.gapLength,
+                        sweepAngle = loaderConfig.sweepAngle,
+                    )
+                }
 
-            is LoaderConfig.Dot -> {
-                PulsingDotLoader(
-                    color = loaderConfig.color,
-                    modifier = modifier.size((loaderConfig.maxRadius * 2).dp),
-                    minRadius = loaderConfig.minRadius,
-                    maxRadius = loaderConfig.maxRadius,
-                    durationMillis = loaderConfig.durationMillis,
-                )
+                is LoaderConfig.Dot -> {
+                    PulsingDotLoader(
+                        color = loaderConfig.color,
+                        modifier = modifier.size((loaderConfig.maxRadius * 2).dp),
+                        minRadius = loaderConfig.minRadius,
+                        maxRadius = loaderConfig.maxRadius,
+                        durationMillis = loaderConfig.durationMillis,
+                    )
+                }
             }
         }
-    } else {
-        content()
+        if (label != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MeAppTheme.typography.heading5,
+                color = MeAppTheme.colorScheme.primaryAction,
+            )
+        }
+        if (labelComposable != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            labelComposable.invoke()
+        }
     }
 }
