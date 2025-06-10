@@ -7,10 +7,10 @@
 
 import SwiftUI
 
-// MARK: CustomPickerView
+// MARK: PickerView
 /// A custom picker view that allows multiple selections with a customizable appearance.
 /// This view supports a dynamic number of options, each with its own set of selectable values.
-struct CustomPickerView<T: Hashable>: View {
+struct PickerView<T: Hashable>: View {
     @Environment(\.appTheme) private var theme
     @State private var tempSelectedValues: [T]
     public let selectedValues: [T]
@@ -45,7 +45,7 @@ struct CustomPickerView<T: Hashable>: View {
             VStack(spacing: 0) {
                 // Header with Cancel and Select buttons
                 HStack {
-                    // Need to update the buttons with custom button components
+                    // TODO: Need to use the custom button views/styles
                     Button("Cancel") {
                         onCancel?()
                     }
@@ -151,40 +151,20 @@ struct PickerTestView: View {
                 .cornerRadius(10)
             }
         }
-        .sheet(isPresented: $showTimePicker) {
-            CustomPickerView(
-                selectedValues: selectedTime,
-                options: timeOptions,
-                displayValue: { $0 },
-                updateValues: { newValues in
-                    selectedTime = newValues
-                    showTimePicker = false
-                },
-                onCancel: {
-                    showTimePicker = false
-                }
-            )
-            .presentationDetents([.height(300)])
-            .presentationDragIndicator(.hidden)
-            .interactiveDismissDisabled()
-        }
-        .sheet(isPresented: $showHeightPicker) {
-            CustomPickerView(
-                selectedValues: selectedHeight,
-                options: heightOptions,
-                displayValue: { $0 },
-                updateValues: { newValues in
-                    selectedHeight = newValues
-                    showHeightPicker = false
-                },
-                onCancel: {
-                    showHeightPicker = false
-                }
-            )
-            .presentationDetents([.height(300)])
-            .presentationDragIndicator(.hidden)
-            .interactiveDismissDisabled()
-        }
+        .pickerSheet(
+            isPresented: $showTimePicker,
+            selectedValues: selectedTime,
+            options: timeOptions,
+            displayValue: { $0 },
+            onUpdate: { selectedTime = $0 }
+        )
+        .pickerSheet(
+            isPresented: $showHeightPicker,
+            selectedValues: selectedHeight,
+            options: heightOptions,
+            displayValue: { $0 },
+            onUpdate: { selectedHeight = $0 }
+        )
     }
 }
 
