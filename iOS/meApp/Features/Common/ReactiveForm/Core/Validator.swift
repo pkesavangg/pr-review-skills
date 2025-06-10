@@ -79,7 +79,7 @@ extension Validator where Value == String {
     
     /// Validator that prevents whitespace-only values
     public static let noWhiteSpace = Validator(type: .noWhiteSpace) { value in
-        !(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !value.isEmpty)
+        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     /// Validator that requires the length of the control's value to be greater than
@@ -170,10 +170,6 @@ private struct Rule {
     
     static func maxLength(_ string: String, maximumLength: Int) -> Bool {
         string.count <= maximumLength
-    }
-    
-    static func requiredTrue(_ value: Bool?) -> Bool {
-        value ?? false
     }
     
     static func url(_ string: String) -> Bool {

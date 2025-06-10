@@ -155,7 +155,7 @@ class BasicProfileForm: ObservableForm {
     var email = FormControl("", validators: [.required, .email, .maxLength(100)])
     var age = FormControl(5, validators: [.min(10)])
     var rememberMe = FormControl(false, validators: [.requiredTrue])
-    var username = FormControl("", validators: [.noWhiteSpace])
+    var username = FormControl("", validators: [.required, .noWhiteSpace])
     var dob = FormControl(Date(), validators: [.futureDate])
     var password = FormControl("", validators: [.required, .minLength(6)])
     var confirmPassword = FormControl("", validators: [.required])
