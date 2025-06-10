@@ -140,6 +140,10 @@ dependencies {
     // Play Store Review
     implementation(libs.play.review)
     implementation(libs.play.review.ktx)
+
+    // Vico charts
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m3)
 }
 
 // Allow references to generated code
