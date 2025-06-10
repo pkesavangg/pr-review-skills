@@ -64,13 +64,13 @@ object CustomButtonDefaults {
     @Composable
     fun border(type: ButtonType, enabled: Boolean): BorderStroke? =
         when (type) {
-            ButtonType.PrimaryFilled, ButtonType.PrimaryOutlined -> BorderStroke(1.dp,
+             ButtonType.PrimaryOutlined -> BorderStroke(1.dp,
                 if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
             )
-            ButtonType.SecondaryOutlined, ButtonType.SecondaryFilled  ->  BorderStroke(1.dp,
+            ButtonType.SecondaryFilled  ->  BorderStroke(1.dp,
                 if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
             )
-            ButtonType.TextPrimary, ButtonType.TextSecondary,ButtonType.InlineText -> null
+            ButtonType.SecondaryOutlined,ButtonType.PrimaryFilled, ButtonType.TextPrimary, ButtonType.TextSecondary,ButtonType.InlineText -> null
         }
 
     fun height(size: ButtonSize): Dp = when (size) {
