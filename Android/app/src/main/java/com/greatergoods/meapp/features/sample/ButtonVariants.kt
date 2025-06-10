@@ -1,5 +1,4 @@
-package com.greatergoods.meapp.features.sample
-
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -19,6 +18,16 @@ fun ButtonVariants(){
         size = ButtonSize.Medium,
         enabled = true
     )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
+    AppButton(
+        type = ButtonType.PrimaryFilled,
+        text = "PrimaryFilled",
+        onClick = {},
+        modifier = Modifier.width(300.dp).height(48.dp),
+        size = ButtonSize.Medium,
+        enabled = false
+    )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
     AppButton(
         type = ButtonType.PrimaryOutlined,
@@ -28,6 +37,7 @@ fun ButtonVariants(){
         size = ButtonSize.Medium,
         enabled = true
     )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
     AppButton(
         type = ButtonType.SecondaryFilled,
@@ -37,6 +47,7 @@ fun ButtonVariants(){
         size = ButtonSize.Medium,
         enabled = true
     )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
     AppButton(
         type = ButtonType.SecondaryOutlined,
@@ -46,6 +57,7 @@ fun ButtonVariants(){
         size = ButtonSize.Medium,
         enabled = true
     )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
     AppButton(
         type = ButtonType.TextPrimary,
@@ -55,6 +67,8 @@ fun ButtonVariants(){
         size = ButtonSize.Medium,
         enabled = true
     )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
+
     AppButton(
         type = ButtonType.TextSecondary,
         text = "PrimaryButton",
@@ -63,6 +77,16 @@ fun ButtonVariants(){
         size = ButtonSize.Medium,
         enabled = true
     )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
+    AppButton(
+        type = ButtonType.TextSecondary,
+        text = "PrimaryButton",
+        onClick = {},
+        modifier = Modifier.width(300.dp).height(48.dp),
+        size = ButtonSize.Medium,
+        enabled = false
+    )
+    Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
     AppButton(
         type = ButtonType.InlineText,
@@ -72,5 +96,19 @@ fun ButtonVariants(){
         size = ButtonSize.Medium,
         enabled = true
     )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    AppButton(
+        type = ButtonType.InlineText,
+        text = "PrimaryButton",
+        onClick = {},
+        modifier = Modifier.width(300.dp).height(48.dp),
+        size = ButtonSize.Medium,
+        enabled = false
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
 
 }
