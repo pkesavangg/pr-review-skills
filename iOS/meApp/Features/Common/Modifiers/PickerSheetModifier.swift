@@ -13,6 +13,7 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
     let selectedValues: [T]
     let options: [[T]]
     let displayValue: (T) -> String
+    let pickerType: PickerType
     let onUpdate: ([T]) -> Void
     
     func body(content: Content) -> some View {
@@ -22,6 +23,7 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
                     selectedValues: selectedValues,
                     options: options,
                     displayValue: displayValue,
+                    pickerType: pickerType,
                     updateValues: { newValues in
                         onUpdate(newValues)
                         isPresented = false

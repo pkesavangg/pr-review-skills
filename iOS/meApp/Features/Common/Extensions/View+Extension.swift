@@ -56,6 +56,7 @@ extension View {
     /// - selectedValues: An array of selected values of type `T`.
     /// - options: A 2D array of options of type `T` to choose from.
     /// - displayValue: A closure that takes a value of type `T` and returns a string to display.
+    /// - pickerType: The type of picker to display (time, heightInches, heightCm).
     /// - onUpdate: A closure that is called when the selected values are updated.
     /// - Returns: A view that presents the picker sheet when `isPresented` is true.
     func pickerSheet<T: Hashable>(
@@ -63,6 +64,7 @@ extension View {
         selectedValues: [T],
         options: [[T]],
         displayValue: @escaping (T) -> String,
+        pickerType: PickerType = .default,
         onUpdate: @escaping ([T]) -> Void
     ) -> some View {
         modifier(
@@ -71,6 +73,7 @@ extension View {
                 selectedValues: selectedValues,
                 options: options,
                 displayValue: displayValue,
+                pickerType: pickerType,
                 onUpdate: onUpdate
             )
         )

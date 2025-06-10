@@ -1,5 +1,5 @@
 //
-//  CustomPickerView.swift
+//  PickerView.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 10/06/25.
@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-// MARK: PickerView
-/// A custom picker view that allows multiple selections with a customizable appearance.
+// MARK: - Picker View
+/// A picker view that allows multiple selections with a customizable appearance.
 /// This view supports a dynamic number of options, each with its own set of selectable values.
 struct PickerView<T: Hashable>: View {
     @Environment(\.appTheme) private var theme
@@ -16,7 +16,7 @@ struct PickerView<T: Hashable>: View {
     public let selectedValues: [T]
     public let options: [[T]]
     public let displayValue: (T) -> String
-    public let title: String?
+    public let pickerType: PickerType
     public var updateValues: (([T]) -> Void)?
     public var onCancel: (() -> Void)?
     
@@ -24,69 +24,83 @@ struct PickerView<T: Hashable>: View {
         selectedValues: [T],
         options: [[T]],
         displayValue: @escaping (T) -> String,
-        title: String? = nil,
+        pickerType: PickerType = .default,
         updateValues: (([T]) -> Void)? = nil,
         onCancel: (() -> Void)? = nil
     ) {
         self.selectedValues = selectedValues
         self.options = options
         self.displayValue = displayValue
-        self.title = title
+        self.pickerType = pickerType
         self.updateValues = updateValues
         self.onCancel = onCancel
         self._tempSelectedValues = State(initialValue: selectedValues)
     }
     
     var body: some View {
-        ZStack {
-            theme.backgroundPrimary
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header with Cancel and Select buttons
-                HStack {
-                    // TODO: Need to use the custom button views/styles
-                    Button("Cancel") {
-                        onCancel?()
-                    }
-                    .foregroundColor(theme.actionPrimary)
-                    
-                    Spacer()
-                                    
-                    Button("Select") {
-                        updateValues?(tempSelectedValues)
-                    }
-                    .foregroundColor(theme.actionPrimary)
-                    .fontWeight(.semibold)
+        VStack(spacing: 0) {
+            // Header with Cancel and Select buttons
+            HStack {
+                Button("Cancel") {
+                    onCancel?()
                 }
-                .padding()
+                .foregroundColor(theme.actionPrimary)
                 
+                Spacer()
                 
-                // Picker Section
-                ZStack {
-                    //Selection background
-                    RoundedRectangle(cornerRadius: .radiusSM)
-                        .fill(theme.backgroundSecondary)
-                        .frame(height: 35)
-                        .allowsHitTesting(false)
-                        .padding(.horizontal)
-                    
-                    HStack(spacing: 0) {
-                        ForEach(0..<tempSelectedValues.count, id: \.self) { index in
+                Button("Select") {
+                    updateValues?(tempSelectedValues)
+                }
+                .foregroundColor(theme.actionPrimary)
+                .fontWeight(.semibold)
+            }
+            .padding()
+            
+            // Picker Section
+            ZStack {
+                //Selection background
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(theme.backgroundSecondary)
+                    .frame(height: 35)
+                    .allowsHitTesting(false)
+                    .padding(.horizontal)
+                
+                HStack(spacing: 0) {
+                    ForEach(0..<tempSelectedValues.count, id: \.self) { index in
+                        HStack(spacing: -20) {
                             pickerView(
                                 selection: $tempSelectedValues[index],
                                 options: options[index],
                                 displayValue: displayValue
                             )
-                            .frame(width: 100, alignment: .leading)
+                            
+                            // Fixed symbol based on picker type and column
+                            if let symbol = getSymbol(for: index) {
+                                Text(symbol)
+                                    .fontOpenSans(.body1)
+                                    .foregroundColor(theme.textHeading)
+                                    .offset(x: pickerType == .heightInches ? -15 : 0 )
+                            }
                         }
+                        .frame(width: 80, alignment: .leading)
                     }
                 }
-                .frame(height: 200)
             }
+            .frame(height: 200)
         }
         .onAppear {
             tempSelectedValues = selectedValues
+        }
+    }
+    
+    private func getSymbol(for index: Int) -> String? {
+        switch pickerType {
+        case .heightInches:
+            return index == 0 ? "′" : "″"
+        case .heightCm:
+            return index == tempSelectedValues.count - 1 ? "cm" : nil
+        default:
+            return nil
         }
     }
     
@@ -94,23 +108,25 @@ struct PickerView<T: Hashable>: View {
     private func pickerView(selection: Binding<T>, options: [T], displayValue: @escaping (T) -> String) -> some View {
         PickerWithoutIndicatorsView(selection: selection) {
             ForEach(options, id: \.self) { value in
+                let isSelected = value == selection.wrappedValue
                 Text(displayValue(value))
                     .fontOpenSans(.body1)
-                    .fontWeight(value == selection.wrappedValue ? .semibold : .regular)
-                    // TODO: Need to update the foreground color
-                    .foregroundColor(theme.textHeading.opacity(value == selection.wrappedValue ? 1 : 0.6))
+                    .fontWeight(isSelected ? .bold : .regular)
+                    .foregroundColor(theme.textHeading.opacity(isSelected ? 1 : 0.6))
                     .tag(value)
             }
         }
     }
 }
 
-
+// Example usage in PickerTestView
 struct PickerTestView: View {
     @State private var selectedTime: [String] = ["8", "00", "PM"]
-    @State private var selectedHeight: [String] = ["5′", "8″"]
+    @State private var selectedHeightInches: [String] = ["5", "8"]
+    @State private var selectedHeightCm: [String] = ["1", "8", "0"]
     @State private var showTimePicker = false
-    @State private var showHeightPicker = false
+    @State private var showHeightInchesPicker = false
+    @State private var showHeightCmPicker = false
     
     private let timeOptions: [[String]] = [
         (1...12).map { "\($0)" },
@@ -118,13 +134,20 @@ struct PickerTestView: View {
         ["AM", "PM"]
     ]
     
-    private let heightOptions: [[String]] = [
-        (3...7).map { "\($0)′" },
-        (0...11).map { "\($0)″" }
+    private let heightInchesOptions: [[String]] = [
+        (3...7).map { "\($0)" },
+        (0...11).map { "\($0)" }
+    ]
+    
+    private let heightCmOptions: [[String]] = [
+        (1...2).map { "\($0)" },
+        (0...9).map { "\($0)" },
+        (0...9).map { "\($0)" }
     ]
     
     var body: some View {
         VStack(spacing: 40) {
+            // Time picker button
             VStack(spacing: 20) {
                 Text("Selected Time: \(selectedTime.joined(separator: ":"))")
                     .font(.title2)
@@ -138,15 +161,30 @@ struct PickerTestView: View {
                 .cornerRadius(10)
             }
             
+            // Height in inches picker button
             VStack(spacing: 20) {
-                Text("Selected Height: \(selectedHeight.joined(separator: " "))")
+                Text("Selected Height (inches): \(selectedHeightInches[0])′ \(selectedHeightInches[1])″")
                     .font(.title2)
                 
-                Button("Select Height") {
-                    showHeightPicker = true
+                Button("Select Height (inches)") {
+                    showHeightInchesPicker = true
                 }
                 .padding()
                 .background(Color.green)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+            
+            // Height in cm picker button
+            VStack(spacing: 20) {
+                Text("Selected Height (cm): \(selectedHeightCm.joined()) cm")
+                    .font(.title2)
+                
+                Button("Select Height (cm)") {
+                    showHeightCmPicker = true
+                }
+                .padding()
+                .background(Color.orange)
                 .foregroundColor(.white)
                 .cornerRadius(10)
             }
@@ -159,11 +197,20 @@ struct PickerTestView: View {
             onUpdate: { selectedTime = $0 }
         )
         .pickerSheet(
-            isPresented: $showHeightPicker,
-            selectedValues: selectedHeight,
-            options: heightOptions,
+            isPresented: $showHeightInchesPicker,
+            selectedValues: selectedHeightInches,
+            options: heightInchesOptions,
             displayValue: { $0 },
-            onUpdate: { selectedHeight = $0 }
+            pickerType: .heightInches,
+            onUpdate: { selectedHeightInches = $0 }
+        )
+        .pickerSheet(
+            isPresented: $showHeightCmPicker,
+            selectedValues: selectedHeightCm,
+            options: heightCmOptions,
+            displayValue: { $0 },
+            pickerType: .heightCm,
+            onUpdate: { selectedHeightCm = $0 }
         )
     }
 }
