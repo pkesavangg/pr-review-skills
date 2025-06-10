@@ -17,7 +17,7 @@ struct SafariView: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
     
-    func makeCoordinator() -> Coordinator {
+    func makeCoordinator() -> BrowserCoordinator {
         Coordinator(completion: completion)
     }
 }
