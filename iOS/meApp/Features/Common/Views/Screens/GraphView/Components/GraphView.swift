@@ -47,7 +47,7 @@ struct GraphView: View {
             .frame(height: 300)
             .background(
                 GeometryReader { geo in
-                    Color.clear
+                    theme.textInverse
                         .onAppear { viewModel.chartHeight = geo.size.height }
                         .onChange(of: geo.size.height) {
                             viewModel.chartHeight = geo.size.height
@@ -92,9 +92,7 @@ struct GraphView: View {
                 ruleMarkDateLabel(date: date)
             }
             .annotation(position: .bottom, alignment: viewModel.ruleMarkAlignment(for: selected, in: operations)) {
-                let pointRadius: CGFloat = 60
-                let bubbleHeight = viewModel.annotationHeight
-                let offsetY = viewModel.selectedPointY - (viewModel.chartHeight / 2) + pointRadius + 5 - (bubbleHeight / 2) - 200
+                let offsetY = viewModel.annotationBubbleOffset()
                 Text("\(Int(weight))")
                     .fontWeight(.bold)
                     .fontOpenSans(.body3)
@@ -104,7 +102,7 @@ struct GraphView: View {
                     .background(Capsule().fill(theme.iconGoal))
                     .background(
                         GeometryReader { bubbleGeo in
-                            Color.clear
+                            theme.textInverse
                                 .preference(key: AnnotationHeightKey.self, value: bubbleGeo.size.height)
                         }
                     )
