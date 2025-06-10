@@ -49,10 +49,6 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideUserRepository(userDataStore: UserDataStore): IUserRepository = UserRepository(userDataStore)
-
-    @Provides
-    @Singleton
     fun provideAccountRepository(
         accountDao: AccountDao,
         userDataStore: UserDataStore,
