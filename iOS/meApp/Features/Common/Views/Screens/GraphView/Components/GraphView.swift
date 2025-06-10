@@ -79,7 +79,7 @@ struct GraphView: View {
     private func chartGridLine(tick: Double) -> some ChartContent {
         RuleMark(y: .value("Y Grid", tick))
             .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-            .foregroundStyle(theme.iconUtility)
+            .foregroundStyle(theme.statusUtility)
             .zIndex(-1)
     }
 
@@ -87,7 +87,7 @@ struct GraphView: View {
     private func chartRuleMark(date: Date, weight: Double, selected: BathScaleOperationDTO) -> some ChartContent {
         RuleMark(x: .value("Selected Date", date))
             .lineStyle(StrokeStyle(lineWidth: 1))
-            .foregroundStyle(theme.iconUtility)
+            .foregroundStyle(theme.statusUtility)
             .annotation(position: .top, alignment: viewModel.ruleMarkAlignment(for: selected, in: operations)) {
                 ruleMarkDateLabel(date: date)
             }
@@ -99,7 +99,7 @@ struct GraphView: View {
                     .foregroundColor(theme.textInverse)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 1)
-                    .background(Capsule().fill(theme.iconGoal))
+                    .background(Capsule().fill(theme.statusSuccess))
                     .background(
                         GeometryReader { bubbleGeo in
                             theme.textInverse
