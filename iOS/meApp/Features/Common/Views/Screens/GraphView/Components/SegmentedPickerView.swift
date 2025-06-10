@@ -27,7 +27,7 @@ struct SegmentedPickerView<T: CaseIterable & RawRepresentable & Identifiable & H
                             ? theme.actionSecondary
                             : theme.textInverse
                         )
-                        .cornerRadius(12)
+                        .cornerRadius(.radiusMD)
                 }
             }
         }
