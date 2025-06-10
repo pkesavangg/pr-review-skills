@@ -22,3 +22,15 @@ struct BathScaleOperationDTO: Codable {
     let water: Double?
     let weight: Double?
 }
+
+// Extend BathScaleOperationDTO to conform to Identifiable and provide a computed date property
+// This extension allows BathScaleOperationDTO to be used easily in SwiftUI's ForEach and Charts,
+// enabling the struct to be utilized directly in the graph view.
+extension BathScaleOperationDTO: Identifiable {
+    var id: String { entryTimestamp ?? UUID().uuidString }
+    var date: Date? {
+        guard let entryTimestamp = entryTimestamp else { return nil }
+        let formatter = ISO8601DateFormatter()
+        return formatter.date(from: entryTimestamp)
+    }
+}
