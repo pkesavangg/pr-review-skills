@@ -10,7 +10,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    
     var body: some View {
         VStack {
             // Testing purpose it will replace by the actual content
@@ -20,8 +19,6 @@ struct ContentView: View {
                 .onTapGesture {
                     themeManager.isDarkMode.toggle()
                 }
-            
-            BasicFormControlView()
         }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }
