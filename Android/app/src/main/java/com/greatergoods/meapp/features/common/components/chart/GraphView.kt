@@ -28,6 +28,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
+import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
@@ -91,6 +92,13 @@ fun GraphView(
                 }
             }
         }
+
+    val minY = remember(ySeries) {
+        ySeries.flatten().minOfOrNull { it.value.toDouble() }
+    }
+    val max = remember(ySeries) {
+        ySeries.flatten().maxOfOrNull { it.value.toDouble() }
+    }
     var markerIndex by remember(xLabels) { mutableIntStateOf(xLabels.lastIndex) }
     var isUpdating by remember { mutableStateOf(false) }
 
@@ -160,13 +168,16 @@ fun GraphView(
             listOf(Color(0xFF1565C0)).map {
                 LineCartesianLayer.rememberLine(
                     fill = LineCartesianLayer.LineFill.single(fill(it)),
+                    stroke = LineCartesianLayer.LineStroke.continuous(
+                        thickness = 3.dp,
+                    ),
                     pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
                     pointProvider = LineCartesianLayer.PointProvider.single(
                         point = LineCartesianLayer.Point(
                             rememberShapeComponent(
                                 fill(it),
                                 CorneredShape.Pill,
-                                strokeThickness = 4.dp,
+                                strokeThickness = 2.dp,
                             ),
                         ),
                     ),
@@ -174,8 +185,8 @@ fun GraphView(
             },
         ),
         rangeProvider = CartesianLayerRangeProvider.fixed(
-            minY = 2.0,
-            maxY = 12.0,
+            minY = minY ?: 0.0,
+            maxY = max ?: 0.0,
         ),
     )
 
@@ -192,7 +203,9 @@ fun GraphView(
             },
             itemPlacer = VerticalAxis.ItemPlacer.step(
                 step = {
-                    3.0
+                    max?.let {
+                        it / 5
+                    }
                 },
             ),
             size = BaseAxis.Size.fixed(20.dp),

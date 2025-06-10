@@ -60,7 +60,7 @@ internal fun rememberDefaultMarker(
             ShapeComponent(
                 fill = fill(markerColor),
                 strokeFill = fill(color),
-                shape = CorneredShape.Pill,
+                shape = CorneredShape.cut(20f),
                 strokeThicknessDp = 2f,
             )
         },

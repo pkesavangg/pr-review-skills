@@ -65,6 +65,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.kotlin.reflect)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
