@@ -40,6 +40,7 @@ struct PickerView<T: Hashable>: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header with Cancel and Select buttons
+            // TODO: Need to use the custom button style here
             HStack {
                 Button("Cancel") {
                     onCancel?()
@@ -54,7 +55,8 @@ struct PickerView<T: Hashable>: View {
                 .foregroundColor(theme.actionPrimary)
                 .fontWeight(.semibold)
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.bottom, 40)
             
             // Picker Section
             ZStack {
