@@ -9,7 +9,7 @@ import Foundation
 import SafariServices
 
 /// Coordinator to handle SFSafariViewControllerDelegate callbacks.
-class Coordinator: NSObject, SFSafariViewControllerDelegate {
+class BrowserCoordinator: NSObject, SFSafariViewControllerDelegate {
     let completion: (() -> Void)?
     
     init(completion: (() -> Void)?) {
