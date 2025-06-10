@@ -41,7 +41,7 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
-        .padding(.top, (isFocused || !value.isEmpty) ? 8 : 0)
+        .padding(.top, (isFocused || !value.isEmpty) ? 15 : 0)
         .foregroundColor(theme.textBody.opacity(isDisabled ? 0.38 : 1))
         .focused($isFocused)
         .autocorrectionDisabled(true)

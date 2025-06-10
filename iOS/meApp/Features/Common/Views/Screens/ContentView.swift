@@ -10,8 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    @State var text: String = "dfsdfsdfs"
-    @FocusState private var isFocused: Bool
+    
     var body: some View {
         VStack {
             // Testing purpose it will replace by the actual content
@@ -22,7 +21,7 @@ struct ContentView: View {
                     themeManager.isDarkMode.toggle()
                 }
             
-            AppInputTestingField()
+            BasicFormControlView()
         }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
     }

@@ -1,0 +1,222 @@
+//
+//  MetricInputField.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 10/06/25.
+//
+import SwiftUI
+import Combine
+
+// MARK: - Metric Input Field (Wrapper over AppInputField)
+
+struct MetricInputField: View {
+    // Configuration
+    var config: TextInputConfig
+    
+    // Bindings
+    @Binding var value: String
+    @Binding var isFocused: Bool
+    
+    // Callbacks
+    var onCommit: (() -> Void)? = nil
+    var onEditingChanged: ((Bool) -> Void)? = nil
+    
+    // Internal state and formatter
+    @State private var displayValue: String = ""
+    @StateObject private var formatter: MetricFieldFormatter
+    
+    init(
+        config: TextInputConfig,
+        value: Binding<String>,
+        isFocused: Binding<Bool>,
+        onCommit: (() -> Void)? = nil,
+        onEditingChanged: ((Bool) -> Void)? = nil
+    ) {
+        self.config = config
+        self._value = value
+        self._isFocused = isFocused
+        self.onCommit = onCommit
+        self.onEditingChanged = onEditingChanged
+        self._formatter = StateObject(wrappedValue: MetricFieldFormatter(config: config))
+    }
+    
+    var body: some View {
+        AppInputField(
+            config: modifiedConfig,
+            value: $displayValue,
+            isFocused: $isFocused,
+            onCommit: onCommit,
+            onEditingChanged: onEditingChanged
+        )
+        .onReceive(Just(displayValue)) { newValue in
+            handleValueChange(newValue)
+        }
+        .onAppear {
+            initializeValue()
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private var modifiedConfig: TextInputConfig {
+        var modifiedConfig = config
+        modifiedConfig.inputType = .metric
+        return modifiedConfig
+    }
+    
+    private func initializeValue() {
+        if value.isEmpty {
+            let initial = formatter.initialValue
+            displayValue = initial
+            value = initial
+        } else {
+            displayValue = value
+        }
+    }
+    
+    private func handleValueChange(_ newValue: String) {
+        let formatted = formatter.formatInput(newValue)
+        
+        // Check if the new value is valid (doesn't exceed max)
+        guard formatter.shouldUpdateValue(from: displayValue, to: newValue) else {
+            return
+        }
+        
+        // Update display value if it changed
+        if displayValue != formatted {
+            displayValue = formatted
+        }
+        
+        // Update bound value
+        value = formatted
+    }
+}
+
+
+// MARK: - Metric Input TestingView (for testing the MetricInputField)
+
+struct MetricInputTestingView: View {
+    @State var text: String = ""
+    @State var password: String = ""
+    @State var number: String = ""
+    @State var disabledText: String = ""
+    @State var bankWeightValue: String = ""
+    @State var bankBodyFatValue: String = ""
+    @State var bankExperienceValue: String = ""
+    @State var bankDisabledValue: String = "42.5"
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                Text("Modular Input System Demo")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .padding(.bottom, 10)
+                   
+                Group {
+                    Text("BankInputField Examples (Built on AppInputField)")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Bank input examples
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: "weight (lbs)",
+                            placeholder: "0.0",
+                            inputType: .metric,
+                            maxLength: 4,
+                            maxValue: 999.9
+                        ),
+                        value: $bankWeightValue,
+                        isFocused: .constant(false)
+                    )
+                    
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: "body fat %",
+                            placeholder: "0.0",
+                            inputType: .metric,
+                            maxLength: 3,
+                            maxValue: 99.9
+                        ),
+                        value: $bankBodyFatValue,
+                        isFocused: .constant(false)
+                    )
+                    
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: "Years of Experience",
+                            placeholder: "0",
+                            inputType: .metric,
+                            maxLength: 2,
+                            allowWholeNumbers: true
+                        ),
+                        value: $bankExperienceValue,
+                        isFocused: .constant(false)
+                    )
+                    
+                    // Disabled bank input example
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: "Disabled Bank Input",
+                            placeholder: "0.0",
+                            inputType: .metric,
+                            isDisabled: true,
+                            maxLength: 3
+                        ),
+                        value: $bankDisabledValue,
+                        isFocused: .constant(false)
+                    )
+                }
+                
+                Divider()
+                
+                // Display current values
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Current Values:")
+                        .font(.headline)
+                    
+                    Group {
+                        Text("Username: '\(text)'")
+                        Text("Password: '\(String(repeating: "•", count: password.count))'")
+                        Text("Phone: '\(number)'")
+                        Text("Weight: '\(bankWeightValue)'")
+                        Text("Body Fat: '\(bankBodyFatValue)'")
+                        Text("Experience: '\(bankExperienceValue)'")
+                        Text("Disabled Bank: '\(bankDisabledValue)'")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+                
+                // Formatting examples
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Formatting Examples:")
+                        .font(.headline)
+                    
+                    Group {
+                        Text("• Type '123' in Weight → displays '12.3'")
+                        Text("• Type '4567' in Body Fat → displays '45.6' (max 3 digits)")
+                        Text("• Type '25' in Experience → displays '25' (whole numbers)")
+                        Text("• Weight max value: 999.9kg")
+                        Text("• Body Fat max value: 99.9%")
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+            }
+            .padding()
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+}
+
+#Preview {
+    MetricInputTestingView()
+}
