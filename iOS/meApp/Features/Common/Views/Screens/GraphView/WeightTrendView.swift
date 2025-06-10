@@ -29,7 +29,7 @@ struct WeightTrendView: View {
                     selectedWeight: $selectedWeight
                 )
 
-                SegmentedPickerView(
+                SegmentedButtonView(
                     segments: TimePeriod.allCases,
                     selectedSegment: $selectedSegment
                 )
