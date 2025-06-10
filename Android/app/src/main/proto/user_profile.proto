@@ -18,7 +18,9 @@ message UserAccount {
     string sync_timestamp = 2;
     string refresh_token = 3;
     string access_token = 4;
-    ThemeMode theme_mode = 5;
+    string expires_at = 5;
+    ThemeMode theme_mode = 6;
+    bool has_shown_account_switch_info_modal = 7;
 }
 
 // User preferences message
