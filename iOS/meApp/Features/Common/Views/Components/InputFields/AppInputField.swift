@@ -155,7 +155,7 @@ struct AppInputTestingField : View {
     @State var email: String = ""
     @State var password: String = ""
     @State var number: String = ""
-    @State var disabledText: String = "asdasd"
+    @State var disabledText: String = "Enter text here"
     @State var modelNumber: String = ""
     var body: some View {
         VStack {
