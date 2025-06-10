@@ -142,7 +142,7 @@ struct GraphView: View {
 
     @ViewBuilder
     private func ruleMarkDateLabel(date: Date) -> some View {
-        let dateText = selectedSegmentTitle == TimePeriod.week.rawValue
+        let dateText = selectedSegmentTitle == TimePeriod.week.displayName
             ? date.formatted(.dateTime.day(.twoDigits).month(.abbreviated).year(.defaultDigits))
             : date.formatted(.dateTime.month(.abbreviated).year(.defaultDigits))
 

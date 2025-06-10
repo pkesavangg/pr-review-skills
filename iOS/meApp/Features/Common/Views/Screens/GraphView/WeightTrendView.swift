@@ -68,7 +68,7 @@ func sampleOperations(for segment: String) -> [BathScaleOperationDTO] {
     default:
         count = 7
     }
-    return (0..<count).map { offset in
+    return Array((0..<count).map { offset in
         // Pick a weight in the range 176...189 (inclusive), randomly, with 1 decimal
         let weight = Double(Int.random(in: 1760...1890)) / 10.0
         let date: Date
@@ -107,5 +107,5 @@ func sampleOperations(for segment: String) -> [BathScaleOperationDTO] {
             water: nil,
             weight: weight
         )
-    }.reversed()
+    }.reversed())
 }

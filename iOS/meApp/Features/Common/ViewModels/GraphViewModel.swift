@@ -16,6 +16,9 @@ class GraphViewModel: ObservableObject {
     @Published var chartHeight: CGFloat = 0
 
     let yAxisTicks: [Double] = stride(from: 175, through: 190, by: 5).map { $0 }
+    
+    /// Correction value for vertical offset of annotation bubble (tunes for visual alignment)
+    private let annotationYCorrection: CGFloat = 180
 
     func xAxisDomain(for operations: [BathScaleOperationDTO]) -> ClosedRange<Date> {
         let dates = operations.compactMap { $0.date }
@@ -97,9 +100,9 @@ class GraphViewModel: ObservableObject {
     
     func annotationBubbleOffset(
         pointRadius: CGFloat = .radius2XL,
-        extraOffset: CGFloat = 5,
-        yCorrection: CGFloat = 180) -> CGFloat {
+        extraOffset: CGFloat = 5
+    ) -> CGFloat {
         let bubbleHeight = annotationHeight
-        return selectedPointY - (chartHeight / 2) + pointRadius + extraOffset - (bubbleHeight / 2) - yCorrection
+        return selectedPointY - (chartHeight / 2) + pointRadius + extraOffset - (bubbleHeight / 2) - annotationYCorrection
     }
 }
