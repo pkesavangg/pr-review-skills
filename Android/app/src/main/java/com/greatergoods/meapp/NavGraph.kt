@@ -8,7 +8,7 @@ import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.auth.UserListScreen
-import com.greatergoods.meapp.features.login.LoginScreen
+import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.sample.HomeScreen
 
 /**
@@ -37,6 +37,6 @@ fun EntryProviderBuilder<NavKey>.homeEntries() {
  *
  */
 fun EntryProviderBuilder<NavKey>.authEntries() {
-    entry<AppRoute.Auth.LoginScreen> { LoginScreen() }
+    entry<AppRoute.Auth.LoginScreen> { HistoryGraph() }
     entry<AppRoute.Auth.UserListScreen> { UserListScreen() }
 }
