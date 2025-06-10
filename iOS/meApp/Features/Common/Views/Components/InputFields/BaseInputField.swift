@@ -41,9 +41,11 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
-        .foregroundColor(theme.textBody)
+        .padding(.top, (isFocused || !value.isEmpty) ? 8 : 0)
+        .foregroundColor(theme.textBody.opacity(isDisabled ? 0.38 : 1))
         .focused($isFocused)
         .autocorrectionDisabled(true)
+        .autocapitalization(inputType == .email || inputType == .password ? .none : .sentences)
         .onChange(of: isFocused) {
             onEditingChanged?(isFocused)
         }
@@ -54,20 +56,21 @@ struct BaseInputField: View {
             HStack {
                 Spacer()
                 // Password visibility toggle
-                if inputType == .password && !value.isEmpty && !isDisabled {
+                if inputType == .password && !isDisabled {
                     Button(action: {
                         isSecureTextVisible.toggle()
                     }) {
                         AppIconView(icon: isSecureTextVisible ? AppAssets.eyeClosed : AppAssets.eyeOpen)
                             .foregroundColor(theme.statusIconPrimary)
                     }
-                    .padding(.trailing, 14)
+                    .padding(.trailing, 10)
                 }
             }
         )
     }
 }
 
+// MARK: - Base Input Field Preview
 struct BaseInputTestView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
