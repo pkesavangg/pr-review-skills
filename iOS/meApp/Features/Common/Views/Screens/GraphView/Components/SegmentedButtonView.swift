@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SegmentedPickerView<T: CaseIterable & RawRepresentable & Identifiable & Hashable>: View where T.RawValue == String {
+struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & Hashable>: View where T.RawValue == String {
     let segments: [T]
     @Binding var selectedSegment: T
     @Environment(\.appTheme) private var theme

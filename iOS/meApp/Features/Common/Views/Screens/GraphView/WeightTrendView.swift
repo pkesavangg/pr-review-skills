@@ -20,7 +20,7 @@ struct WeightTrendView: View {
                 .frame(maxHeight: 10)
             
             // Segmented Control
-            SegmentedPickerView(
+            SegmentedButtonView(
                 segments: TimePeriod.allCases,
                 selectedSegment: $selectedSegment
             )
