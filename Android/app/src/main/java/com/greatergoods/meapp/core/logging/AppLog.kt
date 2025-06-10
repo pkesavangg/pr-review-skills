@@ -1,11 +1,11 @@
 package com.greatergoods.meapp.core.logging
 
-import android.util.Log
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import android.util.Log
 
 object AppLog {
     private val loggingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -36,7 +36,7 @@ object AppLog {
             Log.w("AppLog", "LogRepository not initialized, skipping DB log")
             return
         }
-        
+
         loggingScope.launch {
             try {
                 logRepository.log(tag, message, type, data)
@@ -46,4 +46,4 @@ object AppLog {
             }
         }
     }
-} 
+}

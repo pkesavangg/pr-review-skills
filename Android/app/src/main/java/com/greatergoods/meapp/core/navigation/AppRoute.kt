@@ -27,6 +27,12 @@ sealed class AppRoute : NavKey {
         @Serializable
         data object MyScales : Main()
 
+        @Serializable
+        data object Entries : Main()
+
+        @Serializable
+        data object AddEntry : Main()
+
         /**
          * Nested routes for device details.
          */
