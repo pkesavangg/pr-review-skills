@@ -24,12 +24,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import android.content.res.Configuration
 
 @Composable
 fun LoginScreen(
+    loginViewModel: LoginViewModel = hiltViewModel()
 ) {
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -98,7 +101,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedButton(
                 onClick = {
-                    // TODO: Log in action},
+               loginViewModel.login(email = "vrengadevi@dmdbrands.com", password = "123456")
                 },
                 modifier = Modifier
                     .widthIn(min = 150.dp)

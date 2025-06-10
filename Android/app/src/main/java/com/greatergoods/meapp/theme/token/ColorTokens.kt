@@ -27,6 +27,8 @@ internal object LightColorToken {
     val primaryActionDisabled = ColorPalette.Blue500
     val secondaryAction = ColorPalette.Neutral900
     val secondaryDisabled = ColorPalette.Neutral300
+    val tertiaryAction = ColorPalette.Neutral500
+    val tertiaryDisabled = ColorPalette.Neutral300
 
     // Text
     val heading = ColorPalette.Neutral900
@@ -35,6 +37,7 @@ internal object LightColorToken {
     val error = ColorPalette.Red900
     val errorDisabled = ColorPalette.Red100
     val inverse = ColorPalette.Neutral100
+    val inverseDisabled = ColorPalette.Neutral200
     val inverseSecondary = ColorPalette.Neutral150
 
     // Icon
@@ -61,8 +64,11 @@ internal object DarkColorToken {
     // Action
     val primaryAction = ColorPalette.Blue950
     val primaryActionDisabled = ColorPalette.Blue975
-    val secondaryAction = ColorPalette.Neutral650
-    val secondaryDisabled = ColorPalette.Neutral600
+    val secondaryAction = ColorPalette.Neutral700
+    val secondaryDisabled = ColorPalette.Neutral950
+    val tertiaryAction = ColorPalette.Neutral600
+    val tertiaryDisabled = ColorPalette.Neutral950
+
 
     // Text
     val heading = ColorPalette.Neutral650
@@ -71,6 +77,7 @@ internal object DarkColorToken {
     val error = ColorPalette.Red500
     val errorDisabled = ColorPalette.Red950
     val inverse = ColorPalette.Neutral800
+    val inverseDisabled = ColorPalette.Neutral750
     val inverseSecondary = ColorPalette.Neutral850
 
     // Icon

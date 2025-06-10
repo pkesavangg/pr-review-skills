@@ -39,6 +39,8 @@ val LightColorScheme =
         primaryDisabled = LightColorToken.primaryActionDisabled,
         secondaryAction = LightColorToken.secondaryAction,
         secondaryDisabled = LightColorToken.secondaryDisabled,
+        tertiaryAction = LightColorToken.tertiaryAction,
+        tertiaryDisabled = LightColorToken.tertiaryDisabled,
         // Text
         heading = LightColorToken.heading,
         body = LightColorToken.body,
@@ -46,6 +48,7 @@ val LightColorScheme =
         error = LightColorToken.error,
         errorDisabled = LightColorToken.errorDisabled,
         inverse = LightColorToken.inverse,
+        inverseDisabled = LightColorToken.inverseDisabled,
         inverseSecondary = LightColorToken.inverseSecondary,
         // Icon
         goal = LightColorToken.goal,
@@ -74,6 +77,8 @@ val DarkColorScheme =
         primaryDisabled = DarkColorToken.primaryActionDisabled,
         secondaryAction = DarkColorToken.secondaryAction,
         secondaryDisabled = DarkColorToken.secondaryDisabled,
+        tertiaryAction = DarkColorToken.tertiaryAction,
+        tertiaryDisabled = DarkColorToken.tertiaryDisabled,
         // Text
         heading = DarkColorToken.heading,
         body = DarkColorToken.body,
@@ -81,6 +86,7 @@ val DarkColorScheme =
         error = DarkColorToken.error,
         errorDisabled = DarkColorToken.errorDisabled,
         inverse = DarkColorToken.inverse,
+        inverseDisabled = DarkColorToken.inverseDisabled,
         inverseSecondary = DarkColorToken.inverseSecondary,
         // Icon
         goal = DarkColorToken.goal,
