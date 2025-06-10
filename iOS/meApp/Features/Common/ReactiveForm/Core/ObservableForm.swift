@@ -160,11 +160,7 @@ class BasicProfileForm: ObservableForm {
     var password = FormControl("", validators: [.required, .minLength(6)])
     var confirmPassword = FormControl("", validators: [.required])
     var website = FormControl("", validators: [.required, .url])
-    var weight = FormControl("0.0", validators: [.required]) {
-        didSet {
-            objectWillChange.send()
-        }
-    }
+    var weight = FormControl("0.0", validators: [.required])
     
     override func validateForm() {
         var errors = ValidationErrors<Any>()

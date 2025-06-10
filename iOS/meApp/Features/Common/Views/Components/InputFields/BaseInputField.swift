@@ -28,6 +28,10 @@ struct BaseInputField: View {
     // Internal state for password visibility
     @State private var isSecureTextVisible: Bool = false
     
+    // Constants
+    let focusedTopPadding: CGFloat = 15
+    let trailingPadding: CGFloat = 40
+    
     var body: some View {
         Group {
             if inputType == .password && !isSecureTextVisible {
@@ -41,8 +45,8 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
-        .padding(.top, (isFocused || !value.isEmpty) ? 15 : 0)
-        .padding(.trailing, 40)
+        .padding(.top, (isFocused || !value.isEmpty) ? focusedTopPadding : 0)
+        .padding(.trailing, trailingPadding)
         .foregroundColor(theme.textBody.opacity(isDisabled ? 0.38 : 1))
         .focused($isFocused)
         .autocorrectionDisabled(true)
