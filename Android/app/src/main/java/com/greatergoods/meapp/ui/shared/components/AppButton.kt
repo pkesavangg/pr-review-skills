@@ -75,7 +75,7 @@ object CustomButtonDefaults {
 
     fun height(size: ButtonSize): Dp = when (size) {
         ButtonSize.Small -> 30.dp
-        ButtonSize.Medium -> 40.dp
+        ButtonSize.Medium -> 48.dp
         ButtonSize.Large -> 48.dp
     }
 
