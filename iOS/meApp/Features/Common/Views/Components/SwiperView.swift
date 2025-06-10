@@ -48,13 +48,14 @@ struct SwiperView<Content: View>: View {
 // MARK: - Swiper Testing View
 struct SwiperTestingView: View {
     @State private var selectedIndex: Int = 0
+    let views: [AnyView] = [
+        AnyView(Text("Page 1").frame(maxWidth: .infinity, maxHeight: .infinity).background(.red)),
+        AnyView(Text("Page 2").frame(maxWidth: .infinity, maxHeight: .infinity).background(.blue)),
+        AnyView(Text("Page 3").frame(maxWidth: .infinity, maxHeight: .infinity).background(.green))
+    ]
     var body: some View {
         VStack {
-            SwiperView(selectedIndex: $selectedIndex, views: [
-                Text("Page 1").frame(maxWidth: .infinity, maxHeight: .infinity).background(.red),
-                Text("Page 2").frame(maxWidth: .infinity, maxHeight: .infinity).background(.blue),
-                Text("Page 3").frame(maxWidth: .infinity, maxHeight: .infinity).background(.green)
-            ])
+            SwiperView(selectedIndex: $selectedIndex, views: views)
             
             HStack {
                 Button("Previous") {
@@ -65,7 +66,7 @@ struct SwiperTestingView: View {
                 
                 
                 Button("Next") {
-                    if selectedIndex < 2 { // Assuming there are 3 pages
+                    if selectedIndex < (views.count - 1) { // Assuming there are 3 pages
                         selectedIndex += 1
                     }
                 }
