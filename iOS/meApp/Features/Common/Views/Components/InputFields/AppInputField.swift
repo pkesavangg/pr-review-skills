@@ -112,19 +112,29 @@ struct AppInputField: View {
     }
     
     private var trailingIconView: some View {
-        Group {
-            if config.isDisabled {
-                disabledIcon
-            } else if config.inputType != .password {
-                clearButton
+        HStack(spacing: 8) {
+            // Custom icon if provided
+            if let customIcon = config.customIcon {
+                Button(action: {
+                    config.onCustomIconTap?()
+                }) {
+                    AppIconView(icon: customIcon)
+                        .foregroundColor(theme.actionPrimary)
+                }
+            } else {
+                if config.isDisabled {
+                    disabledIcon
+                } else if config.inputType != .password {
+                    clearButton
+                }
             }
         }
+        .padding(.trailing, 14)
     }
 
     private var disabledIcon: some View {
         AppIconView(icon: AppAssets.closeCircle)
             .foregroundColor(theme.actionSecondaryDisabled)
-            .padding(.trailing, 14)
     }
 
     private var clearButton: some View {
@@ -134,7 +144,6 @@ struct AppInputField: View {
             AppIconView(icon: AppAssets.closeCircle)
                 .foregroundColor(config.errorMessage != nil ? theme.textError : theme.actionPrimary)
         }
-        .padding(.trailing, 12)
     }
 }
 
@@ -147,6 +156,7 @@ struct AppInputTestingField : View {
     @State var password: String = ""
     @State var number: String = ""
     @State var disabledText: String = "asdasd"
+    @State var modelNumber: String = ""
     var body: some View {
         VStack {
             // Text input example
@@ -208,6 +218,21 @@ struct AppInputTestingField : View {
                     isDisabled: true
                 ),
                 value: $disabledText,
+                isFocused: .constant(false)
+            )
+            
+            // Model Number input example
+            AppInputField(
+                config: TextInputConfig(
+                    label: "Model Number",
+                    placeholder: "Enter model number",
+                    inputType: .text,
+                    customIcon: AppAssets.helpCircle,
+                    onCustomIconTap: {
+                        print("Custom icon tapped")
+                    }
+                ),
+                value: $modelNumber,
                 isFocused: .constant(false)
             )
         }

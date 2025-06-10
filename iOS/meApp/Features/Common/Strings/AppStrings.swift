@@ -8,7 +8,8 @@
 import Foundation
 
 struct AppAssets {
-    static let eyeOpen = "eyeIconOpen"
-    static let eyeClosed = "eyeIconSlash"
+    static let eyeOpen = "eyeOpen"
+    static let eyeClosed = "eyeSlash"
     static let closeCircle = "closeCircle"
+    static let helpCircle = "helpCircle"
 }
