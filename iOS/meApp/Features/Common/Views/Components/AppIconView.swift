@@ -8,7 +8,7 @@ import SwiftUI
 
 struct AppIconView: View {
     var icon: String
-    var size: CGFloat = 24  // Default size
+    var size: CGFloat = 20  // Default size
 
     var body: some View {
         Image(icon)
@@ -19,5 +19,5 @@ struct AppIconView: View {
 }
 
 #Preview(body: {
-    AppIconView(icon: "eyeIconSlash", size: 40)
+    AppIconView(icon: AppAssets.helpCircle, size: 40)
 })

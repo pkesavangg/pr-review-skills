@@ -14,6 +14,10 @@ struct TextInputConfig {
     var errorMessage: String? = nil
     var isDisabled: Bool = false
     
+    // Custom icon support
+    var customIcon: String? = nil
+    var onCustomIconTap: (() -> Void)? = nil
+    
     // Bank input specific properties
     var maxLength: Int = 3
     var maxValue: Double? = nil
