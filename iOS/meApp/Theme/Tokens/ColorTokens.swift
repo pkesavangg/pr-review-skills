@@ -12,6 +12,7 @@ struct ColorTokens {
     // Neutral colors
     static let neutral100 = Color("neutral-100")
     static let neutral200 = Color("neutral-200")
+    static let neutral300 = Color("neutral-300")
     static let neutral400 = Color("neutral-400")
     static let neutral500 = Color("neutral-500")
     static let neutral600 = Color("neutral-600")
@@ -35,6 +36,7 @@ struct ColorTokens {
         static let primary = AppColors.Palette(
             // Background
             backgroundPrimary: neutral100,
+            backgroundPrimaryDisabled: neutral300,
             backgroundSecondary: neutral200,
             
             // Text
@@ -55,14 +57,23 @@ struct ColorTokens {
             actionPrimaryDisabled: blue500,
             actionSecondary: neutral900,
             actionSecondaryDisabled: neutral400,
+            actionTertiary: neutral600,
+            actionTertiaryDisabled: neutral400,
             
             // Brand
-            brandPrimary: teal100,
+            brandMeAppPrimary: teal100,
+            brandWgPrimary: blue900,
             
-            // Icon
-            iconGoal: green100,
-            iconStreak: yellow100,
-            iconUtility: neutral400
+            // Status
+            statusSuccess: green100,
+            statusError: red900,
+            statusStreak: yellow100,
+            statusUtility: neutral400,
+            statusIconPrimary: blue900,
+            statusIconSecondary: neutral600,
+            statusIconDisabled: neutral400,
+            statusIconLoading: blue500,
+            statusIconLoadingError: red100
         )
     }
 }

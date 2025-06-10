@@ -19,6 +19,7 @@ enum AppColors {
     struct Palette {
         // Background colors
         let backgroundPrimary: Color
+        let backgroundPrimaryDisabled: Color
         let backgroundSecondary: Color
         
         // Text colors
@@ -39,14 +40,23 @@ enum AppColors {
         let actionPrimaryDisabled: Color
         let actionSecondary: Color
         let actionSecondaryDisabled: Color
+        let actionTertiary: Color
+        let actionTertiaryDisabled: Color
         
         // Brand colors
-        let brandPrimary: Color
+        let brandMeAppPrimary: Color
+        let brandWgPrimary: Color
         
         // Icon colors
-        let iconGoal: Color
-        let iconStreak: Color
-        let iconUtility: Color
+        let statusSuccess: Color
+        let statusError: Color
+        let statusStreak: Color
+        let statusUtility: Color
+        let statusIconPrimary: Color
+        let statusIconSecondary: Color
+        let statusIconDisabled: Color
+        let statusIconLoading: Color
+        let statusIconLoadingError: Color
         
         static func forTheme(_ theme: Theme) -> Palette {
             switch theme {
