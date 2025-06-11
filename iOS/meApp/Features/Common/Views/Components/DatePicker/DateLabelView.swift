@@ -17,10 +17,15 @@ struct DateLabelView: View {
 
     /// Returns the formatted date string in 'MMM dd, yyyy' format, uppercased.
     var formattedDateString: String {
+        return Self.formatter.string(from: date).uppercased()
+    }
+
+    /// Static cached DateFormatter for 'MMM dd, yyyy' format
+    private static let formatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM dd, yyyy"
-        return formatter.string(from: date).uppercased()
-    }
+        return formatter
+    }()
 
     var body: some View {
         Button(action: onTap) {
