@@ -1,32 +1,6 @@
 import SwiftUI
 
 //TODO: These are for the testing purpose need to replace with the actual views
-
-struct DateOfBirthStepView: View {
-    @Binding var date: Date
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("When were you born?")
-                .font(.title)
-                .fontWeight(.bold)
-            
-            Text("This helps us personalize your experience.")
-                .foregroundColor(.secondary)
-            
-            DatePicker(
-                "Date of Birth",
-                selection: Binding(
-                    get: { date },
-                    set: { date = $0 }
-                ),
-                displayedComponents: .date
-            )
-            .datePickerStyle(.wheel)
-        }
-    }
-}
-
 struct SexStepView: View {
     @Binding var selectedSex: String
     

@@ -18,14 +18,11 @@ struct SignupScreen: View {
                 NameStepView(signupStore: signupStore)
             ),
             
-            //TODO: These are for the testing purpose need to replace with the actual views
             AnyView(
-                DateOfBirthStepView(date: $signupStore.signupForm.birthday.value)
-                    .onChange(of: signupStore.signupForm.birthday.value) {
-                        signupStore.updateNextButtonState()
-                    }
+                DateOfBirthStepView(signupStore: signupStore)
             ),
             
+            //TODO: These are for the testing purpose need to replace with the actual views
             AnyView(
                 SexStepView(selectedSex: $signupStore.signupForm.gender.value)
                     .onChange(of: signupStore.signupForm.gender.value) {
@@ -150,7 +147,7 @@ struct PageHeaderView: View {
     let onLeadingButtonTap: (() -> Void)?
     let onTrailingButtonTap: (() -> Void)?
     let title: String? = nil
-
+    
     var body: some View {
         HStack {
             leadingButtonView

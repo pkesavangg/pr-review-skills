@@ -17,7 +17,7 @@ final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     var alertLang = AlertStrings.self
     
-    @Published var currentStepIndex: Int = 0 {
+    @Published var currentStepIndex: Int = 1 {
         didSet {
             currentStep = steps[currentStepIndex]
             updateNextButtonState()
