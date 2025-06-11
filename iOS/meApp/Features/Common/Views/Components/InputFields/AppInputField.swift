@@ -65,10 +65,9 @@ struct AppInputField: View {
                         }
                     )
                     .focused($fieldIsFocused)
-                    .padding(.leading, 16)
+                    .padding(.leading, .spacingSM)
                 }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 4)
+                .padding(.vertical, .spacingXS)
                 .accentColor((config.errorMessage != nil ? theme.textError : theme.actionPrimary))
             }
             .frame(height: 56)
@@ -111,8 +110,7 @@ struct AppInputField: View {
             Text(config.errorMessage ?? "")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textError)
-                .padding(.bottom, 4)
-                .padding(.leading, 16)
+                .padding(.leading, .spacingSM)
                 .frame(height: 15)
         }
     }

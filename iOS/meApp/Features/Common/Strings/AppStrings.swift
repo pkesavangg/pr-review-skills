@@ -7,6 +7,16 @@
 
 import Foundation
 
+/// Constants for common strings used throughout the app
+struct CommonStrings {
+    static let done = "Done"
+    static let cancel = "Cancel"
+    static let next = "Next"
+    static let back = "Back"
+    static let save = "Save"
+    static let skip = "Skip"
+}
+
 /// Constants for form validation error messages
 struct FormErrorMessages {
     static let required = "must not be left blank"
