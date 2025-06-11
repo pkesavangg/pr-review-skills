@@ -33,7 +33,7 @@ struct TestingCommonButtonsView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
-                //PRimary buttons
+                //Primary buttons
                 ButtonView(text: "button", type: .primary, size: .regular, isDisabled: false, action: {})
                 ButtonView(text: "button", type: .primary, size: .small, isDisabled: false, action: {})
                 ButtonView(text: "button", type: .primary, size: .regular, isDisabled: true, action: {})
