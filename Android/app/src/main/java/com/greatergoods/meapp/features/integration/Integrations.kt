@@ -26,7 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.service.InvalidIntegrationAlert
-import com.greatergoods.meapp.utils.browser.ChromeTabState
+import com.greatergoods.meapp.core.shared.utilities.browser.ChromeTabState
 import java.util.Locale
 import android.util.Log
 import android.widget.Toast
@@ -34,7 +34,7 @@ import android.widget.Toast
 @Composable
 fun IntegrationScreen(
     viewModel: IntegrationViewModel = hiltViewModel(),
-    onNavigateToIntegrations: () -> Unit = {}
+    onNavigateToIntegrations: () -> Unit = {},
 ) {
     val isLoading by viewModel.isLoading.collectAsState()
     val context = LocalContext.current
@@ -46,7 +46,6 @@ fun IntegrationScreen(
         }
     }
 
-
     // Handle Chrome tab state changes
     LaunchedEffect(Unit) {
         viewModel.chromeTabState.collect { event ->
@@ -55,6 +54,7 @@ fun IntegrationScreen(
                     Toast.makeText(context, "Tab closed", Toast.LENGTH_SHORT).show()
                     // Optionally refresh integrations after OAuth completion
                 }
+
                 is ChromeTabState.TabShown -> Log.d("CustomTab", "Tab is now shown")
                 else -> {}
             }
@@ -62,15 +62,16 @@ fun IntegrationScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
             text = "Integrations",
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
         )
 
         // Show loading indicator
@@ -80,13 +81,13 @@ fun IntegrationScreen(
         // Add Integrations Section
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "Add Integration",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -95,11 +96,11 @@ fun IntegrationScreen(
                     Button(
                         onClick = { viewModel.addIntegration(provider) },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
+                        enabled = !isLoading,
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text("Add ${getProviderDisplayName(provider)}")
                         }
@@ -110,27 +111,25 @@ fun IntegrationScreen(
                 }
             }
         }
-
     }
 }
 
 @Composable
-private fun getProviderDisplayName(provider: String): String {
-    return when (provider) {
+private fun getProviderDisplayName(provider: String): String =
+    when (provider) {
         "fitbit" -> "Fitbit"
         "mfPal" -> "MyFitnessPal"
         "googleFit" -> "Google Fit"
         "uArmor" -> "Under Armour"
         else -> provider.capitalize(Locale.ROOT)
     }
-}
 
 @Composable
 private fun ReintegrateAlertDialog(
     alert: InvalidIntegrationAlert,
     onDisable: () -> Unit,
     onOpenIntegrations: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -149,8 +148,6 @@ private fun ReintegrateAlertDialog(
             TextButton(onClick = onDisable) {
                 Text(alert.disableButtonText)
             }
-        }
+        },
     )
 }
-
-
