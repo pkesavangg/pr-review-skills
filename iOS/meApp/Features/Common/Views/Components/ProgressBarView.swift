@@ -7,15 +7,15 @@
 
 import SwiftUI
 
-/// A customizable linear progress bar with left/right labels and optional color.
+/// A customizable linear progress bar with optional left/right labels and optional color.
 struct ProgressBarView: View {
     @Environment(\.appTheme) var theme
     /// Progress value between 0.0 and 1.0
     var progress: CGFloat
-    /// Label displayed on the left below the bar
-    var leftLabel: String
-    /// Label displayed on the right below the bar
-    var rightLabel: String
+    /// Optional label displayed on the left below the bar
+    var leftLabel: String?
+    /// Optional label displayed on the right below the bar
+    var rightLabel: String?
     /// Optional color for the progress bar (defaults to theme.actionPrimary)
     var progressBarColor: Color?
     
@@ -28,14 +28,21 @@ struct ProgressBarView: View {
                 .animation(.easeInOut(duration: 0.3), value: progress)
                 .accessibilityLabel("Progress")
                 .accessibilityValue("\(Int(progress * 100))%")
-            HStack {
-                Text(leftLabel)
-                    .fontOpenSans(.subHeading2)
-                    .foregroundColor(theme.actionTertiaryDisabled)
-                Spacer()
-                Text(rightLabel)
-                    .fontOpenSans(.subHeading2)
-                    .foregroundColor(theme.actionTertiaryDisabled)
+            
+            if leftLabel != nil || rightLabel != nil {
+                HStack {
+                    if let leftLabel = leftLabel {
+                        Text(leftLabel)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.actionTertiaryDisabled)
+                    }
+                    Spacer()
+                    if let rightLabel = rightLabel {
+                        Text(rightLabel)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.actionTertiaryDisabled)
+                    }
+                }
             }
         }
         .padding(.top)
@@ -46,9 +53,15 @@ struct ProgressBarView: View {
 /// Preview for ProgressBarView with sample values.
 struct CustomProgressBar_Previews: PreviewProvider {
     static var previews: some View {
-        ProgressBarView(progress: 0.13, leftLabel: "000", rightLabel: "000")
-        ProgressBarView(progress: 0.5, leftLabel: "025", rightLabel: "100", progressBarColor: .blue)
-            .previewLayout(.sizeThatFits)
+        Group {
+            ProgressBarView(progress: 0.13, leftLabel: "000", rightLabel: "000")
+            ProgressBarView(progress: 0.5, leftLabel: "025", rightLabel: "100", progressBarColor: .blue)
+                .previewLayout(.sizeThatFits)
+            ProgressBarView(progress: 0.33, leftLabel: "Label Only Left", rightLabel: nil)
+            ProgressBarView(progress: 0.8, leftLabel: nil, rightLabel: "Only Right")
+            ProgressBarView(progress: 0.5)
+        }
+        .previewLayout(.sizeThatFits)
     }
 }
 
