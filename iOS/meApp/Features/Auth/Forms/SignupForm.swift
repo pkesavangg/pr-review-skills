@@ -11,7 +11,7 @@ import Combine
 /// This form is responsible for managing the signup process.
 class SignupForm: ObservableForm {
     var firstName = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(100)])
-    var lastName = FormControl("", validators: [.noWhiteSpace, .maxLength(100)])
+    var lastName = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(100)])
     var birthday: FormControl<Date> = {
         let defaultDate = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? Date()
         return FormControl(defaultDate, validators: [.futureDate])
