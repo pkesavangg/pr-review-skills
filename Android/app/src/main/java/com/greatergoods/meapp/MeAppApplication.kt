@@ -1,14 +1,8 @@
 package com.greatergoods.meapp
 
-import com.greatergoods.meapp.domain.repository.ILogRepository
-import com.greatergoods.meapp.data.storage.db.dao.LogDao
-import com.greatergoods.meapp.core.logging.AppLog
+import com.greatergoods.meapp.core.di.AppEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 import android.app.Application
 
 /**
@@ -17,33 +11,19 @@ import android.app.Application
  */
 @HiltAndroidApp
 class MeAppApplication : Application() {
-
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    @Inject
-    lateinit var logRepository: ILogRepository
-
-    @Inject
-    lateinit var logDao: LogDao
-
     override fun onCreate() {
         super.onCreate()
-        instance = this
-        // Initialize AppLog for dual logging
-        AppLog.logRepository = logRepository
-        // Initialize logging system
-        applicationScope.launch {
-            try {
-                logRepository.initialize()
-                AppLog.d("MeAppApplication", "Logging system initialized")
-            } catch (e: Exception) {
-                AppLog.e("MeAppApplication", "Failed to initialize logging system", e.toString())
-            }
-        }
+
+        // Initialize services needed for the app
+        initService()
     }
 
-    companion object {
-        lateinit var instance: MeAppApplication
-            private set
+    /**
+     * Initialize services needed for the app at app startup
+     */
+    private fun initService() {
+        val entryPoint = EntryPointAccessors.fromApplication(this, AppEntryPoint::class.java)
+        val initializer = entryPoint.appInitializer()
+        initializer.initialize()
     }
 }
