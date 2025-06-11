@@ -9,41 +9,21 @@ import Foundation
 import SwiftUI
 
 struct ButtonView: View {
-    let type: ButtonType
-    let buttonSize: ButtonSize
     let text: String
+    let type: ButtonType
+    let size: ButtonSize
     let isDisabled: Bool
-    var textColor: Color?
-    var backgroundColor: Color?
-    var borderColor: Color?
-    var cornerRadius: CGFloat?
-    let action: (() -> Void)?
-    
-    @Environment(\.appTheme) var theme
-    
-    var fontStyle: CustomTextStyle {(buttonSize == .small ? .button2 : .button1)}
+    let action: () -> Void
     
     var body: some View {
-           Button(action: {
-               action?()
-           }) {
-               Text(text.uppercased())
-                   .fontOpenSans(fontStyle)
-                   .fontWeight(.bold)
-                   .foregroundColor(textColor ?? theme.textInverse)
-                   .applyButtonStyle(
-                       for: type,
-                       isDisabled: isDisabled,
-                       textColor: textColor,
-                       backgroundColor: backgroundColor,
-                       borderColor: borderColor,
-                       cornerRadius: cornerRadius,
-                       theme: theme,
-                       buttonSize: buttonSize
-                   )
-           }
-           .disabled(isDisabled)
-       }
+        Button(action: action) {
+            Text(text.uppercased())
+                .fontOpenSans(size == .regular ? .button1 : .button2)
+                .modifier(CustomButtonStyle(type: type, buttonSize: size))               
+        }
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.5 : 1.0)
+    }
 }
 
 /// A view for testing and previewing various button styles and states in the app.
@@ -53,37 +33,62 @@ struct TestingCommonButtonsView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
-                // Basic buttons with actionPrimary color
-                ButtonView(type: .basic, buttonSize: .regular, text: "button", isDisabled: false, textColor: theme.actionPrimary, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .basic, buttonSize: .regular, text: "disabled", isDisabled: true, textColor: theme.actionPrimary, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .basic, buttonSize: .small, text: "small", isDisabled: false, textColor: theme.actionPrimary, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .basic, buttonSize: .small, text: "small", isDisabled: true, textColor: theme.actionPrimary, backgroundColor: theme.actionPrimary, action: {})
+                //PRimary buttons
+                ButtonView(text: "button", type: .primary, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .primary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .primary, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .primary, size: .small, isDisabled: true, action: {})
                 
-                // Basic buttons with textInverse color
-                ButtonView(type: .basic, buttonSize: .regular, text: "button", isDisabled: false, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .basic, buttonSize: .regular, text: "disabled", isDisabled: true, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .basic, buttonSize: .small, text: "small", isDisabled: false, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .basic, buttonSize: .small, text: "small", isDisabled: true, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, action: {})
+                //Primary inverse  buttons
+                ButtonView(text: "button", type: .primaryInverse, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .primaryInverse, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .primaryInverse, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .primaryInverse, size: .small, isDisabled: true, action: {})
                 
-                // Stroked buttons with various states and colors
-                ButtonView(type: .stroked, buttonSize: .regular, text: "stroked button", isDisabled: false, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .stroked, buttonSize: .regular, text: "stroked button", isDisabled: false, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, borderColor: theme.textInverse, action: {})
-                ButtonView(type: .stroked, buttonSize: .regular, text: "stroked button", isDisabled: true, textColor: theme.actionPrimary, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .stroked, buttonSize: .small, text: "small", isDisabled: false, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .stroked, buttonSize: .small, text: "small", isDisabled: true, textColor: theme.actionPrimary, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .stroked, buttonSize: .small, text: "small", isDisabled: true, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, borderColor: theme.textInverse, action: {})
+                // secondary buttons
+                ButtonView(text: "button", type: .secondary, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .secondary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .secondary, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .secondary, size: .small, isDisabled: true, action: {})
                 
-                // Flat buttons with various states
-                ButtonView(type: .flat, buttonSize: .regular, text: "Flat button", isDisabled: false, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .flat, buttonSize: .regular, text: "Flat button", isDisabled: true, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .flat, buttonSize: .regular, text: "Flat button", isDisabled: false, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .flat, buttonSize: .small, text: "small", isDisabled: false, backgroundColor: theme.actionPrimary, action: {})
-                ButtonView(type: .flat, buttonSize: .small, text: "small", isDisabled: true, backgroundColor: theme.actionPrimary, action: {})
+                // secondary inverse button
+                ButtonView(text: "button", type: .secondaryInverse, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .secondaryInverse, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .secondaryInverse, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .secondaryInverse, size: .small, isDisabled: true, action: {})
                 
-                // Custom stroked buttons for demonstration
-                ButtonView(type: .stroked, buttonSize: .regular, text: "custom stroked regular", isDisabled: false, textColor: theme.actionPrimary, backgroundColor: theme.textInverse, borderColor: theme.actionPrimary, action: {})
-                ButtonView(type: .stroked, buttonSize: .regular, text: "custom stroked regular", isDisabled: false, textColor: theme.textInverse, backgroundColor: theme.actionPrimary, borderColor: theme.textInverse, action: {})
+                // tertiary Buttons
+                ButtonView(text: "Button", type: .smallTertiaryLink, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "Button", type: .smallTertiaryLink, size: .small, isDisabled: true, action: {})
+                
+                // Links
+                //link blue default
+                ButtonView(text: "button", type: .linkBlueDefault, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkBlueDefault, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkBlueDefault, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .linkBlueDefault, size: .small, isDisabled: true, action: {})
+                
+                //Link blue inline
+                ButtonView(text: "button", type: .linkBlueInline, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkBlueInline, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkBlueInline, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .linkBlueInline, size: .small, isDisabled: true, action: {})
+                
+                
+                //link White Default
+                ButtonView(text: "button", type: .linkWhiteDefault, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkWhiteDefault, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkWhiteDefault, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .linkWhiteDefault, size: .small, isDisabled: true, action: {})
+                
+                //Link White inline
+                ButtonView(text: "button", type: .linkWhiteInline, size: .regular, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkWhiteInline, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .linkWhiteInline, size: .regular, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .linkWhiteInline, size: .small, isDisabled: true, action: {})
+                
             }
+            .padding()
         }
     }
 }
