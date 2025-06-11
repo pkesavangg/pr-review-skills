@@ -1,7 +1,17 @@
+//
+//  SignupStore.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 11/06/25.
+//
+
 import Foundation
 import SwiftUI
 import Combine
 
+
+// MARK: SignupStore
+/// This store is responsible for managing the signup process.
 @MainActor
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
@@ -14,8 +24,14 @@ final class SignupStore: ObservableObject {
         }
     }
     @Published private(set) var currentStep: SignupStep = .name
-    @Published var formData = SignupForm()
+    @Published var signupForm = SignupForm()
     @Published var isNextEnabled = false
+    
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        setupFormObservers()
+    }
     
     let steps: [SignupStep] = [
         .name,
@@ -44,24 +60,24 @@ final class SignupStore: ObservableObject {
     func updateNextButtonState() {
         switch currentStep {
         case .name:
-            isNextEnabled = (formData.firstName.isValid && formData.lastName.isValid)
+            isNextEnabled = (signupForm.firstName.isValid && signupForm.lastName.isValid)
         case .dateOfBirth:
-            isNextEnabled = (formData.birthday.isValid)
+            isNextEnabled = (signupForm.birthday.isValid)
         case .sex:
-            isNextEnabled = formData.gender.isValid
+            isNextEnabled = signupForm.gender.isValid
         case .height:
-            isNextEnabled = formData.height.isValid
+            isNextEnabled = signupForm.height.isValid
         case .goal:
-            isNextEnabled = formData.goalType.isValid
+            isNextEnabled = signupForm.goalType.isValid
         case .email:
-            isNextEnabled = formData.email.isValid
+            isNextEnabled = signupForm.email.isValid
         case .password:
-            isNextEnabled = (formData.password.isValid && formData.confirmPassword.isValid && formData.zipcode.isValid)
+            isNextEnabled = (signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid)
         }
     }
     
     func getError<T>(for control: FormControl<T>) -> String? {
-        formData.getError(for: control)
+        signupForm.getError(for: control)
     }
     
     func showExitAlert() {
@@ -77,5 +93,14 @@ final class SignupStore: ObservableObject {
             ]
         )
         notificationService.showAlert(alert)
+    }
+    
+    private func setupFormObservers() {
+        signupForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.updateNextButtonState()
+            }
+            .store(in: &cancellables)
     }
 }

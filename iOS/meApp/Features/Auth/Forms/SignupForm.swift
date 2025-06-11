@@ -7,18 +7,42 @@
 import Foundation
 import Combine
 
+// MARK: SignupForm
+/// This form is responsible for managing the signup process.
 class SignupForm: ObservableForm {
     var firstName = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(100)])
     var lastName = FormControl("", validators: [.noWhiteSpace, .maxLength(100)])
-    var birthday = FormControl(Date(), validators: [.futureDate]) // Default date 2000-01-01
+    var birthday: FormControl<Date> = {
+        let defaultDate = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? Date()
+        return FormControl(defaultDate, validators: [.futureDate])
+    }()
     var gender = FormControl(Sex.male.rawValue, validators: [.required])
     var goalType = FormControl("", validators: [.required, .noWhiteSpace])
     var currentWeight = FormControl("", validators: [.required])
-    var height = FormControl(700)
+    var height = FormControl(700.0)
     var email = FormControl("", validators: [.required, .email, .maxLength(200)])
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
+    
+    
+    /// Publisher that merges all value changes in the form
+    var formDidChange: AnyPublisher<Void, Never> {
+        Publishers.MergeMany([
+            firstName.$value.map { _ in () }.eraseToAnyPublisher(),
+            lastName.$value.map { _ in () }.eraseToAnyPublisher(),
+            birthday.$value.map { _ in () }.eraseToAnyPublisher(),
+            gender.$value.map { _ in () }.eraseToAnyPublisher(),
+            goalType.$value.map { _ in () }.eraseToAnyPublisher(),
+            currentWeight.$value.map { _ in () }.eraseToAnyPublisher(),
+            height.$value.map { _ in () }.eraseToAnyPublisher(),
+            email.$value.map { _ in () }.eraseToAnyPublisher(),
+            password.$value.map { _ in () }.eraseToAnyPublisher(),
+            confirmPassword.$value.map { _ in () }.eraseToAnyPublisher(),
+            zipcode.$value.map { _ in () }.eraseToAnyPublisher(),
+        ])
+        .eraseToAnyPublisher()
+    }
     
     override func validateForm() {
         var errors = ValidationErrors<Any>()
@@ -37,25 +61,29 @@ class SignupForm: ObservableForm {
     
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isDirty else { return nil }
-        
+
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
             return FormErrorMessages.minLength(minLength)
         }
         if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
-            return FormErrorMessages.maxLength(maxLength)
+            // Use custom message for password field
+            if control === password {
+                return FormErrorMessages.passwordMaxLength
+            } else {
+                return FormErrorMessages.maxLength(maxLength)
+            }
         }
         if control.errors[.min], let minValue = control.errors.value(for: .min) as? Int {
             return FormErrorMessages.min(minValue)
         }
         if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
         if control.errors[.futureDate] { return FormErrorMessages.futureDate }
-        if control.errors[.requiredTrue] { return FormErrorMessages.requiredTrue }
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch
         }
-        
+
         return nil
     }
 }
