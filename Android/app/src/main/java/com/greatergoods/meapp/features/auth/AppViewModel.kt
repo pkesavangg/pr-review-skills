@@ -95,7 +95,7 @@ class AppViewModel @Inject constructor(
                 // - Load user preferences
                 // - Initialize services
                 // - Cache necessary data
-                navigationService.replaceStack(listOf(AppRoute.Home.HomeScreen))
+                navigationService.replaceStack(listOf(AppRoute.Main.Dashboard))
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately
             }

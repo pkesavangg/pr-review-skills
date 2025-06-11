@@ -9,7 +9,6 @@ import androidx.core.animation.doOnEnd
 import androidx.lifecycle.lifecycleScope
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.core.logging.LogManager
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -109,12 +108,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val destination = intent?.getStringExtra("destination")
             AppLog.i("MainActivity", "Destination: $destination")
-            when (destination) {
-                "productDetail" -> {
-                    eventService.addTopLevelRoute(AppRoute.Product.ProductList)
-                    eventService.navigateTo(AppRoute.Product.ProductList)
-                }
-            }
+
         }
     }
 }
