@@ -47,11 +47,6 @@ enum class AppInputType {
     TEXT, PASSWORD, CHECKBOX, DATE_PICKER, NUMBER, TIME_PICKER, DROP_DOWN, BODY_COMP, WEIGHT
 }
 
-private object InputFieldTokens {
-    val borderRadius = 8.dp
-    val height = 56.dp
-}
-
 object AppInputDefaults {
     fun visualTransformation(type: AppInputType, allowDecimal: Boolean): VisualTransformation = when(type) {
         AppInputType.PASSWORD -> PasswordVisualTransformation()
@@ -151,6 +146,7 @@ fun <T> InputFieldBase(
     val spacing = MeAppTheme.spacing
     val colors = MeAppTheme.colorScheme
     val typography = MeAppTheme.typography
+    val inputBorderRadius = MeAppTheme.borderRadius.sm
     val labelPadding = spacing.xs
     var statelessValue by remember { mutableStateOf(value) }
     val focusManager = LocalFocusManager.current
@@ -290,18 +286,18 @@ fun <T> InputFieldBase(
                     onValueChange?.invoke(newValue)
                 }
             },
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(InputFieldTokens.borderRadius),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(inputBorderRadius),
             modifier = Modifier.Companion
                 .background(
                     backgroundColor,
-                    androidx.compose.foundation.shape.RoundedCornerShape(InputFieldTokens.borderRadius)
+                    androidx.compose.foundation.shape.RoundedCornerShape(inputBorderRadius)
                 )
                 .border(
                     0.dp,
                     Color.Companion.Transparent,
-                    androidx.compose.foundation.shape.RoundedCornerShape(InputFieldTokens.borderRadius)
+                    androidx.compose.foundation.shape.RoundedCornerShape(inputBorderRadius)
                 )
-                .height(InputFieldTokens.height)
+                .height(56.dp)
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
                 .focusRequester(focusRequester)

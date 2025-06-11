@@ -78,6 +78,8 @@ enum class InputType {
  * @param stringToValue Lambda to convert string to T.
  * @param valueToString Lambda to convert T to string.
  */
+
+@Deprecated("Use AppInput instead")
 @Composable
 fun <T> InputField(
     modifier: Modifier = Modifier,
