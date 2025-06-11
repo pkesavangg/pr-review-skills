@@ -76,6 +76,8 @@ extension View {
     /// - Returns: A view styled as a flat button.
     func flatButtonStyle(backgroundColor: Color, cornerRadius: CGFloat, buttonSize: ButtonSize) -> some View {
         self.modifier(FlatButtonStyle(backgroundColor: backgroundColor, cornerRadius: cornerRadius, buttonSize: buttonSize))
+    }
+    
     /// Presents a picker sheet with the provided configuration.
     /// - Parameters:
     /// - isPresented: A binding to a Boolean value that determines whether the picker sheet is presented.
