@@ -21,7 +21,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 @Composable
 fun DashedCircularLoader(
     modifier: Modifier = Modifier,
-    color: Color = Color(0xFF2C2827), // Match your design color
+    color: Color = Color(0xFF302A27), // Match your design color
     strokeWidth: Float = 5f,
     dashLength: Float = 18f,
     gapLength: Float = 10f,

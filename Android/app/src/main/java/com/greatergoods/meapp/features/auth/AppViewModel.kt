@@ -46,14 +46,7 @@ class AppViewModel @Inject constructor(
     private var currentAccount: UserAccount? = null
 
     init {
-        viewModelScope.launch {
-            delay(3000)
-            navigationService.replaceStack(
-                listOf(
-                    AppRoute.Auth.LoginScreen,
-                ),
-            )
-        }
+        initLoadingData("1")
     }
 
     private fun initLogic() {
@@ -70,9 +63,9 @@ class AppViewModel @Inject constructor(
                         initLoadingData(currentAccountId)
                     } else {
                         val destinationState = if (userRepository.hasAccounts()) {
-                            AppRoute.Auth.UserListScreen
+                            AppRoute.Auth.LoginScreen(hasAccounts = true)
                         } else {
-                            AppRoute.Auth.LoginScreen
+                            AppRoute.Auth.LoginScreen(hasAccounts = false)
                         }
                         _uiState.value = _uiState.value.copy(
                             themeMode = ThemeMode.SYSTEM,
@@ -95,7 +88,7 @@ class AppViewModel @Inject constructor(
                 // - Load user preferences
                 // - Initialize services
                 // - Cache necessary data
-                navigationService.replaceStack(listOf(AppRoute.Home.HomeScreen))
+                navigationService.replaceStack(listOf(AppRoute.Dashboard))
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately
             }

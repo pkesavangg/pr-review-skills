@@ -6,6 +6,7 @@ import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.data.services.EntryService
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
@@ -64,7 +65,7 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogQueueService(): DialogQueueService {
+    fun provideDialogQueueService(): IDialogQueueService {
         return DialogQueueService()
     }
 

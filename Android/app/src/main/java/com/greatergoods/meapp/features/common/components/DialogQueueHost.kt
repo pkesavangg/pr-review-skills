@@ -34,12 +34,18 @@ fun DialogQueueHost(
     val snackBarHostState = remember { SnackbarHostState() }
     val currentDialog by dialogQueueViewModel.currentDialog.collectAsState()
     val currentToast by dialogQueueViewModel.currentToast.collectAsState()
+    val loader by dialogQueueViewModel.loader.collectAsState()
+
 
 
     currentToast?.let { dialog ->
         ToastHandler(hostState = snackBarHostState, toast = dialog) {
             dialogQueueViewModel.dismissToast()
         }
+    }
+
+    loader?.let { loader ->
+        LoaderCard(loader = loader)
     }
 
 

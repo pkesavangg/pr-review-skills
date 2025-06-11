@@ -31,12 +31,11 @@ fun MeApp() {
     val uiState by appViewModel.uiState.collectAsState()
     val topLevelBackStack = rememberTopLevelBackStack(AppRoute.Init.Loading)
     val context = LocalContext.current
-    val logManager =
-        EntryPointAccessors
-            .fromApplication(
-                context.applicationContext,
-                LogManagerEntryPoint::class.java,
-            ).logManager()
+    EntryPointAccessors
+        .fromApplication(
+            context.applicationContext,
+            LogManagerEntryPoint::class.java,
+        ).logManager()
 
     MeAppTheme(themeMode = uiState.themeMode) {
         // Global dialog host
@@ -54,7 +53,7 @@ fun MeApp() {
             }
         }
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-            NavHost(topLevelBackStack, appViewModel, logManager)
+            NavHost(topLevelBackStack, appViewModel)
         }
     }
 }

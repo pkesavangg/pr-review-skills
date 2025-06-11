@@ -1,5 +1,9 @@
 package com.greatergoods.meapp.features.common.model
 
+import com.greatergoods.meapp.features.common.components.LoaderConfig
+import com.greatergoods.meapp.features.common.components.LoaderDefaults
+import com.greatergoods.meapp.features.common.components.LoaderStyle
+
 /**
  * Represents a dialog request in the dialog queue system.
  * Supports alert, confirmation, and custom dialog types. Extensible for future dialog variants.
@@ -76,4 +80,10 @@ data class Toast(
     val message: String,
     val title: String? = null,
     val action: ActionButton? = null,
+)
+
+data class Loader(
+    val message: String,
+    val style: LoaderStyle = LoaderStyle.CIRCULAR,
+    val config: LoaderConfig = LoaderDefaults.defaultFor(style),
 )

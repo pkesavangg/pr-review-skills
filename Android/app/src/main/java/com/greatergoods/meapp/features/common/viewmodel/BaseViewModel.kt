@@ -3,8 +3,8 @@ package com.greatergoods.meapp.features.common.viewmodel
 import androidx.lifecycle.ViewModel
 import com.greatergoods.meapp.MeAppApplication
 import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.features.common.interfaces.ViewModelServiceEntryPoint
-import com.greatergoods.meapp.features.common.service.DialogQueueService
 import dagger.hilt.android.EntryPointAccessors
 import javax.inject.Inject
 
@@ -14,7 +14,7 @@ abstract class BaseViewModel : ViewModel() {
     lateinit var navigationService: IAppEventService
 
     @Inject
-    lateinit var dialogQueueService: DialogQueueService
+    lateinit var dialogQueueService: IDialogQueueService
 
     init {
         injectDependencies()

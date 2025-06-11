@@ -6,19 +6,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.tooling.preview.Preview
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.theme.MeAppTheme
 
-//here link Primary is text button and link Secondary is text button
+// here link Primary is text button and link Secondary is text button
 enum class ButtonType {
     PrimaryFilled,
     PrimaryOutlined,
@@ -56,21 +56,25 @@ object CustomButtonDefaults {
             ButtonType.PrimaryOutlined -> if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
             ButtonType.TextPrimary -> if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
             ButtonType.TextSecondary -> if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryDisabled
-            ButtonType.InlineText -> if(enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
-            ButtonType.SecondaryFilled -> if(enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
-            ButtonType.SecondaryOutlined -> if(enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
+            ButtonType.InlineText -> if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
+            ButtonType.SecondaryFilled -> if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
+            ButtonType.SecondaryOutlined -> if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
         }
 
     @Composable
     fun border(type: ButtonType, enabled: Boolean): BorderStroke? =
         when (type) {
-            ButtonType.PrimaryFilled, ButtonType.PrimaryOutlined -> BorderStroke(1.dp,
-                if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
+            ButtonType.PrimaryFilled, ButtonType.PrimaryOutlined -> BorderStroke(
+                1.dp,
+                if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled,
             )
-            ButtonType.SecondaryOutlined, ButtonType.SecondaryFilled  ->  BorderStroke(1.dp,
-                if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
+
+            ButtonType.SecondaryOutlined, ButtonType.SecondaryFilled -> BorderStroke(
+                1.dp,
+                if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled,
             )
-            ButtonType.TextPrimary, ButtonType.TextSecondary,ButtonType.InlineText -> null
+
+            ButtonType.TextPrimary, ButtonType.TextSecondary, ButtonType.InlineText -> null
         }
 
     fun height(size: ButtonSize): Dp = when (size) {
@@ -78,7 +82,6 @@ object CustomButtonDefaults {
         ButtonSize.Medium -> 40.dp
         ButtonSize.Large -> 48.dp
     }
-
 
     fun horizontalPadding(size: ButtonSize): Dp = when (size) {
         ButtonSize.Small -> 16.dp
@@ -94,7 +97,6 @@ object CustomButtonDefaults {
     }
 }
 
-
 @Composable
 fun AppButton(
     text: String,
@@ -102,7 +104,7 @@ fun AppButton(
     modifier: Modifier = Modifier,
     type: ButtonType = ButtonType.PrimaryFilled,
     size: ButtonSize = ButtonSize.Medium,
-    enabled: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val backgroundColor = CustomButtonDefaults.backgroundColor(type, enabled)
     val contentColor = CustomButtonDefaults.contentColor(type, enabled)
@@ -129,7 +131,7 @@ fun AppButton(
             disabledContentColor = contentColor,
         ),
         border = border,
-        modifier = buttonModifier
+        modifier = buttonModifier,
     ) {
         Text(text = text, style = textStyle)
     }
@@ -143,12 +145,16 @@ fun AllButtonsPreviewLight() {
             type = ButtonType.PrimaryOutlined,
             onClick = { /* Do something */ },
             text = "Light Button",
-            enabled = true
+            enabled = true,
         )
     }
 }
 
-@Preview(name = "Dark Theme Preview", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Preview(
+    name = "Dark Theme Preview",
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+)
 @Composable
 fun AllButtonsPreviewDark() {
     MeAppTheme(themeMode = ThemeMode.DARK) { // Provide the Dark theme
@@ -156,7 +162,7 @@ fun AllButtonsPreviewDark() {
             type = ButtonType.PrimaryFilled,
             onClick = { /* Do something */ },
             text = "Dark Button",
-            enabled = true
+            enabled = true,
         )
     }
 }
@@ -169,7 +175,7 @@ fun AllButtonsPreviewSystem() {
         AppButton(
             onClick = { /* Do something */ },
             text = "System Button",
-            enabled = true
+            enabled = true,
         )
     }
 }

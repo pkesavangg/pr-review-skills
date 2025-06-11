@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.service
 
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.model.Toast
 import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +25,9 @@ class DialogQueueService @Inject constructor() : IDialogQueueService {
 
     private val _currentToast = MutableStateFlow<Toast?>(null)
     override val currentToast: StateFlow<Toast?> = _currentToast.asStateFlow()
+
+    private val _loader = MutableStateFlow<Loader?>(null)
+    override val loader: StateFlow<Loader?> = _loader.asStateFlow()
     private val scope = CoroutineScope(Dispatchers.Main)
 
     /**
@@ -41,6 +45,20 @@ class DialogQueueService @Inject constructor() : IDialogQueueService {
      */
     override fun showToast(dialog: Toast) {
         _currentToast.value = dialog
+    }
+
+    /**
+     * Show a loader.
+     */
+    override fun showLoader(loader: Loader) {
+        _loader.value = loader
+    }
+
+    /**
+     * Dismiss the current loader if it exists.
+     */
+    override fun dismissLoader() {
+        _loader.value = null
     }
 
     /**
