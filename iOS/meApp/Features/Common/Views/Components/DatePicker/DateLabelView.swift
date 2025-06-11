@@ -31,9 +31,8 @@ struct DateLabelView: View {
                 .padding(.horizontal, 11)
                 .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: .radiusSM)
                         .fill(theme.backgroundPrimary)
-                        .cornerRadius(.radiusSM)
                 )
         }
         .buttonStyle(PlainButtonStyle())
