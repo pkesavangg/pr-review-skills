@@ -13,28 +13,27 @@ struct ContentView: View {
     @State private var isLogoAnimated = false
     
     var body: some View {
-//        VStack(spacing: 32) {
-//            // Logo Section
-//            logoView
-//                .scaleEffect(isLogoAnimated ? 1 : 0.8)
-//                .opacity(isLogoAnimated ? 1 : 0)
-//                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isLogoAnimated)
-//            
-//            // Title Section
-//            titleView
-//                .opacity(isLogoAnimated ? 1 : 0)
-//                .offset(y: isLogoAnimated ? 0 : 20)
-//                .animation(.easeOut(duration: 0.5).delay(0.3), value: isLogoAnimated)
-//        }
-//        .frame(maxWidth: .infinity, maxHeight: .infinity)
-//        .background(theme.actionPrimary)
-//        .preferredColorScheme(themeManager.getPreferredAppearanceMode())
-//        .onAppear {
-//            withAnimation {
-//                isLogoAnimated = true
-//            }
-//        }
-        SignupScreen()
+        VStack(spacing: 32) {
+            // Logo Section
+            logoView
+                .scaleEffect(isLogoAnimated ? 1 : 0.8)
+                .opacity(isLogoAnimated ? 1 : 0)
+                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isLogoAnimated)
+            
+            // Title Section
+            titleView
+                .opacity(isLogoAnimated ? 1 : 0)
+                .offset(y: isLogoAnimated ? 0 : 20)
+                .animation(.easeOut(duration: 0.5).delay(0.3), value: isLogoAnimated)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.actionPrimary)
+        .preferredColorScheme(themeManager.getPreferredAppearanceMode())
+        .onAppear {
+            withAnimation {
+                isLogoAnimated = true
+            }
+        }
     }
     // MARK: - UI Components
     
@@ -79,6 +78,6 @@ struct ContentView: View {
 
 // MARK: - Preview
 #Preview {
-    AppProgressView(progressValue: 0.2)
+    ContentView()
         .environmentObject(Theme.shared)
 }
