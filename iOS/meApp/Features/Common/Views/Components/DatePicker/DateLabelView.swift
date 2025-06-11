@@ -39,3 +39,7 @@ struct DateLabelView: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
+#Preview {
+    DateLabelView(date: Date(), onTap: {})
+}

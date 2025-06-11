@@ -42,35 +42,42 @@ struct DatePickerView: View {
     }
 }
 
+#Preview {
+    DatePickerView(isPresented: .constant(true), date: .constant(Date()))
+}
 
-// Example usage of DatePickerView and DateLabelView in a parent view.
 
- struct ExampleUsage: View {
-     @State private var showDatePicker = false // Controls date picker visibility
-     @State private var selectedDate = Date() // Holds the selected date
+/*
+ // Example usage of DatePickerView and DateLabelView in a parent view.
 
-     var body: some View {
-         VStack {
-             HStack {
-                 Spacer()
-                 // Tapping the date label toggles the date picker
-                 DateLabelView(date: selectedDate) {
-                     withAnimation { showDatePicker.toggle() }
-                 }
-                 Spacer()
-                 Text("Time Picker")
-                 Spacer()
-             }
-             // The date picker appears when showDatePicker is true
-             DatePickerView(isPresented: $showDatePicker, date: $selectedDate)
-         }
-         .padding()
-     }
- }
+  struct ExampleUsage: View {
+      @State private var showDatePicker = false // Controls date picker visibility
+      @State private var selectedDate = Date() // Holds the selected date
 
- struct ExampleUsage_Previews: PreviewProvider {
-     static var previews: some View {
-         ExampleUsage()
-     }
- }
+      var body: some View {
+          VStack {
+              HStack {
+                  Spacer()
+                  // Tapping the date label toggles the date picker
+                  DateLabelView(date: selectedDate) {
+                      withAnimation { showDatePicker.toggle() }
+                  }
+                  Spacer()
+                  Text("Time Picker")
+                  Spacer()
+              }
+              // The date picker appears when showDatePicker is true
+              DatePickerView(isPresented: $showDatePicker, date: $selectedDate)
+          }
+          .padding()
+      }
+  }
 
+  struct ExampleUsage_Previews: PreviewProvider {
+      static var previews: some View {
+          ExampleUsage()
+      }
+  }
+
+
+ */
