@@ -60,7 +60,7 @@ struct SignupScreen: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Navigation Bar
+            // TODO: Need to replace with the PageHeaderView from the common components
             PageHeaderView(
                 leadingButtonView: AnyView(
                     Button(action: {
@@ -72,7 +72,7 @@ struct SignupScreen: View {
                 ),
                 trailingButtonView: AnyView(
                     Button(action: {
-                        
+                        signupStore.showHelpModal()
                     }) {
                         AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 22, height: 22))
                             .foregroundColor(theme.statusIconPrimary)

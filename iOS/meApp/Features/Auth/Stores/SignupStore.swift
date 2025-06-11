@@ -95,6 +95,10 @@ final class SignupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    func showHelpModal() {
+        // TODO: Implement help modal logic
+    }
+    
     private func setupFormObservers() {
         signupForm.formDidChange
             .receive(on: DispatchQueue.main)
