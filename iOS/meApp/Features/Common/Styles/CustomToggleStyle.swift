@@ -15,7 +15,7 @@ struct CustomToggleStyle: ToggleStyle {
     let isDisabled: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        RoundedRectangle(cornerRadius: 16)
+        RoundedRectangle(cornerRadius: .radiusLG)
             .fill(configuration.isOn ? onColor : offColor)
             .frame(width: 50, height: 30)
             .opacity(isDisabled ? 0.5 : 1.0)
