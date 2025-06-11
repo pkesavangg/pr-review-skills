@@ -6,6 +6,7 @@ import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
 import com.greatergoods.meapp.domain.repository.IEntryRepository
@@ -281,6 +282,30 @@ class EntryService @Inject constructor(
             setProgress = { _progress.value = it },
         )
     }
+
+    /**
+     * Gets monthly averages of body scale data for an account using JOINs.
+     */
+    override fun getMonthlyBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getMonthlyBodyScaleAveragesWithJoin(accountId)
+
+    /**
+     * Gets the latest body scale entry for each month for an account using JOINs.
+     */
+    override fun getMonthlyBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getMonthlyBodyScaleLatestWithJoin(accountId)
+
+    /**
+     * Gets daywise averages of body scale data for an account using JOINs.
+     */
+    override fun getDaywiseBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getDaywiseBodyScaleAveragesWithJoin(accountId)
+
+    /**
+     * Gets the latest body scale entry for each day for an account using JOINs.
+     */
+    override fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getDaywiseBodyScaleLatestWithJoin(accountId)
 }
 
 enum class OperationType {

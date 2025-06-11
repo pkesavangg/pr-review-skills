@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.helper.graph
 
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
@@ -13,20 +14,17 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 
 object GraphUtil {
-    private val dateFormatter = DateTimeFormatter.ofPattern("MMM-dd-YYYY")
-    fun List<ScaleEntry>.toWeightGraphPoints(): GraphLine {
+    private val dateFormatter = DateTimeFormatter.ofPattern("MMM-dd-yyyy")
+    fun List<PeriodBodyScaleSummary>.toWeightGraphPoints(): GraphLine {
         return GraphLine(
             name = "Weight",
             points = this.map { entry ->
-                val dateStr = Instant.ofEpochMilli(entry.entry.entryTimestamp)
-                    .atZone(ZoneId.of("America/Los_Angeles"))
-                    .format(dateFormatter)
                 GraphPoint(
                     x = Label(
-                        value = entry.entry.entryTimestamp,
-                        label = dateStr,
+                        value = entry.entryTimestamp,
+                        label = entry.period,
                     ),
-                    y = Label(value = entry.scale.scaleEntry.weight, label = "${entry.scale.scaleEntry.weight} kg"),
+                    y = Label(value = entry.weight, label = "${entry.weight} kg"),
                 )
             },
         )

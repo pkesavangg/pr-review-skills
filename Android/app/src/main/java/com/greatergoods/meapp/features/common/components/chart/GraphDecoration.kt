@@ -45,7 +45,7 @@ fun rememberHorizontalLine(key: ExtraStore.Key<List<Double>>, markerIndex: Int):
     val decoration = object : Decoration {
         override fun drawOverLayers(context: CartesianDrawingContext) {
             HorizontalLine(
-                y = { it[key][1] },
+                y = { it[key][markerIndex] },
                 line = line.copy(fill = fill(Color.Transparent)),
                 labelComponent = labelComponent,
                 horizontalLabelPosition = Position.Horizontal.End,
@@ -56,7 +56,7 @@ fun rememberHorizontalLine(key: ExtraStore.Key<List<Double>>, markerIndex: Int):
 
         override fun drawUnderLayers(context: CartesianDrawingContext) {
             HorizontalLine(
-                y = { it[key][1] },
+                y = { it[key][markerIndex] },
                 line = line.copy(fill = fill(Color.Transparent)),
             ).drawOverLayers(context)
         }

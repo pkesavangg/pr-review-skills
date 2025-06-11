@@ -6,6 +6,7 @@ import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
@@ -225,4 +226,28 @@ class EntryRepository @Inject constructor(
      */
     override suspend fun getOperationCount(accountId: String): Int =
         entryDao.getOperationCount(accountId)
+
+    /**
+     * Gets monthly averages of body scale data for an account using JOINs.
+     */
+    override fun getMonthlyBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryDao.getMonthlyBodyScaleAveragesWithJoin(accountId)
+
+    /**
+     * Gets the latest body scale entry for each month for an account using JOINs.
+     */
+    override fun getMonthlyBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryDao.getMonthlyBodyScaleLatestWithJoin(accountId)
+
+    /**
+     * Gets daywise averages of body scale data for an account using JOINs.
+     */
+    override fun getDaywiseBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryDao.getDaywiseBodyScaleAveragesWithJoin(accountId)
+
+    /**
+     * Gets the latest body scale entry for each day for an account using JOINs.
+     */
+    override fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+        entryDao.getDaywiseBodyScaleLatestWithJoin(accountId)
 }

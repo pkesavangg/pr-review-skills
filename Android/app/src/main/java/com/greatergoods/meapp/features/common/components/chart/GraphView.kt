@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
@@ -34,13 +36,12 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.core.cartesian.AutoScrollCondition
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
+import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
@@ -52,9 +53,15 @@ import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private val LegendLabelKey = ExtraStore.Key<List<Double>>()
+private val dateFormatter = DateTimeFormatter.ofPattern("MMM-dd-yyyy")
+val oneDayMillis = 24 * 60 * 60 * 1000L // 86,400,000 milliseconds
 
 @Composable
 fun GraphView(
@@ -80,6 +87,15 @@ fun GraphView(
         }
         return
     }
+    var chartWidth by remember { mutableIntStateOf(0) }
+    val pointCount = 12
+    val axisPaddingPx = with(LocalDensity.current) { 10.dp.toPx() }
+    val usableWidthPx = chartWidth - axisPaddingPx
+    val intervals = pointCount + 1
+
+    val pointSpacing = with(LocalDensity.current) {
+        (usableWidthPx / intervals).toDp()
+    }
     val xLabels = remember(graphLines) {
         graphLines.first().points.map { it.x }
 
@@ -93,7 +109,7 @@ fun GraphView(
             }
         }
 
-    val minY = remember(ySeries) {
+    remember(ySeries) {
         ySeries.flatten().minOfOrNull { it.value.toDouble() }
     }
     val max = remember(ySeries) {
@@ -102,7 +118,7 @@ fun GraphView(
 
     val scrollState = rememberVicoScrollState(
         scrollEnabled = true,
-        autoScrollCondition = AutoScrollCondition.OnModelGrowth,
+        initialScroll = Scroll.Absolute.End,
     )
     var markerIndex by remember(xLabels) { mutableIntStateOf(xLabels.lastIndex) }
     var isUpdating by remember { mutableStateOf(false) }
@@ -114,14 +130,14 @@ fun GraphView(
                 context: CartesianDrawingContext,
                 targets: List<CartesianMarker.Target>
             ) =
-                xLabels[1].label
+                xLabels[markerIndex].label
         }
 
     val markerListener = remember(graphLines) {
         object : CartesianMarkerVisibilityListener {
             override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
                 isUpdating = true
-                markerIndex = targets.first().x.toInt()
+                markerIndex = xLabels.indexOfFirst { it.value == targets.first().x.toLong() }
                 val selectedPoints = graphLines.mapNotNull {
                     val point = it.points.getOrNull(targets.first().x.toInt())
                     point
@@ -142,12 +158,14 @@ fun GraphView(
     }
     // Update chart on graphPoints change
     LaunchedEffect(graphLines) {
+
         isUpdating = true
         markerIndex = xLabels.lastIndex
         isUpdating = false
 
         withContext(Dispatchers.IO) {
             modelProducer.runTransaction {
+
                 lineSeries {
                     ySeries.forEach { y ->
                         series(
@@ -168,6 +186,7 @@ fun GraphView(
                     }
                 }
             }
+
         }
     }
 
@@ -192,10 +211,7 @@ fun GraphView(
                 )
             },
         ),
-        rangeProvider = CartesianLayerRangeProvider.fixed(
-            minY = minY ?: 0.0,
-            maxY = max ?: 0.0,
-        ),
+        pointSpacing = pointSpacing,
     )
 
     val layeredMarker = rememberMarker(
@@ -226,14 +242,26 @@ fun GraphView(
         bottomAxis = HorizontalAxis.rememberBottom(
             guideline = null,
             tickLength = 0.dp,
+            itemPlacer = HorizontalAxis.ItemPlacer.aligned(
+                spacing = { 1 },
+                offset = { 1 },
+            ),
+            valueFormatter = CartesianValueFormatter { _, value, _ ->
+                // Format timestamp to readable date (e.g., "May 15")
+                val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+                sdf.format(Date(value.toLong()))
+            },
             label = rememberTextComponent(color = Color(0xFF7B726E)),
             line = rememberAxisGuidelineComponent(),
         ),
         marker = layeredMarker,
         markerVisibilityListener = markerListener,
         persistentMarkers = if (!isUpdating) {
-            { layeredMarker at markerIndex }
+            { layeredMarker at xLabels[markerIndex].value }
         } else null,
+        getXStep = {
+            oneDayMillis.toDouble() * 30// 1 day in milliseconds
+        },
     )
 
     Column(
@@ -245,7 +273,10 @@ fun GraphView(
             chart = chart,
             modelProducer = modelProducer,
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .onSizeChanged { size ->
+                    chartWidth = size.width // width in pixels
+                },
             animationSpec = tween(1000),
             scrollState = scrollState,
         )

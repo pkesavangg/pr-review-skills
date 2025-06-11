@@ -27,7 +27,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.components.chart.GraphView
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
-import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.DashBoardViewmodel
 import com.greatergoods.meapp.theme.MeAppTheme
 import java.time.LocalDateTime
@@ -37,14 +36,8 @@ import java.time.ZoneId
 fun HistoryGraph() {
     val dashedBoardViewModel = hiltViewModel<DashBoardViewmodel>()
     val dashBoardState by dashedBoardViewModel.state.collectAsState()
-    var isExtraLineVisible by remember { mutableStateOf(false) }
     var selectedSegment by remember { mutableStateOf("WEEK") }
     var totalEntries by remember { mutableStateOf(listOf<ScaleEntry>()) }
-    var graphLines: GraphLine by remember(isExtraLineVisible) {
-        mutableStateOf(
-            dashBoardState.last7DaysEntries.toWeightGraphPoints(),
-        )
-    }
     var isAddEntryModalVisible by remember { mutableStateOf(false) }
 
     fun filterEntriesBySegment(
@@ -53,18 +46,8 @@ fun HistoryGraph() {
     ): List<ScaleEntry> {
         val now = LocalDateTime.now()
         val zone = ZoneId.of("America/Los_Angeles")
-        val nowEpoch = now.atZone(zone).toInstant().toEpochMilli()
+        now.atZone(zone).toInstant().toEpochMilli()
         return when (segment) {
-            "WEEK" -> dashBoardState.last7DaysEntries
-
-            "MONTH" -> dashBoardState.last30DaysEntries
-
-            "YEAR" -> {
-                val yearAgo = now.minusDays(364).atZone(zone).toInstant().toEpochMilli()
-                entries.filter { it.entry.entryTimestamp in yearAgo..nowEpoch }
-            }
-
-            "ANY", "TOTAL" -> entries
             else -> entries
         }
     }
@@ -79,7 +62,7 @@ fun HistoryGraph() {
             modifier = Modifier
                 .fillMaxHeight(0.5f)
                 .fillMaxWidth(),
-            graphLines = listOf(dashBoardState.totalEntries.toWeightGraphPoints()),
+            graphLines = listOf(dashBoardState.monthWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()),
             selectedData = null,
             labelContent = {
                 Text(
@@ -108,8 +91,7 @@ fun HistoryGraph() {
             selected = selectedSegment,
             onSelect = { segment ->
                 selectedSegment = segment
-                val filtered = filterEntriesBySegment(totalEntries, segment)
-                graphLines = filtered.toWeightGraphPoints()
+                filterEntriesBySegment(totalEntries, segment)
             },
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
@@ -131,8 +113,7 @@ fun HistoryGraph() {
                 if (entries.isNotEmpty()) {
                     dashedBoardViewModel.addEntry(entries)
                     totalEntries = (totalEntries + entries).sortedBy { it.entry.entryTimestamp }
-                    val filtered = filterEntriesBySegment(totalEntries, selectedSegment)
-                    graphLines = filtered.toWeightGraphPoints()
+                    filterEntriesBySegment(totalEntries, selectedSegment)
                 }
             },
         )
