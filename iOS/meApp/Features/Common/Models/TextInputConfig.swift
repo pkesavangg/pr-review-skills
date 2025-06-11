@@ -13,6 +13,7 @@ struct TextInputConfig {
     var submitLabel: SubmitLabel = .next
     var errorMessage: String? = nil
     var isDisabled: Bool = false
+    var focusField: FocusField = .none
     
     // Custom icon support
     var customIcon: String? = nil
