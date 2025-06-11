@@ -13,15 +13,3 @@ enum TextFieldType {
     case number
     case metric
 }
-
-enum FocusField: Hashable {
-    case firstName
-    case lastName
-    case email
-    case password
-    case confirmPassword
-    case zipCode
-    case weight
-    case bodyFat
-    case none
-}
