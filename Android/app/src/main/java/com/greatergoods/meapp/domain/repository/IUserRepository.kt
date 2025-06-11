@@ -23,7 +23,7 @@ interface IUserRepository {
     suspend fun createRandomAccount()
 
     /** Updates the refresh and access tokens for a specific account. */
-    suspend fun updateAccountTokens(accountId: String, refreshToken: String, accessToken: String)
+    suspend fun updateAccountTokens(accountId: String, refreshToken: String, accessToken: String, expiresAt: String)
 
     /** Updates the sync timestamp for a specific account. */
     suspend fun updateSyncTimestamp(accountId: String, syncTimestamp: String)

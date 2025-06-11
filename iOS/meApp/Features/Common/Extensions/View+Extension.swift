@@ -76,5 +76,32 @@ extension View {
     /// - Returns: A view styled as a flat button.
     func flatButtonStyle(backgroundColor: Color, cornerRadius: CGFloat, buttonSize: ButtonSize) -> some View {
         self.modifier(FlatButtonStyle(backgroundColor: backgroundColor, cornerRadius: cornerRadius, buttonSize: buttonSize))
+    /// Presents a picker sheet with the provided configuration.
+    /// - Parameters:
+    /// - isPresented: A binding to a Boolean value that determines whether the picker sheet is presented.
+    /// - selectedValues: An array of selected values of type `T`.
+    /// - options: A 2D array of options of type `T` to choose from.
+    /// - displayValue: A closure that takes a value of type `T` and returns a string to display.
+    /// - pickerType: The type of picker to display (time, heightInches, heightCm).
+    /// - onUpdate: A closure that is called when the selected values are updated.
+    /// - Returns: A view that presents the picker sheet when `isPresented` is true.
+    func pickerSheet<T: Hashable>(
+        isPresented: Binding<Bool>,
+        selectedValues: [T],
+        options: [[T]],
+        displayValue: @escaping (T) -> String,
+        pickerType: PickerType = .default,
+        onUpdate: @escaping ([T]) -> Void
+    ) -> some View {
+        modifier(
+            PickerSheetModifier(
+                isPresented: isPresented,
+                selectedValues: selectedValues,
+                options: options,
+                displayValue: displayValue,
+                pickerType: pickerType,
+                onUpdate: onUpdate
+            )
+        )
     }
 }

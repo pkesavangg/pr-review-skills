@@ -65,6 +65,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.kotlin.reflect)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
@@ -140,6 +141,10 @@ dependencies {
     // Play Store Review
     implementation(libs.play.review)
     implementation(libs.play.review.ktx)
+
+    // Vico charts
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m3)
 }
 
 // Allow references to generated code

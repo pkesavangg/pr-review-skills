@@ -4,21 +4,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.animation.doOnEnd
 import androidx.lifecycle.lifecycleScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
-import com.greatergoods.libs.healthconnect.HealthConnect
-import com.greatergoods.libs.healthconnect.enum.DataType
-import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
-import com.greatergoods.libs.healthconnect.ui.HealthConnectOnboardingScreen
 import com.greatergoods.meapp.core.logging.AppLog
 import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -55,8 +43,6 @@ class MainActivity : ComponentActivity() {
      */
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         splashScreen.setOnExitAnimationListener { splashScreenView ->
             // 1. Zoom out: scale from 1 → 1.2 → 0.8 → 1
             val scaleX = ObjectAnimator.ofFloat(
@@ -84,6 +70,10 @@ class MainActivity : ComponentActivity() {
             animatorSet.start()
         }
 
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setTheme(R.style.Theme_MeApp)
+
         // Clean up logs older than 5 days
         lifecycleScope.launch {
             try {
@@ -94,8 +84,8 @@ class MainActivity : ComponentActivity() {
             }
         }
         setContent {
-            val coroutineScope = rememberCoroutineScope()
-            val context = this
+            rememberCoroutineScope()
+            this
             MeApp()
 
         }

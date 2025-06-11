@@ -8,5 +8,5 @@
         <item name="postSplashScreenTheme">@style/Theme.MeApp</item>
     </style>
 
-    <style name="Theme.MeApp" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.MeApp" parent="Theme.AppCompat.DayNight" />
 </resources>

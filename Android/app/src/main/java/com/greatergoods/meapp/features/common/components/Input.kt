@@ -1,74 +1,303 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextFieldDefaults.indicatorLine
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.R
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import android.util.Log
 
+/**
+ * Enum for supported input types.
+ */
+enum class InputType {
+    TEXT, EMAIL, PASSWORD, CHECKBOX, DATE_PICKER, NUMBER, TIME_PICKER, DROP_DOWN
+}
+
+private object InputFieldTokens {
+    val borderRadius = 4.dp
+}
+
+/**
+ * A flexible, theme-aware input composable supporting validation, error/supporting text, and icons.
+ *
+ * @param modifier Modifier for styling.
+ * @param formControl Optional FormControl for field state/validation. If null, use value/onValueChange.
+ * @param label The visible field label (lowercase, above the input).
+ * @param name The field name (for internal identification).
+ * @param type The input type (TEXT, EMAIL, PASSWORD, etc.).
+ * @param placeHolder Optional placeholder text.
+ * @param onValueChange Callback for value changes (used if formControl is null, type: (String) -> Unit).
+ * @param supportingText Optional supporting/help text.
+ * @param enabled Whether the field is enabled.
+ * @param readOnly Whether the field is read-only.
+ * @param showTrailingIcon Whether to show trailing error/clear icons.
+ * @param stringToValue Lambda to convert string to T.
+ * @param valueToString Lambda to convert T to string.
+ */
 @Composable
-fun Input(
-    label: String,
-    formControl: FormControl<String>,
+fun <T> InputField(
     modifier: Modifier = Modifier,
-    isPassword: Boolean = false,
-    showAllErrors: Boolean = false,
+    formControl: FormControl<T>? = null,
+    label: String,
+    name: String = "",
+    type: InputType = InputType.TEXT,
+    placeHolder: String = "",
+    onValueChange: ((String) -> Unit)? = null,
+    supportingText: String? = null,
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
+    showTrailingIcon: Boolean = true,
+    stringToValue: (String) -> T = { it as T },
+    valueToString: (T) -> String = { it?.toString() ?: "" },
 ) {
-    var everFocused by remember { mutableStateOf(false) }
+    val spacing = MeAppTheme.spacing
+    val colors = MeAppTheme.colorScheme
+    val typography = MeAppTheme.typography
+    val labelPadding = spacing.xs
+    val inputPaddingStart = spacing.sm
+    val inputPaddingEnd = spacing.sm
 
-    OutlinedTextField(
-        value = formControl.value,
-        onValueChange = { formControl.onValueChange(it) },
-        label = { Text(label) },
-        isError = (formControl.error != null) && (formControl.touched || showAllErrors),
-        visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .onFocusChanged { focusState ->
-                    if (focusState.isFocused) {
-                        everFocused = true
-                    }
-                    // Only call onBlur() if the field was ever focused and is now not focused
-                    if (everFocused && !focusState.isFocused) {
-                        formControl.onBlur()
-                    }
-                },
-    )
-    if ((formControl.touched || showAllErrors) && formControl.error != null) {
-        Text(
-            formControl.error!!,
-            color = Color.Red,
-            style = MaterialTheme.typography.bodySmall,
-        )
+    var statelessValue by remember { mutableStateOf("") }
+    var statelessError by remember { mutableStateOf<String?>(null) }
+    val value = formControl?.value?.let(valueToString) ?: statelessValue
+    val error = formControl?.error ?: statelessError
+    val touched = formControl?.touched ?: false
+    val pending = formControl?.pending ?: false
+    val isError = !error.isNullOrBlank() && touched
+    val showClear = value.isNotEmpty() && !isError && enabled && !readOnly && showTrailingIcon
+    val isDisabled = !enabled
+
+    val labelColor = when {
+        isError -> colors.error
+        isDisabled -> colors.subheading.copy(alpha = 0.5f)
+        else -> colors.subheading
     }
-    if (formControl.pending) {
-        Text(
-            "Checking...",
-            color = Color.Gray,
-            style = MaterialTheme.typography.bodySmall,
+    val inputTextColor = when {
+        isDisabled -> colors.subheading.copy(alpha = 0.5f)
+        else -> colors.body
+    }
+    val placeholderColor = colors.subheading.copy(alpha = 0.5f)
+    val backgroundColor = when {
+        isDisabled -> colors.secondary.copy(alpha = 0.5f)
+        else -> colors.primary
+    }
+    val iconTint = when {
+        isError -> colors.error
+        isDisabled -> colors.secondaryDisabled
+        else -> colors.primaryAction
+    }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    val visualTransformation = if (type == InputType.PASSWORD && !passwordVisible) {
+        PasswordVisualTransformation()
+    } else {
+        VisualTransformation.None
+    }
+    val keyboardType = when (type) {
+        InputType.EMAIL -> KeyboardType.Email
+        InputType.NUMBER -> KeyboardType.Number
+        InputType.PASSWORD -> KeyboardType.Password
+        else -> KeyboardType.Text
+    }
+    val trailingIcon: (@Composable (() -> Unit))? = when {
+        isError && showTrailingIcon -> { // Only show error icon if showTrailingIcon is true
+            @Composable {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_close_outlined),
+                    contentDescription = "Error",
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        type == InputType.PASSWORD && showTrailingIcon -> { // Password visibility icon
+            @Composable {
+                val iconResId = if (passwordVisible) R.drawable.ic_eye_close else R.drawable.ic_eye_open // Assume you have these drawables
+                val contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                Icon(
+                    painter = painterResource(id = iconResId),
+                    contentDescription = contentDescription,
+                    tint = iconTint,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(enabled = enabled) { passwordVisible = !passwordVisible }
+                )
+            }
+        }
+        showClear -> { // Clear icon
+            @Composable {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_close_outlined),
+                    contentDescription = "Clear",
+                    tint = iconTint,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(
+                            enabled = enabled,
+                            onClick = {
+                                if (formControl != null) {
+                                    formControl.onValueChange(stringToValue(""))
+                                } else {
+                                    statelessValue = ""
+                                    onValueChange?.invoke("")
+                                }
+                            }
+                        )
+                )
+            }
+        }
+        else -> null
+    }
+
+    var isFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+
+    Column(modifier = modifier) {
+        TextField(
+            value = value,
+            onValueChange = { newValue ->
+                if (formControl != null) {
+                    formControl.onValueChange(stringToValue(newValue))
+                } else {
+                    statelessValue = newValue
+                    onValueChange?.invoke(newValue)
+                }
+            },
+            modifier = Modifier
+                .background(backgroundColor, RoundedCornerShape(InputFieldTokens.borderRadius))
+                .border(0.dp, Color.Transparent, RoundedCornerShape(InputFieldTokens.borderRadius))
+                .height(56.dp)
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { focusState ->
+                    if (isFocused && !focusState.isFocused) {
+                        // Lost focus (blur)
+                        focusManager.clearFocus()
+                        focusRequester.freeFocus()
+                        formControl?.onBlur()
+                    }
+                    isFocused = focusState.isFocused
+                },
+            label = {
+                Text( text = label,
+                      style = typography.body3,
+                      color = labelColor,
+                )
+            },
+            placeholder = {
+                Text(
+                    text = placeHolder,
+                    style = typography.body2,
+                    color = placeholderColor,
+                )
+            },
+            trailingIcon = {
+                trailingIcon?.invoke()
+            },
+           colors = TextFieldDefaults.colors(
+                   focusedIndicatorColor = Color.Transparent,
+                   unfocusedIndicatorColor = Color.Transparent,
+                   focusedContainerColor = Color.Transparent,
+                   unfocusedContainerColor = Color.Transparent,
+                   // Set text colors
+                   focusedTextColor = inputTextColor,
+                   unfocusedTextColor = inputTextColor,
+                   disabledTextColor = inputTextColor,
+                   errorTextColor = inputTextColor,
+                  // Set cursor color
+                  cursorColor = colors.primaryAction,
+                  errorCursorColor = colors.error,
+           ),
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            enabled = enabled,
+            readOnly = readOnly,
         )
+        // Always reserve space for one line below the field for error/supporting text
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .height(typography.body3.lineHeight.value.dp)
+            .padding(start = labelPadding, top = 2.dp)
+        ) {
+            when {
+                isError -> Text(
+                    error,
+                    color = colors.error,
+                    style = typography.body3,
+                )
+                supportingText != null -> Text(
+                    supportingText,
+                    color = colors.subheading,
+                    style = typography.body3,
+                )
+                else -> Text(
+                    " ", // empty space for layout consistency
+                    style = typography.body3,
+                )
+            }
+        }
     }
 }
 
 @PreviewTheme
 @Composable
-fun InputPreview() {
+fun InputFieldPreview() {
     MeAppTheme {
         val fakeScope = rememberCoroutineScope()
-        val formControl = FormControl("", scope = fakeScope)
-        Input("Label", formControl)
+        val formControl = remember { FormControl<String>("test", validators = listOf({ if (it.isBlank()) "Required" else null }), scope = fakeScope) }
+        Column(modifier = Modifier.padding(20.dp)) {
+            InputField<String>(
+                formControl = formControl,
+                label = "email",
+                name = "email",
+                type = InputType.EMAIL,
+                placeHolder = "Enter your email",
+                showTrailingIcon = true,
+                modifier = Modifier.width(210.dp).height(56.dp),
+            )
+        }
     }
 }
+

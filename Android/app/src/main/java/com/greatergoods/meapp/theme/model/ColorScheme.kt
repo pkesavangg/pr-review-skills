@@ -23,6 +23,8 @@ data class ColorScheme(
     val primaryDisabled: Color,
     val secondaryAction: Color,
     val secondaryDisabled: Color,
+    val tertiaryAction: Color,
+    val tertiaryDisabled: Color,
     // Text
     val heading: Color,
     val body: Color,
@@ -30,6 +32,7 @@ data class ColorScheme(
     val error: Color,
     val errorDisabled: Color,
     val inverse: Color,
+    val inverseDisabled: Color,
     val inverseSecondary: Color,
     // Icon
     val goal: Color,
