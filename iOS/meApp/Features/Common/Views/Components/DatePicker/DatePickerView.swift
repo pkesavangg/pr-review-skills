@@ -32,9 +32,8 @@ struct DatePickerView: View {
             .tint(theme.actionPrimary)
             .padding(.bottom,8)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: .radiusSM)
                     .fill(theme.backgroundPrimary)
-                    .cornerRadius(.radiusSM)
             )
             .padding(.horizontal,16)
             .padding(.top,8)
