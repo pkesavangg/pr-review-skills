@@ -224,7 +224,7 @@ struct BasicFormControlView: View {
     @StateObject var form = BasicProfileForm()
     
     @State var weight = ""
-    
+    @State var focusedField: FocusField?
     var body: some View {
         VStack {
             
@@ -234,12 +234,15 @@ struct BasicFormControlView: View {
                     label: "weight (lbs)",
                     placeholder: "0.0",
                     inputType: .metric,
+                    focusField: .weight,
                     maxLength: 4,
                     maxValue: 999.9
                 ),
-                value: $form.weight.value,
-                isFocused: .constant(false)
-            )
+                value: $weight,
+                focusedField: $focusedField) {
+                    focusedField = .email
+                }
+            
             
             AppInputField(
                 config: TextInputConfig(
@@ -247,10 +250,12 @@ struct BasicFormControlView: View {
                     placeholder: "Enter your email",
                     inputType: .email,
                     errorMessage: form.getError(for: form.email),
+                    focusField: .email
                 ),
                 value: $form.email.value,
-                isFocused: .constant(false)
-            )
+                focusedField: $focusedField) {
+                    focusedField = .email
+                }
             
             TextField("Name", text: $form.name.value)
             if let error = form.getError(for: form.name) {

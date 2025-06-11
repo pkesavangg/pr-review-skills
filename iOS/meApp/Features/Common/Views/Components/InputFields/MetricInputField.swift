@@ -15,7 +15,7 @@ struct MetricInputField: View {
     
     // Bindings
     @Binding var value: String
-    @Binding var isFocused: Bool
+    @Binding var focusedField: FocusField?
     
     // Callbacks
     var onCommit: (() -> Void)? = nil
@@ -28,13 +28,13 @@ struct MetricInputField: View {
     init(
         config: TextInputConfig,
         value: Binding<String>,
-        isFocused: Binding<Bool>,
+        focusedField: Binding<FocusField?>,
         onCommit: (() -> Void)? = nil,
         onEditingChanged: ((Bool) -> Void)? = nil
     ) {
         self.config = config
         self._value = value
-        self._isFocused = isFocused
+        self._focusedField = focusedField
         self.onCommit = onCommit
         self.onEditingChanged = onEditingChanged
         self._formatter = StateObject(wrappedValue: MetricFieldFormatter(config: config))
@@ -44,7 +44,7 @@ struct MetricInputField: View {
         AppInputField(
             config: modifiedConfig,
             value: $displayValue,
-            isFocused: $isFocused,
+            focusedField: $focusedField,
             onCommit: onCommit,
             onEditingChanged: onEditingChanged
         )
@@ -110,6 +110,7 @@ struct MetricInputTestingView: View {
     @State var bankBodyFatValue: String = ""
     @State var bankExperienceValue: String = ""
     @State var bankDisabledValue: String = "42.5"
+    @State var focusedField: FocusField?
     
     var body: some View {
         ScrollView {
@@ -130,11 +131,12 @@ struct MetricInputTestingView: View {
                             label: "weight (lbs)",
                             placeholder: "0.0",
                             inputType: .metric,
+                            focusField: .weight,
                             maxLength: 4,
                             maxValue: 999.9
                         ),
                         value: $bankWeightValue,
-                        isFocused: .constant(false)
+                        focusedField: $focusedField
                     )
                     
                     MetricInputField(
@@ -142,11 +144,12 @@ struct MetricInputTestingView: View {
                             label: "body fat %",
                             placeholder: "0.0",
                             inputType: .metric,
+                            focusField: .bodyFat,
                             maxLength: 3,
                             maxValue: 99.9
                         ),
                         value: $bankBodyFatValue,
-                        isFocused: .constant(false)
+                        focusedField: $focusedField
                     )
                     
                     MetricInputField(
@@ -158,7 +161,7 @@ struct MetricInputTestingView: View {
                             allowWholeNumbers: true
                         ),
                         value: $bankExperienceValue,
-                        isFocused: .constant(false)
+                        focusedField: $focusedField
                     )
                     
                     // Disabled bank input example
@@ -171,7 +174,7 @@ struct MetricInputTestingView: View {
                             maxLength: 3
                         ),
                         value: $bankDisabledValue,
-                        isFocused: .constant(false)
+                        focusedField: $focusedField
                     )
                 }
                 

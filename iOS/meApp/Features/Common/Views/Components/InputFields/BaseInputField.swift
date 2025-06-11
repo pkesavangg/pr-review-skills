@@ -16,10 +16,11 @@ struct BaseInputField: View {
     var keyboardType: UIKeyboardType
     var submitLabel: SubmitLabel
     var isDisabled: Bool
+    var fieldType: FocusField
     
     // Bindings
     @Binding var value: String
-    @FocusState.Binding var isFocused: Bool
+    @Binding var focusedField: FocusField?
     
     // Callbacks
     var onCommit: (() -> Void)?
@@ -27,6 +28,7 @@ struct BaseInputField: View {
     
     // Internal state for password visibility
     @State private var isSecureTextVisible: Bool = false
+    @FocusState private var isFocused: Bool
     
     // Constants
     let focusedTopPadding: CGFloat = 15
@@ -53,6 +55,12 @@ struct BaseInputField: View {
         .autocapitalization(inputType == .email || inputType == .password ? .none : .sentences)
         .onChange(of: isFocused) {
             onEditingChanged?(isFocused)
+            if isFocused {
+                focusedField = fieldType
+            }
+        }
+        .onChange(of: focusedField) {
+            isFocused = focusedField == fieldType
         }
         .onSubmit {
             onCommit?()
@@ -80,7 +88,8 @@ struct BaseInputTestView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @State var text: String = ""
-    @FocusState private var isFocused: Bool
+    @State var focusedField: FocusField?
+    
     var body: some View {
         VStack {
             BaseInputField(
@@ -88,8 +97,9 @@ struct BaseInputTestView: View {
                 keyboardType: .default,
                 submitLabel: .done,
                 isDisabled: true,
+                fieldType: .password,
                 value: $text,
-                isFocused: $isFocused,
+                focusedField: $focusedField,
                 onCommit: {
                     print("Submitted: \(text)")
                 },
