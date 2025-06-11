@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+// MARK: NameStepView
+/// This view is responsible for the name step of the signup process.
 struct NameStepView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var signupStore: SignupStore
@@ -26,6 +28,7 @@ struct NameStepView: View {
                     .foregroundColor(theme.textHeading)
                 
                 VStack(spacing: 24) {
+                    // First Name Input Field
                     AppInputField(
                         config: TextInputConfig(
                             label: labels.firstName,
@@ -39,6 +42,7 @@ struct NameStepView: View {
                         focusedField = .lastName
                     }
                     
+                    // Last Name Input Field
                     AppInputField(
                         config: TextInputConfig(
                             label: labels.lastName,
@@ -56,7 +60,7 @@ struct NameStepView: View {
                     }
                 }
             }
-            .dismissKeyboardOnDrag()
+            .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
     }
 }
