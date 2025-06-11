@@ -12,7 +12,7 @@ import com.greatergoods.meapp.ui.shared.components.ButtonType
 fun ButtonVariants(){
     AppButton(
         type = ButtonType.PrimaryFilled,
-        text = "PrimaryFilled",
+        label = "PrimaryFilled",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -21,7 +21,7 @@ fun ButtonVariants(){
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
     AppButton(
         type = ButtonType.PrimaryFilled,
-        text = "PrimaryFilled",
+        label = "PrimaryFilled",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -31,7 +31,7 @@ fun ButtonVariants(){
 
     AppButton(
         type = ButtonType.PrimaryOutlined,
-        text = "PrimaryOutlined",
+        label = "PrimaryOutlined",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -41,7 +41,7 @@ fun ButtonVariants(){
 
     AppButton(
         type = ButtonType.SecondaryFilled,
-        text = "SecondaryFilled",
+        label = "SecondaryFilled",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -51,7 +51,7 @@ fun ButtonVariants(){
 
     AppButton(
         type = ButtonType.SecondaryOutlined,
-        text = "SecondaryOutlined",
+        label = "SecondaryOutlined",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -61,7 +61,7 @@ fun ButtonVariants(){
 
     AppButton(
         type = ButtonType.TextPrimary,
-        text = "PrimaryButton",
+        label = "PrimaryButton",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -71,7 +71,7 @@ fun ButtonVariants(){
 
     AppButton(
         type = ButtonType.TextSecondary,
-        text = "PrimaryButton",
+        label = "PrimaryButton",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -80,7 +80,7 @@ fun ButtonVariants(){
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
     AppButton(
         type = ButtonType.TextSecondary,
-        text = "PrimaryButton",
+        label = "PrimaryButton",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -90,7 +90,7 @@ fun ButtonVariants(){
 
     AppButton(
         type = ButtonType.InlineText,
-        text = "PrimaryButton",
+        label = "PrimaryButton",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
@@ -101,7 +101,7 @@ fun ButtonVariants(){
 
     AppButton(
         type = ButtonType.InlineText,
-        text = "PrimaryButton",
+        label = "PrimaryButton",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,

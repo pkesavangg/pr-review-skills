@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.ui.shared.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,8 +16,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.tooling.preview.Preview
-import com.greatergoods.meapp.proto.ThemeMode
+import androidx.compose.ui.Alignment
+import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 
 //here link Primary is text button and link Secondary is text button
@@ -33,6 +35,13 @@ enum class ButtonSize {
     Small,
     Medium,
     Large
+}
+
+enum class TextTransform {
+    NONE,
+    UPPERCASE,
+    LOWERCASE,
+    CAPITALIZE
 }
 
 object CustomButtonDefaults {
@@ -92,17 +101,28 @@ object CustomButtonDefaults {
         ButtonSize.Medium -> MeAppTheme.typography.button1
         ButtonSize.Small -> MeAppTheme.typography.button2
     }
+
+    fun transformText(text: String, transform: TextTransform): String {
+        return when (transform) {
+            TextTransform.UPPERCASE -> text.uppercase()
+            TextTransform.LOWERCASE -> text.lowercase()
+            TextTransform.CAPITALIZE -> text.replaceFirstChar { it.uppercase() }
+            TextTransform.NONE -> text
+        }
+    }
+
 }
 
-
+//Design system now have only uppercase for button label
 @Composable
 fun AppButton(
-    text: String,
+    label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     type: ButtonType = ButtonType.PrimaryFilled,
     size: ButtonSize = ButtonSize.Medium,
     enabled: Boolean = false,
+    textTransform: TextTransform = TextTransform.UPPERCASE
 ) {
     val backgroundColor = CustomButtonDefaults.backgroundColor(type, enabled)
     val contentColor = CustomButtonDefaults.contentColor(type, enabled)
@@ -110,6 +130,7 @@ fun AppButton(
     val height = CustomButtonDefaults.height(size)
     val hPadding = CustomButtonDefaults.horizontalPadding(size)
     val textStyle = CustomButtonDefaults.textStyle(size)
+    val text = CustomButtonDefaults.transformText(label, textTransform)
 
     val shape = RoundedCornerShape(24.dp)
 
@@ -135,43 +156,139 @@ fun AppButton(
     }
 }
 
-@Preview(name = "Light Theme Preview", showBackground = true)
+@PreviewTheme
 @Composable
-fun AllButtonsPreviewLight() {
-    MeAppTheme(themeMode = ThemeMode.DARK) { // Provide the Light theme
-        AppButton(
-            type = ButtonType.PrimaryOutlined,
-            onClick = { /* Do something */ },
-            text = "Light Button",
-            enabled = true
-        )
-    }
-}
-
-@Preview(name = "Dark Theme Preview", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun AllButtonsPreviewDark() {
-    MeAppTheme(themeMode = ThemeMode.DARK) { // Provide the Dark theme
-        AppButton(
-            type = ButtonType.PrimaryFilled,
-            onClick = { /* Do something */ },
-            text = "Dark Button",
-            enabled = true
-        )
-    }
-}
-
-@Preview(name = "System Theme Preview", showBackground = true)
-@Composable
-fun AllButtonsPreviewSystem() {
-    // No explicit themeMode needed here, it will default to SYSTEM and use isSystemInDarkTheme()
+fun PrimaryFilledPreview(){
     MeAppTheme {
-        AppButton(
-            onClick = { /* Do something */ },
-            text = "System Button",
-            enabled = true
-        )
+        Column(
+            modifier = Modifier.padding(50.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppButton(
+                type = ButtonType.PrimaryFilled,
+                onClick = { /* Do something */ },
+                label = "Primary Filled",
+                enabled = true
+            )
+        }
     }
 }
+
+@PreviewTheme
+@Composable
+fun PrimaryOutlinedPreview(){
+    MeAppTheme {
+        Column(
+            modifier = Modifier.padding(50.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppButton(
+                type = ButtonType.PrimaryOutlined,
+                onClick = { /* Do something */ },
+                label = "PrimaryOutlined",
+                enabled = true
+            )
+        }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun SecondaryFilledPreview(){
+    MeAppTheme {
+        Column(
+            modifier = Modifier.padding(50.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppButton(
+                type = ButtonType.SecondaryFilled,
+                onClick = { /* Do something */ },
+                label = "SecondaryFilled",
+                enabled = true
+            )
+        }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun SecondaryOutlinedPreview(){
+    MeAppTheme {
+        Column(
+            modifier = Modifier.padding(50.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppButton(
+                type = ButtonType.SecondaryOutlined,
+                onClick = { /* Do something */ },
+                label = "SecondaryOutlined",
+                enabled = true
+            )
+        }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun TextPrimaryPreview(){
+    MeAppTheme {
+        Column(
+            modifier = Modifier.padding(50.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppButton(
+                type = ButtonType.TextPrimary,
+                onClick = { /* Do something */ },
+                label = "TextPrimary",
+                enabled = true
+            )
+        }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun TextSecondaryPreview(){
+    MeAppTheme {
+        Column(
+            modifier = Modifier.padding(50.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppButton(
+                type = ButtonType.TextSecondary,
+                onClick = { /* Do something */ },
+                label = "TextPrimary",
+                enabled = true
+            )
+        }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun InlineTextPreview() {
+    MeAppTheme {
+        Column(
+            modifier = Modifier.padding(50.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AppButton(
+                type = ButtonType.InlineText,
+                onClick = { /* Do something */ },
+                label = "Inline text",
+                enabled = true,
+                textTransform = TextTransform.CAPITALIZE
+            )
+        }
+    }
+}
+
 
 
