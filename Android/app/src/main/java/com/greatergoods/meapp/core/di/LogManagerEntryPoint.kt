@@ -1,7 +1,9 @@
 package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.core.initialization.AppInitializer
+import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.domain.repository.ILogRepository
+import com.greatergoods.meapp.features.common.service.DialogQueueService
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -16,4 +18,11 @@ interface LogManagerEntryPoint {
 @InstallIn(SingletonComponent::class)
 interface AppEntryPoint {
     fun appInitializer(): AppInitializer
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ViewModelServiceEntryPoint {
+    val navigationService: IAppEventService
+    val dialogQueueService: DialogQueueService
 }

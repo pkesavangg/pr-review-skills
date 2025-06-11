@@ -1,5 +1,6 @@
-package com.greatergoods.meapp.features.common.viewmodel
+package com.greatergoods.meapp.features.common.review
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.shared.utilities.IAppReviewManager
@@ -8,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.app.Activity
 
 /**
  * ViewModel class that manages the app review state and business logic.

@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.R
 import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.common.viewmodel.ReviewViewModel
+import com.greatergoods.meapp.features.common.review.ReviewViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.launch
 import android.app.Activity
