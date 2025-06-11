@@ -67,8 +67,9 @@ struct CustomToggleView: View {
             
             Toggle("", isOn: $isOn)
                 .labelsHidden()
+                .accessibilityLabel(text ?? "Toggle")
                 .toggleStyle(CustomToggleStyle(
-                    onColor: toggleForegroundColor,
+                    onColor: onColor,
                     offColor: offColor,
                     thumbColor: thumbColor,
                     isDisabled: isDisabled
