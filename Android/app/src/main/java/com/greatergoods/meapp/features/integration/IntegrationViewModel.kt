@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.sample
+package com.greatergoods.meapp.features.integration
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -9,14 +9,14 @@ import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 
 @Composable
-fun ButtonVariants(){
+fun ButtonVariants() {
     AppButton(
         type = ButtonType.PrimaryFilled,
         label = "PrimaryFilled",
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = true
+        enabled = true,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
     AppButton(
@@ -25,7 +25,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = false
+        enabled = false,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
@@ -35,7 +35,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = true
+        enabled = true,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
@@ -45,7 +45,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = true
+        enabled = true,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
@@ -55,7 +55,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = true
+        enabled = true,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
@@ -65,7 +65,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = true
+        enabled = true,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
@@ -75,7 +75,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = true
+        enabled = true,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
     AppButton(
@@ -84,7 +84,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = false
+        enabled = false,
     )
     Spacer(modifier = Modifier.height(16.dp)) // Added space here
 
@@ -94,7 +94,7 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = true
+        enabled = true,
     )
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -105,10 +105,8 @@ fun ButtonVariants(){
         onClick = {},
         modifier = Modifier.width(300.dp).height(48.dp),
         size = ButtonSize.Medium,
-        enabled = false
+        enabled = false,
     )
 
     Spacer(modifier = Modifier.height(16.dp))
-
-
 }

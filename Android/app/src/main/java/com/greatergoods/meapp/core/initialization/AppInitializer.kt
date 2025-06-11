@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.initialization
 
-import com.greatergoods.meapp.core.logging.AppLog
-import com.greatergoods.meapp.core.logging.ILogger
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.core.shared.utilities.logging.ILogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

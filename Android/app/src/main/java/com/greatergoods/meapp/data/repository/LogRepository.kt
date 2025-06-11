@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.data.repository
 
-import com.greatergoods.meapp.core.logging.AppLog
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import com.greatergoods.meapp.domain.repository.ILogRepository

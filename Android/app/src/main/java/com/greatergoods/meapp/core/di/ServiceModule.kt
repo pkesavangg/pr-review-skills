@@ -1,11 +1,11 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
+import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
@@ -49,7 +49,7 @@ object ServiceModule {
     fun provideNotificationManager(
         @ApplicationContext context: Context,
         notificationService: NotificationService,
-        appRepository: IAppRepository
+        appRepository: IAppRepository,
     ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
 
     /**
@@ -67,17 +67,14 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogQueueService(): DialogQueueService {
-        return DialogQueueService()
-    }
+    fun provideDialogQueueService(): DialogQueueService = DialogQueueService()
 
     @Provides
     @Singleton
     fun provideEntryService(
         entryRepository: com.greatergoods.meapp.domain.repository.IEntryRepository,
-        accountDao: com.greatergoods.meapp.data.storage.db.dao.AccountDao
-    )
-        : IEntryService = EntryService(entryRepository, accountDao)
+        accountDao: com.greatergoods.meapp.data.storage.db.dao.AccountDao,
+    ): IEntryService = EntryService(entryRepository, accountDao)
 
     @Provides
     @Singleton
@@ -97,6 +94,6 @@ object ServiceModule {
     @Singleton
     fun provideIntegrationService(
         integrationRepository: IIntegrationRepository,
-        dialogQueueService: DialogQueueService
+        dialogQueueService: DialogQueueService,
     ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
 }

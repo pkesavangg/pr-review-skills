@@ -1,10 +1,10 @@
-package com.greatergoods.meapp.utils.browser
+package com.greatergoods.meapp.core.shared.utilities.browser
 
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsSession
+import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
-import androidx.core.net.toUri
 
 class CustomTabIntentBuilder(
     private val context: Context,
@@ -14,10 +14,9 @@ class CustomTabIntentBuilder(
         packageName: String?,
         url: String,
         showBack: Boolean,
-        showShare: Boolean
+        showShare: Boolean,
     ): CustomTabsIntent {
         val builder = CustomTabsIntent.Builder(session)
-
 
         builder.setShowTitle(true)
         builder.setShareState(if (showShare) CustomTabsIntent.SHARE_STATE_ON else CustomTabsIntent.SHARE_STATE_OFF)
@@ -30,4 +29,3 @@ class CustomTabIntentBuilder(
         return intent
     }
 }
-

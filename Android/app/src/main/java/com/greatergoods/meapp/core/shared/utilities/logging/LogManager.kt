@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core.logging
+package com.greatergoods.meapp.core.shared.utilities.logging
 
 import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import com.greatergoods.meapp.domain.repository.ILogRepository

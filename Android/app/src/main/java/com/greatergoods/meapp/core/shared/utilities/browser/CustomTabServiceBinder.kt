@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.utils.browser
+package com.greatergoods.meapp.core.shared.utilities.browser
 
 import androidx.browser.customtabs.CustomTabsCallback
 import androidx.browser.customtabs.CustomTabsClient
@@ -10,7 +10,7 @@ import android.content.Context
 class CustomTabServiceBinder(
     private val context: Context,
     private val packageName: String,
-    private val callback: CustomTabsCallback
+    private val callback: CustomTabsCallback,
 ) {
     var session: CustomTabsSession? = null
         private set
@@ -22,20 +22,24 @@ class CustomTabServiceBinder(
     fun bind() {
         if (isBound) return
 
-        connection = object : CustomTabsServiceConnection() {
-            override fun onCustomTabsServiceConnected(name: ComponentName, client: CustomTabsClient) {
-                this@CustomTabServiceBinder.client = client
-                client.warmup(0L)
-                session = client.newSession(callback)
-                isBound = true
-            }
+        connection =
+            object : CustomTabsServiceConnection() {
+                override fun onCustomTabsServiceConnected(
+                    name: ComponentName,
+                    client: CustomTabsClient,
+                ) {
+                    this@CustomTabServiceBinder.client = client
+                    client.warmup(0L)
+                    session = client.newSession(callback)
+                    isBound = true
+                }
 
-            override fun onServiceDisconnected(name: ComponentName) {
-                session = null
-                client = null
-                isBound = false
+                override fun onServiceDisconnected(name: ComponentName) {
+                    session = null
+                    client = null
+                    isBound = false
+                }
             }
-        }
 
         CustomTabsClient.bindCustomTabsService(context, packageName, connection!!)
     }

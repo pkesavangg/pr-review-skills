@@ -1,9 +1,9 @@
 package com.greatergoods.meapp.features.auth
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.core.logging.AppLog
-import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel

@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core.logging
+package com.greatergoods.meapp.core.shared.utilities.logging
 
 interface ILogger {
     suspend fun initialize()

@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.utils.webview
+package com.greatergoods.meapp.core.shared.utilities.webview
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
@@ -45,7 +45,7 @@ import android.webkit.WebViewClient
 @Composable
 fun WebViewScreen(
     url: String,
-    onClose: () -> Unit
+    onClose: () -> Unit,
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -70,47 +70,52 @@ fun WebViewScreen(
                 // Back button
                 IconButton(
                     onClick = { webView?.goBack() },
-                    enabled = canGoBack
+                    enabled = canGoBack,
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = if (canGoBack)
-                            MaterialTheme.colorScheme.onSurface
-                        else
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        tint =
+                            if (canGoBack) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
                     )
                 }
 
                 // Forward button
                 IconButton(
                     onClick = { webView?.goForward() },
-                    enabled = canGoForward
+                    enabled = canGoForward,
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Forward",
-                        tint = if (canGoForward)
-                            MaterialTheme.colorScheme.onSurface
-                        else
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        tint =
+                            if (canGoForward) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
                     )
                 }
-            }
+            },
         )
 
         // Error message
         errorMessage?.let { message ->
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = message,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
@@ -127,47 +132,55 @@ fun WebViewScreen(
                 },
                 modifier = Modifier.fillMaxSize(),
                 update = { view ->
-                    view.webViewClient = object : WebViewClient() {
-                        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                            super.onPageStarted(view, url, favicon)
-                            isLoading = true
-                            errorMessage = null
-                        }
+                    view.webViewClient =
+                        object : WebViewClient() {
+                            override fun onPageStarted(
+                                view: WebView?,
+                                url: String?,
+                                favicon: Bitmap?,
+                            ) {
+                                super.onPageStarted(view, url, favicon)
+                                isLoading = true
+                                errorMessage = null
+                            }
 
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            isLoading = false
-                            canGoBack = view?.canGoBack() ?: false
-                            canGoForward = view?.canGoForward() ?: false
-                        }
+                            override fun onPageFinished(
+                                view: WebView?,
+                                url: String?,
+                            ) {
+                                super.onPageFinished(view, url)
+                                isLoading = false
+                                canGoBack = view?.canGoBack() ?: false
+                                canGoForward = view?.canGoForward() ?: false
+                            }
 
-                        @RequiresApi(Build.VERSION_CODES.M)
-                        override fun onReceivedError(
-                            view: WebView?,
-                            request: WebResourceRequest?,
-                            error: WebResourceError?
-                        ) {
-                            super.onReceivedError(view, request, error)
-                            errorMessage = "Error loading page: ${error?.description}"
-                            isLoading = false
-                        }
+                            @RequiresApi(Build.VERSION_CODES.M)
+                            override fun onReceivedError(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                                error: WebResourceError?,
+                            ) {
+                                super.onReceivedError(view, request, error)
+                                errorMessage = "Error loading page: ${error?.description}"
+                                isLoading = false
+                            }
 
-                        override fun onReceivedSslError(
-                            view: WebView?,
-                            handler: SslErrorHandler?,
-                            error: SslError?
-                        ) {
-                            errorMessage = "SSL Error: ${error?.primaryError}"
-                            handler?.cancel()
+                            override fun onReceivedSslError(
+                                view: WebView?,
+                                handler: SslErrorHandler?,
+                                error: SslError?,
+                            ) {
+                                errorMessage = "SSL Error: ${error?.primaryError}"
+                                handler?.cancel()
+                            }
                         }
-                    }
-                }
+                },
             )
 
             // Loading indicator
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier.align(Alignment.Center),
                 )
             }
         }
@@ -210,15 +223,16 @@ fun WebView.setupWebView() {
     }
 
     // Block new windows
-    webChromeClient = object : WebChromeClient() {
-        override fun onCreateWindow(
-            view: WebView?,
-            isDialog: Boolean,
-            isUserGesture: Boolean,
-            resultMsg: Message?
-        ): Boolean {
-            resultMsg?.sendToTarget()
-            return false
+    webChromeClient =
+        object : WebChromeClient() {
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: Message?,
+            ): Boolean {
+                resultMsg?.sendToTarget()
+                return false
+            }
         }
-    }
 }

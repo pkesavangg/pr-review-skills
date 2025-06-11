@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.core.initialization.AppInitializer
-import com.greatergoods.meapp.core.logging.ILogger
+import com.greatergoods.meapp.core.shared.utilities.logging.ILogger
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

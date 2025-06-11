@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.core.logging.ILogger
-import com.greatergoods.meapp.core.logging.LoggerImpl
+import com.greatergoods.meapp.core.shared.utilities.logging.ILogger
+import com.greatergoods.meapp.core.shared.utilities.logging.LoggerImpl
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import dagger.Module
 import dagger.Provides
@@ -24,6 +24,5 @@ object LoggingModule {
     fun provideLogger(
         logRepository: ILogRepository,
         loggerScope: CoroutineScope,
-    ): ILogger =
-        LoggerImpl(logRepository, loggerScope)
+    ): ILogger = LoggerImpl(logRepository, loggerScope)
 }

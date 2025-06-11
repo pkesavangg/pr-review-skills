@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.presentation.screens
+package com.greatergoods.meapp.features.manualEntry.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,15 +31,15 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
-import com.greatergoods.meapp.presentation.viewmodel.EntryUiState
-import com.greatergoods.meapp.presentation.viewmodel.EntryViewModel
+import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryUiState
+import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
 fun EntryScreen(
     viewModel: EntryViewModel = hiltViewModel(),
-    onNavigateToAddEntry: () -> Unit
+    onNavigateToAddEntry: () -> Unit,
 ) {
     val navBackStack = LocalNavBackStack.current
     val uiState by viewModel.uiState.collectAsState()
@@ -48,10 +48,11 @@ fun EntryScreen(
     val selectedEntry by viewModel.selectedEntry.collectAsState()
 
     Column(
-        modifier = Modifier
-            .statusBarsPadding()
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier =
+            Modifier
+                .statusBarsPadding()
+                .fillMaxSize()
+                .padding(16.dp),
     ) {
         Button(
             onClick = {
@@ -59,9 +60,10 @@ fun EntryScreen(
                     AppRoute.Main.AddEntry,
                 )
             },
-            modifier = Modifier
-                .align(Alignment.End)
-                .padding(bottom = 16.dp, end = 16.dp, top = 80.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.End)
+                    .padding(bottom = 16.dp, end = 16.dp, top = 80.dp),
         ) {
             Text("Add Entry")
         }
@@ -105,7 +107,7 @@ fun EntryScreen(
 fun MonthList(
     months: List<HistoryMonth>,
     selectedMonth: HistoryMonth?,
-    onMonthSelected: (HistoryMonth) -> Unit
+    onMonthSelected: (HistoryMonth) -> Unit,
 ) {
     LazyColumn {
         items(months) { month ->
@@ -120,18 +122,20 @@ fun MonthList(
 @Composable
 fun MonthItem(
     month: HistoryMonth,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
         onClick = onClick,
     ) {
         Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier =
+                Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
         ) {
             Text(
                 text = month.entryTimestamp ?: "",
@@ -154,7 +158,7 @@ fun EntryList(
     entries: List<Entry>,
     selectedEntry: Entry?,
     onEntrySelected: (Entry) -> Unit,
-    onDeleteEntry: (Entry) -> Unit
+    onDeleteEntry: (Entry) -> Unit,
 ) {
     LazyColumn {
         items(entries) { entry ->
@@ -173,18 +177,20 @@ fun EntryItem(
     entry: Entry,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
         onClick = onClick,
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier =
+                Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -193,7 +199,6 @@ fun EntryItem(
                     text = formatDate(entry.entry.entryTimestamp),
                     style = MaterialTheme.typography.titleMedium,
                 )
-
             }
 
             if (isSelected) {
@@ -208,8 +213,8 @@ fun EntryItem(
     }
 }
 
-private fun formatDate(timestamp: String): String {
-    return try {
+private fun formatDate(timestamp: String): String =
+    try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
         val outputFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
         val date = inputFormat.parse(timestamp)
@@ -217,4 +222,3 @@ private fun formatDate(timestamp: String): String {
     } catch (e: Exception) {
         timestamp
     }
-}

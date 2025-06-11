@@ -4,8 +4,8 @@ import AddEntryScreen
 import androidx.navigation3.runtime.EntryProviderBuilder
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
-import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.auth.UserListScreen
 import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
@@ -21,7 +21,7 @@ import com.greatergoods.meapp.features.sample.HomeScreen
  */
 fun EntryProviderBuilder<NavKey>.initEntries(
     appViewModel: AppViewModel,
-    logManager: LogManager
+    logManager: LogManager,
 ) {
     entry<AppRoute.Main.AddEntry> {
         AddEntryScreen()

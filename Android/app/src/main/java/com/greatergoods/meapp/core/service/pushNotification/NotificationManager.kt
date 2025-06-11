@@ -2,16 +2,15 @@ package com.greatergoods.meapp.core.service.pushNotification
 
 import com.greatergoods.meapp.R
 import com.greatergoods.meapp.core.config.NotificationConfig
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.notification.NotificationService
 import com.greatergoods.notification.model.BuilderConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import android.content.Context
 import android.widget.Toast
-import com.greatergoods.meapp.core.logging.AppLog
 
 /**
  * Manages notification-related operations such as creating channels, retrieving FCM tokens,
@@ -23,7 +22,7 @@ import com.greatergoods.meapp.core.logging.AppLog
 class NotificationManager(
     private val context: Context,
     private val notificationService: NotificationService,
-    private val appRepository: IAppRepository
+    private val appRepository: IAppRepository,
 ) {
     init {
         createChannels()
