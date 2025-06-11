@@ -31,7 +31,6 @@ class MeAppApplication : Application() {
         instance = this
         // Initialize AppLog for dual logging
         AppLog.logRepository = logRepository
-
         // Initialize logging system
         applicationScope.launch {
             try {

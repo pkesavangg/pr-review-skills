@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.domain.model.api.user
 
-data class ProfileUpdateRequest(
+data class
+ProfileUpdateRequest(
     val id: String,
     val email: String,
     val firstName: String,

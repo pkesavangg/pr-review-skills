@@ -13,15 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.greatergoods.meapp.features.common.components.Input
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.features.common.components.InputField
+import com.greatergoods.meapp.features.common.components.InputType
 
 @Composable
 fun FormSample(viewModel: FormSampleViewModel = viewModel()) {
     val controls = viewModel.controls
     val form = viewModel.form
-    val showAllErrors = viewModel.showAllErrors
 
     Column(
         modifier =
@@ -29,14 +29,32 @@ fun FormSample(viewModel: FormSampleViewModel = viewModel()) {
                 .padding(16.dp)
                 .fillMaxWidth(),
     ) {
-        Input("Email", controls.username, showAllErrors = showAllErrors)
+        InputField(
+            formControl = controls.username,
+            label = "Email",
+            name = "email",
+            type = InputType.EMAIL,
+            placeHolder = "Enter your email"
+        )
         Spacer(Modifier.height(12.dp))
-        Input("Password", controls.password, isPassword = true, showAllErrors = showAllErrors)
+        InputField(
+            formControl = controls.password,
+            label = "Password",
+            name = "password",
+            type = InputType.PASSWORD,
+            placeHolder = "Enter your password"
+        )
         Spacer(Modifier.height(12.dp))
-        Input("Confirm Password", controls.confirmPassword, isPassword = true, showAllErrors = showAllErrors)
+        InputField(
+            formControl = controls.confirmPassword,
+            label = "Confirm Password",
+            name = "confirmPassword",
+            type = InputType.PASSWORD,
+            placeHolder = "Re-enter your password"
+        )
 
         if (form.groupError != null &&
-            (showAllErrors || controls.confirmPassword.touched || controls.password.touched)
+            (controls.confirmPassword.touched || controls.password.touched)
         ) {
             Text(form.groupError!!, color = Color.Red, style = MaterialTheme.typography.bodySmall)
         }

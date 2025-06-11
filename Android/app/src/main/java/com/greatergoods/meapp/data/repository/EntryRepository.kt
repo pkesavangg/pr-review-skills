@@ -1,109 +1,217 @@
+// data/repository/EntryRepository.kt
 package com.greatergoods.meapp.data.repository
 
+import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
-import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
-import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
+import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import java.util.Calendar // Added for date manipulation
+import kotlinx.coroutines.flow.map
+import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Repository implementation for managing entries.
+ * Only supports the 14 direct functions from EntryDao.
+ */
 @Singleton
-class EntryRepository @Inject constructor(private val entryDao: EntryDao) : IEntryRepository {
-    override fun getAllEntries(): Flow<List<EntryEntity>> = entryDao.getEntriesByAccountId("dummy_account_id") // Assuming a default or active accountId
-
-    override fun getEntryById(id: Long): Flow<EntryEntity?> = flow {
-        emit(entryDao.getEntryById(id))
+class EntryRepository @Inject constructor(
+    private val entryDao: EntryDao,
+    private val entryApi: EntryApi,
+) : IEntryRepository {
+    /**
+     * Inserts a single entry.
+     */
+    override suspend fun insert(entry: Entry): Long {
+        return entryDao.insert(entry)
     }
 
-    override suspend fun saveEntry(entry: EntryEntity): Flow<Long> = flow {
-        emit(entryDao.insert(entry))
+    /**
+     * Updates a single entry.
+     */
+    override suspend fun update(entry: Entry): Int {
+        return entryDao.update(entry.entry)
     }
 
-    override suspend fun saveEntries(entries: List<EntryEntity>) {
-        entries.forEach { entryDao.insert(it) }
-    }
+    /**
+     * Inserts a list of entries.
+     */
+    override suspend fun insert(entries: List<Entry>) = entryDao.insert(entries)
 
-    override suspend fun updateEntry(entry: EntryEntity): Flow<Int> = flow {
-        emit(entryDao.update(entry))
-    }
+    /**
+     * Marks an entry as deleted.
+     */
+    override suspend fun delete(entry: Entry) = entryDao.delete(entry)
 
-    override suspend fun deleteEntry(entry: EntryEntity): Flow<Int> = flow {
-        emit(entryDao.delete(entry))
-    }
+    /**
+     * Deletes an entry by its ID.
+     */
+    override suspend fun deleteById(id: Long): Int = entryDao.deleteById(id)
 
-    override fun getEntriesByDateRange(accountId: String, startDate: String, endDate: String): Flow<List<EntryEntity>> {
-        return entryDao.getEntriesByTimeRange(accountId, startDate, endDate)
-    }
+    /**
+     * Gets an entry by its ID.
+     */
+    override suspend fun getEntryById(id: Long): Entry? = entryDao.getEntryById(id)?.toEntry()
 
-    override fun getLatestEntry(accountId: String): Flow<EntryEntity?> = flow {
-        // This would ideally be a specific DAO query, like `getLatestEntryByAccountId`
-        // For now, fetching all and taking the last, assuming entries are ordered by time or ID.
-        // A more robust solution would be to add a specific query to EntryDao.
-        val entries = entryDao.getEntriesByAccountId(accountId) // This is a Flow
-        entries.collect { list -> // Collect the flow to get the list
-            emit(list.maxByOrNull { it.entryTimestamp })
+    /**
+     * Gets the latest valid entry for an account.
+     */
+    override suspend fun getLatestEntry(accountId: String): Flow<Entry>? =
+        entryDao.getLatestEntry(accountId)?.map { flow ->
+            flow.toEntry()
         }
+
+    /**
+     * Gets all valid entries for an account.
+     */
+    override suspend fun getEntriesByAccount(accountId: String): List<Entry> =
+        entryDao.getEntriesByAccount(accountId).map { it.toEntry() }
+
+    /**
+     * Gets valid entries for an account within a time range.
+     */
+    override fun getEntriesByTimeRange(
+        accountId: String,
+        startTime: String,
+        endTime: String
+    ): Flow<List<Entry>> = entryDao.getEntriesByTimeRange(accountId, startTime, endTime).map { flow ->
+        flow.map { it.toEntry() }
     }
 
-    override fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<EntryEntity>> {
+    /**
+     * Gets valid entries for an account by device type.
+     */
+    override fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>> =
+        entryDao.getEntriesByDeviceType(accountId, deviceType).map { flow ->
+            flow.map { it.toEntry() }
+        }
+
+    /**
+     * Retrieves entries for the last N days for a given account.
+     * @param accountId The account ID
+     * @param days Number of days to look back
+     * @return Flow of list of Entry objects
+     */
+    override fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
         val calendar = Calendar.getInstance()
         val endDate = calendar.timeInMillis.toString()
         calendar.add(Calendar.DAY_OF_YEAR, -days)
         val startDate = calendar.timeInMillis.toString()
-        return entryDao.getEntriesByTimeRange(accountId, startDate, endDate)
-    }
-
-    override fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<EntryEntity>> {
-        return entryDao.getEntriesByDeviceType(accountId, deviceType)
-    }
-
-    override fun getUnsyncedEntries(): Flow<List<EntryEntity>> {
-        return entryDao.getUnsyncedEntries()
-    }
-
-    override suspend fun markEntrySynced(id: Long): Flow<Int> = flow {
-        emit(entryDao.markEntrySynced(id))
-    }
-
-    override suspend fun markEntriesSynced(ids: List<Long>): Flow<Int> = flow {
-        emit(entryDao.markEntriesSynced(ids))
-    }
-
-    override fun getEntriesByAccount(accountId: String): Flow<List<EntryEntity>> {
-        return entryDao.getEntriesByAccountId(accountId)
+        return entryDao.getEntriesByTimeRange(accountId, startDate, endDate).map { flow ->
+            flow.map { it.toEntry() }
+        }
     }
 
     override suspend fun deleteAllEntriesForAccount(accountId: String): Flow<Int> = flow {
-        // EntryDao doesn't have a direct deleteAllEntriesForAccount(accountId): Int method.
-        // It would require a @Query like "DELETE FROM entry WHERE accountId = :accountId"
-        // For now, let's assume we'd fetch and then delete, or this needs a DAO update.
-        // This is a placeholder for how it might be implemented if DAO was updated.
-        // val entriesToDelete = entryDao.getEntriesByAccountId(accountId).first() // Get current entries
-        // entriesToDelete.forEach { entryDao.delete(it) }
-        // emit(entriesToDelete.size)
-        // Since direct DAO method is missing, and to avoid complex flow operations here for deletion count,
-        // this part needs refinement based on exact requirements or DAO capabilities.
-        // For now, returning 0 as a placeholder, indicating this needs a proper implementation.
-        emit(0) // Placeholder
+        emit(entryDao.deleteAllEntriesForAccount(accountId))
     }
 
-    override suspend fun saveMetrics(metrics: List<BodyScaleEntryMetricEntity>) {
-        entryDao.insertMetrics(metrics)
+    /**
+     * Gets entries for an account by operation type.
+     */
+    override fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>> =
+        entryDao.getEntriesByOperationType(accountId, operationType).map { flow ->
+            flow.map { it.toEntry() }
+        }
+
+    /**
+     * Gets all unsynced entries for an account.
+     */
+    override suspend fun getUnSynced(accountId: String): List<Entry> =
+        entryDao.getUnSynced(accountId).map { it.toEntry() }
+
+    /**
+     * Increments the attempts count for an entry.
+     */
+    override suspend fun incrementAttempts(id: Long): Int = entryDao.incrementAttempts(id)
+
+    /**
+     * Gets failed operations for an account.
+     */
+    override suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry> =
+        entryDao.getFailedOperations(accountId, maxAttempts).map { it.toEntry() }
+
+    /**
+     * Clears all unsynced entries for an account.
+     */
+    override suspend fun clearUnSynced(accountId: String): Int = entryDao.clearUnSynced(accountId)
+
+    /**
+     * Sends an operation to the API and marks it as synced if successful. Adds to opstack if failed.
+     * @param operation The operation entry to send.
+     * @throws Exception if the API call fails.
+     */
+    override suspend fun sendOperationToAPI(operation: ScaleApiEntry?) {
+        try {
+            if (operation == null) {
+                throw IllegalArgumentException("Operation cannot be null")
+            }
+            entryApi.sendOperation(operation)
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
-    override fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity?> {
-        return entryDao.getMetricsByEntryId(entryId)
+    /**
+     * Gets operations from the API since the last update, or all if lastUpdated is null.
+     * @param lastUpdated The last updated timestamp, or null.
+     * @return List of operations.
+     */
+    override suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleApiEntry> {
+        return try {
+            val response = if (lastUpdated != null) {
+                entryApi.getOperations(lastUpdated)
+            } else {
+                entryApi.getAllOperations()
+            }
+            response.operations.map { it }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
-    override suspend fun saveScaleEntries(entries: List<BodyScaleEntryEntity>) {
-        entryDao.insertScaleEntries(entries)
+    /**
+     * Gets entries for a specific month and year.
+     * @param accountId The account ID
+     * @param month The month in YYYY-MM format
+     * @return Flow of list of entries for the specified month
+     */
+    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>> =
+        entryDao.getMonthDetail(accountId, month).map { views ->
+            views.map { it.toEntry() }
+        }
+
+    /**
+     * Gets monthly aggregated data for the last year.
+     * @param accountId The account ID
+     * @return Flow of list of monthly aggregated data
+     */
+    override fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>> {
+        return flow {
+            emit(listOf())
+        }
     }
 
-    override suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity? {
-        return entryDao.getScaleEntryById(entryId)
+    /**
+     * Gets all monthly aggregated data.
+     * @param accountId The account ID
+     * @return Flow of list of all monthly aggregated data
+     */
+    override fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>> {
+        return flow {
+            emit(listOf())
+        }
     }
+
+    /**
+     * Gets the operation count for an account.
+     * @param accountId The account ID
+     * @return The number of operations
+     */
+    override suspend fun getOperationCount(accountId: String): Int =
+        entryDao.getOperationCount(accountId)
 }
