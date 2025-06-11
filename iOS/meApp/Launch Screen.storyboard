@@ -22,15 +22,20 @@
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="meLogoDark" translatesAutoresizingMaskIntoConstraints="NO" id="TtD-71-vbM">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="meLogoDark" translatesAutoresizingMaskIntoConstraints="NO" id="TtD-71-vbM">
                                 <rect key="frame" x="95" y="378" width="203" height="96"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="203" id="Kf2-gh-abc"/>
+                                    <constraint firstAttribute="height" constant="96" id="Lm3-jk-def"/>
+                                </constraints>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
                         <color key="backgroundColor" name="blue-900"/>
                         <constraints>
                             <constraint firstItem="Bcu-3y-fUS" firstAttribute="centerX" secondItem="obG-Y5-kRd" secondAttribute="centerX" id="5cz-MP-9tL"/>
+                            <constraint firstItem="TtD-71-vbM" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="Hj2-mn-ghi"/>
+                            <constraint firstItem="TtD-71-vbM" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="Kl4-op-jkl"/>
                             <constraint firstItem="obG-Y5-kRd" firstAttribute="leading" secondItem="Bcu-3y-fUS" secondAttribute="leading" constant="20" symbolic="YES" id="SfN-ll-jLj"/>
                             <constraint firstAttribute="bottom" secondItem="obG-Y5-kRd" secondAttribute="bottom" constant="20" id="Y44-ml-fuU"/>
                         </constraints>
