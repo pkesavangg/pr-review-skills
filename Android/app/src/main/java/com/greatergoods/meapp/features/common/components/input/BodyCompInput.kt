@@ -2,52 +2,75 @@ package com.greatergoods.meapp.features.common.components.input
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormField
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.common.helper.form.ValidationType
+import com.greatergoods.meapp.features.common.helper.form.Form
 
 @Composable
 fun BodyCompInput(
-    formControl: FormControl<String>,
-    min: Int = 0,
-    max: Int = 99,
     modifier: Modifier = Modifier,
-    label: String = "Body Comp",
-    placeHolder: String = "Enter value",
-    supportingText: String? = null,
+    formControl: FormField<Any>? = null,
+    name: String = "",
+    label: String,
+    placeHolder: String = "",
     enabled: Boolean = true,
     readOnly: Boolean = false,
+    supportingText: String? = null,
+    keyboardType: KeyboardType = KeyboardType.Number,
+    imeAction: ImeAction = ImeAction.Next,
+    min: Int = 0,
+    max: Int = 99,
+    allowDecimal: Boolean = true // New parameter
 ) {
     InputFieldBase(
-        formControl = formControl,
-        label = label,
-        placeHolder = placeHolder,
         modifier = modifier,
-        supportingText = supportingText,
+        formControl = formControl,
+        name = name,
+        label = label,
+        value = formControl?.value?.toString() ?: "",
+        onValueChange = { newValue ->
+            // Store raw digits, actual conversion will happen in InputFieldBase or validator
+            formControl?.parent?.update(name, newValue.filter { it.isDigit() })
+        },
+        placeHolder = placeHolder,
         enabled = enabled,
         readOnly = readOnly,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        onValueChange = { raw ->
-            val filtered = raw.filter { it.isDigit() }
-            val formatted = when {
-                filtered.length <= 2 -> filtered
-                else -> filtered.dropLast(1) + "." + filtered.last()
-            }
-            formControl.onValueChange(formatted)
-        }
+        supportingText = supportingText,
+        type = InputType.NUMBER,
+        visualTransformation = if (allowDecimal) DecimalInputVisualTransformation(decimalDigits = 1) else DecimalInputVisualTransformation(decimalDigits = 0),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction = imeAction
+        )
     )
 }
 
 @PreviewTheme
 @Composable
 fun BodyCompInputPreview() {
-    val scope = rememberCoroutineScope()
-    val control = remember { FormControl("", validators = listOf { bodyCompValidator(it) }, scope = scope) }
     MeAppTheme {
-        BodyCompInput(formControl = control)
+        val formControl = FormField<Any>(
+            value = "",
+            validations = listOf(
+                FormValidations.bodyCompValidator(min = 0, max = 99)
+            ),
+            messages = mapOf(
+                ValidationType.REQUIRED to "Body composition is required",
+                ValidationType.NOT_IN_RANGE to "Body composition must be between 0 and 99"
+            )
+        )
+
+        BodyCompInput(
+            formControl = formControl,
+            name = "bodyComp",
+            label = "Body Composition",
+            placeHolder = "Enter value"
+        )
     }
 }

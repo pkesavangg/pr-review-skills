@@ -2,53 +2,72 @@ package com.greatergoods.meapp.features.common.components.input
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.helper.form.FormControl
+import androidx.compose.ui.text.input.VisualTransformation
+import com.greatergoods.meapp.features.common.helper.form.Form
+import com.greatergoods.meapp.features.common.helper.form.FormField
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.features.common.components.PreviewTheme
 
 @Composable
 fun PasswordInput(
-    formControl: FormControl<String>,
     modifier: Modifier = Modifier,
-    label: String = "Password",
-    placeHolder: String = "Enter password",
-    supportingText: String? = null,
+    formControl: FormField<Any>? = null,
+    name: String = "",
+    label: String,
+    placeHolder: String = "",
     enabled: Boolean = true,
     readOnly: Boolean = false,
+    supportingText: String? = null,
+    keyboardType: KeyboardType = KeyboardType.Password,
+    imeAction: ImeAction = ImeAction.Done,
 ) {
-    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     InputFieldBase(
-        formControl = formControl,
-        label = label,
-        placeHolder = placeHolder,
         modifier = modifier,
-        supportingText = supportingText,
+        formControl = formControl,
+        name = name,
+        label = label,
+        value = formControl?.value?.toString() ?: "",
+        onValueChange = { newValue ->
+            formControl?.parent?.update(name, newValue)
+        },
+        placeHolder = placeHolder,
         enabled = enabled,
         readOnly = readOnly,
-        isPassword = true,
-        visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            // Add eye/eye-off icon here if you have one
-        }
+        supportingText = supportingText,
+        type = InputType.PASSWORD,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction = imeAction
+        ),
+        showTrailingIcon = true
     )
 }
 
 @PreviewTheme
 @Composable
 fun PasswordInputPreview() {
-    val scope = rememberCoroutineScope()
-    val control = remember { FormControl("", scope = scope) }
     MeAppTheme {
-        PasswordInput(formControl = control)
+        val formControl = FormField<Any>(
+            value = "",
+            validations = listOf(
+                { field -> if (field.value.toString().isBlank()) "required" else null },
+                { field -> if (field.value.toString().length < 8) "min_length" else null }
+            ),
+            messages = mapOf(
+                "required" to "Password is required",
+                "min_length" to "Password must be at least 8 characters"
+            )
+        )
+
+        PasswordInput(
+            formControl = formControl,
+            name = "password",
+            label = "Password",
+            placeHolder = "Enter password"
+        )
     }
 }

@@ -2,46 +2,69 @@ package com.greatergoods.meapp.features.common.components.input
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormField
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.common.helper.form.ValidationType
+import com.greatergoods.meapp.features.common.helper.form.Form
 
 @Composable
 fun SkuInput(
-    formControl: FormControl<String>,
     modifier: Modifier = Modifier,
-    label: String = "SKU",
-    placeHolder: String = "Enter 4-digit SKU",
-    supportingText: String? = null,
+    formControl: FormField<Any>? = null,
+    name: String = "",
+    label: String,
+    placeHolder: String = "",
     enabled: Boolean = true,
     readOnly: Boolean = false,
+    supportingText: String? = null,
+    keyboardType: KeyboardType = KeyboardType.Number,
+    imeAction: ImeAction = ImeAction.Next
 ) {
     InputFieldBase(
-        formControl = formControl,
-        label = label,
-        placeHolder = placeHolder,
         modifier = modifier,
-        supportingText = supportingText,
+        formControl = formControl,
+        name = name,
+        label = label,
+        value = formControl?.value?.toString() ?: "",
+        onValueChange = { newValue ->
+            formControl?.parent?.update(name, newValue)
+        },
+        placeHolder = placeHolder,
         enabled = enabled,
         readOnly = readOnly,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        onValueChange = { newValue ->
-            val filtered = newValue.filter { it.isDigit() }.take(4)
-            formControl.onValueChange(filtered)
-        }
+        supportingText = supportingText,
+        type = InputType.NUMBER,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction = imeAction
+        )
     )
 }
 
 @PreviewTheme
 @Composable
 fun SkuInputPreview() {
-    val scope = rememberCoroutineScope()
-    val control = remember { FormControl("", validators = listOf(::skuValidator), scope = scope) }
     MeAppTheme {
-        SkuInput(formControl = control)
+        val formControl = FormField<Any>(
+            value = "",
+            validations = listOf(
+                FormValidations.skuValidator()
+            ),
+            messages = mapOf(
+                ValidationType.PATTERN to "SKU must be 4 digits"
+            )
+        )
+        
+        SkuInput(
+            formControl = formControl,
+            name = "sku",
+            label = "SKU",
+            placeHolder = "Enter SKU"
+        )
     }
 }
