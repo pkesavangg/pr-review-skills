@@ -44,7 +44,7 @@ import com.greatergoods.meapp.features.common.helper.form.FormField
 import com.greatergoods.meapp.theme.MeAppTheme
 
 enum class AppInputType {
-    TEXT, EMAIL, PASSWORD, CHECKBOX, DATE_PICKER, NUMBER, TIME_PICKER, DROP_DOWN, BODY_COMP, WEIGHT, SKU
+    TEXT, PASSWORD, CHECKBOX, DATE_PICKER, NUMBER, TIME_PICKER, DROP_DOWN, BODY_COMP, WEIGHT
 }
 
 private object InputFieldTokens {
@@ -53,19 +53,22 @@ private object InputFieldTokens {
 }
 
 object AppInputDefaults {
-    fun inputType(type: AppInputType): AppInputType = type
-
-    fun visualTransformation(type: AppInputType): VisualTransformation = when (type) {
-        AppInputType.WEIGHT, AppInputType.BODY_COMP -> DecimalInputVisualTransformation(
-            decimalDigits = 1
-        )
+    fun visualTransformation(type: AppInputType, allowDecimal: Boolean): VisualTransformation = when(type) {
         AppInputType.PASSWORD -> PasswordVisualTransformation()
-        else -> VisualTransformation.Companion.None
+
+        AppInputType.WEIGHT, AppInputType.BODY_COMP -> {
+            if (allowDecimal) {
+                DecimalInputVisualTransformation(decimalDigits = 1)
+            } else {
+                DecimalInputVisualTransformation(decimalDigits = 0)
+            }
+        }
+        else -> VisualTransformation.None // Default case for other AppInputTypes
     }
 
     fun keyboardType(type: AppInputType): KeyboardType = when (type) {
-        AppInputType.TEXT, AppInputType.EMAIL -> KeyboardType.Companion.Text
-        AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.SKU, AppInputType.NUMBER -> KeyboardType.Companion.Number
+        AppInputType.TEXT -> KeyboardType.Companion.Text
+        AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.NUMBER -> KeyboardType.Companion.Number
         AppInputType.PASSWORD -> KeyboardType.Companion.Password
         else -> KeyboardType.Companion.Unspecified
     }
@@ -93,7 +96,7 @@ fun AppInput(
     readOnly: Boolean = false,
     supportingText: String? = null,
     modifier: Modifier = Modifier.Companion,
-    showTrailingIcon: Boolean = false,
+    showTrailingIcon: Boolean = true,
     allowDecimal: Boolean = true,
 ) {
     InputFieldBase(
@@ -109,8 +112,8 @@ fun AppInput(
         enabled = enabled,
         readOnly = readOnly,
         supportingText = supportingText,
-        type = AppInputDefaults.inputType(type),
-        visualTransformation = AppInputDefaults.visualTransformation(type),
+        inputType = type,
+        visualTransformation = AppInputDefaults.visualTransformation(type, allowDecimal),
         keyboardOptions = KeyboardOptions(
             keyboardType = AppInputDefaults.keyboardType(type),
             imeAction = AppInputDefaults.imeAction(type)
@@ -139,8 +142,8 @@ fun <T> InputFieldBase(
     enabled: Boolean = true,
     readOnly: Boolean = false,
     supportingText: String? = null,
-    type: AppInputType = AppInputType.TEXT,
-    showTrailingIcon: Boolean = false,
+    inputType: AppInputType = AppInputType.TEXT,
+    showTrailingIcon: Boolean = true,
     visualTransformation: VisualTransformation = VisualTransformation.Companion.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Companion.Default,
     focusRequester: FocusRequester = remember { FocusRequester() },
@@ -157,11 +160,11 @@ fun <T> InputFieldBase(
     val currentOnBlur by rememberUpdatedState(onBlur)   // Added
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     val isError = formControl?.showError ?: false
-    val showErrorIcon = isError && showTrailingIcon && type != AppInputType.PASSWORD  // Renamed for clarity in trailingIcon logic
-    val showPasswordToggle = type == AppInputType.PASSWORD && showTrailingIcon
+    val showErrorIcon = isError && showTrailingIcon && inputType != AppInputType.PASSWORD  // Renamed for clarity in trailingIcon logic
+    val showPasswordToggle = inputType == AppInputType.PASSWORD && showTrailingIcon
     // Adjusted showClear logic to not interfere with password toggle if both could be true.
     // Clear icon should not show if it's a password field (it has its own toggle) or if there's an error (error icon takes precedence).
-    val showClearButton = (formControl?.value?.toString()?.isNotEmpty() ?: statelessValue.isNotEmpty()) && !isError && type != AppInputType.PASSWORD && enabled && !readOnly && showTrailingIcon
+    val showClearButton = (formControl?.value?.toString()?.isNotEmpty() ?: statelessValue.isNotEmpty()) && !isError && inputType != AppInputType.PASSWORD && enabled && !readOnly && showTrailingIcon
 
     val labelColor = when {
         isError -> colors.error
@@ -201,37 +204,30 @@ fun <T> InputFieldBase(
     if (value != statelessValue && formControl == null) {
         statelessValue = value
     }
-    val visualTransformation = if (type == AppInputType.PASSWORD && !passwordVisible) {
-        PasswordVisualTransformation()
-    } else {
-        visualTransformation
-    }
+
     val inputValue = formControl?.value?.toString() ?: statelessValue
 
     fun stringToValue(value: String): T {
-        return when (type) {
-            AppInputType.NUMBER -> {
-                when (formControl?.value) {
-                    is Int -> value.toIntOrNull() as T
-                    is Long -> value.toLongOrNull() as T
-                    is Float -> value.toFloatOrNull() as T
-                    is Double -> value.toDoubleOrNull() as T
-                    else -> value as T
-                }
-            }
-            AppInputType.EMAIL, AppInputType.TEXT, AppInputType.PASSWORD -> {
-                value as T
+        return when (inputType) {
+            AppInputType.NUMBER -> when (formControl?.value) {
+                is Int -> value.toIntOrNull() as T
+                is Long -> value.toLongOrNull() as T
+                is Float -> value.toFloatOrNull() as T
+                is Double -> value.toDoubleOrNull() as T
+                else -> value as T
             }
             else -> value as T
         }
     }
 
-    fun clearValue() {
-        if (formControl != null) {
-            formControl.parent?.update(name, stringToValue("") as Any)
-        }
+    fun clearValueAndNotify() {
+        formControl?.parent?.update(name, stringToValue("") as Any)
         statelessValue = ""
         onValueChange?.invoke("")
+    }
+
+    fun togglePasswordVisibility() {
+        passwordVisible = !passwordVisible
     }
 
     val trailingIcon: (@Composable (() -> Unit))? = when {
@@ -241,7 +237,8 @@ fun <T> InputFieldBase(
                     painter = painterResource(id = R.drawable.ic_close_outlined),
                     contentDescription = "Error",
                     tint = iconTint,
-                    modifier = Modifier.Companion.size(24.dp)
+                    modifier = Modifier.Companion
+                        .size(24.dp)
                 )
             }
         }
@@ -256,7 +253,7 @@ fun <T> InputFieldBase(
                     modifier = Modifier.Companion
                         .size(24.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .clickable(enabled = enabled) { passwordVisible = !passwordVisible }
+                        .clickable(enabled = enabled) { togglePasswordVisibility() }
                 )
             }
         }
@@ -269,11 +266,17 @@ fun <T> InputFieldBase(
                     modifier = Modifier.Companion
                         .size(20.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
-                        .clickable(enabled = enabled) { clearValue() }
+                        .clickable(enabled = enabled) { clearValueAndNotify() }
                 )
             }
         }
         else -> null
+    }
+
+    val inputTransformation = if (inputType == AppInputType.PASSWORD && passwordVisible) {
+        VisualTransformation.None
+    } else {
+        visualTransformation
     }
 
     Column(modifier = modifier) {
@@ -327,6 +330,19 @@ fun <T> InputFieldBase(
                 )
             },
             trailingIcon = trailingIcon,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    onDone?.invoke()
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                },
+                onNext = { onNext?.invoke() }
+            ),
+            enabled = enabled,
+            readOnly = readOnly,
+            visualTransformation = inputTransformation,
+            isError = isError,
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Color.Companion.Transparent,
                 unfocusedIndicatorColor = Color.Companion.Transparent,
@@ -349,19 +365,6 @@ fun <T> InputFieldBase(
                 cursorColor = colors.primaryAction,
                 errorCursorColor = colors.error,
             ),
-            keyboardOptions = keyboardOptions,
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    onDone?.invoke()
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                },
-                onNext = { onNext?.invoke() }
-            ),
-            enabled = enabled,
-            readOnly = readOnly,
-            visualTransformation = visualTransformation,
-            isError = isError,
         )
         // Always reserve space for one line below the field for error/supporting text
         Box(
@@ -372,7 +375,7 @@ fun <T> InputFieldBase(
         ) {
             when {
                 isError -> Text(
-                    formControl?.errorMessage ?: "",
+                    formControl.errorMessage ?: "",
                     color = colors.error,
                     style = typography.body3,
                 )

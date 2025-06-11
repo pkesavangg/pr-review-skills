@@ -99,6 +99,11 @@ fun SampleFormScreen() {
                         ValidationType.PATTERN to "SKU must be 4 digits"
                     )
                 ),
+                "disabledField" to FormField(
+                    value = "",
+                    validations = listOf(),
+                    messages = mapOf()
+                ),
             )
         )
     }
@@ -117,10 +122,9 @@ fun SampleFormScreen() {
                 .verticalScroll(scrollState)
                 .clickable(
                     interactionSource = interactionSource,
-                    indication = null
-                ) {
-                    focusManager.clearFocus()
-                },
+                    indication = null,
+                    onClick = { focusManager.clearFocus() }
+                ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
@@ -153,12 +157,12 @@ fun SampleFormScreen() {
                 formControl = form.getField("confirmPassword"),
                 name = "confirmPassword",
                 label = "Confirm Password",
-                placeHolder = "Confirm your password"
+                placeHolder = "Confirm your password",
             )
 
             AppInput(
                 modifier = Modifier,
-                type = AppInputType.NUMBER,
+                type = AppInputType.WEIGHT,
                 formControl = form.getField("weight"),
                 name = "weight",
                 label = "Weight",
@@ -167,7 +171,7 @@ fun SampleFormScreen() {
 
             AppInput(
                 modifier = Modifier,
-                type = AppInputType.NUMBER,
+                type = AppInputType.BODY_COMP,
                 formControl = form.getField("bodyComp"),
                 name = "bodyComp",
                 label = "Body Composition",
@@ -183,7 +187,15 @@ fun SampleFormScreen() {
                 placeHolder = "Enter 4-digit SKU"
             )
 
-
+            AppInput(
+                modifier = Modifier,
+                type = AppInputType.TEXT,
+                formControl = form.getField("disabledField"),
+                name = "disabledField",
+                label = "Disabled Field",
+                placeHolder = "This field is disabled",
+                enabled = false
+            )
 
             Button(
                 onClick = {

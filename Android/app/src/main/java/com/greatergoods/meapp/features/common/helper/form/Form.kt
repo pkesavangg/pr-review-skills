@@ -91,7 +91,6 @@ data class Form(
 
     fun update(fieldName: String, value: Any, checkValid: Boolean = true) {
         if (fields.containsKey(fieldName)) {
-            Log.e("VALUE", value.toString())
             var updatedField = fields[fieldName]?.copy(value = value)
             if (checkValid) {
                 // Mark as touched and dirty only if checkValid is true (i.e., user interaction)
