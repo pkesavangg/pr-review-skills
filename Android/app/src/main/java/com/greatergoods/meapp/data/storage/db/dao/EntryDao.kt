@@ -77,7 +77,7 @@ interface EntryDao {
      */
     @Transaction
     suspend fun delete(entry: Entry) {
-        val timestamp = System.currentTimeMillis().toString()
+        val timestamp = System.currentTimeMillis()
         val deleteEntry = entry.entry.copy(
             id = 0,
             operationType = "DELETE",

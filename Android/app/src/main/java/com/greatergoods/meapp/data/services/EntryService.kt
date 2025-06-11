@@ -59,20 +59,18 @@ class EntryService @Inject constructor(
      * @param accountId The account ID to update data for.
      */
     override suspend fun updateAllData(accountId: String) {
-        this.clearAllData()
         this.accountId = accountId
         _isUpdating.value = true
         try {
-            updateLatestEntry(accountId)
-            val last7DaysFlow = entryRepository.getLastNDaysEntries(accountId, 7)
+            entryRepository.getLastNDaysEntries(accountId, 7)
             val last30DaysFlow = entryRepository.getLastNDaysEntries(accountId, 30)
             val monthsLastYearFlow = entryRepository.getMonthsLastYear(accountId)
             val monthsAllFlow = entryRepository.getMonthsAll(accountId)
 
-            last7DaysFlow.collect { entries ->
-                _last7Days.value = entries
-            }
-
+            // last7DaysFlow.collect { entries ->
+            //     _last7Days.value = entries
+            // }
+            //
             last30DaysFlow.collect { entries ->
                 _last30Days.value = entries
             }
@@ -84,6 +82,7 @@ class EntryService @Inject constructor(
             monthsAllFlow.collect { months ->
                 _monthsAll.value = months
             }
+            updateLatestEntry(accountId)
 
             updateProgress(accountId)
         } finally {
@@ -100,7 +99,7 @@ class EntryService @Inject constructor(
             entry = entry.entry.copy(
                 isSynced = false,
                 operationType = OperationType.CREATE.name,
-                accountId = "",
+                accountId = "1",
             ),
         )
         // handle other types if you have them
@@ -118,10 +117,11 @@ class EntryService @Inject constructor(
                     entry = entry.entry.copy(
                         isSynced = false,
                         operationType = OperationType.CREATE.name,
+                        accountId = "1",
                     ),
                 )
             }
-            syncOperations(updatedEntries)
+            this.syncOperations(updatedEntries)
         } catch (e: Exception) {
             AppLog.e("EntryService", "Error saving new entries", e.toString())
         }
@@ -338,7 +338,6 @@ internal object EntryServiceHelper {
         try {
             // Sort operations by server timestamp
             val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
-
             // Separate create and delete operations
             val createOperations = sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
             val deleteOperations = sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
@@ -385,7 +384,7 @@ internal object EntryServiceHelper {
         val sortedEntries = entries.sortedByDescending { it.entry.entryTimestamp }
         for (entry in sortedEntries) {
             val entryDate = Calendar.getInstance()
-            entryDate.time = dateFormat.parse(entry.entry.entryTimestamp)!!
+            entryDate.time = dateFormat.parse(entry.entry.entryTimestamp.toString())!!
 
             if (entryDate.get(Calendar.YEAR) == currentDate.get(Calendar.YEAR) &&
                 entryDate.get(Calendar.DAY_OF_YEAR) == currentDate.get(Calendar.DAY_OF_YEAR)
@@ -410,7 +409,7 @@ internal object EntryServiceHelper {
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val sortedEntries = entries
-            .map { dateFormat.parse(it.entry.entryTimestamp)!! }
+            .map { dateFormat.parse(it.entry.entryTimestamp.toString())!! }
             .map { date ->
                 Calendar.getInstance().apply { time = date }
             }

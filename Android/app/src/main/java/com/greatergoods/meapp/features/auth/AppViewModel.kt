@@ -2,8 +2,11 @@ package com.greatergoods.meapp.features.auth
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
+import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.proto.UserAccount
@@ -38,6 +41,8 @@ data class AppUiState(
 class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
     private val userRepository: IUserRepository,
+    private val accountRepository: IAccountRepository,
+    private val entryService: IEntryService
 ) : BaseViewModel() {
 
     private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
@@ -46,6 +51,23 @@ class AppViewModel @Inject constructor(
     private var currentAccount: UserAccount? = null
 
     init {
+        viewModelScope.launch {
+            if (accountRepository.getLoggedInAccountsFromDB().firstOrNull().isNullOrEmpty()) {
+                val randomAccount =
+                    Account(
+                        id = "1",
+                        firstName = "John",
+                        lastName = "Doe",
+                        dob = "1990-01-01",
+                        email = "jdoe@me.com",
+                        expiresAt = "2024-01-01",
+                        fcmToken = null,
+                        gender = "M",
+                    )
+            }
+            entryService.updateAllData("1")
+
+        }
         viewModelScope.launch {
             delay(3000)
             navigationService.replaceStack(

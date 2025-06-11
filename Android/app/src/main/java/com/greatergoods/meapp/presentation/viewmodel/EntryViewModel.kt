@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 @HiltViewModel
 class EntryViewModel @Inject constructor(
@@ -31,7 +30,6 @@ class EntryViewModel @Inject constructor(
     val selectedEntry: StateFlow<Entry?> = _selectedEntry.asStateFlow()
 
     init {
-        Log.i("CHECKING", "EntryViewModel initialized : ${entryService.latestEntry.value}")
         loadMonths()
     }
 
@@ -90,15 +88,12 @@ class EntryViewModel @Inject constructor(
     fun addEntry(entry: Entry) {
         viewModelScope.launch {
             try {
-                Log.i("CHECKING", "EntryViewModel adding entry: $entry")
                 entryService.addEntry(entry)
-                Log.i("CHECKING", "EntryViewModel entry added successfully")
                 // Refresh the current month's entries
                 _selectedMonth.value?.let { month ->
                     loadMonthEntries(month.entryTimestamp ?: "")
                 }
             } catch (e: Exception) {
-                Log.e("CHECKING", "EntryViewModel error adding entry", e)
                 _uiState.value = EntryUiState.Error("Failed to add entry: ${e.message}")
             }
         }

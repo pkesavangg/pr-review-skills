@@ -190,7 +190,7 @@ fun EntryItem(
         ) {
             Column {
                 Text(
-                    text = formatDate(entry.entry.entryTimestamp),
+                    text = formatDate(entry.entry.entryTimestamp.toString()),
                     style = MaterialTheme.typography.titleMedium,
                 )
 

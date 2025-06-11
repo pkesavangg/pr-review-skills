@@ -4,9 +4,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +34,7 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
+import com.patrykandpatrick.vico.core.cartesian.AutoScrollCondition
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
@@ -68,7 +67,8 @@ fun GraphView(
 ) {
     if (graphLines.isEmpty() || graphLines.all { it.points.isEmpty() }) {
         Box(
-            modifier = modifier.fillMaxSize(),
+            modifier = modifier
+                .fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -99,6 +99,11 @@ fun GraphView(
     val max = remember(ySeries) {
         ySeries.flatten().maxOfOrNull { it.value.toDouble() }
     }
+
+    val scrollState = rememberVicoScrollState(
+        scrollEnabled = true,
+        autoScrollCondition = AutoScrollCondition.OnModelGrowth,
+    )
     var markerIndex by remember(xLabels) { mutableIntStateOf(xLabels.lastIndex) }
     var isUpdating by remember { mutableStateOf(false) }
 
@@ -109,7 +114,7 @@ fun GraphView(
                 context: CartesianDrawingContext,
                 targets: List<CartesianMarker.Target>
             ) =
-                xLabels[markerIndex].label
+                xLabels[1].label
         }
 
     val markerListener = remember(graphLines) {
@@ -146,6 +151,9 @@ fun GraphView(
                 lineSeries {
                     ySeries.forEach { y ->
                         series(
+                            x = xLabels.map { label ->
+                                label.value
+                            },
                             y.map { label ->
                                 label.value
                             },
@@ -216,7 +224,10 @@ fun GraphView(
             tickLength = 0.dp,
         ),
         bottomAxis = HorizontalAxis.rememberBottom(
-            guideline = null, tickLength = 0.dp, label = null, line = rememberAxisGuidelineComponent(),
+            guideline = null,
+            tickLength = 0.dp,
+            label = rememberTextComponent(color = Color(0xFF7B726E)),
+            line = rememberAxisGuidelineComponent(),
         ),
         marker = layeredMarker,
         markerVisibilityListener = markerListener,
@@ -234,10 +245,9 @@ fun GraphView(
             chart = chart,
             modelProducer = modelProducer,
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.4f),
+                .fillMaxSize(),
             animationSpec = tween(1000),
-            scrollState = rememberVicoScrollState(false),
+            scrollState = scrollState,
         )
     }
 }

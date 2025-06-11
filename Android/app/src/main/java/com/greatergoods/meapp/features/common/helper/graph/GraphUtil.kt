@@ -6,20 +6,29 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 
 object GraphUtil {
+    private val dateFormatter = DateTimeFormatter.ofPattern("MMM-dd-YYYY")
     fun List<ScaleEntry>.toWeightGraphPoints(): GraphLine {
-        return GraphLine(name = "Weight", points = this.map { entry ->
-            GraphPoint(
-                x = Label(
-                    value = entry.entry.entryTimestamp.toFloat(),
-                    label = entry.entry.entryTimestamp.toString(),
-                ),
-                y = Label(value = entry.scale.scaleEntry.weight, label = "${entry.scale.scaleEntry.weight} kg"),
-            )
-        }
+        return GraphLine(
+            name = "Weight",
+            points = this.map { entry ->
+                val dateStr = Instant.ofEpochMilli(entry.entry.entryTimestamp)
+                    .atZone(ZoneId.of("America/Los_Angeles"))
+                    .format(dateFormatter)
+                GraphPoint(
+                    x = Label(
+                        value = entry.entry.entryTimestamp,
+                        label = dateStr,
+                    ),
+                    y = Label(value = entry.scale.scaleEntry.weight, label = "${entry.scale.scaleEntry.weight} kg"),
+                )
+            },
         )
     }
 
@@ -31,24 +40,28 @@ object GraphUtil {
         val metricProp = metricProps.find { it.name == propertyName } as? KProperty1<BodyScaleEntryMetricEntity, *>
 
         return GraphLine(
-            name = propertyName, points = this.mapNotNull { scaleEntry ->
-            val value: Float? = when {
-                scaleProp != null -> (scaleProp.get(scaleEntry.scale.scaleEntry) as? Number)?.toFloat()
-                metricProp != null -> scaleEntry.scale.scaleEntryMetric?.let {
-                    (metricProp.get(it) as? Number)?.toFloat()
+            name = propertyName,
+            points = this.mapNotNull { scaleEntry ->
+                val value: Float? = when {
+                    scaleProp != null -> (scaleProp.get(scaleEntry.scale.scaleEntry) as? Number)?.toFloat()
+                    metricProp != null -> scaleEntry.scale.scaleEntryMetric?.let {
+                        (metricProp.get(it) as? Number)?.toFloat()
+                    }
+
+                    else -> null
                 }
 
-                else -> null
-            }
-
-            value?.let {
-                val xValue = scaleEntry.entry.entryTimestamp.toFloatOrNull() ?: return@mapNotNull null
-                GraphPoint(
-                    x = Label(value = xValue, label = scaleEntry.entry.entryTimestamp),
-                    y = Label(value = it, label = "$it"),
-                )
-            }
-        }
+                value?.let {
+                    val xValue = scaleEntry.entry.entryTimestamp
+                    val dateStr = Instant.ofEpochMilli(xValue)
+                        .atZone(ZoneId.of("America/Los_Angeles"))
+                        .format(dateFormatter)
+                    GraphPoint(
+                        x = Label(value = xValue, label = dateStr),
+                        y = Label(value = it, label = "$it"),
+                    )
+                }
+            },
         )
     }
 }

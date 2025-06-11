@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
- * Segmented control for graph period selection (YEAR, LABEL, MONTH, WEEK).
+ * Segmented control for graph period selection (TOTAL, YEAR, MONTH, WEEK).
  * Matches Figma UI.
  */
 @Composable
@@ -24,7 +24,7 @@ fun GraphSegmentControl(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val segments = listOf("YEAR", "LABEL", "MONTH", "WEEK")
+    val segments = listOf("TOTAL", "YEAR", "MONTH", "WEEK").reversed()
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.xs),
