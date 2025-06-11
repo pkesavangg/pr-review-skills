@@ -83,7 +83,7 @@ struct SignupScreen: View {
             )
             
             AppProgressView(progressValue: signupStore.progressValue)
-                .padding(.top)
+                .padding(.top, .spacingMD)
             
             SwiperView(
                 selectedIndex: $signupStore.currentStepIndex,
