@@ -17,34 +17,36 @@ struct DateOfBirthStepView: View {
     let maxDate = DateTimeTools.minAllowedBirthdayDate()
     
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(dateOfBirthStepLang.title)
-                .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
-                .padding(.top, .spacingXL)
-            
-            Text(dateOfBirthStepLang.subtitle)
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textHeading)
-                .padding(.top, .spacingXS)
-            
+        ScrollView(.vertical) {
             VStack(alignment: .leading) {
-                Text(dateOfBirthStepLang.birthdayLabel)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
+                Text(dateOfBirthStepLang.title)
+                    .fontOpenSans(.heading4)
+                    .foregroundColor(theme.textHeading)
+                    .padding(.top, .spacingXL)
                 
-                // TODO: Add a custom date picker with a minimum age limit of 18 years
-                DatePicker(
-                    "",
-                    selection: $signupStore.signupForm.birthday.value,
-                    in: ...maxDate,
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.wheel)
-                .labelsHidden()
+                Text(dateOfBirthStepLang.subtitle)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textHeading)
+                    .padding(.top, .spacingXS)
+                
+                VStack{
+                    Text(dateOfBirthStepLang.birthdayLabel)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                    
+                    // TODO: Add a custom date picker with a minimum age limit of 18 years
+                    DatePicker(
+                        "",
+                        selection: $signupStore.signupForm.birthday.value,
+                        in: ...maxDate,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, .spacingLG)
             }
-            .padding(.top, .spacingLG)
-            Spacer()
         }
     }
 }

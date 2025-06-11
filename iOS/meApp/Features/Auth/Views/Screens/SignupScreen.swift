@@ -21,7 +21,6 @@ struct SignupScreen: View {
             AnyView(
                 DateOfBirthStepView(signupStore: signupStore)
             ),
-            
             //TODO: These are for the testing purpose need to replace with the actual views
             AnyView(
                 SexStepView(selectedSex: $signupStore.signupForm.gender.value)
@@ -78,20 +77,22 @@ struct SignupScreen: View {
                 onLeadingButtonTap: nil,
                 onTrailingButtonTap: nil
             )
+            .padding(.horizontal, .spacingSM)
             
             AppProgressView(progressValue: signupStore.progressValue)
                 .padding(.top, .spacingMD)
+                .padding(.horizontal, .spacingSM)
             
             SwiperView(
                 selectedIndex: $signupStore.currentStepIndex,
                 views: stepViews
             )
             .padding(.top, .spacingLG)
-            
             // Footer Buttons
             footerButtons
+                .padding(.horizontal, .spacingSM)
+            
         }
-        .padding(.horizontal, .spacingSM)
         .background(theme.backgroundSecondary)
     }
     
