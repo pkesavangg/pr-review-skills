@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.common.components.input
+package com.greatergoods.meapp.features.common.helper.form
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
@@ -6,6 +6,7 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.text.iterator
 
 class DecimalInputVisualTransformation(
     internal val decimalDigits: Int // Changed from private to internal
@@ -16,7 +17,10 @@ class DecimalInputVisualTransformation(
         val digitsOnly = originalText.filter { it.isDigit() }
 
         if (digitsOnly.isEmpty()) {
-            return TransformedText(AnnotatedString(""), OffsetMapping.Identity)
+            return TransformedText(
+                androidx.compose.ui.text.AnnotatedString(""),
+                OffsetMapping.Companion.Identity
+            )
         }
 
         val totalLength = digitsOnly.length
@@ -119,6 +123,9 @@ class DecimalInputVisualTransformation(
             }
         }
 
-        return TransformedText(AnnotatedString(finalTextToShow), offsetMapping)
+        return TransformedText(
+            androidx.compose.ui.text.AnnotatedString(finalTextToShow),
+            offsetMapping
+        )
     }
 }

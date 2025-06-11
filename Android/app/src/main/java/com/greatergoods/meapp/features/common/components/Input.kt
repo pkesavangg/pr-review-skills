@@ -61,10 +61,6 @@ enum class InputType {
     DROP_DOWN,
 }
 
-private object InputFieldTokens {
-    val borderRadius = 4.dp
-}
-
 /**
  * A flexible, theme-aware input composable supporting validation, error/supporting text, and icons.
  *
@@ -226,22 +222,21 @@ fun <T> InputField(
                     onValueChange?.invoke(newValue)
                 }
             },
-            modifier =
-                Modifier
-                    .background(backgroundColor, RoundedCornerShape(InputFieldTokens.borderRadius))
-                    .border(0.dp, Color.Transparent, RoundedCornerShape(InputFieldTokens.borderRadius))
-                    .height(56.dp)
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { focusState ->
-                        if (isFocused && !focusState.isFocused) {
-                            // Lost focus (blur)
-                            focusManager.clearFocus()
-                            focusRequester.freeFocus()
-                            formControl?.onBlur()
-                        }
-                        isFocused = focusState.isFocused
-                    },
+            modifier = Modifier
+                .background(backgroundColor, RoundedCornerShape(8.dp))
+                .border(0.dp, Color.Transparent, RoundedCornerShape(8.dp))
+                .height(56.dp)
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { focusState ->
+                    if (isFocused && !focusState.isFocused) {
+                        // Lost focus (blur)
+                        focusManager.clearFocus()
+                        focusRequester.freeFocus()
+                        formControl?.onBlur()
+                    }
+                    isFocused = focusState.isFocused
+                },
             label = {
                 Text(
                     text = label,
