@@ -51,11 +51,10 @@ struct NameStepView: View {
                     ) {
                         focusedField = nil
                         if signupStore.signupForm.firstName.isValid && signupStore.signupForm.lastName.isValid {
-                            signupStore.moveToPreviousStep()
+                            signupStore.moveToNextStep()
                         }
                     }
                 }
-
             }
             .dismissKeyboardOnDrag()
         }
