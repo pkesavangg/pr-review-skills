@@ -14,6 +14,7 @@ import androidx.compose.ui.text.TextStyle
  * @property heading3 Third largest heading style, used for sub-section headers.
  * @property heading4 Fourth heading style, used for smaller headers.
  * @property heading5 Fifth heading style, used for minor headers.
+ * @property heading6 Sixth heading style, used for minor headers.
  * @property subHeading1 Primary subheading style, used for supporting text under headings.
  * @property subHeading2 Secondary subheading style, used for less prominent supporting text.
  * @property body1 Main body text style, used for primary content.
@@ -31,6 +32,7 @@ data class Typography(
     val heading3: TextStyle, // Third largest heading
     val heading4: TextStyle, // Fourth heading
     val heading5: TextStyle, // Fifth heading
+    val heading6: TextStyle, // Sixth heading
     val subHeading1: TextStyle, // Primary subheading
     val subHeading2: TextStyle, // Secondary subheading
     val body1: TextStyle, // Main body text
