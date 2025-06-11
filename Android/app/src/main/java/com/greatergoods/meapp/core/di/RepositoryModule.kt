@@ -59,6 +59,8 @@ object RepositoryModule {
     ): IAccountRepository =
         AccountRepository(accountDao, userDataStore, tokenManager, authAPI, userAPI, accountEntityMapper)
 
+    @Provides
+    @Singleton
     fun provideIntegrationRepository(
         integrationAPI: IIntegrationAPI,
         accountDao: AccountDao,

@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.ui.shared.components
+package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.Alignment
-import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 
 //here link Primary is text button and link Secondary is text button

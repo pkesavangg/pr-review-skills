@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.ui.shared.components.AppButton
-import com.greatergoods.meapp.ui.shared.components.ButtonSize
-import com.greatergoods.meapp.ui.shared.components.ButtonType
+import com.greatergoods.meapp.features.common.components.AppButton
+import com.greatergoods.meapp.features.common.components.ButtonSize
+import com.greatergoods.meapp.features.common.components.ButtonType
 
 @Composable
 fun ButtonVariants(){
