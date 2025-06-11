@@ -21,7 +21,7 @@ struct SignupScreen: View {
             AnyView(
                 DateOfBirthStepView(signupStore: signupStore)
             ),
-            //TODO: These are for the testing purpose need to replace with the actual views
+            //            //TODO: These are for the testing purpose need to replace with the actual views
             AnyView(
                 SexStepView(selectedSex: $signupStore.signupForm.gender.value)
                     .onChange(of: signupStore.signupForm.gender.value) {
@@ -101,6 +101,7 @@ struct SignupScreen: View {
         HStack {
             Button(commonLang.back) {
                 withAnimation {
+                    hideKeyboard()
                     signupStore.moveToPreviousStep()
                 }
             }
@@ -111,6 +112,7 @@ struct SignupScreen: View {
                 HStack {
                     Button(commonLang.skip) {
                         withAnimation {
+                            hideKeyboard()
                             signupStore.moveToNextStep()
                         }
                     }
@@ -125,6 +127,7 @@ struct SignupScreen: View {
             
             Button(signupStore.currentStep == SignupStep.password ? commonLang.done : commonLang.next) {
                 withAnimation {
+                    hideKeyboard()
                     signupStore.moveToNextStep()
                 }
             }
