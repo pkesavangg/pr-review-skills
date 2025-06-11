@@ -7,6 +7,9 @@ import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
+import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
+import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -46,7 +49,12 @@ interface IAuthAPI {
 
     @POST(ACCOUNT)
     suspend fun createAccount(
-        @Body request: Map<String, String>
+        @Body request: CreateAccountRequest
+    ): Map<String, Any>
+
+    @GET(ACCOUNT)
+    suspend fun getAccount(
+        @Body request: Token
     ): Map<String, Any>
 
     @PUT(ACCOUNT + PASSWORD_UPDATE)

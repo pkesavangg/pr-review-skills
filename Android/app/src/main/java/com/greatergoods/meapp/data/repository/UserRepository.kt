@@ -39,8 +39,8 @@ class UserRepository @Inject constructor(
     }
 
     /** Updates the refresh and access tokens for a specific account. */
-    override suspend fun updateAccountTokens(accountId: String, refreshToken: String, accessToken: String) =
-        userDataStore.updateAccountTokens(accountId, refreshToken, accessToken)
+    override suspend fun updateAccountTokens(accountId: String, refreshToken: String, accessToken: String, expiresAt: String) =
+        userDataStore.updateAccountTokens(accountId, refreshToken, accessToken, expiresAt)
 
     /** Updates the sync timestamp for a specific account. */
     override suspend fun updateSyncTimestamp(accountId: String, syncTimestamp: String) =

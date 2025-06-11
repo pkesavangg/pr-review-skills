@@ -16,10 +16,11 @@ struct BaseInputField: View {
     var keyboardType: UIKeyboardType
     var submitLabel: SubmitLabel
     var isDisabled: Bool
+    var fieldType: FocusField
     
     // Bindings
     @Binding var value: String
-    @FocusState.Binding var isFocused: Bool
+    @Binding var focusedField: FocusField?
     
     // Callbacks
     var onCommit: (() -> Void)?
@@ -27,6 +28,11 @@ struct BaseInputField: View {
     
     // Internal state for password visibility
     @State private var isSecureTextVisible: Bool = false
+    @FocusState private var isFocused: Bool
+    
+    // Constants
+    let focusedTopPadding: CGFloat = 15
+    let trailingPadding: CGFloat = 40
     
     var body: some View {
         Group {
@@ -41,13 +47,20 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
-        .padding(.top, (isFocused || !value.isEmpty) ? 8 : 0)
+        .padding(.top, (isFocused || !value.isEmpty) ? focusedTopPadding : 0)
+        .padding(.trailing, trailingPadding)
         .foregroundColor(theme.textBody.opacity(isDisabled ? 0.38 : 1))
         .focused($isFocused)
         .autocorrectionDisabled(true)
         .autocapitalization(inputType == .email || inputType == .password ? .none : .sentences)
         .onChange(of: isFocused) {
             onEditingChanged?(isFocused)
+            if isFocused {
+                focusedField = fieldType
+            }
+        }
+        .onChange(of: focusedField) {
+            isFocused = focusedField == fieldType
         }
         .onSubmit {
             onCommit?()
@@ -74,8 +87,9 @@ struct BaseInputField: View {
 struct BaseInputTestView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    @State var text: String = "dfsdfsdfs"
-    @FocusState private var isFocused: Bool
+    @State var text: String = ""
+    @State var focusedField: FocusField?
+    
     var body: some View {
         VStack {
             BaseInputField(
@@ -83,8 +97,9 @@ struct BaseInputTestView: View {
                 keyboardType: .default,
                 submitLabel: .done,
                 isDisabled: true,
+                fieldType: .password,
                 value: $text,
-                isFocused: $isFocused,
+                focusedField: $focusedField,
                 onCommit: {
                     print("Submitted: \(text)")
                 },

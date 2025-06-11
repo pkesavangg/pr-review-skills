@@ -11,24 +11,25 @@ import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.DashboardSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.device.BodyScaleEntity
-import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.device.DeviceEntity
 import com.greatergoods.meapp.data.storage.db.entity.device.DeviceMetaDataEntity
-import com.greatergoods.meapp.data.storage.db.entity.device.BpmEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.ActiveEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
+import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
-import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
-import android.content.Context
 import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.DashboardSettingsEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSettingsEntity
+import android.content.Context
 
 /**
  * Main database class for the MeApp application.
@@ -52,8 +53,9 @@ import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSetting
         WeightlessSettingsEntity::class,
         NotificationSettingsEntity::class,
         DashboardSettingsEntity::class,
-        IntegrationsSettingsEntity::class
+        IntegrationsSettingsEntity::class,
     ],
+    views = [ActiveEntryEntity::class],
     version = 1,
     exportSchema = false,
 )

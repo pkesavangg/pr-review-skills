@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.domain.services
 
-import com.greatergoods.meapp.data.storage.db.entity.account.Account
+import com.greatergoods.meapp.domain.model.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 
