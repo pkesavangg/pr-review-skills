@@ -2,6 +2,8 @@ package com.greatergoods.meapp.features.auth
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
@@ -35,30 +37,50 @@ data class AppUiState(
  * @constructor Injects the AppRepository dependency.
  */
 @HiltViewModel
-class AppViewModel @Inject constructor(
-    private val appRepository: IAppRepository,
-    private val userRepository: IUserRepository,
-) : BaseViewModel() {
+class AppViewModel
+    @Inject
+    constructor(
+        private val appRepository: IAppRepository,
+        private val userRepository: IUserRepository,
+        private val logManager: LogManager,
+    ) : BaseViewModel() {
+        private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
+        val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
-    private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
-    val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
+        private var currentAccount: UserAccount? = null
 
-    private var currentAccount: UserAccount? = null
+        init {
+            viewModelScope.launch {
+                delay(3000)
+                navigationService.replaceStack(
+                    listOf(
+                        AppRoute.Auth.LoginScreen,
+                    ),
+                )
+            }
 
-    init {
-        initLoadingData("1")
-    }
+            viewModelScope.launch {
+                try {
+                    logManager.cleanupOldLogs(5)
+                    AppLog.i("MainActivity", "Cleaning up old logs")
+                } catch (e: Exception) {
+                    AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
+                }
+            }
+        }
 
-    private fun initLogic() {
-        viewModelScope.launch {
-            userRepository.currentAccountFlow.collectLatest { account ->
-                if (currentAccount != account) {
-                    if (account != null) {
-                        currentAccount = account
-                        val currentAccountId = userRepository.accountsFlow.firstOrNull()
-                            ?.entries
-                            ?.find { it.value == account }
-                            ?.key
+        private fun initLogic() {
+            viewModelScope.launch {
+                userRepository.currentAccountFlow.collectLatest { account ->
+                    if (currentAccount != account) {
+                        if (account != null) {
+                            currentAccount = account
+                            val currentAccountId =
+                                userRepository.accountsFlow
+                                    .firstOrNull()
+                                    ?.entries
+                                    ?.find { it.value == account }
+                                    ?.key
 
                         initLoadingData(currentAccountId)
                     } else {
@@ -67,21 +89,16 @@ class AppViewModel @Inject constructor(
                         } else {
                             AppRoute.Auth.LoginScreen(hasAccounts = false)
                         }
-                        _uiState.value = _uiState.value.copy(
-                            themeMode = ThemeMode.SYSTEM,
-                        )
-                        navigationService.replaceStack(listOf(destinationState))
                     }
                 }
             }
         }
-    }
 
-    private fun initLoadingData(isInitLoad: String?) {
-        viewModelScope.launch {
-            try {
-                // Simulate data loading
-                delay(3000)
+        private fun initLoadingData(isInitLoad: String?) {
+            viewModelScope.launch {
+                try {
+                    // Simulate data loading
+                    delay(3000)
 
                 // TODO: Add your actual data loading logic here
                 // For example:
@@ -94,4 +111,3 @@ class AppViewModel @Inject constructor(
             }
         }
     }
-}
