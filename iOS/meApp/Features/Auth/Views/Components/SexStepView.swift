@@ -11,7 +11,7 @@ import SwiftUI
 struct SexStepView: View {
     @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
-    var sexStepLang = SignupStrings.SexStep.self
+    let sexStepLang = SignupStrings.SexStep.self
 
     var body: some View {
         ScrollView(.vertical) {
