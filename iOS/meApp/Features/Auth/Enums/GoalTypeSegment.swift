@@ -11,7 +11,7 @@ enum GoalTypeSegment: String, CaseIterable, Identifiable {
         case .maintain:
             return GoalType.maintain.rawValue
         case .loseGain:
-            return GoalType.lose.rawValue // Default to lose when in lose/gain mode
+            return "losegain"
         }
     }
     
@@ -23,4 +23,4 @@ enum GoalTypeSegment: String, CaseIterable, Identifiable {
             return .loseGain
         }
     }
-} 
+}
