@@ -18,18 +18,18 @@ struct HeightStepView: View {
     var heightStepLang = SignupStrings.HeightStep.self
     
     var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading) {
-                Text(heightStepLang.title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXL)
-                
-                Text(heightStepLang.subtitle)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXS)
-                
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(heightStepLang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                    
+                    Text(heightStepLang.subtitle)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textHeading)
+                }
+
                 // Height Selection Chip
                 ChipView(
                     text: signupStore.getFormattedHeight(),

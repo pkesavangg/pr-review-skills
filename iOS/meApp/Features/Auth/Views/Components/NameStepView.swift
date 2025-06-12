@@ -17,19 +17,19 @@ struct NameStepView: View {
     var labels = InputFieldLabels.self
     
     var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading) {
-                Text(nameStepLang.title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXL)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(nameStepLang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                    
+                    Text(nameStepLang.subtitle)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textHeading)
+                }
                 
-                Text(nameStepLang.subtitle)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXS)
-                
-                VStack(spacing: .spacingMD) {
+                VStack(spacing: 4) {
                     // First Name Input Field
                     AppInputField(
                         config: TextInputConfig(
@@ -62,6 +62,7 @@ struct NameStepView: View {
                     }
                 }
                 .padding(.top, .spacingLG)
+                Spacer()
             }
             .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }

@@ -17,7 +17,7 @@ final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     var alertLang = AlertStrings.self
     
-    @Published var currentStepIndex: Int = SignupStep.name.index {
+    @Published var currentStepIndex: Int = SignupStep.goal.index {
         didSet {
             currentStep = steps[currentStepIndex]
             updateNextButtonState()
@@ -131,7 +131,14 @@ final class SignupStore: ObservableObject {
         case .height:
             isNextEnabled = signupForm.height.isValid
         case .goal:
-            isNextEnabled = signupForm.goalType.isValid
+            if signupForm.goalType.value == GoalType.maintain.rawValue {
+                isNextEnabled = signupForm.currentWeight.isValid
+            } else {
+//                isNextEnabled = signupForm.currentWeight.isValid && 
+//                    signupForm.goalWeight.isValid && 
+//                    !formErrors[.weightEqual]
+                isNextEnabled = true
+            }
         case .email:
             isNextEnabled = signupForm.email.isValid
         case .password:

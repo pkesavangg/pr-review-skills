@@ -31,7 +31,5 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 }
             }
         }
-        .padding(.vertical, 18)
-        .padding(.horizontal, 15)
     }
 }

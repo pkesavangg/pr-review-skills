@@ -17,8 +17,9 @@ class SignupForm: ObservableForm {
         return FormControl(defaultDate, validators: [.futureDate])
     }()
     var gender = FormControl("", validators: [.required])
-    var goalType = FormControl("", validators: [.required, .noWhiteSpace])
+    var goalType = FormControl(GoalType.lose.rawValue, validators: [.required, .noWhiteSpace])
     var currentWeight = FormControl("", validators: [.required])
+    var goalWeight = FormControl("", validators: [.required])
     var useMetric = FormControl(false)
     var height = FormControl(Double(700))
     var email = FormControl("", validators: [.required, .email, .maxLength(200)])
@@ -58,6 +59,19 @@ class SignupForm: ObservableForm {
                 )
             }
         }
+        
+        // Check if goal weight equals current weight when in lose/gain mode
+//        if goalType.value != GoalType.maintain.rawValue {
+//            if !currentWeight.errors[.required] && !goalWeight.errors[.required] {
+//                if currentWeight.value == goalWeight.value {
+//                    errors.update(
+//                        for: Validator<Any>(type: .weightEqual) { _ in false },
+//                        value: false
+//                    )
+//                }
+//            }
+//        }
+        
         updateFormErrors(errors)
     }
     
@@ -85,6 +99,9 @@ class SignupForm: ObservableForm {
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch
         }
+//        if (control === currentWeight || control === goalWeight) && formErrors[.weightEqual] {
+//            return SignupStrings.GoalStep.weightEqualError
+//        }
 
         return nil
     }
