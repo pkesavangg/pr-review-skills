@@ -17,7 +17,7 @@ class SignupForm: ObservableForm {
         return FormControl(defaultDate, validators: [.futureDate])
     }()
     var gender = FormControl("", validators: [.required])
-    var goalType = FormControl("losegain", validators: [.required, .noWhiteSpace])
+    var goalType = FormControl(GoalTypeSegment.losegainValue, validators: [.required])
     var currentWeight = FormControl("", validators: [.required])
     var goalWeight = FormControl("", validators: [.required])
     var useMetric = FormControl(false)
@@ -104,7 +104,7 @@ class SignupForm: ObservableForm {
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch
         }
-        if (goalType.value == "losegain" && control === goalWeight) && formErrors[.weightEqual] {
+        if (goalType.value == GoalTypeSegment.losegainValue && control === goalWeight) && formErrors[.weightEqual] {
             return FormErrorMessages.valueShouldBeEqual
         }
 
@@ -113,7 +113,7 @@ class SignupForm: ObservableForm {
     
     /// Resets the goal-related form fields to their default state
     func resetGoal() {
-        goalType.value = "losegain"
+        goalType.value = GoalTypeSegment.losegainValue
         currentWeight.value = ""
         goalWeight.value = ""
         currentWeight.markAsPristine()

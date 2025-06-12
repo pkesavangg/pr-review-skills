@@ -6,12 +6,15 @@ enum GoalTypeSegment: String, CaseIterable, Identifiable {
     
     var id: String { rawValue }
     
+    // Use a constant for losegain
+    static let losegainValue = "losegain"
+    
     var goalTypeValue: String {
         switch self {
         case .maintain:
             return GoalType.maintain.rawValue
         case .loseGain:
-            return "losegain"
+            return GoalTypeSegment.losegainValue
         }
     }
     
