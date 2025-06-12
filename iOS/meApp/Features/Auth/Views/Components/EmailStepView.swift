@@ -32,7 +32,7 @@ struct EmailStepView: View {
                 }
                 
                 VStack(spacing: 4) {
-                    // First Name Input Field
+                    // Email Input Field
                     AppInputField(
                         config: TextInputConfig(
                             label: labels.email,
