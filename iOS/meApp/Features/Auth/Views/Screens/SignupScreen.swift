@@ -106,7 +106,7 @@ struct SignupScreen: View {
                     Button(commonLang.skip) {
                         withAnimation {
                             hideKeyboard()
-                            signupStore.moveToNextStep()
+                            signupStore.handleSkip()
                         }
                     }
                     .foregroundColor(.white)
@@ -114,7 +114,6 @@ struct SignupScreen: View {
                     .padding(.vertical, 12)
                     .background(signupStore.isNextEnabled ? theme.actionPrimary : Color.gray)
                     .cornerRadius(8)
-                    .disabled(!signupStore.isNextEnabled)
                 }
             }
             

@@ -23,6 +23,7 @@ struct MetricInputField: View {
     
     // Internal state and formatter
     @State private var displayValue: String = ""
+    @State private var isInitialState: Bool = true
     @StateObject private var formatter: MetricFieldFormatter
     
     init(
@@ -66,12 +67,13 @@ struct MetricInputField: View {
     
     private func initializeValue() {
         if value.isEmpty {
-            let initial = formatter.initialValue
-            displayValue = initial
-            value = initial
+            // Initial state should be empty
+            displayValue = ""
+            isInitialState = true
         } else {
             let formatted = formatter.formatInput(value)
             displayValue = formatted
+            isInitialState = false
             if formatted != value {
                 value = formatted
             }
@@ -79,6 +81,19 @@ struct MetricInputField: View {
     }
     
     private func handleValueChange(_ newValue: String) {
+        // If user has entered text for the first time, we're no longer in initial state
+        if !newValue.isEmpty && isInitialState {
+            isInitialState = false
+        }
+        
+        // Special handling for when user clears the field after entering some value
+        if newValue.isEmpty && !isInitialState {
+            let defaultValue = formatter.initialValue
+            displayValue = defaultValue
+            value = defaultValue
+            return
+        }
+        
         let formatted = formatter.formatInput(newValue)
         
         // Check if the new value is valid (doesn't exceed max)

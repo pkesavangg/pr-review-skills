@@ -17,7 +17,7 @@ final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     var alertLang = AlertStrings.self
     
-    @Published var currentStepIndex: Int = SignupStep.goal.index {
+    @Published var currentStepIndex: Int = SignupStep.name.index {
         didSet {
             currentStep = steps[currentStepIndex]
             updateNextButtonState()
@@ -110,6 +110,11 @@ final class SignupStore: ObservableObject {
     
     // MARK: - Navigation
     
+    func handleSkip() {
+        signupForm.resetGoal()
+        moveToNextStep()
+    }
+    
     func moveToNextStep() {
         guard currentStepIndex < steps.count - 1 else { return }
         currentStepIndex += 1
@@ -134,10 +139,8 @@ final class SignupStore: ObservableObject {
             if signupForm.goalType.value == GoalType.maintain.rawValue {
                 isNextEnabled = signupForm.currentWeight.isValid
             } else {
-//                isNextEnabled = signupForm.currentWeight.isValid && 
-//                    signupForm.goalWeight.isValid && 
-//                    !formErrors[.weightEqual]
-                isNextEnabled = true
+                isNextEnabled = signupForm.currentWeight.isValid && 
+                    signupForm.goalWeight.isValid
             }
         case .email:
             isNextEnabled = signupForm.email.isValid

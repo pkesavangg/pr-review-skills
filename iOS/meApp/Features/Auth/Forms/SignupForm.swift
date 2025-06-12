@@ -64,7 +64,11 @@ class SignupForm: ObservableForm {
         // Check if goal weight equals current weight when in lose/gain mode
         if goalType.value != GoalType.maintain.rawValue {
             if !currentWeight.errors[.required] && !goalWeight.errors[.required] {
-                if currentWeight.value == goalWeight.value {
+                // Convert to Double to compare numerically
+                let current = Double(currentWeight.value) ?? 0.0
+                let goal = Double(goalWeight.value) ?? 0.0
+
+                if current > 0 && goal > 0 && current == goal {
                     errors.update(
                         for: Validator<Any>(type: .weightEqual) { _ in false },
                         value: false
@@ -106,4 +110,15 @@ class SignupForm: ObservableForm {
 
         return nil
     }
+    
+    /// Resets the goal-related form fields to their default state
+    func resetGoal() {
+        goalType.value = "losegain"
+        currentWeight.value = ""
+        goalWeight.value = ""
+        currentWeight.markAsPristine()
+        goalWeight.markAsPristine()
+    }
 }
+
+

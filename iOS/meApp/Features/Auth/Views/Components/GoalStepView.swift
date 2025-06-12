@@ -74,13 +74,10 @@ struct GoalStepView: View {
                     .padding(.top, .spacingMD)
                 }
                 .padding(.top, .spacingLG)
-                
-
+                .onChange(of: signupStore.signupForm.goalType.value) { oldValue, newValue in
+                    selectedSegment = GoalTypeSegment.fromGoalType(signupStore.signupForm.goalType.value)
+                }
             }
-        }
-        .onAppear {
-            // Set initial segment based on form data
-            selectedSegment = GoalTypeSegment.fromGoalType(signupStore.signupForm.goalType.value)
         }
     }
 }
