@@ -18,16 +18,18 @@ struct NameStepView: View {
     
     var body: some View {
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: .spacingMD) {
+            VStack(alignment: .leading) {
                 Text(nameStepLang.title)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
+                    .padding(.top, .spacingXL)
                 
                 Text(nameStepLang.subtitle)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textHeading)
+                    .padding(.top, .spacingXS)
                 
-                VStack(spacing: 24) {
+                VStack(spacing: .spacingMD) {
                     // First Name Input Field
                     AppInputField(
                         config: TextInputConfig(
@@ -59,6 +61,7 @@ struct NameStepView: View {
                         }
                     }
                 }
+                .padding(.top, .spacingLG)
             }
             .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }

@@ -18,21 +18,15 @@ struct SignupScreen: View {
                 NameStepView(signupStore: signupStore)
             ),
             
-            //TODO: These are for the testing purpose need to replace with the actual views
             AnyView(
-                DateOfBirthStepView(date: $signupStore.signupForm.birthday.value)
-                    .onChange(of: signupStore.signupForm.birthday.value) {
-                        signupStore.updateNextButtonState()
-                    }
+                DateOfBirthStepView(signupStore: signupStore)
+            ),
+            AnyView(
+                SexStepView(signupStore: signupStore)
             ),
             
-            AnyView(
-                SexStepView(selectedSex: $signupStore.signupForm.gender.value)
-                    .onChange(of: signupStore.signupForm.gender.value) {
-                        signupStore.updateNextButtonState()
-                    }
-            ),
-            
+            // TODO: These are for the testing purpose need to replace with the actual views
+
             AnyView(
                 HeightStepView()
                     .onChange(of: signupStore.signupForm.height.value) {
@@ -70,31 +64,25 @@ struct SignupScreen: View {
                             .foregroundColor(theme.statusIconPrimary)
                     }
                 ),
-                trailingButtonView: AnyView(
-                    Button(action: {
-                        signupStore.showHelpModal()
-                    }) {
-                        AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 22, height: 22))
-                            .foregroundColor(theme.statusIconPrimary)
-                    }
-                ),
                 onLeadingButtonTap: nil,
                 onTrailingButtonTap: nil
             )
+            .padding(.horizontal, .spacingSM)
             
             AppProgressView(progressValue: signupStore.progressValue)
                 .padding(.top, .spacingMD)
+                .padding(.horizontal, .spacingSM)
             
             SwiperView(
                 selectedIndex: $signupStore.currentStepIndex,
                 views: stepViews
             )
             .padding(.top, .spacingLG)
-            
             // Footer Buttons
             footerButtons
+                .padding(.horizontal, .spacingSM)
+            
         }
-        .padding(.horizontal, .spacingSM)
         .background(theme.backgroundSecondary)
     }
     
@@ -103,6 +91,7 @@ struct SignupScreen: View {
         HStack {
             Button(commonLang.back) {
                 withAnimation {
+                    hideKeyboard()
                     signupStore.moveToPreviousStep()
                 }
             }
@@ -113,6 +102,7 @@ struct SignupScreen: View {
                 HStack {
                     Button(commonLang.skip) {
                         withAnimation {
+                            hideKeyboard()
                             signupStore.moveToNextStep()
                         }
                     }
@@ -127,6 +117,7 @@ struct SignupScreen: View {
             
             Button(signupStore.currentStep == SignupStep.password ? commonLang.done : commonLang.next) {
                 withAnimation {
+                    hideKeyboard()
                     signupStore.moveToNextStep()
                 }
             }
@@ -150,7 +141,7 @@ struct PageHeaderView: View {
     let onLeadingButtonTap: (() -> Void)?
     let onTrailingButtonTap: (() -> Void)?
     let title: String? = nil
-
+    
     var body: some View {
         HStack {
             leadingButtonView
