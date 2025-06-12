@@ -29,7 +29,7 @@ struct FormErrorMessages {
     static let noWhiteSpace = "must not be left blank"
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "passwords do not match"
-    static let valueShouldBeEqual = "value should be equal to current weight"
+    static let valueShouldBeEqual = "value should not be equal to current weight"
 }
 
 /// Constants for input field labels used in the app
