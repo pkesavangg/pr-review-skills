@@ -59,6 +59,9 @@ struct ColorTokens {
             actionSecondaryDisabled: neutral400,
             actionTertiary: neutral600,
             actionTertiaryDisabled: neutral400,
+            actionInverse: neutral100,
+            actionInverseDisabled: neutral300,
+            actionInverseSecondary: neutral200,
             
             // Brand
             brandMeAppPrimary: teal100,
