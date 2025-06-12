@@ -16,14 +16,15 @@ import com.greatergoods.meapp.R
 import com.greatergoods.meapp.theme.model.Typography
 
 // Define OpenSans font family using all relevant weights
-val OpenSansFontFamily = FontFamily(
-    Font(R.font.open_sans_light, FontWeight.W300),
-    Font(R.font.open_sans_regular, FontWeight.W400),
-    Font(R.font.open_sans_medium, FontWeight.W500),
-    Font(R.font.open_sans_semi_bold, FontWeight.W600),
-    Font(R.font.open_sans_bold, FontWeight.W700),
-    Font(R.font.open_sans_extra_bold, FontWeight.W800),
-)
+val OpenSansFontFamily =
+    FontFamily(
+        Font(R.font.open_sans_light, FontWeight.W300),
+        Font(R.font.open_sans_regular, FontWeight.W400),
+        Font(R.font.open_sans_medium, FontWeight.W500),
+        Font(R.font.open_sans_semi_bold, FontWeight.W600),
+        Font(R.font.open_sans_bold, FontWeight.W700),
+        Font(R.font.open_sans_extra_bold, FontWeight.W800),
+    )
 
 /**
  * App-wide typography definitions, mapping semantic roles to TextStyle values.
@@ -134,7 +135,7 @@ val AppTypography =
         button1 =
             TextStyle(
                 fontFamily = OpenSansFontFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
                 letterSpacing = 0.sp,
@@ -142,7 +143,7 @@ val AppTypography =
         button2 =
             TextStyle(
                 fontFamily = OpenSansFontFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
                 letterSpacing = 0.sp,

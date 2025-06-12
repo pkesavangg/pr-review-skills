@@ -62,7 +62,7 @@
         </activity-alias>
 
         <activity
-            android:name=".utils.webview.InAppWebViewActivity"
+            android:name=".core.shared.utilities.webview.InAppWebViewActivity"
             android:exported="false"
             android:theme="@style/Theme.MeApp" />
 

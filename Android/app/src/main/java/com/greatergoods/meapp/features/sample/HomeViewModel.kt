@@ -26,64 +26,65 @@ import javax.inject.Inject
  * @property userRepository The repository for user account operations.
  */
 @HiltViewModel
-class HomeViewModel @Inject constructor(
-    private val appRepository: IAppRepository,
-    private val userRepository: IUserRepository,
-    private val navigationService: IAppEventService,
-    private val dialogQueueService: DialogQueueService
-) : ViewModel(),
-    INavigationHandler by NavigationViewmodel(navigationService),
-    IDialogQueueHandler by DialogQueueViewModel(dialogQueueService) {
+class HomeViewModel
+    @Inject
+    constructor(
+        private val appRepository: IAppRepository,
+        private val userRepository: IUserRepository,
+        private val navigationService: IAppEventService,
+        private val dialogQueueService: DialogQueueService,
+    ) : ViewModel(),
+        INavigationHandler by NavigationViewmodel(navigationService),
+        IDialogQueueHandler by DialogQueueViewModel(dialogQueueService) {
+        private val _currentAccount = MutableStateFlow<UserAccount?>(null)
 
-    private val _currentAccount = MutableStateFlow<UserAccount?>(null)
+        /**
+         * The currently active account.
+         */
+        val currentAccount: StateFlow<UserAccount?> = _currentAccount.asStateFlow()
 
-    /**
-     * The currently active account.
-     */
-    val currentAccount: StateFlow<UserAccount?> = _currentAccount.asStateFlow()
+        private val _allAccounts = MutableStateFlow<Map<String, UserAccount>>(emptyMap())
 
-    private val _allAccounts = MutableStateFlow<Map<String, UserAccount>>(emptyMap())
+        /**
+         * All user accounts keyed by account ID.
+         */
+        val allAccounts: StateFlow<Map<String, UserAccount>> = _allAccounts.asStateFlow()
 
-    /**
-     * All user accounts keyed by account ID.
-     */
-    val allAccounts: StateFlow<Map<String, UserAccount>> = _allAccounts.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            userRepository.currentAccountFlow.collectLatest { account ->
-                _currentAccount.value = account
+        init {
+            viewModelScope.launch {
+                userRepository.currentAccountFlow.collectLatest { account ->
+                    _currentAccount.value = account
+                }
+            }
+            viewModelScope.launch {
+                userRepository.accountsFlow.collectLatest { accounts ->
+                    _allAccounts.value = accounts
+                }
             }
         }
-        viewModelScope.launch {
-            userRepository.accountsFlow.collectLatest { accounts ->
-                _allAccounts.value = accounts
+
+        /**
+         * Logs out all accounts (clears all user data).
+         */
+        fun logout() {
+            viewModelScope.launch {
+                userRepository.logoutCurrentAccount()
+            }
+        }
+
+        /**
+         * Switches to the selected account by accountId.
+         * @param accountId The account ID to activate.
+         */
+        fun switchAccount(accountId: String) {
+            viewModelScope.launch {
+                userRepository.setActiveAccount(accountId)
+            }
+        }
+
+        fun createRandomAccount() {
+            viewModelScope.launch {
+                userRepository.createRandomAccount()
             }
         }
     }
-
-    /**
-     * Logs out all accounts (clears all user data).
-     */
-    fun logout() {
-        viewModelScope.launch {
-            userRepository.logoutCurrentAccount()
-        }
-    }
-
-    /**
-     * Switches to the selected account by accountId.
-     * @param accountId The account ID to activate.
-     */
-    fun switchAccount(accountId: String) {
-        viewModelScope.launch {
-            userRepository.setActiveAccount(accountId)
-        }
-    }
-    
-    fun createRandomAccount() {
-        viewModelScope.launch {
-            userRepository.createRandomAccount()
-        }
-    }
-}

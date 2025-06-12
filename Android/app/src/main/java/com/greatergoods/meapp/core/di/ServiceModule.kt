@@ -1,16 +1,19 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
+import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.services.IDeviceService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.notification.NotificationService
 import dagger.Module
@@ -46,7 +49,7 @@ object ServiceModule {
     fun provideNotificationManager(
         @ApplicationContext context: Context,
         notificationService: NotificationService,
-        appRepository: IAppRepository
+        appRepository: IAppRepository,
     ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
 
     /**
@@ -64,17 +67,14 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogQueueService(): DialogQueueService {
-        return DialogQueueService()
-    }
+    fun provideDialogQueueService(): DialogQueueService = DialogQueueService()
 
     @Provides
     @Singleton
     fun provideEntryService(
         entryRepository: com.greatergoods.meapp.domain.repository.IEntryRepository,
-        accountDao: com.greatergoods.meapp.data.storage.db.dao.AccountDao
-    )
-        : IEntryService = EntryService(entryRepository, accountDao)
+        accountDao: com.greatergoods.meapp.data.storage.db.dao.AccountDao,
+    ): IEntryService = EntryService(entryRepository, accountDao)
 
     @Provides
     @Singleton
@@ -83,4 +83,17 @@ object ServiceModule {
         deviceRepository: IDeviceInfoRepository,
         notificationService: NotificationService,
     ): IDeviceService = DeviceInfoService(context, deviceRepository, notificationService)
+
+    /**
+     * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
+     * @param integrationRepository The repository for integration operations.
+     * @param dialogQueueService The service for managing dialog queues.
+     * @return [IntegrationService] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideIntegrationService(
+        integrationRepository: IIntegrationRepository,
+        dialogQueueService: DialogQueueService,
+    ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
 }
