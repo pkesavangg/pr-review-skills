@@ -78,4 +78,17 @@ extension View {
             )
         )
     }
+    
+    /// Hides the keyboard by resigning the first responder status.
+    func hideKeyboard() {
+        let resign = #selector(UIResponder.resignFirstResponder)
+        UIApplication.shared.sendAction(resign, to: nil, from: nil, for: nil)
+    }
+    
+    /// Dismisses the keyboard when the view is dragged.
+    func dismissKeyboardOnDrag() -> some View {
+        return self.gesture(DragGesture().onChanged { _ in
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        })
+    }
 }

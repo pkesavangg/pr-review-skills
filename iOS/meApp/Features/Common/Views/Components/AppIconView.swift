@@ -6,18 +6,21 @@
 //
 import SwiftUI
 
+
+// MARK: - AppIconView
+/// AppIconView is a reusable SwiftUI view that displays an app icon.
 struct AppIconView: View {
     var icon: String
-    var size: CGFloat = 20  // Default size
+    var size: IconSize = IconSize()
 
     var body: some View {
         Image(icon)
             .renderingMode(.template)
             .resizable()
-            .frame(width: size, height: size)
+            .frame(width: size.width, height: size.height)
     }
 }
 
 #Preview(body: {
-    AppIconView(icon: AppAssets.helpCircle, size: 40)
+    AppIconView(icon: AppAssets.helpCircle)
 })

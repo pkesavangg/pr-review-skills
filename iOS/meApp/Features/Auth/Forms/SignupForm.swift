@@ -16,7 +16,7 @@ class SignupForm: ObservableForm {
         let defaultDate = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? Date()
         return FormControl(defaultDate, validators: [.futureDate])
     }()
-    var gender = FormControl(Sex.male.rawValue, validators: [.required])
+    var gender = FormControl("", validators: [.required])
     var goalType = FormControl("", validators: [.required, .noWhiteSpace])
     var currentWeight = FormControl("", validators: [.required])
     var height = FormControl(700.0)

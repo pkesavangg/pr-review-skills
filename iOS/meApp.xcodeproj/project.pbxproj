@@ -41,9 +41,6 @@
 			membershipExceptions = (
 				Core/Shared/Extensions/.gitkeep,
 				Features/Auth/Models/.gitkeep,
-				Features/Auth/Strings/.gitkeep,
-				Features/Auth/Views/Components/.gitkeep,
-				Features/Auth/Views/Screens/.gitkeep,
 				Features/Entry/Enums/.gitkeep,
 				Features/Entry/Models/.gitkeep,
 				Features/Entry/Stores/.gitkeep,
