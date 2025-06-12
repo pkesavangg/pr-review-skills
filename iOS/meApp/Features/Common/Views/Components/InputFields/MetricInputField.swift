@@ -94,11 +94,10 @@ struct MetricInputField: View {
             isInitialState = false
         }
         
-        // Special handling for when user clears the field after entering some value
-        if newValue.isEmpty && !isInitialState {
-            let defaultValue = formatter.initialValue
-            displayValue = defaultValue
-            value = defaultValue
+        // Allow empty values
+        if newValue.isEmpty {
+            displayValue = ""
+            value = ""
             return
         }
         
