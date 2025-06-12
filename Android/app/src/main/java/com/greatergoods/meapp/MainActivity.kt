@@ -4,8 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
-import com.greatergoods.meapp.core.logging.AppLog
-import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.AnimationUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
@@ -59,7 +57,6 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val destination = intent?.getStringExtra("destination")
             AppLog.i("MainActivity", "Destination: $destination")
-
         }
     }
 
