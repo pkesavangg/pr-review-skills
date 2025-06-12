@@ -49,8 +49,16 @@ struct MetricInputField: View {
             onCommit: onCommit,
             onEditingChanged: onEditingChanged
         )
-        .onReceive(Just(displayValue)) { newValue in
+        .onChange(of: displayValue) { oldValue, newValue in
             handleValueChange(newValue)
+        }
+        .onChange(of: value) { oldValue, newValue in
+            if oldValue != newValue {
+                let formatted = formatter.formatInput(newValue)
+                if displayValue != formatted {
+                    displayValue = formatted
+                }
+            }
         }
         .onAppear {
             initializeValue()
