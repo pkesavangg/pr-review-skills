@@ -13,8 +13,8 @@ struct NameStepView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var signupStore: SignupStore
     @State var focusedField: FocusField?
-    var nameStepLang = SignupStrings.NameStep.self
-    var labels = InputFieldLabels.self
+    let nameStepLang = SignupStrings.NameStep.self
+    let labels = InputFieldLabels.self
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {

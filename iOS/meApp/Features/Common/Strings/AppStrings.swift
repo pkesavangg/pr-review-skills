@@ -40,7 +40,8 @@ struct InputFieldLabels {
     static let password = "password"
     static let confirmPassword = "confirm password"
     static let currentWeight = "current weight"
-    static let targetWeight = "target weight"
+    static let goalWeight = "goal weight"
+    static let useMetric = "Use Metric"
 }
 
 /// Constants for Alert strings used in the app

@@ -33,10 +33,7 @@ struct SignupScreen: View {
             ),
             
             AnyView(
-                EmailStepView(email: $signupStore.signupForm.email.value)
-                    .onChange(of: signupStore.signupForm.email.value) {
-                        signupStore.updateNextButtonState()
-                    }
+                EmailStepView(signupStore: signupStore)
             ),
             AnyView(
                 PasswordStepView(password: $signupStore.signupForm.password.value)

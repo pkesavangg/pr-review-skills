@@ -34,8 +34,10 @@ struct SignupStrings {
     struct GoalStep {
         static let title = "Set a goal!"
         static let subtitle = "This can be a helpful feature to utilize on your journey. Goals can always be changed in the app settings."
-        static let currentWeightLabel = "current weight"
-        static let goalWeightLabel = "goal weight"
-        static let useMetricLabel = "Use Metric"
+    }
+    
+    struct EmailStep {
+        static let title = "What's your email?"
+        static let subtitle = "Be sure to use a valid email. You'll use this to login and it's where we'll send any reports."
     }
 }
