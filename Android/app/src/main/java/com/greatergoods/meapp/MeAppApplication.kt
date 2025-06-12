@@ -1,5 +1,7 @@
 package com.greatergoods.meapp
 
+import com.greatergoods.meapp.core.di.AppEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import android.app.Application
 

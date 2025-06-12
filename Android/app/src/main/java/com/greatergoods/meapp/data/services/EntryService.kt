@@ -1,7 +1,7 @@
 // domain/service/EntryService.kt
 package com.greatergoods.meapp.data.services
 
-import com.greatergoods.meapp.core.logging.AppLog
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
