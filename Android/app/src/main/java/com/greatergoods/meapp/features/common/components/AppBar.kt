@@ -1,192 +1,110 @@
+// AppBar.kt
+// Defines a customizable top app bar for Jetpack Compose with navigation and action icons.
+
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.LayoutDirection
-import com.greatergoods.meapp.R
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 
-
-object AppBarIconDefaults {
-    /**
-     * Default left icon composable using ic_close.
-     */
-    @Composable
-    fun Close() {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_close),
-            contentDescription = null,
-            tint = MeAppTheme.colorScheme.primaryAction,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-
-    /**
-     * Placeholder right icon composable. Replace with actual help/info icon asset when available.
-     */
-    @Composable
-    fun Help() {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_info), // Placeholder
-            contentDescription = null,
-            tint = MeAppTheme.colorScheme.primaryAction,
-            modifier = Modifier.size(24.dp)
-        )
-    }
-}
-
 /**
- * AppBar composable for top app bars with left/right icons and a title.
+ * AppBar composable for top app bars with optional navigation and action icons.
  *
- * @param title The title text to display (optional).
- * @param onLeftIconClick Callback for left icon click.
- * @param onRightIconClick Callback for right icon click (optional).
+ * @param title The title text to display.
  * @param modifier Modifier for styling.
- * @param rightIcon Composable for right icon (optional, shown if provided).
- * @param leftIcon Composable for left icon (required).
+ * @param navigationIcon Composable for left icon (optional).
+ * @param actions Composable for right icon(s) (optional).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppBar(
-    title: String?,
-    onLeftIconClick: (() -> Unit) ? = null,
-    onRightIconClick: (() -> Unit)? = null,
+    title: String? = null,
     modifier: Modifier = Modifier,
-    rightIcon: (@Composable () -> Unit)? = null,
-    leftIcon: (@Composable () -> Unit)? = null,
+    containerColor: Color = MeAppTheme.colorScheme.inverse,
+    navigationIcon: (@Composable (() -> Unit))? = null,
+    actions: (@Composable (() -> Unit))? = null,
 ) {
-    val spacing = MeAppTheme.spacing
     val colors = MeAppTheme.colorScheme
     val typography = MeAppTheme.typography
-    val layoutDirection = LocalLayoutDirection.current
 
-    Surface(
-        color = colors.primary,
-        tonalElevation = 2.dp,
-        shadowElevation = 2.dp,
-        modifier = modifier
-            .statusBarsPadding()
-            .fillMaxWidth()
-            .wrapContentHeight()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = spacing.sm, vertical = spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Left Icon
-            if (leftIcon != null && onLeftIconClick != null) {
-                IconButton(
-                    onClick = onLeftIconClick,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .padding(end = 15.dp)
-                        .semantics { contentDescription = "Close" }
-                ) {
-                    leftIcon()
-                }
-            }
-            // Title (centered, but start-aligned in RTL)
-            Box(
-                modifier = Modifier
-                    .weight(1f),
-                contentAlignment = if (layoutDirection == LayoutDirection.Ltr) Alignment.CenterStart else Alignment.CenterEnd
-            ) {
-                if (!title.isNullOrBlank()) {
-                    Text(
-                        text = title,
-                        style = typography.heading5,
-                        color = colors.heading,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.semantics { contentDescription = "AppBarTitle" }
-                    )
-                }
-            }
-            // Right Icon (optional)
-            if (rightIcon != null && onRightIconClick != null) {
-                IconButton(
-                    onClick = onRightIconClick,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .padding(start = 15.dp)
-                        .semantics { contentDescription = "Help" }
-                ) {
-                    rightIcon()
-                }
-            }
+    TopAppBar(
+        modifier = modifier,
+        colors =
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = containerColor,
+                titleContentColor = colors.heading,
+                navigationIconContentColor = colors.primaryAction,
+                actionIconContentColor = colors.primaryAction,
+            ),
+        title = {
+            Text(
+                text = title ?: "",
+                style = typography.heading5,
+                color = colors.heading,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { contentDescription = "AppBarTitle" },
+            )
+        },
+        navigationIcon = { navigationIcon?.invoke() },
+        actions = { actions?.invoke() },
+    )
+}
+
+// --- Preview Section ---
+// Shows AppBar with and without actions for design review.
+@OptIn(ExperimentalMaterial3Api::class)
+@PreviewTheme
+@Composable
+fun AppBarPreview() {
+    MeAppTheme {
+        Column {
+            AppBar(
+                title = "Label",
+                navigationIcon = { AppIconButton(AppIcons.Default.Close) { } },
+                actions = { AppIconButton(AppIcons.Outlined.Help) { } },
+            )
+            Spacer(Modifier.height(24.dp))
+            AppBar(
+                title = "Label",
+                navigationIcon = { AppIconButton(AppIcons.Default.Close) { } },
+            )
+            Spacer(Modifier.height(24.dp))
+            AppBar(
+                title = "Label",
+            )
+            Spacer(Modifier.height(24.dp))
+            AppBar(
+                navigationIcon = { AppIconButton(AppIcons.Default.Close) { } },
+                actions = { AppIconButton(AppIcons.Outlined.Help) { } },
+            )
+            Spacer(Modifier.height(24.dp))
+
+            AppBar(
+                containerColor = Color.Transparent,
+                navigationIcon = { AppIconButton(AppIcons.Default.Close) { } },
+                actions = { AppIconButton(AppIcons.Outlined.Help) { } },
+            )
+            Spacer(Modifier.height(24.dp))
+            AppBar(
+                containerColor = Color.Transparent,
+                navigationIcon = { AppIconButton(AppIcons.Default.Close) { } },
+                actions = { AppButton("Save", onClick = {}, type = ButtonType.InlineTextPrimary)  },
+            )
+            Spacer(Modifier.height(24.dp))
         }
-    }
-}
-
-// --- Previews ---
-
-@PreviewTheme
-@Composable
-fun AppBarPreview_BothIcons() {
-    MeAppTheme {
-        AppBar(
-            title = "Label",
-            onLeftIconClick = {},
-            onRightIconClick = {},
-            leftIcon = { AppBarIconDefaults.Close() },
-            rightIcon = { AppBarIconDefaults.Help() }
-        )
-    }
-}
-
-@PreviewTheme
-@Composable
-fun AppBarPreview_OnlyLeftIcon() {
-    MeAppTheme {
-        AppBar(
-            title = "Label",
-            onLeftIconClick = {},
-            leftIcon = { AppBarIconDefaults.Close() },
-            rightIcon = null,
-            onRightIconClick = null
-        )
-    }
-}
-
-@PreviewTheme
-@Composable
-fun AppBarPreview_OnlyIcons() {
-    MeAppTheme {
-        AppBar(
-            title = null,
-            onLeftIconClick = {},
-            onRightIconClick = {},
-            leftIcon = { AppBarIconDefaults.Close() },
-            rightIcon = { AppBarIconDefaults.Help() }
-        )
-    }
-}
-
-@PreviewTheme
-@Composable
-fun AppBarPreview_OnlyTitle() {
-    MeAppTheme {
-        AppBar(
-            title = "Title Only",
-            onLeftIconClick = {},
-            leftIcon = {},
-            rightIcon = null,
-            onRightIconClick = null
-        )
     }
 }

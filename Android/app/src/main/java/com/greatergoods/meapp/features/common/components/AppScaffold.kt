@@ -33,11 +33,7 @@ fun AppScaffold(
         modifier = modifier,
         topBar = {
             AppBar(
-                title = title,
-                onLeftIconClick = onLeftIconClick,
-                onRightIconClick = onRightIconClick,
-                leftIcon = leftIcon ?: {},
-                rightIcon = rightIcon ?: {}
+                title = "title",
             )
         }
     ) { innerPadding ->

@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.greatergoods.meapp.features.common.components.AppBarIconDefaults
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -33,7 +32,7 @@ fun SampleAppScaffoldScreen() {
         onLeftIconClick = null,
         onRightIconClick = { rightClicked = true },
         leftIcon = null,
-        rightIcon = { AppBarIconDefaults.Help() },
+        rightIcon = {  },
         modifier = Modifier.Companion.statusBarsPadding()
     ) { modifier ->
         Column(
