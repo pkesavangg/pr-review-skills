@@ -71,7 +71,7 @@ object SegmentButtonDefaults {
      */
     fun minWidth(size: SegmentButtonSize): Dp =
         when (size) {
-            SegmentButtonSize.Small -> 81.dp
+            SegmentButtonSize.Small -> 80.dp
             SegmentButtonSize.Medium -> 120.dp
             SegmentButtonSize.Large -> 160.dp
             //TODO: Need to update after UX answered
@@ -118,7 +118,7 @@ object SegmentButtonDefaults {
             activeBorderColor = MeAppTheme.colorScheme.secondaryAction,
             inactiveBorderColor = Color.Transparent,
             activeContentColor = MeAppTheme.colorScheme.inverse,
-            inactiveContentColor = MeAppTheme.colorScheme.heading,
+            inactiveContentColor = MeAppTheme.colorScheme.secondaryAction,
             //Todo: Update proper name after UX answered
         )
 }
@@ -150,6 +150,7 @@ fun SegmentButtonGroup(
     val shape = RoundedCornerShape(SegmentButtonDefaults.cornerRadius())
     val density = LocalDensity.current
     val segmentButtonModifier = modifier.height(IntrinsicSize.Min).defaultMinSize(minWidth = minWidth)
+    val maxLines = 1
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -203,7 +204,7 @@ fun SegmentButtonGroup(
                     selected = index == selectedIndex,
                     label = {
                         Text(option.label, style = textStyle,
-                        modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding)
+                        modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding), maxLines = maxLines
                         )
                     },
                     modifier = segmentButtonModifier,
