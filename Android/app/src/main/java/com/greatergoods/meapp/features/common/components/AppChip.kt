@@ -42,7 +42,7 @@ enum class ChipSize {
 /**
  * Default styling configurations for the chip component.
  */
-object CustomChipDefaults {
+object ChipButtonDefaults {
 
     /**
      * Returns the background color for the chip based on type, selection, and enabled state.
@@ -72,7 +72,7 @@ object CustomChipDefaults {
         type: ChipType,
         selected: Boolean
     ): BorderStroke? = when (type) {
-        ChipType.Solid -> BorderStroke(1.5.dp, if(selected) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primary)
+        ChipType.Solid -> BorderStroke(1.5.dp, if(selected) MeAppTheme.colorScheme.primaryAction else Color.Transparent)
            // TODO: val borderInDp = with(LocalDensity.current) { 1.5f.toDp() }
     }
 
@@ -170,19 +170,19 @@ fun AppChip(
     textTransform: TextTransform = TextTransform.CAPITALIZE,
     onClick: () -> Unit,
 ) {
-    val backgroundColor = CustomChipDefaults.backgroundColor(type)
-    val contentColor = CustomChipDefaults.contentColor(type)
-    val border = CustomChipDefaults.border(type,selected)
-    val hPadding = CustomChipDefaults.horizontalPadding(size)
-    val vPadding = CustomChipDefaults.verticalPadding(size)
-    val textStyle = CustomChipDefaults.textStyle(size)
-    val cornerRadius = CustomChipDefaults.cornerRadius(size)
+    val backgroundColor = ChipButtonDefaults.backgroundColor(type)
+    val contentColor = ChipButtonDefaults.contentColor(type)
+    val border = ChipButtonDefaults.border(type,selected)
+    val hPadding = ChipButtonDefaults.horizontalPadding(size)
+    val vPadding = ChipButtonDefaults.verticalPadding(size)
+    val textStyle = ChipButtonDefaults.textStyle(size)
+    val cornerRadius = ChipButtonDefaults.cornerRadius(size)
     val shape = RoundedCornerShape(cornerRadius)
-    val height = CustomChipDefaults.height(size)
-    val minWidth = CustomChipDefaults.minWidth(size)
-    val text = CustomChipDefaults.transformText(label, textTransform)
+    val height = ChipButtonDefaults.height(size)
+    val minWidth = ChipButtonDefaults.minWidth(size)
+    val text = ChipButtonDefaults.transformText(label, textTransform)
     val chipModifier = modifier.height(height).defaultMinSize(minWidth = minWidth)
-
+    val maxLines = 1
     FilterChip(
         shape = shape,
         colors = SelectableChipColors(
@@ -202,7 +202,7 @@ fun AppChip(
         ),
         onClick = onClick,
         label = {
-            Text(text, style = textStyle, modifier = Modifier.padding(horizontal = hPadding, vertical = vPadding))
+            Text(text, style = textStyle, modifier = Modifier.padding(horizontal = hPadding, vertical = vPadding), maxLines = maxLines)
         },
         selected = selected,
         leadingIcon = {},
