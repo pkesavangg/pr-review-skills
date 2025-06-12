@@ -1,0 +1,37 @@
+package com.greatergoods.meapp.core.shared.utilities.logging
+
+interface ILogger {
+    suspend fun initialize()
+
+    fun d(
+        tag: String,
+        message: String,
+        data: String? = null,
+    )
+
+    fun i(
+        tag: String,
+        message: String,
+        data: String? = null,
+    )
+
+    fun w(
+        tag: String,
+        message: String,
+        data: String? = null,
+    )
+
+    fun e(
+        tag: String,
+        message: String,
+        data: String? = null,
+    )
+
+    fun e(
+        tag: String,
+        message: String,
+        throwable: Throwable,
+    )
+
+    fun reset()
+}

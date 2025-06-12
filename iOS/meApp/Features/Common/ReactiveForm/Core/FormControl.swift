@@ -5,10 +5,15 @@ public class FormControl<Value: Equatable>: AbstractControl {
     /// A value that stores a pending change of the control.
     /// Assigning to the value triggers validation and pristine check.
     @Published public var value: Value {
+        willSet {
+            objectWillChange.send()
+        }
         didSet {
-            markAsDirty()
-            if validateType == .automatic {
-                validate()
+            if value != oldValue {
+                markAsDirty()
+                if validateType == .automatic {
+                    validate()
+                }
             }
         }
     }
@@ -62,6 +67,13 @@ public class FormControl<Value: Equatable>: AbstractControl {
         
         if validateType == .automatic {
             validate()
+        }
+    }
+    
+    /// Updates the value without triggering validation
+    public func silentlyUpdateValue(_ newValue: Value) {
+        if value != newValue {
+            value = newValue
         }
     }
     

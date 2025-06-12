@@ -37,7 +37,6 @@ object GraphUtil {
                 )
             },
         )
-    }
 
     fun List<ScaleEntry>.toGraphPoints(propertyName: String): GraphLine {
         val scaleProps = BodyScaleEntryEntity::class.memberProperties

@@ -8,11 +8,12 @@ import SwiftUI
 
 struct TextInputConfig {
     var label: String
-    var placeholder: String
+    var placeholder: String?
     var inputType: TextFieldType = .text
     var submitLabel: SubmitLabel = .next
     var errorMessage: String? = nil
     var isDisabled: Bool = false
+    var focusField: FocusField = .none
     
     // Custom icon support
     var customIcon: String? = nil

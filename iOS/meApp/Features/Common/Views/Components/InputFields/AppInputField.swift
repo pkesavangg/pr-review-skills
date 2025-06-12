@@ -23,7 +23,7 @@ struct AppInputField: View {
     
     // Bindings
     @Binding var value: String
-    @Binding var isFocused: Bool
+    @Binding var focusedField: FocusField?
     
     // Callbacks
     var onCommit: (() -> Void)? = nil
@@ -43,7 +43,7 @@ struct AppInputField: View {
                         .foregroundColor(config.isDisabled ? theme.textBody.opacity(0.38) : (config.errorMessage != nil ? theme.textError : theme.textSubheading))
                         .offset(y: (fieldIsFocused || !value.isEmpty) ? -15 : 0)
                         .offset(x: 16)
-                        .animation(.easeInOut(duration: 0.1), value: fieldIsFocused || !value.isEmpty)
+                        .animation(.easeInOut(duration: 0.1), value: !value.isEmpty)
                         .disabled(config.isDisabled)
                     
                     // Base input field
@@ -52,18 +52,22 @@ struct AppInputField: View {
                         keyboardType: keyboardTypeForInput,
                         submitLabel: config.submitLabel,
                         isDisabled: config.isDisabled,
+                        fieldType: config.focusField,
                         value: $value,
-                        isFocused: $fieldIsFocused,
+                        focusedField: $focusedField,
                         onCommit: onCommit,
                         onEditingChanged: { focused in
-                            isFocused = focused
+                            fieldIsFocused = focused
                             onEditingChanged?(focused)
+                            if focused {
+                                focusedField = config.focusField
+                            }
                         }
                     )
-                    .padding(.leading, 16)
+                    .focused($fieldIsFocused)
+                    .padding(.leading, .spacingSM)
                 }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 4)
+                .padding(.vertical, .spacingXS)
                 .accentColor((config.errorMessage != nil ? theme.textError : theme.actionPrimary))
             }
             .frame(height: 56)
@@ -82,20 +86,31 @@ struct AppInputField: View {
             .onTapGesture {
                 if !config.isDisabled {
                     fieldIsFocused = true
+                    focusedField = config.focusField
                 }
             }
-            .onChange(of: isFocused) {
-                fieldIsFocused = isFocused
+            .onChange(of: focusedField) { oldValue, newValue in
+                if newValue == config.focusField {
+                    fieldIsFocused = true
+                } else if newValue == nil && fieldIsFocused {
+                    fieldIsFocused = false
+                }
+            }
+            .onChange(of: fieldIsFocused) { oldValue, newValue in
+                if !newValue && focusedField == config.focusField {
+                    focusedField = nil
+                }
             }
             .onAppear {
-                fieldIsFocused = isFocused
+                if focusedField == config.focusField {
+                    fieldIsFocused = true
+                }
             }
             
             Text(config.errorMessage ?? "")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textError)
-                .padding(.bottom, 4)
-                .padding(.leading, 16)
+                .padding(.leading, .spacingSM)
                 .frame(height: 15)
         }
     }
@@ -151,65 +166,66 @@ struct AppInputField: View {
 struct AppInputTestingField : View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
-    @State var text: String = ""
+    @State var text: String = "Enter text here"
     @State var email: String = ""
     @State var password: String = ""
     @State var number: String = ""
     @State var disabledText: String = "Enter text here"
     @State var modelNumber: String = ""
+    @State var focusedField: FocusField?
+    
     var body: some View {
         VStack {
-            // Text input example
-            // Text input example
             AppInputField(
                 config: TextInputConfig(
                     label: "Username",
                     placeholder: "Enter your username",
-                    inputType: .text
+                    inputType: .text,
+                    focusField: .firstName
                 ),
                 value: $text,
-                isFocused: .constant(false)
-            )
-            Text(email.count < 6 && !email.isEmpty ? "Password is too short" : "nil")
-            
-            Text(password.count < 6 && !password.isEmpty ? "Password is too short" : "password")
+                focusedField: $focusedField) {
+                    focusedField = .email
+                }
             
             AppInputField(
                 config: TextInputConfig(
                     label: "Email",
                     placeholder: "Enter your email",
                     inputType: .email,
-                    errorMessage: email.count < 6 && !email.isEmpty ? "Password is too short" : nil
+                    errorMessage: email.count < 6 && !email.isEmpty ? "Email is too short" : nil, focusField: .email
                 ),
                 value: $email,
-                isFocused: .constant(false)
-            )
+                focusedField: $focusedField) {
+                    focusedField = .password
+                }
             
-            // Password input example
+            
             AppInputField(
                 config: TextInputConfig(
                     label: "Password",
                     placeholder: "Enter your password",
                     inputType: .password,
                     submitLabel: .done,
-                    errorMessage: password.count < 6 && !password.isEmpty ? "Password is too short" : nil
+                    errorMessage: password.count < 6 && !password.isEmpty ? "Password is too short" : nil, focusField: .password
                 ),
                 value: $password,
-                isFocused: .constant(true)
-            )
+                focusedField: $focusedField
+            ) {
+                focusedField = .bodyFat
+            }
             
-            // Number input example
             AppInputField(
                 config: TextInputConfig(
                     label: "Phone Number",
                     placeholder: "Enter your phone number",
-                    inputType: .number
+                    inputType: .number,
+                    focusField: .bodyFat
                 ),
                 value: $number,
-                isFocused: .constant(false)
+                focusedField: $focusedField
             )
             
-            // Disabled input example
             AppInputField(
                 config: TextInputConfig(
                     label: "Disabled Input",
@@ -218,10 +234,11 @@ struct AppInputTestingField : View {
                     isDisabled: true
                 ),
                 value: $disabledText,
-                isFocused: .constant(false)
-            )
+                focusedField: $focusedField
+            ) {
+                focusedField = .password
+            }
             
-            // Model Number input example
             AppInputField(
                 config: TextInputConfig(
                     label: "Model Number",
@@ -233,11 +250,16 @@ struct AppInputTestingField : View {
                     }
                 ),
                 value: $modelNumber,
-                isFocused: .constant(false)
-            )
+                focusedField: $focusedField
+            ) {
+                focusedField = FocusField.none
+            }
         }
         .padding(.horizontal)
         .background(theme.backgroundSecondary)
+        .onAppear {
+            focusedField = .firstName
+        }
     }
 }
 

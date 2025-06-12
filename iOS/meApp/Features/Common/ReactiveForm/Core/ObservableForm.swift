@@ -160,7 +160,8 @@ class BasicProfileForm: ObservableForm {
     var password = FormControl("", validators: [.required, .minLength(6)])
     var confirmPassword = FormControl("", validators: [.required])
     var website = FormControl("", validators: [.required, .url])
-
+    var weight = FormControl("0.0", validators: [.required])
+    
     override func validateForm() {
         var errors = ValidationErrors<Any>()
         
@@ -222,8 +223,40 @@ class BasicProfileForm: ObservableForm {
 struct BasicFormControlView: View {
     @StateObject var form = BasicProfileForm()
     
+    @State var weight = ""
+    @State var focusedField: FocusField?
     var body: some View {
-        Form {
+        VStack {
+            
+            // Bank input examples
+            MetricInputField(
+                config: TextInputConfig(
+                    label: "weight (lbs)",
+                    placeholder: "0.0",
+                    inputType: .metric,
+                    focusField: .weight,
+                    maxLength: 4,
+                    maxValue: 999.9
+                ),
+                value: $weight,
+                focusedField: $focusedField) {
+                    focusedField = .email
+                }
+            
+            
+            AppInputField(
+                config: TextInputConfig(
+                    label: "Email",
+                    placeholder: "Enter your email",
+                    inputType: .email,
+                    errorMessage: form.getError(for: form.email),
+                    focusField: .email
+                ),
+                value: $form.email.value,
+                focusedField: $focusedField) {
+                    focusedField = .email
+                }
+            
             TextField("Name", text: $form.name.value)
             if let error = form.getError(for: form.name) {
                 Text(error).foregroundColor(.red)

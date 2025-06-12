@@ -156,10 +156,18 @@ interface LogDao {
     @Query("SELECT * FROM logs ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     fun getAllLogsPaginated(limit: Int, offset: Int): Flow<List<LogEntity>>
 
+        /**
+        * Get total count of logs in the database.
+        * @return Flow of total log count
+        */
+        @Query("SELECT COUNT(*) FROM logs")
+        fun getLogCount(): Flow<Int>
+
     /**
-     * Get total count of logs in the database.
-     * @return Flow of total log count
+     * Delete oldest logs from the database.
+     * Delete the oldest logs by id
+     * @param count Number of logs to delete
      */
-    @Query("SELECT COUNT(*) FROM logs")
-    fun getLogCount(): Flow<Int>
+    @Query("DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT :count)")
+    suspend fun deleteOldestLogs(count: Int)
 }

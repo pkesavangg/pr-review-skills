@@ -24,7 +24,6 @@ import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -77,17 +76,8 @@ object RepositoryModule {
         entryDao: EntryDao,
         entryApi: EntryApi,
     ): IEntryRepository = EntryRepository(entryDao, entryApi)
-}
 
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class RepositoryBindsModule {
-    /**
-     * Provides a singleton instance of [ILogRepository].
-     * @param repository The implementation of [ILogRepository].
-     * @return [ILogRepository] instance.
-     */
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindLogRepository(logRepository: LogRepository): ILogRepository
+    fun provideLogRepository(logDao: LogDao): ILogRepository = LogRepository(logDao)
 }

@@ -6,6 +6,7 @@ import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
 import com.greatergoods.meapp.domain.model.api.integration.UserAccount
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
+import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import kotlinx.coroutines.CoroutineScope
@@ -35,7 +36,7 @@ data class InvalidIntegrationAlert(
 class IntegrationService @Inject constructor(
     private val repository: IIntegrationRepository,
     private val dialogQueueService: DialogQueueService
-) {
+) : IIntegrationService {
     lateinit var currentAccount: UserAccount
 
     init {
@@ -49,26 +50,26 @@ class IntegrationService @Inject constructor(
     }
 
     private val _invalidIntegrationAlert = MutableStateFlow<InvalidIntegrationAlert?>(null)
-    val invalidIntegrationAlert: StateFlow<InvalidIntegrationAlert?> = _invalidIntegrationAlert.asStateFlow()
+    override val invalidIntegrationAlert: StateFlow<InvalidIntegrationAlert?> = _invalidIntegrationAlert.asStateFlow()
 
     private val _shouldCheckIntegrations = MutableStateFlow(false)
-    val shouldCheckIntegrations: StateFlow<Boolean> = _shouldCheckIntegrations.asStateFlow()
+    override val shouldCheckIntegrations: StateFlow<Boolean> = _shouldCheckIntegrations.asStateFlow()
 
     // Events for integration actions
     private val _navigateToIntegrationsEvent = MutableStateFlow<Unit?>(null)
-    val navigateToIntegrationsEvent: StateFlow<Unit?> = _navigateToIntegrationsEvent.asStateFlow()
+    override val navigateToIntegrationsEvent: StateFlow<Unit?> = _navigateToIntegrationsEvent.asStateFlow()
 
     /**
      * Gets the active account ID.
      */
-    suspend fun getActiveAccountId(): String {
+    override suspend fun getActiveAccountId(): String {
         return repository.getActiveAccountId()
     }
 
     /**
      * Gets the provider OAuth URL for the given integration provider.
      */
-    suspend fun getProviderUrl(provider: IntegrationProvider): String {
+    override suspend fun getProviderUrl(provider: IntegrationProvider): String {
         return try {
             val accountId = repository.getActiveAccountId() // fetch real value
             when (provider) {
@@ -84,7 +85,7 @@ class IntegrationService @Inject constructor(
     /**
      * Removes an integration for the given provider.
      */
-    suspend fun removeIntegration(provider: String) {
+    override suspend fun removeIntegration(provider: String) {
         repository.removeIntegration(provider)
         refreshIntegrations()
     }
@@ -92,7 +93,7 @@ class IntegrationService @Inject constructor(
     /**
      * Removes multiple integrations for the given providers.
      */
-    suspend fun removeMultipleIntegrations(providers: List<String>) {
+    override suspend fun removeMultipleIntegrations(providers: List<String>) {
         try {
             providers.forEach { provider ->
                 repository.removeIntegration(provider)
@@ -106,7 +107,7 @@ class IntegrationService @Inject constructor(
     /**
      * Gets a list of invalid integration providers for the given account.
      */
-    fun getInvalidIntegrationProviders(account: UserAccount): List<String> {
+    override fun getInvalidIntegrationProviders(account: UserAccount): List<String> {
         val invalids = mutableListOf<String>()
         if (account.isFitbitOn && !account.isFitbitValid) invalids.add("fitbit")
         if (account.isGoogleFitOn && !account.isGoogleFitValid) invalids.add("googleFit")
@@ -118,14 +119,14 @@ class IntegrationService @Inject constructor(
     /**
      * Refreshes integrations from the server and updates local account.
      */
-    suspend fun refreshIntegrations() {
+    override suspend fun refreshIntegrations() {
         repository.updateLocalAccount()
     }
 
     /**
      * Checks if the account has any invalid integrations.
      */
-    fun hasInvalidIntegrations(account: UserAccount): Boolean {
+    override fun hasInvalidIntegrations(account: UserAccount): Boolean {
         return (account.isFitbitOn && !account.isFitbitValid) ||
                 (account.isGoogleFitOn && !account.isGoogleFitValid) ||
                 (account.isMFPOn && !account.isMFPValid) ||
@@ -140,10 +141,10 @@ class IntegrationService @Inject constructor(
      * @param onOpenIntegrations Callback when user chooses to open integrations page
      * @param skipInvalidIntegrationsCheck Whether this is being called from integrations page
      */
-    fun showReIntegrateAlert(
+    override fun showReIntegrateAlert(
         providers: List<String>,
-        onOpenIntegrations: (() -> Unit)? = null,
-        skipInvalidIntegrationsCheck: Boolean = false
+        onOpenIntegrations: (() -> Unit)?,
+        skipInvalidIntegrationsCheck: Boolean
     ) {
         if (providers.isEmpty() || skipInvalidIntegrationsCheck) {
             return
@@ -197,9 +198,9 @@ class IntegrationService @Inject constructor(
      * @param skipInvalidIntegrationsCheck Whether to skip the check (e.g., when on integrations page)
      * @param onOpenIntegrations Callback when user chooses to open integrations page
      */
-    suspend fun checkForInvalidIntegrations(
-        skipInvalidIntegrationsCheck: Boolean = false,
-        onOpenIntegrations: (() -> Unit)? = null
+    override suspend fun checkForInvalidIntegrations(
+        skipInvalidIntegrationsCheck: Boolean ,
+        onOpenIntegrations: (() -> Unit)?
     ) {
         if (skipInvalidIntegrationsCheck) {
             return
@@ -218,21 +219,21 @@ class IntegrationService @Inject constructor(
     /**
      * Triggers integration check. Call this after login or when needed.
      */
-    fun triggerIntegrationCheck() {
+    override fun triggerIntegrationCheck() {
         _shouldCheckIntegrations.value = true
     }
 
     /**
      * Resets the integration check trigger.
      */
-    fun resetIntegrationCheck() {
+    override fun resetIntegrationCheck() {
         _shouldCheckIntegrations.value = false
     }
 
     /**
      * Consumes the navigation event (call this after handling navigation).
      */
-    fun consumeNavigationEvent() {
+    override fun consumeNavigationEvent() {
         _navigateToIntegrationsEvent.value = null
     }
 
@@ -256,7 +257,7 @@ class IntegrationService @Inject constructor(
     /**
      * Gets display name for a provider.
      */
-    fun getProviderDisplayName(provider: String): String {
+    override fun getProviderDisplayName(provider: String): String {
         return when (provider) {
             "fitbit" -> "Fitbit"
             "googleFit" -> "Google Fit"
