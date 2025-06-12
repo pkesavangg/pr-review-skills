@@ -6,7 +6,6 @@ import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.greatergoods.meapp.authEntries
-import com.greatergoods.meapp.core.logging.LogManager
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.core.navigation.TopLevelBackStack
@@ -21,7 +20,6 @@ import com.greatergoods.meapp.features.sample.LoadingScreen
 fun NavHost(
     topLevelBackStack: TopLevelBackStack<NavKey>,
     appViewModel: AppViewModel,
-    logManager: LogManager
 ) {
     NavigationObserver(
         appViewModel.navigationService.navigationIntent,

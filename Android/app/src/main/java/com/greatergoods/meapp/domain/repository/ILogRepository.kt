@@ -12,13 +12,15 @@ interface ILogRepository {
     /**
      * Log levels for different types of log entries
      */
-    enum class LogType(val priority: Int) {
+    enum class LogType(
+        val priority: Int,
+    ) {
         VERBOSE(android.util.Log.VERBOSE),
         DEBUG(android.util.Log.DEBUG),
         INFO(android.util.Log.INFO),
         WARN(android.util.Log.WARN),
         ERROR(android.util.Log.ERROR),
-        ASSERT(android.util.Log.ASSERT)
+        ASSERT(android.util.Log.ASSERT),
     }
 
     /**
@@ -89,7 +91,12 @@ interface ILogRepository {
      * @param type Log type
      * @param data Optional additional data
      */
-    suspend fun log(tag: String, message: String, type: String, data: String?)
+    suspend fun log(
+        tag: String,
+        message: String,
+        type: String,
+        data: String?,
+    )
 
     /**
      * Get all logs from the database
