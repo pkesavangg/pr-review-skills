@@ -42,6 +42,9 @@ enum AppColors {
         let actionSecondaryDisabled: Color
         let actionTertiary: Color
         let actionTertiaryDisabled: Color
+        let actionInverse: Color
+        let actionInverseDisabled: Color
+        let actionInverseSecondary: Color
         
         // Brand colors
         let brandMeAppPrimary: Color
