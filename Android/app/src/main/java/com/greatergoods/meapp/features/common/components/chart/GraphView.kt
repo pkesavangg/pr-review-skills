@@ -17,9 +17,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.enum.GraphSegment
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -53,20 +53,16 @@ import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.time.format.DateTimeFormatter
-import java.util.Date
-import java.util.Locale
 import kotlin.math.roundToInt
+import android.util.Log
 
 private val LegendLabelKey = ExtraStore.Key<List<Double>>()
-private val dateFormatter = DateTimeFormatter.ofPattern("MMM-dd-yyyy")
-val oneDayMillis = 24 * 60 * 60 * 1000L // 86,400,000 milliseconds
 
 @Composable
 fun GraphView(
     modifier: Modifier = Modifier,
     graphLines: List<GraphLine>,
+    segment: GraphSegment = GraphSegment.WEEK,
     placeHolder: String? = null,
     selectedData: List<GraphPoint>? = null,
     labelContent: (@Composable () -> Unit)? = null,
@@ -87,15 +83,7 @@ fun GraphView(
         }
         return
     }
-    var chartWidth by remember { mutableIntStateOf(0) }
-    val pointCount = 12
-    val axisPaddingPx = with(LocalDensity.current) { 10.dp.toPx() }
-    val usableWidthPx = chartWidth - axisPaddingPx
-    val intervals = pointCount + 1
 
-    val pointSpacing = with(LocalDensity.current) {
-        (usableWidthPx / intervals).toDp()
-    }
     val xLabels = remember(graphLines) {
         graphLines.first().points.map { it.x }
 
@@ -109,12 +97,12 @@ fun GraphView(
             }
         }
 
-    remember(ySeries) {
-        ySeries.flatten().minOfOrNull { it.value.toDouble() }
-    }
     val max = remember(ySeries) {
         ySeries.flatten().maxOfOrNull { it.value.toDouble() }
     }
+
+    val xStep = GraphUtil.rememberXStep(segment)
+    Log.i("CHECKING", segment.toString())
 
     val scrollState = rememberVicoScrollState(
         scrollEnabled = true,
@@ -124,14 +112,13 @@ fun GraphView(
     var isUpdating by remember { mutableStateOf(false) }
 
     val modelProducer = remember { CartesianChartModelProducer() }
-    val valueFormatter =
-        object : DefaultCartesianMarker.ValueFormatter {
-            override fun format(
-                context: CartesianDrawingContext,
-                targets: List<CartesianMarker.Target>
-            ) =
-                xLabels[markerIndex].label
-        }
+    val valueFormatter = object : DefaultCartesianMarker.ValueFormatter {
+        override fun format(
+            context: CartesianDrawingContext,
+            targets: List<CartesianMarker.Target>
+        ) =
+            xLabels[markerIndex].label
+    }
 
     val markerListener = remember(graphLines) {
         object : CartesianMarkerVisibilityListener {
@@ -211,7 +198,7 @@ fun GraphView(
                 )
             },
         ),
-        pointSpacing = pointSpacing,
+        pointSpacing = GraphUtil.rememberPointSpacing(segment, 20.dp),
     )
 
     val layeredMarker = rememberMarker(
@@ -242,16 +229,7 @@ fun GraphView(
         bottomAxis = HorizontalAxis.rememberBottom(
             guideline = null,
             tickLength = 0.dp,
-            itemPlacer = HorizontalAxis.ItemPlacer.aligned(
-                spacing = { 1 },
-                offset = { 1 },
-            ),
-            valueFormatter = CartesianValueFormatter { _, value, _ ->
-                // Format timestamp to readable date (e.g., "May 15")
-                val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
-                sdf.format(Date(value.toLong()))
-            },
-            label = rememberTextComponent(color = Color(0xFF7B726E)),
+            label = null,
             line = rememberAxisGuidelineComponent(),
         ),
         marker = layeredMarker,
@@ -259,9 +237,7 @@ fun GraphView(
         persistentMarkers = if (!isUpdating) {
             { layeredMarker at xLabels[markerIndex].value }
         } else null,
-        getXStep = {
-            oneDayMillis.toDouble() * 30// 1 day in milliseconds
-        },
+        getXStep = { xStep },
     )
 
     Column(
@@ -273,10 +249,7 @@ fun GraphView(
             chart = chart,
             modelProducer = modelProducer,
             modifier = Modifier
-                .fillMaxSize()
-                .onSizeChanged { size ->
-                    chartWidth = size.width // width in pixels
-                },
+                .fillMaxSize(),
             animationSpec = tween(1000),
             scrollState = scrollState,
         )

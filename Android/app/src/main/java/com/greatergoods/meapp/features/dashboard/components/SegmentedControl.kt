@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
@@ -20,16 +21,15 @@ import com.greatergoods.meapp.theme.MeAppTheme
  */
 @Composable
 fun GraphSegmentControl(
-    selected: String,
-    onSelect: (String) -> Unit,
+    selected: GraphSegment,
+    onSelect: (GraphSegment) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val segments = listOf("TOTAL", "YEAR", "MONTH", "WEEK").reversed()
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.xs),
     ) {
-        segments.forEach { segment ->
+        GraphSegment.entries.forEach { segment ->
             val isSelected = segment == selected
             Button(
                 onClick = { onSelect(segment) },
@@ -42,7 +42,7 @@ fun GraphSegmentControl(
                 elevation = null,
             ) {
                 Text(
-                    text = segment,
+                    text = segment.name,
                     style = MeAppTheme.typography.button1.copy(
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     ),
