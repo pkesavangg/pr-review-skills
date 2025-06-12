@@ -322,7 +322,16 @@ fun InputFieldPreview() {
                 )
             }
         Column(modifier = Modifier.padding(20.dp)) {
-            InputField<String>(
+            InputField(
+                formControl = formControl,
+                label = "email",
+                name = "email",
+                type = InputType.EMAIL,
+                placeHolder = "Enter your email",
+                showTrailingIcon = true,
+                modifier = Modifier.width(210.dp).height(56.dp),
+            )
+            InputField(
                 formControl = formControl,
                 label = "email",
                 name = "email",

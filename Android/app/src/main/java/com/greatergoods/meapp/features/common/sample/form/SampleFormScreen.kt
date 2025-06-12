@@ -133,69 +133,69 @@ fun SampleFormScreen() {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            AppInput(
-                modifier = Modifier,
-                type = AppInputType.TEXT,
-                formControl = form.getField("email"),
-                name = "email",
-                label = "Email",
-                placeHolder = "Enter your email"
-            )
+            // AppInput(
+            //     modifier = Modifier,
+            //     type = AppInputType.TEXT,
+            //     formControl = form.getField("email"),
+            //     name = "email",
+            //     label = "Email",
+            //     placeHolder = "Enter your email"
+            // )
 
-            AppInput(
-                modifier = Modifier,
-                type = AppInputType.PASSWORD,
-                formControl = form.getField("password"),
-                name = "password",
-                label = "Password",
-                placeHolder = "Enter your password"
-            )
-
-            AppInput(
-                modifier = Modifier,
-                type = AppInputType.PASSWORD,
-                formControl = form.getField("confirmPassword"),
-                name = "confirmPassword",
-                label = "Confirm Password",
-                placeHolder = "Confirm your password",
-            )
-
-            AppInput(
-                modifier = Modifier,
-                type = AppInputType.WEIGHT,
-                formControl = form.getField("weight"),
-                name = "weight",
-                label = "Weight",
-                placeHolder = "Enter weight in kg"
-            )
-
-            AppInput(
-                modifier = Modifier,
-                type = AppInputType.BODY_COMP,
-                formControl = form.getField("bodyComp"),
-                name = "bodyComp",
-                label = "Body Composition",
-                placeHolder = "Enter body composition %"
-            )
-
-            AppInput(
-                modifier = Modifier,
-                type = AppInputType.NUMBER,
-                formControl = form.getField("sku"),
-                name = "sku",
-                label = "SKU",
-                placeHolder = "Enter 4-digit SKU"
-            )
-
-            AppInput(
-                modifier = Modifier,
-                type = AppInputType.TEXT,
-                formControl = form.getField("disabledField"),
-                name = "disabledField",
-                label = "Disabled Field",
-                placeHolder = "This field is disabled",
-                enabled = false
-            )
+            // AppInput(
+            //     modifier = Modifier,
+            //     type = AppInputType.PASSWORD,
+            //     formControl = form.getField("password"),
+            //     name = "password",
+            //     label = "Password",
+            //     placeHolder = "Enter your password"
+            // )
+            //
+            // AppInput(
+            //     modifier = Modifier,
+            //     type = AppInputType.PASSWORD,
+            //     formControl = form.getField("confirmPassword"),
+            //     name = "confirmPassword",
+            //     label = "Confirm Password",
+            //     placeHolder = "Confirm your password",
+            // )
+            //
+            // AppInput(
+            //     modifier = Modifier,
+            //     type = AppInputType.WEIGHT,
+            //     formControl = form.getField("weight"),
+            //     name = "weight",
+            //     label = "Weight",
+            //     placeHolder = "Enter weight in kg"
+            // )
+            //
+            // AppInput(
+            //     modifier = Modifier,
+            //     type = AppInputType.BODY_COMP,
+            //     formControl = form.getField("bodyComp"),
+            //     name = "bodyComp",
+            //     label = "Body Composition",
+            //     placeHolder = "Enter body composition %"
+            // )
+            //
+            // AppInput(
+            //     modifier = Modifier,
+            //     type = AppInputType.NUMBER,
+            //     formControl = form.getField("sku"),
+            //     name = "sku",
+            //     label = "SKU",
+            //     placeHolder = "Enter 4-digit SKU"
+            // )
+            //
+            // AppInput(
+            //     modifier = Modifier,
+            //     type = AppInputType.TEXT,
+            //     formControl = form.getField("disabledField"),
+            //     name = "disabledField",
+            //     label = "Disabled Field",
+            //     placeHolder = "This field is disabled",
+            //     enabled = false
+            // )
 
             Button(
                 onClick = {
