@@ -50,6 +50,34 @@ extension View {
         self.modifier(ModalViewModifier(modalStack: modalViewData))
     }
     
+    /// Applies a basic button style with the specified foreground color.
+    /// - Parameter foregroundColor: The color to use for the button's text.
+    /// - Returns: A view styled as a basic button.
+    func basicButtonStyle(foregroundColor: Color) -> some View {
+        self.modifier(BasicButtonStyle(foreGroundColor: foregroundColor))
+    }
+    
+    /// Applies a bordered button style with customizable background, border color, corner radius, and size.
+    /// - Parameters:
+    ///   - backgroundColor: The background color of the button.
+    ///   - borderColor: The color of the button's border.
+    ///   - cornerRadius: The corner radius of the button.
+    ///   - buttonSize: The size of the button (regular or small).
+    /// - Returns: A view styled as a bordered button.
+    func borderedButtonStyle(backgroundColor: Color, borderColor: Color, cornerRadius: CGFloat, buttonSize: ButtonSize) -> some View {
+        self.modifier(BorderedButtonStyle(backgroundColor: backgroundColor, borderColor: borderColor, cornerRadius: cornerRadius, buttonSize: buttonSize))
+    }
+    
+    /// Applies a flat button style with customizable background, corner radius, and size.
+    /// - Parameters:
+    ///   - backgroundColor: The background color of the button.
+    ///   - cornerRadius: The corner radius of the button.
+    ///   - buttonSize: The size of the button (regular or small).
+    /// - Returns: A view styled as a flat button.
+    func flatButtonStyle(backgroundColor: Color, cornerRadius: CGFloat, buttonSize: ButtonSize) -> some View {
+        self.modifier(FlatButtonStyle(backgroundColor: backgroundColor, cornerRadius: cornerRadius, buttonSize: buttonSize))
+    }
+    
     /// Presents a picker sheet with the provided configuration.
     /// - Parameters:
     /// - isPresented: A binding to a Boolean value that determines whether the picker sheet is presented.
