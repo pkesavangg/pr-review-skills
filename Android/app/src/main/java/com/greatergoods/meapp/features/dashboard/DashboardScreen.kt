@@ -12,9 +12,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
-import com.greatergoods.meapp.ui.shared.components.AppButton
 import kotlinx.coroutines.delay
 
 @Composable
