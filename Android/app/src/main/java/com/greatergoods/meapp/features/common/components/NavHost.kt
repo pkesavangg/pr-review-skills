@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation3.runtime.NavKey
@@ -15,7 +14,6 @@ import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.sample.LoadingScreen
 import com.greatergoods.meapp.topLevelEntries
-import android.util.Log
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -27,10 +25,6 @@ fun NavHost(
     appViewModel: AppViewModel,
 ) {
     val backStack by topLevelBackStack.backStack.collectAsState()
-    // Convert the backStack to a snapshot for comparison
-    LaunchedEffect(backStack) {
-        Log.d("NavHost", "NavHost: ${backStack}")
-    }
 
     NavigationObserver(
         appViewModel.navigationService.navigationIntent,

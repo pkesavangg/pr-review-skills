@@ -31,7 +31,8 @@ fun MeApp() {
             DialogHost()
             Scaffold(
                 bottomBar = {
-                    MainBottomNav()
+                    if (topLevelBackStack.currentRoute is AppRoute.Main)
+                        MainBottomNav()
                 },
             ) {
                 NavHost(topLevelBackStack, appViewModel)

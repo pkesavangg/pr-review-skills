@@ -34,6 +34,12 @@ class TopLevelBackStack<T : NavKey>(
     private var _backStack: MutableStateFlow<List<T>> = MutableStateFlow(topLevelStacks.flatMap { it.value })
     val backStack: StateFlow<List<T>> = _backStack.asStateFlow()
 
+    /**
+     * Returns the current (top) route in the current top-level stack, or null if empty.
+     */
+    val currentRoute: T?
+        get() = topLevelStacks[topLevelKey]?.lastOrNull()
+
     private fun updateBackStack() {
         if (topLevelKey == initialKey) {
             _backStack.value = topLevelStacks[initialKey]?.toList() ?: emptyList()

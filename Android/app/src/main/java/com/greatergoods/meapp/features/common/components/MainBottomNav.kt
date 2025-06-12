@@ -1,9 +1,13 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
@@ -15,23 +19,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.dashboard.helper.BOTTOM_NAV_ITEMS
 import com.greatergoods.meapp.theme.MeAppTheme
 
+/**
+ * Stateless bottom navigation bar.
+ *
+ * @param selectedIndex The index of the currently selected item.
+ * @param onItemSelected Callback when an item is selected (index, item).
+ */
 @Composable
-fun MainBottomNav() {
-    val topBackStack = LocalNavBackStack.current
+fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
     var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
+    val topBackStack = LocalNavBackStack.current
 
     LaunchedEffect(topBackStack.topLevelKey) {
-        selectedItem = BOTTOM_NAV_ITEMS.find { it.route == topBackStack.topLevelKey } ?: BOTTOM_NAV_ITEMS[0]
+        selectedItem =
+            BOTTOM_NAV_ITEMS.find { it.route == topBackStack.topLevelKey } ?: BOTTOM_NAV_ITEMS[0]
     }
 
     NavigationBar(
@@ -40,14 +54,26 @@ fun MainBottomNav() {
         Row(
             modifier = Modifier.fillMaxWidth(),
         ) {
-            BOTTOM_NAV_ITEMS.forEach { item ->
+            BOTTOM_NAV_ITEMS.forEachIndexed { index, item ->
                 val isSelected = (selectedItem == item)
-                val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
+                val icon =
+                    if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
 
                 NavigationBarItem(
                     icon = {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        BadgedBox(
+                            badge = {
+                                if (item.route in badgeVisible) {
+                                    // Dot badge
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .align(Alignment.BottomEnd)
+                                            .background(Color.Red)
+                                    )
+                                }
+                            }
                         ) {
                             Image(
                                 painter = painterResource(id = icon),
@@ -75,15 +101,14 @@ fun MainBottomNav() {
                     },
                 )
             }
-
         }
     }
 }
 
 @PreviewTheme
 @Composable
-fun MainBottomNavPreview() {
+fun MainBottomNavDemoScreenPreview_Light() {
     MeAppTheme {
-        MainBottomNav()
+        MainBottomNav(badgeVisible = listOf(AppRoute.Main.Dashboard))
     }
 }
