@@ -20,9 +20,13 @@ interface INavigationUtility {
 
     suspend fun navigateTo(destinations: List<AppRoute>)
 
-    suspend fun replaceStack(destinations: List<AppRoute>)
-
     suspend fun addTopLevelRoute(route: AppRoute)
+
+    suspend fun login()
+
+    suspend fun logout()
+
+    suspend fun autoLogin()
 }
 
 /**
@@ -50,11 +54,11 @@ sealed interface NavigationIntent {
         val routes: List<AppRoute>,
     ) : NavigationIntent
 
-    data class ReplaceStack(
-        val routes: List<AppRoute>,
-    ) : NavigationIntent
-
     data class AddTopLevelRoute(
         val route: AppRoute,
     ) : NavigationIntent
+
+    data object Login : NavigationIntent
+    data object Logout : NavigationIntent
+    data object AutoLogin : NavigationIntent
 }

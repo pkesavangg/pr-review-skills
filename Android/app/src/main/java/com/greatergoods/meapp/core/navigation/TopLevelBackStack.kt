@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core.navigation
+package com.example.nav3integration
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -7,125 +7,136 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import android.util.Log
 
-/**
- * Manages multiple top-level navigation stacks for the app's navigation system.
- *
- * @param T The type of navigation key (must implement NavKey).
- * @property topLevelKey The currently selected top-level key.
- * @property backStack The combined navigation back stack for all top-level stacks.
- */
+interface PublicRoute
+
 class TopLevelBackStack<T : NavKey>(
-    startKey: NavKey,
+    private val startKey: T,
+    private val loginKey: T,
+    private val initialKey: T // true dashboard/home/etc.
 ) {
-    private var topLevelStacks: LinkedHashMap<NavKey, SnapshotStateList<NavKey>> =
-        linkedMapOf(
-            startKey to mutableStateListOf(startKey),
-        )
+
+    private var onLoginSuccessRoute: T? = initialKey
+    var isLoggedIn by mutableStateOf(false)
+        private set
+
+    private var topLevelStacks: LinkedHashMap<T, SnapshotStateList<T>> =
+        linkedMapOf(startKey to mutableStateListOf(startKey))
 
     var topLevelKey by mutableStateOf(startKey)
         private set
 
-    val backStack: NavBackStack = mutableStateListOf(startKey)
+    private var _backStack: MutableStateFlow<List<T>> = MutableStateFlow(topLevelStacks.flatMap { it.value })
+    val backStack: StateFlow<List<T>> = _backStack.asStateFlow()
 
-    /**
-     * Updates the combined back stack from all top-level stacks.
-     */
     private fun updateBackStack() {
-        backStack.apply {
-            clear()
-            addAll(topLevelStacks.flatMap { it.value })
+        if (topLevelKey == initialKey) {
+            _backStack.value = topLevelStacks[initialKey]?.toList() ?: emptyList()
+        } else {
+            val intalKeyStack = topLevelStacks[initialKey]?.toList() ?: emptyList()
+            val currentStack = topLevelStacks[topLevelKey]?.toList() ?: emptyList()
+            _backStack.value = intalKeyStack + currentStack
         }
+        Log.i("NavHost", "TopLevelBackStack: topLevelKey = $topLevelStacks")
     }
 
-    /**
-     * Adds or switches to a top-level stack for the given key.
-     *
-     * @param key The top-level navigation key to add or switch to.
-     */
+    fun setInitialTopLevel(key: T) {
+        topLevelStacks.clear()
+        topLevelStacks[key] = mutableStateListOf(key)
+        topLevelKey = key
+        updateBackStack()
+    }
+
     fun addTopLevel(key: T) {
         if (topLevelStacks[key] == null) {
             topLevelStacks[key] = mutableStateListOf(key)
         } else {
-            topLevelStacks.apply {
-                remove(key)?.let { put(key, it) }
-            }
+            topLevelStacks.remove(key)?.let { topLevelStacks[key] = it }
         }
         topLevelKey = key
         updateBackStack()
     }
 
-    /**
-     * Adds a navigation key to the current top-level stack.
-     *
-     * @param key The navigation key to add.
-     */
     fun add(key: T) {
-        topLevelStacks[topLevelKey]?.add(key)
+        if (requiresLogin(key)) {
+            onLoginSuccessRoute = key
+            topLevelStacks[topLevelKey]?.add(loginKey)
+        } else {
+            topLevelStacks[topLevelKey]?.add(key)
+        }
         updateBackStack()
     }
 
-    /**
-     * Removes the last navigation key from the current top-level stack.
-     */
+    fun addAll(keys: List<T>) {
+        keys.forEach { add(it) }
+    }
+
     fun removeLast() {
-        val removedKey = topLevelStacks[topLevelKey]?.removeLastOrNull()
-        topLevelStacks.remove(removedKey)
-        topLevelKey = topLevelStacks.keys.last()
+
+        val currentStack = topLevelStacks[topLevelKey]
+
+        if (topLevelKey == initialKey && (currentStack?.size ?: 0) <= 1) {
+            return
+        }
+        if (currentStack?.size == 1 && currentStack.first() == topLevelKey) {
+            topLevelKey = initialKey
+        } else {
+            currentStack?.removeLastOrNull()
+        }
         updateBackStack()
     }
 
-    /**
-     * Clears all top-level stacks and resets to the initial key.
-     */
+    fun login() {
+        isLoggedIn = true
+        val target = onLoginSuccessRoute
+        onLoginSuccessRoute = null
+        val stack = topLevelStacks[topLevelKey]
+        val loginIndex = stack?.indexOfLast { it == loginKey } ?: -1
+        if (target != null && loginIndex >= 0) {
+            stack?.removeAt(loginIndex)
+            stack?.add(target)
+        }
+        updateBackStack()
+    }
+
+    fun autoLogin() {
+        isLoggedIn = true
+        val target = onLoginSuccessRoute ?: initialKey
+
+        setInitialTopLevel(target)
+    }
+
+    fun logout() {
+        isLoggedIn = false
+        topLevelStacks.forEach { (_, stack) ->
+            stack.removeAll { !isPublic(it) }
+        }
+        updateBackStack()
+    }
+
     fun clearStack() {
-        val initialKey = topLevelStacks.keys.firstOrNull() ?: return
         topLevelStacks.clear()
         topLevelStacks[initialKey] = mutableStateListOf(initialKey)
         topLevelKey = initialKey
         updateBackStack()
     }
 
-    /**
-     * Adds multiple navigation keys to the current top-level stack.
-     *
-     * @param keys The navigation keys to add.
-     */
-    fun addAll(keys: List<T>) {
-        topLevelStacks[topLevelKey]?.addAll(keys)
-        updateBackStack()
+    private fun clearAll() {
+        topLevelStacks.clear()
+        _backStack.value = emptyList()
+        topLevelKey = startKey
     }
 
-    /**
-     * Replaces the current top-level stack with the given keys.
-     *
-     * @param keys The navigation keys to set as the new stack.
-     */
-    fun replaceStack(keys: List<T>) {
-        val currentStack = topLevelStacks[topLevelKey] ?: mutableListOf()
+    private fun requiresLogin(key: T): Boolean =
+        key !is PublicRoute && !isLoggedIn
 
-        // If any key already exists, retain those and add only the new ones
-        if (keys.any { currentStack.contains(it) }) {
-            val updatedStack = currentStack.toMutableList()
-
-            // Add keys that are not already present
-            keys.forEach { key ->
-                if (!updatedStack.contains(key)) {
-                    updatedStack.add(key)
-                }
-            }
-
-            topLevelStacks[topLevelKey]?.addAll(updatedStack)
-        } else {
-            // No overlap — do a full replacement
-            topLevelStacks[topLevelKey]?.clear()
-            topLevelStacks[topLevelKey]?.addAll(keys)
-        }
-
-        updateBackStack()
-    }
+    private fun isPublic(key: T): Boolean =
+        key is PublicRoute
 }
 
 /**
@@ -135,5 +146,5 @@ class TopLevelBackStack<T : NavKey>(
  * @return A remembered [TopLevelBackStack] instance.
  */
 @Composable
-fun <T : NavKey> rememberTopLevelBackStack(startKey: T): TopLevelBackStack<NavKey> =
-    remember(startKey) { TopLevelBackStack(startKey) }
+fun <T : NavKey> rememberTopLevelBackStack(startKey: T, loginKey: T, initialKey: T): TopLevelBackStack<NavKey> =
+    remember(startKey) { TopLevelBackStack(startKey, loginKey, initialKey) }

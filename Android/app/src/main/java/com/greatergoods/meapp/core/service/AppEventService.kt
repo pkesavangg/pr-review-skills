@@ -47,6 +47,24 @@ class AppEventService : IAppEventService {
         )
     }
 
+    override suspend fun login() {
+        emitNavigationIntent(
+            NavigationIntent.Login,
+        )
+    }
+
+    override suspend fun autoLogin() {
+        emitNavigationIntent(
+            NavigationIntent.AutoLogin,
+        )
+    }
+
+    override suspend fun logout() {
+        emitNavigationIntent(
+            NavigationIntent.Logout,
+        )
+    }
+
     /**
      * Emits a navigation intent to navigate to the root of the stack.
      * @param currentRoute The current route.
@@ -64,16 +82,6 @@ class AppEventService : IAppEventService {
     override suspend fun navigateTo(destinations: List<AppRoute>) {
         emitNavigationIntent(
             NavigationIntent.NavigateToMultiple(destinations),
-        )
-    }
-
-    /**
-     * Emits a navigation intent to replace the current stack with the given destinations.
-     * @param destinations The new stack of routes.
-     */
-    override suspend fun replaceStack(destinations: List<AppRoute>) {
-        emitNavigationIntent(
-            NavigationIntent.ReplaceStack(destinations),
         )
     }
 

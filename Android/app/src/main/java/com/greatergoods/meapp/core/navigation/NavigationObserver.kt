@@ -4,6 +4,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation3.runtime.NavKey
+import com.example.nav3integration.TopLevelBackStack
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import kotlinx.coroutines.flow.Flow
 
@@ -40,12 +41,20 @@ fun NavigationObserver(
                         (backStack).addAll(intent.routes)
                     }
 
-                    is NavigationIntent.ReplaceStack -> {
-                        backStack.replaceStack(intent.routes)
-                    }
-
                     is NavigationIntent.AddTopLevelRoute -> {
                         backStack.addTopLevel(intent.route)
+                    }
+
+                    is NavigationIntent.Login -> {
+                        backStack.login()
+                    }
+
+                    is NavigationIntent.Logout -> {
+                        backStack.logout()
+                    }
+
+                    is NavigationIntent.AutoLogin -> {
+                        backStack.autoLogin()
                     }
                 }
             }

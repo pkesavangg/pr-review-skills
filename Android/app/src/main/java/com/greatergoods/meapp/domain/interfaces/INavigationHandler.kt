@@ -28,11 +28,6 @@ interface INavigationHandler {
     suspend fun navigateToRoot()
 
     /**
-     * Replace the current navigation stack with new routes
-     */
-    suspend fun replaceStack(destinations: List<AppRoute>)
-
-    /**
      * Add a new top-level route
      */
     suspend fun addTopLevelRoute(route: AppRoute)

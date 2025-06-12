@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.core.navigation
 
 import androidx.navigation3.runtime.NavKey
+import com.example.nav3integration.PublicRoute
 import kotlinx.serialization.Serializable
 
 /**
@@ -41,7 +42,7 @@ sealed class AppRoute : NavKey {
      * Authentication-related navigation routes.
      */
     @Serializable
-    sealed class Auth : AppRoute() {
+    sealed class Auth : AppRoute(), PublicRoute {
         @Serializable
         data object AuthScreen : Auth()
 

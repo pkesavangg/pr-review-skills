@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.manualEntry.screens
+package com.greatergoods.meapp.features.entry.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,8 +30,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
-import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryUiState
-import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
+import com.greatergoods.meapp.features.entry.viewmodel.EntryUiState
+import com.greatergoods.meapp.features.entry.viewmodel.EntryViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 

@@ -50,14 +50,7 @@ constructor(
     private var currentAccount: UserAccount? = null
 
     init {
-        viewModelScope.launch {
-            delay(3000)
-            navigationService.replaceStack(
-                listOf(
-                    AppRoute.Auth.LoginScreen,
-                ),
-            )
-        }
+        initLoadingData("1")
 
         viewModelScope.launch {
             try {
@@ -84,17 +77,16 @@ constructor(
 
                         initLoadingData(currentAccountId)
                     } else {
-                        val destinationState =
-                            if (userRepository.hasAccounts()) {
-                                AppRoute.Auth.UserListScreen
-                            } else {
-                                AppRoute.Auth.LoginScreen
-                            }
+                        if (userRepository.hasAccounts()) {
+                            AppRoute.Auth.UserListScreen
+                        } else {
+                            AppRoute.Auth.LoginScreen
+                        }
                         _uiState.value =
                             _uiState.value.copy(
                                 themeMode = ThemeMode.SYSTEM,
                             )
-                        navigationService.replaceStack(listOf(destinationState))
+                        navigationService.logout()
                     }
                 }
             }
@@ -112,7 +104,7 @@ constructor(
                 // - Load user preferences
                 // - Initialize services
                 // - Cache necessary data
-                navigationService.replaceStack(listOf(AppRoute.Main.Dashboard))
+                navigationService.autoLogin()
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately
             }
