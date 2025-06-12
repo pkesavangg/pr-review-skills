@@ -19,7 +19,8 @@ class SignupForm: ObservableForm {
     var gender = FormControl("", validators: [.required])
     var goalType = FormControl("", validators: [.required, .noWhiteSpace])
     var currentWeight = FormControl("", validators: [.required])
-    var height = FormControl(700.0)
+    var useMetric = FormControl(false)
+    var height = FormControl(Double(700))
     var email = FormControl("", validators: [.required, .email, .maxLength(200)])
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
@@ -34,6 +35,7 @@ class SignupForm: ObservableForm {
             birthday.$value.map { _ in () }.eraseToAnyPublisher(),
             gender.$value.map { _ in () }.eraseToAnyPublisher(),
             goalType.$value.map { _ in () }.eraseToAnyPublisher(),
+            useMetric.$value.map { _ in () }.eraseToAnyPublisher(),
             currentWeight.$value.map { _ in () }.eraseToAnyPublisher(),
             height.$value.map { _ in () }.eraseToAnyPublisher(),
             email.$value.map { _ in () }.eraseToAnyPublisher(),

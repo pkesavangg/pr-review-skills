@@ -1,23 +1,5 @@
 import SwiftUI
 
-struct HeightStepView: View {
-    @State var height: Double = 170 // Default height in cm
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("How tall are you?")
-                .font(.title)
-                .fontWeight(.bold)
-            
-            Text("This helps us calculate your metrics accurately.")
-                .foregroundColor(.secondary)
-            
-            // Add height picker or input field
-            Text("Height picker placeholder")
-        }
-    }
-}
-
 struct GoalStepView: View {
     @State var selectedGoal: String = "Lose Weight"
     

@@ -27,10 +27,28 @@ final class SignupStore: ObservableObject {
     @Published var signupForm = SignupForm()
     @Published var isNextEnabled = false
     
+    // Height-related published properties
+    @Published var selectedHeightInches: [String] = ["5", "10"]  // Default 5'10"
+    @Published var selectedHeightCm: [String] = ["1", "7", "8"]  // Default 178cm
+    @Published var showHeightInchesPicker = false
+    @Published var showHeightCmPicker = false
+    
+    let heightInchesOptions: [[String]] = [
+        (2...7).map { "\($0)" },
+        (0...11).map { "\($0)" }
+    ]
+    
+    let heightCmOptions: [[String]] = [
+        (1...2).map { "\($0)" },
+        (0...9).map { "\($0)" },
+        (0...9).map { "\($0)" }
+    ]
+    
     private var cancellables = Set<AnyCancellable>()
 
     init() {
         setupFormObservers()
+        updateHeightPickerValues(from: Int(signupForm.height.value))
     }
     
     let steps: [SignupStep] = [
@@ -46,6 +64,51 @@ final class SignupStore: ObservableObject {
     var progressValue: Double {
         Double(currentStepIndex + 1) / Double(steps.count)
     }
+    
+    // MARK: - Height Management
+    
+    func updateHeightPickerValues(from storedHeight: Int) {
+        // Update both picker values based on the stored height
+        let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
+        selectedHeightInches = ["\(feet[0])", "\(feet[1])"]
+        
+        let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
+        let cmString = String(format: "%03d", cm)
+        selectedHeightCm = cmString.map { String($0) }
+    }
+    
+    func getFormattedHeight() -> String {
+        if signupForm.useMetric.value {
+            let cm = Int(selectedHeightCm.joined()) ?? 178
+            return "\(cm) cm"
+        } else {
+            return "\(selectedHeightInches[0])' \(selectedHeightInches[1])\""
+        }
+    }
+    
+    func updateFormHeight(fromMetric: Bool, values: [String]) {
+        if fromMetric {
+            let cm = Int(values.joined()) ?? 178
+            signupForm.height.value = Double(ConversionTools.convertCmToStoredHeight(cm))
+        } else {
+            let feet = Int(values[0]) ?? 5
+            let inches = Int(values[1]) ?? 10
+            let totalInches = (feet * 12) + inches
+            signupForm.height.value = Double(ConversionTools.convertInchesToStoredHeight(totalInches))
+        }
+        // Update both picker values to stay in sync
+        updateHeightPickerValues(from: Int(signupForm.height.value))
+    }
+    
+    func showHeightPicker() {
+        if signupForm.useMetric.value {
+            showHeightCmPicker = true
+        } else {
+            showHeightInchesPicker = true
+        }
+    }
+    
+    // MARK: - Navigation
     
     func moveToNextStep() {
         guard currentStepIndex < steps.count - 1 else { return }
@@ -104,6 +167,15 @@ final class SignupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.updateNextButtonState()
+            }
+            .store(in: &cancellables)
+            
+        // Observe useMetric changes
+        signupForm.useMetric.$value
+            .dropFirst()
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.updateHeightPickerValues(from: Int(self.signupForm.height.value))
             }
             .store(in: &cancellables)
     }

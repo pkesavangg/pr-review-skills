@@ -24,15 +24,11 @@ struct SignupScreen: View {
             AnyView(
                 SexStepView(signupStore: signupStore)
             ),
+            AnyView(
+                HeightStepView(signupStore: signupStore)
+            ),
             
             // TODO: These are for the testing purpose need to replace with the actual views
-
-            AnyView(
-                HeightStepView()
-                    .onChange(of: signupStore.signupForm.height.value) {
-                        signupStore.updateNextButtonState()
-                    }
-            ),
             AnyView(
                 GoalStepView()
             ),
@@ -61,6 +57,14 @@ struct SignupScreen: View {
                         signupStore.showExitAlert()
                     }) {
                         AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
+                            .foregroundColor(theme.statusIconPrimary)
+                    }
+                ),
+                trailingButtonView: AnyView(
+                    Button(action: {
+                        signupStore.showExitAlert()
+                    }) {
+                        AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
                     }
                 ),
