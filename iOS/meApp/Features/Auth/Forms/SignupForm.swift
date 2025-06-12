@@ -61,6 +61,9 @@ class SignupForm: ObservableForm {
             }
         }
         
+        // TODO: Need to add the weight check logic to the common validation method
+        
+        // TODO: Need to move the goal validation logic to a common method
         // Check if goal weight equals current weight when in lose/gain mode
         if goalType.value != GoalType.maintain.rawValue {
             if !currentWeight.errors[.required] && !goalWeight.errors[.required] {

@@ -140,7 +140,8 @@ final class SignupStore: ObservableObject {
                 isNextEnabled = signupForm.currentWeight.isValid
             } else {
                 isNextEnabled = signupForm.currentWeight.isValid && 
-                    signupForm.goalWeight.isValid
+                    signupForm.goalWeight.isValid &&
+                    !signupForm.formErrors[.weightEqual]
             }
         case .email:
             isNextEnabled = signupForm.email.isValid

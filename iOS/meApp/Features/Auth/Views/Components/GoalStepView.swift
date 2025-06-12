@@ -1,5 +1,15 @@
+//
+//  GoalStepView.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 12/06/25.
+//
+
 import SwiftUI
 
+// MARK: - GoalStepView
+/// View for the goal step in the signup process.
+/// It allows users to select their goal type (lose, gain, maintain) and input their current and goal weights.
 struct GoalStepView: View {
     @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
@@ -85,4 +95,4 @@ struct GoalStepView: View {
 #Preview {
     GoalStepView(signupStore: SignupStore())
         .padding()
-} 
+}

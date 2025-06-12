@@ -1,3 +1,10 @@
+//
+//  GoalTypeSegment.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 12/06/25.
+//
+
 import Foundation
 
 enum GoalTypeSegment: String, CaseIterable, Identifiable {
