@@ -10,7 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import com.greatergoods.meapp.R
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 
 enum class AppIconType {
@@ -63,10 +63,10 @@ fun AppIcon(
 fun AppIconPreview() {
     MeAppTheme {
         Column {
-            AppIcon(id = R.drawable.ic_eye_close, contentDescription = "Preview")
-            AppIcon(id = R.drawable.ic_eye_close, contentDescription = "Preview", type = AppIconType.Secondary)
-            AppIcon(id = R.drawable.ic_eye_close, contentDescription = "Preview", type = AppIconType.Tertiary)
-            AppIcon(id = R.drawable.ic_eye_close, contentDescription = "Preview", type = AppIconType.Danger)
+            AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview")
+            AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview", type = AppIconType.Secondary)
+            AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview", type = AppIconType.Tertiary)
+            AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview", type = AppIconType.Danger)
         }
     }
 }

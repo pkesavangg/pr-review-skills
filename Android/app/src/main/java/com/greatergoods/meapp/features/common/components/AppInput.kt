@@ -31,9 +31,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.R
 import com.greatergoods.meapp.features.common.helper.form.DecimalInputVisualTransformation
 import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme.borderRadius
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
@@ -245,7 +245,7 @@ fun <T> InputFieldBase(
         when {
             showPasswordToggle -> {
                 @Composable {
-                    val iconResId = if (passwordVisible) R.drawable.ic_eye_close else R.drawable.ic_eye_open
+                    val iconResId = if (passwordVisible) AppIcons.Default.EyeClosed else AppIcons.Default.EyeOpened
                     val contentDescription = if (passwordVisible) "Hide password" else "Show password"
                     AppIcon(
                         id = iconResId,
@@ -259,7 +259,7 @@ fun <T> InputFieldBase(
             showClearButton -> {
                 @Composable {
                     AppIcon(
-                        R.drawable.ic_close_outlined,
+                        AppIcons.Outlined.Close,
                         contentDescription = "Clear",
                         type = iconColor,
                         onClick = { clearValueAndNotify() },
