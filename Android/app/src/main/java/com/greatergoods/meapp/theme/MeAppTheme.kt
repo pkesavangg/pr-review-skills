@@ -11,8 +11,10 @@ import com.greatergoods.meapp.theme.model.ColorScheme
 import com.greatergoods.meapp.theme.model.Spacing
 import com.greatergoods.meapp.theme.model.Typography
 import com.greatergoods.meapp.theme.token.AnimationToken
+import com.greatergoods.meapp.theme.token.AppTypography
 import com.greatergoods.meapp.theme.token.LocalAnimation
 import com.greatergoods.meapp.theme.token.LocalSpacing
+import com.greatergoods.meapp.theme.token.LocalTypography
 import com.greatergoods.meapp.theme.token.SpacingToken
 
 /**

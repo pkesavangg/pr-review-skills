@@ -72,7 +72,7 @@ object TextTypeDefaults {
  * This component provides a flexible card layout that can be used in pager components
  * or standalone cards with consistent styling and design system integration.
  *
- * This implementation uses Box with background, clip, and shadow modifiers instead of Surface
+ * This implementation uses Box with background instead of Surface
  * for more direct control over styling without additional component layers.
  *
  * @param subtitle Optional subtitle/description text below the title
@@ -90,7 +90,7 @@ fun AppStyledCard(
                 .background(backgroundColor),
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(MeAppTheme.spacing.sm)
+                modifier = Modifier.fillMaxSize().padding(horizontal = MeAppTheme.spacing.sm)
                     .background(backgroundColor)
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = when(cardAlignmentType){
@@ -113,7 +113,6 @@ fun AppStyledCard(
 fun AppText(
     textType: TextType,
     text: String,
-    modifier: Modifier? = null
 ){
     val textTypeDefault = TextTypeDefaults.appearance(textType)
     Column(
@@ -137,9 +136,27 @@ fun PagerCardSimplePreview() {
                 cardAlignmentType = CardAlignmentType.TopCenter
             )
             {
-                AppText(TextType.Title, "Title")
+                AppText(TextType.Title, "Title-one")
                 AppText(TextType.Subtitle, "Subtitle")
                 AppText(TextType.Body, "If you have trouble setting up your scale, connect with our team by tapping the help button in the top right.")
             }
+
+        AppStyledCard(
+            cardAlignmentType = CardAlignmentType.TopStart
+        )
+        {
+            AppText(TextType.Title, "Title-two")
+            AppText(TextType.Subtitle, "Subtitle")
+            AppText(TextType.Body, "If you have trouble setting up your scale, connect with our team by tapping the help button in the top right.")
+        }
+
+        AppStyledCard(
+            cardAlignmentType = CardAlignmentType.Center
+        )
+        {
+            AppText(TextType.Title, "Title-three")
+            AppText(TextType.Subtitle, "Subtitle")
+            AppText(TextType.Body, "If you have trouble setting up your scale, connect with our team by tapping the help button in the top right.")
+        }
         }
 }
