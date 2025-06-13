@@ -70,11 +70,10 @@ struct SignupScreen: View {
             // Footer Buttons
             footerButtons
                 .padding(.horizontal, .spacingSM)
-                .padding(.bottom, .spacing3XL)
+                .padding(.bottom, .spacingSM)
             
         }
         .background(theme.backgroundSecondary)
-        .ignoresSafeArea(edges: .bottom)
     }
     
     private var footerButtons: some View {
@@ -103,7 +102,7 @@ struct SignupScreen: View {
             }
             
             ButtonView(text: signupStore.currentStep == SignupStep.password ? commonLang.complete : commonLang.next,
-                       type: .secondaryInverse,
+                       type: .primary,
                        size: .small,
                        isDisabled: !signupStore.isNextEnabled,
                        action: {
