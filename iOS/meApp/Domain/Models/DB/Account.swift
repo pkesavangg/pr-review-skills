@@ -97,8 +97,6 @@ final class Account {
     var isUaOn: Bool?
     /// Under Armour connection valid
     var isUaValid: Bool?
-    /// Weightless mode enabled (app-specific)
-    var isWeightlessOn: Bool?
     /// Timestamp of last activity
     var lastActiveTime: String?
     /// Last name of the user
@@ -116,10 +114,6 @@ final class Account {
     var weightlessBodyFat: Double?
     /// Offline/stored muscle mass value
     var weightlessMuscle: Double?
-    /// Last updated timestamp for weightless data
-    var weightlessTimestamp: String?
-    /// Offline/stored weight value
-    var weightlessWeight: Double?
     /// User's zip/postal code
     var zipcode: String?
     /// Date of birth
@@ -135,6 +129,8 @@ final class Account {
     @Relationship(deleteRule: .cascade) var goalSettings: GoalSettings?
     // Relationship to StreaksSettings
     @Relationship(deleteRule: .cascade) var streaksSettings: StreaksSettings?
+    // Relationship to WeightlessSettings
+    @Relationship(deleteRule: .cascade) var weightlessSettings: WeightlessSettings?
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -143,9 +139,6 @@ final class Account {
         self.gender = dto.gender
         self.zipcode = dto.zipcode
         self.dob = dto.dob
-        self.isWeightlessOn = dto.isWeightlessOn
-        self.weightlessWeight = dto.weightlessWeight
-        self.weightlessTimestamp = dto.weightlessTimestamp
         self.weightlessBodyFat = dto.weightlessBodyFat
         self.weightlessMuscle = dto.weightlessMuscle
         self.shouldSendEntryNotifications = dto.shouldSendEntryNotifications
@@ -200,6 +193,16 @@ final class Account {
             isSynced: false
         )
         self.streaksSettings = streaksSettings
+
+        // Create associated WeightlessSettings
+        let weightlessSettings = WeightlessSettings(
+            accountId: dto.id,
+            isWeightlessOn: dto.isWeightlessOn ?? false,
+            weightlessTimestamp: dto.weightlessTimestamp,
+            weightlessWeight: dto.weightlessWeight != nil ? Double(dto.weightlessWeight!) : nil,
+            isSynced: false
+        )
+        self.weightlessSettings = weightlessSettings
     }
 
     func toAccountDTO() -> AccountDTO {
@@ -211,15 +214,15 @@ final class Account {
             gender: self.gender ?? .male,
             zipcode: self.zipcode,
             weightUnit: self.weightSettings?.weightUnit ?? .lb,
-            isWeightlessOn: self.isWeightlessOn,
+            isWeightlessOn: self.weightlessSettings?.isWeightlessOn,
             preferredInputMethod: self.preferredInputMethod,
             height: Double(self.weightSettings?.height ?? "0") ?? 0.0,
             activityLevel: self.weightSettings?.activityLevel,
             dob: self.dob ?? "",
             weightlessBodyFat: self.weightlessBodyFat,
             weightlessMuscle: self.weightlessMuscle,
-            weightlessTimestamp: self.weightlessTimestamp,
-            weightlessWeight: self.weightlessWeight,
+            weightlessTimestamp: self.weightlessSettings?.weightlessTimestamp,
+            weightlessWeight: self.weightlessSettings?.weightlessWeight != nil ? Double(self.weightlessSettings!.weightlessWeight!) : nil,
             isStreakOn: self.streaksSettings?.isStreakOn,
             streakTimestamp: self.streaksSettings?.streakTimestamp,
             dashboardType: self.dashboardType,
@@ -275,7 +278,7 @@ extension Account {
             self.zipcode = zipcode
         }
         if let isWeightlessOn = response.isWeightlessOn {
-            self.isWeightlessOn = isWeightlessOn
+            self.weightlessSettings?.isWeightlessOn = isWeightlessOn
         }
         if let preferredInputMethod = response.preferredInputMethod {
             self.preferredInputMethod = preferredInputMethod
@@ -287,10 +290,10 @@ extension Account {
             self.weightlessMuscle = weightlessMuscle
         }
         if let weightlessTimestamp = response.weightlessTimestamp {
-            self.weightlessTimestamp = weightlessTimestamp
+            self.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
         }
         if let weightlessWeight = response.weightlessWeight {
-            self.weightlessWeight = weightlessWeight
+            self.weightlessSettings?.weightlessWeight = weightlessWeight != nil ? Double(weightlessWeight) : nil
         }
         if let isStreakOn = response.isStreakOn {
             self.streaksSettings?.isStreakOn = isStreakOn

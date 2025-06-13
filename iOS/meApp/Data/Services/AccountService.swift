@@ -491,11 +491,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Weightless Mode
-            if let isWeightlessOn = account.isWeightlessOn,
-               let weightlessTimestamp = account.weightlessTimestamp,
-               let weightlessWeight = account.weightlessWeight,
+            if let isWeightlessOn = account.weightlessSettings?.isWeightlessOn,
+               let weightlessTimestamp = account.weightlessSettings?.weightlessTimestamp,
+               let weightlessWeight = account.weightlessSettings?.weightlessWeight,
                !isSynced {
-                try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: weightlessWeight)
+                try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
             }
             
             // Mark account as synced and update timestamp

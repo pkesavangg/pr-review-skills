@@ -32,7 +32,7 @@ final class GoalSettings {
     var isSynced: Bool?
 
     // Relationship back to Account
-    @Relationship(inverse: \Account.goalSettings) var account: Account?
+    @Relationship var account: Account?
 
     init(accountId: String) {
         self.id = UUID().uuidString

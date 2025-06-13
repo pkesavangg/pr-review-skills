@@ -98,7 +98,8 @@ class LoginViewModel: ObservableObject {
            
            try await accountService.updateStreak(isStreakOn: true, streakTimestamp: "2007-10-23T00:00:00.000Z")
            let localAccount = try await accountService.getActiveAccount()
-           print(localAccount?.accessToken, localAccount?.streaksSettings?.isStreakOn, localAccount?.streaksSettings?.streakTimestamp, "Local account details")
+           try await accountService.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2007-10-23T00:00:00.000Z", weightlessWeight: 60.0)
+           print(localAccount?.streaksSettings?.isStreakOn,localAccount?.weightlessSettings?.isWeightlessOn, localAccount?.weightlessSettings?.weightlessWeight, localAccount?.weightlessSettings?.weightlessTimestamp, "Local account details")
        } catch  {
            print("Login Error")
        }
