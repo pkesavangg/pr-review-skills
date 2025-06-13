@@ -15,7 +15,7 @@ import SwiftUI
 struct HeightStepView: View {
     @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
-    var heightStepLang = SignupStrings.HeightStep.self
+    let heightStepLang = SignupStrings.HeightStep.self
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {

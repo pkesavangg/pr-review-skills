@@ -16,7 +16,8 @@ struct GoalStepView: View {
     @State private var selectedSegment: GoalTypeSegment = .loseGain
     @State private var focusedField: FocusField?
     
-    var goalStepLang = SignupStrings.GoalStep.self
+    let goalStepLang = SignupStrings.GoalStep.self
+    let labels = InputFieldLabels.self
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -43,7 +44,7 @@ struct GoalStepView: View {
                         // Current Weight Input
                         MetricInputField(
                             config: TextInputConfig(
-                                label: "\(goalStepLang.currentWeightLabel) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                                label: "\(labels.currentWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
                                 placeholder: "0.0",
                                 inputType: .metric,
                                 errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
@@ -61,7 +62,7 @@ struct GoalStepView: View {
                         
                         MetricInputField(
                             config: TextInputConfig(
-                                label: "\(goalStepLang.goalWeightLabel) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                                label: "\(labels.goalWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
                                 placeholder: "0.0",
                                 inputType: .metric,
                                 errorMessage: signupStore.getError(for: signupStore.signupForm.goalWeight),
@@ -77,7 +78,7 @@ struct GoalStepView: View {
                         )
                         
                         // TODO: Need to replace with the custom toggle view
-                        Toggle(goalStepLang.useMetricLabel, isOn: $signupStore.signupForm.useMetric.value)
+                        Toggle(labels.useMetric, isOn: $signupStore.signupForm.useMetric.value)
                             .padding(.top, .spacingXS)
                             .padding(.horizontal, 2)
                     }
