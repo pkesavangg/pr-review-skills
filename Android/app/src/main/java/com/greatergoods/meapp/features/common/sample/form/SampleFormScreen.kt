@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.sample.form
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -20,111 +21,56 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
-import com.greatergoods.meapp.features.common.helper.form.FormBuilder
-import com.greatergoods.meapp.features.common.helper.form.FormField
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.common.helper.form.ValidationType
 import com.greatergoods.meapp.theme.MeAppTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import androidx.compose.runtime.rememberCoroutineScope
+import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+
+data class SampleControls(
+    val email: FormControl<String>,
+    val password: FormControl<String>,
+    val confirmPassword: FormControl<String>,
+    val weight: FormControl<String>,
+    val bodyComp: FormControl<String>,
+    val sku: FormControl<String>,
+    val disabledField: FormControl<String>
+)
 
 @Composable
 fun SampleFormScreen() {
-    val initialCalendar = Calendar.getInstance()
-    val dateFormatter = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
+    val scope = rememberCoroutineScope()
+    val email = remember { FormControl("", listOf(FormValidations.required(), FormValidations.email()), emptyList(), scope) }
+    val password = remember { FormControl("", listOf(FormValidations.required(), FormValidations.minLength(8)), emptyList(), scope) }
+    val confirmPassword = remember { FormControl("", listOf(FormValidations.required(), FormValidations.confirmPasswordValidator(password)), emptyList(), scope) }
+    val weight = remember { FormControl("", listOf(FormValidations.weightValidator("kg")), emptyList(), scope) }
+    val bodyComp = remember { FormControl("", listOf(FormValidations.bodyCompValidator()), emptyList(), scope) }
+    val sku = remember { FormControl("", listOf(FormValidations.skuValidator()), emptyList(), scope) }
+    val disabledField = remember { FormControl("", emptyList(), emptyList(), scope) }
+    val controls = SampleControls(email, password, confirmPassword, weight, bodyComp, sku, disabledField)
+    val formGroup = remember { FormGroup(controls) }
 
-    val formBuilder = remember {
-        FormBuilder(
-            mapOf(
-                "email" to FormField(
-                    value = "",
-                    validations = listOf(
-                        FormValidations.required(),
-                        FormValidations.email()
-                    ),
-                    messages = mapOf(
-                        ValidationType.REQUIRED to "Email is required",
-                        ValidationType.EMAIL to "Please enter a valid email"
-                    )
-                ),
-                "password" to FormField(
-                    value = "",
-                    validations = listOf(
-                        FormValidations.required(),
-                        FormValidations.minLength(8)
-                    ),
-                    messages = mapOf(
-                        ValidationType.REQUIRED to "Password is required",
-                        ValidationType.MIN_LENGTH to "Password must be at least 8 characters"
-                    )
-                ),
-                "confirmPassword" to FormField(
-                    value = "",
-                    validations = listOf(
-                        FormValidations.required(),
-                        FormValidations.matchPassword("password")
-                    ),
-                    messages = mapOf(
-                        ValidationType.REQUIRED to "Please confirm your password",
-                        ValidationType.MATCH_PASSWORD to "Passwords do not match"
-                    )
-                ),
-                "weight" to FormField(
-                    value = "",
-                    validations = listOf(
-                        FormValidations.weightValidator(unitType = "kg")
-                    ),
-                    messages = mapOf(
-                        ValidationType.REQUIRED to "Weight is required",
-                        ValidationType.NOT_IN_RANGE to "Weight must be between 1 and 450 kg"
-                    )
-                ),
-                "bodyComp" to FormField(
-                    value = "",
-                    validations = listOf(
-                        FormValidations.bodyCompValidator(min = 0, max = 100)
-                    ),
-                    messages = mapOf(
-                        ValidationType.REQUIRED to "Body composition is required",
-                        ValidationType.NOT_IN_RANGE to "Body composition must be between 0 and 99"
-                    )
-                ),
-                "sku" to FormField(
-                    value = "",
-                    validations = listOf(
-                        FormValidations.skuValidator()
-                    ),
-                    messages = mapOf(
-                        ValidationType.PATTERN to "SKU must be 4 digits"
-                    )
-                ),
-                "disabledField" to FormField(
-                    value = "",
-                    validations = listOf(),
-                    messages = mapOf()
-                ),
-            )
-        )
-    }
-
-    val form by formBuilder.form.collectAsState()
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
-
 
     MeAppTheme {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
                 .verticalScroll(scrollState)
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = { focusManager.clearFocus() }
-                ),
+                ).background(color = colorScheme.overlay)
+                .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
@@ -132,78 +78,17 @@ fun SampleFormScreen() {
                 style = MeAppTheme.typography.heading3,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-
-            // AppInput(
-            //     modifier = Modifier,
-            //     type = AppInputType.TEXT,
-            //     formControl = form.getField("email"),
-            //     name = "email",
-            //     label = "Email",
-            //     placeHolder = "Enter your email"
-            // )
-
-            // AppInput(
-            //     modifier = Modifier,
-            //     type = AppInputType.PASSWORD,
-            //     formControl = form.getField("password"),
-            //     name = "password",
-            //     label = "Password",
-            //     placeHolder = "Enter your password"
-            // )
-            //
-            // AppInput(
-            //     modifier = Modifier,
-            //     type = AppInputType.PASSWORD,
-            //     formControl = form.getField("confirmPassword"),
-            //     name = "confirmPassword",
-            //     label = "Confirm Password",
-            //     placeHolder = "Confirm your password",
-            // )
-            //
-            // AppInput(
-            //     modifier = Modifier,
-            //     type = AppInputType.WEIGHT,
-            //     formControl = form.getField("weight"),
-            //     name = "weight",
-            //     label = "Weight",
-            //     placeHolder = "Enter weight in kg"
-            // )
-            //
-            // AppInput(
-            //     modifier = Modifier,
-            //     type = AppInputType.BODY_COMP,
-            //     formControl = form.getField("bodyComp"),
-            //     name = "bodyComp",
-            //     label = "Body Composition",
-            //     placeHolder = "Enter body composition %"
-            // )
-            //
-            // AppInput(
-            //     modifier = Modifier,
-            //     type = AppInputType.NUMBER,
-            //     formControl = form.getField("sku"),
-            //     name = "sku",
-            //     label = "SKU",
-            //     placeHolder = "Enter 4-digit SKU"
-            // )
-            //
-            // AppInput(
-            //     modifier = Modifier,
-            //     type = AppInputType.TEXT,
-            //     formControl = form.getField("disabledField"),
-            //     name = "disabledField",
-            //     label = "Disabled Field",
-            //     placeHolder = "This field is disabled",
-            //     enabled = false
-            // )
-
+            AppInput(formControl = email, type = AppInputType.TEXT, label = "Email", placeHolder = "Enter your email")
+            AppInput(formControl = password, type = AppInputType.PASSWORD, label = "Password", placeHolder = "Enter your password")
+            AppInput(formControl = confirmPassword, type = AppInputType.PASSWORD, label = "Confirm Password", placeHolder = "Confirm your password")
+            AppInput(formControl = weight, type = AppInputType.WEIGHT, label = "Weight", placeHolder = "Enter weight in kg")
+            AppInput(formControl = bodyComp, type = AppInputType.BODY_COMP, label = "Body Composition", placeHolder = "Enter body composition %")
+            AppInput(formControl = sku, type = AppInputType.NUMBER, label = "SKU", placeHolder = "Enter 4-digit SKU")
+            AppInput(formControl = disabledField, type = AppInputType.TEXT, label = "Disabled Field", placeHolder = "This field is disabled", enabled = false)
             Button(
                 onClick = {
-                    if (form.isFormValid) {
-                        // Handle form submission
-                        val formData = form.getAllValues()
-                        // Do something with formData
-                    }
+                    formGroup.forceShowAllErrors()
+                    formGroup.validate()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -211,10 +96,9 @@ fun SampleFormScreen() {
             ) {
                 Text("Submit")
             }
-
-            if (!form.isFormValid) {
+            if (formGroup.groupError != null) {
                 Text(
-                    text = "Form Invalid (Scroll to see errors)",
+                    text = formGroup.groupError!!,
                     style = MeAppTheme.typography.body2,
                     color = MeAppTheme.colorScheme.error
                 )

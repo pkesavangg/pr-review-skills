@@ -42,15 +42,19 @@ import com.greatergoods.meapp.R
 import com.greatergoods.meapp.features.common.helper.form.DecimalInputVisualTransformation
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.Arrangement
+import com.greatergoods.meapp.theme.MeAppTheme.borderRadius
+import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeAppTheme.spacing
+import com.greatergoods.meapp.theme.MeAppTheme.typography
 
 enum class AppInputType {
     TEXT,
     PASSWORD,
-    CHECKBOX,
-    DATE_PICKER,
     NUMBER,
-    TIME_PICKER,
-    DROP_DOWN,
     BODY_COMP,
     WEIGHT,
 }
@@ -88,14 +92,26 @@ object AppInputDefaults {
             else -> ImeAction.Companion.Next
         }
 
-    fun <T> filterValue(
-        type: AppInputType,
-        value: String,
-    ): T =
-        when (type) {
-            AppInputType.WEIGHT, AppInputType.BODY_COMP -> value.filter { it.isDigit() }
+    fun stringToValue(type: AppInputType, value: String, formControl: FormControl<*>?): Any? = when (type) {
+        AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP -> when (formControl?.value) {
+            is Int -> value.toIntOrNull()
+            is Long -> value.toLongOrNull()
+            is Float -> value.toFloatOrNull()
+            is Double -> value.toDoubleOrNull()
             else -> value
-        } as T
+        }
+        else -> value
+    }
+
+    fun valueToString(type: AppInputType, value: Any?): String = when (type) {
+        AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP -> value?.toString() ?: ""
+        else -> value?.toString() ?: ""
+    }
+
+    fun filterValue(type: AppInputType, value: String): String = when (type) {
+        AppInputType.WEIGHT, AppInputType.BODY_COMP -> value.filter { it.isDigit() }
+        else -> value
+    }
 }
 
 @Composable
@@ -105,34 +121,31 @@ fun <T> AppInput(
     type: AppInputType = AppInputType.TEXT,
     label: String? = "",
     placeHolder: String = "",
-    name: String? = null,
     enabled: Boolean = true,
     readOnly: Boolean = false,
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
     allowDecimal: Boolean = true,
-    onValueChange: ((T) -> Unit)?,
+    onValueChange: ((T?) -> Unit)? = null,
 ) {
     val onInputChange: (String) -> Unit = { value ->
-        val newValue = AppInputDefaults.filterValue<T>(type, value)
-        formControl?.onValueChange(newValue)
-        onValueChange?.let {
-            it(newValue)
+        val filtered = AppInputDefaults.filterValue(type, value)
+        val newValue = AppInputDefaults.stringToValue(type, filtered, formControl) as T?
+        if (newValue != null) {
+            formControl?.onValueChange(newValue)
+            onValueChange?.let { it(newValue) }
         }
     }
     val visualTransformation = AppInputDefaults.visualTransformation(type, allowDecimal)
-    val keyboardOptions =
-        KeyboardOptions(
-            keyboardType = AppInputDefaults.keyboardType(type),
-            imeAction = AppInputDefaults.imeAction(type),
-        )
-
+    val keyboardOptions = KeyboardOptions(
+        keyboardType = AppInputDefaults.keyboardType(type),
+        imeAction = AppInputDefaults.imeAction(type),
+    )
     InputFieldBase(
         modifier = modifier,
         formControl = formControl,
-        name = name,
         label = label,
-        value = formControl?.value?.toString() ?: "",
+        value = AppInputDefaults.valueToString(type, formControl?.value),
         onValueChange = onInputChange,
         placeHolder = placeHolder,
         enabled = enabled,
@@ -152,17 +165,16 @@ fun <T> AppInput(
 fun <T> InputFieldBase(
     modifier: Modifier = Modifier,
     formControl: FormControl<T>? = null,
-    name: String? = null,
     label: String? = null,
     value: String = "",
     placeHolder: String = "",
     enabled: Boolean = true,
+    inputType: AppInputType = AppInputType.TEXT,
     readOnly: Boolean = false,
     supportingText: String? = null,
-    inputType: AppInputType = AppInputType.TEXT,
     showTrailingIcon: Boolean = true,
-    visualTransformation: VisualTransformation = VisualTransformation.Companion.None,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Companion.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     focusRequester: FocusRequester = remember { FocusRequester() },
     onFocus: (() -> Unit)? = null,
     onBlur: (() -> Unit)? = null,
@@ -170,101 +182,56 @@ fun <T> InputFieldBase(
     onNext: (() -> Unit)? = null,
     onValueChange: ((String) -> Unit)? = null,
 ) {
-    val spacing = MeAppTheme.spacing
-    val colors = MeAppTheme.colorScheme
-    val typography = MeAppTheme.typography
-    val inputBorderRadius = MeAppTheme.borderRadius.sm
-    val labelPadding = spacing.xs
-    val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val isError = formControl?.error.isNullOrBlank().not()
-
-    var statelessValue by remember { mutableStateOf(value) }
     var isFocused by remember { mutableStateOf(false) }
-    val currentOnFocus by rememberUpdatedState(onFocus) // Added
-    val currentOnBlur by rememberUpdatedState(onBlur) // Added
+    val currentOnFocus by rememberUpdatedState(onFocus)
+    val currentOnBlur by rememberUpdatedState(onBlur)
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
-    // Renamed for clarity in trailingIcon logic
-    val showPasswordToggle = inputType == AppInputType.PASSWORD && showTrailingIcon
-    val showErrorIcon = isError && showTrailingIcon && inputType != AppInputType.PASSWORD
-
-    // Adjusted showClear logic to not interfere with password toggle if both could be true.
-    // Clear icon should not show if it's a password field (it has its own toggle) or if there's an error (error icon takes precedence).
+    val isError = formControl?.error.isNullOrBlank().not()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val isPassword = inputType == AppInputType.PASSWORD
+    val showPasswordToggle = isPassword && showTrailingIcon
     val showClearButton =
-        (
-            formControl?.value?.toString()?.isNotEmpty()
-                ?: statelessValue.isNotEmpty()
-        ) &&
-            !isError &&
-            inputType != AppInputType.PASSWORD &&
-            enabled &&
-            !readOnly &&
-            showTrailingIcon
+        formControl?.value?.toString()?.isNotEmpty() == true && isPassword &&
+                enabled && !readOnly && showTrailingIcon
 
     val labelColor =
         when {
-            isError -> colors.error
-            !enabled -> colors.errorDisabled
-            else -> colors.subheading
+            isError -> colorScheme.error
+            else -> colorScheme.subheading
         }
-    val inputTextColor =
-        when {
-            !enabled -> colors.subheading.copy(alpha = 0.5f)
-            else -> colors.body
-        }
-    val placeholderColor = colors.subheading.copy(alpha = 0.5f)
+    val inputTextColor = when {
+        !enabled -> colorScheme.subheading
+        else -> colorScheme.body
+    }
+    val placeholderColor = colorScheme.secondary
     val backgroundColor =
         when {
-            !enabled -> colors.secondary.copy(alpha = 0.5f)
-            else -> colors.primary
+            !enabled -> colorScheme.secondaryDisabled
+            else -> colorScheme.primary
         }
     // Define container colors based on Material Design guidelines
-    val containerColor = colors.primary // Default container color
-    val disabledContainerColor = colors.secondary.copy(alpha = 0.5f) // Disabled container color
+    val containerColor = colorScheme.primary // Default container color
+    val disabledContainerColor = colorScheme.secondaryDisabled // Disabled container color
     // As a fallback if errorContainer is not suitable in your theme, colors.surfaceVariant or colors.surface could be used:
     // val errorInputContainerColor = colors.surfaceVariant
 
     val iconTint =
         when {
-            isError -> colors.error
-            !enabled -> colors.secondaryDisabled
-            else -> colors.primaryAction
+            isError -> colorScheme.error
+            !enabled -> colorScheme.secondaryDisabled
+            else -> colorScheme.primaryAction
         }
 
-    // Calculate supporting text height safely
-    val supportingTextHeight =
-        if (typography.body3.lineHeight.isSpecified) {
-            typography.body3.lineHeight.value.dp
-        } else {
-            16.dp // Default height if line height is unspecified
-        }
-
-    // Update statelessValue when value prop changes
-    if (value != statelessValue && formControl == null) {
-        statelessValue = value
-    }
-
-    val inputValue = formControl?.value?.toString() ?: statelessValue
-
-    fun stringToValue(value: String): T =
-        when (inputType) {
-            AppInputType.NUMBER ->
-                when (formControl?.value) {
-                    is Int -> value.toIntOrNull() as T
-                    is Long -> value.toLongOrNull() as T
-                    is Float -> value.toFloatOrNull() as T
-                    is Double -> value.toDoubleOrNull() as T
-                    else -> value as T
-                }
-
-            else -> value as T
-        }
+    val inputValue = value
 
     fun clearValueAndNotify() {
-        formControl?.onValueChange(stringToValue("") as T)
-        statelessValue = ""
-        onValueChange?.invoke("")
+        val clearedValue = AppInputDefaults.stringToValue(inputType, "", formControl) as T?
+        if (clearedValue != null) {
+            formControl?.onValueChange(clearedValue)
+            onValueChange?.invoke("")
+        }
     }
 
     fun togglePasswordVisibility() {
@@ -273,19 +240,6 @@ fun <T> InputFieldBase(
 
     val trailingIcon: (@Composable (() -> Unit))? =
         when {
-            showErrorIcon -> {
-                @Composable {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_close_outlined),
-                        contentDescription = "Error",
-                        tint = iconTint,
-                        modifier =
-                            Modifier.Companion
-                                .size(24.dp),
-                    )
-                }
-            }
-
             showPasswordToggle -> {
                 @Composable {
                     val iconResId = if (passwordVisible) R.drawable.ic_eye_close else R.drawable.ic_eye_open
@@ -312,10 +266,8 @@ fun <T> InputFieldBase(
                         modifier =
                             Modifier.Companion
                                 .size(20.dp)
-                                .clip(
-                                    androidx.compose.foundation.shape
-                                        .RoundedCornerShape(4.dp),
-                                ).clickable(enabled = enabled) { clearValueAndNotify() },
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable(enabled = !isError) { clearValueAndNotify() },
                     )
                 }
             }
@@ -334,39 +286,38 @@ fun <T> InputFieldBase(
         TextField(
             value = inputValue,
             onValueChange = { newValue ->
-                if (formControl != null) {
-                    formControl?.onValueChange(stringToValue(newValue) as T)
+                val castValue = AppInputDefaults.stringToValue(inputType, newValue, formControl) as T?
+                if (formControl != null && castValue != null) {
+                    formControl.onValueChange(castValue)
                 } else {
-                    statelessValue = newValue
                     onValueChange?.invoke(newValue)
                 }
             },
             shape =
                 androidx.compose.foundation.shape
-                    .RoundedCornerShape(inputBorderRadius),
+                    .RoundedCornerShape(borderRadius.sm),
             modifier =
                 Modifier.Companion
                     .background(
                         backgroundColor,
                         androidx.compose.foundation.shape
-                            .RoundedCornerShape(inputBorderRadius),
+                            .RoundedCornerShape(borderRadius.sm),
                     ).border(
                         0.dp,
                         Color.Companion.Transparent,
                         androidx.compose.foundation.shape
-                            .RoundedCornerShape(inputBorderRadius),
+                            .RoundedCornerShape(borderRadius.sm),
                     ).height(56.dp)
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
                     .focusRequester(focusRequester)
                     .onFocusChanged { focusState ->
                         if (!focusState.isFocused && isFocused) {
-                            currentOnBlur?.invoke() // Changed to use currentOnBlur
-                            // TODO: handle touched
-                            // formControl?.parent?.touched(name)
+                            currentOnBlur?.invoke()
+                            formControl?.onBlur() // handle touched on blur
                             isFocused = false
                         } else if (focusState.isFocused && !isFocused) {
-                            currentOnFocus?.invoke() // Changed to use currentOnFocus
+                            currentOnFocus?.invoke()
                             isFocused = true
                         }
                     },
@@ -414,37 +365,37 @@ fun <T> InputFieldBase(
                     // Set text colors
                     focusedTextColor = inputTextColor,
                     unfocusedTextColor = inputTextColor,
-                    disabledTextColor = inputTextColor,
-                    errorTextColor = inputTextColor, // Use theme's error color for text in error state
+                    disabledTextColor = colorScheme.subheading,
+                    errorTextColor = inputTextColor,
                     // Set placeholder colors
                     focusedPlaceholderColor = placeholderColor,
                     unfocusedPlaceholderColor = placeholderColor,
                     disabledPlaceholderColor = placeholderColor,
                     // Set cursor color
-                    cursorColor = colors.primaryAction,
-                    errorCursorColor = colors.error,
+                    cursorColor = colorScheme.primaryAction,
+                    errorCursorColor = colorScheme.error,
                 ),
         )
-        // Always reserve space for one line below the field for error/supporting text
+        // Reserve space for one line below the field for error/supporting text
         Box(
             modifier =
                 Modifier.Companion
                     .fillMaxWidth()
-                    .height(supportingTextHeight) // Use the calculated safe height
-                    .padding(start = labelPadding, top = 2.dp),
+                    .height(spacing.sm) // Use the calculated safe height
+                    .padding(start = spacing.xs, top = 2.dp),
         ) {
             when {
                 isError ->
                     Text(
                         formControl.error ?: "",
-                        color = colors.error,
+                        color = colorScheme.error,
                         style = typography.body3,
                     )
 
                 supportingText != null ->
                     Text(
                         supportingText,
-                        color = colors.subheading,
+                        color = colorScheme.subheading,
                         style = typography.body3,
                     )
 
@@ -458,6 +409,24 @@ fun <T> InputFieldBase(
     }
 }
 
-
 @PreviewTheme
 @Composable
+fun AppInputPreview() {
+    MeAppTheme {
+        val fakeScope = rememberCoroutineScope()
+        val normal = remember { FormControl("Input", emptyList(), emptyList(), fakeScope) }
+        val error = remember { FormControl("Input", listOf({ "This field is required" }), emptyList(), fakeScope) }
+        val password = remember { FormControl("", listOf({ "Password must be at least 8 characters" }), emptyList(), fakeScope) }
+        val disabled = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
+        val focused = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
+            AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
+            AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
+            AppInput(formControl = error, label = "Error Input", type = AppInputType.TEXT, supportingText = "supporting text")
+            AppInput(formControl = password, label = "Password with Error", type = AppInputType.PASSWORD)
+            AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
+        }
+    }
+}
+
+

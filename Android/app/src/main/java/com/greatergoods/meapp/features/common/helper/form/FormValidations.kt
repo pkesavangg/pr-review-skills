@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.helper.form
 
 import android.util.Patterns
 import java.util.Calendar
+import com.greatergoods.meapp.features.common.helper.form.FormControl
 
 object ValidationType {
     const val MATCH_PASSWORD = "matchPassword"
@@ -18,146 +19,70 @@ object ValidationType {
 }
 
 object FormValidations {
-    fun required(): (formField: FormField<Any>) -> String? = { formField ->
-        when (val value = formField.value) {
-            is String -> {
-                if (value.toString().isEmpty()) ValidationType.REQUIRED else null
-            }
-            is Boolean -> {
-                if (value == false) ValidationType.REQUIRED else null
-            }
-            else -> {
-                null
-            }
-        }
+    fun required(): Validator<String> = { value ->
+        if (value.isEmpty()) ValidationType.REQUIRED else null
     }
 
-    fun minLength(length: Int): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value
-        if (value.toString().length < length) {
-            ValidationType.MIN_LENGTH
-        } else {
-            null
-        }
+    fun minLength(length: Int): Validator<String> = { value ->
+        if (value.length < length) ValidationType.MIN_LENGTH else null
     }
 
-    fun maxLength(length: Int): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value
-        if (value.toString().length > length) {
-            ValidationType.MAX_LENGTH
-        } else {
-            null
-        }
+    fun maxLength(length: Int): Validator<String> = { value ->
+        if (value.length > length) ValidationType.MAX_LENGTH else null
     }
 
-    fun email(): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value
-        if (!Patterns.EMAIL_ADDRESS.matcher(value.toString()).matches()) {
-            ValidationType.EMAIL
-        } else {
-            null
-        }
+    fun email(): Validator<String> = { value ->
+        if (!Patterns.EMAIL_ADDRESS.matcher(value).matches()) ValidationType.EMAIL else null
     }
 
-    fun pattern(pattern: String): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value
-        if (!pattern.toRegex().matches(value.toString())) {
-            ValidationType.PATTERN
-        } else {
-            null
-        }
+    fun pattern(pattern: String): Validator<String> = { value ->
+        if (!pattern.toRegex().matches(value)) ValidationType.PATTERN else null
     }
 
-    fun matchPassword(fieldName: String): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value
-        val form = formField.parent
-        if (value.toString().isNotEmpty() && (form != null && form.getValue<Any>(fieldName) != value)) {
-            ValidationType.MATCH_PASSWORD
-        } else {
-            null
-        }
+    fun notSame(other: FormControl<String>): Validator<String> = { value ->
+        if (value.isNotEmpty() && value == other.value) ValidationType.NOT_SAME else null
     }
 
-    fun notSame(fieldName: String): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value
-        val form = formField.parent
-        if (value.toString().isNotEmpty() && (form != null && form.getValue<Any>(fieldName) == value)) {
-            ValidationType.NOT_SAME
-        } else {
-            null
-        }
-    }
-
-    fun range(range: IntRange): (formField: FormField<Any>) -> String? = { formField ->
+    fun range(range: IntRange): Validator<String> = { value ->
         try {
-            val value = formField.value.toString().toInt()
-            if (value !in range) {
-                ValidationType.NOT_IN_RANGE
-            } else {
-                null
-            }
+            val intValue = value.toInt()
+            if (intValue !in range) ValidationType.NOT_IN_RANGE else null
         } catch (e: NumberFormatException) {
             ValidationType.NOT_IN_RANGE
         }
     }
 
-    fun greaterThan(fieldName: String): (formField: FormField<Any>) -> String? = { formField ->
-        val value: Int = formField.value.toString().toIntOrNull() ?: 0
-        val form = formField.parent
-        if (value.toString().isNotEmpty() && form != null) {
-            val comparingValue: Int = form.getValue<Int>(fieldName).toString().toIntOrNull() ?: 0
-            if (value < comparingValue)
-                ValidationType.LESSER
-            else
-                null
-        } else
-            null
+    fun greaterThan(other: FormControl<String>): Validator<String> = { value ->
+        val intValue = value.toIntOrNull() ?: 0
+        val otherValue = other.value.toIntOrNull() ?: 0
+        if (value.isNotEmpty() && intValue < otherValue) ValidationType.LESSER else null
     }
 
-    fun lesserThan(fieldName: String): (formField: FormField<Any>) -> String? = { formField ->
-        val value: Int = formField.value.toString().toIntOrNull() ?: 0
-        val form = formField.parent
-        if (value.toString().isNotEmpty() && form != null) {
-            val comparingValue: Int = form.getValue<Int>(fieldName).toString().toIntOrNull() ?: 0
-            if (value > comparingValue)
-                ValidationType.GREATER
-            else
-                null
-        } else
-            null
+    fun lesserThan(other: FormControl<String>): Validator<String> = { value ->
+        val intValue = value.toIntOrNull() ?: 0
+        val otherValue = other.value.toIntOrNull() ?: 0
+        if (value.isNotEmpty() && intValue > otherValue) ValidationType.GREATER else null
     }
 
-    fun futureTime(): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value as Calendar
-        val currTime = Calendar.getInstance() // Replace with CalendarUtil.getCurrentDate() if available
-        if (value.timeInMillis > currTime.timeInMillis) {
-            ValidationType.FUTURE_TIME
-        } else {
-            null
-        }
+    fun futureTime(): Validator<Calendar> = { value ->
+        val currTime = Calendar.getInstance()
+        if (value.timeInMillis > currTime.timeInMillis) ValidationType.FUTURE_TIME else null
     }
 
-    fun skuValidator(): (formField: FormField<Any>) -> String? = { formField ->
-        val value = formField.value.toString()
+    fun skuValidator(): Validator<String> = { value ->
         if (value.length != 4 || !value.all { it.isDigit() }) ValidationType.PATTERN else null
     }
 
-    fun weightValidator(unitType: String): (formField: FormField<Any>) -> String? = { formField ->
-        val valueString = formField.value.toString()
-        
-        // If empty, return required error
-        if (valueString.isBlank()) {
+    fun weightValidator(unitType: String): Validator<String> = { value ->
+        if (value.isBlank()) {
             ValidationType.REQUIRED
         } else {
-            // Insert decimal point at the correct position (1 digit from right)
-            val decimalValue = if (valueString.length > 1) {
-                valueString.dropLast(1) + "." + valueString.takeLast(1)
+            val decimalValue = if (value.length > 1) {
+                value.dropLast(1) + "." + value.takeLast(1)
             } else {
-                "0." + valueString
+                "0." + value
             }
-
             val v = decimalValue.toFloatOrNull()
-
             if (v == null) {
                 ValidationType.NOT_IN_RANGE
             } else {
@@ -167,7 +92,7 @@ object FormValidations {
                         v > 450f -> ValidationType.NOT_IN_RANGE
                         else -> null
                     }
-                } else { // lbs
+                } else {
                     when {
                         v <= 0f -> ValidationType.NOT_IN_RANGE
                         v > 999f -> ValidationType.NOT_IN_RANGE
@@ -178,30 +103,24 @@ object FormValidations {
         }
     }
 
-    fun bodyCompValidator(min: Int = 0, max: Int = 99, allowDecimal: Boolean = true): (formField: FormField<Any>) -> String? = { formField ->
-        val valueString = formField.value.toString()
-        
-        // If empty, return required error
-        if (valueString.isBlank()) {
+    fun bodyCompValidator(min: Int = 0, max: Int = 99, allowDecimal: Boolean = true): Validator<String> = { value ->
+        if (value.isBlank()) {
             ValidationType.REQUIRED
         } else {
-            // Handle decimal transformation if allowed
             val decimalValue = if (allowDecimal) {
-                if (valueString.length > 1) {
-                    valueString.dropLast(1) + "." + valueString.takeLast(1)
+                if (value.length > 1) {
+                    value.dropLast(1) + "." + value.takeLast(1)
                 } else {
-                    "0." + valueString
+                    "0." + value
                 }
             } else {
-                valueString
+                value
             }
-
             val v = if (allowDecimal) {
                 decimalValue.toFloatOrNull()
             } else {
-                valueString.toIntOrNull()?.toFloat()
+                value.toIntOrNull()?.toFloat()
             }
-
             if (v == null) {
                 ValidationType.NOT_IN_RANGE
             } else {
@@ -211,6 +130,18 @@ object FormValidations {
                     else -> null
                 }
             }
+        }
+    }
+
+    /**
+     * Validator for confirm password fields. Checks if the value matches the value of the provided password FormControl.
+     * Returns 'Passwords mismatch' if they do not match.
+     */
+    fun confirmPasswordValidator(passwordControl: FormControl<String>): Validator<String> = { value ->
+        if (value != passwordControl.value) {
+            "Passwords mismatch"
+        } else {
+            null
         }
     }
 }
