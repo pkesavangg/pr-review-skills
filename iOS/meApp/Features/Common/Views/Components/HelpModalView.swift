@@ -19,10 +19,8 @@ struct HelpModalView: View {
                 }
             }
             .padding(.bottom, .spacingMD)
-            Text(themeManager.isDarkMode ? "Dark Mode Help" : "Help")
-            Text(themeManager.appearanceMode.rawValue)
                 
-            Image(themeManager.isDarkMode ? appAssets.stampDark : appAssets.stamp)
+            Image(themeManager.isDarkMode ? appAssets.stampDark : appAssets.closeCircle)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)

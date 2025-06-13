@@ -11,33 +11,34 @@ struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @State private var isLogoAnimated = false
-    
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
-//        VStack(spacing: 32) {
-//            // Logo Section
-//            logoView
-//                .scaleEffect(isLogoAnimated ? 1 : 0.8)
-//                .opacity(isLogoAnimated ? 1 : 0)
-//                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isLogoAnimated)
-//            
-//            // Title Section
-//            titleView
-//                .opacity(isLogoAnimated ? 1 : 0)
-//                .offset(y: isLogoAnimated ? 0 : 20)
-//                .animation(.easeOut(duration: 0.5).delay(0.3), value: isLogoAnimated)
-//        }
-//        .frame(maxWidth: .infinity, maxHeight: .infinity)
-//        .background(theme.actionPrimary)
-//        .preferredColorScheme(themeManager.getPreferredAppearanceMode())
-//        .onAppear {
-//            withAnimation {
-//                isLogoAnimated = true
-//                themeManager.appearanceMode = .system
-//            }
-//        }
-        HelpModalView() {}
-//        SignupScreen()
-//            .preferredColorScheme(themeManager.getPreferredAppearanceMode())
+        VStack(spacing: 32) {
+            // Logo Section
+            logoView
+                .scaleEffect(isLogoAnimated ? 1 : 0.8)
+                .opacity(isLogoAnimated ? 1 : 0)
+                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isLogoAnimated)
+            
+            // Title Section
+            titleView
+                .opacity(isLogoAnimated ? 1 : 0)
+                .offset(y: isLogoAnimated ? 0 : 20)
+                .animation(.easeOut(duration: 0.5).delay(0.3), value: isLogoAnimated)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.actionPrimary)
+        .preferredColorScheme(themeManager.getPreferredAppearanceMode())
+        .onChange(of: colorScheme) { _, newScheme in
+            themeManager.syncWithSystemColorScheme(newScheme)
+        }
+        .onAppear {
+            withAnimation {
+                isLogoAnimated = true
+                themeManager.syncWithSystemColorScheme(colorScheme)
+            }
+        }
     }
     // MARK: - UI Components
     
@@ -58,9 +59,6 @@ struct ContentView: View {
                         isLogoAnimated = true
                     }
                 }
-            }
-            .onChange(of: themeManager.isDarkMode) { oldValue, newValue in
-                print("Dark mode changed from \(oldValue) to \(newValue)")
             }
     }
     private var titleView: some View {
