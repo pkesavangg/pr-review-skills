@@ -24,24 +24,16 @@ struct SignupScreen: View {
             AnyView(
                 SexStepView(signupStore: signupStore)
             ),
-            
-            // TODO: These are for the testing purpose need to replace with the actual views
-
             AnyView(
-                HeightStepView()
-                    .onChange(of: signupStore.signupForm.height.value) {
-                        signupStore.updateNextButtonState()
-                    }
-            ),
-            AnyView(
-                GoalStepView()
+                HeightStepView(signupStore: signupStore)
             ),
             
             AnyView(
-                EmailStepView(email: $signupStore.signupForm.email.value)
-                    .onChange(of: signupStore.signupForm.email.value) {
-                        signupStore.updateNextButtonState()
-                    }
+                GoalStepView(signupStore: signupStore)
+            ),
+            
+            AnyView(
+                EmailStepView(signupStore: signupStore)
             ),
             AnyView(
                 PasswordStepView(password: $signupStore.signupForm.password.value)
@@ -64,6 +56,14 @@ struct SignupScreen: View {
                             .foregroundColor(theme.statusIconPrimary)
                     }
                 ),
+                trailingButtonView: AnyView(
+                    Button(action: {
+                        signupStore.showExitAlert()
+                    }) {
+                        AppIconView(icon: AppAssets.helpCircle)
+                            .foregroundColor(theme.statusIconPrimary)
+                    }
+                ),
                 onLeadingButtonTap: nil,
                 onTrailingButtonTap: nil
             )
@@ -77,7 +77,7 @@ struct SignupScreen: View {
                 selectedIndex: $signupStore.currentStepIndex,
                 views: stepViews
             )
-            .padding(.top, .spacingLG)
+            .padding(.top, .spacing2XL)
             // Footer Buttons
             footerButtons
                 .padding(.horizontal, .spacingSM)
@@ -103,15 +103,14 @@ struct SignupScreen: View {
                     Button(commonLang.skip) {
                         withAnimation {
                             hideKeyboard()
-                            signupStore.moveToNextStep()
+                            signupStore.handleSkip()
                         }
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(signupStore.isNextEnabled ? Color.blue : Color.gray)
+                    .background(signupStore.isNextEnabled ? theme.actionPrimary : Color.gray)
                     .cornerRadius(8)
-                    .disabled(!signupStore.isNextEnabled)
                 }
             }
             
@@ -124,7 +123,7 @@ struct SignupScreen: View {
             .foregroundColor(.white)
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
-            .background(signupStore.isNextEnabled ? Color.blue : Color.gray)
+            .background(signupStore.isNextEnabled ? theme.actionPrimary : Color.gray)
             .cornerRadius(8)
             .disabled(!signupStore.isNextEnabled)
         }

@@ -17,9 +17,11 @@ class SignupForm: ObservableForm {
         return FormControl(defaultDate, validators: [.futureDate])
     }()
     var gender = FormControl("", validators: [.required])
-    var goalType = FormControl("", validators: [.required, .noWhiteSpace])
+    var goalType = FormControl(GoalTypeSegment.losegainValue, validators: [.required])
     var currentWeight = FormControl("", validators: [.required])
-    var height = FormControl(700.0)
+    var goalWeight = FormControl("", validators: [.required])
+    var useMetric = FormControl(false)
+    var height = FormControl(Double(700))
     var email = FormControl("", validators: [.required, .email, .maxLength(200)])
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
@@ -34,7 +36,9 @@ class SignupForm: ObservableForm {
             birthday.$value.map { _ in () }.eraseToAnyPublisher(),
             gender.$value.map { _ in () }.eraseToAnyPublisher(),
             goalType.$value.map { _ in () }.eraseToAnyPublisher(),
+            useMetric.$value.map { _ in () }.eraseToAnyPublisher(),
             currentWeight.$value.map { _ in () }.eraseToAnyPublisher(),
+            goalWeight.$value.map { _ in () }.eraseToAnyPublisher(),
             height.$value.map { _ in () }.eraseToAnyPublisher(),
             email.$value.map { _ in () }.eraseToAnyPublisher(),
             password.$value.map { _ in () }.eraseToAnyPublisher(),
@@ -56,6 +60,26 @@ class SignupForm: ObservableForm {
                 )
             }
         }
+        
+        // TODO: Need to add the weight check logic to the common validation method
+        
+        // TODO: Need to move the goal validation logic to a common method
+        // Check if goal weight equals current weight when in lose/gain mode
+        if goalType.value != GoalType.maintain.rawValue {
+            if !currentWeight.errors[.required] && !goalWeight.errors[.required] {
+                // Convert to Double to compare numerically
+                let current = Double(currentWeight.value) ?? 0.0
+                let goal = Double(goalWeight.value) ?? 0.0
+
+                if current > 0 && goal > 0 && current == goal {
+                    errors.update(
+                        for: Validator<Any>(type: .weightEqual) { _ in false },
+                        value: false
+                    )
+                }
+            }
+        }
+        
         updateFormErrors(errors)
     }
     
@@ -83,7 +107,21 @@ class SignupForm: ObservableForm {
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch
         }
+        if (goalType.value == GoalTypeSegment.losegainValue && control === goalWeight) && formErrors[.weightEqual] {
+            return FormErrorMessages.valueShouldBeEqual
+        }
 
         return nil
     }
+    
+    /// Resets the goal-related form fields to their default state
+    func resetGoal() {
+        goalType.value = GoalTypeSegment.losegainValue
+        currentWeight.value = ""
+        goalWeight.value = ""
+        currentWeight.markAsPristine()
+        goalWeight.markAsPristine()
+    }
 }
+
+

@@ -21,14 +21,15 @@ struct CommonStrings {
 struct FormErrorMessages {
     static let required = "must not be left blank"
     static let email = "must use a valid email"
-    static let passwordMaxLength = "password must not exceed 50 characters."
+    static let passwordMaxLength = "password must not exceed 50 characters"
     static let minLength = { (length: Int) in "minimum of \(length) characters needed" }
-    static let maxLength = { (length: Int) in "maximum \(length) characters allowed." }
-    static let min = { (value: Int) in "value must be at least \(value)." }
-    static let max = { (value: Int) in "value must not exceed \(value)." }
+    static let maxLength = { (length: Int) in "maximum \(length) characters allowed" }
+    static let min = { (value: Int) in "value must be at least \(value)" }
+    static let max = { (value: Int) in "value must not exceed \(value)" }
     static let noWhiteSpace = "must not be left blank"
     static let futureDate = "future dates not accepted"
-    static let passwordMatch = "passwords do not match."
+    static let passwordMatch = "passwords do not match"
+    static let valueShouldBeEqual = "value should not be equal to current weight"
 }
 
 /// Constants for input field labels used in the app
@@ -39,7 +40,8 @@ struct InputFieldLabels {
     static let password = "password"
     static let confirmPassword = "confirm password"
     static let currentWeight = "current weight"
-    static let targetWeight = "target weight"
+    static let goalWeight = "goal weight"
+    static let useMetric = "Use Metric"
 }
 
 /// Constants for Alert strings used in the app

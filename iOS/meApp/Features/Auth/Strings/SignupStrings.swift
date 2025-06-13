@@ -25,4 +25,19 @@ struct SignupStrings {
         static let title = "What is your biological sex?"
         static let subtitle = "This is also important in determining body metrics and healthy ranges according to CDC and AHA health guidelines. Please choose what most closely reflects your body type and makes you most comfortable."
     }
+    
+    struct HeightStep {
+        static let title = "How tall are you?"
+        static let subtitle = "Height is another factor that helps us provide you with the most accurate metrics."
+    }
+    
+    struct GoalStep {
+        static let title = "Set a goal!"
+        static let subtitle = "This can be a helpful feature to utilize on your journey. Goals can always be changed in the app settings."
+    }
+    
+    struct EmailStep {
+        static let title = "What's your email?"
+        static let subtitle = "Be sure to use a valid email. You'll use this to login and it's where we'll send any reports."
+    }
 }

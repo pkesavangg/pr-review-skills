@@ -17,19 +17,19 @@ struct DateOfBirthStepView: View {
     let maxDate = DateTimeTools.minAllowedBirthdayDate()
     
     var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading) {
-                Text(dateOfBirthStepLang.title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXL)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(dateOfBirthStepLang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                    
+                    Text(dateOfBirthStepLang.subtitle)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textHeading)
+                }
                 
-                Text(dateOfBirthStepLang.subtitle)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXS)
-                
-                VStack{
+                VStack(alignment: .leading, spacing: 4) {
                     Text(dateOfBirthStepLang.birthdayLabel)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
