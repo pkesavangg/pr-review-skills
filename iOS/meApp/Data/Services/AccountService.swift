@@ -497,6 +497,19 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
             }
             
+            // Handle Integration Settings
+            if let integrationSettings = account.integrationSettings, !isSynced {
+                let integrations = Integrations(
+                    isFitbitOn: integrationSettings.isFitbitOn,
+                    isMFPOn: integrationSettings.isMfpOn,
+                    isFitbitValid: integrationSettings.isHealthConnectOn,
+                    isMFPValid: integrationSettings.isMfpValid,
+                    isHealthKitOn: integrationSettings.isMfpOn,
+                    isHealthConnectOn: integrationSettings.isHealthConnectOn
+                )
+               let _ = try await updateIntegrations(integrations: integrations)
+            }
+            
             // Mark account as synced and update timestamp
             account.isSynced = true
             account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
@@ -521,8 +534,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
             let response = try await apiRepo.patchDashboardMetrics(metrics)
-            localAccount.dashboardSettings?.dashboardMetrics = metrics.joined(separator: ",")
-            localAccount.isSynced = true
+            localAccount.update(from: response)
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
             return localAccount

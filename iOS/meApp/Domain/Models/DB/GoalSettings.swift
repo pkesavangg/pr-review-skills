@@ -16,7 +16,7 @@ import SwiftData
 /// | id            | string  | Auto-generated unique identifier                |
 /// | accountId     | string  | Reference to the related Account (foreign key) |
 /// | goalType      | string  | Type of goal (e.g., weight loss, maintenance)  |
-/// | weight        | Double   | Initial or current weight                      |
+/// | initialWeight        | Double   | Initial or current weight                      |
 /// | goalWeight    | string  | Target weight                                   |
 /// | goalPercent   | float   | Percentage of goal progress                    |
 /// | isSynced      | boolean | Whether this record is synced with server      |
@@ -30,9 +30,6 @@ final class GoalSettings {
     var goalWeight: String?
     var goalPercent: Double?
     var isSynced: Bool?
-
-    // Relationship back to Account
-    @Relationship var account: Account?
 
     init(accountId: String) {
         self.id = UUID().uuidString

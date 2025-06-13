@@ -26,9 +26,6 @@ final class NotificationSettings {
     var shouldSendWeightInEntryNotifications: Bool
     var isSynced: Bool?
 
-    // Relationship back to Account
-    @Relationship var account: Account?
-
     init(accountId: String,
          shouldSendEntryNotifications: Bool = true,
          shouldSendWeightInEntryNotifications: Bool = true,

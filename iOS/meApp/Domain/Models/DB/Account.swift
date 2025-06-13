@@ -1,52 +1,34 @@
 /// Stores user account details such as personal info, tokens, and app settings.
 ///
-/// | Column Name                               | Type    | Description                                       |
-/// | ----------------------------------------- | ------- | ------------------------------------------------- |
-/// | accountId                                | string  | Primary key for the account                       |
-/// | accessToken                              | string  | OAuth or app-specific access token                |
-/// | activityLevel                            | string  | User's activity level (e.g., low, moderate, high) |
-/// | dashboardMetrics                         | string  | Metrics selected for dashboard display            |
-/// | dashboardType                            | string  | Layout type of the user's dashboard               |
-/// | dob                                      | string  | Date of birth                                     |
-/// | email                                    | string  | User email address                                |
-/// | expiresAt                                | string  | Access token expiration time                      |
-/// | fcmToken                                 | string  | Firebase Cloud Messaging token                    |
-/// | firstName                                | string  | First name of the user                            |
-/// | gender                                   | string  | Gender of the user                                |
-/// | goalType                                 | string  | Type of health/fitness goal (e.g., weight loss)   |
-/// | goalWeight                               | string  | Target weight as defined by the user              |
-/// | height                                   | string  | Height of the user                                |
-/// | initialWeight                            | float   | Weight at account creation or goal start          |
-/// | isActiveAccount                          | boolean | Indicates if the account is currently active      |
-/// | isFitbitOn                               | boolean | Whether Fitbit integration is enabled             |
-/// | isFitbitValid                            | boolean | Whether Fitbit integration is valid/authenticated |
-/// | isGoogleFitOn                            | boolean | Whether Google Fit is enabled                     |
-/// | isGoogleFitValid                         | boolean | Whether Google Fit integration is valid           |
-/// | isHealthConnectOn                        | boolean | Whether Health Connect integration is enabled     |
-/// | isHealthKitOn                            | boolean | Whether Apple HealthKit is enabled                |
-/// | isLoggedIn                               | boolean | If the user is logged in with active session      |
-/// | isExpired                                | boolean | Whether the account/session is expired            |
-/// | isMfpOn                                  | boolean | Whether MyFitnessPal integration is enabled       |
-/// | isMfpValid                               | boolean | Whether MFP integration is valid                  |
-/// | isStreakOn                               | boolean | If streak tracking is enabled                     |
-/// | isSynced                                 | boolean | Is account details are synced online              |
-/// | isUaOn                                   | boolean | Under Armour connection enabled                   |
-/// | isUaValid                                | boolean | Under Armour connection valid                     |
-/// | isWeightlessOn                           | boolean | Weightless mode enabled (app-specific)            |
-/// | lastActiveTime                           | string  | Timestamp of last activity                        |
-/// | lastName                                 | string  | Last name of the user                             |
-/// | percent                                  | float   | Goal completion or progress percent               |
-/// | preferredInputMethod                     | string  | User's preferred data entry method                |
-/// | refreshToken                             | string  | OAuth refresh token                               |
-/// | shouldSendEntryNotifications             | boolean | Whether to send reminders for entries             |
-/// | shouldSendWeightInEntryNotifications     | boolean | Whether to send reminders for weight-ins          |
-/// | streakTimestamp                          | string  | Timestamp for streak tracking                     |
-/// | weightUnit                               | string  | Unit of weight measurement (kg/lb)                |
-/// | weightlessBodyFat                        | float   | Offline/stored body fat value                     |
-/// | weightlessMuscle                         | float   | Offline/stored muscle mass value                  |
-/// | weightlessTimestamp                      | string  | Last updated timestamp for weightless data        |
-/// | weightlessWeight                         | float   | Offline/stored weight value                       |
-/// | zipcode                                  | string  | User's zip/postal code                            |
+/// | Column Name      | Type    | Description                                 |
+/// |-----------------|---------|---------------------------------------------|
+/// | accountId       | string  | Primary key for the account                 |
+/// | email           | string  | User email address                          |
+/// | firstName       | string  | First name of the user                      |
+/// | lastName        | string  | Last name of the user                       |
+/// | gender          | Sex?    | Gender of the user                          |
+/// | height          | string? | Height (legacy, see WeightCompSettings)     |
+/// | dob             | string? | Date of birth                               |
+/// | zipcode         | string? | User's zip/postal code                      |
+/// | isLoggedIn      | bool?   | If the user is logged in                    |
+/// | isExpired       | bool?   | Whether the account/session is expired      |
+/// | isActiveAccount | bool?   | Indicates if the account is active          |
+/// | accessToken     | string? | OAuth or app-specific access token           |
+/// | refreshToken    | string? | OAuth refresh token                         |
+/// | expiresAt       | string? | Access token expiration time                |
+/// | fcmToken        | string? | Firebase Cloud Messaging token              |
+/// | lastActiveTime  | string? | Timestamp of last activity                  |
+/// | isSynced        | bool?   | Whether account is synced online            |
+///
+/// | Relationship Name      | Model/Class           | Description                                  |
+/// |-----------------------|-----------------------|----------------------------------------------|
+/// | weightSettings        | WeightCompSettings    | Weight, height, activity, weight unit, etc.  |
+/// | goalSettings          | GoalSettings          | Goal type, initial weight, goal weight, etc. |
+/// | streaksSettings       | StreaksSettings       | Streak tracking info                         |
+/// | weightlessSettings    | WeightlessSettings    | Weightless mode info                         |
+/// | notificationSettings  | NotificationSettings  | Notification preferences                     |
+/// | dashboardSettings     | DashboardSettings     | Dashboard metrics and type                   |
+/// | integrationSettings   | IntegrationSettings   | 3rd-party integration flags                  |
 
 import Foundation
 import SwiftData
@@ -55,65 +37,38 @@ import SwiftData
 final class Account {
     /// Primary key for the account
     @Attribute(.unique) var accountId: String
-    /// OAuth or app-specific access token
-    var accessToken: String?
     /// User email address
     var email: String
-    /// Access token expiration time
-    var expiresAt: String?
-    /// Firebase Cloud Messaging token
-    var fcmToken: String?
     /// First name of the user
     var firstName: String?
+    /// Last name of the user
+    var lastName: String?
     /// Gender of the user
     var gender: Sex?
     /// Height of the user
     var height: String?
-    /// Indicates if the account is currently active
-    var isActiveAccount: Bool?
-    /// Whether Fitbit integration is enabled
-    var isFitbitOn: Bool?
-    /// Whether Fitbit integration is valid/authenticated
-    var isFitbitValid: Bool?
-    /// Whether Google Fit is enabled
-    var isGoogleFitOn: Bool?
-    /// Whether Google Fit integration is valid
-    var isGoogleFitValid: Bool?
-    /// Whether Health Connect integration is enabled
-    var isHealthConnectOn: Bool?
-    /// Whether Apple HealthKit is enabled
-    var isHealthKitOn: Bool?
+    /// Date of birth
+    var dob: String?
+    /// User's zip/postal code
+    var zipcode: String?
     /// If the user is logged in with active session
     var isLoggedIn: Bool?
     /// Whether the account/session is expired
     var isExpired: Bool?
-    /// Whether MyFitnessPal integration is enabled
-    var isMfpOn: Bool?
-    /// Whether MFP integration is valid
-    var isMfpValid: Bool?
-    /// Is account details are synced online
-    var isSynced: Bool?
-    /// Under Armour connection enabled
-    var isUaOn: Bool?
-    /// Under Armour connection valid
-    var isUaValid: Bool?
-    /// Timestamp of last activity
-    var lastActiveTime: String?
-    /// Last name of the user
-    var lastName: String?
-
-    /// User's preferred data entry method
-    var preferredInputMethod: String?
+    /// Indicates if the account is currently active
+    var isActiveAccount: Bool?
+    /// OAuth or app-specific access token
+    var accessToken: String?
     /// OAuth refresh token
     var refreshToken: String?
-    /// Offline/stored body fat value
-    var weightlessBodyFat: Double?
-    /// Offline/stored muscle mass value
-    var weightlessMuscle: Double?
-    /// User's zip/postal code
-    var zipcode: String?
-    /// Date of birth
-    var dob: String?
+    /// Access token expiration time
+    var expiresAt: String?
+    /// Firebase Cloud Messaging token
+    var fcmToken: String?
+    /// Timestamp of last activity
+    var lastActiveTime: String?
+    /// Whether account is updated and synced online
+    var isSynced: Bool?
     
     // Relationship to WeightCompSettings
     @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
@@ -127,6 +82,8 @@ final class Account {
     @Relationship(deleteRule: .cascade) var notificationSettings: NotificationSettings?
     // Relationship to DashboardSettings
     @Relationship(deleteRule: .cascade) var dashboardSettings: DashboardSettings?
+    // Relationship to IntegrationSettings
+    @Relationship(deleteRule: .cascade) var integrationSettings: IntegrationSettings?
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -135,37 +92,25 @@ final class Account {
         self.gender = dto.gender
         self.zipcode = dto.zipcode
         self.dob = dto.dob
-        self.weightlessBodyFat = dto.weightlessBodyFat
-        self.weightlessMuscle = dto.weightlessMuscle
-        self.isFitbitOn = dto.isFitbitOn
-        self.isGoogleFitOn = dto.isGoogleFitOn
-        self.isMfpOn = dto.isMFPOn
-        self.isUaOn = dto.isUAOn
-        self.isFitbitValid = dto.isFitbitValid
-        self.isGoogleFitValid = dto.isGoogleFitValid
-        self.isMfpValid = dto.isMFPValid
-        self.isUaValid = dto.isUAValid
-        self.isHealthKitOn = nil
-        self.isHealthConnectOn = nil
-        self.accessToken = nil
-        self.refreshToken = nil
-        self.expiresAt = nil
         self.isLoggedIn = nil
-        self.isActiveAccount = nil
         self.isExpired = nil
         self.lastActiveTime = nil
         self.fcmToken = nil
+        self.isActiveAccount = nil
+        self.accessToken = nil
+        self.refreshToken = nil
+        self.expiresAt = nil
         self.isSynced = nil
         
         // Create associated WeightCompSettings
         let settings = WeightCompSettings(
             accountId: dto.id,
-            height: dto.height != nil ? String(dto.height) : nil,
+            height: String(dto.height),
             activityLevel: dto.activityLevel,
             weightUnit: dto.weightUnit
         )
         self.weightSettings = settings
-
+        
         // Create associated GoalSettings
         let goalSettings = GoalSettings(
             accountId: dto.id,
@@ -176,7 +121,7 @@ final class Account {
             isSynced: false
         )
         self.goalSettings = goalSettings
-
+        
         // Create associated StreaksSettings
         let streaksSettings = StreaksSettings(
             accountId: dto.id,
@@ -185,7 +130,7 @@ final class Account {
             isSynced: false
         )
         self.streaksSettings = streaksSettings
-
+        
         // Create associated WeightlessSettings
         let weightlessSettings = WeightlessSettings(
             accountId: dto.id,
@@ -195,7 +140,7 @@ final class Account {
             isSynced: false
         )
         self.weightlessSettings = weightlessSettings
-
+        
         // Create associated NotificationSettings
         let notificationSettings = NotificationSettings(
             accountId: dto.id,
@@ -204,7 +149,7 @@ final class Account {
             isSynced: false
         )
         self.notificationSettings = notificationSettings
-
+        
         // Create associated DashboardSettings
         let dashboardSettings = DashboardSettings(
             accountId: dto.id,
@@ -213,8 +158,21 @@ final class Account {
             isSynced: false
         )
         self.dashboardSettings = dashboardSettings
+        
+        // Create associated IntegrationSettings
+        let integrationSettings = IntegrationSettings(
+            accountId: dto.id,
+            isFitbitOn: dto.isFitbitOn ?? false,
+            isFitbitValid: dto.isFitbitValid ?? false,
+            isHealthConnectOn: dto.isHealthConnectOn ?? false,
+            isHealthKitOn: dto.isHealthKitOn ?? false,
+            isMfpOn: dto.isMFPOn ?? false,
+            isMfpValid: dto.isMFPValid ?? false,
+            isSynced: false
+        )
+        self.integrationSettings = integrationSettings
     }
-
+    
     func toAccountDTO() -> AccountDTO {
         return AccountDTO(
             id: self.accountId,
@@ -225,12 +183,9 @@ final class Account {
             zipcode: self.zipcode,
             weightUnit: self.weightSettings?.weightUnit ?? .lb,
             isWeightlessOn: self.weightlessSettings?.isWeightlessOn,
-            preferredInputMethod: self.preferredInputMethod,
             height: Double(self.weightSettings?.height ?? "0") ?? 0.0,
             activityLevel: self.weightSettings?.activityLevel,
             dob: self.dob ?? "",
-            weightlessBodyFat: self.weightlessBodyFat,
-            weightlessMuscle: self.weightlessMuscle,
             weightlessTimestamp: self.weightlessSettings?.weightlessTimestamp,
             weightlessWeight: self.weightlessSettings?.weightlessWeight != nil ? Double(self.weightlessSettings!.weightlessWeight!) : nil,
             isStreakOn: self.streaksSettings?.isStreakOn,
@@ -243,16 +198,12 @@ final class Account {
             initialWeight: self.goalSettings?.initialWeight,
             shouldSendEntryNotifications: self.notificationSettings?.shouldSendEntryNotifications,
             shouldSendWeightInEntryNotifications: self.notificationSettings?.shouldSendWeightInEntryNotifications,
-            isGoogleFitOn: self.isGoogleFitOn,
-            isGoogleFitValid: self.isGoogleFitValid,
-            isFitbitOn: self.isFitbitOn,
-            isFitbitValid: self.isFitbitValid,
-            isMFPOn: self.isMfpOn,
-            isMFPValid: self.isMfpValid,
-            isUAOn: self.isUaOn,
-            isUAValid: self.isUaValid,
-            isHealthKitOn: self.isHealthKitOn,
-            isHealthConnectOn: self.isHealthConnectOn
+            isFitbitOn: self.integrationSettings?.isFitbitOn,
+            isFitbitValid: self.integrationSettings?.isFitbitValid,
+            isMFPOn: self.integrationSettings?.isMfpOn,
+            isMFPValid: self.integrationSettings?.isMfpValid,
+            isHealthKitOn: self.integrationSettings?.isHealthKitOn,
+            isHealthConnectOn: self.integrationSettings?.isHealthConnectOn
         )
     }
 }
@@ -268,19 +219,10 @@ extension Account {
         self.dob = response.dob
         
         if let weightSettings = self.weightSettings {
-            weightSettings.height = response.height != nil ? String(response.height) : nil
+            weightSettings.height = String(response.height)
             weightSettings.activityLevel = response.activityLevel
             weightSettings.weightUnit = response.weightUnit
-        } else {
-//            let settings = WeightCompSettings(
-//                accountId: response.id,
-//                height: response.height != nil ? String(response.height) : nil,
-//                activityLevel: response.activityLevel,
-//                weightUnit: response.weightUnit
-//            )
-//            self.weightSettings = settings
         }
-
         if let lastName = response.lastName {
             self.lastName = lastName
         }
@@ -290,20 +232,11 @@ extension Account {
         if let isWeightlessOn = response.isWeightlessOn {
             self.weightlessSettings?.isWeightlessOn = isWeightlessOn
         }
-        if let preferredInputMethod = response.preferredInputMethod {
-            self.preferredInputMethod = preferredInputMethod
-        }
-        if let weightlessBodyFat = response.weightlessBodyFat {
-            self.weightlessBodyFat = weightlessBodyFat
-        }
-        if let weightlessMuscle = response.weightlessMuscle {
-            self.weightlessMuscle = weightlessMuscle
-        }
         if let weightlessTimestamp = response.weightlessTimestamp {
             self.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
         }
         if let weightlessWeight = response.weightlessWeight {
-            self.weightlessSettings?.weightlessWeight = weightlessWeight != nil ? Double(weightlessWeight) : nil
+            self.weightlessSettings?.weightlessWeight = weightlessWeight
         }
         if let isStreakOn = response.isStreakOn {
             self.streaksSettings?.isStreakOn = isStreakOn
@@ -318,14 +251,6 @@ extension Account {
             if let dashboardType = response.dashboardType {
                 dashboardSettings.dashboardType = String(describing: dashboardType)
             }
-        } else {
-            // Optionally create if missing
-            // self.dashboardSettings = DashboardSettings(
-            //     accountId: response.id,
-            //     dashboardMetrics: response.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ","),
-            //     dashboardType: response.dashboardType != nil ? String(describing: response.dashboardType!) : nil,
-            //     isSynced: false
-            // )
         }
         if let notificationSettings = self.notificationSettings {
             if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {
@@ -334,60 +259,20 @@ extension Account {
             if let shouldSendWeightInEntryNotifications = response.shouldSendWeightInEntryNotifications {
                 notificationSettings.shouldSendWeightInEntryNotifications = shouldSendWeightInEntryNotifications
             }
-        } else {
-            // self.notificationSettings = NotificationSettings(
-            //     accountId: response.id,
-            //     shouldSendEntryNotifications: response.shouldSendEntryNotifications ?? true,
-            //     shouldSendWeightInEntryNotifications: response.shouldSendWeightInEntryNotifications ?? true,
-            //     isSynced: false
-            // )
         }
-        if let isGoogleFitOn = response.isGoogleFitOn {
-            self.isGoogleFitOn = isGoogleFitOn
+        if let integrationSettings = self.integrationSettings {
+            if let isFitbitOn = response.isFitbitOn { integrationSettings.isFitbitOn = isFitbitOn }
+            if let isFitbitValid = response.isFitbitValid { integrationSettings.isFitbitValid = isFitbitValid }
+            if let isHealthConnectOn = response.isHealthConnectOn { integrationSettings.isHealthConnectOn = isHealthConnectOn }
+            if let isHealthKitOn = response.isHealthKitOn { integrationSettings.isHealthKitOn = isHealthKitOn }
+            if let isMFPOn = response.isMFPOn { integrationSettings.isMfpOn = isMFPOn }
+            if let isMFPValid = response.isMFPValid { integrationSettings.isMfpValid = isMFPValid }
         }
-        if let isGoogleFitValid = response.isGoogleFitValid {
-            self.isGoogleFitValid = isGoogleFitValid
-        }
-        if let isFitbitOn = response.isFitbitOn {
-            self.isFitbitOn = isFitbitOn
-        }
-        if let isFitbitValid = response.isFitbitValid {
-            self.isFitbitValid = isFitbitValid
-        }
-        if let isMFPOn = response.isMFPOn {
-            self.isMfpOn = isMFPOn
-        }
-        if let isMFPValid = response.isMFPValid {
-            self.isMfpValid = isMFPValid
-        }
-        if let isUAOn = response.isUAOn {
-            self.isUaOn = isUAOn
-        }
-        if let isUAValid = response.isUAValid {
-            self.isUaValid = isUAValid
-        }
-        if let isHealthKitOn = response.isHealthKitOn {
-            self.isHealthKitOn = isHealthKitOn
-        }
-        if let isHealthConnectOn = response.isHealthConnectOn {
-            self.isHealthConnectOn = isHealthConnectOn
-        }
-
         if let goalSettings = self.goalSettings {
             goalSettings.goalType = response.goalType
             goalSettings.initialWeight = response.initialWeight
             goalSettings.goalWeight = response.goalWeight.map { String($0) }
             goalSettings.goalPercent = response.goalPercent
-        } else {
-//            let settings = GoalSettings(
-//                accountId: response.id,
-//                goalType: response.goalType,
-//                weight: response.weight,
-//                goalWeight: response.goalWeight.map { String($0) },
-//                goalPercent: response.goalPercent,
-//                isSynced: false
-//            )
-//            self.goalSettings = settings
         }
     }
     

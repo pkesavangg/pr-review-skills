@@ -26,9 +26,6 @@ final class DashboardSettings {
     var dashboardType: String?
     var isSynced: Bool?
 
-    // Relationship back to Account
-    @Relationship var account: Account?
-
     init(accountId: String,
          dashboardMetrics: String? = nil,
          dashboardType: String? = nil,

@@ -11,7 +11,6 @@ import SwiftData
 /// | activityLevel   | string  | User's activity level (low, moderate, high)     |
 /// | weightUnit      | string  | Unit of weight measurement (kg/lb)              |
 /// | isSynced        | boolean | Whether settings are synced with the server     |
-/// | lastUpdated     | string  | Timestamp of the last update                    |
 
 @Model
 final class WeightCompSettings {
@@ -21,9 +20,6 @@ final class WeightCompSettings {
     var activityLevel: ActivityLevel?
     var weightUnit: WeightUnit?
     var isSynced: Bool?
-    
-    // Relationship back to the Account
-    @Relationship var account: Account?
     
     init(accountId: String) {
         self.id = UUID().uuidString

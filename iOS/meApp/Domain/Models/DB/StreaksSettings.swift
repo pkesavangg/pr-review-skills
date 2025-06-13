@@ -27,8 +27,6 @@ final class StreaksSettings {
     var streakTimestamp: String?
     var isSynced: Bool?
 
-    @Relationship var account: Account?
-
     init(accountId: String, isStreakOn: Bool, streakTimestamp: String? = nil, isSynced: Bool? = false) {
         self.id = UUID().uuidString
         self.accountId = accountId

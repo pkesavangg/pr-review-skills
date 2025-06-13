@@ -39,7 +39,6 @@ struct ContentView: View {
                 themeManager.syncWithSystemColorScheme(colorScheme)
             }
         }
-        LoginView()
     }
     // MARK: - UI Components
     
@@ -84,42 +83,6 @@ struct ContentView: View {
 
 // MARK: - Preview
 #Preview {
-    LoginView()
+    ContentView()
         .environmentObject(Theme.shared)
-}
-
-
-class LoginViewModel: ObservableObject {
-   @Injector var accountService: AccountService
-   
-   func login() async {
-       do {
-           let _ = await try accountService.logIn(email: "pkesfavan@greatergoods.com", password: "123456")
-           
-           try await accountService.updateStreak(isStreakOn: false, streakTimestamp: "2007-10-23T00:00:00.000Z")
-           let localAccount = try await accountService.getActiveAccount()
-           try await accountService.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2007-10-23T00:00:00.000Z", weightlessWeight: 60.0)
-           try await accountService.updateNotifications(notifications: Notifications(shouldSendEntryNotifications: false, shouldSendWeightInEntryNotifications: false))
-           try await accountService.updateDashboardType(type: .dashboard12)
-           try await accountService.updateDashboardMetrics(metrics: [])
-           let response = try await accountService.fetchAllAccounts()
-           for account in response {
-               print("Account ID: \(account.dashboardSettings?.dashboardType), Email: \(account.email)")
-            }
-           print(response.count)
-           
-       } catch  {
-           print("Login Error")
-       }
-   }
-}
-
-struct LoginView: View {
- @StateObject var viewModel = LoginViewModel()
-    var body: some View {
-        Text("Login View")
-            .task {
-                await viewModel.login()
-            }
-    }
 }

@@ -28,9 +28,6 @@ final class WeightlessSettings {
     var weightlessWeight: Double?
     var isSynced: Bool?
 
-    // Relationship back to Account
-    @Relationship var account: Account?
-
     init(accountId: String,
          isWeightlessOn: Bool = false,
          weightlessTimestamp: String? = nil,
