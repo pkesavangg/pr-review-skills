@@ -35,7 +35,6 @@
 /// | isWeightlessOn                           | boolean | Weightless mode enabled (app-specific)            |
 /// | lastActiveTime                           | string  | Timestamp of last activity                        |
 /// | lastName                                 | string  | Last name of the user                             |
-/// | metPreviousGoal                          | boolean | If the user achieved the last set goal            |
 /// | percent                                  | float   | Goal completion or progress percent               |
 /// | preferredInputMethod                     | string  | User's preferred data entry method                |
 /// | refreshToken                             | string  | OAuth refresh token                               |
@@ -68,14 +67,8 @@ final class Account {
     var firstName: String?
     /// Gender of the user
     var gender: Sex?
-    /// Type of health/fitness goal (e.g., weight loss)
-    var goalType: GoalType?
-    /// Target weight as defined by the user
-    var goalWeight: String?
     /// Height of the user
     var height: String?
-    /// Weight at account creation or goal start
-    var weight: Double?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
     /// Whether Fitbit integration is enabled
@@ -112,10 +105,7 @@ final class Account {
     var lastActiveTime: String?
     /// Last name of the user
     var lastName: String?
-    /// If the user achieved the last set goal
-    var metPreviousGoal: Bool?
-    /// Goal completion or progress percent
-    var percent: Double?
+
     /// User's preferred data entry method
     var preferredInputMethod: String?
     /// OAuth refresh token
@@ -155,11 +145,6 @@ final class Account {
         self.gender = dto.gender
         self.zipcode = dto.zipcode
         self.dob = dto.dob
-        self.goalWeight = dto.goalWeight.map { String($0) }
-        self.goalType = dto.goalType
-        self.weight = dto.weight
-        self.metPreviousGoal = nil
-        self.percent = nil
         self.isWeightlessOn = dto.isWeightlessOn
         self.weightlessWeight = dto.weightlessWeight
         self.weightlessTimestamp = dto.weightlessTimestamp
@@ -198,6 +183,17 @@ final class Account {
             weightUnit: dto.weightUnit
         )
         self.weightSettings = settings
+
+        // Create associated GoalSettings
+        let goalSettings = GoalSettings(
+            accountId: dto.id,
+            goalType: dto.goalType,
+            weight: dto.weight,
+            goalWeight: dto.goalWeight.map { String($0) },
+            goalPercent: nil,
+            isSynced: false
+        )
+        self.goalSettings = goalSettings
     }
 
     func toAccountDTO() -> AccountDTO {
@@ -221,9 +217,10 @@ final class Account {
             isStreakOn: self.isStreakOn,
             dashboardType: self.dashboardType,
             dashboardMetrics: self.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
-            goalType: self.goalType,
-            goalWeight: self.goalWeight.flatMap { Double($0) },
-            weight: self.weight,
+            goalType: self.goalSettings?.goalType,
+            goalWeight: self.goalSettings?.goalWeight.flatMap { Double($0) },
+            goalPercent: self.goalSettings?.goalPercent,
+            weight: self.goalSettings?.weight,
             shouldSendEntryNotifications: self.shouldSendEntryNotifications,
             shouldSendWeightInEntryNotifications: self.shouldSendWeightInEntryNotifications,
             isGoogleFitOn: self.isGoogleFitOn,
@@ -297,15 +294,6 @@ extension Account {
         if let dashboardMetrics = response.dashboardMetrics {
             self.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
         }
-        if let goalType = response.goalType {
-            self.goalType = goalType
-        }
-        if let goalWeight = response.goalWeight {
-            self.goalWeight = String(goalWeight)
-        }
-        if let initialWeight = response.weight {
-            self.weight = initialWeight
-        }
         if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {
             self.shouldSendEntryNotifications = shouldSendEntryNotifications
         }
@@ -341,6 +329,23 @@ extension Account {
         }
         if let isHealthConnectOn = response.isHealthConnectOn {
             self.isHealthConnectOn = isHealthConnectOn
+        }
+
+        if let goalSettings = self.goalSettings {
+            goalSettings.goalType = response.goalType
+            goalSettings.weight = response.weight
+            goalSettings.goalWeight = response.goalWeight.map { String($0) }
+            goalSettings.goalPercent = response.goalPercent
+        } else {
+            let settings = GoalSettings(
+                accountId: response.id,
+                goalType: response.goalType,
+                weight: response.weight,
+                goalWeight: response.goalWeight.map { String($0) },
+                goalPercent: response.goalPercent,
+                isSynced: false
+            )
+            self.goalSettings = settings
         }
     }
     

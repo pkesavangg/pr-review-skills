@@ -97,7 +97,7 @@ class LoginViewModel: ObservableObject {
            let _ = await try accountService.logIn(email: "pkesavan@greatergoods.com", password: "123456")
            let localAccount = try await accountService.getActiveAccount()
            print(localAccount?.weightSettings?.activityLevel, localAccount?.weightSettings?.weightUnit)
-//           print(localAccount?.goalSettings?.goalType, localAccount?.goalSettings?.goalWeight)
+           print(localAccount?.goalSettings?.goalType, localAccount?.goalSettings?.goalWeight)
        } catch  {
            print("Login Error")
        }
