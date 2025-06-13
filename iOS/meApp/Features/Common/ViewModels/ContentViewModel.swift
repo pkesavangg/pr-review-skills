@@ -15,11 +15,11 @@ final class ContentViewModel: ObservableObject {
     @Published var isInitializing: Bool = true
     @Published var entries: [Entry] = []
 
-    private let accountService = AccountService.shared
-    private let scaleService = ScaleService.shared
-    private let feedService = FeedService.shared
-    private let entryService = EntryService.shared
-    private let logger = LoggerService.shared
+    @Injector var accountService: AccountService
+    @Injector var scaleService : ScaleService
+    @Injector var feedService : FeedService
+    @Injector var entryService : EntryService
+    @Injector var logger : LoggerService
 
     func performAppInitialization() async {
         isInitializing = true
