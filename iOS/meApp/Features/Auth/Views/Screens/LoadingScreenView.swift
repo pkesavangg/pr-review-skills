@@ -23,10 +23,16 @@ struct LoadingPageView: View {
                 logoView
                     .frame(width: 234, height: 78)
 
-                Text(lang.loading)
-                    .fontOpenSans(.subHeading1)
-                    .foregroundColor(theme.backgroundPrimary)
-                    .padding(.top, 40)
+                HStack(alignment: .center, spacing: 8) {
+                    Text(lang.loading)
+                        .fontOpenSans(.subHeading1)
+                        .foregroundColor(theme.backgroundPrimary)
+                    
+                    LoadingDotsView(color: theme.brandMeAppPrimary)
+                    .offset(y: 7)
+                    
+                }
+                .padding(.top, 40)
 
                 Spacer()
 
