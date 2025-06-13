@@ -8,7 +8,7 @@ import SwiftUI
 
 struct TextInputConfig {
     var label: String
-    var placeholder: String
+    var placeholder: String?
     var inputType: TextFieldType = .text
     var submitLabel: SubmitLabel = .next
     var errorMessage: String? = nil

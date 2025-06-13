@@ -38,6 +38,10 @@ enum class ButtonType {
     InlineTextTertiary,
 }
 
+// Color
+// Type - outline/filled/text
+// style - block/inline
+
 // Button size options
 enum class ButtonSize { Small, Medium, Large }
 
@@ -116,12 +120,20 @@ object AppButtonDefaults {
         }
 
     // Horizontal padding by size
-    fun horizontalPadding(size: ButtonSize): Dp =
-        when (size) {
-            ButtonSize.Small -> 16.dp
-            ButtonSize.Medium -> 32.dp
+    @Composable
+    fun horizontalPadding(
+        size: ButtonSize,
+        type: ButtonType,
+    ): Dp {
+        if (type == ButtonType.InlineTextPrimary || type == ButtonType.InlineTextSecondary) {
+            return 0.dp
+        }
+        return when (size) {
+            ButtonSize.Small -> MeAppTheme.spacing.sm
+            ButtonSize.Medium -> MeAppTheme.spacing.lg
             ButtonSize.Large -> 48.dp
         }
+    }
 
     // Minimum width by size
     fun minWidth(size: ButtonSize): Dp =
@@ -155,29 +167,29 @@ object AppButtonDefaults {
 /**
  * A customizable button for the app, supporting various styles and sizes.
  * @param label The button text
- * @param onClick Click handler
  * @param modifier Modifier for styling
  * @param type Button style
  * @param size Button size
  * @param enabled Whether the button is enabled
  * @param textTransform Text transformation
+ * @param onClick Click handler
  */
 @Composable
 fun AppButton(
     label: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     type: ButtonType = ButtonType.PrimaryFilled,
     size: ButtonSize = ButtonSize.Medium,
     enabled: Boolean = true,
     textTransform: TextTransform = TextTransform.UPPERCASE,
+    onClick: () -> Unit,
 ) {
     // Get style values from defaults
     val backgroundColor = AppButtonDefaults.backgroundColor(type, enabled)
     val contentColor = AppButtonDefaults.contentColor(type, enabled)
     val border = AppButtonDefaults.border(type, enabled)
     val height = AppButtonDefaults.height(size)
-    val hPadding = AppButtonDefaults.horizontalPadding(size)
+    val hPadding = AppButtonDefaults.horizontalPadding(size, type)
     val textStyle = AppButtonDefaults.textStyle(size)
     val text = AppButtonDefaults.transformText(label, textTransform)
     val minWidth = AppButtonDefaults.minWidth(size)
@@ -186,18 +198,19 @@ fun AppButton(
     val maxLines = 1
 
     val buttonModifier = modifier.height(height).defaultMinSize(minWidth = minWidth)
+    val buttonColors =
+        ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor,
+            disabledContainerColor = backgroundColor,
+            disabledContentColor = contentColor,
+        )
 
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = shape,
-        colors =
-            ButtonDefaults.buttonColors(
-                containerColor = backgroundColor,
-                contentColor = contentColor,
-                disabledContainerColor = backgroundColor,
-                disabledContentColor = contentColor,
-            ),
+        colors = buttonColors,
         border = border,
         modifier = buttonModifier,
         contentPadding = PaddingValues(vertical = vPadding, horizontal = hPadding),
@@ -225,10 +238,11 @@ fun AppButtonPreview() {
                 Column {
                     AppButton(
                         type = ButtonType.SecondaryFilled,
-                        onClick = {},
                         label = "Secondary Filled",
                         enabled = true,
-                    )
+                    ) {
+                        // Button click handler
+                    }
                     Spacer(Modifier.height(16.dp))
                     AppButton(
                         type = ButtonType.SecondaryFilled,
