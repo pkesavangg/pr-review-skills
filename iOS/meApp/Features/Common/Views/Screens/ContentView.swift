@@ -39,6 +39,7 @@ struct ContentView: View {
                 themeManager.syncWithSystemColorScheme(colorScheme)
             }
         }
+        LoginView()
     }
     // MARK: - UI Components
     
@@ -83,6 +84,32 @@ struct ContentView: View {
 
 // MARK: - Preview
 #Preview {
-    ContentView()
+    LoginView()
         .environmentObject(Theme.shared)
+}
+
+
+class LoginViewModel: ObservableObject {
+   @Injector var accountService: AccountService
+   
+   func login() async {
+       do {
+           let _ = await try accountService.logIn(email: "pkesavan@greatergoods.com", password: "123456")
+           let localAccount = try await accountService.getActiveAccount()
+           print(localAccount?.weightSettings?.activityLevel, localAccount?.weightSettings?.weightUnit)
+//           print(localAccount?.goalSettings?.goalType, localAccount?.goalSettings?.goalWeight)
+       } catch  {
+           print("Login Error")
+       }
+   }
+}
+
+struct LoginView: View {
+ @StateObject var viewModel = LoginViewModel()
+    var body: some View {
+        Text("Login View")
+            .task {
+                await viewModel.login()
+            }
+    }
 }

@@ -9,7 +9,7 @@
 import Foundation
 
 enum API {
-    static let baseURL = AppEnvironment.apiBaseURL
+    static let baseURL = "https://api.weightgurus.com/v3"
 }
 
 enum Endpoint {

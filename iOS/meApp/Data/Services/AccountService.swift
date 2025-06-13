@@ -232,9 +232,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if NetworkError.isNetworkError(error) {
                 localAccount.isSynced = false
-                localAccount.weightUnit = bodyComp.weightUnit
-                localAccount.height = String(bodyComp.height)
-                localAccount.activityLevel = bodyComp.activityLevel
+                localAccount.weightSettings?.weightUnit = bodyComp.weightUnit
+                localAccount.weightSettings?.height = String(bodyComp.height)
+                localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
@@ -429,9 +429,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                let gender = account.gender,
                let zipcode = account.zipcode,
                let dob = account.dob,
-               let weightUnit = account.weightUnit,
-               let height = Double(account.height ?? "0"),
-               let activityLevel = account.activityLevel,
+               let weightUnit = account.weightSettings?.weightUnit,
+               let height = Double(account.weightSettings?.height ?? "0"),
+               let activityLevel = account.weightSettings?.activityLevel,
                !isSynced {
                 let profile = Profile(
                     firstName: firstName,
@@ -447,9 +447,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Body Composition updates
-            if let weightUnit = account.weightUnit,
-               let height = Double(account.height ?? "0"),
-               let activityLevel = account.activityLevel,
+            if let weightUnit = account.weightSettings?.weightUnit,
+               let height = Double(account.weightSettings?.height ?? "0"),
+               let activityLevel = account.weightSettings?.activityLevel,
                !isSynced {
                 let bodyComp = BodyComp(
                     weightUnit: weightUnit,

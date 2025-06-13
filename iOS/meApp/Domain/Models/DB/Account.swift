@@ -58,14 +58,6 @@ final class Account {
     @Attribute(.unique) var accountId: String
     /// OAuth or app-specific access token
     var accessToken: String?
-    /// User's activity level (e.g., low, moderate, high)
-    var activityLevel: ActivityLevel?
-    /// Metrics selected for dashboard display
-    var dashboardMetrics: String?
-    /// Layout type of the user's dashboard
-    var dashboardType: DashboardType?
-    /// Date of birth
-    var dob: String?
     /// User email address
     var email: String
     /// Access token expiration time
@@ -83,7 +75,7 @@ final class Account {
     /// Height of the user
     var height: String?
     /// Weight at account creation or goal start
-    var initialWeight: Double?
+    var weight: Double?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
     /// Whether Fitbit integration is enabled
@@ -134,8 +126,6 @@ final class Account {
     var shouldSendWeightInEntryNotifications: Bool?
     /// Timestamp for streak tracking
     var streakTimestamp: String?
-    /// Unit of weight measurement (kg/lb)
-    var weightUnit: WeightUnit?
     /// Offline/stored body fat value
     var weightlessBodyFat: Double?
     /// Offline/stored muscle mass value
@@ -146,7 +136,17 @@ final class Account {
     var weightlessWeight: Double?
     /// User's zip/postal code
     var zipcode: String?
-
+    /// Date of birth
+    var dob: String?
+    /// Metrics selected for dashboard display
+    var dashboardMetrics: String?
+    /// Layout type of the user's dashboard
+    var dashboardType: DashboardType?
+    
+    // Relationship to WeightCompSettings
+    @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
+    // Relationship to WeightCompSettings
+    @Relationship(deleteRule: .cascade) var goalSettings: GoalSettings?
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -155,12 +155,9 @@ final class Account {
         self.gender = dto.gender
         self.zipcode = dto.zipcode
         self.dob = dto.dob
-        self.weightUnit = dto.weightUnit
-        self.height = String(dto.height)
-        self.activityLevel = dto.activityLevel
         self.goalWeight = dto.goalWeight.map { String($0) }
         self.goalType = dto.goalType
-        self.initialWeight = dto.initialWeight
+        self.weight = dto.weight
         self.metPreviousGoal = nil
         self.percent = nil
         self.isWeightlessOn = dto.isWeightlessOn
@@ -192,6 +189,15 @@ final class Account {
         self.lastActiveTime = nil
         self.fcmToken = nil
         self.isSynced = nil
+        
+        // Create associated WeightCompSettings
+        let settings = WeightCompSettings(
+            accountId: dto.id,
+            height: dto.height != nil ? String(dto.height) : nil,
+            activityLevel: dto.activityLevel,
+            weightUnit: dto.weightUnit
+        )
+        self.weightSettings = settings
     }
 
     func toAccountDTO() -> AccountDTO {
@@ -202,11 +208,11 @@ final class Account {
             lastName: self.lastName,
             gender: self.gender ?? .male,
             zipcode: self.zipcode,
-            weightUnit: self.weightUnit ?? .lb,
+            weightUnit: self.weightSettings?.weightUnit ?? .lb,
             isWeightlessOn: self.isWeightlessOn,
             preferredInputMethod: self.preferredInputMethod,
-            height: Double(self.height ?? "0") ?? 0.0,
-            activityLevel: self.activityLevel,
+            height: Double(self.weightSettings?.height ?? "0") ?? 0.0,
+            activityLevel: self.weightSettings?.activityLevel,
             dob: self.dob ?? "",
             weightlessBodyFat: self.weightlessBodyFat,
             weightlessMuscle: self.weightlessMuscle,
@@ -217,7 +223,7 @@ final class Account {
             dashboardMetrics: self.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
             goalType: self.goalType,
             goalWeight: self.goalWeight.flatMap { Double($0) },
-            initialWeight: self.initialWeight,
+            weight: self.weight,
             shouldSendEntryNotifications: self.shouldSendEntryNotifications,
             shouldSendWeightInEntryNotifications: self.shouldSendWeightInEntryNotifications,
             isGoogleFitOn: self.isGoogleFitOn,
@@ -241,9 +247,22 @@ extension Account {
         self.email = response.email
         self.firstName = response.firstName
         self.gender = response.gender
-        self.weightUnit = response.weightUnit
         self.height = String(response.height)
         self.dob = response.dob
+        
+        if let weightSettings = self.weightSettings {
+            weightSettings.height = response.height != nil ? String(response.height) : nil
+            weightSettings.activityLevel = response.activityLevel
+            weightSettings.weightUnit = response.weightUnit
+        } else {
+            let settings = WeightCompSettings(
+                accountId: response.id,
+                height: response.height != nil ? String(response.height) : nil,
+                activityLevel: response.activityLevel,
+                weightUnit: response.weightUnit
+            )
+            self.weightSettings = settings
+        }
 
         if let lastName = response.lastName {
             self.lastName = lastName
@@ -256,9 +275,6 @@ extension Account {
         }
         if let preferredInputMethod = response.preferredInputMethod {
             self.preferredInputMethod = preferredInputMethod
-        }
-        if let activityLevel = response.activityLevel {
-            self.activityLevel = activityLevel
         }
         if let weightlessBodyFat = response.weightlessBodyFat {
             self.weightlessBodyFat = weightlessBodyFat
@@ -287,8 +303,8 @@ extension Account {
         if let goalWeight = response.goalWeight {
             self.goalWeight = String(goalWeight)
         }
-        if let initialWeight = response.initialWeight {
-            self.initialWeight = initialWeight
+        if let initialWeight = response.weight {
+            self.weight = initialWeight
         }
         if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {
             self.shouldSendEntryNotifications = shouldSendEntryNotifications
@@ -361,11 +377,12 @@ extension Account {
         self.gender = profile.gender
         self.zipcode = profile.zipcode
         self.dob = profile.dob
-        self.weightUnit = profile.weightUnit
-        self.height = String(profile.height)
-        self.activityLevel = profile.activityLevel
+        self.weightSettings?.weightUnit = profile.weightUnit
+        self.weightSettings?.height = String(profile.height)
+        self.weightSettings?.activityLevel = profile.activityLevel
+        // Optionally update goalSettings if profile contains goal info (add logic if needed)
     }
 }
 
-/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+/// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.
 extension Account: @unchecked Sendable {}

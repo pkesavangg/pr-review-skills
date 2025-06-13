@@ -22,7 +22,7 @@ struct AccountDTO: Codable {
     let dashboardMetrics: [BodyMetric]?
     let goalType: GoalType?
     let goalWeight: Double?
-    let initialWeight: Double?
+    let weight: Double?
     let shouldSendEntryNotifications: Bool?
     let shouldSendWeightInEntryNotifications: Bool?
     let isGoogleFitOn: Bool?
