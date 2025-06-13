@@ -484,8 +484,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Streak Status
-            if let isStreakOn = account.isStreakOn,
-               let streakTimestamp = account.streakTimestamp,
+            if let isStreakOn = account.streaksSettings?.isStreakOn,
+               let streakTimestamp = account.streaksSettings?.streakTimestamp,
                !isSynced {
                 try await updateStreak(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp)
             }
@@ -557,8 +557,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if NetworkError.isNetworkError(error) {
                 localAccount.isSynced = false
-                localAccount.isStreakOn = isStreakOn
-                localAccount.streakTimestamp = streakTimestamp
+                if let streaksSettings = localAccount.streaksSettings {
+                    streaksSettings.isStreakOn = isStreakOn
+                    streaksSettings.streakTimestamp = streakTimestamp
+                } else {
+                    localAccount.streaksSettings = StreaksSettings(
+                        accountId: localAccount.accountId,
+                        isStreakOn: isStreakOn,
+                        streakTimestamp: streakTimestamp,
+                        isSynced: false
+                    )
+                }
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount

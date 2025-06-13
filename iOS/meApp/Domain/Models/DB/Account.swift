@@ -91,8 +91,6 @@ final class Account {
     var isMfpOn: Bool?
     /// Whether MFP integration is valid
     var isMfpValid: Bool?
-    /// If streak tracking is enabled
-    var isStreakOn: Bool?
     /// Is account details are synced online
     var isSynced: Bool?
     /// Under Armour connection enabled
@@ -114,8 +112,6 @@ final class Account {
     var shouldSendEntryNotifications: Bool?
     /// Whether to send reminders for weight-ins
     var shouldSendWeightInEntryNotifications: Bool?
-    /// Timestamp for streak tracking
-    var streakTimestamp: String?
     /// Offline/stored body fat value
     var weightlessBodyFat: Double?
     /// Offline/stored muscle mass value
@@ -137,6 +133,8 @@ final class Account {
     @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
     // Relationship to WeightCompSettings
     @Relationship(deleteRule: .cascade) var goalSettings: GoalSettings?
+    // Relationship to StreaksSettings
+    @Relationship(deleteRule: .cascade) var streaksSettings: StreaksSettings?
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -165,7 +163,6 @@ final class Account {
         self.accessToken = nil
         self.refreshToken = nil
         self.expiresAt = nil
-        self.isStreakOn = dto.isStreakOn
         self.dashboardMetrics = dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ",")
         self.dashboardType = dto.dashboardType
         self.isLoggedIn = nil
@@ -194,6 +191,15 @@ final class Account {
             isSynced: false
         )
         self.goalSettings = goalSettings
+
+        // Create associated StreaksSettings
+        let streaksSettings = StreaksSettings(
+            accountId: dto.id,
+            isStreakOn: dto.isStreakOn ?? false,
+            streakTimestamp: dto.streakTimestamp,
+            isSynced: false
+        )
+        self.streaksSettings = streaksSettings
     }
 
     func toAccountDTO() -> AccountDTO {
@@ -214,7 +220,8 @@ final class Account {
             weightlessMuscle: self.weightlessMuscle,
             weightlessTimestamp: self.weightlessTimestamp,
             weightlessWeight: self.weightlessWeight,
-            isStreakOn: self.isStreakOn,
+            isStreakOn: self.streaksSettings?.isStreakOn,
+            streakTimestamp: self.streaksSettings?.streakTimestamp,
             dashboardType: self.dashboardType,
             dashboardMetrics: self.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
             goalType: self.goalSettings?.goalType,
@@ -252,13 +259,13 @@ extension Account {
             weightSettings.activityLevel = response.activityLevel
             weightSettings.weightUnit = response.weightUnit
         } else {
-            let settings = WeightCompSettings(
-                accountId: response.id,
-                height: response.height != nil ? String(response.height) : nil,
-                activityLevel: response.activityLevel,
-                weightUnit: response.weightUnit
-            )
-            self.weightSettings = settings
+//            let settings = WeightCompSettings(
+//                accountId: response.id,
+//                height: response.height != nil ? String(response.height) : nil,
+//                activityLevel: response.activityLevel,
+//                weightUnit: response.weightUnit
+//            )
+//            self.weightSettings = settings
         }
 
         if let lastName = response.lastName {
@@ -286,7 +293,10 @@ extension Account {
             self.weightlessWeight = weightlessWeight
         }
         if let isStreakOn = response.isStreakOn {
-            self.isStreakOn = isStreakOn
+            self.streaksSettings?.isStreakOn = isStreakOn
+        }
+        if let streakTimestamp = response.streakTimestamp {
+            self.streaksSettings?.streakTimestamp = streakTimestamp
         }
         if let dashboardType = response.dashboardType {
             self.dashboardType = dashboardType
@@ -337,15 +347,15 @@ extension Account {
             goalSettings.goalWeight = response.goalWeight.map { String($0) }
             goalSettings.goalPercent = response.goalPercent
         } else {
-            let settings = GoalSettings(
-                accountId: response.id,
-                goalType: response.goalType,
-                weight: response.weight,
-                goalWeight: response.goalWeight.map { String($0) },
-                goalPercent: response.goalPercent,
-                isSynced: false
-            )
-            self.goalSettings = settings
+//            let settings = GoalSettings(
+//                accountId: response.id,
+//                goalType: response.goalType,
+//                weight: response.weight,
+//                goalWeight: response.goalWeight.map { String($0) },
+//                goalPercent: response.goalPercent,
+//                isSynced: false
+//            )
+//            self.goalSettings = settings
         }
     }
     

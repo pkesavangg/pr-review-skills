@@ -18,6 +18,7 @@ struct AccountDTO: Codable {
     let weightlessTimestamp: String?
     let weightlessWeight: Double?
     let isStreakOn: Bool?
+    let streakTimestamp: String?
     let dashboardType: DashboardType?
     let dashboardMetrics: [BodyMetric]?
     let goalType: GoalType?

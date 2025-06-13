@@ -95,9 +95,10 @@ class LoginViewModel: ObservableObject {
    func login() async {
        do {
            let _ = await try accountService.logIn(email: "pkesavan@greatergoods.com", password: "123456")
+           
+           try await accountService.updateStreak(isStreakOn: true, streakTimestamp: "2007-10-23T00:00:00.000Z")
            let localAccount = try await accountService.getActiveAccount()
-           print(localAccount?.weightSettings?.activityLevel, localAccount?.weightSettings?.weightUnit)
-           print(localAccount?.goalSettings?.goalType, localAccount?.goalSettings?.goalWeight)
+           print(localAccount?.accessToken, localAccount?.streaksSettings?.isStreakOn, localAccount?.streaksSettings?.streakTimestamp, "Local account details")
        } catch  {
            print("Login Error")
        }
