@@ -84,6 +84,7 @@ class PushNotificationService: NSObject {
             do {
                 if let token = notification.userInfo?["token"] as? String {
                     fcmToken = token
+                    print("fcmToken: \(token)")
                     saveFCMTokenIfNeeded(token)
                     await updateDeviceInfo()
                 }
