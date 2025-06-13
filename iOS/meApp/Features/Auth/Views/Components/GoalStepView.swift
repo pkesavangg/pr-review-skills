@@ -88,6 +88,7 @@ struct GoalStepView: View {
                     selectedSegment = GoalTypeSegment.fromGoalType(signupStore.signupForm.goalType.value)
                 }
             }
+            .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
     }
 }
