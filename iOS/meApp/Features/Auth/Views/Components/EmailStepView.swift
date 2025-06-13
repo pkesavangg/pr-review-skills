@@ -44,7 +44,7 @@ struct EmailStepView: View {
                         focusedField: $focusedField
                     ) {
                         focusedField = nil
-                        if signupStore.signupForm.email.isValid {
+                        if signupStore.isNextEnabled {
                             signupStore.moveToNextStep()
                         }
                     }

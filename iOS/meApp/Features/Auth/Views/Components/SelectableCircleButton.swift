@@ -13,13 +13,13 @@ struct SelectableCircleButton: View {
     let label: String
     let isSelected: Bool
     let action: () -> Void
-
+    let size: CGFloat = 125
     var body: some View {
         Button(action: action) {
             Text(label)
                 .fontOpenSans(.heading5)
                 .foregroundColor(isSelected ? theme.actionInverse : theme.actionPrimary)
-                .frame(width: 100, height: 100)
+                .frame(width: size, height: size)
                 .background(isSelected ? theme.actionPrimary : Color.clear)
                 .overlay(
                     Circle()

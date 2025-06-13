@@ -86,6 +86,9 @@ class SignupForm: ObservableForm {
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isDirty else { return nil }
 
+        if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
+            return nil
+        }
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
