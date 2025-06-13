@@ -510,9 +510,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                let _ = try await updateIntegrations(integrations: integrations)
             }
             
-            // Mark account as synced and update timestamp
+            // Mark account as synced
             account.isSynced = true
-            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
             try await localRepo.updateAccount(account)
             try await updatePublishedState()
             

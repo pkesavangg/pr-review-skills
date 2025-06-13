@@ -21,11 +21,6 @@ final class WeightCompSettings {
     var weightUnit: WeightUnit?
     var isSynced: Bool?
     
-    init(accountId: String) {
-        self.id = UUID().uuidString
-        self.accountId = accountId
-    }
-    
     init(accountId: String, height: String?, activityLevel: ActivityLevel?, weightUnit: WeightUnit?) {
         self.id = UUID().uuidString
         self.accountId = accountId
