@@ -29,8 +29,6 @@ fun SampleAppScaffoldScreen() {
 
     AppScaffold(
         title = "Sample App Scaffold",
-        navigationIcon =  ,
-        rightIcon = {  },
         modifier = Modifier.Companion.statusBarsPadding()
     ) { modifier ->
         Column(

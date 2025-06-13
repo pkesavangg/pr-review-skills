@@ -30,14 +30,16 @@ import com.greatergoods.meapp.theme.MeAppTheme
 enum class LoaderStyle {
     CIRCULAR,
     DASHED,
-    DOT
+    DOT,
 }
 
-sealed class LoaderConfig(open val color: Color) {
+sealed class LoaderConfig(
+    open val color: Color,
+) {
     data class Circular(
         override val color: Color,
         val strokeWidth: Dp,
-        val size: Float
+        val size: Float,
     ) : LoaderConfig(color)
 
     data class Dashed(
@@ -46,19 +48,18 @@ sealed class LoaderConfig(open val color: Color) {
         val strokeWidth: Float,
         val dashLength: Float,
         val gapLength: Float,
-        val sweepAngle: Float
+        val sweepAngle: Float,
     ) : LoaderConfig(color)
 
     data class Dot(
         override val color: Color,
         val minRadius: Float,
         val maxRadius: Float,
-        val durationMillis: Int
+        val durationMillis: Int,
     ) : LoaderConfig(color)
 }
 
 object LoaderDefaults {
-
     // Cached base configs (private, lazy to ensure one-time construction)
     private val baseDotConfig by lazy {
         LoaderConfig.Dot(
@@ -88,56 +89,12 @@ object LoaderDefaults {
         )
     }
 
-    // Public functions to return a modified version of the base config
-    fun dotConfig(
-        color: Color = baseDotConfig.color,
-        minRadius: Float = baseDotConfig.minRadius,
-        maxRadius: Float = baseDotConfig.maxRadius,
-        durationMillis: Int = baseDotConfig.durationMillis
-    ): LoaderConfig.Dot {
-        return baseDotConfig.copy(
-            color = color,
-            minRadius = minRadius,
-            maxRadius = maxRadius,
-            durationMillis = durationMillis,
-        )
-    }
-
-    fun dashedConfig(
-        color: Color = baseDashedConfig.color,
-        size: Dp = baseDashedConfig.size,
-        strokeWidth: Float = baseDashedConfig.strokeWidth,
-        dashLength: Float = baseDashedConfig.dashLength,
-        gapLength: Float = baseDashedConfig.gapLength,
-        sweepAngle: Float = baseDashedConfig.sweepAngle
-    ): LoaderConfig.Dashed {
-        return baseDashedConfig.copy(
-            color = color,
-            size = size,
-            strokeWidth = strokeWidth,
-            dashLength = dashLength,
-            gapLength = gapLength,
-            sweepAngle = sweepAngle,
-        )
-    }
-
-    fun circularConfig(
-        color: Color = baseCircularConfig.color,
-        strokeWidth: Dp = baseCircularConfig.strokeWidth,
-        size: Float = baseCircularConfig.size
-    ): LoaderConfig.Circular {
-        return baseCircularConfig.copy(
-            color = color,
-            strokeWidth = strokeWidth,
-            size = size,
-        )
-    }
-
-    fun defaultFor(style: LoaderStyle): LoaderConfig = when (style) {
-        LoaderStyle.CIRCULAR -> baseCircularConfig
-        LoaderStyle.DASHED -> baseDashedConfig
-        LoaderStyle.DOT -> baseDotConfig
-    }
+    fun defaultFor(style: LoaderStyle): LoaderConfig =
+        when (style) {
+            LoaderStyle.CIRCULAR -> baseCircularConfig
+            LoaderStyle.DASHED -> baseDashedConfig
+            LoaderStyle.DOT -> baseDotConfig
+        }
 }
 
 /**
@@ -146,12 +103,12 @@ object LoaderDefaults {
 @Composable
 fun AppLoader(
     modifier: Modifier = Modifier,
-    isLoading: Boolean,
+    isLoading: Boolean = false,
     message: String? = null,
     labelComposable: @Composable (() -> Unit)? = null,
     style: LoaderStyle = LoaderStyle.DASHED,
-    config: LoaderConfig = LoaderDefaults.defaultFor(style),
 ) {
+    val config: LoaderConfig = LoaderDefaults.defaultFor(style)
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.Center,
@@ -172,8 +129,7 @@ fun AppLoader(
                     val dashedConfig = config as LoaderConfig.Dashed
                     DashedCircularLoader(
                         color = dashedConfig.color,
-                        modifier = Modifier
-                            .size(dashedConfig.size),
+                        modifier = Modifier.size(dashedConfig.size),
                         strokeWidth = dashedConfig.strokeWidth,
                         dashLength = dashedConfig.dashLength,
                         gapLength = dashedConfig.gapLength,
@@ -193,17 +149,16 @@ fun AppLoader(
                 }
             }
         }
-        if (message != null) {
+        if (labelComposable != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            labelComposable()
+        } else if (message != null) {
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = message,
                 style = MeAppTheme.typography.heading5,
                 color = MeAppTheme.colorScheme.body,
             )
-        }
-        if (labelComposable != null) {
-            Spacer(modifier = Modifier.width(8.dp))
-            labelComposable.invoke()
         }
     }
 }
@@ -222,7 +177,7 @@ private fun AppLoaderPreviewContent() {
     // State for dropdown
     var expanded by remember { mutableStateOf(false) }
     var selectedStyle by remember { mutableStateOf(LoaderStyle.DASHED) }
-    val styles = LoaderStyle.values()
+    val styles = LoaderStyle.entries.toTypedArray()
     styles.map { it.name }
 
     Column(modifier = Modifier.padding(24.dp)) {
@@ -261,8 +216,7 @@ private fun AppLoaderPreviewContent() {
             isLoading = true,
             message = "Loading...",
             style = selectedStyle,
-            config = LoaderDefaults.defaultFor(selectedStyle),
         )
-        Spacer(modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.size(120.dp))
     }
 }
