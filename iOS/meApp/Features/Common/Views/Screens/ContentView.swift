@@ -11,16 +11,30 @@ struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var viewModel = ContentViewModel()
     @State private var isLogoAnimated = false
     
     var body: some View {
         VStack(spacing: 32) {
-            LoadingPageView()
+            if viewModel.isInitializing {
+                LoadingPageView()
+            } else if viewModel.showDashboardText {
+                Text(viewModel.dashboardTextView())
+                    .fontOpenSans(.body1)
+                    .foregroundColor(theme.textHeading)
+
+            } else if viewModel.showLandingText {
+                Text(viewModel.landingTextView())
+                    .fontOpenSans(.body1)
+                    .foregroundColor(theme.textHeading)
+            }
+        }
+        .task {
+            await viewModel.performAppInitialization()
         }
     }
 }
 
-// MARK: - Preview
 #Preview {
     ContentView()
         .environmentObject(Theme.shared)
