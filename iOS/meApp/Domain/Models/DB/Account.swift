@@ -106,10 +106,6 @@ final class Account {
     var preferredInputMethod: String?
     /// OAuth refresh token
     var refreshToken: String?
-    /// Whether to send reminders for entries
-    var shouldSendEntryNotifications: Bool?
-    /// Whether to send reminders for weight-ins
-    var shouldSendWeightInEntryNotifications: Bool?
     /// Offline/stored body fat value
     var weightlessBodyFat: Double?
     /// Offline/stored muscle mass value
@@ -131,6 +127,8 @@ final class Account {
     @Relationship(deleteRule: .cascade) var streaksSettings: StreaksSettings?
     // Relationship to WeightlessSettings
     @Relationship(deleteRule: .cascade) var weightlessSettings: WeightlessSettings?
+    // Relationship to NotificationSettings
+    @Relationship(deleteRule: .cascade) var notificationSettings: NotificationSettings?
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -141,8 +139,6 @@ final class Account {
         self.dob = dto.dob
         self.weightlessBodyFat = dto.weightlessBodyFat
         self.weightlessMuscle = dto.weightlessMuscle
-        self.shouldSendEntryNotifications = dto.shouldSendEntryNotifications
-        self.shouldSendWeightInEntryNotifications = dto.shouldSendWeightInEntryNotifications
         self.isFitbitOn = dto.isFitbitOn
         self.isGoogleFitOn = dto.isGoogleFitOn
         self.isMfpOn = dto.isMFPOn
@@ -178,7 +174,7 @@ final class Account {
         let goalSettings = GoalSettings(
             accountId: dto.id,
             goalType: dto.goalType,
-            weight: dto.weight,
+            initialWeight: dto.initialWeight,
             goalWeight: dto.goalWeight.map { String($0) },
             goalPercent: nil,
             isSynced: false
@@ -203,6 +199,15 @@ final class Account {
             isSynced: false
         )
         self.weightlessSettings = weightlessSettings
+
+        // Create associated NotificationSettings
+        let notificationSettings = NotificationSettings(
+            accountId: dto.id,
+            shouldSendEntryNotifications: dto.shouldSendEntryNotifications ?? false,
+            shouldSendWeightInEntryNotifications: dto.shouldSendWeightInEntryNotifications ?? false,
+            isSynced: false
+        )
+        self.notificationSettings = notificationSettings
     }
 
     func toAccountDTO() -> AccountDTO {
@@ -230,9 +235,9 @@ final class Account {
             goalType: self.goalSettings?.goalType,
             goalWeight: self.goalSettings?.goalWeight.flatMap { Double($0) },
             goalPercent: self.goalSettings?.goalPercent,
-            weight: self.goalSettings?.weight,
-            shouldSendEntryNotifications: self.shouldSendEntryNotifications,
-            shouldSendWeightInEntryNotifications: self.shouldSendWeightInEntryNotifications,
+            initialWeight: self.goalSettings?.initialWeight,
+            shouldSendEntryNotifications: self.notificationSettings?.shouldSendEntryNotifications,
+            shouldSendWeightInEntryNotifications: self.notificationSettings?.shouldSendWeightInEntryNotifications,
             isGoogleFitOn: self.isGoogleFitOn,
             isGoogleFitValid: self.isGoogleFitValid,
             isFitbitOn: self.isFitbitOn,
@@ -307,11 +312,20 @@ extension Account {
         if let dashboardMetrics = response.dashboardMetrics {
             self.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
         }
-        if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {
-            self.shouldSendEntryNotifications = shouldSendEntryNotifications
-        }
-        if let shouldSendWeightInEntryNotifications = response.shouldSendWeightInEntryNotifications {
-            self.shouldSendWeightInEntryNotifications = shouldSendWeightInEntryNotifications
+        if let notificationSettings = self.notificationSettings {
+            if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {
+                notificationSettings.shouldSendEntryNotifications = shouldSendEntryNotifications
+            }
+            if let shouldSendWeightInEntryNotifications = response.shouldSendWeightInEntryNotifications {
+                notificationSettings.shouldSendWeightInEntryNotifications = shouldSendWeightInEntryNotifications
+            }
+        } else {
+            // self.notificationSettings = NotificationSettings(
+            //     accountId: response.id,
+            //     shouldSendEntryNotifications: response.shouldSendEntryNotifications ?? true,
+            //     shouldSendWeightInEntryNotifications: response.shouldSendWeightInEntryNotifications ?? true,
+            //     isSynced: false
+            // )
         }
         if let isGoogleFitOn = response.isGoogleFitOn {
             self.isGoogleFitOn = isGoogleFitOn
@@ -346,7 +360,7 @@ extension Account {
 
         if let goalSettings = self.goalSettings {
             goalSettings.goalType = response.goalType
-            goalSettings.weight = response.weight
+            goalSettings.initialWeight = response.initialWeight
             goalSettings.goalWeight = response.goalWeight.map { String($0) }
             goalSettings.goalPercent = response.goalPercent
         } else {

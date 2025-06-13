@@ -309,8 +309,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             return localAccount
         } catch {
             if NetworkError.isNetworkError(error) {
-                localAccount.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
-                localAccount.shouldSendWeightInEntryNotifications = notifications.shouldSendWeightInEntryNotifications
+                localAccount.notificationSettings?.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
+                localAccount.notificationSettings?.shouldSendWeightInEntryNotifications = notifications.shouldSendWeightInEntryNotifications
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
@@ -460,8 +460,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Notification Settings
-            if let shouldSendEntry = account.shouldSendEntryNotifications,
-               let shouldSendWeightIn = account.shouldSendWeightInEntryNotifications,
+            if let shouldSendEntry = account.notificationSettings?.shouldSendEntryNotifications,
+               let shouldSendWeightIn = account.notificationSettings?.shouldSendWeightInEntryNotifications,
                !isSynced {
                 let notifications = Notifications(
                     shouldSendEntryNotifications: shouldSendEntry,

@@ -26,7 +26,7 @@ final class GoalSettings {
     @Attribute(.unique) var id: String
     var accountId: String
     var goalType: GoalType?
-    var weight: Double?
+    var initialWeight: Double?
     var goalWeight: String?
     var goalPercent: Double?
     var isSynced: Bool?
@@ -39,11 +39,11 @@ final class GoalSettings {
         self.accountId = accountId
     }
 
-    init(accountId: String, goalType: GoalType?, weight: Double?, goalWeight: String?, goalPercent: Double? = nil, isSynced: Bool? = false) {
+    init(accountId: String, goalType: GoalType?, initialWeight: Double?, goalWeight: String?, goalPercent: Double? = nil, isSynced: Bool? = false) {
         self.id = UUID().uuidString
         self.accountId = accountId
         self.goalType = goalType
-        self.weight = weight
+        self.initialWeight = initialWeight
         self.goalWeight = goalWeight
         self.goalPercent = goalPercent
         self.isSynced = isSynced

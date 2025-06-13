@@ -94,12 +94,13 @@ class LoginViewModel: ObservableObject {
    
    func login() async {
        do {
-           let _ = await try accountService.logIn(email: "pkesavan@greatergoods.com", password: "123456")
+//           let _ = await try accountService.logIn(email: "pkesavan@greatergoods.com", password: "123456")
            
-           try await accountService.updateStreak(isStreakOn: true, streakTimestamp: "2007-10-23T00:00:00.000Z")
+           try await accountService.updateStreak(isStreakOn: false, streakTimestamp: "2007-10-23T00:00:00.000Z")
            let localAccount = try await accountService.getActiveAccount()
-           try await accountService.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2007-10-23T00:00:00.000Z", weightlessWeight: 60.0)
-           print(localAccount?.streaksSettings?.isStreakOn,localAccount?.weightlessSettings?.isWeightlessOn, localAccount?.weightlessSettings?.weightlessWeight, localAccount?.weightlessSettings?.weightlessTimestamp, "Local account details")
+//           try await accountService.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2007-10-23T00:00:00.000Z", weightlessWeight: 60.0)
+           print(localAccount?.streaksSettings?.isStreakOn,localAccount?.weightlessSettings?.isWeightlessOn, localAccount?.notificationSettings?.shouldSendWeightInEntryNotifications, localAccount?.notificationSettings?.shouldSendEntryNotifications, "Local account details")
+           
        } catch  {
            print("Login Error")
        }

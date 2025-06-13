@@ -24,7 +24,7 @@ struct AccountDTO: Codable {
     let goalType: GoalType?
     let goalWeight: Double?
     let goalPercent: Double?
-    let weight: Double?
+    let initialWeight: Double?
     let shouldSendEntryNotifications: Bool?
     let shouldSendWeightInEntryNotifications: Bool?
     let isGoogleFitOn: Bool?
