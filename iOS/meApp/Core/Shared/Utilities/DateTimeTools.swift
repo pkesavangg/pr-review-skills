@@ -205,4 +205,13 @@ final class DateTimeTools {
         let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         return Int64(cutoffDate.timeIntervalSince1970 * 1000)
     }
+    
+    /// Formats a date to 'yyyy-MM-dd' in the local timezone.
+    /// - Parameter date: The date to format.
+    /// - Returns: The formatted date string.
+    static func formatDateToYMD_Local(_ date: Date) -> String {
+        let df = formatter("yyyy-MM-dd")
+        df.timeZone = TimeZone.current
+        return df.string(from: date)
+    }
 }

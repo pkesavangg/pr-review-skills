@@ -17,7 +17,6 @@ struct SignupScreen: View {
             AnyView(
                 NameStepView(signupStore: signupStore)
             ),
-            
             AnyView(
                 DateOfBirthStepView(signupStore: signupStore)
             ),
@@ -36,10 +35,7 @@ struct SignupScreen: View {
                 EmailStepView(signupStore: signupStore)
             ),
             AnyView(
-                PasswordStepView(password: $signupStore.signupForm.password.value)
-                    .onChange(of: signupStore.signupForm.password.value) {
-                        signupStore.updateNextButtonState()
-                    }
+                PasswordStepView(signupStore: signupStore)
             )
         ]
     }
@@ -69,7 +65,7 @@ struct SignupScreen: View {
             )
             .padding(.horizontal, .spacingSM)
             
-            AppProgressView(progressValue: signupStore.progressValue)
+            ProgressBarView(progress: signupStore.progressValue)
                 .padding(.top, .spacingMD)
                 .padding(.horizontal, .spacingSM)
             
@@ -81,51 +77,48 @@ struct SignupScreen: View {
             // Footer Buttons
             footerButtons
                 .padding(.horizontal, .spacingSM)
+                .padding(.bottom, .spacing3XL)
             
         }
         .background(theme.backgroundSecondary)
+        .ignoresSafeArea(edges: .bottom)
     }
     
     private var footerButtons: some View {
-        // TODO: Need to replace with the button component from the common components
         HStack {
-            Button(commonLang.back) {
+            ButtonView(text: commonLang.back,
+                       type: .linkBlueInline,
+                       size: .small,
+                       isDisabled: signupStore.currentStep == SignupStep.name,
+                       action: {
                 withAnimation {
                     hideKeyboard()
                     signupStore.moveToPreviousStep()
                 }
-            }
-            .foregroundColor(.blue)
+            })
             
             Spacer()
+            
             if signupStore.currentStep == SignupStep.goal {
-                HStack {
-                    Button(commonLang.skip) {
-                        withAnimation {
-                            hideKeyboard()
-                            signupStore.handleSkip()
-                        }
+                ButtonView(text: commonLang.skip, type: .linkBlueDefault, size: .small, isDisabled: false, action: {
+                    withAnimation {
+                        hideKeyboard()
+                        signupStore.handleSkip()
                     }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(signupStore.isNextEnabled ? theme.actionPrimary : Color.gray)
-                    .cornerRadius(8)
-                }
+                })
+                .padding(.trailing, .spacingSM)
             }
             
-            Button(signupStore.currentStep == SignupStep.password ? commonLang.done : commonLang.next) {
+            ButtonView(text: signupStore.currentStep == SignupStep.password ? commonLang.complete : commonLang.next,
+                       type: .secondaryInverse,
+                       size: .small,
+                       isDisabled: !signupStore.isNextEnabled,
+                       action: {
                 withAnimation {
                     hideKeyboard()
                     signupStore.moveToNextStep()
                 }
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .background(signupStore.isNextEnabled ? theme.actionPrimary : Color.gray)
-            .cornerRadius(8)
-            .disabled(!signupStore.isNextEnabled)
+            })
         }
     }
 }

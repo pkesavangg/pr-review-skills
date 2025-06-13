@@ -15,6 +15,7 @@ struct CommonStrings {
     static let back = "Back"
     static let save = "Save"
     static let skip = "Skip"
+    static let complete = "Complete"
 }
 
 /// Constants for form validation error messages
@@ -42,6 +43,7 @@ struct InputFieldLabels {
     static let currentWeight = "current weight"
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
+    static let zipCode = "zipcode"
 }
 
 /// Constants for Alert strings used in the app
@@ -52,6 +54,14 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+}
+
+/// Constants for legal text used in the app
+struct LegalStrings {
+    static let termsAndPrivacyText = "By clicking \"COMPLETE\", you are agreeing to our"
+    static let termsOfService = "Terms of Service"
+    static let privacyPolicy = "Privacy Policy"
+    static let andText = "&"
 }
 
 /// Constants for App Assets used in the app

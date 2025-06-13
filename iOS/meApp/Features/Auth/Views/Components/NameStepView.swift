@@ -56,7 +56,7 @@ struct NameStepView: View {
                         focusedField: $focusedField
                     ) {
                         focusedField = nil
-                        if signupStore.signupForm.firstName.isValid && signupStore.signupForm.lastName.isValid {
+                        if signupStore.isNextEnabled {
                             signupStore.moveToNextStep()
                         }
                     }

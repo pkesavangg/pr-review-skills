@@ -77,10 +77,9 @@ struct GoalStepView: View {
                             }
                         )
                         
-                        // TODO: Need to replace with the custom toggle view
-                        Toggle(labels.useMetric, isOn: $signupStore.signupForm.useMetric.value)
-                            .padding(.top, .spacingXS)
-                            .padding(.horizontal, 2)
+                        CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
+                                         text: labels.useMetric)
+                        .padding(.top, .spacingXS)
                     }
                     .padding(.top, .spacingMD)
                 }
