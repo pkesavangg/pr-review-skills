@@ -32,6 +32,7 @@ import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.runtime.rememberCoroutineScope
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeAppTheme.typography
 
 data class SampleControls(
     val email: FormControl<String>,
@@ -50,6 +51,7 @@ fun SampleFormScreen() {
     val password = remember { FormControl("", listOf(FormValidations.required(), FormValidations.minLength(8)), emptyList(), scope) }
     val confirmPassword = remember { FormControl("", listOf(FormValidations.required(), FormValidations.confirmPasswordValidator(password)), emptyList(), scope) }
     val weight = remember { FormControl("", listOf(FormValidations.weightValidator("kg")), emptyList(), scope) }
+    val bodyCompDecimal = remember { FormControl("", listOf(FormValidations.bodyCompValidator()), emptyList(), scope) }
     val bodyComp = remember { FormControl("", listOf(FormValidations.bodyCompValidator()), emptyList(), scope) }
     val sku = remember { FormControl("", listOf(FormValidations.skuValidator()), emptyList(), scope) }
     val disabledField = remember { FormControl("", emptyList(), emptyList(), scope) }
@@ -75,16 +77,17 @@ fun SampleFormScreen() {
         ) {
             Text(
                 text = "Sample Form",
-                style = MeAppTheme.typography.heading3,
+                style = typography.heading3,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            AppInput(formControl = email, type = AppInputType.TEXT, label = "Email", placeHolder = "Enter your email")
+            AppInput(formControl = email, type = AppInputType.TEXT, label = "Email")
             AppInput(formControl = password, type = AppInputType.PASSWORD, label = "Password", placeHolder = "Enter your password")
-            AppInput(formControl = confirmPassword, type = AppInputType.PASSWORD, label = "Confirm Password", placeHolder = "Confirm your password")
-            AppInput(formControl = weight, type = AppInputType.WEIGHT, label = "Weight", placeHolder = "Enter weight in kg")
-            AppInput(formControl = bodyComp, type = AppInputType.BODY_COMP, label = "Body Composition", placeHolder = "Enter body composition %")
-            AppInput(formControl = sku, type = AppInputType.NUMBER, label = "SKU", placeHolder = "Enter 4-digit SKU")
-            AppInput(formControl = disabledField, type = AppInputType.TEXT, label = "Disabled Field", placeHolder = "This field is disabled", enabled = false)
+            AppInput(formControl = confirmPassword, type = AppInputType.PASSWORD, label = "Confirm Password")
+            AppInput(formControl = weight, type = AppInputType.WEIGHT, label = "Weight")
+            AppInput(formControl = bodyCompDecimal, type = AppInputType.BODY_COMP_DECIMAL, label = "Body Composition Decimal",)
+            AppInput(formControl = bodyComp, type = AppInputType.BODY_COMP, label = "Body Composition",)
+            AppInput(formControl = sku, type = AppInputType.NUMBER, label = "SKU", )
+            AppInput(formControl = disabledField, type = AppInputType.TEXT, label = "Disabled Field", enabled = false)
             Button(
                 onClick = {
                     formGroup.forceShowAllErrors()
@@ -99,8 +102,8 @@ fun SampleFormScreen() {
             if (formGroup.groupError != null) {
                 Text(
                     text = formGroup.groupError!!,
-                    style = MeAppTheme.typography.body2,
-                    color = MeAppTheme.colorScheme.error
+                    style = typography.body2,
+                    color = colorScheme.error
                 )
             }
         }

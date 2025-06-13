@@ -23,7 +23,8 @@ fun MeApp() {
 
     MeAppTheme(themeMode = uiState.themeMode) {
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-            SampleFormScreen()
+            DialogHost()
+            NavHost(topLevelBackStack, appViewModel)
         }
     }
 }
