@@ -9,18 +9,11 @@ import kotlinx.coroutines.flow.Flow
 interface INavigationUtility {
     val navigationIntent: Flow<NavigationIntent>
 
-    suspend fun navigateTo(route: AppRoute)
+    suspend fun navigateTo(route: AppRoute, topLevel: AppRoute? = null, popUpTo: AppRoute? = null)
 
     suspend fun navigateBack(
-        route: AppRoute? = null,
-        inclusive: Boolean = false,
+        topLevel: AppRoute? = null,
     )
-
-    suspend fun navigateToRoot()
-
-    suspend fun navigateTo(destinations: List<AppRoute>)
-
-    suspend fun addTopLevelRoute(route: AppRoute)
 
     suspend fun login()
 
@@ -41,21 +34,12 @@ sealed interface NavigationIntent {
 
     data class NavigateTo(
         val route: AppRoute,
+        val topLevel: AppRoute? = null,
+        val popUpTo: AppRoute? = null,
     ) : NavigationIntent
 
     data class NavigateBack(
-        val route: AppRoute? = null,
-        val inclusive: Boolean = false,
-    ) : NavigationIntent
-
-    data object NavigateToRoot : NavigationIntent
-
-    data class NavigateToMultiple(
-        val routes: List<AppRoute>,
-    ) : NavigationIntent
-
-    data class AddTopLevelRoute(
-        val route: AppRoute,
+        val topLevel: AppRoute? = null,
     ) : NavigationIntent
 
     data object Login : NavigationIntent

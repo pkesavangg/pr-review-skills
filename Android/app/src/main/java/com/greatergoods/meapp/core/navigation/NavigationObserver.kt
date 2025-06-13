@@ -26,23 +26,15 @@ fun NavigationObserver(
             ?.collect { intent ->
                 when (intent) {
                     is NavigationIntent.NavigateTo -> {
-                        backStack.add(intent.route)
+                        backStack.addRoute(
+                            intent.route,
+                            intent.topLevel,
+                            intent.popUpTo,
+                        )
                     }
 
                     is NavigationIntent.NavigateBack -> {
-                        backStack.removeLast()
-                    }
-
-                    is NavigationIntent.NavigateToRoot -> {
-                        backStack.clearStack()
-                    }
-
-                    is NavigationIntent.NavigateToMultiple -> {
-                        (backStack).addAll(intent.routes)
-                    }
-
-                    is NavigationIntent.AddTopLevelRoute -> {
-                        backStack.addTopLevel(intent.route)
+                        backStack.removeLast(intent.topLevel)
                     }
 
                     is NavigationIntent.Login -> {

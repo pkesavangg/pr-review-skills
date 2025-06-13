@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.interfaces.INavigationHandler
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
@@ -20,50 +19,19 @@ class NavigationViewmodel
 @Inject
 constructor(
     private val appEventService: IAppEventService,
-) : ViewModel(),
-    INavigationHandler {
+) : ViewModel() {
     /** Navigation state flow, emits navigation intents. */
-    override val navigationState: Flow<NavigationIntent>?
+    val navigationState: Flow<NavigationIntent>?
         get() = appEventService.navigationIntent
 
     /**
      * Navigates to the specified route.
      * @param route The destination route.
      */
-    override suspend fun navigateTo(route: AppRoute) {
+    fun navigateTo(route: AppRoute, topLevel: AppRoute? = null, popUpTo: AppRoute? = null) {
         viewModelScope.launch {
             AppLog.i("NavigationViewModel", "Navigating to route", "Route: $route")
-            appEventService.navigateTo(route)
-        }
-    }
-
-    /**
-     * Navigates to multiple destinations in sequence.
-     * @param destinations The list of routes to navigate to.
-     */
-    override suspend fun navigateTo(destinations: List<AppRoute>) {
-        viewModelScope.launch {
-            appEventService.navigateTo(destinations)
-        }
-    }
-
-    /**
-     * Navigates to the root of the navigation stack.
-     * @param currentRoute The current route to set as root.
-     */
-    override suspend fun navigateToRoot() {
-        viewModelScope.launch {
-            appEventService.navigateToRoot()
-        }
-    }
-
-    /**
-     * Adds a new top-level route to the navigation stack.
-     * @param route The route to add.
-     */
-    override suspend fun addTopLevelRoute(route: AppRoute) {
-        viewModelScope.launch {
-            appEventService.addTopLevelRoute(route)
+            appEventService.navigateTo(route, topLevel, popUpTo)
         }
     }
 
@@ -72,13 +40,11 @@ constructor(
      * @param route The route to navigate back to (optional).
      * @param inclusive Whether to include the specified route in the pop.
      */
-    override suspend fun navigateBack(
-        route: AppRoute?,
-        inclusive: Boolean,
+    fun navigateBack(
+        topLevel: AppRoute?,
     ) {
         viewModelScope.launch {
-            AppLog.i("NavigationViewModel", "Navigating back", "Route: $route, Inclusive: $inclusive")
-            appEventService.navigateBack(route, inclusive)
+            appEventService.navigateBack(topLevel)
         }
     }
 }

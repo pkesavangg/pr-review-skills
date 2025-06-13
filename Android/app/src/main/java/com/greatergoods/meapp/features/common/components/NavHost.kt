@@ -1,8 +1,6 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
@@ -12,6 +10,7 @@ import com.greatergoods.meapp.authEntries
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.features.auth.AppViewModel
+import com.greatergoods.meapp.features.sample.HomeScreen
 import com.greatergoods.meapp.features.sample.LoadingScreen
 import com.greatergoods.meapp.topLevelEntries
 
@@ -24,21 +23,36 @@ fun NavHost(
     topLevelBackStack: TopLevelBackStack<NavKey>,
     appViewModel: AppViewModel,
 ) {
-    val backStack by topLevelBackStack.backStack.collectAsState()
 
     NavigationObserver(
         appViewModel.navigationService.navigationIntent,
         topLevelBackStack,
     )
     NavDisplay(
-        backStack = backStack,
+        backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
         onBack = {
-            topLevelBackStack.removeLast()
+            topLevelBackStack.removeLast(AppRoute.App)
         },
         entryProvider =
             entryProvider {
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
+                entry<AppRoute.Home> { HomeScreen() }
                 authEntries()
+            },
+    )
+}
+
+@Composable
+fun HomeNavHost(
+    topLevelBackStack: TopLevelBackStack<NavKey>,
+) {
+    NavDisplay(
+        backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
+        onBack = {
+            topLevelBackStack.removeLast(AppRoute.Home)
+        },
+        entryProvider =
+            entryProvider {
                 topLevelEntries()
             },
     )

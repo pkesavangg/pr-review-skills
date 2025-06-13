@@ -1,6 +1,5 @@
 package com.greatergoods.meapp
 
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -11,7 +10,6 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.common.components.DialogHost
-import com.greatergoods.meapp.features.common.components.MainBottomNav
 import com.greatergoods.meapp.features.common.components.NavHost
 import com.greatergoods.meapp.theme.MeAppTheme
 import android.annotation.SuppressLint
@@ -25,18 +23,15 @@ fun MeApp() {
     val appViewModel: AppViewModel = hiltViewModel()
     val uiState by appViewModel.uiState.collectAsState()
     val topLevelBackStack =
-        rememberTopLevelBackStack(AppRoute.Init.Loading, AppRoute.Auth.LoginScreen, AppRoute.Main.Dashboard)
+        rememberTopLevelBackStack(
+            Pair(AppRoute.App, AppRoute.Init.Loading),
+            AppRoute.Auth.LoginScreen,
+            Pair(AppRoute.Home, AppRoute.Main.Dashboard),
+        )
     MeAppTheme(themeMode = uiState.themeMode) {
         CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
             DialogHost()
-            Scaffold(
-                bottomBar = {
-                    if (topLevelBackStack.currentRoute is AppRoute.Main)
-                        MainBottomNav()
-                },
-            ) {
-                NavHost(topLevelBackStack, appViewModel)
-            }
+            NavHost(topLevelBackStack, appViewModel)
         }
     }
 }

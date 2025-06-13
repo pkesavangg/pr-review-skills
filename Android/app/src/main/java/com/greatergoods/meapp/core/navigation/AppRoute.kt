@@ -17,6 +17,12 @@ sealed class AppRoute : NavKey {
         data object Loading : Init()
     }
 
+    @Serializable
+    data object Home : AppRoute()
+
+    @Serializable
+    data object App : AppRoute()
+
     /**
      * Main navigation routes for the app.
      */

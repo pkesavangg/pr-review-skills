@@ -42,10 +42,11 @@ import com.greatergoods.meapp.theme.MeAppTheme
 fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
     var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
     val topBackStack = LocalNavBackStack.current
+    val backStack = topBackStack.getStackForTopLevel(AppRoute.Home)
 
-    LaunchedEffect(topBackStack.topLevelKey) {
+    LaunchedEffect(backStack.lastOrNull()) {
         selectedItem =
-            BOTTOM_NAV_ITEMS.find { it.route == topBackStack.topLevelKey } ?: BOTTOM_NAV_ITEMS[0]
+            BOTTOM_NAV_ITEMS.find { it.route == backStack.lastOrNull() } ?: BOTTOM_NAV_ITEMS[0]
     }
 
     NavigationBar(
@@ -70,10 +71,10 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
                                             .size(8.dp)
                                             .clip(CircleShape)
                                             .align(Alignment.BottomEnd)
-                                            .background(Color.Red)
+                                            .background(Color.Red),
                                     )
                                 }
-                            }
+                            },
                         ) {
                             Image(
                                 painter = painterResource(id = icon),
@@ -97,7 +98,7 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
                     selected = false,
                     onClick = {
                         selectedItem = item
-                        topBackStack.addTopLevel(item.route)
+                        topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
                     },
                 )
             }

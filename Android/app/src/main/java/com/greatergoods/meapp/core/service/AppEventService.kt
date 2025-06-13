@@ -22,10 +22,12 @@ class AppEventService : IAppEventService {
      * Emits a navigation intent to navigate to the specified route.
      * @param route The destination [AppRoute].
      */
-    override suspend fun navigateTo(route: AppRoute) {
+    override suspend fun navigateTo(route: AppRoute, topLevel: AppRoute?, popUpTo: AppRoute?) {
         emitNavigationIntent(
             NavigationIntent.NavigateTo(
                 route,
+                topLevel = topLevel,
+                popUpTo = popUpTo,
             ),
         )
     }
@@ -36,13 +38,11 @@ class AppEventService : IAppEventService {
      * @param inclusive Whether to include the specified route in the pop.
      */
     override suspend fun navigateBack(
-        route: AppRoute?,
-        inclusive: Boolean,
+        topLevel: AppRoute?,
     ) {
         emitNavigationIntent(
             NavigationIntent.NavigateBack(
-                route,
-                inclusive,
+                topLevel,
             ),
         )
     }
@@ -62,36 +62,6 @@ class AppEventService : IAppEventService {
     override suspend fun logout() {
         emitNavigationIntent(
             NavigationIntent.Logout,
-        )
-    }
-
-    /**
-     * Emits a navigation intent to navigate to the root of the stack.
-     * @param currentRoute The current route.
-     */
-    override suspend fun navigateToRoot() {
-        emitNavigationIntent(
-            NavigationIntent.NavigateToRoot,
-        )
-    }
-
-    /**
-     * Emits a navigation intent to navigate to multiple destinations.
-     * @param destinations The list of routes to navigate to.
-     */
-    override suspend fun navigateTo(destinations: List<AppRoute>) {
-        emitNavigationIntent(
-            NavigationIntent.NavigateToMultiple(destinations),
-        )
-    }
-
-    /**
-     * Emits a navigation intent to add a top-level route.
-     * @param route The top-level route to add.
-     */
-    override suspend fun addTopLevelRoute(route: AppRoute) {
-        emitNavigationIntent(
-            NavigationIntent.AddTopLevelRoute(route),
         )
     }
 
