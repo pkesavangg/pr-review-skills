@@ -70,13 +70,13 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     }
 
     func patchDashboardType(_ type: DashboardType) async throws -> AccountResponse {
-        struct DashboardTypeRequest: Codable { let type: DashboardType }
-        return try await httpClient.send(.updateDashboardType, method: .patch, body: DashboardTypeRequest(type: type), needsAuth: true)
+        struct DashboardTypeRequest: Codable { let dashboardType: DashboardType }
+        return try await httpClient.send(.updateDashboardType, method: .patch, body: DashboardTypeRequest(dashboardType: type), needsAuth: true)
     }
 
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse {
-        struct DashboardMetricsRequest: Codable { let metrics: [String] }
-        return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(metrics: metrics), needsAuth: true)
+        struct DashboardMetricsRequest: Codable { let dashboardMetrics: [String] }
+        return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(dashboardMetrics: metrics), needsAuth: true)
     }
 
     func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse {

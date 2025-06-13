@@ -114,10 +114,6 @@ final class Account {
     var zipcode: String?
     /// Date of birth
     var dob: String?
-    /// Metrics selected for dashboard display
-    var dashboardMetrics: String?
-    /// Layout type of the user's dashboard
-    var dashboardType: DashboardType?
     
     // Relationship to WeightCompSettings
     @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
@@ -129,6 +125,8 @@ final class Account {
     @Relationship(deleteRule: .cascade) var weightlessSettings: WeightlessSettings?
     // Relationship to NotificationSettings
     @Relationship(deleteRule: .cascade) var notificationSettings: NotificationSettings?
+    // Relationship to DashboardSettings
+    @Relationship(deleteRule: .cascade) var dashboardSettings: DashboardSettings?
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -152,8 +150,6 @@ final class Account {
         self.accessToken = nil
         self.refreshToken = nil
         self.expiresAt = nil
-        self.dashboardMetrics = dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ",")
-        self.dashboardType = dto.dashboardType
         self.isLoggedIn = nil
         self.isActiveAccount = nil
         self.isExpired = nil
@@ -208,6 +204,15 @@ final class Account {
             isSynced: false
         )
         self.notificationSettings = notificationSettings
+
+        // Create associated DashboardSettings
+        let dashboardSettings = DashboardSettings(
+            accountId: dto.id,
+            dashboardMetrics: dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ","),
+            dashboardType: dto.dashboardType != nil ? String(describing: dto.dashboardType!) : nil,
+            isSynced: false
+        )
+        self.dashboardSettings = dashboardSettings
     }
 
     func toAccountDTO() -> AccountDTO {
@@ -230,8 +235,8 @@ final class Account {
             weightlessWeight: self.weightlessSettings?.weightlessWeight != nil ? Double(self.weightlessSettings!.weightlessWeight!) : nil,
             isStreakOn: self.streaksSettings?.isStreakOn,
             streakTimestamp: self.streaksSettings?.streakTimestamp,
-            dashboardType: self.dashboardType,
-            dashboardMetrics: self.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
+            dashboardType: self.dashboardSettings?.dashboardType.flatMap { DashboardType(rawValue: $0) },
+            dashboardMetrics: self.dashboardSettings?.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
             goalType: self.goalSettings?.goalType,
             goalWeight: self.goalSettings?.goalWeight.flatMap { Double($0) },
             goalPercent: self.goalSettings?.goalPercent,
@@ -306,11 +311,21 @@ extension Account {
         if let streakTimestamp = response.streakTimestamp {
             self.streaksSettings?.streakTimestamp = streakTimestamp
         }
-        if let dashboardType = response.dashboardType {
-            self.dashboardType = dashboardType
-        }
-        if let dashboardMetrics = response.dashboardMetrics {
-            self.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
+        if let dashboardSettings = self.dashboardSettings {
+            if let dashboardMetrics = response.dashboardMetrics {
+                dashboardSettings.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
+            }
+            if let dashboardType = response.dashboardType {
+                dashboardSettings.dashboardType = String(describing: dashboardType)
+            }
+        } else {
+            // Optionally create if missing
+            // self.dashboardSettings = DashboardSettings(
+            //     accountId: response.id,
+            //     dashboardMetrics: response.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ","),
+            //     dashboardType: response.dashboardType != nil ? String(describing: response.dashboardType!) : nil,
+            //     isSynced: false
+            // )
         }
         if let notificationSettings = self.notificationSettings {
             if let shouldSendEntryNotifications = response.shouldSendEntryNotifications {

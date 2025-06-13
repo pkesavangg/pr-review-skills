@@ -269,8 +269,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
         guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
-            let response = try await apiRepo.patchDashboardType(type)
-            localAccount.update(from: response)
+            localAccount.dashboardSettings?.dashboardType = String(describing: type)
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
@@ -471,13 +470,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Dashboard Type
-            if let dashboardType = account.dashboardType,
+            if let dashboardType = account.dashboardSettings?.dashboardType,
                !isSynced {
-                try await updateDashboardType(type: dashboardType)
+                try await updateDashboardType(type: DashboardType(rawValue: dashboardType) ?? .dashboard4)
             }
             
             // Handle Dashboard Metrics
-            if let metricsString = account.dashboardMetrics,
+            if let metricsString = account.dashboardSettings?.dashboardMetrics,
                !isSynced {
                 let metrics = metricsString.split(separator: ",").map(String.init)
                 try await updateDashboardMetrics(metrics: metrics)
@@ -522,7 +521,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
             let response = try await apiRepo.patchDashboardMetrics(metrics)
-            localAccount.update(from: response)
+            localAccount.dashboardSettings?.dashboardMetrics = metrics.joined(separator: ",")
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
