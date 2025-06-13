@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 /// LoadingScreenStrings provides a centralized collection of string constants used throughout the loading screen in the application.
 struct LoadingScreenStrings {
     static let loading = "Loading . . ."
