@@ -10,7 +10,7 @@ import SwiftUI
 struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     @Environment(\.appTheme) var theme
     
-    let title: String
+    var title: String?
     var leadingContent: (() -> Leading)?
     var trailingContent: (() -> Trailing)?
     var onLeadingTap: (() -> Void)?
@@ -29,14 +29,16 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
             
             Spacer()
             
-            Text(title)
-                .fontOpenSans(.heading5)
-                .fontWeight(.bold)
-                .foregroundColor(theme.actionSecondary)
-                .lineLimit(1)
-                .accessibilityAddTraits(.isHeader)
-                .padding(.leading, leadingContent == nil ? 30 : 0)
-                .padding(.trailing, trailingContent == nil ? 30 : 0)
+            if let title = title {
+                Text(title)
+                    .fontOpenSans(.heading5)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.actionSecondary)
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+                    .padding(.leading, leadingContent == nil ? 30 : 0)
+                    .padding(.trailing, trailingContent == nil ? 30 : 0)
+            }
             
             Spacer()
             

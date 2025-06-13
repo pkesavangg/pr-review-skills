@@ -144,13 +144,7 @@ final class SignupStore: ObservableObject {
         case .height:
             isNextEnabled = signupForm.height.isValid
         case .goal:
-            if signupForm.goalType.value == GoalType.maintain.rawValue {
-                isNextEnabled = signupForm.currentWeight.isValid
-            } else {
-                isNextEnabled = signupForm.currentWeight.isValid &&
-                signupForm.goalWeight.isValid &&
-                !signupForm.formErrors[.weightEqual]
-            }
+            isNextEnabled = isGoalStepValid()
         case .email:
             isNextEnabled = signupForm.email.isValid
         case .password:
@@ -201,6 +195,17 @@ final class SignupStore: ObservableObject {
         }
 
         notificationService.dismissLoader()
+    }
+    
+    // MARK: - Private Methods
+    private func isGoalStepValid() -> Bool {
+        if signupForm.goalType.value == GoalType.maintain.rawValue {
+            return signupForm.goalWeight.isValid
+        } else {
+            return signupForm.currentWeight.isValid &&
+                   signupForm.goalWeight.isValid &&
+                   !signupForm.formErrors[.weightEqual]
+        }
     }
     
     private func generateProfile() -> Profile {
