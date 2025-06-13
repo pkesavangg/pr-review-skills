@@ -16,13 +16,17 @@ class MetricFieldFormatter: ObservableObject {
     }
     
     var initialValue: String {
-        config.allowWholeNumbers ? "0" : "0.0"
+        ""
+    }
+    
+    var emptyValue: String {
+        ""
     }
     
     func formatInput(_ input: String) -> String {
-        // Handle empty input by returning initial value
+        // Handle empty input case specially
         if input.isEmpty {
-            return initialValue
+            return emptyValue
         }
         
         if config.allowWholeNumbers {
@@ -33,6 +37,11 @@ class MetricFieldFormatter: ObservableObject {
     }
     
     func isValidValue(_ value: String) -> Bool {
+        // Empty string is considered valid
+        if value.isEmpty {
+            return true
+        }
+        
         guard let numValue = Double(value),
               let maxVal = config.maxValue else {
             return true
@@ -41,6 +50,11 @@ class MetricFieldFormatter: ObservableObject {
     }
     
     func shouldUpdateValue(from oldValue: String, to newValue: String) -> Bool {
+        // Allow empty values
+        if newValue.isEmpty {
+            return true
+        }
+        
         let formatted = formatInput(newValue)
         return isValidValue(formatted)
     }
@@ -49,23 +63,27 @@ class MetricFieldFormatter: ObservableObject {
     
     private func formatDecimalNumber(_ input: String) -> String {
         // Handle empty or invalid input
-        if input.isEmpty || input == "." {
-            return "0.0"
+        if input.isEmpty {
+            return emptyValue
+        }
+        
+        if input == "." {
+            return emptyValue
         }
         
         // Extract only digits
         let digitsOnly = input.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
         
-        // Handle empty digits or just "0"
-        if digitsOnly.isEmpty || digitsOnly == "0" {
-            return "0.0"
+        // Handle empty digits
+        if digitsOnly.isEmpty {
+            return emptyValue
         }
         
         // Remove leading zeros
         let trimmedDigits = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
         
         if trimmedDigits.isEmpty {
-            return "0.0"
+            return emptyValue
         }
         
         // Limit to maxLength digits
@@ -86,13 +104,13 @@ class MetricFieldFormatter: ObservableObject {
         let digitsOnly = input.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
         
         if digitsOnly.isEmpty {
-            return "0"
+            return emptyValue
         }
         
         let trimmedDigits = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
         
         if trimmedDigits.isEmpty {
-            return "0"
+            return emptyValue
         }
         
         let limitedDigits = String(trimmedDigits.prefix(config.maxLength))

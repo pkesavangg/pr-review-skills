@@ -14,6 +14,8 @@ enum FocusField: Hashable {
     case confirmPassword
     case zipCode
     case weight
+    case currentWeight
+    case goalWeight
     case bodyFat
     case none
 }

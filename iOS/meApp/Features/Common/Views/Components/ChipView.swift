@@ -17,7 +17,7 @@ struct ChipView: View {
         Button(action: {
             onTap?()
         }) {
-            Text(text.uppercased())
+            Text(text)
                 .fontOpenSans(.link1)
                 .foregroundColor(theme.actionPrimary)
                 .padding(.horizontal, .spacingSM)

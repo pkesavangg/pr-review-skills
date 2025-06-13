@@ -110,6 +110,11 @@ final class SignupStore: ObservableObject {
     
     // MARK: - Navigation
     
+    func handleSkip() {
+        signupForm.resetGoal()
+        moveToNextStep()
+    }
+    
     func moveToNextStep() {
         guard currentStepIndex < steps.count - 1 else { return }
         currentStepIndex += 1
@@ -131,7 +136,13 @@ final class SignupStore: ObservableObject {
         case .height:
             isNextEnabled = signupForm.height.isValid
         case .goal:
-            isNextEnabled = signupForm.goalType.isValid
+            if signupForm.goalType.value == GoalType.maintain.rawValue {
+                isNextEnabled = signupForm.currentWeight.isValid
+            } else {
+                isNextEnabled = signupForm.currentWeight.isValid && 
+                    signupForm.goalWeight.isValid &&
+                    !signupForm.formErrors[.weightEqual]
+            }
         case .email:
             isNextEnabled = signupForm.email.isValid
         case .password:
