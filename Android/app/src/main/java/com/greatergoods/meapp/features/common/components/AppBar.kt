@@ -102,7 +102,9 @@ fun AppBarPreview() {
             AppBar(
                 containerColor = Color.Transparent,
                 navigationIcon = { AppIconButton(AppIcons.Default.Close) { } },
-                actions = { AppButton("Save", onClick = {}, type = ButtonType.InlineTextPrimary)  },
+                actions = {
+                    AppButton("Save", type = ButtonType.InlineTextPrimary, size = ButtonSize.Small){}
+                },
             )
             Spacer(Modifier.height(24.dp))
         }

@@ -29,9 +29,7 @@ fun SampleAppScaffoldScreen() {
 
     AppScaffold(
         title = "Sample App Scaffold",
-        onLeftIconClick = null,
-        onRightIconClick = { rightClicked = true },
-        leftIcon = null,
+        navigationIcon =  ,
         rightIcon = {  },
         modifier = Modifier.Companion.statusBarsPadding()
     ) { modifier ->

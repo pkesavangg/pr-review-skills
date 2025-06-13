@@ -15,27 +15,27 @@ import com.greatergoods.meapp.theme.MeAppTheme
  * @param onLeftIconClick Callback for left icon click.
  * @param onRightIconClick Callback for right icon click (optional).
  * @param modifier Modifier for the Scaffold.
- * @param rightIcon Optional composable for right icon.
- * @param leftIcon Optional composable for left icon.
+ * @param actions Optional composable for actions.
+ * @param navigationIcon Optional composable for left icon.
  * @param content The main content below the AppBar.
  */
 @Composable
 fun AppScaffold(
     title: String?,
-    onLeftIconClick: (() -> Unit)? = null,
-    onRightIconClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    rightIcon: (@Composable () -> Unit)? = null,
-    leftIcon: (@Composable () -> Unit)? = null,
-    content: @Composable (Modifier) -> Unit
+    actions: (@Composable () -> Unit)? = null,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
         topBar = {
             AppBar(
                 title = "title",
+                navigationIcon = navigationIcon,
+                actions = actions,
             )
-        }
+        },
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             content(Modifier)
@@ -49,13 +49,11 @@ fun AppScaffoldPreview() {
     MeAppTheme {
         AppScaffold(
             title = "App Scaffold Title",
-            onLeftIconClick = {},
-            onRightIconClick = {},
         ) { modifier ->
             Box(modifier = modifier) {
                 Text(
                     text = "Scaffold content goes here",
-                    style = MeAppTheme.typography.body1
+                    style = MeAppTheme.typography.body1,
                 )
             }
         }
