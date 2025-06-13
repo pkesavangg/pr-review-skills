@@ -61,4 +61,6 @@ struct AppAssets {
     static let closeCircle = "closeCircle"
     static let helpCircle = "helpCircle"
     static let xmark = "xmark"
+    static let meLogoDark = "meLogoDark"
+    static let meLogoLight = "meLogoLight"
 }
