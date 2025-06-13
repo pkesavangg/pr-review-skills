@@ -172,7 +172,11 @@ final class SignupStore: ObservableObject {
     }
     
     func showHelpModal() {
-        // TODO: Implement help modal logic
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(HelpModalView(){
+                self.notificationService.dismissModal()
+            })
+        ))
     }
     
     func createUser() async {

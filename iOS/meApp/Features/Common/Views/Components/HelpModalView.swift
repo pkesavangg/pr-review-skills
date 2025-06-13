@@ -1,5 +1,13 @@
+//
+//  HelpModalView.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 13/06/25.
+//
 import SwiftUI
 
+// MARK: HelpModalView
+/// A view that displays a help modal with a question, general help, phone number, email, and guide
 struct HelpModalView: View {
     var showGuide: Bool = false
     let onClose: () -> Void
@@ -18,11 +26,9 @@ struct HelpModalView: View {
                         .padding(.trailing, .spacingSM)
                 }
             }
-            .padding(.bottom, .spacingMD)
-                
-            Image(themeManager.isDarkMode ? appAssets.stampDark : appAssets.closeCircle)
-                .resizable()
-                .scaledToFit()
+            .padding(.bottom, .spacingXS)
+            
+            ThemedImage(name: AppAssets.stamp)
                 .frame(width: 100, height: 100)
                 .padding(.bottom, .spacingLG)
             
