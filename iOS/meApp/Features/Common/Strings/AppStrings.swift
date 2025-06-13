@@ -18,6 +18,13 @@ struct CommonStrings {
     static let complete = "Complete"
 }
 
+/// Constants for help modal strings used in the app
+struct HelpStrings {
+    static let question = "Have a question?"
+    static let generalHelp = "We're here for you. Contact us and we'll be happy to help."
+    static let viewGuide = "View Getting Started Guide"
+}
+
 /// Constants for form validation error messages
 struct FormErrorMessages {
     static let required = "must not be left blank"
@@ -71,4 +78,8 @@ struct AppAssets {
     static let closeCircle = "closeCircle"
     static let helpCircle = "helpCircle"
     static let xmark = "xmark"
+    static let stamp = "stamp"
+    static let stampDark = "stampDark"
+    static let phone = "phone"
+    static let email = "email"
 }
