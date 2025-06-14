@@ -15,6 +15,7 @@ import Combine
 @MainActor
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
+    @Injector var accountService: AccountService
     var alertLang = AlertStrings.self
     
     @Published var currentStepIndex: Int = SignupStep.name.index {
@@ -26,6 +27,7 @@ final class SignupStore: ObservableObject {
     @Published private(set) var currentStep: SignupStep = .name
     @Published var signupForm = SignupForm()
     @Published var isNextEnabled = false
+    @Published var isGoalSkipped = false
     
     // Height-related published properties
     @Published var selectedHeightInches: [String] = ["5", "10"]  // Default 5'10"
@@ -45,7 +47,7 @@ final class SignupStore: ObservableObject {
     ]
     
     private var cancellables = Set<AnyCancellable>()
-
+    
     init() {
         setupFormObservers()
         updateHeightPickerValues(from: Int(signupForm.height.value))
@@ -111,12 +113,21 @@ final class SignupStore: ObservableObject {
     // MARK: - Navigation
     
     func handleSkip() {
+        isGoalSkipped = true
         signupForm.resetGoal()
         moveToNextStep()
     }
     
     func moveToNextStep() {
+        if currentStep == .password {
+            Task {
+                await createUser()
+            }
+        }
         guard currentStepIndex < steps.count - 1 else { return }
+        if currentStep == .goal  {
+            isGoalSkipped = false
+        }
         currentStepIndex += 1
     }
     
@@ -136,13 +147,7 @@ final class SignupStore: ObservableObject {
         case .height:
             isNextEnabled = signupForm.height.isValid
         case .goal:
-            if signupForm.goalType.value == GoalType.maintain.rawValue {
-                isNextEnabled = signupForm.currentWeight.isValid
-            } else {
-                isNextEnabled = signupForm.currentWeight.isValid && 
-                    signupForm.goalWeight.isValid &&
-                    !signupForm.formErrors[.weightEqual]
-            }
+            isNextEnabled = isGoalStepValid()
         case .email:
             isNextEnabled = signupForm.email.isValid
         case .password:
@@ -173,6 +178,84 @@ final class SignupStore: ObservableObject {
         // TODO: Implement help modal logic
     }
     
+    func createUser() async {
+        notificationService.showLoader(LoaderModel())
+
+        let email = removeWhiteSpace(signupForm.email.value)
+        let password = signupForm.password.value
+
+        let profile = generateProfile()
+        let goal = generateGoalRequest()
+        do {
+            let account = try await accountService.signUp(
+                email: email,
+                password: password,
+                profile: profile
+            )
+            // TODO: Handle success
+        } catch {
+            // TODO: Handle error
+        }
+
+        notificationService.dismissLoader()
+    }
+    
+    // MARK: - Private Methods
+    private func isGoalStepValid() -> Bool {
+        if signupForm.goalType.value == GoalType.maintain.rawValue {
+            return signupForm.goalWeight.isValid
+        } else {
+            return signupForm.currentWeight.isValid &&
+                   signupForm.goalWeight.isValid &&
+                   !signupForm.formErrors[.weightEqual]
+        }
+    }
+    
+    private func generateProfile() -> Profile {
+        let formattedDOB = DateTimeTools.formatDateToYMD_Local(signupForm.birthday.value)
+
+        return Profile(
+            firstName: removeWhiteSpace(signupForm.firstName.value),
+            lastName: removeWhiteSpace(signupForm.lastName.value),
+            gender: Sex(rawValue: signupForm.gender.value) ?? .male,
+            zipcode: removeWhiteSpace(signupForm.zipcode.value),
+            dob: formattedDOB,
+            weightUnit: signupForm.useMetric.value ? .kg : .lb,
+            height: signupForm.height.value,
+            activityLevel: .normal
+        )
+    }
+    
+    private func generateGoalRequest() -> Goal? {
+        guard !isGoalSkipped else { return nil }
+
+        let useMetric = signupForm.useMetric.value
+        let goalTypeValue = signupForm.goalType.value
+        let current = Double(signupForm.currentWeight.value) ?? 0.0
+        let target = Double(signupForm.goalWeight.value) ?? 0.0
+
+        let convert = { (w: Double) -> Int in
+            ConversionTools.convertDisplayToStored(w, forceMetric: useMetric)
+        }
+
+        if goalTypeValue == GoalType.maintain.rawValue {
+            return Goal(
+                type: .maintain,
+                goalWeight: convert(target),
+                initialWeight: convert(target),
+                goalType: .maintain
+            )
+        } else {
+            let derivedType: GoalType = target > current ? .gain : .lose
+            return Goal(
+                type: derivedType,
+                goalWeight: convert(target),
+                initialWeight: convert(current),
+                goalType: derivedType
+            )
+        }
+    }
+    
     private func setupFormObservers() {
         signupForm.formDidChange
             .receive(on: DispatchQueue.main)
@@ -180,7 +263,6 @@ final class SignupStore: ObservableObject {
                 self?.updateNextButtonState()
             }
             .store(in: &cancellables)
-            
         // Observe useMetric changes
         signupForm.useMetric.$value
             .dropFirst()

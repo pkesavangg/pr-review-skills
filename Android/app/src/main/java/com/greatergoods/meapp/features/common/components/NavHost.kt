@@ -11,7 +11,6 @@ import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.core.navigation.TopLevelBackStack
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.sample.LoadingScreen
-import com.greatergoods.meapp.homeEntries
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -33,7 +32,6 @@ fun NavHost(
             entryProvider {
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
                 authEntries()
-                homeEntries()
             },
     )
 }

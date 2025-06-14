@@ -15,6 +15,7 @@ struct DateOfBirthStepView: View {
     @Environment(\.appTheme) private var theme
     var dateOfBirthStepLang = SignupStrings.DateOfBirthStep.self
     let maxDate = DateTimeTools.minAllowedBirthdayDate()
+    @State private var showDatePicker = false
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -28,21 +29,15 @@ struct DateOfBirthStepView: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textHeading)
                 }
-                
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(dateOfBirthStepLang.birthdayLabel)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
-                    
-                    // TODO: Add a custom date picker with a minimum age limit of 18 years
-                    DatePicker(
-                        "",
-                        selection: $signupStore.signupForm.birthday.value,
-                        in: ...maxDate,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.wheel)
-                    .labelsHidden()
+                    DateLabelView(date: signupStore.signupForm.birthday.value) {
+                        withAnimation { showDatePicker.toggle() }
+                    }
+                    // The date picker appears when showDatePicker is true
+                    DatePickerView(isPresented: $showDatePicker,
+                                   date: $signupStore.signupForm.birthday.value,
+                                   endDate: maxDate)
+                        
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, .spacingLG)

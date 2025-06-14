@@ -40,4 +40,13 @@ struct SignupStrings {
         static let title = "What's your email?"
         static let subtitle = "Be sure to use a valid email. You'll use this to login and it's where we'll send any reports."
     }
+    
+    struct PasswordStep {
+        static let title = "Create a password."
+        static let subtitle = "Your password must be at least six characters."
+        static let termsAndPrivacyText = "By clicking \"COMPLETE\", you are agreeing to our"
+        static let termsOfService = "Terms of Service"
+        static let privacyPolicy = "Privacy Policy"
+        static let andText = "&"
+    }    
 }

@@ -4,7 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.AnimationUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
@@ -58,12 +57,6 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val destination = intent?.getStringExtra("destination")
             AppLog.i("MainActivity", "Destination: $destination")
-            when (destination) {
-                "productDetail" -> {
-                    eventService.addTopLevelRoute(AppRoute.Product.ProductList)
-                    eventService.navigateTo(AppRoute.Product.ProductList)
-                }
-            }
         }
     }
 
