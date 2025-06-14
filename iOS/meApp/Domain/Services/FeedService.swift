@@ -31,7 +31,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     func fetchFeedItems() async throws {
         guard networkMonitor.isConnected else {
             logger.log(level: .error, tag: tag, message: "No internet connection while fetching feed items")
-            throw NetworkError.noInternet
+            throw HTTPError.noInternet
         }
         
         do {
@@ -39,9 +39,9 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             self.feedItems = items
             logger.log(level: .info, tag: tag, message: "Successfully fetched feed items", data: ["count": items.count])
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 logger.log(level: .error, tag: tag, message: "Network error while fetching feed items", data: error)
-                throw NetworkError.noInternet
+                throw HTTPError.noInternet
             }
             logger.log(level: .error, tag: tag, message: "Failed to fetch feed items", data: error)
             throw FeedError.networkError(error)
@@ -64,9 +64,9 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
                 }
             }
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 logger.log(level: .error, tag: tag, message: "Network error while updating feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
-                throw NetworkError.noInternet
+                throw HTTPError.noInternet
             }
             logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
             throw FeedError.networkError(error)

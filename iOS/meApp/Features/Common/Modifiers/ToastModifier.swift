@@ -81,20 +81,19 @@ struct ToastModifier: ViewModifier {
     private func toastView(for data: ToastModel) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: .spacingXS) {
-                Text(data.title)
-                    .fontOpenSans(.heading5)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.textHeading)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                if let subtitle = data.message {
-                    Text(subtitle)
-                        .fontOpenSans(.body2)
+                if let title = data.title {
+                    Text(title)
+                        .fontOpenSans(.heading5)
+                        .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
+
+                Text(data.message)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textBody)
+
                 if let buttonTextView = data.btnTextView {
                     Button {
                         data.onClick()

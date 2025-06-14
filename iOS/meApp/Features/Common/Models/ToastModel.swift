@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct ToastModel: Equatable {
-    var title: String
-    var message: String?
+    var title: String?
+    var message: String
     var btnTextView: AnyView?
     var onClick: () -> Void = {}
     var duration: Double = 3

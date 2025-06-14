@@ -46,6 +46,7 @@ final class SignupStore: ObservableObject {
         (0...9).map { "\($0)" }
     ]
     
+    private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
     
     init() {
@@ -181,23 +182,22 @@ final class SignupStore: ObservableObject {
     
     func createUser() async {
         notificationService.showLoader(LoaderModel())
-
+        
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value
-
+        
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            let account = try await accountService.signUp(
+            let _ = try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
-            // TODO: Handle success
+            //TODO: Have to set the goal after signup
         } catch {
-            // TODO: Handle error
+            handleSignupError(error)
         }
-
         notificationService.dismissLoader()
     }
     
@@ -207,14 +207,14 @@ final class SignupStore: ObservableObject {
             return signupForm.goalWeight.isValid
         } else {
             return signupForm.currentWeight.isValid &&
-                   signupForm.goalWeight.isValid &&
-                   !signupForm.formErrors[.weightEqual]
+            signupForm.goalWeight.isValid &&
+            !signupForm.formErrors[.weightEqual]
         }
     }
     
     private func generateProfile() -> Profile {
         let formattedDOB = DateTimeTools.formatDateToYMD_Local(signupForm.birthday.value)
-
+        
         return Profile(
             firstName: removeWhiteSpace(signupForm.firstName.value),
             lastName: removeWhiteSpace(signupForm.lastName.value),
@@ -229,16 +229,16 @@ final class SignupStore: ObservableObject {
     
     private func generateGoalRequest() -> Goal? {
         guard !isGoalSkipped else { return nil }
-
+        
         let useMetric = signupForm.useMetric.value
         let goalTypeValue = signupForm.goalType.value
         let current = Double(signupForm.currentWeight.value) ?? 0.0
         let target = Double(signupForm.goalWeight.value) ?? 0.0
-
+        
         let convert = { (w: Double) -> Int in
             ConversionTools.convertDisplayToStored(w, forceMetric: useMetric)
         }
-
+        
         if goalTypeValue == GoalType.maintain.rawValue {
             return Goal(
                 type: .maintain,
@@ -254,6 +254,29 @@ final class SignupStore: ObservableObject {
                 initialWeight: convert(current),
                 goalType: derivedType
             )
+        }
+    }
+    
+    private func handleSignupError(_ error: Error) {
+        var toastMessage: String?
+        var toastTitle: String = toastLang.errorCreatingAccount
+
+        switch error {
+        case HTTPError.badRequest:
+            toastMessage = toastLang.emailInUse
+
+        case HTTPError.noInternet:
+            break // No message needed, handled by NetworkMonitor
+
+        case HTTPError.serverError:
+            toastMessage = toastLang.serverError
+
+        default:
+            toastMessage = toastLang.somethingWentWrong
+        }
+
+        if let message = toastMessage {
+            notificationService.showToast(ToastModel(title: toastTitle, message: message))
         }
     }
     

@@ -9,39 +9,51 @@
 import Foundation
 
 // MARK: - Network Error
-enum NetworkError: Error, LocalizedError {
+enum HTTPError: Error, LocalizedError {
     case invalidURL
     case invalidResponse
     case decodingError
-    case invalidRequest
+    case badRequest
+    case forbidden
+    case serverError
     case statusCode(Int)
+    case unauthorized
+    case notFound
     case noInternet
     case timeout
     case unknown(Error)
-
+    
     var errorDescription: String? {
         switch self {
-        case .invalidURL: 
+        case .unauthorized:
+            return "Unauthorized access"
+        case .forbidden:
+            return "Access forbidden"
+        case .notFound:
+            return "Not found"
+        case .invalidURL:
             return "Invalid URL"
-        case .invalidResponse: 
+        case .invalidResponse:
             return "Invalid server response"
-        case .decodingError: 
+        case .decodingError:
             return "Failed to decode response"
-        case .invalidRequest: 
-            return "Invalid request"
-        case .statusCode(let code): 
-            return "Server error with status code \(code)"
-        case .noInternet: 
+        case .badRequest:
+            return "Bad request"
+        case .statusCode(let code):
+            return "Unknown error occurred \(code)"
+        case .noInternet:
             return "No internet connection available"
-        case .timeout: 
+        case .timeout:
             return "Request timed out"
-        case .unknown(let error): 
+        case .unknown(let error):
             return error.localizedDescription
+        case .serverError:
+            return "Internal server error"
         }
     }
     
     static func isNetworkError(_ error: Error) -> Bool {
-        if let networkError = error as? NetworkError {
+        if let networkError = error as? HTTPError {
             switch networkError {
             case .noInternet, .statusCode(0):
                 return true
@@ -50,5 +62,17 @@ enum NetworkError: Error, LocalizedError {
             }
         }
         return false
+    }
+    
+    static func from(status: HTTPStatusCode) -> HTTPError {
+        switch status {
+        case .unauthorized: return .unauthorized
+        case .forbidden: return .forbidden
+        case .notFound: return .notFound
+        case .networkError: return .noInternet
+        case .badRequest: return .badRequest
+        case .internalServerError: return .serverError
+        default: return .statusCode(status.rawValue)
+        }
     }
 }

@@ -18,6 +18,16 @@ struct CommonStrings {
     static let complete = "Complete"
 }
 
+/// Constants for toast messages used in the app
+struct ToastStrings {
+    static let loginError = "Login Error"
+    static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
+    static let somethingWentWrong = "Something went wrong. Please try again. If the problem continues, contact customer service."
+    static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
+    static let emailInUse = "Email address is already in use"
+    static let errorCreatingAccount = "Error creating account."
+}
+
 /// Constants for help modal strings used in the app
 struct HelpStrings {
     static let question = "Have a question?"
