@@ -25,13 +25,11 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                         .background(
                             selectedSegment == segment
                             ? theme.actionSecondary
-                            : theme.textInverse
+                            : .clear
                         )
                         .cornerRadius(.radiusMD)
                 }
             }
         }
-        .padding(.vertical, 18)
-        .padding(.horizontal, 15)
     }
 }

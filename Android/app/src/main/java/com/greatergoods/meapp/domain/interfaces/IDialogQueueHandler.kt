@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.domain.interfaces
 
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Toast
@@ -23,7 +24,7 @@ interface IDialogQueueHandler {
         dismissText: String = "OK",
         onDismiss: () -> Unit,
         priority: Int = 100,
-        delayMillis: Long = 0L
+        delayMillis: Long = 0L,
     )
 
     /**
@@ -38,18 +39,18 @@ interface IDialogQueueHandler {
         onCancel: (() -> Unit)? = null,
         onDismiss: () -> Unit,
         priority: Int = 100,
-        delayMillis: Long = 0L
+        delayMillis: Long = 0L,
     )
 
     /**
      * Enqueue a custom dialog with arbitrary parameters
      */
     fun enqueueCustomDialog(
-        contentKey: String,
+        contentKey: DialogType,
         params: Map<String, Any?> = emptyMap(),
         onDismiss: () -> Unit,
         priority: Int = 100,
-        delayMillis: Long = 0L
+        delayMillis: Long = 0L,
     )
 
     /**
@@ -86,12 +87,14 @@ interface IDialogQueueHandler {
      * Update the delay of the current dialog
      */
     fun updateCurrentDialogDelay(delayMillis: Long)
+
     fun enqueueToast(
         message: String,
         title: String?,
-        action: ActionButton? = null
+        action: ActionButton? = null,
     )
 
     val currentToast: StateFlow<Toast?>
+
     fun dismissToast()
 }
