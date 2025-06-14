@@ -127,7 +127,7 @@ val AppTypography =
         link1 =
             TextStyle(
                 fontFamily = OpenSansFontFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
                 letterSpacing = 0.sp,
@@ -135,7 +135,7 @@ val AppTypography =
         link2 =
             TextStyle(
                 fontFamily = OpenSansFontFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 letterSpacing = 0.sp,
