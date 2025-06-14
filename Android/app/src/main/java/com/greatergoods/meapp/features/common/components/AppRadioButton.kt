@@ -1,14 +1,17 @@
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
 import com.greatergoods.meapp.theme.MeAppTheme.spacing
@@ -27,37 +30,38 @@ import com.greatergoods.meapp.theme.MeAppTheme.typography
 @Composable
 fun AppRadioButton(
     selected: Boolean,
-    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     label: String? = null,
+    onClick: (() -> Unit)? = null,
 ) {
-
-    val radioColors = RadioButtonDefaults.colors(
-        selectedColor = colorScheme.primaryAction,
-        unselectedColor = colorScheme.utility,
-        disabledSelectedColor = colorScheme.secondaryDisabled,
-        disabledUnselectedColor = colorScheme.secondaryDisabled
-    )
+    val radioColors =
+        RadioButtonDefaults.colors(
+            selectedColor = colorScheme.primaryAction,
+            unselectedColor = colorScheme.utility,
+            disabledSelectedColor = colorScheme.secondaryDisabled,
+            disabledUnselectedColor = colorScheme.secondaryDisabled,
+        )
     Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(
             selected = selected,
             onClick = onClick,
             enabled = enabled,
-            colors = radioColors
+            colors = radioColors,
         )
         if (label != null) {
             Spacer(modifier = Modifier.width(spacing.sm))
             Text(
                 text = label,
                 style = typography.body2,
-                color = when {
-                    !enabled -> colorScheme.secondaryDisabled
-                    else -> colorScheme.body
-                }
+                color =
+                    when {
+                        !enabled -> colorScheme.secondaryDisabled
+                        else -> colorScheme.body
+                    },
             )
         }
     }
@@ -75,6 +79,7 @@ fun AppRadioButtonPreview() {
             AppRadioButton(selected = false, enabled = true, label = "Unselected")
             AppRadioButton(selected = true, enabled = false, label = "Selected Disabled")
             AppRadioButton(selected = false, enabled = false, label = "Unselected Disabled")
+            AppRadioButton(selected = false, enabled = true)
         }
     }
 }
