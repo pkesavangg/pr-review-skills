@@ -21,6 +21,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.geometry.Offset
 import com.greatergoods.meapp.theme.MeAppTheme.animation
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
 
@@ -63,7 +64,7 @@ fun AppLinearProgressIndicator(
         label = "Progress Animation"
     )
     val fillColor = progressColor ?: colorScheme.primaryAction
-    val bgColor = trackColor ?: colorScheme.secondary
+    val bgColor = trackColor ?: colorScheme.tertiaryDisabled
 
     Box(
         modifier = modifier
@@ -82,26 +83,17 @@ fun AppLinearProgressIndicator(
                 .height(height),
             drawStopIndicator = if (showDot) {
                 {
-                    // Define your dot size
-                    val dotRadius = height.toPx() / 2 // Make dot radius half of the bar height
-
-                    // Calculate the x position of the dot.
-                    // It should be at the end of the filled progress.
-                    // We need to ensure the dot is fully visible within the bounds.
-                    val dotX = (size.width * animatedProgress).coerceIn(dotRadius, size.width - dotRadius)
-
-                    // Calculate the y position (center of the bar)
+                    val dotRadius = height.toPx() / 2
+                    val dotX = size.width - dotRadius // always at the end
                     val dotY = size.height / 2f
 
-                    // Draw the circle
                     drawCircle(
                         color = fillColor,
-                        radius = dotRadius,
-                        center = androidx.compose.ui.geometry.Offset(dotX, dotY)
+                        radius = dotRadius / 2f,
+                        center = Offset(dotX, dotY)
                     )
                 }
             } else {
-                // If showDot is false, provide an empty lambda to do nothing.
                 { }
             }
         )
