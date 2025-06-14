@@ -33,7 +33,7 @@ import android.content.res.Configuration.UI_MODE_TYPE_NORMAL
     device = PHONE,
     showSystemUi = true,
 )
-@Preview(name = "Phone - Dark", uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
+@Preview(name = "Phone - Dark", uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL, device = PHONE, showSystemUi = true)
 @Preview(
     name = "Foldable -  Light",
     device = FOLDABLE,
