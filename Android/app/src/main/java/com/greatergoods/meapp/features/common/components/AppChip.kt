@@ -27,42 +27,45 @@ import com.greatergoods.meapp.theme.MeAppTheme
  * Enum defining the visual style of the chip component.
  */
 enum class ChipType {
-    Solid, /** Solid chip with filled background */
+    Solid,
+    /** Solid chip with filled background */
 }
 
 /**
  * Enum defining the size variants of the chip component.
  */
 enum class ChipSize {
-    Small,    /** Small chip size */
-    Medium,    /** Medium chip size */
-    Large    /** Large chip size */
+    Small,
+
+    /** Small chip size */
+    Medium,
+
+    /** Medium chip size */
+    Large,
+    /** Large chip size */
 }
 
 /**
  * Default styling configurations for the chip component.
  */
 object ChipButtonDefaults {
-
     /**
      * Returns the background color for the chip based on type, selection, and enabled state.
      */
     @Composable
-    fun backgroundColor(
-        type: ChipType,
-    ): Color = when (type) {
-        ChipType.Solid ->  MeAppTheme.colorScheme.primary
-    }
+    fun backgroundColor(type: ChipType): Color =
+        when (type) {
+            ChipType.Solid -> MeAppTheme.colorScheme.primary
+        }
 
     /**
      * Returns the content color for the chip based on type, selection, and enabled state.
      */
     @Composable
-    fun contentColor(
-        type: ChipType,
-    ): Color = when (type) {
-        ChipType.Solid -> MeAppTheme.colorScheme.primaryAction
-    }
+    fun contentColor(type: ChipType): Color =
+        when (type) {
+            ChipType.Solid -> MeAppTheme.colorScheme.primaryAction
+        }
 
     /**
      * Returns the border stroke for the chip. Only outlined chips show border when selected.
@@ -70,69 +73,80 @@ object ChipButtonDefaults {
     @Composable
     fun border(
         type: ChipType,
-        selected: Boolean
-    ): BorderStroke? = when (type) {
-        ChipType.Solid -> BorderStroke(1.5.dp, if(selected) MeAppTheme.colorScheme.primaryAction else Color.Transparent)
-           // TODO: val borderInDp = with(LocalDensity.current) { 1.5f.toDp() }
-    }
+        selected: Boolean,
+    ): BorderStroke? =
+        when (type) {
+            ChipType.Solid ->
+                BorderStroke(
+                    1.5.dp,
+                    if (selected) MeAppTheme.colorScheme.primaryAction else Color.Transparent,
+                )
+            // TODO: val borderInDp = with(LocalDensity.current) { 1.5f.toDp() }
+        }
 
     /**
      * Returns the horizontal padding based on chip size.
      */
     @Composable
-    fun horizontalPadding(size: ChipSize): Dp = when (size) {
-        ChipSize.Small -> MeAppTheme.spacing.sm
-        ChipSize.Medium ->  MeAppTheme.spacing.lg
-        ChipSize.Large ->  MeAppTheme.spacing.xl
-    }
+    fun horizontalPadding(size: ChipSize): Dp =
+        when (size) {
+            ChipSize.Small -> MeAppTheme.spacing.sm
+            ChipSize.Medium -> MeAppTheme.spacing.lg
+            ChipSize.Large -> MeAppTheme.spacing.xl
+        }
 
     /**
      * Returns the vertical padding based on chip size.
      */
     @Composable
-    fun verticalPadding(size: ChipSize): Dp = when (size) {
-        ChipSize.Small -> MeAppTheme.spacing.xs
-        ChipSize.Medium -> MeAppTheme.spacing.sm
-        ChipSize.Large -> MeAppTheme.spacing.lg
-    }
+    fun verticalPadding(size: ChipSize): Dp =
+        when (size) {
+            ChipSize.Small -> MeAppTheme.spacing.xs
+            ChipSize.Medium -> MeAppTheme.spacing.sm
+            ChipSize.Large -> MeAppTheme.spacing.lg
+        }
 
     /**
      * Returns the text style based on chip size.
      */
     @Composable
-    fun textStyle(size: ChipSize): TextStyle = when (size) {
-        ChipSize.Small -> MeAppTheme.typography.button1
-        ChipSize.Medium -> MeAppTheme.typography.button1
-        ChipSize.Large -> MeAppTheme.typography.button1
-    }
+    fun textStyle(size: ChipSize): TextStyle =
+        when (size) {
+            ChipSize.Small -> MeAppTheme.typography.link1
+            ChipSize.Medium -> MeAppTheme.typography.button1
+            ChipSize.Large -> MeAppTheme.typography.button1
+        }
 
     /**
      * Returns the corner radius based on chip size.
      */
-    fun cornerRadius(size: ChipSize): Dp = when (size) {
-        ChipSize.Small -> 4.dp
-        ChipSize.Medium -> 8.dp
-        ChipSize.Large -> 12.dp
-        //TODO: Need to update after pr merged
-    }
+    @Composable
+    fun cornerRadius(size: ChipSize): Dp =
+        when (size) {
+            ChipSize.Small -> MeAppTheme.borderRadius.xs
+            ChipSize.Medium -> MeAppTheme.borderRadius.sm
+            ChipSize.Large -> MeAppTheme.borderRadius.md
+        }
 
     /**
      * Returns the height based on chip size.
      */
-    fun height(size: ChipSize): Dp = when (size) {
-        ChipSize.Small -> 38.dp
-        ChipSize.Medium -> 40.dp
-        ChipSize.Large -> 42.dp
-    }
+    fun height(size: ChipSize): Dp =
+        when (size) {
+            ChipSize.Small -> 38.dp
+            ChipSize.Medium -> 40.dp
+            ChipSize.Large -> 42.dp
+        }
 
     /**
      * Returns the height based on chip size.
      */
-    fun minWidth(size: ChipSize): Dp = when (size) {
-        ChipSize.Small -> 80.dp
-        ChipSize.Medium -> 40.dp
-        ChipSize.Large -> 42.dp
-    }
+    fun minWidth(size: ChipSize): Dp =
+        when (size) {
+            ChipSize.Small -> 80.dp
+            ChipSize.Medium -> 40.dp
+            ChipSize.Large -> 42.dp
+        }
 
     // Applies text transformation
     fun transformText(
@@ -145,8 +159,6 @@ object ChipButtonDefaults {
             TextTransform.CAPITALIZE -> text.replaceFirstChar { it.uppercase() }
             TextTransform.NONE -> text
         }
-
-
 }
 
 /**
@@ -167,12 +179,12 @@ fun AppChip(
     type: ChipType = ChipType.Solid,
     size: ChipSize = ChipSize.Small,
     selected: Boolean = false,
-    textTransform: TextTransform = TextTransform.CAPITALIZE,
+    textTransform: TextTransform = TextTransform.UPPERCASE,
     onClick: () -> Unit,
 ) {
     val backgroundColor = ChipButtonDefaults.backgroundColor(type)
     val contentColor = ChipButtonDefaults.contentColor(type)
-    val border = ChipButtonDefaults.border(type,selected)
+    val border = ChipButtonDefaults.border(type, selected)
     val hPadding = ChipButtonDefaults.horizontalPadding(size)
     val vPadding = ChipButtonDefaults.verticalPadding(size)
     val textStyle = ChipButtonDefaults.textStyle(size)
@@ -185,24 +197,30 @@ fun AppChip(
     val maxLines = 1
     FilterChip(
         shape = shape,
-        colors = SelectableChipColors(
-            containerColor = backgroundColor,
-            disabledContainerColor = backgroundColor,
-            selectedContainerColor = backgroundColor,
-            labelColor = contentColor,
-            leadingIconColor = contentColor,
-            trailingIconColor = contentColor,
-            disabledLabelColor = contentColor,
-            disabledLeadingIconColor = contentColor,
-            disabledTrailingIconColor = contentColor,
-            disabledSelectedContainerColor = contentColor,
-            selectedLabelColor = contentColor,
-            selectedLeadingIconColor = contentColor,
-            selectedTrailingIconColor = contentColor,
-        ),
+        colors =
+            SelectableChipColors(
+                containerColor = backgroundColor,
+                disabledContainerColor = backgroundColor,
+                selectedContainerColor = backgroundColor,
+                labelColor = contentColor,
+                leadingIconColor = contentColor,
+                trailingIconColor = contentColor,
+                disabledLabelColor = contentColor,
+                disabledLeadingIconColor = contentColor,
+                disabledTrailingIconColor = contentColor,
+                disabledSelectedContainerColor = contentColor,
+                selectedLabelColor = contentColor,
+                selectedLeadingIconColor = contentColor,
+                selectedTrailingIconColor = contentColor,
+            ),
         onClick = onClick,
         label = {
-            Text(text, style = textStyle, modifier = Modifier.padding(horizontal = hPadding, vertical = vPadding), maxLines = maxLines)
+            Text(
+                text,
+                style = textStyle,
+                modifier = Modifier.padding(horizontal = hPadding, vertical = vPadding),
+                maxLines = maxLines,
+            )
         },
         selected = selected,
         leadingIcon = {},
@@ -211,19 +229,18 @@ fun AppChip(
     )
 }
 
-
 @PreviewTheme
 @Composable
 fun SolidChipsPreviewLight() {
-    MeAppTheme() {
+    MeAppTheme {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             var isSelected1 by remember { mutableStateOf(false) }
             var isSelected2 by remember { mutableStateOf(false) }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 AppChip(
                     label = "Unselected",
@@ -241,5 +258,3 @@ fun SolidChipsPreviewLight() {
         }
     }
 }
-
-
