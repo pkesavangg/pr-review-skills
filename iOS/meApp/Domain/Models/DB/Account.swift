@@ -116,7 +116,7 @@ final class Account {
             accountId: dto.id,
             goalType: dto.goalType,
             initialWeight: dto.initialWeight,
-            goalWeight: dto.goalWeight.map { String($0) },
+            goalWeight: dto.goalWeight,
             goalPercent: nil,
             isSynced: false
         )
@@ -271,7 +271,7 @@ extension Account {
         if let goalSettings = self.goalSettings {
             goalSettings.goalType = response.goalType
             goalSettings.initialWeight = response.initialWeight
-            goalSettings.goalWeight = response.goalWeight.map { String($0) }
+            goalSettings.goalWeight = response.goalWeight
             goalSettings.goalPercent = response.goalPercent
         }
     }
@@ -313,6 +313,14 @@ extension Account {
         self.weightSettings?.height = String(profile.height)
         self.weightSettings?.activityLevel = profile.activityLevel
         // Optionally update goalSettings if profile contains goal info (add logic if needed)
+    }
+    
+    // Add a method to update from GoalSettings
+    func update(from goalSettings: GoalResponse) {
+        self.goalSettings?.goalType = goalSettings.type
+        self.goalSettings?.initialWeight = goalSettings.initialWeight
+        self.goalSettings?.goalWeight = goalSettings.goalWeight
+        self.goalSettings?.isSynced = true
     }
 }
 

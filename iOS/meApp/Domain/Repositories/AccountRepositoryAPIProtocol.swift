@@ -39,6 +39,11 @@ protocol AccountRepositoryAPIProtocol {
     /// - Parameter updatedAccount: The updated Account object.
     /// - Returns: AccountResponse (from { account })
     func editAccount(_ updatedAccount: Account) async throws -> AccountResponse
+    
+    /// Creates a new goal with the given Goal object (POST /account/goal).
+    /// - Parameter goal: The Goal object to create.
+    /// - Returns: GoalResponse (from { account })
+    func createGoal(_ goal: Goal) async throws -> GoalResponse
 
     /// Partially updates the profile fields (PATCH /account/profile).
     /// - Parameter profile: The updated Profile object.

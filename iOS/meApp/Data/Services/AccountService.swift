@@ -184,9 +184,33 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await localRepo.updateAccount(updatedAccount)
                 try await updatePublishedState()
                 return updatedAccount
-            } else {
-                throw error
             }
+            throw error
+        }
+    }
+    
+    func createGoal(_ goal: Goal) async throws -> Account {
+        guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+        do {
+            let response = try await apiRepo.createGoal(goal)
+            print("Goal created successfully: \(response)")
+            localAccount.update(from: response)
+            try await localRepo.updateAccount(localAccount)
+            try await updatePublishedState()
+            return localAccount
+        } catch {
+            print("Goal created error: \(error)")
+            if HTTPError.isNetworkError(error) {
+                localAccount.goalSettings?.goalType = goal.type
+                localAccount.goalSettings?.goalWeight = Double(goal.goalWeight)
+                localAccount.goalSettings?.isSynced = false
+                localAccount.goalSettings?.initialWeight = Double(goal.initialWeight)
+                try await localRepo.updateAccount(localAccount)
+                try await updatePublishedState()
+            }
+            throw error
         }
     }
     
@@ -205,7 +229,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
-                localAccount.update(from: profile)
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
