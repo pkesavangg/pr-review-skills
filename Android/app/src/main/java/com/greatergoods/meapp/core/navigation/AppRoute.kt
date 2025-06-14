@@ -17,53 +17,24 @@ sealed class AppRoute : NavKey {
     }
 
     /**
-     * Main navigation routes for primary app sections.
+     * Main navigation routes for the app.
      */
     @Serializable
     sealed class Main : AppRoute() {
         @Serializable
-        data object Feeds : Main()
+        data object Dashboard : Main()
 
         @Serializable
-        data object MyScales : Main()
+        data object Entry : Main()
 
         @Serializable
-        data object Entries : Main()
+        data object History : Main()
 
         @Serializable
-        data object AddEntry : Main()
-
-        /**
-         * Nested routes for device details.
-         */
-        sealed class DeviceDetail : Main() {
-            @Serializable
-            data object Overview : DeviceDetail()
-
-            @Serializable
-            data object Settings : DeviceDetail()
-        }
-    }
-
-    /**
-     * Product-related navigation routes.
-     */
-    @Serializable
-    sealed class Product : AppRoute() {
-        @Serializable
-        data object ProductList : Product()
+        data object Settings : Main()
 
         @Serializable
-        data class ProductDetail(val id: String) : Product()
-    }
-
-    /**
-     * Home navigation route.
-     */
-    @Serializable
-    sealed class Home : AppRoute() {
-        @Serializable
-        data object HomeScreen : Home()
+        data object AppSync : Main()
     }
 
     /**
