@@ -8,7 +8,7 @@ import SwiftUI
 
 // MARK: - SwiperView
 /// A view that allows swiping between multiple views, with the ability to programmatically change the selected view.
-/// This view uses a `TabView` with a page style to enable swiping between views.
+/// This view uses a `HStack` to display the views in a horizontal scrollable area.
 /// It also provides a binding to the selected index, allowing external control over which view is currently displayed.
 struct SwiperView<Content: View>: View {
     @Binding var selectedIndex: Int
@@ -21,29 +21,25 @@ struct SwiperView<Content: View>: View {
         self._selectedIndex = selectedIndex
         self.views = views
     }
-    
+
+    @GestureState private var dragOffset: CGFloat = 0
+
     var body: some View {
-        VStack(spacing: 0) {
-            TabView(selection: $selectedIndex) {
-                ForEach(0..<views.count, id: \.self) { index in
-                    views[index]
-                        .tag(index)
+        GeometryReader { geometry in
+            HStack(spacing: 0) {
+                ForEach(0..<views.count, id: \.self) { i in
+                    views[i]
+                        .padding(.horizontal)
+                        .frame(width: geometry.size.width) // no .padding here
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut, value: selectedIndex)
-            .simultaneousGesture(DragGesture())
-            .onAppear {
-                // Disable swipe gesture using UIKit
-                UIScrollView.appearance().isScrollEnabled = false
-            }
-            .onDisappear {
-                // Re-enable swipe gesture when view disappears
-                UIScrollView.appearance().isScrollEnabled = true
-            }
+            .frame(width: geometry.size.width * CGFloat(views.count), alignment: .leading)
+            .offset(x: -CGFloat(selectedIndex) * geometry.size.width + dragOffset)
+            .animation(.easeInOut(duration: 0.3), value: selectedIndex)
         }
     }
 }
+
 
 // MARK: - Swiper Testing View
 struct SwiperTestingView: View {

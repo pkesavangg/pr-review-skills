@@ -23,6 +23,7 @@ struct MetricInputField: View {
     
     // Internal state and formatter
     @State private var displayValue: String = ""
+    @State private var isInitialState: Bool = true
     @StateObject private var formatter: MetricFieldFormatter
     
     init(
@@ -48,8 +49,16 @@ struct MetricInputField: View {
             onCommit: onCommit,
             onEditingChanged: onEditingChanged
         )
-        .onReceive(Just(displayValue)) { newValue in
+        .onChange(of: displayValue) { oldValue, newValue in
             handleValueChange(newValue)
+        }
+        .onChange(of: value) { oldValue, newValue in
+            if oldValue != newValue {
+                let formatted = formatter.formatInput(newValue)
+                if displayValue != formatted {
+                    displayValue = formatted
+                }
+            }
         }
         .onAppear {
             initializeValue()
@@ -66,12 +75,13 @@ struct MetricInputField: View {
     
     private func initializeValue() {
         if value.isEmpty {
-            let initial = formatter.initialValue
-            displayValue = initial
-            value = initial
+            // Initial state should be empty
+            displayValue = ""
+            isInitialState = true
         } else {
             let formatted = formatter.formatInput(value)
             displayValue = formatted
+            isInitialState = false
             if formatted != value {
                 value = formatted
             }
@@ -79,6 +89,18 @@ struct MetricInputField: View {
     }
     
     private func handleValueChange(_ newValue: String) {
+        // If user has entered text for the first time, we're no longer in initial state
+        if !newValue.isEmpty && isInitialState {
+            isInitialState = false
+        }
+        
+        // Allow empty values
+        if newValue.isEmpty {
+            displayValue = ""
+            value = ""
+            return
+        }
+        
         let formatted = formatter.formatInput(newValue)
         
         // Check if the new value is valid (doesn't exceed max)

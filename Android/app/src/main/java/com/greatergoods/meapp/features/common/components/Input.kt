@@ -43,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.R
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.review.ReviewViewModel
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.launch
 import android.app.Activity
@@ -59,10 +60,6 @@ enum class InputType {
     NUMBER,
     TIME_PICKER,
     DROP_DOWN,
-}
-
-private object InputFieldTokens {
-    val borderRadius = 4.dp
 }
 
 /**
@@ -82,6 +79,8 @@ private object InputFieldTokens {
  * @param stringToValue Lambda to convert string to T.
  * @param valueToString Lambda to convert T to string.
  */
+
+@Deprecated("Use AppInput instead")
 @Composable
 fun <T> InputField(
     modifier: Modifier = Modifier,
@@ -157,7 +156,7 @@ fun <T> InputField(
             isError && showTrailingIcon -> { // Only show error icon if showTrailingIcon is true
                 @Composable {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_close_outlined),
+                        painter = painterResource(id = AppIcons.Outlined.Close),
                         contentDescription = "Error",
                         tint = iconTint,
                         modifier = Modifier.size(20.dp),
@@ -168,7 +167,7 @@ fun <T> InputField(
             type == InputType.PASSWORD && showTrailingIcon -> { // Password visibility icon
                 @Composable {
                     val iconResId =
-                        if (passwordVisible) R.drawable.ic_eye_close else R.drawable.ic_eye_open // Assume you have these drawables
+                        if (passwordVisible) AppIcons.Default.EyeClosed else AppIcons.Default.EyeOpened // Assume you have these drawables
                     val contentDescription = if (passwordVisible) "Hide password" else "Show password"
                     Icon(
                         painter = painterResource(id = iconResId),
@@ -228,8 +227,8 @@ fun <T> InputField(
             },
             modifier =
                 Modifier
-                    .background(backgroundColor, RoundedCornerShape(InputFieldTokens.borderRadius))
-                    .border(0.dp, Color.Transparent, RoundedCornerShape(InputFieldTokens.borderRadius))
+                    .background(backgroundColor, RoundedCornerShape(8.dp))
+                    .border(0.dp, Color.Transparent, RoundedCornerShape(8.dp))
                     .height(56.dp)
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
@@ -325,7 +324,16 @@ fun InputFieldPreview() {
                 )
             }
         Column(modifier = Modifier.padding(20.dp)) {
-            InputField<String>(
+            InputField(
+                formControl = formControl,
+                label = "email",
+                name = "email",
+                type = InputType.EMAIL,
+                placeHolder = "Enter your email",
+                showTrailingIcon = true,
+                modifier = Modifier.width(210.dp).height(56.dp),
+            )
+            InputField(
                 formControl = formControl,
                 label = "email",
                 name = "email",
