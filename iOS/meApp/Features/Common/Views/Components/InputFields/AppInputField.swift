@@ -33,7 +33,7 @@ struct AppInputField: View {
     @FocusState private var fieldIsFocused: Bool
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 // Main input container
                 ZStack(alignment: .leading) {
@@ -111,8 +111,10 @@ struct AppInputField: View {
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textError)
                 .padding(.leading, .spacingSM)
-                .frame(height: 15)
+                .frame(height: 20, alignment: .center)
+            Spacer()
         }
+        .frame(height: 76)
     }
     
     private var keyboardTypeForInput: UIKeyboardType {
@@ -193,7 +195,7 @@ struct AppInputTestingField : View {
                     label: "Email",
                     placeholder: "Enter your email",
                     inputType: .email,
-                    errorMessage: email.count < 6 && !email.isEmpty ? "Email is too short" : nil, focusField: .email
+                    errorMessage: "Email is too short"
                 ),
                 value: $email,
                 focusedField: $focusedField) {

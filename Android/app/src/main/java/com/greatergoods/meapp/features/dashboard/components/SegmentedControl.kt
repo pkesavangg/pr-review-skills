@@ -33,10 +33,11 @@ fun GraphSegmentControl(
             val isSelected = segment == selected
             Button(
                 onClick = { onSelect(segment) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color(0xFF2C2827) else Color(0xFF4079CC),
-                    contentColor = Color.White,
-                ),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = if (isSelected) Color(0xFF2C2827) else Color(0xFF4079CC),
+                        contentColor = Color.White,
+                    ),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 5.dp),
                 elevation = null,
