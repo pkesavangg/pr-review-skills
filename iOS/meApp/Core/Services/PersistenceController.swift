@@ -41,7 +41,7 @@ final class PersistenceController {
     let context: ModelContext
 
     private init() {
-        let schema = Schema([Account.self, Device.self, BathScale.self, Entry.self, R4ScalePreference.self, BathScaleMetric.self, DeviceMetaData.self, BathScaleEntry.self, LogEntry.self, WeightCompSettings.self, GoalSettings.self])
+        let schema = Schema([Account.self, Device.self, BathScale.self, Entry.self, R4ScalePreference.self, BathScaleMetric.self, DeviceMetaData.self, BathScaleEntry.self, LogEntry.self, WeightCompSettings.self, GoalSettings.self, IntegrationSettings.self, NotificationSettings.self, StreaksSettings.self, WeightlessSettings.self, DashboardSettings.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
             self.container = try ModelContainer(for: schema, configurations: [config])
