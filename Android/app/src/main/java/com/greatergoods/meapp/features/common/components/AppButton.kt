@@ -121,12 +121,19 @@ object AppButtonDefaults {
 
     // Horizontal padding by size
     @Composable
-    fun horizontalPadding(size: ButtonSize): Dp =
-        when (size) {
+    fun horizontalPadding(
+        size: ButtonSize,
+        type: ButtonType,
+    ): Dp {
+        if (type == ButtonType.InlineTextPrimary || type == ButtonType.InlineTextSecondary) {
+            return 0.dp
+        }
+        return when (size) {
             ButtonSize.Small -> MeAppTheme.spacing.sm
             ButtonSize.Medium -> MeAppTheme.spacing.lg
             ButtonSize.Large -> 48.dp
         }
+    }
 
     // Minimum width by size
     fun minWidth(size: ButtonSize): Dp =
@@ -182,7 +189,7 @@ fun AppButton(
     val contentColor = AppButtonDefaults.contentColor(type, enabled)
     val border = AppButtonDefaults.border(type, enabled)
     val height = AppButtonDefaults.height(size)
-    val hPadding = AppButtonDefaults.horizontalPadding(size)
+    val hPadding = AppButtonDefaults.horizontalPadding(size, type)
     val textStyle = AppButtonDefaults.textStyle(size)
     val text = AppButtonDefaults.transformText(label, textTransform)
     val minWidth = AppButtonDefaults.minWidth(size)

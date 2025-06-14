@@ -39,6 +39,7 @@ public enum ValidatorType: Hashable {
     case matches
     case phoneNumber
     case passwordMatch
+    case weightEqual
     case url
     
     public func hash(into hasher: inout Hasher) {
