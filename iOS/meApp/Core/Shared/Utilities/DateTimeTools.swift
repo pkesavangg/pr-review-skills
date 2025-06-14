@@ -133,11 +133,17 @@ final class DateTimeTools {
         return formatter("yyyy-MM-dd'T'HH:mm:ss").string(from: date)
     }
     
-    /// Returns the minimum birthday offset (13 years ago, zeroed to midnight) for Ionic date pickers as 'yyyy-MM-dd'T'HH:mm:ss'.
-    static func getMinBirthdayOffsetForIonicDatePicker() -> String {
-        let minDate = Calendar.current.date(byAdding: .year, value: -13, to: Date()) ?? Date()
+    /// Returns the `Date` representing the max birthday allowed (13 years ago, zeroed to midnight).
+    static func minAllowedBirthdayDate(yearsAgo: Int = 13) -> Date {
+        let minDate = Calendar.current.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
         let zeroed = Calendar.current.date(bySettingHour: 0, minute: 0, second: 0, of: minDate) ?? minDate
-        return formatter("yyyy-MM-dd'T'HH:mm:ss").string(from: zeroed)
+        return zeroed
+    }
+
+    /// Returns the minimum birthday offset (13 years ago, zeroed to midnight) formatted for Ionic date pickers as `'yyyy-MM-dd'T'HH:mm:ss'`.
+    static func getMinBirthdayOffsetForDatePicker() -> String {
+        let date = minAllowedBirthdayDate()
+        return formatter("yyyy-MM-dd'T'HH:mm:ss").string(from: date)
     }
     
     /// Formats a birthday string as 'yyyy-MM-dd'T'HH:mm:ss'. Returns empty string if invalid.
@@ -198,5 +204,14 @@ final class DateTimeTools {
     static func getTimestampDaysAgo(_ days: Int) -> Int64 {
         let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         return Int64(cutoffDate.timeIntervalSince1970 * 1000)
+    }
+    
+    /// Formats a date to 'yyyy-MM-dd' in the local timezone.
+    /// - Parameter date: The date to format.
+    /// - Returns: The formatted date string.
+    static func formatDateToYMD_Local(_ date: Date) -> String {
+        let df = formatter("yyyy-MM-dd")
+        df.timeZone = TimeZone.current
+        return df.string(from: date)
     }
 }

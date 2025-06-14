@@ -61,7 +61,7 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
-                lineHeight = 32.sp,
+                lineHeight = 30.sp,
                 letterSpacing = 0.sp,
             ),
         heading5 =
@@ -69,7 +69,15 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                lineHeight = 24.sp,
+                lineHeight = 20.sp,
+                letterSpacing = 0.sp,
+            ),
+        heading6 =
+            TextStyle(
+                fontFamily = OpenSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
                 letterSpacing = 0.sp,
             ),
         // Subheading
@@ -95,7 +103,7 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 20.sp,
-                lineHeight = 28.sp,
+                lineHeight = 26.sp,
                 letterSpacing = 0.sp,
             ),
         body2 =
@@ -103,7 +111,7 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 16.sp,
-                lineHeight = 24.sp,
+                lineHeight = 22.sp,
                 letterSpacing = 0.sp,
             ),
         body3 =
