@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.common.model
 
+import com.greatergoods.meapp.features.common.components.DialogType
+
 /**
  * Represents a dialog request in the dialog queue system.
  * Supports alert, confirmation, and custom dialog types. Extensible for future dialog variants.
@@ -9,7 +11,7 @@ package com.greatergoods.meapp.features.common.model
  */
 sealed class DialogModel(
     val priority: Int = 100,
-    val delayMillis: Long = 0L
+    val delayMillis: Long = 0L,
 ) : Comparable<DialogModel> {
     /**
      * Simple alert dialog with a title, message, and a single dismiss button.
@@ -26,7 +28,7 @@ sealed class DialogModel(
         val dismissText: String = "OK",
         val onDismiss: () -> Unit,
         val alertPriority: Int = 100,
-        val alertDelayMillis: Long = 0L
+        val alertDelayMillis: Long = 0L,
     ) : DialogModel(priority = alertPriority, delayMillis = alertDelayMillis)
 
     /**
@@ -50,7 +52,7 @@ sealed class DialogModel(
         val onCancel: (() -> Unit)? = null,
         val onDismiss: () -> Unit,
         val confirmPriority: Int = 100,
-        val confirmDelayMillis: Long = 0L
+        val confirmDelayMillis: Long = 0L,
     ) : DialogModel(priority = confirmPriority, delayMillis = confirmDelayMillis)
 
     /**
@@ -62,11 +64,12 @@ sealed class DialogModel(
      * @param delayMillis Delay before next dialog (ms).
      */
     data class Custom(
-        val contentKey: String,
+        val contentKey: DialogType,
         val params: Map<String, Any?> = emptyMap(),
         val onDismiss: () -> Unit,
+        val onConfirm: ((Any) -> Unit)? = null,
         val customPriority: Int = 100,
-        val customDelayMillis: Long = 0L
+        val customDelayMillis: Long = 0L,
     ) : DialogModel(priority = customPriority, delayMillis = customDelayMillis)
 
     override fun compareTo(other: DialogModel): Int = this.priority.compareTo(other.priority)

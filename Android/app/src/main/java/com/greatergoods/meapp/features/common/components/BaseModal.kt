@@ -45,7 +45,7 @@ fun BaseModal(
             )
 
     Card(
-        modifier = modifier.width(320.dp),
+        modifier = modifier.width(316.dp),
         shape = RoundedCornerShape(28.dp), // Figma: radius-xl = 28dp (no token found)
         colors = cardColors,
     ) {
