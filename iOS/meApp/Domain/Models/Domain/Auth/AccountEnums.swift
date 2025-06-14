@@ -17,7 +17,7 @@ enum ActivityLevel: String, Codable, Equatable {
 
 // MARK: - Sex
 
-enum Sex: String, Codable, Equatable {
+enum Sex: String, Codable, Equatable, CaseIterable {
     case male = "male"
     case female = "female"
     
