@@ -4,7 +4,7 @@
  * Each property represents a semantic typography role (heading, subheading, body, link, button, etc.)
  * and is mapped to a TextStyle for consistent text appearance across the app.
  */
-package com.greatergoods.meapp.theme
+package com.greatergoods.meapp.theme.token
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
