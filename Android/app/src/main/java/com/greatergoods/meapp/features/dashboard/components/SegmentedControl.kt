@@ -12,24 +12,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
- * Segmented control for ic_graph period selection (YEAR, LABEL, MONTH, WEEK).
+ * Segmented control for graph period selection (TOTAL, YEAR, MONTH, WEEK).
  * Matches Figma UI.
  */
 @Composable
 fun GraphSegmentControl(
-    selected: String,
-    onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    selected: GraphSegment,
+    onSelect: (GraphSegment) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val segments = listOf("YEAR", "LABEL", "MONTH", "WEEK")
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.xs),
     ) {
-        segments.forEach { segment ->
+        GraphSegment.entries.forEach { segment ->
             val isSelected = segment == selected
             Button(
                 onClick = { onSelect(segment) },
@@ -43,11 +43,10 @@ fun GraphSegmentControl(
                 elevation = null,
             ) {
                 Text(
-                    text = segment,
-                    style =
-                        MeAppTheme.typography.button1.copy(
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        ),
+                    text = segment.name,
+                    style = MeAppTheme.typography.button1.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    ),
                 )
             }
         }
