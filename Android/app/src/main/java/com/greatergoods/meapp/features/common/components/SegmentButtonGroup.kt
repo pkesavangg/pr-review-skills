@@ -203,8 +203,11 @@ fun SegmentButtonGroup(
                     icon = {},
                     selected = index == selectedIndex,
                     label = {
-                        Text(option.label, style = textStyle,
-                        modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding), maxLines = maxLines
+                        Text(
+                            text = option.label,
+                            style = textStyle,
+                            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                            maxLines = maxLines
                         )
                     },
                     modifier = segmentButtonModifier,
