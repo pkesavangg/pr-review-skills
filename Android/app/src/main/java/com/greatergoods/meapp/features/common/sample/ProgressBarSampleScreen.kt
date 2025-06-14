@@ -57,7 +57,6 @@ fun ExpressiveProgressSampleScreen() {
             Spacer(modifier = Modifier.height(16.dp))
             AppLinearProgressIndicator(
                 progress = progress,
-                showDot = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
