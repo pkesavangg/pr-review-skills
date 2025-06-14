@@ -291,10 +291,24 @@ final class SignupStore: ObservableObject {
         // Observe useMetric changes
         signupForm.useMetric.$value
             .dropFirst()
-            .sink { [weak self] _ in
+            .sink { [weak self] isMetric in
                 guard let self = self else { return }
                 self.updateHeightPickerValues(from: Int(self.signupForm.height.value))
+                self.updateWeightValidators(isMetric: isMetric)
             }
             .store(in: &cancellables)
+    }
+    
+    private func updateWeightValidators(isMetric: Bool) {
+        let maxWeight = isMetric ? 450.0 : 999.0
+
+        // Remove old validator
+        signupForm.currentWeight.removeValidator(ofType: .maxWeight)
+        signupForm.goalWeight.removeValidator(ofType: .maxWeight)
+
+        // Add new validator
+        let validator = Validator.maxWeight(maxWeight)
+        signupForm.currentWeight.addValidator(validator)
+        signupForm.goalWeight.addValidator(validator)
     }
 }

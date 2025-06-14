@@ -48,6 +48,10 @@ struct FormErrorMessages {
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "passwords do not match"
     static let valueShouldBeEqual = "value should not be equal to current weight"
+    static let minWeightKg = "value should be greater than 0 kg"
+    static let minWeightLb = "value should be greater than 0 lbs"
+    static let maxWeightKg = "value should be less than 450 kg"
+    static let maxWeightLb = "value should be less than 999 lbs"
 }
 
 /// Constants for input field labels used in the app
