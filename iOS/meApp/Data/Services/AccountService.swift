@@ -195,13 +195,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
         do {
             let response = try await apiRepo.createGoal(goal)
-            print("Goal created successfully: \(response)")
             localAccount.update(from: response)
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
             return localAccount
         } catch {
-            print("Goal created error: \(error)")
             if HTTPError.isNetworkError(error) {
                 localAccount.goalSettings?.goalType = goal.type
                 localAccount.goalSettings?.goalWeight = Double(goal.goalWeight)
