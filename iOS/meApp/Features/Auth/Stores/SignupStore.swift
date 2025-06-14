@@ -17,6 +17,7 @@ final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var accountService: AccountService
     var alertLang = AlertStrings.self
+    var loaderLang = LoaderStrings.self
     
     @Published var currentStepIndex: Int = SignupStep.name.index {
         didSet {
@@ -181,7 +182,7 @@ final class SignupStore: ObservableObject {
     }
     
     func createUser() async {
-        notificationService.showLoader(LoaderModel())
+        notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
         
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value

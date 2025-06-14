@@ -73,6 +73,10 @@ struct AlertStrings {
     }
 }
 
+struct LoaderStrings {
+    static let creatingAccount = "Creating account..."
+}
+
 /// Constants for legal text used in the app
 struct LegalStrings {
     static let termsAndPrivacyText = "By clicking \"COMPLETE\", you are agreeing to our"

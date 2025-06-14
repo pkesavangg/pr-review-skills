@@ -13,6 +13,7 @@ struct ToastModel: Equatable {
     var btnTextView: AnyView?
     var onClick: () -> Void = {}
     var duration: Double = 3
+    var onDismiss: (() -> Void)? = nil
     
     static func == (lhs: ToastModel, rhs: ToastModel) -> Bool {
         lhs.title == rhs.title &&

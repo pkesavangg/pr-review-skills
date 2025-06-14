@@ -185,6 +185,9 @@ struct ToastModifier: ViewModifier {
     }
     
     private func removeToast(id: UUID) {
+        if let toast = activeToasts.first(where: { $0.id == id })?.toast {
+            toast.onDismiss?()
+        }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
             activeToasts.removeAll { $0.id == id }
             // Reset offset and dragging state after toast is removed
@@ -193,7 +196,6 @@ struct ToastModifier: ViewModifier {
                 isDragging = false
             }
         }
-        
         if id == activeToasts.first?.id {
             timer?.cancel()
             timer = nil

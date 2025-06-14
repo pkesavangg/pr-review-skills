@@ -52,8 +52,7 @@ struct LoaderModifier: ViewModifier {
                             .progressViewStyle(CircularProgressViewStyle(tint: theme.textHeading))
                             .scaleEffect(1)
                         Text(loader.text)
-                            .fontWeight(.bold)
-                            .fontOpenSans(.body1)
+                            .fontOpenSans(.body2)
                             .foregroundColor(theme.textHeading)
                     }
                     .lineLimit(1)
