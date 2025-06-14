@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.enum.AppHeightUnit
-import com.greatergoods.meapp.features.common.model.PickerState
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 
 @Composable
@@ -28,20 +27,23 @@ fun DialogHost() {
                 val feetState = remember { PickerState(feet) }
                 val inchState = remember { PickerState(inch) }
                 AppHeightPickerModal(
-                    unit = unit,
-                    cmState = cmState,
-                    feetState = feetState,
-                    inchState = inchState,
-                    onCancel = { dialog.onDismiss(); dialogQueueViewModel.dismissCurrent() },
+                    value = HeightInput.Cm(10),
+                    onCancel = {
+                        dialog.onDismiss()
+                        dialogQueueViewModel.dismissCurrent()
+                    },
                     onOk = {
                         // You can add callback logic here to return the selected value
-                        dialog.onDismiss(); dialogQueueViewModel.dismissCurrent()
-                    }
+                        dialog.onDismiss()
+                        dialogQueueViewModel.dismissCurrent()
+                    },
                 )
             }
+
             "custom_dialog" -> {
                 Text("Custom dialog: ${dialog.params}", modifier = Modifier.background(Red))
             }
+
             else -> {
                 // Default dialog handling
                 // This can be a placeholder or a default dialog implementation

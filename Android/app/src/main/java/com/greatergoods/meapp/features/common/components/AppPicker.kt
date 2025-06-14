@@ -1,183 +1,198 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.features.common.model.PickerState
-import com.greatergoods.meapp.theme.MeAppTheme.typography
-import kotlinx.coroutines.launch
-import kotlin.reflect.KProperty1
-import androidx.compose.ui.tooling.preview.Preview
-import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.theme.MeAppTheme
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
 import com.greatergoods.meapp.theme.MeAppTheme.spacing
+import com.greatergoods.meapp.theme.MeAppTheme.typography
+import kotlinx.coroutines.launch
+
+class PickerState<T>(
+    initialValue: T,
+) {
+    private var _selectedItem by mutableStateOf(initialValue)
+
+    fun setItem(item: T) {
+        _selectedItem = item
+    }
+
+    val item: T get() = _selectedItem
+}
 
 @Composable
 fun <T> rememberPickerState(initialValue: T) = remember { PickerState(initialValue) }
 
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun <T> AppPicker(
-    modifier: Modifier = Modifier,
     items: List<T>,
-    state: PickerState<T>,
-    visibleElements: Int = 3,
-    labelMapper: (T) -> String,
-    isFocusNeeded: Boolean = false,
-    customItemView: @Composable ((T, Boolean) -> Unit)? = null,
-    onItemChange: (T) -> Unit = {}
+    selectedItem: T,
+    onItemSelected: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    visibleItemsCount: Int = 3,
+    itemHeight: Dp = 40.dp,
+    itemWidth: Dp = 100.dp,
+    labelMapper: (T, Boolean) -> String = { it, _ -> it.toString() },
+    customItem: (@Composable (T, Boolean) -> Unit)? = null,
 ) {
-    val visibleItemsMiddle = visibleElements / 2
-    val listScrollCount = items.size
-    val scope = rememberCoroutineScope()
-
     val listState =
-        rememberLazyListState(initialFirstVisibleItemIndex = items.indexOf(state.item))
-    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+        rememberLazyListState(
+            initialFirstVisibleItemIndex = items.indexOf(selectedItem).coerceAtLeast(0),
+        )
+    val coroutineScope = rememberCoroutineScope()
+    val snapFling = rememberSnapFlingBehavior(listState)
 
-    val itemHeightDp = 40.dp
-    val dividerColor = colorScheme.body.copy(alpha = 0.5f)
-    val dividerThickness = 1.dp
+    val dividerColor = colorScheme.body
 
-    LaunchedEffect(items) {
-        snapshotFlow { listState.firstVisibleItemScrollOffset }
-            .collect { hidden ->
-                if (hidden > 40) {
-                    state.setItem(
-                        items[listState.firstVisibleItemIndex + 1]
-                    )
-                } else {
-                    state.setItem(
-                        items[listState.firstVisibleItemIndex]
-                    )
-                }
-            }
+    // Convert dp to px **in the composable function body**
+    val pxPerItem = with(LocalDensity.current) { itemHeight.toPx() }
+
+    // Find the item currently centered in the view
+    val currentCenteredIndex by remember {
+        derivedStateOf {
+            val offset = listState.firstVisibleItemScrollOffset
+            val threshold = pxPerItem / 2
+            val index = listState.firstVisibleItemIndex + if (offset > threshold) 1 else 0
+            index.coerceIn(0, items.lastIndex)
+        }
     }
+
+    // Snap to selected when it changes externally
+    LaunchedEffect(selectedItem) {
+        val idx = items.indexOf(selectedItem)
+        if (idx >= 0) listState.animateScrollToItem(idx)
+    }
+
+    // When scroll stops, snap to closest and notify parent
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            val item = items.getOrNull(currentCenteredIndex) ?: return@LaunchedEffect
+            if (item != selectedItem) onItemSelected(item)
+        }
+    }
+
+    // Picker UI
     Box(
-        modifier = Modifier
-            .height(itemHeightDp * (visibleElements - 1) + 40.dp)
-            .then(modifier),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .height(itemHeight * visibleItemsCount)
+                .clipToBounds(),
+        contentAlignment = Alignment.Center,
     ) {
-        // Divider above selected item
-        HorizontalDivider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
-                .padding(horizontal = spacing.md)
-                .offset(y = -itemHeightDp / 2f),
-            color = dividerColor,
-            thickness = dividerThickness
-        )
-        // Divider below selected item
-        HorizontalDivider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
-                .padding(horizontal = spacing.md)
-                .offset(y = itemHeightDp / 2f),
-            color = dividerColor,
-            thickness = dividerThickness
-        )
         LazyColumn(
             state = listState,
-            flingBehavior = flingBehavior,
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.SpaceEvenly,
-            contentPadding = PaddingValues(vertical = itemHeightDp * (visibleItemsMiddle)*1.2f),
-            modifier = Modifier
-                .fillMaxHeight()
+            flingBehavior = snapFling,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = itemHeight * (visibleItemsCount / 2)),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            items(listScrollCount) { index ->
-                val currentItem = items[index]
-                val isSelected = state.item == currentItem && isFocusNeeded
-                val modifier = Modifier
-                    .height(itemHeightDp + 4.dp)
-                    .wrapContentHeight(align = Alignment.CenterVertically)
-                    .clickable {
-                        scope.launch {
-                            listState.animateScrollToItem(index)
-                        }
+            items(items.size) { index ->
+                val item = items[index]
+                val isSelected = index == currentCenteredIndex
+                Box(
+                    Modifier
+                        .height(itemHeight)
+                        .width(itemWidth)
+                        .background(Color.Transparent)
+                        .clickable {
+                            coroutineScope.launch { listState.animateScrollToItem(index) }
+                            onItemSelected(item)
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (customItem != null) {
+                        customItem(item, isSelected)
+                    } else {
+                        Text(
+                            text = labelMapper(item, isSelected),
+                            style =
+                                if (isSelected) {
+                                    typography.body2.copy(
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                } else {
+                                    typography.body2
+                                },
+                            color =
+                                if (isSelected) {
+                                    colorScheme.body
+                                } else {
+                                    colorScheme.subheading
+                                },
+                            textAlign = TextAlign.Center,
+                        )
                     }
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp)
-
-                if (customItemView != null) {
-                    Box(modifier = modifier) {
-                        customItemView(currentItem, isSelected)
-                    }
-                } else {
-                    val label = labelMapper(currentItem)
-                    Text(
-                        text = label,
-                        textAlign = TextAlign.Center,
-                        style = if (isSelected) typography.body2.copy(fontWeight = FontWeight.Bold) else typography.body2,
-                        color = if (isSelected) colorScheme.heading else colorScheme.subheading,
-                        modifier =if (isSelected)  Modifier.fillMaxWidth().padding(vertical = 3.dp) else Modifier.fillMaxWidth().padding(vertical = 16.dp)
-                    )
                 }
             }
         }
+        // Highlight center with only top and bottom lines
+        HorizontalDivider(
+            Modifier
+                .width(itemWidth)
+                .align(Alignment.Center)
+                .offset(y = -itemHeight / 2),
+            color = dividerColor,
+            thickness = 2.dp,
+        )
+        HorizontalDivider(
+            Modifier
+                .width(itemWidth)
+                .align(Alignment.Center)
+                .offset(y = itemHeight / 2),
+            color = dividerColor,
+            thickness = 2.dp,
+        )
     }
 }
+
+@Composable
+private fun Float.dpToPx(): Float = this * LocalDensity.current.density
 
 @PreviewTheme
 @Composable
 fun AppPickerPreview() {
     MeAppTheme {
-        val items = listOf(159, 160, 161)
+        val items = listOf(159, 160, 161, 13, 14, 41, 1414, 4141)
         val state = rememberPickerState(160)
-        AppPicker(
-            items = items,
-            state = state,
-            labelMapper = { "$it cm" },
-            isFocusNeeded = true
-        )
-    }
-}
-
-/**
- * Default values for AppPicker height pickers.
- */
-object AppPickerDefaults {
-    /**
-     * List of height values in centimeters (150 to 200 cm).
-     */
-    val cmHeights: List<Int> = (150..200).toList()
-
-    /**
-     * List of height values in feet/inches (4'0" to 7'0").
-     * Each entry is a Pair of feet to inches (0-11).
-     */
-    val feetHeights: List<Pair<Int, Int>> = buildList {
-        for (feet in 4..7) {
-            for (inch in 0..11) {
-                add(feet to inch)
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            AppPicker(
+                items = items,
+                selectedItem = state.item,
+                onItemSelected = { it -> state.setItem(it) },
+                labelMapper = { it, selected -> "$it cm" },
+                itemHeight = (spacing.sm * 2) + 24.dp,
+            )
         }
     }
 }
