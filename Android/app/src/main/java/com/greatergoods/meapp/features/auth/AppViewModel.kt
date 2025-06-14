@@ -38,84 +38,84 @@ data class AppUiState(
  */
 @HiltViewModel
 class AppViewModel
-    @Inject
-    constructor(
-        private val appRepository: IAppRepository,
-        private val userRepository: IUserRepository,
-        private val logManager: LogManager,
-    ) : BaseViewModel() {
-        private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
-        val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
+@Inject
+constructor(
+    private val appRepository: IAppRepository,
+    private val userRepository: IUserRepository,
+    private val logManager: LogManager,
+) : BaseViewModel() {
+    private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
+    val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
-        private var currentAccount: UserAccount? = null
+    private var currentAccount: UserAccount? = null
 
-        init {
-            viewModelScope.launch {
-                delay(3000)
-                navigationService.replaceStack(
-                    listOf(
-                        AppRoute.Auth.LoginScreen,
-                    ),
-                )
-            }
-
-            viewModelScope.launch {
-                try {
-                    logManager.cleanupOldLogs(5)
-                    AppLog.i("MainActivity", "Cleaning up old logs")
-                } catch (e: Exception) {
-                    AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
-                }
-            }
+    init {
+        viewModelScope.launch {
+            delay(3000)
+            navigationService.replaceStack(
+                listOf(
+                    AppRoute.Auth.LoginScreen,
+                ),
+            )
         }
 
-        private fun initLogic() {
-            viewModelScope.launch {
-                userRepository.currentAccountFlow.collectLatest { account ->
-                    if (currentAccount != account) {
-                        if (account != null) {
-                            currentAccount = account
-                            val currentAccountId =
-                                userRepository.accountsFlow
-                                    .firstOrNull()
-                                    ?.entries
-                                    ?.find { it.value == account }
-                                    ?.key
+        viewModelScope.launch {
+            try {
+                logManager.cleanupOldLogs(5)
+                AppLog.i("MainActivity", "Cleaning up old logs")
+            } catch (e: Exception) {
+                AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
+            }
+        }
+    }
 
-                            initLoadingData(currentAccountId)
-                        } else {
-                            val destinationState =
-                                if (userRepository.hasAccounts()) {
-                                    AppRoute.Auth.UserListScreen
-                                } else {
-                                    AppRoute.Auth.LoginScreen
-                                }
-                            _uiState.value =
-                                _uiState.value.copy(
-                                    themeMode = ThemeMode.SYSTEM,
-                                )
-                            navigationService.replaceStack(listOf(destinationState))
-                        }
+    private fun initLogic() {
+        viewModelScope.launch {
+            userRepository.currentAccountFlow.collectLatest { account ->
+                if (currentAccount != account) {
+                    if (account != null) {
+                        currentAccount = account
+                        val currentAccountId =
+                            userRepository.accountsFlow
+                                .firstOrNull()
+                                ?.entries
+                                ?.find { it.value == account }
+                                ?.key
+
+                        initLoadingData(currentAccountId)
+                    } else {
+                        val destinationState =
+                            if (userRepository.hasAccounts()) {
+                                AppRoute.Auth.UserListScreen
+                            } else {
+                                AppRoute.Auth.LoginScreen
+                            }
+                        _uiState.value =
+                            _uiState.value.copy(
+                                themeMode = ThemeMode.SYSTEM,
+                            )
+                        navigationService.replaceStack(listOf(destinationState))
                     }
                 }
             }
         }
+    }
 
-        private fun initLoadingData(isInitLoad: String?) {
-            viewModelScope.launch {
-                try {
-                    // Simulate data loading
-                    delay(3000)
+    private fun initLoadingData(isInitLoad: String?) {
+        viewModelScope.launch {
+            try {
+                // Simulate data loading
+                delay(3000)
 
-                    // TODO: Add your actual data loading logic here
-                    // For example:
-                    // - Load user preferences
-                    // - Initialize services
-                    // - Cache necessary data
-                    navigationService.replaceStack(listOf(AppRoute.Home.HomeScreen))
-                } catch (e: Exception) {
-                    // TODO: Handle error state appropriately
-                }
+                // TODO: Add your actual data loading logic here
+                // For example:
+                // - Load user preferences
+                // - Initialize services
+                // - Cache necessary data
+                navigationService.replaceStack(listOf(AppRoute.Main.Dashboard))
+            } catch (e: Exception) {
+                // TODO: Handle error state appropriately
             }
         }
     }
+}
