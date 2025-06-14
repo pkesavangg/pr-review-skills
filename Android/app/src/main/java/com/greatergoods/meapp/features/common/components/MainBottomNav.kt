@@ -8,7 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color.Companion.White
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
-import com.greatergoods.meapp.features.dashboard.helper.BOTTOM_NAV_ITEMS
+import com.greatergoods.meapp.features.dashboard.enum.BOTTOM_NAV_ITEMS
 import com.greatergoods.meapp.theme.MeAppTheme
 
 @Composable
@@ -19,7 +19,6 @@ fun MainBottomNav() {
     NavigationBar(
         containerColor = White,
     ) {
-
     }
 }
 
