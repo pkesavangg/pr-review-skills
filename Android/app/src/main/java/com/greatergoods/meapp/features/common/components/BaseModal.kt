@@ -30,9 +30,9 @@ import com.greatergoods.meapp.theme.MeAppTheme
  */
 @Composable
 fun BaseModal(
-    title: String,
     primaryAction: ActionButton,
     modifier: Modifier = Modifier,
+    title: String? = null,
     body: String? = null,
     secondaryAction: ActionButton? = null,
     onDismiss: (() -> Unit)? = null,
@@ -54,12 +54,14 @@ fun BaseModal(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.sm),
         ) {
-            Text(
-                text = title,
-                style = MeAppTheme.typography.heading4,
-                color = MeAppTheme.colorScheme.heading,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            title?.let {
+                Text(
+                    text = it,
+                    style = MeAppTheme.typography.heading4,
+                    color = MeAppTheme.colorScheme.heading,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             body?.let {
                 Text(
                     text = body,
