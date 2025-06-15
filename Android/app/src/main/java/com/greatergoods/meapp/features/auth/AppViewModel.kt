@@ -10,6 +10,7 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
+import com.greatergoods.meapp.features.sample.HomeScreen
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -124,7 +125,7 @@ class AppViewModel @Inject constructor(
                 // - Load user preferences
                 // - Initialize services
                 // - Cache necessary data
-                navigationService.replaceStack(listOf(AppRoute.Home.HomeScreen))
+                navigationService.replaceStack(listOf(AppRoute.Main.Dashboard))
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately
             }
