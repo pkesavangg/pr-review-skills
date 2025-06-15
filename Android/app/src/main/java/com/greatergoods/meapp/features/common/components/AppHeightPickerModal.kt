@@ -1,8 +1,14 @@
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -17,6 +23,13 @@ sealed class HeightInput {
         val feet: Int,
         val inches: Int,
     ) : HeightInput()
+
+    // convert the value to string using getString
+    fun getString(): String =
+        when (this) {
+            is Cm -> "$value cm"
+            is FtIn -> "$feet' $inches\""
+        }
 }
 
 /**
