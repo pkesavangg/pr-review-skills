@@ -22,7 +22,7 @@ fun AppHeightInput(value: HeightInput) {
     if (isModalTriggered) {
         Dialog(onDismissRequest = { isModalTriggered = false }) {
             AppHeightPickerModal(
-                value = value,
+                value = currentValue,
                 onCancel = {
                     isModalTriggered = false
                 },
