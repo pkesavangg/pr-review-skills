@@ -178,6 +178,7 @@ fun AppChip(
     modifier: Modifier = Modifier,
     type: ChipType = ChipType.Solid,
     size: ChipSize = ChipSize.Small,
+    enabled: Boolean = true,
     selected: Boolean = false,
     textTransform: TextTransform = TextTransform.UPPERCASE,
     onClick: () -> Unit,
@@ -193,7 +194,10 @@ fun AppChip(
     val height = ChipButtonDefaults.height(size)
     val minWidth = ChipButtonDefaults.minWidth(size)
     val text = ChipButtonDefaults.transformText(label, textTransform)
-    val chipModifier = modifier.height(height).defaultMinSize(minWidth = minWidth)
+    val chipModifier =
+        modifier
+            .height(height)
+            .defaultMinSize(minWidth = minWidth)
     val maxLines = 1
     FilterChip(
         shape = shape,
@@ -213,7 +217,11 @@ fun AppChip(
                 selectedLeadingIconColor = contentColor,
                 selectedTrailingIconColor = contentColor,
             ),
-        onClick = onClick,
+        onClick = {
+            if (enabled) {
+                onClick()
+            }
+        },
         label = {
             Text(
                 text,
