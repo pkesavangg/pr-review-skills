@@ -11,21 +11,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.features.common.components.AppButton
-import com.greatergoods.meapp.features.common.components.AppIconButton
-import com.greatergoods.meapp.features.common.components.AppInput
-import com.greatergoods.meapp.features.common.components.AppInputType
-import com.greatergoods.meapp.features.common.components.AppScaffold
-import com.greatergoods.meapp.features.common.components.AppText
-import com.greatergoods.meapp.features.common.components.ButtonSize
-import com.greatergoods.meapp.features.common.components.ButtonType
-import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import com.greatergoods.meapp.features.common.components.*
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -35,11 +30,9 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 
 @Composable
 fun LoginScreen() {
-    val loginViewModel: LoginViewModel = hiltViewModel()
-    val scope = rememberCoroutineScope()
-    val emailControl = remember { FormControl("", emptyList(), emptyList(), scope) }
-    val passwordControl = remember { FormControl("", emptyList(), emptyList(), scope) }
-    val isFormFilled = emailControl.value.isNotBlank() && passwordControl.value.isNotBlank()
+    val viewModel: LoginViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsState()
+    val backStack = LocalNavBackStack.current
 
     AppScaffold(
         title = null,
@@ -64,14 +57,14 @@ fun LoginScreen() {
                 )
                 Spacer(Modifier.height(spacing.md))
                 AppInput(
-                    formControl = emailControl,
+                    formControl = state.form.controls.email,
                     label = LoginStrings.EmailLabel,
                     type = AppInputType.TEXT,
                     modifier = Modifier.fillMaxWidth(),
                     showTrailingIcon = true,
                 )
                 AppInput(
-                    formControl = passwordControl,
+                    formControl = state.form.controls.password,
                     label = LoginStrings.PasswordLabel,
                     type = AppInputType.PASSWORD,
                     modifier = Modifier.fillMaxWidth(),
@@ -80,11 +73,9 @@ fun LoginScreen() {
                 Spacer(Modifier.height(spacing.lg))
                 AppButton(
                     label = LoginStrings.LoginButton,
-                    enabled = isFormFilled,
+                    enabled = viewModel.isFormValid,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
-                    onClick = {
-                        // TODO: Integrate Login
-                    },
+                    onClick = { viewModel.onSubmit() }
                 )
                 Spacer(Modifier.height(spacing.sm))
                 AppButton(
@@ -92,7 +83,12 @@ fun LoginScreen() {
                     type = ButtonType.TextPrimary,
                     size = ButtonSize.Medium,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
-                    onClick = { },
+                    onClick = {
+                       backStack.addRoute(
+                           AppRoute.Home,
+
+                       )
+                    }
                 )
             }
             Spacer(Modifier.weight(1f))
@@ -110,16 +106,16 @@ fun LoginScreen() {
                 ) {
                     AppText(
                         text = LoginStrings.TermsOfService,
-                        textType = TextType.Link,
-                        onClick = { loginViewModel.openUrl(LoginStrings.TermsOfServiceUrl) },
+                        textType = TextType.link,
+                        action = {viewModel.openUrl(LoginStrings.TermsOfServiceUrl)}
                     )
                     Spacer(Modifier.padding(start = spacing.sm))
                     Text(LoginStrings.And, style = typography.body4, color = colorScheme.textBody)
                     Spacer(Modifier.padding(end = spacing.sm))
                     AppText(
                         text = LoginStrings.PrivacyPolicy,
-                        textType = TextType.Link,
-                        onClick = { loginViewModel.openUrl(LoginStrings.PrivacyPolicyUrl) },
+                        textType = TextType.link,
+                        action = {viewModel.openUrl(LoginStrings.PrivacyPolicyUrl)}
                     )
                 }
             }
