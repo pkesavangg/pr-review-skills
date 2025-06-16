@@ -30,8 +30,6 @@ import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
  * Screen displaying a list of user accounts, allowing the user to select an account to activate.
- *
- * @param viewModel The [AppViewModel] providing account data and actions.
  */
 @Composable
 fun UserListScreen() {

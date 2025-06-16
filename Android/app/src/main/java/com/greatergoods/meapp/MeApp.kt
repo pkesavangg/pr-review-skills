@@ -21,7 +21,7 @@ import android.annotation.SuppressLint
 @Composable
 fun MeApp() {
     val appViewModel: AppViewModel = hiltViewModel()
-    val uiState by appViewModel.uiState.collectAsState()
+    val uiState by appViewModel.state.collectAsState()
     val topLevelBackStack =
         rememberTopLevelBackStack(
             Pair(AppRoute.App, AppRoute.Init.Loading),

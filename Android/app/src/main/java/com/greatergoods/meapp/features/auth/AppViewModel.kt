@@ -9,30 +9,14 @@ import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.domain.services.IEntryService
-import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
-import com.greatergoods.meapp.features.sample.HomeScreen
-import com.greatergoods.meapp.proto.ThemeMode
+import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-/**
- * UI state for the app, holding theme mode and FCM token.
- *
- * @property themeMode The current theme mode.
- * @property fcmToken The current FCM token.
- */
-data class AppUiState(
-    val fcmToken: String = "",
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
-)
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -47,10 +31,10 @@ class AppViewModel @Inject constructor(
     private val accountRepository: IAccountRepository,
     private val entryService: IEntryService,
     private val logManager: LogManager
-) : BaseViewModel() {
-    private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
-    val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
-
+) : BaseIntentViewModel<AppState, AppIntent>(
+    initialState = AppState(),
+    reducer = AppReducer()
+) {
     private var currentAccount: UserAccount? = null
 
     init {
@@ -102,10 +86,6 @@ class AppViewModel @Inject constructor(
                         } else {
                             AppRoute.Auth.LoginScreen
                         }
-                        _uiState.value =
-                            _uiState.value.copy(
-                                themeMode = ThemeMode.SYSTEM,
-                            )
                         navigationService.logout()
                     }
                 }
