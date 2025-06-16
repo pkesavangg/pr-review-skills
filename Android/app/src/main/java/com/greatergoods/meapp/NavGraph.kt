@@ -12,6 +12,8 @@ import com.greatergoods.meapp.features.dashboard.DashBoardScreen
  *
  */
 fun EntryProviderBuilder<NavKey>.authEntries() {
+
     entry<AppRoute.Auth.LoginScreen> { DashBoardScreen() }
+    entry<AppRoute.Main.Dashboard> { DashBoardScreen() }
     entry<AppRoute.Auth.UserListScreen> { UserListScreen() }
 }
