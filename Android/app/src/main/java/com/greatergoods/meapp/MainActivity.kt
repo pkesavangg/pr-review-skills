@@ -3,6 +3,7 @@ package com.greatergoods.meapp
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.AnimationUtil
@@ -10,9 +11,12 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.app.UiModeManager
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 
 /**
  * Main entry point for the MeApp application.
@@ -32,11 +36,20 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         // Set up splash screen exit animation
+        val uiModeManager = this.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_NO)
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+        }
+
         initializeSplashScreen()
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { MeApp() }
+        setContent {
+                  MeApp()
+                  }
         handleIntentNavigationIfNeeded(intent)
     }
 
@@ -69,8 +82,13 @@ class MainActivity : ComponentActivity() {
      */
     private fun initializeSplashScreen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            splashScreen.setOnExitAnimationListener {
-                AnimationUtil.splashScreenExitAnimation(it)
+            splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
+                // Example: fade out
+                splashScreenViewProvider.animate()
+                    .alpha(0f)
+                    .setDuration(300L)
+                    .withEndAction { splashScreenViewProvider.remove() }
+                    .start()
             }
         }
     }

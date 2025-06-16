@@ -19,6 +19,7 @@ import com.greatergoods.meapp.theme.token.LocalBorderRadius
 import com.greatergoods.meapp.theme.token.LocalSpacing
 import com.greatergoods.meapp.theme.token.LocalTypography
 import com.greatergoods.meapp.theme.token.SpacingToken
+import android.util.Log
 
 /**
  * Main theme composable that sets up the app's theme.
@@ -29,6 +30,7 @@ fun MeAppTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable (() -> Unit),
 ) {
+    Log.i("CHECKING", isSystemInDarkTheme().toString())
     val darkTheme =
         when (themeMode) {
             ThemeMode.DARK -> true
