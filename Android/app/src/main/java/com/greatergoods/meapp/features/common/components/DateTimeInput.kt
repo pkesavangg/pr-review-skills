@@ -21,32 +21,46 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
+
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
 /**
  * Represents the value for DateTimeInput.
+ * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
 sealed class DateTimeValue {
+    /**
+     * Represents a date value in milliseconds since epoch.
+     */
     data class Date(
         val millis: Long,
     ) : DateTimeValue()
 
+    /**
+     * Represents a time value as hour and minute.
+     */
     data class Time(
         val hour: Int,
         val minute: Int,
     ) : DateTimeValue()
 
+    /**
+     * Represents a combined date and time value.
+     */
     data class DateTime(
         val millis: Long,
         val hour: Int,
         val minute: Int,
     ) : DateTimeValue()
 
+    /**
+     * Returns a formatted string representation of the value, depending on the type.
+     */
     fun getString(): String =
         when (this) {
-            is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
+            is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
             is Time ->
                 SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
@@ -56,9 +70,8 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
-
             is DateTime -> {
-                val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
+                val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
                 val time =
                     SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                         Calendar
@@ -72,21 +85,30 @@ sealed class DateTimeValue {
             }
         }
 
+    /**
+     * Returns a formatted date string for the value, if applicable.
+     */
     fun getDateString(): String =
         when (this) {
-            is Date,
-            -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
-
-            is DateTime,
-            -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
-
+            is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
+            is DateTime -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
             else -> ""
         }
 
+    /**
+     * Returns a formatted time string for the value, if applicable.
+     */
     fun getTimeString(): String =
         when (this) {
-            is Time,
-            ->
+             is Time -> SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
+                    Calendar
+                        .getInstance()
+                        .apply {
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                        }.time,
+                )
+            is DateTime ->
                 SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
                         .getInstance()
@@ -95,24 +117,13 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
-
-            is DateTime,
-            ->
-                SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
-                    Calendar
-                        .getInstance()
-                        .apply {
-                            set(Calendar.HOUR_OF_DAY, hour)
-                            set(Calendar.MINUTE, minute)
-                        }.time,
-                )
-
             else -> ""
         }
 }
 
 /**
  * Enum for DateTimeInput mode.
+ * Determines which type of input (date, time, or both) is shown to the user.
  */
 enum class DateTimeInputMode {
     Date,
@@ -120,10 +131,16 @@ enum class DateTimeInputMode {
     DateTime,
 }
 
+/**
+ * Default color and value providers for DateTimeInput components.
+ */
 object DateTimeInputDefaults {
+    /**
+     * Returns the color scheme for the DatePicker component.
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun gerDatePickerColor(): DatePickerColors =
+    fun getDatePickerColor(): DatePickerColors =
         DatePickerDefaults.colors(
             containerColor = MeAppTheme.colorScheme.primary,
             titleContentColor = MeAppTheme.colorScheme.heading,
@@ -145,6 +162,9 @@ object DateTimeInputDefaults {
                 ),
         )
 
+    /**
+     * Returns the color scheme for the TimePicker component.
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun getTimePickerColor(): TimePickerColors =
@@ -165,6 +185,9 @@ object DateTimeInputDefaults {
             containerColor = MeAppTheme.colorScheme.primary,
         )
 
+    /**
+     * Returns the default value for a given DateTimeInputMode.
+     */
     fun defaultValueForMode(mode: DateTimeInputMode): DateTimeValue =
         when (mode) {
             DateTimeInputMode.Date -> DateTimeValue.Date(System.currentTimeMillis())
@@ -199,13 +222,22 @@ fun DateTimeInput(
     enabled: Boolean = true,
     readOnly: Boolean = false,
 ) {
+    // State for dialog visibility
     var isDateDialogOpen by remember { mutableStateOf(false) }
     var isTimeDialogOpen by remember { mutableStateOf(false) }
+    // Determine the current value from form control or stateless value
     val currentValue = formControl?.value ?: value
+    // Local state for the input value
     var localState by remember { mutableStateOf(currentValue ?: DateTimeInputDefaults.defaultValueForMode(mode)) }
-    val isError = formControl?.error?.isBlank()?.not() == true
+    // Keep localState in sync with external value
+    if (currentValue != null && currentValue != localState) {
+        localState = currentValue
+    }
+    // Error state
+    val isError = !formControl?.error.isNullOrBlank()
 
     Row {
+        // Show date chip if mode is Date or DateTime
         if (mode == DateTimeInputMode.Date || mode == DateTimeInputMode.DateTime) {
             AppChip(
                 label = localState.getDateString(),
@@ -219,10 +251,12 @@ fun DateTimeInput(
             }
         }
 
+        // Add spacing between chips if both are shown
         if (mode == DateTimeInputMode.DateTime) {
             Spacer(Modifier.width(MeAppTheme.spacing.xs))
         }
 
+        // Show time chip if mode is Time or DateTime
         if (mode == DateTimeInputMode.Time || mode == DateTimeInputMode.DateTime) {
             AppChip(
                 label = localState.getTimeString(),
@@ -237,6 +271,7 @@ fun DateTimeInput(
         }
     }
 
+    // Show date picker dialog if needed
     if (isDateDialogOpen) {
         DatePickerDialogContent(
             initialMillis =
@@ -247,13 +282,14 @@ fun DateTimeInput(
             onOk = { millis ->
                 isDateDialogOpen = false
                 val newValue =
-                    if (mode === DateTimeInputMode.Date) {
+                    if (mode == DateTimeInputMode.Date) {
                         DateTimeValue.Date(millis)
                     } else {
+                        val dateTime = localState as? DateTimeValue.DateTime
                         DateTimeValue.DateTime(
                             millis,
-                            (localState as DateTimeValue.DateTime).hour,
-                            (localState as DateTimeValue.DateTime).minute,
+                            dateTime?.hour ?: 12,
+                            dateTime?.minute ?: 0,
                         )
                     }
                 if (formControl != null) {
@@ -265,6 +301,7 @@ fun DateTimeInput(
             },
         )
     }
+    // Show time picker dialog if needed
     if (isTimeDialogOpen) {
         TimePickerDialogContent(
             initial =
@@ -279,11 +316,12 @@ fun DateTimeInput(
             onOk = { hour, minute ->
                 isTimeDialogOpen = false
                 val newValue =
-                    if (mode === DateTimeInputMode.Time) {
+                    if (mode == DateTimeInputMode.Time) {
                         DateTimeValue.Time(hour, minute)
                     } else {
+                        val dateTime = localState as? DateTimeValue.DateTime
                         DateTimeValue.DateTime(
-                            (localState as DateTimeValue.DateTime).millis,
+                            dateTime?.millis ?: System.currentTimeMillis(),
                             hour,
                             minute,
                         )
@@ -298,7 +336,7 @@ fun DateTimeInput(
         )
     }
 
-    // Error/supporting text
+    // Show error or supporting text
     if (formControl != null && isError) {
         Text(
             formControl.error ?: "",
@@ -314,6 +352,9 @@ fun DateTimeInput(
     }
 }
 
+/**
+ * Preview for DateTimeInput composable in different modes and states.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewTheme
 @Composable

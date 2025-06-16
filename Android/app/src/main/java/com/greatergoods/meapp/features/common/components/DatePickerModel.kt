@@ -24,7 +24,9 @@ fun DatePickerDialogContent(
 ) {
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
     DatePickerDialog(
-        onDismissRequest = onCancel,
+        onDismissRequest = {
+            onCancel()
+        },
         confirmButton = {
             Column {
                 AppButton(
@@ -54,7 +56,7 @@ fun DatePickerDialogContent(
                 containerColor = MeAppTheme.colorScheme.primary,
             ),
     ) {
-        val pickerColor = DateTimeInputDefaults.gerDatePickerColor()
+        val pickerColor = DateTimeInputDefaults.getDatePickerColor()
         DatePicker(state = datePickerState, colors = pickerColor)
     }
 }
@@ -68,20 +70,20 @@ fun DatePickerModal(
     value: Long = System.currentTimeMillis(),
 ) {
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = value)
-    val pickerColor = DateTimeInputDefaults.gerDatePickerColor()
+    val pickerColor = DateTimeInputDefaults.getDatePickerColor()
     val dateFormatter: DatePickerFormatter =
         remember { DatePickerDefaults.dateFormatter(selectedDateDescriptionSkeleton = "MMM dd yyyy") }
 
     BaseModal(
-        title = "Height",
+        title = "Height", // TODO: Use string resource
         primaryAction =
             ActionButton(
-                text = "OK",
+                text = "OK", // TODO: Use string resource
                 action = {
                     onOk(datePickerState.selectedDateMillis ?: value)
                 },
             ),
-        secondaryAction = ActionButton(text = "Cancel", action = { onCancel() }),
+        secondaryAction = ActionButton(text = "Cancel", action = { onCancel() }), // TODO: Use string resource
     ) {
         DatePicker(
             datePickerState,
@@ -93,7 +95,7 @@ fun DatePickerModal(
 
 @PreviewTheme
 @Composable
-fun DatePickerDialogContent() {
+fun DatePickerDialogContentPreview() {
     MeAppTheme {
         DatePickerDialogContent(100L, {}) {}
     }

@@ -19,28 +19,25 @@ fun TimePickerDialogContent(
     onCancel: () -> Unit,
     onOk: (Int, Int) -> Unit,
 ) {
-    val openDialog = remember { mutableStateOf(true) }
-    if (openDialog.value) {
-        val currentTime = Calendar.getInstance()
-        val hour = initial?.hour ?: currentTime.get(Calendar.HOUR_OF_DAY)
-        val minute = initial?.minute ?: currentTime.get(Calendar.MINUTE)
-        val timePickerState =
-            rememberTimePickerState(
-                initialHour = hour,
-                initialMinute = minute,
-                is24Hour = false, // Use 12-hour format with AM/PM
-            )
-
-        TimePickerDialog(
-            timePickerState,
-            onDismiss = {
-                onCancel()
-            },
-            onConfirm = {
-                onOk(timePickerState.hour, timePickerState.minute)
-            },
+    val currentTime = Calendar.getInstance()
+    val hour = initial?.hour ?: currentTime.get(Calendar.HOUR_OF_DAY)
+    val minute = initial?.minute ?: currentTime.get(Calendar.MINUTE)
+    val timePickerState =
+        rememberTimePickerState(
+            initialHour = hour,
+            initialMinute = minute,
+            is24Hour = false, // Use 12-hour format with AM/PM
         )
-    }
+
+    TimePickerDialog(
+        timePickerState,
+        onDismiss = {
+            onCancel()
+        },
+        onConfirm = {
+            onOk(timePickerState.hour, timePickerState.minute)
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,12 +51,12 @@ fun TimePickerDialog(
         BaseModal(
             primaryAction =
                 ActionButton(
-                    text = "OK",
+                    text = "OK", // TODO: Use string resource
                     action = {
                         onConfirm()
                     },
                 ),
-            secondaryAction = ActionButton(text = "Cancel", action = { onDismiss() }),
+            secondaryAction = ActionButton(text = "Cancel", action = { onDismiss() }), // TODO: Use string resource
         ) {
             val timerColors = DateTimeInputDefaults.getTimePickerColor()
             TimePicker(state = timePickerState, colors = timerColors)
@@ -69,7 +66,7 @@ fun TimePickerDialog(
 
 @PreviewTheme
 @Composable
-fun TimePickerDialogPreview() {
+fun TimePickerDialogContentPreview() {
     MeAppTheme {
         TimePickerDialogContent(null, {}, { _, _ -> })
     }
