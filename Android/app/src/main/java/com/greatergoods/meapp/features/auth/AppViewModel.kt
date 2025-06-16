@@ -97,17 +97,16 @@ class AppViewModel @Inject constructor(
 
                         initLoadingData(currentAccountId)
                     } else {
-                        val destinationState =
-                            if (userRepository.hasAccounts()) {
-                                AppRoute.Auth.UserListScreen
-                            } else {
-                                AppRoute.Auth.LoginScreen
-                            }
+                        if (userRepository.hasAccounts()) {
+                            AppRoute.Auth.UserListScreen
+                        } else {
+                            AppRoute.Auth.LoginScreen
+                        }
                         _uiState.value =
                             _uiState.value.copy(
                                 themeMode = ThemeMode.SYSTEM,
                             )
-                        navigationService.replaceStack(listOf(destinationState))
+                        navigationService.logout()
                     }
                 }
             }
@@ -125,7 +124,7 @@ class AppViewModel @Inject constructor(
                 // - Load user preferences
                 // - Initialize services
                 // - Cache necessary data
-                navigationService.replaceStack(listOf(AppRoute.Main.Dashboard))
+                navigationService.autoLogin()
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately
             }

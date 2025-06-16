@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.manualEntry.screens
+package com.greatergoods.meapp.features.entry.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,11 +27,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
-import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryUiState
-import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
+import com.greatergoods.meapp.features.entry.viewmodel.EntryUiState
+import com.greatergoods.meapp.features.entry.viewmodel.EntryViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -40,7 +41,7 @@ fun EntryScreen(
     viewModel: EntryViewModel = hiltViewModel(),
     onNavigateToAddEntry: () -> Unit,
 ) {
-    LocalNavBackStack.current
+    val topLevelBackStack = LocalNavBackStack.current
     val uiState by viewModel.uiState.collectAsState()
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val monthEntries by viewModel.monthEntries.collectAsState()
@@ -55,7 +56,7 @@ fun EntryScreen(
     ) {
         Button(
             onClick = {
-
+                topLevelBackStack.addRoute(AppRoute.Auth.LoginScreen)
             },
             modifier =
                 Modifier
