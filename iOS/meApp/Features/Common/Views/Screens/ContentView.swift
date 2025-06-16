@@ -21,20 +21,13 @@ struct ContentView: View {
                     Text(viewModel.dashboardTextView())
                         .fontOpenSans(.body1)
                         .foregroundColor(theme.textHeading)
-                    Button("Force Logout") {
-                        Task { await viewModel.forceLogout() }
-                    }
-                    .buttonStyle(.borderedProminent)
                 }
             } else if viewModel.showLandingText {
                 VStack(spacing: 16) {
                     Text(viewModel.landingTextView())
                         .fontOpenSans(.body1)
                         .foregroundColor(theme.textHeading)
-                    Button("Force Login") {
-                        Task { await viewModel.forceLogin() }
-                    }
-                    .buttonStyle(.borderedProminent)
+                    
                 }
             }
         }

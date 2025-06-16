@@ -86,25 +86,4 @@ final class ContentViewModel: ObservableObject {
         // For now, always return true to mimic wgApp4 logic
         return true
     }
-
-    // MARK: - Force Login/Logout for Testing
-    @MainActor
-    func forceLogin() async {
-        do {
-            _ = try await accountService.logIn(email: "lakshmipriya@greatergoods.com", password: "123456")
-            await performAppInitialization()
-        } catch {
-            logger.log(level: .error, tag: "ContentViewModel", message: "Force login failed: \(error)")
-        }
-    }
-
-    @MainActor
-    func forceLogout() async {
-        do {
-            try await accountService.logOut(accountId: accountService.activeAccount?.accountId)
-            await performAppInitialization()
-        } catch {
-            logger.log(level: .error, tag: "ContentViewModel", message: "Force logout failed: \(error)")
-        }
-    }
 }
