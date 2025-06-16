@@ -20,10 +20,14 @@ struct LandingScreen: View {
               .ignoresSafeArea()
 
           VStack(alignment: .center) {
+              
+              Spacer()
+                  .frame(minHeight: .spacing6XL)
+              
               Text(lang.weightGurusNow)
                   .fontOpenSans(.subHeading1)
                   .foregroundColor(theme.backgroundPrimary)
-                  .padding(.top, 171)
+                  .padding(.top, .spacing6XL)
               
               VStack(alignment: .center){
                   Text(lang.myEveryday)
@@ -33,24 +37,23 @@ struct LandingScreen: View {
                        .fontOpenSans(.heading2)
                        .foregroundColor(theme.brandMeAppPrimary)
               }
-              .padding(.top,16)
-              .padding(.horizontal,31)
+              .padding(.top, .spacingSM)
+              .padding(.horizontal,.spacingLG)
               
               ButtonView(text: lang.learnMore, type: .linkWhiteDefault, size: .regular, isDisabled: false, action: {})
-              .padding(.top,10)
-              .padding(.horizontal, 118)
-              .padding(.bottom,50)
+                  .padding(.top, .spacingXS)
+                  .padding(.bottom,.spacing2XL)
               
-              VStack(alignment: .center, spacing: 16){
+              VStack(alignment: .center, spacing: .spacingSM){
                   ButtonView(text: lang.signUp, type: .secondary, size: .regular, isDisabled: false, action: {router.navigate(to: .signup)})
                   ButtonView(text: lang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {
                       // TODO: Replace with navigation to the login view
                   })
               }
-              .padding(.bottom, 150)
-              .padding(.horizontal,105)
+              .padding(.bottom, .spacing6XL)
                                           
               Spacer()
+                  .frame(minHeight: .spacing6XL)
 
               VersionAndCopyrightView()
           }
