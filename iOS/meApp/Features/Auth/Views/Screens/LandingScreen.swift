@@ -48,7 +48,7 @@ struct LandingScreen: View {
               VStack(alignment: .center, spacing: .spacingSM){
                   ButtonView(text: lang.signUp, type: .secondary, size: .regular, isDisabled: false, action: {router.navigate(to: .signup)})
                   ButtonView(text: commonLang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {
-                      // TODO: Replace with navigation to the login view
+                      router.navigate(to: .login)
                   })
               }
               .padding(.bottom, .spacing6XL)
