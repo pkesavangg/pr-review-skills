@@ -84,7 +84,7 @@ struct DetailScreen: View {
     var body: some View {
         NavigationLink {
             Text("In Detail for Item \(item)")
-            onAppear { viewModel.showTabBar = true }
+                .onAppear { viewModel.showTabBar = true }
         } label: {
             Text("Detail for Item \(item)")
                 .font(.largeTitle)

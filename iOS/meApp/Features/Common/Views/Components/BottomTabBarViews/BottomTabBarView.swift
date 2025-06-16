@@ -56,12 +56,7 @@ struct BottomTabBarView: View {
                 .padding(.top, 12)
                 .padding(.bottom, .spacingMD)
                 .background(theme.backgroundPrimary)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 0.5)
-                        .foregroundColor(theme.statusUtility),
-                    alignment: .top
-                )
+                .border(sides: [.top], thickness: 0.5)
             }
         }
         .environmentObject(viewModel)
