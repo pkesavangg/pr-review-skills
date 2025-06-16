@@ -115,8 +115,12 @@ extension View {
     
     /// Dismisses the keyboard when the view is dragged.
     func dismissKeyboardOnDrag() -> some View {
-        return self.gesture(DragGesture().onChanged { _ in
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        })
+        self
+            .contentShape(Rectangle()) // Ensures transparent areas can receive gestures
+            .highPriorityGesture(
+                DragGesture().onChanged { _ in
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            )
     }
 }

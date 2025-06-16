@@ -64,6 +64,7 @@ struct NameStepView: View {
                 .padding(.top, .spacingLG)
                 Spacer()
             }
+            .padding(.bottom, .spacing3XL)
             .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
     }
