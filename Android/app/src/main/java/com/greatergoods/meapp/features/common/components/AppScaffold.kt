@@ -31,7 +31,7 @@ fun AppScaffold(
         modifier = modifier,
         topBar = {
             AppBar(
-                title = "title",
+                title = title,
                 navigationIcon = navigationIcon,
                 actions = actions,
             )

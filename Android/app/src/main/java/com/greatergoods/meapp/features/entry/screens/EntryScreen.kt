@@ -56,7 +56,7 @@ fun EntryScreen(
     ) {
         Button(
             onClick = {
-                topLevelBackStack.addRoute(AppRoute.Auth.LoginScreen)
+                topLevelBackStack.addRoute(AppRoute.Auth.Login)
             },
             modifier =
                 Modifier

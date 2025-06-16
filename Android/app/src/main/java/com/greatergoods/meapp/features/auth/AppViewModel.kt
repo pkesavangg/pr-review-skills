@@ -10,7 +10,6 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
-import com.greatergoods.meapp.features.sample.HomeScreen
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -98,9 +97,9 @@ class AppViewModel @Inject constructor(
                         initLoadingData(currentAccountId)
                     } else {
                         if (userRepository.hasAccounts()) {
-                            AppRoute.Auth.UserListScreen
+                            AppRoute.Auth.UserList
                         } else {
-                            AppRoute.Auth.LoginScreen
+                            AppRoute.Auth.Login
                         }
                         _uiState.value =
                             _uiState.value.copy(
