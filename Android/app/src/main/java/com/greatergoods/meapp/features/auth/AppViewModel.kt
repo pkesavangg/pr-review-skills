@@ -97,10 +97,15 @@ class AppViewModel @Inject constructor(
                         initLoadingData(currentAccountId)
                     } else {
                         if (userRepository.hasAccounts()) {
-                            AppRoute.Auth.LoginScreen(hasAccounts = true)
+                            AppRoute.Auth.UserListScreen
                         } else {
-                            AppRoute.Auth.LoginScreen(hasAccounts = false)
+                            AppRoute.Auth.LoginScreen
                         }
+                        _uiState.value =
+                            _uiState.value.copy(
+                                themeMode = ThemeMode.SYSTEM,
+                            )
+                        navigationService.logout()
                     }
                 }
             }
@@ -118,7 +123,7 @@ class AppViewModel @Inject constructor(
                 // - Load user preferences
                 // - Initialize services
                 // - Cache necessary data
-                navigationService.replaceStack(listOf(AppRoute.Main.Dashboard))
+                navigationService.autoLogin()
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately
             }
