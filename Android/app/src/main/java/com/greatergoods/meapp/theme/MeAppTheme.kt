@@ -30,7 +30,6 @@ fun MeAppTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable (() -> Unit),
 ) {
-    Log.i("CHECKING", isSystemInDarkTheme().toString())
     val darkTheme =
         when (themeMode) {
             ThemeMode.DARK -> true
