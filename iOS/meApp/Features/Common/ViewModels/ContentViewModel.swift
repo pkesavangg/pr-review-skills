@@ -11,8 +11,8 @@ import UserNotifications
 final class ContentViewModel: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var currentAccount: Account?
-    @Published var showDashboardText: Bool = false
-    @Published var showLandingText: Bool = false
+    @Published var showDashboardView: Bool = false
+    @Published var showLandingView: Bool = false
     @Published var isInitializing: Bool = true
     @Published var entries: [Entry] = []
 
@@ -72,8 +72,8 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Routing Logic
     func routeToLandingOrApp(isLoggedIn: Bool) async {
-        showDashboardText = isLoggedIn
-        showLandingText = !isLoggedIn
+        showDashboardView = isLoggedIn
+        showLandingView = !isLoggedIn
     }
 
     // MARK: - View Texts - For Testing Purposes.

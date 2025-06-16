@@ -1,0 +1,29 @@
+//
+//  VersionAndCopyrightView.swift
+//  meApp
+//
+//  Created by Lakshmi Priya on 16/06/25.
+//
+
+import SwiftUI
+
+struct VersionAndCopyrightView: View {
+    @Environment(\.appTheme) var theme
+    let lang = LoadingScreenStrings.self
+    private var appVersion: String {
+        Bundle.main.infoDictionary?[lang.versionKey] as? String ?? "-"
+    }
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(lang.copyright)
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.backgroundPrimary)
+            Text("\(lang.versionPrefix) \(appVersion)")
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.backgroundPrimary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 18)
+    }
+}

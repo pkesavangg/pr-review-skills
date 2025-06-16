@@ -1,5 +1,5 @@
 //
-//  LoadingScreenView.swift
+//  LoadingScreen.swift
 //  meApp
 //
 //  Created by Lakshmi Priya on 13/06/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct LoadingPageView: View {
+struct LoadingScreen: View {
     @Environment(\.appTheme) var theme
     @EnvironmentObject var themeManager: Theme
     @Environment(\.colorScheme) private var colorScheme
@@ -36,16 +36,7 @@ struct LoadingPageView: View {
 
                 Spacer()
 
-                VStack(spacing: 8) {
-                    Text(lang.copyright)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.backgroundPrimary)
-                    Text("\(lang.versionPrefix) \(appVersion)")
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.backgroundPrimary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 18)
+                VersionAndCopyrightView()
             }
         }
     }
@@ -60,13 +51,9 @@ struct LoadingPageView: View {
             .opacity(1)
             .animation(.spring(response: 0.5, dampingFraction: 0.7), value: colorScheme)
     }
-
-    private var appVersion: String {
-        Bundle.main.infoDictionary?[lang.versionKey] as? String ?? "-"
-    }
 }
 
 #Preview {
-    LoadingPageView()
+    LoadingScreen()
         .environmentObject(Theme.shared)
 }

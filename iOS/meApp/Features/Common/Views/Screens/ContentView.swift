@@ -16,16 +16,16 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 32) {
             if viewModel.isInitializing {
-                LoadingPageView()
-            } else if viewModel.showDashboardText {
-                    Text(viewModel.dashboardTextView())
-                        .fontOpenSans(.body1)
-                        .foregroundColor(theme.textHeading)
-                
-            } else if viewModel.showLandingText {
-                    Text(viewModel.landingTextView())
-                        .fontOpenSans(.body1)
-                        .foregroundColor(theme.textHeading)
+                LoadingScreen()
+            } else if viewModel.showDashboardView {
+                Text(viewModel.dashboardTextView())
+                    .fontOpenSans(.body1)
+                    .foregroundColor(theme.textHeading)
+
+            } else if viewModel.showLandingView {
+                Text(viewModel.landingTextView())
+                    .fontOpenSans(.body1)
+                    .foregroundColor(theme.textHeading)
             }
         }
         .task {
