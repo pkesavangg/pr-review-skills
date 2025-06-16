@@ -9,11 +9,11 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricE
 import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 
-sealed class EntryInfo<T : BaseEntryEntity> {
-    abstract val entry: T
-    abstract val bpmEntry: BpmEntryEntity?
-    abstract val scaleEntry: BodyScaleEntryEntity?
-    abstract val scaleEntryMetric: BodyScaleEntryMetricEntity?
+interface EntryInfo<T : BaseEntryEntity> {
+    val entry: T
+    val bpmEntry: BpmEntryEntity?
+    val scaleEntry: BodyScaleEntryEntity?
+    val scaleEntryMetric: BodyScaleEntryMetricEntity?
     fun toEntry(): Entry {
         val entryEntity = EntryEntity(
             id = entry.id,
@@ -61,7 +61,7 @@ data class PopulatedEntry(
     override val scaleEntry: BodyScaleEntryEntity?,
     @Relation(parentColumn = "id", entityColumn = "id")
     override val scaleEntryMetric: BodyScaleEntryMetricEntity?
-) : EntryInfo<EntryEntity>()
+) : EntryInfo<EntryEntity>
 
 /**
  * Concrete class for Room: PopulatedActiveEntry (ActiveEntryEntity)
@@ -74,4 +74,4 @@ data class PopulatedActiveEntry(
     override val scaleEntry: BodyScaleEntryEntity?,
     @Relation(parentColumn = "id", entityColumn = "id")
     override val scaleEntryMetric: BodyScaleEntryMetricEntity?
-) : EntryInfo<ActiveEntryEntity>()
+) : EntryInfo<ActiveEntryEntity>

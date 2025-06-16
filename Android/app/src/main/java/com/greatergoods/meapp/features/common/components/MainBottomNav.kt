@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
-import com.greatergoods.meapp.features.dashboard.helper.BOTTOM_NAV_ITEMS
+import com.greatergoods.meapp.features.dashboard.enum.BOTTOM_NAV_ITEMS
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**

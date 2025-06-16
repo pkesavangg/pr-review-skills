@@ -4,13 +4,14 @@
  * Each property represents a semantic typography role (heading, subheading, body, link, button, etc.)
  * and is mapped to a TextStyle for consistent text appearance across the app.
  */
-package com.greatergoods.meapp.theme
+package com.greatergoods.meapp.theme.token
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.R
 import com.greatergoods.meapp.theme.model.Typography
@@ -61,7 +62,7 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
-                lineHeight = 32.sp,
+                lineHeight = 30.sp,
                 letterSpacing = 0.sp,
             ),
         heading5 =
@@ -69,7 +70,15 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                lineHeight = 24.sp,
+                lineHeight = 20.sp,
+                letterSpacing = 0.sp,
+            ),
+        heading6 =
+            TextStyle(
+                fontFamily = OpenSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
                 letterSpacing = 0.sp,
             ),
         // Subheading
@@ -95,7 +104,7 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 20.sp,
-                lineHeight = 28.sp,
+                lineHeight = 26.sp,
                 letterSpacing = 0.sp,
             ),
         body2 =
@@ -103,7 +112,7 @@ val AppTypography =
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 16.sp,
-                lineHeight = 24.sp,
+                lineHeight = 22.sp,
                 letterSpacing = 0.sp,
             ),
         body3 =
@@ -118,7 +127,7 @@ val AppTypography =
         link1 =
             TextStyle(
                 fontFamily = OpenSansFontFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
                 letterSpacing = 0.sp,
@@ -126,7 +135,7 @@ val AppTypography =
         link2 =
             TextStyle(
                 fontFamily = OpenSansFontFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 letterSpacing = 0.sp,
@@ -139,6 +148,7 @@ val AppTypography =
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
                 letterSpacing = 0.sp,
+                textAlign = TextAlign.Center
             ),
         button2 =
             TextStyle(
@@ -147,6 +157,7 @@ val AppTypography =
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
                 letterSpacing = 0.sp,
+                textAlign = TextAlign.Center
             ),
     )
 

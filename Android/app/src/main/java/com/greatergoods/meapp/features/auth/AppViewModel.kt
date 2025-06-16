@@ -4,9 +4,13 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
+import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
+import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
+import com.greatergoods.meapp.features.sample.HomeScreen
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,12 +41,12 @@ data class AppUiState(
  * @constructor Injects the AppRepository dependency.
  */
 @HiltViewModel
-class AppViewModel
-@Inject
-constructor(
+class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
     private val userRepository: IUserRepository,
-    private val logManager: LogManager,
+    private val accountRepository: IAccountRepository,
+    private val entryService: IEntryService,
+    private val logManager: LogManager
 ) : BaseViewModel() {
     private val _uiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
@@ -50,8 +54,24 @@ constructor(
     private var currentAccount: UserAccount? = null
 
     init {
-        initLoadingData("1")
+        viewModelScope.launch {
+            if (accountRepository.getLoggedInAccountsFromDB().firstOrNull().isNullOrEmpty()) {
+                val randomAccount =
+                    Account(
+                        id = "1",
+                        firstName = "John",
+                        lastName = "Doe",
+                        dob = "1990-01-01",
+                        email = "jdoe@me.com",
+                        expiresAt = "2024-01-01",
+                        fcmToken = null,
+                        gender = "M",
+                    )
+            }
+            entryService.updateAllData("1")
 
+        }
+        initLoadingData("1")
         viewModelScope.launch {
             try {
                 logManager.cleanupOldLogs(5)

@@ -12,6 +12,7 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.storage.entry.BpmEntry
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.PopulatedActiveEntry
 import com.greatergoods.meapp.domain.model.storage.entry.PopulatedEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
@@ -77,7 +78,7 @@ interface EntryDao {
      */
     @Transaction
     suspend fun delete(entry: Entry) {
-        val timestamp = System.currentTimeMillis().toString()
+        val timestamp = System.currentTimeMillis()
         val deleteEntry = entry.entry.copy(
             id = 0,
             operationType = "DELETE",
@@ -115,14 +116,29 @@ interface EntryDao {
     suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
 
     /**
-     * Get entries within a time range for a specific account with all related details.
+     * Get the latest entry for a specific account with all related details.
      * @param accountId The account ID
      * @param startTime The start timestamp
      * @param endTime The end timestamp
      * @return A Flow of entries within the time range with relations
      */
     @Transaction
-    @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND entryTimestamp BETWEEN :startTime AND :endTime")
+    @Query(
+        """
+        SELECT *
+        FROM entry_view
+        WHERE accountId = :accountId
+          AND entryTimestamp BETWEEN :startTime AND :endTime
+          AND entryTimestamp IN (
+            SELECT MAX(entryTimestamp)
+            FROM entry_view
+            WHERE accountId = :accountId
+              AND entryTimestamp BETWEEN :startTime AND :endTime
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp/1000, 'unixepoch'))
+          )
+        ORDER BY entryTimestamp DESC
+    """,
+    )
     fun getEntriesByTimeRange(
         accountId: String,
         startTime: String,
@@ -351,4 +367,169 @@ interface EntryDao {
      */
     @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
     suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
+
+    /**
+     * Get monthly averages of body scale data for an account.
+     *
+     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
+     * all relevant body scale and metric fields. If you need to reuse this join pattern elsewhere,
+     * consider creating a database VIEW or a temporary table for maintainability and performance.
+     */
+    @Query(
+        """
+        SELECT
+          strftime('%Y-%m', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          MAX(e.entryTimestamp) AS entryTimestamp,
+          AVG(bse.weight) AS weight,
+          AVG(bse.bodyFat) AS bodyFat,
+          AVG(bse.muscleMass) AS muscleMass,
+          AVG(bse.water) AS water,
+          AVG(bse.bmi) AS bmi,
+          AVG(bsem.bmr) AS bmr,
+          AVG(bsem.metabolicAge) AS metabolicAge,
+          AVG(bsem.proteinPercent) AS proteinPercent,
+          AVG(bsem.pulse) AS pulse,
+          AVG(bsem.skeletalMusclePercent) AS skeletalMusclePercent,
+          AVG(bsem.subcutaneousFatPercent) AS subcutaneousFatPercent,
+          AVG(bsem.visceralFatLevel) AS visceralFatLevel,
+          AVG(bsem.boneMass) AS boneMass,
+          AVG(bsem.impedance) AS impedance,
+          MAX(bsem.unit) AS unit
+        FROM entry AS e
+        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
+        WHERE e.accountId = :accountId
+        GROUP BY period
+        ORDER BY period DESC
+    """,
+    )
+    fun getMonthlyBodyScaleAveragesWithJoin(
+        accountId: String
+    ): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Get the latest body scale entry for each month for an account.
+     *
+     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
+     * all relevant body scale and metric fields for the latest entry in each month. For repeated
+     * use, consider creating a VIEW or temporary table.
+     */
+    @Query(
+        """
+        SELECT
+          strftime('%Y-%m', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          e.entryTimestamp,
+          bse.weight,
+          bse.bodyFat,
+          bse.muscleMass,
+          bse.water,
+          bse.bmi,
+          bsem.bmr,
+          bsem.metabolicAge,
+          bsem.proteinPercent,
+          bsem.pulse,
+          bsem.skeletalMusclePercent,
+          bsem.subcutaneousFatPercent,
+          bsem.visceralFatLevel,
+          bsem.boneMass,
+          bsem.impedance,
+          bsem.unit
+        FROM entry AS e
+        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
+        WHERE e.accountId = :accountId
+          AND e.entryTimestamp IN (
+            SELECT MAX(entryTimestamp)
+            FROM entry
+            WHERE accountId = :accountId
+            GROUP BY strftime('%Y-%m', datetime(entryTimestamp/1000, 'unixepoch'))
+          )
+        ORDER BY period DESC
+    """,
+    )
+    fun getMonthlyBodyScaleLatestWithJoin(
+        accountId: String
+    ): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Get daywise averages of body scale data for an account.
+     *
+     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
+     * all relevant body scale and metric fields by day. For repeated use, consider a VIEW or temp table.
+     */
+    @Query(
+        """
+        SELECT
+          strftime('%Y-%m-%d', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          MAX(e.entryTimestamp) AS entryTimestamp,
+          AVG(bse.weight) AS weight,
+          AVG(bse.bodyFat) AS bodyFat,
+          AVG(bse.muscleMass) AS muscleMass,
+          AVG(bse.water) AS water,
+          AVG(bse.bmi) AS bmi,
+          AVG(bsem.bmr) AS bmr,
+          AVG(bsem.metabolicAge) AS metabolicAge,
+          AVG(bsem.proteinPercent) AS proteinPercent,
+          AVG(bsem.pulse) AS pulse,
+          AVG(bsem.skeletalMusclePercent) AS skeletalMusclePercent,
+          AVG(bsem.subcutaneousFatPercent) AS subcutaneousFatPercent,
+          AVG(bsem.visceralFatLevel) AS visceralFatLevel,
+          AVG(bsem.boneMass) AS boneMass,
+          AVG(bsem.impedance) AS impedance,
+          MAX(bsem.unit) AS unit
+        FROM entry AS e
+        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
+        WHERE e.accountId = :accountId
+        GROUP BY period
+        ORDER BY period DESC
+    """,
+    )
+    fun getDaywiseBodyScaleAveragesWithJoin(
+        accountId: String
+    ): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Get the latest body scale entry for each day for an account.
+     *
+     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
+     * all relevant body scale and metric fields for the latest entry in each day. For repeated
+     * use, consider a VIEW or temp table.
+     */
+    @Query(
+        """
+        SELECT
+          strftime('%Y-%m-%d', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          e.entryTimestamp,
+          bse.weight,
+          bse.bodyFat,
+          bse.muscleMass,
+          bse.water,
+          bse.bmi,
+          bsem.bmr,
+          bsem.metabolicAge,
+          bsem.proteinPercent,
+          bsem.pulse,
+          bsem.skeletalMusclePercent,
+          bsem.subcutaneousFatPercent,
+          bsem.visceralFatLevel,
+          bsem.boneMass,
+          bsem.impedance,
+          bsem.unit
+        FROM entry AS e
+        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
+        WHERE e.accountId = :accountId
+          AND e.entryTimestamp IN (
+            SELECT MAX(entryTimestamp)
+            FROM entry
+            WHERE accountId = :accountId
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp/1000, 'unixepoch'))
+          )
+        ORDER BY period DESC
+    """,
+    )
+    fun getDaywiseBodyScaleLatestWithJoin(
+        accountId: String
+    ): Flow<List<PeriodBodyScaleSummary>>
 }
