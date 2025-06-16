@@ -23,16 +23,16 @@ struct LoadingScreen: View {
                 logoView
                     .frame(width: 234, height: 78)
 
-                HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .center, spacing: .spacingXS) {
                     Text(lang.loading)
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.backgroundPrimary)
                     
                     LoadingDotsView(color: theme.brandMeAppPrimary)
-                    .offset(y: 7)
+                        .offset(y: .spacingXS)
                     
                 }
-                .padding(.top, 40)
+                .padding(.top, .spacingXL)
 
                 Spacer()
 
