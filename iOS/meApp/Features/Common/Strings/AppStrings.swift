@@ -100,4 +100,5 @@ struct AppAssets {
     static let stampDark = "stampDark"
     static let phone = "phone"
     static let email = "email"
+    static let loader = "loader"
 }
