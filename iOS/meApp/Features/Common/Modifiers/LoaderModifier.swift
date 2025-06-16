@@ -45,19 +45,12 @@ struct LoaderModifier: ViewModifier {
             content
 
             if let loader = loaderData {
-                // Dimmed full screen background
                 theme.supportOverlay
                     .ignoresSafeArea()
 
                 // Loader content
                 HStack(spacing: 8) {
-                    AppIconView(icon: AppAssets.loader, size: IconSize(width: 22, height: 22))
-                        .foregroundColor(theme.textHeading)
-                        .rotationEffect(.degrees(isAnimating ? 360 : 0))
-                        .animation(.linear(duration: 1.0).repeatForever(autoreverses: false), value: isAnimating)
-                        .onAppear {
-                            isAnimating = true
-                        }
+                    LoadingSpinnerIndicator()
                     Text(loader.text)
                         .fontOpenSans(.heading5)
                         .foregroundColor(theme.textHeading)
