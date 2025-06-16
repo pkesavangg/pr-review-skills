@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.sample
+package com.greatergoods.meapp.features.home
 
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
