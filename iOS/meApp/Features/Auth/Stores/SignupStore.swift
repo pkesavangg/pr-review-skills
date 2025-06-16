@@ -195,7 +195,10 @@ final class SignupStore: ObservableObject {
                 password: password,
                 profile: profile
             )
-            //TODO: Have to set the goal after signup
+            // Create the goal if it's not skipped
+            if let goal = goal {
+                let _ = try await accountService.createGoal(goal)
+            }
         } catch {
             handleSignupError(error)
         }
@@ -260,7 +263,7 @@ final class SignupStore: ObservableObject {
     
     private func handleSignupError(_ error: Error) {
         var toastMessage: String?
-        var toastTitle: String = toastLang.errorCreatingAccount
+        let toastTitle: String = toastLang.errorCreatingAccount
 
         switch error {
         case HTTPError.badRequest:
