@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.auth
+package com.greatergoods.meapp.features.auth.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
