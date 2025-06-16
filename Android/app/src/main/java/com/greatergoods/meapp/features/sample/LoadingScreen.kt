@@ -1,14 +1,23 @@
 package com.greatergoods.meapp.features.sample
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.R
 import com.greatergoods.meapp.features.common.components.MEImage
+import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.delay
 import android.content.res.Configuration
@@ -84,37 +94,59 @@ fun LoadingScreen() {
  * Composable for the 'loading . . .' text with colored dots.
  */
 @Composable
-private fun LoadingDotsText() {
-    val dotColor = MeAppTheme.colorScheme.brand
-    var dotCount by remember { mutableStateOf(1) }
-
-    // Animate the dot count
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(400)
-            dotCount = if (dotCount == 3) 1 else dotCount + 1
+private fun LoadingDotsText(
+    baseText: String = "Loading",
+    dotCount: Int = 3,
+    delayBetweenDots: Int = 150,
+    modifier: Modifier = Modifier
+) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+        ) {
+            Text(text = baseText, fontSize = 20.sp)
+            Spacer(modifier = Modifier.width(4.dp))
+            AnimatedDots(dotCount = dotCount, delayBetweenDots = delayBetweenDots)
         }
     }
 
-    Text(
-        buildAnnotatedString {
-            append("loading ")
-            repeat(dotCount) { i ->
-                withStyle(
-                    SpanStyle(
-                        color = if (i == 2) dotColor else MeAppTheme.colorScheme.inverse
-                    )
-                ) { append(".") }
+    @Composable
+    fun AnimatedDots(dotCount: Int, delayBetweenDots: Int) {
+        Row {
+            for (i in 0 until dotCount) {
+                AnimatedDot(index = i, delayBetweenDots = delayBetweenDots)
             }
-        },
-        fontSize = 16.sp,
-        color = MeAppTheme.colorScheme.inverse,
-        style = MeAppTheme.typography.subHeading1,
-        fontWeight = FontWeight.Normal,
-    )
-}
+        }
+    }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
+    @Composable
+    fun AnimatedDot(index: Int, delayBetweenDots: Int) {
+        val transition = rememberInfiniteTransition(label = "dotTransition")
+        val offsetY by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = -6f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(
+                    durationMillis = 600,
+                    delayMillis = index * delayBetweenDots,
+                    easing = FastOutSlowInEasing
+                ),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "offsetY"
+        )
+
+        Text(
+            text = ".",
+            fontSize = 20.sp,
+            modifier = Modifier
+                .offset(y = offsetY.dp)
+                .padding(horizontal = 1.dp)
+        )
+    }
+
+
+@PreviewTheme
 @Composable
 fun LoadingScreenPreviewLight() {
     MeAppTheme {
@@ -122,10 +154,4 @@ fun LoadingScreenPreviewLight() {
     }
 }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
-@Composable
-fun LoadingScreenPreviewDark() {
-    MeAppTheme {
-        LoadingScreen()
-    }
-}
+
