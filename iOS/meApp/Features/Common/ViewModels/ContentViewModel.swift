@@ -83,4 +83,14 @@ final class ContentViewModel: ObservableObject {
     private func areNotificationsRequired() async -> Bool {
         await pushNotificationService.isNotificationAuthorized()
     }
+    
+    @MainActor
+     func forceLogout() async {
+       do {
+         try await accountService.logOut(accountId: accountService.activeAccount?.accountId)
+         await performAppInitialization()
+       } catch {
+         logger.log(level: .error, tag: "ContentViewModel", message: "Force logout failed: \(error)")
+       }
+     }
 }
