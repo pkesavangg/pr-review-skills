@@ -30,8 +30,8 @@ import com.greatergoods.meapp.theme.MeAppTheme
  */
 @Composable
 fun BaseModal(
-    primaryAction: ActionButton,
     modifier: Modifier = Modifier,
+    primaryAction: ActionButton? = null,
     title: String? = null,
     body: String? = null,
     secondaryAction: ActionButton? = null,
@@ -76,33 +76,37 @@ fun BaseModal(
                 }
             }
         }
-        Column(
-            modifier =
-                Modifier
-                    .padding(MeAppTheme.spacing.md),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+        if (secondaryAction != null || primaryAction != null) {
+            Column(
+                modifier =
+                    Modifier
+                        .padding(MeAppTheme.spacing.md),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                if (secondaryAction != null) {
-                    AppButton(
-                        label = secondaryAction.text,
-                        onClick = secondaryAction.action,
-                        type = ButtonType.InlineTextTertiary,
-                        size = ButtonSize.Small,
-                        modifier = Modifier,
-                    )
-                    Spacer(modifier = Modifier.width(MeAppTheme.spacing.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    if (secondaryAction != null) {
+                        AppButton(
+                            label = secondaryAction.text,
+                            onClick = secondaryAction.action,
+                            type = ButtonType.InlineTextTertiary,
+                            size = ButtonSize.Small,
+                            modifier = Modifier,
+                        )
+                        Spacer(modifier = Modifier.width(MeAppTheme.spacing.xs))
+                    }
+                    if (primaryAction != null) {
+                        AppButton(
+                            label = primaryAction.text,
+                            onClick = primaryAction.action,
+                            type = ButtonType.InlineTextPrimary,
+                            size = ButtonSize.Small,
+                            modifier = Modifier,
+                        )
+                    }
                 }
-                AppButton(
-                    label = primaryAction.text,
-                    onClick = primaryAction.action,
-                    type = ButtonType.InlineTextPrimary,
-                    size = ButtonSize.Small,
-                    modifier = Modifier,
-                )
             }
         }
     }
@@ -125,6 +129,12 @@ fun BaseModelPreview() {
             BaseModal(
                 title = "Header",
                 primaryAction = ActionButton(text = "Button", action = {}),
+            ) {
+                Text("Custom content")
+            }
+
+            BaseModal(
+                title = "Header",
             ) {
                 Text("Custom content")
             }

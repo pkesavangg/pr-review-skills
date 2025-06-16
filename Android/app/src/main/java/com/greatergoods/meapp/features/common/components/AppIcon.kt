@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -18,6 +19,7 @@ enum class AppIconType {
     Secondary,
     Tertiary,
     Danger,
+    Default,
 }
 
 object AppIconDefaults {
@@ -28,6 +30,7 @@ object AppIconDefaults {
             AppIconType.Secondary -> MeAppTheme.colorScheme.inverse
             AppIconType.Tertiary -> MeAppTheme.colorScheme.tertiaryAction
             AppIconType.Danger -> MeAppTheme.colorScheme.error
+            AppIconType.Default -> Color.Unspecified
         }
 }
 
@@ -35,12 +38,13 @@ object AppIconDefaults {
 fun AppIcon(
     @DrawableRes id: Int,
     contentDescription: String,
+    modifier: Modifier = Modifier,
     type: AppIconType = AppIconType.Primary,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = {},
 ) {
     val modifier =
-        Modifier
+        modifier
             .clickable(
                 indication = null,
                 interactionSource =
