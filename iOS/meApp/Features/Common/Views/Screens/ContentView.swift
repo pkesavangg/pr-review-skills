@@ -15,7 +15,7 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 32) {
-            LoadingPageView()
+            LoadingScreen()
         }
     }
 }
