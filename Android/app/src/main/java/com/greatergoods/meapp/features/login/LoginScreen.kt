@@ -1,165 +1,125 @@
 package com.greatergoods.meapp.features.login
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.common.components.*
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
+import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.theme.MeAppTheme
-import android.content.res.Configuration
+import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeAppTheme.spacing
+import com.greatergoods.meapp.theme.MeAppTheme.typography
 
 @Composable
-fun LoginScreen(
-    loginViewModel: LoginViewModel = hiltViewModel()
-) {
+fun LoginScreen() {
+    val loginViewModel: LoginViewModel = hiltViewModel()
+    val scope = rememberCoroutineScope()
+    val emailControl = remember { FormControl("", emptyList(), emptyList(), scope) }
+    val passwordControl = remember { FormControl("", emptyList(), emptyList(), scope) }
+    val isFormFilled = emailControl.value.isNotBlank() && passwordControl.value.isNotBlank()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MeAppTheme.colorScheme.primaryAction),
-    ) {
-        // Main content
+    AppScaffold(
+        title = null,
+        navigationIcon = {
+            AppIconButton(AppIcons.Default.Close) { }
+        },
+        actions = {
+            AppIconButton(AppIcons.Outlined.Help) {  }
+        },
+        containerColor = colorScheme.secondary
+    ) { scaffoldModifier ->
         Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 32.dp),
+            modifier = scaffoldModifier.padding(horizontal = spacing.sm, vertical = 0.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top
         ) {
-            Text(
-                text = "weightgurus is now",
-                color = MeAppTheme.colorScheme.inverse,
-                style = MeAppTheme.typography.subHeading1,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                text = "my everyday",
-                color = MeAppTheme.colorScheme.inverse,
-                style = MeAppTheme.typography.heading2,
-                fontWeight = FontWeight.W800,
-                fontSize = 50.sp,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "health",
-                color = MeAppTheme.colorScheme.brand,
-                style = MeAppTheme.typography.heading2,
-                fontWeight = FontWeight.W800,
-                fontSize = 50.sp,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                text = "LEARN MORE",
-                color = MeAppTheme.colorScheme.inverse,
-                style = MeAppTheme.typography.button1,
-                fontWeight = FontWeight.W700,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(40.dp))
-            Button(
-                onClick = { /* TODO: Sign up action */ },
-                modifier = Modifier
-                    .widthIn(min = 150.dp)
-                    .height(40.dp),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MeAppTheme.colorScheme.primary,
-                    contentColor = MeAppTheme.colorScheme.primaryAction,
-                ),
-            ) {
-                Text(
-                    text = "SIGN UP",
-                    style = MeAppTheme.typography.button1,
-                    fontWeight = FontWeight.W700,
-                    fontSize = 16.sp,
+            Spacer(Modifier.height(spacing.md))
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+                AppText(
+                    text = LoginStrings.WelcomeBack,
+                    textType = TextType.Title,
+                )
+                Spacer(Modifier.height(spacing.md))
+                AppInput(
+                    formControl = emailControl,
+                    label = LoginStrings.EmailLabel,
+                    type = AppInputType.TEXT,
+                    modifier = Modifier.fillMaxWidth(),
+                    showTrailingIcon = true
+                )
+                AppInput(
+                    formControl = passwordControl,
+                    label = LoginStrings.PasswordLabel,
+                    type = AppInputType.PASSWORD,
+                    modifier = Modifier.fillMaxWidth(),
+                    showTrailingIcon = true
+                )
+                Spacer(Modifier.height(spacing.lg))
+                AppButton(
+                    label = LoginStrings.LoginButton,
+                    enabled = isFormFilled,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    onClick = {
+                        //TODO: Integrate Login
+                    }
+                )
+                Spacer(Modifier.height(spacing.sm))
+                AppButton(
+                    label = LoginStrings.ForgotPassword,
+                    type = ButtonType.TextPrimary,
+                    size = ButtonSize.Medium,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    onClick = { }
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = {
-               loginViewModel.login(email = "vrengadevi@dmdbrands.com", password = "123456")
-                },
-                modifier = Modifier
-                    .widthIn(min = 150.dp)
-                    .height(40.dp),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MeAppTheme.colorScheme.primaryAction,
-                    contentColor = MeAppTheme.colorScheme.inverse,
-                ),
-                border = BorderStroke(
-                    width = 3.dp,
-                    color = MeAppTheme.colorScheme.primary,
-                ),
-            ) {
-                Text(
-                    text = "LOG IN",
-                    style = MeAppTheme.typography.button1,
-                    fontWeight = FontWeight.W700,
-                    fontSize = 16.sp,
+            Spacer(Modifier.weight(1f))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                AppText(
+                    text = LoginStrings.TermsAgreement,
+                    textType = TextType.Subtitle,
                 )
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Absolute.Center) {
+                    AppText(
+                        text = LoginStrings.TermsOfService,
+                        textType = TextType.link,
+                        action = {loginViewModel.openUrl(LoginStrings.TermsOfServiceUrl)}
+                    )
+                    Spacer(Modifier.padding(start = spacing.sm))
+                    Text(LoginStrings.And, style = typography.body4, color = colorScheme.body)
+                    Spacer(Modifier.padding(end = spacing.sm))
+                    AppText(
+                        text = LoginStrings.PrivacyPolicy,
+                        textType = TextType.link,
+                        action = {loginViewModel.openUrl(LoginStrings.PrivacyPolicyUrl)}
+                    )
+                }
             }
-        }
-        // Footer
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(bottom = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "me.health by greater goods",
-                color = MeAppTheme.colorScheme.inverse,
-                style = MeAppTheme.typography.subHeading2,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "version 1.0.0",
-                color = MeAppTheme.colorScheme.inverse,
-                style = MeAppTheme.typography.subHeading2,
-                textAlign = TextAlign.Center,
-            )
+            Spacer(Modifier.height(spacing.lg))
         }
     }
 }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
+@PreviewTheme
 @Composable
-fun LoginScreenPreviewLight() {
-    MeAppTheme {
-        LoginScreen()
-    }
-}
-
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
-@Composable
-fun LoginScreenPreviewDark() {
+fun LoginScreenPreview() {
     MeAppTheme {
         LoginScreen()
     }

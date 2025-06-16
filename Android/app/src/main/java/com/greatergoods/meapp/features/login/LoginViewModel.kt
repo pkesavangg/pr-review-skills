@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
@@ -20,6 +21,7 @@ class LoginViewModel
     @Inject
     constructor(
         private val authAPI: IAuthAPI,
+        private val customTabManager: ICustomTabManager
     ) : ViewModel() {
         private val _loginState = MutableStateFlow<LoginState>(LoginState.Initial)
         val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
@@ -30,6 +32,11 @@ class LoginViewModel
 
         private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Initial)
         val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
+
+
+        fun openUrl(url: String) {
+            customTabManager.openChromeTab(url)
+        }
 
         fun login(
             email: String,
