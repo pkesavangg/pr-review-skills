@@ -89,6 +89,48 @@ object LoaderDefaults {
         )
     }
 
+    // Public functions to return a modified version of the base config
+    fun dotConfig(
+        color: Color = baseDotConfig.color,
+        minRadius: Float = baseDotConfig.minRadius,
+        maxRadius: Float = baseDotConfig.maxRadius,
+        durationMillis: Int = baseDotConfig.durationMillis,
+    ): LoaderConfig.Dot =
+        baseDotConfig.copy(
+            color = color,
+            minRadius = minRadius,
+            maxRadius = maxRadius,
+            durationMillis = durationMillis,
+        )
+
+    fun dashedConfig(
+        color: Color = baseDashedConfig.color,
+        size: Dp = baseDashedConfig.size,
+        strokeWidth: Float = baseDashedConfig.strokeWidth,
+        dashLength: Float = baseDashedConfig.dashLength,
+        gapLength: Float = baseDashedConfig.gapLength,
+        sweepAngle: Float = baseDashedConfig.sweepAngle,
+    ): LoaderConfig.Dashed =
+        baseDashedConfig.copy(
+            color = color,
+            size = size,
+            strokeWidth = strokeWidth,
+            dashLength = dashLength,
+            gapLength = gapLength,
+            sweepAngle = sweepAngle,
+        )
+
+    fun circularConfig(
+        color: Color = baseCircularConfig.color,
+        strokeWidth: Dp = baseCircularConfig.strokeWidth,
+        size: Float = baseCircularConfig.size,
+    ): LoaderConfig.Circular =
+        baseCircularConfig.copy(
+            color = color,
+            strokeWidth = strokeWidth,
+            size = size,
+        )
+
     fun defaultFor(style: LoaderStyle): LoaderConfig =
         when (style) {
             LoaderStyle.CIRCULAR -> baseCircularConfig

@@ -4,7 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.AnimationUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog

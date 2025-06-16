@@ -14,20 +14,19 @@ struct SexStepView: View {
     let sexStepLang = SignupStrings.SexStep.self
 
     var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading) {
-                Text(sexStepLang.title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXL)
-                
-                Text(sexStepLang.subtitle)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingXS)
-
-                HStack(spacing: 32) {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(sexStepLang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
                     
+                    Text(sexStepLang.subtitle)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textHeading)
+                }
+
+                HStack(spacing: .spacingLG) {
                     ForEach(Sex.allCases, id: \.self) { sex in
                         SelectableCircleButton(
                             label: sex.rawValue.uppercased(),

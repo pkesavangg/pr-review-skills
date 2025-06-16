@@ -71,7 +71,7 @@ internal object DarkColorToken {
 
 
     // Text
-    val heading = ColorPalette.Neutral650
+    val heading = ColorPalette.Neutral700
     val body = ColorPalette.Neutral650
     val subheading = ColorPalette.Neutral600
     val error = ColorPalette.Red500

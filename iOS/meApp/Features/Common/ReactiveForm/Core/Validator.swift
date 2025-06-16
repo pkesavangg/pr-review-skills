@@ -143,8 +143,8 @@ extension Validator where Value == Date {
 // MARK: - Validation Rules
 private struct Rule {
     /// A regular expression that matches valid e-mail addresses.
-    static let emailPattern = ##"^(?=.{1,254}$)(?=.{1,64}@)[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"##
-    
+    static let emailPattern = #"(?i)^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})$"#
+
     /// A regular expression that matches valid URLs.
     static let urlPattern = ##"^(https?://)?(www\\.)?[a-zA-Z0-9@:%._\\+~#?&//=]{2,256}\\.[a-z]{2,6}\\b(?:[-a-zA-Z0-9@:%._\\+~#?&//=]*)$"##
     
@@ -161,8 +161,7 @@ private struct Rule {
     }
     
     static func email(_ string: String) -> Bool {
-        NSPredicate(format:"SELF MATCHES %@", emailPattern)
-            .evaluate(with: string)
+        return string.range(of: emailPattern, options: [.regularExpression, .caseInsensitive]) != nil
     }
     
     static func minLength(_ string: String, minimumLength: Int) -> Bool {

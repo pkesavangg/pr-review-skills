@@ -17,6 +17,27 @@ sealed class AppRoute : NavKey {
     }
 
     /**
+     * Main navigation routes for the app.
+     */
+    @Serializable
+    sealed class Main : AppRoute() {
+        @Serializable
+        data object Dashboard : Main()
+
+        @Serializable
+        data object Entry : Main()
+
+        @Serializable
+        data object History : Main()
+
+        @Serializable
+        data object Settings : Main()
+
+        @Serializable
+        data object AppSync : Main()
+    }
+
+    /**
      * Authentication-related navigation routes.
      */
     @Serializable

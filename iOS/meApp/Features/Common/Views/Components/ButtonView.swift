@@ -96,6 +96,7 @@ struct TestingCommonButtonsView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         TestingCommonButtonsView()
+            .background(.gray)
     }
 }
 

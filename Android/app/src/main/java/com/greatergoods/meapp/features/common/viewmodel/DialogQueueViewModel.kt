@@ -142,7 +142,6 @@ class DialogQueueViewModel @Inject constructor(
         if (!showNext) {
             dialogQueueService.clear()
         }
-    }
 
     fun dismissToast() {
         dialogQueueService.dismissToast()
@@ -190,27 +189,53 @@ class DialogQueueViewModel @Inject constructor(
                     delayMillis = delayMillis,
                 )
 
-                is DialogModel.Confirm -> enqueueConfirm(
-                    title = current.title,
-                    message = current.message,
-                    confirmText = current.confirmText,
-                    cancelText = current.cancelText,
-                    onConfirm = current.onConfirm,
-                    onCancel = current.onCancel,
-                    onDismiss = current.onDismiss,
-                    priority = current.confirmPriority,
-                    delayMillis = delayMillis,
-                )
+                    else -> {}
+                }
+            }
+        }
 
-                is DialogModel.Custom -> enqueueCustomDialog(
-                    contentKey = current.contentKey,
-                    params = current.params,
-                    onDismiss = current.onDismiss,
-                    priority = current.customPriority,
-                    delayMillis = delayMillis,
-                )
+        /**
+         * Update the priority of the current dialog
+         */
+        override fun updateCurrentDialogPriority(priority: Int) {
+            val current = dialogQueueService.currentDialog.value
+            if (current != null) {
+                dialogQueueService.dismissCurrent()
+                when (current) {
+                    is DialogModel.Alert ->
+                        enqueueAlert(
+                            title = current.title,
+                            message = current.message,
+                            dismissText = current.dismissText,
+                            onDismiss = current.onDismiss,
+                            priority = priority,
+                            delayMillis = current.alertDelayMillis,
+                        )
 
-                else -> {}
+                    is DialogModel.Confirm ->
+                        enqueueConfirm(
+                            title = current.title,
+                            message = current.message,
+                            confirmText = current.confirmText,
+                            cancelText = current.cancelText,
+                            onConfirm = current.onConfirm,
+                            onCancel = current.onCancel,
+                            onDismiss = current.onDismiss,
+                            priority = priority,
+                            delayMillis = current.confirmDelayMillis,
+                        )
+
+                    is DialogModel.Custom ->
+                        enqueueCustomDialog(
+                            contentKey = current.contentKey,
+                            params = current.params,
+                            onDismiss = current.onDismiss,
+                            priority = priority,
+                            delayMillis = current.customDelayMillis,
+                        )
+
+                    else -> {}
+                }
             }
         }
     }
