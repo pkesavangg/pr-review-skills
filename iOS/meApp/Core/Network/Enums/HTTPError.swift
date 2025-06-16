@@ -1,5 +1,5 @@
 //
-//  NetworkError.swift
+//  HTTPError.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 28/05/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-// MARK: - Network Error
+// MARK: - HTTP Error
 enum HTTPError: Error, LocalizedError {
     case invalidURL
     case invalidResponse
