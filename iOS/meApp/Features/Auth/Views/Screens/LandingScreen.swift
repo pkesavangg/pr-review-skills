@@ -41,15 +41,15 @@ struct LandingScreen: View {
               .padding(.horizontal, 118)
               .padding(.bottom,50)
               
-              
               VStack(alignment: .center, spacing: 16){
                   ButtonView(text: lang.signUp, type: .secondary, size: .regular, isDisabled: false, action: {router.navigate(to: .signup)})
-                  ButtonView(text: lang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {})
+                  ButtonView(text: lang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {
+                      // TODO: Replace with navigation to the login view
+                  })
               }
               .padding(.bottom, 150)
               .padding(.horizontal,105)
-              
-                            
+                                          
               Spacer()
 
               VersionAndCopyrightView()
