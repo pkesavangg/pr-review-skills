@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
@@ -32,6 +33,7 @@ struct ContentView: View {
         }
     }
 }
+
 #Preview {
     ContentView()
         .environmentObject(Theme.shared)
