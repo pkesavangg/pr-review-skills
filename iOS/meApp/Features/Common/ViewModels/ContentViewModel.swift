@@ -78,7 +78,6 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - View Texts - For Testing Purposes.
     func dashboardTextView() -> String { "Dashboard Screen" }
-    func landingTextView() -> String { "Landing Screen" }
 
     // MARK: - Notification Permission Logic
     private func areNotificationsRequired() async -> Bool {
