@@ -15,20 +15,4 @@ open class BaseViewModel @Inject constructor() : ViewModel() {
     @Inject
     lateinit var dialogQueueService: IDialogQueueService
 
-    init {
-        injectDependencies()
-    }
-
-    private fun injectDependencies() {
-        AppLog.e("HomeViewModel", "HomeViewModel init")
-
-        // val entryPoint =
-        //     EntryPointAccessors.fromApplication(
-        //         MeAppApplication.instance,
-        //         ViewModelServiceEntryPoint::class.java,
-        //     )
-        //
-        // navigationService = entryPoint.navigationService
-        // dialogQueueService = entryPoint.dialogQueueService
-    }
 }
