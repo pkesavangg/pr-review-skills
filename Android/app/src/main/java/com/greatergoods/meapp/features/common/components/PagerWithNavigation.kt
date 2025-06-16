@@ -14,20 +14,20 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.launch
 
 @Composable
-fun <T> PagerWithBottomNavigation(
+fun <T> HorizontalPagerWithBottomNavigation(
     steps: List<T>,
     pagerState: PagerState,
     modifier: Modifier = Modifier,
     leadingContent: @Composable () -> Unit,
-    middleContent: @Composable () -> Unit,
+    middleContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable () -> Unit,
     progressIndicator: @Composable (() -> Unit)? = null,
     pageContent: @Composable (T) -> Unit,
 ) {
-    BottomAppBar(
+    PagerBottomAppBar(
         modifier = modifier,
         leadingContent = leadingContent,
-        middleContent = middleContent,
+        middleContent = { middleContent?.invoke() },
         trailingContent = trailingContent,
         content = { innerModifier ->
             progressIndicator?.invoke() // show if provided
@@ -62,7 +62,7 @@ fun PagerWithBottomNavigationPreview() {
         val isFirstPage = currentPage == 0
         val isLastPage = currentPage == pages.lastIndex
 
-        PagerWithBottomNavigation(
+        HorizontalPagerWithBottomNavigation(
             steps = pages,
             pagerState = pagerState,
             leadingContent = {

@@ -35,10 +35,10 @@ import kotlinx.coroutines.launch
  * @param content A composable function that defines the content of the BottomAppBar.
  */
 @Composable
-fun BottomAppBar(
+fun PagerBottomAppBar(
     modifier: Modifier = Modifier,
     leadingContent: @Composable () -> Unit,
-    middleContent: @Composable () -> Unit,
+    middleContent: @Composable () -> Unit = {},
     trailingContent: @Composable () -> Unit,
     content: @Composable (modifier: Modifier) -> Unit,
 ) {
@@ -87,7 +87,7 @@ fun BottomAppBarPreview() {
         val isLastPage = pagerState.currentPage == myPages.lastIndex
         val nextLabel = if (isLastPage) "DONE" else "NEXT"
 
-        BottomAppBar (
+        PagerBottomAppBar (
             leadingContent = {
                 AppButton(type = ButtonType.TextPrimary, label = "BACK", size = ButtonSize.Small) {
                     if (!isFirstPage) {
