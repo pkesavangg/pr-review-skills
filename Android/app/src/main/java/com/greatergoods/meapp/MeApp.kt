@@ -25,7 +25,7 @@ fun MeApp() {
     val topLevelBackStack =
         rememberTopLevelBackStack(
             Pair(AppRoute.App, AppRoute.Init.Loading),
-            AppRoute.Auth.LoginScreen,
+            AppRoute.Auth.Login,
             Pair(AppRoute.Home, AppRoute.Main.Dashboard),
         )
     MeAppTheme(themeMode = uiState.themeMode) {

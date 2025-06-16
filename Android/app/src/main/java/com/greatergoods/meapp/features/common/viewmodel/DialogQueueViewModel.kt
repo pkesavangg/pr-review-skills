@@ -1,12 +1,15 @@
 package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.components.LoaderConfig
+import com.greatergoods.meapp.features.common.components.LoaderDefaults
+import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.model.Toast
-import com.greatergoods.meapp.features.common.service.DialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -16,230 +19,222 @@ import javax.inject.Inject
  * Use this ViewModel in screens or globally to push dialogs.
  */
 @HiltViewModel
-class DialogQueueViewModel
-    @Inject
-    constructor(
-        private val dialogQueueService: DialogQueueService,
-    ) : ViewModel(),
-        IDialogQueueHandler {
-        override val currentDialog: StateFlow<DialogModel?> = dialogQueueService.currentDialog
-        override val currentToast: StateFlow<Toast?> = dialogQueueService.currentToast
+class DialogQueueViewModel @Inject constructor(
+    private val dialogQueueService: IDialogQueueService
+) : ViewModel() {
 
-        /**
-         * Enqueue an alert dialog
-         */
-        override fun enqueueAlert(
-            title: String,
-            message: String,
-            dismissText: String,
-            onDismiss: () -> Unit,
-            priority: Int,
-            delayMillis: Long,
-        ) {
-            dialogQueueService.enqueue(
-                DialogModel.Alert(
-                    title = title,
-                    message = message,
-                    dismissText = dismissText,
-                    onDismiss = onDismiss,
-                    alertPriority = priority,
-                    alertDelayMillis = delayMillis,
-                ),
-            )
-        }
+    val currentDialog: StateFlow<DialogModel?> = dialogQueueService.currentDialog
+    val currentToast: StateFlow<Toast?> = dialogQueueService.currentToast
+    val loader: StateFlow<Loader?> = dialogQueueService.loader
 
-        /**
-         * Enqueue a confirmation dialog
-         */
-        override fun enqueueConfirm(
-            title: String,
-            message: String,
-            confirmText: String,
-            cancelText: String,
-            onConfirm: (() -> Unit)?,
-            onCancel: (() -> Unit)?,
-            onDismiss: () -> Unit,
-            priority: Int,
-            delayMillis: Long,
-        ) {
-            dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    title = title,
-                    message = message,
-                    confirmText = confirmText,
-                    cancelText = cancelText,
-                    onConfirm = onConfirm,
-                    onCancel = onCancel,
-                    onDismiss = onDismiss,
-                    confirmPriority = priority,
-                    confirmDelayMillis = delayMillis,
-                ),
-            )
-        }
+    /**
+     * Enqueue an alert dialog
+     */
+    fun enqueueAlert(
+        title: String,
+        message: String,
+        dismissText: String,
+        onDismiss: () -> Unit,
+        priority: Int,
+        delayMillis: Long
+    ) {
+        dialogQueueService.enqueue(
+            DialogModel.Alert(
+                title = title,
+                message = message,
+                dismissText = dismissText,
+                onDismiss = onDismiss,
+                alertPriority = priority,
+                alertDelayMillis = delayMillis,
+            ),
+        )
+    }
 
-        /**
-         * Enqueue a custom dialog with arbitrary parameters
-         */
-        override fun enqueueCustomDialog(
-            contentKey: DialogType,
-            params: Map<String, Any?>,
-            onDismiss: () -> Unit,
-            priority: Int,
-            delayMillis: Long,
-        ) {
-            dialogQueueService.enqueue(
-                DialogModel.Custom(
-                    contentKey = contentKey,
-                    params = params,
-                    onDismiss = onDismiss,
-                    customPriority = priority,
-                    customDelayMillis = delayMillis,
-                ),
-            )
-        }
+    /**
+     * Enqueue a confirmation dialog
+     */
+    fun enqueueConfirm(
+        title: String,
+        message: String,
+        confirmText: String,
+        cancelText: String,
+        onConfirm: (() -> Unit)?,
+        onCancel: (() -> Unit)?,
+        onDismiss: () -> Unit,
+        priority: Int,
+        delayMillis: Long
+    ) {
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title = title,
+                message = message,
+                confirmText = confirmText,
+                cancelText = cancelText,
+                onConfirm = onConfirm,
+                onCancel = onCancel,
+                onDismiss = onDismiss,
+                confirmPriority = priority,
+                confirmDelayMillis = delayMillis,
+            ),
+        )
+    }
 
-        /**
-         * Enqueue a toast message
-         */
-        override fun enqueueToast(
-            message: String,
-            title: String?,
-            action: ActionButton?,
-        ) {
-            dialogQueueService.showToast(
-                Toast(
-                    message = message,
-                    title = title,
-                    action = action,
-                ),
-            )
-        }
+    /**
+     * Enqueue a custom dialog with arbitrary parameters
+     */
+    fun enqueueCustomDialog(
+        contentKey: DialogType,
+        params: Map<String, Any?>,
+        onDismiss: () -> Unit,
+        priority: Int,
+        delayMillis: Long
+    ) {
+        dialogQueueService.enqueue(
+            DialogModel.Custom(
+                contentKey = contentKey,
+                params = params,
+                onDismiss = onDismiss,
+                customPriority = priority,
+                customDelayMillis = delayMillis,
+            ),
+        )
+    }
 
-        /**
-         * Dismiss the current dialog and optionally show the next one
-         */
-        override fun dismissCurrent(showNext: Boolean) {
-            dialogQueueService.dismissCurrent()
-            if (!showNext) {
-                dialogQueueService.clear()
-            }
-        }
+    fun showLoader(
+        message: String,
+        loaderStyle: LoaderStyle = LoaderStyle.DASHED,
+        loaderConfig: LoaderConfig = LoaderDefaults.defaultFor(loaderStyle)
+    ) {
+        dialogQueueService.showLoader(
+            Loader(
+                message = message,
+                style = loaderStyle,
+                config = loaderConfig,
+            ),
+        )
+    }
 
-        override fun dismissToast() {
-            dialogQueueService.dismissToast()
-        }
+    fun dismissLoader() {
+        dialogQueueService.dismissLoader()
+    }
 
-        /**
-         * Clear all dialogs from the queue
-         */
-        override fun clear() {
+    /**
+     * Enqueue a toast message
+     */
+    fun enqueueToast(
+        message: String,
+        title: String?,
+        action: ActionButton?
+    ) {
+        dialogQueueService.showToast(
+            Toast(
+                message = message,
+                title = title,
+                action = action,
+            ),
+        )
+    }
+
+    /**
+     * Dismiss the current dialog and optionally show the next one
+     */
+    fun dismissCurrent(showNext: Boolean = true) {
+        dialogQueueService.dismissCurrent()
+        if (!showNext) {
             dialogQueueService.clear()
         }
+    }
 
-        /**
-         * Check if there are any dialogs in the queue
-         */
-        override fun hasPendingDialogs(): Boolean =
-            dialogQueueService.getQueueSize() > 0 || dialogQueueService.currentDialog.value != null
+    fun dismissToast() {
+        dialogQueueService.dismissToast()
+    }
 
-        /**
-         * Get the next dialog in the queue without dequeuing it
-         */
-        override fun peekNextDialog(): DialogModel? = dialogQueueService.peekNextDialog()
+    /**
+     * Clear all dialogs from the queue
+     */
+    fun clear() {
+        dialogQueueService.clear()
+    }
 
-        /**
-         * Get the number of dialogs in the queue
-         */
-        override fun getQueueSize(): Int =
-            dialogQueueService.getQueueSize() + (if (dialogQueueService.currentDialog.value != null) 1 else 0)
+    /**
+     * Check if there are any dialogs in the queue
+     */
+    fun hasPendingDialogs(): Boolean =
+        dialogQueueService.getQueueSize() > 0 || dialogQueueService.currentDialog.value != null
 
-        /**
-         * Update the delay of the current dialog
-         */
-        override fun updateCurrentDialogDelay(delayMillis: Long) {
-            val current = dialogQueueService.currentDialog.value
-            if (current != null) {
-                dialogQueueService.dismissCurrent()
-                when (current) {
-                    is DialogModel.Alert ->
-                        enqueueAlert(
-                            title = current.title,
-                            message = current.message,
-                            dismissText = current.dismissText,
-                            onDismiss = current.onDismiss,
-                            priority = current.alertPriority,
-                            delayMillis = delayMillis,
-                        )
+    /**
+     * Get the next dialog in the queue without dequeuing it
+     */
+    fun peekNextDialog(): DialogModel? =
+        dialogQueueService.peekNextDialog()
 
-                    is DialogModel.Confirm ->
-                        enqueueConfirm(
-                            title = current.title,
-                            message = current.message,
-                            confirmText = current.confirmText,
-                            cancelText = current.cancelText,
-                            onConfirm = current.onConfirm,
-                            onCancel = current.onCancel,
-                            onDismiss = current.onDismiss,
-                            priority = current.confirmPriority,
-                            delayMillis = delayMillis,
-                        )
+    /**
+     * Get the number of dialogs in the queue
+     */
+    fun getQueueSize(): Int =
+        dialogQueueService.getQueueSize() + (if (dialogQueueService.currentDialog.value != null) 1 else 0)
 
-                    is DialogModel.Custom ->
-                        enqueueCustomDialog(
-                            contentKey = current.contentKey,
-                            params = current.params,
-                            onDismiss = current.onDismiss,
-                            priority = current.customPriority,
-                            delayMillis = delayMillis,
-                        )
+    /**
+     * Update the delay of the current dialog
+     */
+    fun updateCurrentDialogDelay(delayMillis: Long) {
+        val current = dialogQueueService.currentDialog.value
+        if (current != null) {
+            dialogQueueService.dismissCurrent()
+            when (current) {
+                is DialogModel.Alert -> enqueueAlert(
+                    title = current.title,
+                    message = current.message,
+                    dismissText = current.dismissText,
+                    onDismiss = current.onDismiss,
+                    priority = current.alertPriority,
+                    delayMillis = delayMillis,
+                )
 
-                    else -> {}
-                }
-            }
-        }
-
-        /**
-         * Update the priority of the current dialog
-         */
-        override fun updateCurrentDialogPriority(priority: Int) {
-            val current = dialogQueueService.currentDialog.value
-            if (current != null) {
-                dialogQueueService.dismissCurrent()
-                when (current) {
-                    is DialogModel.Alert ->
-                        enqueueAlert(
-                            title = current.title,
-                            message = current.message,
-                            dismissText = current.dismissText,
-                            onDismiss = current.onDismiss,
-                            priority = priority,
-                            delayMillis = current.alertDelayMillis,
-                        )
-
-                    is DialogModel.Confirm ->
-                        enqueueConfirm(
-                            title = current.title,
-                            message = current.message,
-                            confirmText = current.confirmText,
-                            cancelText = current.cancelText,
-                            onConfirm = current.onConfirm,
-                            onCancel = current.onCancel,
-                            onDismiss = current.onDismiss,
-                            priority = priority,
-                            delayMillis = current.confirmDelayMillis,
-                        )
-
-                    is DialogModel.Custom ->
-                        enqueueCustomDialog(
-                            contentKey = current.contentKey,
-                            params = current.params,
-                            onDismiss = current.onDismiss,
-                            priority = priority,
-                            delayMillis = current.customDelayMillis,
-                        )
-
-                    else -> {}
-                }
+                else -> {}
             }
         }
     }
+
+    /**
+     * Update the priority of the current dialog
+     */
+    fun updateCurrentDialogPriority(priority: Int) {
+        val current = dialogQueueService.currentDialog.value
+        if (current != null) {
+            dialogQueueService.dismissCurrent()
+            when (current) {
+                is DialogModel.Alert -> enqueueAlert(
+                    title = current.title,
+                    message = current.message,
+                    dismissText = current.dismissText,
+                    onDismiss = current.onDismiss,
+                    priority = priority,
+                    delayMillis = current.alertDelayMillis,
+                )
+
+                is DialogModel.Confirm -> enqueueConfirm(
+                    title = current.title,
+                    message = current.message,
+                    confirmText = current.confirmText,
+                    cancelText = current.cancelText,
+                    onConfirm = current.onConfirm,
+                    onCancel = current.onCancel,
+                    onDismiss = current.onDismiss,
+                    priority = priority,
+                    delayMillis = current.confirmDelayMillis,
+                )
+
+                is DialogModel.Custom -> enqueueCustomDialog(
+                    contentKey = current.contentKey,
+                    params = current.params,
+                    onDismiss = current.onDismiss,
+                    priority = priority,
+                    delayMillis = current.customDelayMillis,
+                )
+
+                else -> {}
+            }
+        }
+    }
+}

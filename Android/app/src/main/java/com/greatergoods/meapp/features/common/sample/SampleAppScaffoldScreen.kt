@@ -29,7 +29,7 @@ fun SampleAppScaffoldScreen() {
 
     AppScaffold(
         title = "Sample App Scaffold",
-        modifier = Modifier.Companion.statusBarsPadding(),
+        modifier = Modifier.Companion.statusBarsPadding()
     ) { modifier ->
         Column(
             modifier =

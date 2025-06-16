@@ -57,6 +57,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val destination = intent?.getStringExtra("destination")
             AppLog.i("MainActivity", "Destination: $destination")
+            when (destination) {
+                // TODO "Add navigation routes here"
+            }
         }
     }
 
