@@ -6,7 +6,7 @@ import SwiftUI
 
 struct LoadingDotsView: View {
     let dotCount: Int = 3
-    var jumpHeight: CGFloat = 8
+    var jumpHeight: CGFloat = .spacingXS
     var animationDuration: Double = 1.5
     var color: Color = .primary
     var dotSize: CGFloat = 4
@@ -16,7 +16,7 @@ struct LoadingDotsView: View {
             let now = timeline.date.timeIntervalSinceReferenceDate
             let progress = now.truncatingRemainder(dividingBy: animationDuration) / animationDuration
             
-            HStack(spacing: 8) {
+            HStack(spacing: .spacingXS) {
                 ForEach(0..<dotCount, id: \.self) { index in
                     let phase = (progress - Double(index) * 0.16 + 1.0).truncatingRemainder(dividingBy: 1.0)
                     let y = -sin(phase * .pi) * jumpHeight
