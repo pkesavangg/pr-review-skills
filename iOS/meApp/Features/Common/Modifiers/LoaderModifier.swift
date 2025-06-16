@@ -39,27 +39,33 @@ import SwiftUI
 struct LoaderModifier: ViewModifier {
     @Environment(\.appTheme) private var theme
     @Binding var loaderData: LoaderModel?
-
+    @State private var isAnimating = false
     func body(content: Content) -> some View {
         ZStack {
             content
+
             if let loader = loaderData {
+                // Dimmed full screen background
                 theme.supportOverlay
                     .ignoresSafeArea()
-                HStack(spacing: .spacingXS) {
-                    HStack {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: theme.textHeading))
-                            .scaleEffect(1)
-                        Text(loader.text)
-                            .fontOpenSans(.body2)
-                            .foregroundColor(theme.textHeading)
-                    }
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: 200)
+
+                // Loader content
+                HStack(spacing: 8) {
+                    AppIconView(icon: AppAssets.loader, size: IconSize(width: 22, height: 22))
+                        .foregroundColor(theme.textHeading)
+                        .rotationEffect(.degrees(isAnimating ? 360 : 0))
+                        .animation(.linear(duration: 1.0).repeatForever(autoreverses: false), value: isAnimating)
+                        .onAppear {
+                            isAnimating = true
+                        }
+                    Text(loader.text)
+                        .fontOpenSans(.heading5)
+                        .foregroundColor(theme.textHeading)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
-                .frame(width: 269, height: 88)
+                .padding(.horizontal, 20)
+                .frame(height: 88)
                 .background(theme.backgroundPrimary)
                 .cornerRadius(.radiusSM)
             }
