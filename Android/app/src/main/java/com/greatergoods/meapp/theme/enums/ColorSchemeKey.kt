@@ -9,6 +9,7 @@ package com.greatergoods.meapp.theme.enums
 enum class ColorSchemeKey {
     // Background
     Primary,
+    PrimaryDisabled,
     Secondary,
 
     // Support
@@ -17,23 +18,36 @@ enum class ColorSchemeKey {
 
     // Action
     PrimaryAction,
-    DisabledState,
+    PrimaryActionDisabled,
     SecondaryAction,
-    SecondaryDisabled,
+    SecondaryActionDisabled,
+    TertiaryAction,
+    TertiaryActionDisabled,
+    Inverse,
+    InverseDisabled,
+    InverseSecondary,
+
+    // Status
+    Success,
+    Error,
+    ErrorDisabled,
+    Streak,
+    Utility,
+    IconPrimary,
+    IconPrimaryDisabled,
+    IconSecondary,
+    IconSecondaryDisabled,
+    Loading,
+    LoadingError,
 
     // Text
     Heading,
+    Body,
     Subheading,
     Error,
-    Disabled,
-    Inverse,
-    InverseSecondary,
-
-    // Icon
-    Goal,
-    Streak,
-    Utility,
+    ErrorDisabled,
 
     // Brand
-    Brand,
+    MeAppPrimary,
+    WgPrimary,
 }

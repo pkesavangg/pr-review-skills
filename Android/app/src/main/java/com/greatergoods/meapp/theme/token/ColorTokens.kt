@@ -16,37 +16,47 @@ import com.greatergoods.meapp.theme.enums.ColorPalette
 internal object LightColorToken {
     // Background
     val primary = ColorPalette.Neutral100
+    val primaryDisabled = ColorPalette.Neutral300
     val secondary = ColorPalette.Neutral150
 
     // Support
-    val overlay = ColorPalette.Neutral400
+    val overlay = ColorPalette.Neutral500
     val toastBackground = ColorPalette.Blue100
 
     // Action
     val primaryAction = ColorPalette.Blue900
     val primaryActionDisabled = ColorPalette.Blue500
     val secondaryAction = ColorPalette.Neutral900
-    val secondaryDisabled = ColorPalette.Neutral300
-    val tertiaryAction = ColorPalette.Neutral500
-    val tertiaryDisabled = ColorPalette.Neutral300
+    val secondaryActionDisabled = ColorPalette.Neutral400
+    val tertiaryAction = ColorPalette.Neutral600
+    val tertiaryActionDisabled = ColorPalette.Neutral400
+    val inverse = ColorPalette.Neutral100
+    val inverseDisabled = ColorPalette.Neutral300
+    val inverseSecondary = ColorPalette.Neutral150
+
+    // Status
+    val success = ColorPalette.Green100
+    val error = ColorPalette.Red900
+    val errorDisabled = ColorPalette.Red100
+    val streak = ColorPalette.Yellow100
+    val utility = ColorPalette.Neutral400
+    val iconPrimary = ColorPalette.Blue900
+    val iconPrimaryDisabled = ColorPalette.Blue500
+    val iconSecondary = ColorPalette.Neutral600
+    val iconSecondaryDisabled = ColorPalette.Neutral400
+    val loading = ColorPalette.Blue500
+    val loadingError = ColorPalette.Red100
 
     // Text
     val heading = ColorPalette.Neutral900
     val body = ColorPalette.Neutral900
-    val subheading = ColorPalette.Neutral500
-    val error = ColorPalette.Red900
-    val errorDisabled = ColorPalette.Red100
-    val inverse = ColorPalette.Neutral100
-    val inverseDisabled = ColorPalette.Neutral200
-    val inverseSecondary = ColorPalette.Neutral150
-
-    // Icon
-    val goal = ColorPalette.Green100
-    val streak = ColorPalette.Yellow200
-    val utility = ColorPalette.Neutral300
+    val subheading = ColorPalette.Neutral600
+    val textError = ColorPalette.Red900
+    val textErrorDisabled = ColorPalette.Red100
 
     // Brand
-    val brand = ColorPalette.Teal100
+    val meAppPrimary = ColorPalette.Teal100
+    val wgPrimary = ColorPalette.Blue900
 }
 
 /**
@@ -54,37 +64,46 @@ internal object LightColorToken {
  */
 internal object DarkColorToken {
     // Background
-    val background = ColorPalette.Neutral800
-    val secondary = ColorPalette.Neutral850
+    val primary = ColorPalette.Neutral100
+    val primaryDisabled = ColorPalette.Neutral300
+    val secondary = ColorPalette.Neutral150
 
     // Support
-    val overlay = ColorPalette.Neutral650
+    val overlay = ColorPalette.Neutral500
     val toastBackground = ColorPalette.Blue1000
 
     // Action
-    val primaryAction = ColorPalette.Blue950
-    val primaryActionDisabled = ColorPalette.Blue975
-    val secondaryAction = ColorPalette.Neutral700
-    val secondaryDisabled = ColorPalette.Neutral950
+    val primaryAction = ColorPalette.Blue900
+    val primaryActionDisabled = ColorPalette.Blue950
+    val secondaryAction = ColorPalette.Neutral900
+    val secondaryActionDisabled = ColorPalette.Neutral950
     val tertiaryAction = ColorPalette.Neutral600
-    val tertiaryDisabled = ColorPalette.Neutral950
+    val tertiaryActionDisabled = ColorPalette.Neutral950
+    val inverse = ColorPalette.Neutral100
+    val inverseDisabled = ColorPalette.Neutral300
+    val inverseSecondary = ColorPalette.Neutral150
 
-
-    // Text
-    val heading = ColorPalette.Neutral700
-    val body = ColorPalette.Neutral650
-    val subheading = ColorPalette.Neutral600
+    // Status
+    val success = ColorPalette.Green200
     val error = ColorPalette.Red500
     val errorDisabled = ColorPalette.Red950
-    val inverse = ColorPalette.Neutral800
-    val inverseDisabled = ColorPalette.Neutral750
-    val inverseSecondary = ColorPalette.Neutral850
+    val streak = ColorPalette.Yellow200
+    val utility = ColorPalette.Neutral950
+    val iconPrimary = ColorPalette.Blue900
+    val iconPrimaryDisabled = ColorPalette.Blue950
+    val iconSecondary = ColorPalette.Neutral600
+    val iconSecondaryDisabled = ColorPalette.Neutral950
+    val loading = ColorPalette.Blue950
+    val loadingError = ColorPalette.Red950
 
-    // Icon
-    val goal = ColorPalette.Green200
-    val streak = ColorPalette.Yellow100
-    val utility = ColorPalette.Neutral600
+    // Text
+    val heading = ColorPalette.Neutral900
+    val body = ColorPalette.Neutral900
+    val subheading = ColorPalette.Neutral600
+    val textError = ColorPalette.Red500
+    val textErrorDisabled = ColorPalette.Red950
 
     // Brand
-    val brand = ColorPalette.Teal200
+    val meAppPrimary = ColorPalette.Teal200
+    val wgPrimary = ColorPalette.Blue900
 }
