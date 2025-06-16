@@ -15,6 +15,7 @@ struct CommonStrings {
     static let back = "Back"
     static let save = "Save"
     static let skip = "Skip"
+    static let logIn = "Log in"
 }
 
 /// Constants for form validation error messages

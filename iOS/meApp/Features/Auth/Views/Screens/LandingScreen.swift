@@ -13,6 +13,7 @@ struct LandingScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var router: Router<AuthRoute>
     let lang = LandingScreenStrings.self
+    let commonLang = CommonStrings.self
     
   var body: some View {
       ZStack {
@@ -46,7 +47,7 @@ struct LandingScreen: View {
               
               VStack(alignment: .center, spacing: .spacingSM){
                   ButtonView(text: lang.signUp, type: .secondary, size: .regular, isDisabled: false, action: {router.navigate(to: .signup)})
-                  ButtonView(text: lang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {
+                  ButtonView(text: commonLang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {
                       // TODO: Replace with navigation to the login view
                   })
               }
