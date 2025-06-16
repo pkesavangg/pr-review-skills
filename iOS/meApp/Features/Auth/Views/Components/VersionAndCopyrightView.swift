@@ -15,7 +15,7 @@ struct VersionAndCopyrightView: View {
     }
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: .spacingXS) {
             Text(lang.copyright)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.backgroundPrimary)
@@ -23,7 +23,7 @@ struct VersionAndCopyrightView: View {
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.backgroundPrimary)
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 18)
+        .padding(.horizontal, .spacingSM)
+        .padding(.bottom, .spacingSM)
     }
 }
