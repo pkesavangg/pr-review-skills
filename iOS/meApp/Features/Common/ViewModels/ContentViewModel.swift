@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import UserNotifications
 
 @MainActor
 final class ContentViewModel: ObservableObject {
@@ -82,8 +83,6 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Notification Permission Logic
     private func areNotificationsRequired() async -> Bool {
-        // TODO: Replace with real logic to check if notifications are required for paired scales or user settings
-        // For now, always return true to mimic wgApp4 logic
-        return true
+        await pushNotificationService.isNotificationAuthorized()
     }
 }

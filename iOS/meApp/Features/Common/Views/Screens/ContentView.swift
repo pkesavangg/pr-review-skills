@@ -17,18 +17,14 @@ struct ContentView: View {
             if viewModel.isInitializing {
                 LoadingPageView()
             } else if viewModel.showDashboardText {
-                VStack(spacing: 16) {
                     Text(viewModel.dashboardTextView())
                         .fontOpenSans(.body1)
                         .foregroundColor(theme.textHeading)
-                }
+                
             } else if viewModel.showLandingText {
-                VStack(spacing: 16) {
                     Text(viewModel.landingTextView())
                         .fontOpenSans(.body1)
                         .foregroundColor(theme.textHeading)
-                    
-                }
             }
         }
         .task {
