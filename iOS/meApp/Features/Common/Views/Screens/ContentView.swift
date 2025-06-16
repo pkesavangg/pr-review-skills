@@ -17,7 +17,7 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 32) {
             if viewModel.isInitializing {
-                LoadingPageView()
+                LoadingScreen()
             } else if viewModel.showDashboardText {
                 Text(viewModel.dashboardTextView())
                     .fontOpenSans(.body1)
