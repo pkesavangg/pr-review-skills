@@ -5,17 +5,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerColors
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerFormatter
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerColors
 import androidx.compose.material3.TimePickerDefaults
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,36 +19,48 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
+
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
 /**
  * Represents the value for DateTimeInput.
+ * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
 sealed class DateTimeValue {
+    /**
+     * Represents a date value in milliseconds since epoch.
+     */
     data class Date(
         val millis: Long,
     ) : DateTimeValue()
 
+    /**
+     * Represents a time value as hour and minute.
+     */
     data class Time(
         val hour: Int,
         val minute: Int,
     ) : DateTimeValue()
 
+    /**
+     * Represents a combined date and time value.
+     */
     data class DateTime(
         val millis: Long,
         val hour: Int,
         val minute: Int,
     ) : DateTimeValue()
 
+    /**
+     * Returns a formatted string representation of the value, depending on the type.
+     */
     fun getString(): String =
         when (this) {
-            is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
+            is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
             is Time ->
                 SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
@@ -62,9 +70,8 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
-
             is DateTime -> {
-                val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
+                val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
                 val time =
                     SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                         Calendar
@@ -78,21 +85,30 @@ sealed class DateTimeValue {
             }
         }
 
+    /**
+     * Returns a formatted date string for the value, if applicable.
+     */
     fun getDateString(): String =
         when (this) {
-            is Date,
-            -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
-
-            is DateTime,
-            -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(millis))
-
+            is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
+            is DateTime -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
             else -> ""
         }
 
+    /**
+     * Returns a formatted time string for the value, if applicable.
+     */
     fun getTimeString(): String =
         when (this) {
-            is Time,
-            ->
+             is Time -> SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
+                    Calendar
+                        .getInstance()
+                        .apply {
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                        }.time,
+                )
+            is DateTime ->
                 SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
                         .getInstance()
@@ -101,29 +117,83 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
-
-            is DateTime,
-            ->
-                SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
-                    Calendar
-                        .getInstance()
-                        .apply {
-                            set(Calendar.HOUR_OF_DAY, hour)
-                            set(Calendar.MINUTE, minute)
-                        }.time,
-                )
-
             else -> ""
         }
 }
 
 /**
  * Enum for DateTimeInput mode.
+ * Determines which type of input (date, time, or both) is shown to the user.
  */
 enum class DateTimeInputMode {
     Date,
     Time,
     DateTime,
+}
+
+/**
+ * Default color and value providers for DateTimeInput components.
+ */
+object DateTimeInputDefaults {
+    /**
+     * Returns the color scheme for the DatePicker component.
+     */
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun getDatePickerColor(): DatePickerColors =
+        DatePickerDefaults.colors(
+            containerColor = MeAppTheme.colorScheme.primary,
+            titleContentColor = MeAppTheme.colorScheme.heading,
+            dayContentColor = MeAppTheme.colorScheme.body,
+            weekdayContentColor = MeAppTheme.colorScheme.body,
+            selectedDayContentColor = MeAppTheme.colorScheme.inverse,
+            selectedDayContainerColor = MeAppTheme.colorScheme.primaryAction,
+            todayContentColor = MeAppTheme.colorScheme.primaryAction,
+            todayDateBorderColor = MeAppTheme.colorScheme.primaryAction,
+            dividerColor = MeAppTheme.colorScheme.utility,
+            navigationContentColor = MeAppTheme.colorScheme.primaryAction,
+            yearContentColor = MeAppTheme.colorScheme.body,
+            currentYearContentColor = MeAppTheme.colorScheme.body,
+            selectedYearContentColor = MeAppTheme.colorScheme.body,
+            headlineContentColor = MeAppTheme.colorScheme.body,
+            dateTextFieldColors =
+                TextFieldDefaults.colors(
+                    focusedTextColor = MeAppTheme.colorScheme.primaryAction,
+                ),
+        )
+
+    /**
+     * Returns the color scheme for the TimePicker component.
+     */
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun getTimePickerColor(): TimePickerColors =
+        TimePickerDefaults.colors(
+            clockDialColor = MeAppTheme.colorScheme.secondary,
+            clockDialSelectedContentColor = MeAppTheme.colorScheme.inverse,
+            clockDialUnselectedContentColor = MeAppTheme.colorScheme.body,
+            selectorColor = MeAppTheme.colorScheme.primaryAction,
+            periodSelectorBorderColor = MeAppTheme.colorScheme.utility,
+            periodSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
+            periodSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
+            periodSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
+            periodSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
+            timeSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
+            timeSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
+            timeSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
+            timeSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
+            containerColor = MeAppTheme.colorScheme.primary,
+        )
+
+    /**
+     * Returns the default value for a given DateTimeInputMode.
+     */
+    fun defaultValueForMode(mode: DateTimeInputMode): DateTimeValue =
+        when (mode) {
+            DateTimeInputMode.Date -> DateTimeValue.Date(System.currentTimeMillis())
+            DateTimeInputMode.Time -> DateTimeValue.Time(12, 0)
+            DateTimeInputMode.DateTime -> DateTimeValue.DateTime(System.currentTimeMillis(), 12, 0)
+        }
 }
 
 /**
@@ -152,16 +222,25 @@ fun DateTimeInput(
     enabled: Boolean = true,
     readOnly: Boolean = false,
 ) {
+    // State for dialog visibility
     var isDateDialogOpen by remember { mutableStateOf(false) }
     var isTimeDialogOpen by remember { mutableStateOf(false) }
-    val localState = remember { mutableStateOf(value ?: defaultValueForMode(mode)) }
-    val currentValue = formControl?.value ?: value ?: localState.value
-    val isError = formControl?.error?.isBlank()?.not() == true
+    // Determine the current value from form control or stateless value
+    val currentValue = formControl?.value ?: value
+    // Local state for the input value
+    var localState by remember { mutableStateOf(currentValue ?: DateTimeInputDefaults.defaultValueForMode(mode)) }
+    // Keep localState in sync with external value
+    if (currentValue != null && currentValue != localState) {
+        localState = currentValue
+    }
+    // Error state
+    val isError = !formControl?.error.isNullOrBlank()
 
     Row {
+        // Show date chip if mode is Date or DateTime
         if (mode == DateTimeInputMode.Date || mode == DateTimeInputMode.DateTime) {
             AppChip(
-                label = currentValue.getDateString(),
+                label = localState.getDateString(),
                 selected = isDateDialogOpen,
                 enabled = enabled && !readOnly,
                 modifier = modifier,
@@ -172,13 +251,15 @@ fun DateTimeInput(
             }
         }
 
+        // Add spacing between chips if both are shown
         if (mode == DateTimeInputMode.DateTime) {
             Spacer(Modifier.width(MeAppTheme.spacing.xs))
         }
 
+        // Show time chip if mode is Time or DateTime
         if (mode == DateTimeInputMode.Time || mode == DateTimeInputMode.DateTime) {
             AppChip(
-                label = currentValue.getTimeString(),
+                label = localState.getTimeString(),
                 selected = isTimeDialogOpen,
                 enabled = enabled && !readOnly,
                 modifier = modifier,
@@ -190,30 +271,42 @@ fun DateTimeInput(
         }
     }
 
+    // Show date picker dialog if needed
     if (isDateDialogOpen) {
         DatePickerDialogContent(
             initialMillis =
-                (currentValue as? DateTimeValue.Date)?.millis
-                    ?: (currentValue as? DateTimeValue.DateTime)?.millis
+                (localState as? DateTimeValue.Date)?.millis
+                    ?: (localState as? DateTimeValue.DateTime)?.millis
                     ?: System.currentTimeMillis(),
             onCancel = { isDateDialogOpen = false },
             onOk = { millis ->
                 isDateDialogOpen = false
-                val newValue = DateTimeValue.Date(millis)
+                val newValue =
+                    if (mode == DateTimeInputMode.Date) {
+                        DateTimeValue.Date(millis)
+                    } else {
+                        val dateTime = localState as? DateTimeValue.DateTime
+                        DateTimeValue.DateTime(
+                            millis,
+                            dateTime?.hour ?: 12,
+                            dateTime?.minute ?: 0,
+                        )
+                    }
                 if (formControl != null) {
                     formControl.onValueChange(newValue)
                 } else {
-                    localState.value = newValue
                     onValueChange?.invoke(newValue)
                 }
+                localState = newValue
             },
         )
     }
+    // Show time picker dialog if needed
     if (isTimeDialogOpen) {
         TimePickerDialogContent(
             initial =
-                (currentValue as? DateTimeValue.Time)
-                    ?: (currentValue as? DateTimeValue.DateTime)?.let {
+                (localState as? DateTimeValue.Time)
+                    ?: (localState as? DateTimeValue.DateTime)?.let {
                         DateTimeValue.Time(
                             it.hour,
                             it.minute,
@@ -222,18 +315,28 @@ fun DateTimeInput(
             onCancel = { isTimeDialogOpen = false },
             onOk = { hour, minute ->
                 isTimeDialogOpen = false
-                val newValue = DateTimeValue.Time(hour, minute)
+                val newValue =
+                    if (mode == DateTimeInputMode.Time) {
+                        DateTimeValue.Time(hour, minute)
+                    } else {
+                        val dateTime = localState as? DateTimeValue.DateTime
+                        DateTimeValue.DateTime(
+                            dateTime?.millis ?: System.currentTimeMillis(),
+                            hour,
+                            minute,
+                        )
+                    }
                 if (formControl != null) {
                     formControl.onValueChange(newValue)
                 } else {
-                    localState.value = newValue
                     onValueChange?.invoke(newValue)
                 }
+                localState = newValue
             },
         )
     }
 
-    // Error/supporting text
+    // Show error or supporting text
     if (formControl != null && isError) {
         Text(
             formControl.error ?: "",
@@ -249,198 +352,9 @@ fun DateTimeInput(
     }
 }
 
-private fun defaultValueForMode(mode: DateTimeInputMode): DateTimeValue =
-    when (mode) {
-        DateTimeInputMode.Date -> DateTimeValue.Date(System.currentTimeMillis())
-        DateTimeInputMode.Time -> DateTimeValue.Time(12, 0)
-        DateTimeInputMode.DateTime -> DateTimeValue.DateTime(System.currentTimeMillis(), 12, 0)
-    }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DatePickerDialogContent(
-    initialMillis: Long,
-    onCancel: () -> Unit,
-    onOk: (Long) -> Unit,
-) {
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
-    DatePickerDialog(
-        onDismissRequest = onCancel,
-        confirmButton = {
-            AppButton(
-                label = "OK",
-                onClick = {
-                    datePickerState.selectedDateMillis?.let { onOk(it) }
-                },
-                type = ButtonType.InlineTextPrimary,
-                size = ButtonSize.Small,
-            )
-        },
-        dismissButton = {
-            AppButton(
-                label = "Cancel",
-                onClick = onCancel,
-                type = ButtonType.InlineTextTertiary,
-                size = ButtonSize.Small,
-            )
-        },
-        colors =
-            DatePickerDefaults.colors(
-                containerColor = MeAppTheme.colorScheme.primary,
-            ),
-    ) {
-        val pickerColor =
-            DatePickerDefaults.colors(
-                containerColor = MeAppTheme.colorScheme.primary,
-                titleContentColor = MeAppTheme.colorScheme.heading,
-                dayContentColor = MeAppTheme.colorScheme.body,
-                weekdayContentColor = MeAppTheme.colorScheme.body,
-                selectedDayContentColor = MeAppTheme.colorScheme.inverse,
-                selectedDayContainerColor = MeAppTheme.colorScheme.primaryAction,
-                todayContentColor = MeAppTheme.colorScheme.primaryAction,
-                todayDateBorderColor = MeAppTheme.colorScheme.primaryAction,
-                dividerColor = MeAppTheme.colorScheme.utility,
-                navigationContentColor = MeAppTheme.colorScheme.primaryAction,
-                yearContentColor = MeAppTheme.colorScheme.body,
-                currentYearContentColor = MeAppTheme.colorScheme.body,
-                selectedYearContentColor = MeAppTheme.colorScheme.body,
-                headlineContentColor = MeAppTheme.colorScheme.body,
-                dateTextFieldColors =
-                    TextFieldDefaults.colors(
-                        focusedTextColor = MeAppTheme.colorScheme.primaryAction,
-                    ),
-            )
-        DatePicker(state = datePickerState, colors = pickerColor)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DatePickerModal(
-    onCancel: () -> Unit,
-    onOk: (Long) -> Unit,
-    modifier: Modifier = Modifier,
-    value: Long = System.currentTimeMillis(),
-) {
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = value)
-    val pickerColor =
-        DatePickerDefaults.colors(
-            containerColor = MeAppTheme.colorScheme.primary,
-            titleContentColor = MeAppTheme.colorScheme.heading,
-            dayContentColor = MeAppTheme.colorScheme.body,
-            weekdayContentColor = MeAppTheme.colorScheme.body,
-            selectedDayContentColor = MeAppTheme.colorScheme.inverse,
-            selectedDayContainerColor = MeAppTheme.colorScheme.primaryAction,
-            todayContentColor = MeAppTheme.colorScheme.primaryAction,
-            todayDateBorderColor = MeAppTheme.colorScheme.primaryAction,
-            dividerColor = MeAppTheme.colorScheme.utility,
-            navigationContentColor = MeAppTheme.colorScheme.primaryAction,
-            yearContentColor = MeAppTheme.colorScheme.body,
-            currentYearContentColor = MeAppTheme.colorScheme.body,
-            selectedYearContentColor = MeAppTheme.colorScheme.body,
-            headlineContentColor = MeAppTheme.colorScheme.body,
-            dateTextFieldColors =
-                TextFieldDefaults.colors(
-                    focusedTextColor = MeAppTheme.colorScheme.primaryAction,
-                ),
-        )
-    val dateFormatter: DatePickerFormatter =
-        remember { DatePickerDefaults.dateFormatter(selectedDateDescriptionSkeleton = "MMM dd yyyy") }
-
-    BaseModal(
-        title = "Height",
-        primaryAction =
-            ActionButton(
-                text = "OK",
-                action = {
-                    onOk(datePickerState.selectedDateMillis ?: value)
-                },
-            ),
-        secondaryAction = ActionButton(text = "Cancel", action = { onCancel() }),
-    ) {
-        DatePicker(
-            datePickerState,
-            colors = pickerColor,
-            dateFormatter = dateFormatter,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialogContent(
-    initial: DateTimeValue.Time? = null,
-    onCancel: () -> Unit,
-    onOk: (Int, Int) -> Unit,
-) {
-    val openDialog = remember { mutableStateOf(true) }
-    if (openDialog.value) {
-        val currentTime = Calendar.getInstance()
-        val hour = initial?.hour ?: currentTime.get(Calendar.HOUR_OF_DAY)
-        val minute = initial?.minute ?: currentTime.get(Calendar.MINUTE)
-        val timePickerState =
-            rememberTimePickerState(
-                initialHour = hour,
-                initialMinute = minute,
-                is24Hour = false, // Use 12-hour format with AM/PM
-            )
-
-        TimePickerDialog(
-            onDismiss = {
-                onCancel()
-            },
-            onConfirm = {
-                onOk(timePickerState.hour, timePickerState.minute)
-            },
-        ) {
-            val timerColors =
-                TimePickerDefaults.colors(
-                    clockDialColor = MeAppTheme.colorScheme.secondary,
-                    clockDialSelectedContentColor = MeAppTheme.colorScheme.inverse,
-                    clockDialUnselectedContentColor = MeAppTheme.colorScheme.body,
-                    selectorColor = MeAppTheme.colorScheme.primaryAction,
-                    periodSelectorBorderColor = MeAppTheme.colorScheme.utility,
-                    periodSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
-                    periodSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
-                    periodSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
-                    periodSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
-                    timeSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
-                    timeSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
-                    timeSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
-                    timeSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
-                    containerColor = MeAppTheme.colorScheme.primary,
-                )
-
-            TimePicker(
-                state = timePickerState,
-                colors = timerColors,
-            )
-        }
-    }
-}
-
-@Composable
-fun TimePickerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        BaseModal(
-            primaryAction =
-                ActionButton(
-                    text = "OK",
-                    action = {
-                        onConfirm()
-                    },
-                ),
-            secondaryAction = ActionButton(text = "Cancel", action = { onDismiss() }),
-        ) {
-            content()
-        }
-    }
-}
-
+/**
+ * Preview for DateTimeInput composable in different modes and states.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewTheme
 @Composable

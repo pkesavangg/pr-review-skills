@@ -9,9 +9,9 @@ import com.example.nav3integration.TopLevelBackStack
 import com.greatergoods.meapp.authEntries
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
-import com.greatergoods.meapp.features.auth.AppViewModel
-import com.greatergoods.meapp.features.sample.HomeScreen
-import com.greatergoods.meapp.features.sample.LoadingScreen
+import com.greatergoods.meapp.features.auth.viewmodel.AppViewModel
+import com.greatergoods.meapp.features.home.HomeScreen
+import com.greatergoods.meapp.features.auth.LoadingScreen
 import com.greatergoods.meapp.topLevelEntries
 
 /**

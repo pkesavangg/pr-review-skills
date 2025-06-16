@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.sample
+package com.greatergoods.meapp.features.auth
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
