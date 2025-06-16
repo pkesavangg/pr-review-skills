@@ -10,7 +10,6 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
-import com.greatergoods.meapp.features.sample.HomeScreen
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.proto.UserAccount
 import dagger.hilt.android.lifecycle.HiltViewModel

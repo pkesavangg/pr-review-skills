@@ -21,7 +21,6 @@ fun LoaderCard(loader: Loader) {
                 message = loader.message,
                 isLoading = true,
                 style = loader.style,
-                config = loader.config,
             )
         }
     }

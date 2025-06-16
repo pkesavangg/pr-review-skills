@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.LoaderConfig
 import com.greatergoods.meapp.features.common.components.LoaderDefaults
 import com.greatergoods.meapp.features.common.components.LoaderStyle
@@ -82,7 +83,7 @@ class DialogQueueViewModel @Inject constructor(
      * Enqueue a custom dialog with arbitrary parameters
      */
     fun enqueueCustomDialog(
-        contentKey: String,
+        contentKey: DialogType,
         params: Map<String, Any?>,
         onDismiss: () -> Unit,
         priority: Int,
@@ -142,6 +143,7 @@ class DialogQueueViewModel @Inject constructor(
         if (!showNext) {
             dialogQueueService.clear()
         }
+    }
 
     fun dismissToast() {
         dialogQueueService.dismissToast()
@@ -189,53 +191,7 @@ class DialogQueueViewModel @Inject constructor(
                     delayMillis = delayMillis,
                 )
 
-                    else -> {}
-                }
-            }
-        }
-
-        /**
-         * Update the priority of the current dialog
-         */
-        override fun updateCurrentDialogPriority(priority: Int) {
-            val current = dialogQueueService.currentDialog.value
-            if (current != null) {
-                dialogQueueService.dismissCurrent()
-                when (current) {
-                    is DialogModel.Alert ->
-                        enqueueAlert(
-                            title = current.title,
-                            message = current.message,
-                            dismissText = current.dismissText,
-                            onDismiss = current.onDismiss,
-                            priority = priority,
-                            delayMillis = current.alertDelayMillis,
-                        )
-
-                    is DialogModel.Confirm ->
-                        enqueueConfirm(
-                            title = current.title,
-                            message = current.message,
-                            confirmText = current.confirmText,
-                            cancelText = current.cancelText,
-                            onConfirm = current.onConfirm,
-                            onCancel = current.onCancel,
-                            onDismiss = current.onDismiss,
-                            priority = priority,
-                            delayMillis = current.confirmDelayMillis,
-                        )
-
-                    is DialogModel.Custom ->
-                        enqueueCustomDialog(
-                            contentKey = current.contentKey,
-                            params = current.params,
-                            onDismiss = current.onDismiss,
-                            priority = priority,
-                            delayMillis = current.customDelayMillis,
-                        )
-
-                    else -> {}
-                }
+                else -> {}
             }
         }
     }
