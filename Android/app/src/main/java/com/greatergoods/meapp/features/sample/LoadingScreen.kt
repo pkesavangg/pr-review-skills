@@ -1,38 +1,19 @@
 package com.greatergoods.meapp.features.sample
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.R
@@ -40,111 +21,136 @@ import com.greatergoods.meapp.features.common.components.MEImage
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.delay
-import android.content.res.Configuration
 
 /**
- * Splash/loading screen matching the provided design.
+ * Main splash/loading screen with logo and animated "loading..." indicator.
  */
 @Composable
 fun LoadingScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MeAppTheme.colorScheme.primaryAction),
+            .background(MeAppTheme.colorScheme.primaryAction)
     ) {
-        // Centered content (logo + loading)
+        // Center logo and loading animation
         Column(
             modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             MEImage(
                 lightMode = R.drawable.ic_logo_light,
                 darkMode = R.drawable.ic_logo_dark,
-                contentDescription = "Loading",
+                contentDescription = "Loading"
             )
             Spacer(modifier = Modifier.height(32.dp))
-            LoadingDotsText()
+            LoadingTextWithDots()
         }
-        // Footer
+
+        // Footer with version and branding
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = "me.health by greater goods",
                 color = MeAppTheme.colorScheme.inverse,
                 style = MeAppTheme.typography.subHeading2,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Center
             )
             Text(
                 text = "version 1.0.0",
                 color = MeAppTheme.colorScheme.inverse,
                 style = MeAppTheme.typography.subHeading2,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
 /**
- * Composable for the 'loading . . .' text with colored dots.
+ * Composable for animated "loading" text with animated dots as subscript.
  */
 @Composable
-private fun LoadingDotsText(
-    baseText: String = "Loading",
+private fun LoadingTextWithDots(
+    baseText: String = "loading",
     dotCount: Int = 3,
-    delayBetweenDots: Int = 150,
     modifier: Modifier = Modifier
 ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
-        ) {
-            Text(text = baseText, fontSize = 20.sp)
-            Spacer(modifier = Modifier.width(4.dp))
-            AnimatedDots(dotCount = dotCount, delayBetweenDots = delayBetweenDots)
-        }
-    }
-
-    @Composable
-    fun AnimatedDots(dotCount: Int, delayBetweenDots: Int) {
-        Row {
-            for (i in 0 until dotCount) {
-                AnimatedDot(index = i, delayBetweenDots = delayBetweenDots)
-            }
-        }
-    }
-
-    @Composable
-    fun AnimatedDot(index: Int, delayBetweenDots: Int) {
-        val transition = rememberInfiniteTransition(label = "dotTransition")
-        val offsetY by transition.animateFloat(
-            initialValue = 0f,
-            targetValue = -6f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 600,
-                    delayMillis = index * delayBetweenDots,
-                    easing = FastOutSlowInEasing
-                ),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "offsetY"
-        )
-
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        modifier = modifier
+    ) {
         Text(
-            text = ".",
-            fontSize = 20.sp,
-            modifier = Modifier
-                .offset(y = offsetY.dp)
-                .padding(horizontal = 1.dp)
+            text = baseText,
+            style = MeAppTheme.typography.subHeading1,
+            color = MeAppTheme.colorScheme.inverse
         )
+        Spacer(modifier = Modifier.width(6.dp))
+        Box(
+            modifier = Modifier
+                .align(Alignment.Bottom)
+        ) {
+            AnimatedTextDots(dotCount = dotCount)
+        }
+    }
+}
+
+/**
+ * Animated text dots that bounce vertically.
+ */
+@Composable
+private fun AnimatedTextDots(dotCount: Int) {
+    val animatables = List(dotCount) { remember { Animatable(0f) } }
+    val travelDistance = with(LocalDensity.current) { 4.dp.toPx() }
+
+    animatables.forEachIndexed { index, animatable ->
+        LaunchedEffect(Unit) {
+            delay(index * 120L)
+            animatable.animateTo(
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = keyframes {
+                        durationMillis = 1000
+                        0.0f at 0
+                        1.0f at 250 with FastOutSlowInEasing
+                        0.0f at 500
+                        0.0f at 1000
+                    },
+                    repeatMode = RepeatMode.Restart
+                )
+            )
+        }
     }
 
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        animatables.forEach { anim ->
+            AnimatedDot(yOffset = -anim.value * travelDistance)
+        }
+    }
+}
+
+/**
+ * Single animated text-based dot.
+ */
+@Composable
+private fun AnimatedDot(yOffset: Float) {
+    Text(
+        text = ".",
+        style = MeAppTheme.typography.subHeading1,
+        color = MeAppTheme.colorScheme.brand,
+        fontSize = 20.sp,
+        modifier = Modifier.graphicsLayer {
+            translationY = yOffset
+        }
+    )
+}
 
 @PreviewTheme
 @Composable
@@ -153,5 +159,3 @@ fun LoadingScreenPreviewLight() {
         LoadingScreen()
     }
 }
-
-
