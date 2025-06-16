@@ -126,6 +126,7 @@ final class ScaleService: ScaleServiceProtocol {
                         device.isSynced = true
                         try await localRepository.updateDevice(device)
                     } catch {
+                        logger.log(level: .error, tag: "ScaleService", message: "Failed to update device \(device.id) on API, falling back to create: \(error.localizedDescription)")
                         _ = try await remoteRepo.createScale(dto)
                         device.isSynced = true
                         try await localRepository.updateDevice(device)

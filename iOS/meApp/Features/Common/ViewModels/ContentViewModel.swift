@@ -54,7 +54,6 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Data Loading (if logged in)
     private func loadData() async {
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
         await scaleService.syncAllScalesWithRemote()
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
