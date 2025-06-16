@@ -18,6 +18,7 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.delay
 import com.greatergoods.meapp.features.loading.string.LoadingString
+import com.greatergoods.meapp.resources.AppIcons
 
 /**
  * Main splash/loading screen with logo and animated "loading..." indicator.
@@ -40,8 +41,8 @@ fun LoadingScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 MEImage(
-                    lightMode = R.drawable.ic_logo_light,
-                    darkMode = R.drawable.ic_logo_dark,
+                    lightMode = AppIcons.Default.Logo,
+                    darkMode = AppIcons.Default.LogoDark,
                     contentDescription = LoadingString.LOADING
                 )
                 Spacer(modifier = Modifier.height(32.dp))
