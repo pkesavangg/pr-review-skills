@@ -1,4 +1,4 @@
-package com.greatergoods.meapp
+package com.greatergoods.meapp.app.components
 
 import androidx.navigation3.runtime.EntryProviderBuilder
 import androidx.navigation3.runtime.NavKey

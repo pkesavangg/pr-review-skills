@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.common.components
+package com.greatergoods.meapp.app.components
 
 import androidx.compose.runtime.Composable
 import androidx.navigation3.runtime.NavKey
@@ -6,13 +6,11 @@ import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.example.nav3integration.TopLevelBackStack
-import com.greatergoods.meapp.authEntries
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
-import com.greatergoods.meapp.features.auth.viewmodel.AppViewModel
+import com.greatergoods.meapp.app.viewmodel.AppViewModel
 import com.greatergoods.meapp.features.home.HomeScreen
-import com.greatergoods.meapp.features.auth.LoadingScreen
-import com.greatergoods.meapp.topLevelEntries
+import com.greatergoods.meapp.features.loading.LoadingScreen
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.

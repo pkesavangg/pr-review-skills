@@ -3,7 +3,7 @@ package com.greatergoods.meapp.features.home
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
-import com.greatergoods.meapp.features.common.components.HomeNavHost
+import com.greatergoods.meapp.app.components.HomeNavHost
 import com.greatergoods.meapp.features.common.components.MainBottomNav
 import android.annotation.SuppressLint
 

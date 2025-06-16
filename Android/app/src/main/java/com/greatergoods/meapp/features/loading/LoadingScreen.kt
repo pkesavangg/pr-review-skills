@@ -1,7 +1,6 @@
-package com.greatergoods.meapp.features.auth
+package com.greatergoods.meapp.features.loading
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -9,10 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,6 +17,7 @@ import com.greatergoods.meapp.features.common.components.MEImage
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.delay
+import com.greatergoods.meapp.features.loading.string.LoadingString
 
 /**
  * Main splash/loading screen with logo and animated "loading..." indicator.
@@ -32,21 +29,30 @@ fun LoadingScreen() {
             .fillMaxSize()
             .background(MeAppTheme.colorScheme.primaryAction)
     ) {
-        // Center logo and loading animation
         Column(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            MEImage(
-                lightMode = R.drawable.ic_logo_light,
-                darkMode = R.drawable.ic_logo_dark,
-                contentDescription = "Loading"
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            LoadingTextWithDots()
+            // Spacer that takes less space to push content slightly above center
+            Spacer(modifier = Modifier.weight(0.5f)) // less than half
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                MEImage(
+                    lightMode = R.drawable.ic_logo_light,
+                    darkMode = R.drawable.ic_logo_dark,
+                    contentDescription = LoadingString.LOADING
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                LoadingTextWithDots()
+            }
+
+            // Spacer that takes more space below
+            Spacer(modifier = Modifier.weight(0.6f)) // more than half
         }
 
-        // Footer with version and branding
+        // Footer
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -56,13 +62,13 @@ fun LoadingScreen() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "me.health by greater goods",
+                text = LoadingString.FOOTER_BRAND,
                 color = MeAppTheme.colorScheme.inverse,
                 style = MeAppTheme.typography.subHeading2,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "version 1.0.0",
+                text = LoadingString.FOOTER_VERSION,
                 color = MeAppTheme.colorScheme.inverse,
                 style = MeAppTheme.typography.subHeading2,
                 textAlign = TextAlign.Center
@@ -71,12 +77,13 @@ fun LoadingScreen() {
     }
 }
 
+
 /**
  * Composable for animated "loading" text with animated dots as subscript.
  */
 @Composable
 private fun LoadingTextWithDots(
-    baseText: String = "loading",
+    baseText: String = LoadingString.LOADING,
     dotCount: Int = 3,
     modifier: Modifier = Modifier
 ) {
