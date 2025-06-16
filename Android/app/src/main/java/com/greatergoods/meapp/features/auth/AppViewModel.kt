@@ -97,9 +97,9 @@ class AppViewModel @Inject constructor(
                         initLoadingData(currentAccountId)
                     } else {
                         if (userRepository.hasAccounts()) {
-                            AppRoute.Auth.UserListScreen
+                            AppRoute.Auth.UserList
                         } else {
-                            AppRoute.Auth.LoginScreen
+                            AppRoute.Auth.Login
                         }
                         _uiState.value =
                             _uiState.value.copy(

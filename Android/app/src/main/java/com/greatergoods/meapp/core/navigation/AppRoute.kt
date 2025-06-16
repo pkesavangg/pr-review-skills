@@ -49,13 +49,11 @@ sealed class AppRoute : NavKey {
      */
     @Serializable
     sealed class Auth : AppRoute(), PublicRoute {
-        @Serializable
-        data object AuthScreen : Auth()
 
         @Serializable
-        data class LoginScreen(val hasAccounts: Boolean) : Auth()
+        data object Login : Auth()
+
+        @Serializable
+        data object UserList : Auth()
     }
-
-    @Serializable
-    data object Dashboard : AppRoute()
 }

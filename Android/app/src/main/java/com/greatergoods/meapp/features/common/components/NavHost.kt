@@ -12,7 +12,6 @@ import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.features.auth.AppViewModel
 import com.greatergoods.meapp.features.sample.HomeScreen
 import com.greatergoods.meapp.features.sample.LoadingScreen
-import com.greatergoods.meapp.mainEntries
 import com.greatergoods.meapp.topLevelEntries
 
 /**
@@ -39,7 +38,6 @@ fun NavHost(
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
                 entry<AppRoute.Home> { HomeScreen() }
                 authEntries()
-                mainEntries()
             },
     )
 }
