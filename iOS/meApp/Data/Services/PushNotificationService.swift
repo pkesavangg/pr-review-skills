@@ -122,9 +122,7 @@ class PushNotificationService: NSObject {
             await updateDeviceInfo()
             return
         }
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        if settings.authorizationStatus == .authorized {
+        if await isNotificationAuthorized() {
             await registerForPushNotifications()
         }
     }
@@ -243,6 +241,12 @@ class PushNotificationService: NSObject {
             }
         }
         defaults.set(token, forKey: key)
+    }
+    
+    // MARK: - Notification Authorization Helper
+    func isNotificationAuthorized() async -> Bool {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        return settings.authorizationStatus == .authorized
     }
 }
 

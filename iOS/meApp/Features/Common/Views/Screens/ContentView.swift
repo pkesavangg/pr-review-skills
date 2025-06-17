@@ -11,16 +11,32 @@ struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var viewModel = ContentViewModel()
     @State private var isLogoAnimated = false
+    @StateObject private var router = Router<AuthRoute>()
     
     var body: some View {
-        VStack(spacing: 32) {
-            LoadingScreen()
-        }
+        RoutingView(stack: $router.stack) {
+            VStack(spacing: 32) {
+                if viewModel.isInitializing {
+                    LoadingScreen()
+                } else if viewModel.showDashboardView {
+                        Text(viewModel.dashboardTextView())
+                            .fontOpenSans(.body1)
+                            .foregroundColor(theme.textHeading)
+                    
+                } else if viewModel.showLandingView {
+                    LandingScreen()
+                }
+            }
+            .task {
+                await viewModel.performAppInitialization()
+            }
+        }.environmentObject(router)
+
     }
 }
 
-// MARK: - Preview
 #Preview {
     ContentView()
         .environmentObject(Theme.shared)
