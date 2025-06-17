@@ -20,7 +20,7 @@ struct AppInputField: View {
     @Environment(\.appTheme) private var theme
     // Configuration
     var config: TextInputConfig
-    var showsClearButton: Bool = false
+
     // Bindings
     @Binding var value: String
     @Binding var focusedField: FocusField?
@@ -140,7 +140,7 @@ struct AppInputField: View {
             } else {
                 if config.isDisabled {
                     disabledIcon
-                } else if config.inputType != .password && config.showsClearButton {
+                } else if config.inputType != .password {
                     clearButton
                 }
             }

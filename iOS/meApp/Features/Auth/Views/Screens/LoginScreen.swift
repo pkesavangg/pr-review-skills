@@ -60,7 +60,7 @@ struct LoginScreen: View {
                         value: $store.password,
                         focusedField: focusBinding,
                     ) {
-                        focusedField = .password
+                        focusedField = nil
                     }
                 }
                 .padding(.vertical, .spacingMD)
