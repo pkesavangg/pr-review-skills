@@ -27,7 +27,7 @@ import com.greatergoods.meapp.features.common.components.chart.GraphView
 import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
-import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 fun HistoryGraph() {
@@ -40,63 +40,69 @@ fun HistoryGraph() {
     }
 
     Column(
-        modifier = Modifier
-            .statusBarsPadding()
-            .background(MeAppTheme.colorScheme.primary),
+        modifier =
+            Modifier
+                .statusBarsPadding()
+                .background(MeTheme.colorScheme.primaryBackground),
     ) {
         GraphView(
-            modifier = Modifier
-                .fillMaxHeight(0.5f)
-                .fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxHeight(0.5f)
+                    .fillMaxWidth(),
             segment = selectedSegment,
             graphLines = listOf(graphLines),
             selectedData = null,
             labelContent = {
                 Text(
-                    text = buildAnnotatedString {
-                        append("000.0")
-                        withStyle(
-                            style = SpanStyle(
-                                fontSize = MeAppTheme.typography.subHeading2.fontSize,
-                                color = MeAppTheme.colorScheme.subheading,
-                            ),
-                        ) {
-                            append(" lbs")
-                        }
-                    },
+                    text =
+                        buildAnnotatedString {
+                            append("000.0")
+                            withStyle(
+                                style =
+                                    SpanStyle(
+                                        fontSize = MeTheme.typography.subHeading2.fontSize,
+                                        color = MeTheme.colorScheme.textSubheading,
+                                    ),
+                            ) {
+                                append(" lbs")
+                            }
+                        },
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    style = MeAppTheme.typography.heading1,
-                    color = MeAppTheme.colorScheme.body,
+                    style = MeTheme.typography.heading1,
+                    color = MeTheme.colorScheme.textBody,
                 )
             },
             onSelected = {
-
             },
         )
-        Spacer(modifier = Modifier.height(MeAppTheme.spacing.lg))
+        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         GraphSegmentControl(
             selected = selectedSegment,
             onSelect = { segment ->
                 selectedSegment = segment
-                graphLines = when (segment) {
-                    GraphSegment.YEAR, GraphSegment.TOTAL -> {
-                        dashBoardState.monthWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
-                    }
+                graphLines =
+                    when (segment) {
+                        GraphSegment.YEAR, GraphSegment.TOTAL -> {
+                            dashBoardState.monthWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
+                        }
 
-                    GraphSegment.MONTH, GraphSegment.WEEK -> {
-                        dashBoardState.dayWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
+                        GraphSegment.MONTH, GraphSegment.WEEK -> {
+                            dashBoardState.dayWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
+                        }
                     }
-                }
             },
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(bottom = MeAppTheme.spacing.md),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = MeTheme.spacing.md),
         )
         Button(
             onClick = { isAddEntryModalVisible = true },
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(bottom = MeAppTheme.spacing.md),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = MeTheme.spacing.md),
         ) {
             Text("Add Entry")
         }

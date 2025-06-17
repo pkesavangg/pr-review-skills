@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.component.shapeComponent
@@ -22,15 +22,18 @@ import android.graphics.Typeface
 import android.text.Layout
 
 @Composable
-fun rememberHorizontalLine(key: ExtraStore.Key<List<Double>>, markerIndex: Int): Decoration {
+fun rememberHorizontalLine(
+    key: ExtraStore.Key<List<Double>>,
+    markerIndex: Int,
+): Decoration {
     val fill = fill(Color(0xFF458239))
     val line = rememberLineComponent(fill = fill(Color(0xFF458239)), thickness = 2.dp)
     val labelComponent =
         rememberTextComponent(
             typeface = Typeface.DEFAULT_BOLD,
-            color = MeAppTheme.colorScheme.primary,
-            lineHeight = MeAppTheme.typography.body3.lineHeight,
-            textSize = MeAppTheme.typography.body3.fontSize,
+            color = MeTheme.colorScheme.primaryBackground,
+            lineHeight = MeTheme.typography.body3.lineHeight,
+            textSize = MeTheme.typography.body3.fontSize,
             textAlignment = Layout.Alignment.ALIGN_CENTER,
             margins = insets(start = 6.dp, top = 6.dp),
             padding = insets(horizontal = 8.dp, vertical = 4.dp),
@@ -42,24 +45,25 @@ fun rememberHorizontalLine(key: ExtraStore.Key<List<Double>>, markerIndex: Int):
             minWidth = TextComponent.MinWidth.fixed(40f),
         )
 
-    val decoration = object : Decoration {
-        override fun drawOverLayers(context: CartesianDrawingContext) {
-            HorizontalLine(
-                y = { it[key][markerIndex] },
-                line = line.copy(fill = fill(Color.Transparent)),
-                labelComponent = labelComponent,
-                horizontalLabelPosition = Position.Horizontal.End,
-                verticalLabelPosition = Position.Vertical.Bottom,
-                verticalAxisPosition = Axis.Position.Vertical.Start,
-            ).drawOverLayers(context)
-        }
+    val decoration =
+        object : Decoration {
+            override fun drawOverLayers(context: CartesianDrawingContext) {
+                HorizontalLine(
+                    y = { it[key][markerIndex] },
+                    line = line.copy(fill = fill(Color.Transparent)),
+                    labelComponent = labelComponent,
+                    horizontalLabelPosition = Position.Horizontal.End,
+                    verticalLabelPosition = Position.Vertical.Bottom,
+                    verticalAxisPosition = Axis.Position.Vertical.Start,
+                ).drawOverLayers(context)
+            }
 
-        override fun drawUnderLayers(context: CartesianDrawingContext) {
-            HorizontalLine(
-                y = { it[key][markerIndex] },
-                line = line.copy(fill = fill(Color.Transparent)),
-            ).drawOverLayers(context)
+            override fun drawUnderLayers(context: CartesianDrawingContext) {
+                HorizontalLine(
+                    y = { it[key][markerIndex] },
+                    line = line.copy(fill = fill(Color.Transparent)),
+                ).drawOverLayers(context)
+            }
         }
-    }
     return remember(markerIndex) { decoration }
 }

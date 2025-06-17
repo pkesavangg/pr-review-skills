@@ -14,23 +14,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 fun PulsingDotLoader(
     modifier: Modifier = Modifier,
-    color: Color = Color(0xFF2C2827),
+    color: Color = MeTheme.colorScheme.meAppPrimary,
     minRadius: Float = 6f,
     maxRadius: Float = 12f,
-    durationMillis: Int = 700
+    durationMillis: Int = 700,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulsing-dot")
     val radius by infiniteTransition.animateFloat(
         initialValue = minRadius,
         targetValue = maxRadius,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(durationMillis, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
         label = "radius",
     )
 
@@ -46,6 +48,8 @@ fun PulsingDotLoader(
 @Composable
 fun PulsingDotLoaderPreview() {
     MeAppTheme {
-        PulsingDotLoader()
+        AppScaffold("") {
+            PulsingDotLoader()
+        }
     }
 }

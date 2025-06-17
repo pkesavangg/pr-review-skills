@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.enum.GraphSegment
-import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Segmented control for graph period selection (TOTAL, YEAR, MONTH, WEEK).
@@ -23,11 +23,11 @@ import com.greatergoods.meapp.theme.MeAppTheme
 fun GraphSegmentControl(
     selected: GraphSegment,
     onSelect: (GraphSegment) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
     ) {
         GraphSegment.entries.forEach { segment ->
             val isSelected = segment == selected
@@ -44,9 +44,10 @@ fun GraphSegmentControl(
             ) {
                 Text(
                     text = segment.name,
-                    style = MeAppTheme.typography.button1.copy(
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    ),
+                    style =
+                        MeTheme.typography.button1.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        ),
                 )
             }
         }

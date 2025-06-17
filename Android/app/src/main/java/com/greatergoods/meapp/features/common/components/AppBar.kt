@@ -17,11 +17,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.strings.AppBarStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
-import com.greatergoods.meapp.theme.MeAppTheme.typography
-import com.greatergoods.meapp.features.common.strings.AppBarStrings
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.typography
 
 /**
  * AppBar composable for top app bars with optional navigation and action icons.
@@ -34,19 +34,18 @@ import com.greatergoods.meapp.features.common.strings.AppBarStrings
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppBar(
-    title: String? = null,
     modifier: Modifier = Modifier,
-    containerColor: Color = colorScheme.primary,
+    title: String? = null,
+    containerColor: Color = colorScheme.primaryBackground,
     navigationIcon: (@Composable (() -> Unit))? = null,
     actions: (@Composable (() -> Unit))? = null,
 ) {
-
     TopAppBar(
         modifier = modifier,
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = containerColor,
-                titleContentColor = colorScheme.heading,
+                titleContentColor = colorScheme.textHeading,
                 navigationIconContentColor = colorScheme.primaryAction,
                 actionIconContentColor = colorScheme.primaryAction,
             ),
@@ -54,7 +53,7 @@ fun AppBar(
             Text(
                 text = title ?: "",
                 style = typography.heading5,
-                color = colorScheme.heading,
+                color = colorScheme.textHeading,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { contentDescription = AppBarStrings.AppBarTitleContentDescription },
@@ -104,7 +103,7 @@ fun AppBarPreview() {
                 containerColor = Color.Transparent,
                 navigationIcon = { AppIconButton(AppIcons.Default.Close) { } },
                 actions = {
-                    AppButton("Save", type = ButtonType.InlineTextPrimary, size = ButtonSize.Small){}
+                    AppButton("Save", type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {}
                 },
             )
             Spacer(Modifier.height(24.dp))

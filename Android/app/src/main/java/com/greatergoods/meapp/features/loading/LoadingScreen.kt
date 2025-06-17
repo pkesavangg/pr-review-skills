@@ -1,10 +1,25 @@
 package com.greatergoods.meapp.features.loading
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -12,13 +27,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.greatergoods.meapp.R
 import com.greatergoods.meapp.features.common.components.MEImage
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.theme.MeAppTheme
-import kotlinx.coroutines.delay
 import com.greatergoods.meapp.features.loading.string.LoadingString
 import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.delay
 
 /**
  * Main splash/loading screen with logo and animated "loading..." indicator.
@@ -26,24 +41,25 @@ import com.greatergoods.meapp.resources.AppIcons
 @Composable
 fun LoadingScreen() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MeAppTheme.colorScheme.primaryAction)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MeTheme.colorScheme.primaryAction),
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Spacer that takes less space to push content slightly above center
             Spacer(modifier = Modifier.weight(0.5f)) // less than half
 
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 MEImage(
                     lightMode = AppIcons.Default.Logo,
                     darkMode = AppIcons.Default.LogoDark,
-                    contentDescription = LoadingString.LOADING
+                    contentDescription = LoadingString.LOADING,
                 )
                 Spacer(modifier = Modifier.height(32.dp))
                 LoadingTextWithDots()
@@ -55,29 +71,29 @@ fun LoadingScreen() {
 
         // Footer
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(bottom = 40.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = LoadingString.FOOTER_BRAND,
-                color = MeAppTheme.colorScheme.inverse,
-                style = MeAppTheme.typography.subHeading2,
-                textAlign = TextAlign.Center
+                color = MeTheme.colorScheme.inverseAction,
+                style = MeTheme.typography.subHeading2,
+                textAlign = TextAlign.Center,
             )
             Text(
                 text = LoadingString.FOOTER_VERSION,
-                color = MeAppTheme.colorScheme.inverse,
-                style = MeAppTheme.typography.subHeading2,
-                textAlign = TextAlign.Center
+                color = MeTheme.colorScheme.inverseAction,
+                style = MeTheme.typography.subHeading2,
+                textAlign = TextAlign.Center,
             )
         }
     }
 }
-
 
 /**
  * Composable for animated "loading" text with animated dots as subscript.
@@ -86,21 +102,22 @@ fun LoadingScreen() {
 private fun LoadingTextWithDots(
     baseText: String = LoadingString.LOADING,
     dotCount: Int = 3,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         verticalAlignment = Alignment.Bottom,
-        modifier = modifier
+        modifier = modifier,
     ) {
         Text(
             text = baseText,
-            style = MeAppTheme.typography.subHeading1,
-            color = MeAppTheme.colorScheme.inverse
+            style = MeTheme.typography.subHeading1,
+            color = MeTheme.colorScheme.inverseAction,
         )
         Spacer(modifier = Modifier.width(6.dp))
         Box(
-            modifier = Modifier
-                .align(Alignment.Bottom)
+            modifier =
+                Modifier
+                    .align(Alignment.Bottom),
         ) {
             AnimatedTextDots(dotCount = dotCount)
         }
@@ -120,23 +137,25 @@ private fun AnimatedTextDots(dotCount: Int) {
             delay(index * 120L)
             animatable.animateTo(
                 targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = keyframes {
-                        durationMillis = 1000
-                        0.0f at 0
-                        1.0f at 250 with FastOutSlowInEasing
-                        0.0f at 500
-                        0.0f at 1000
-                    },
-                    repeatMode = RepeatMode.Restart
-                )
+                animationSpec =
+                    infiniteRepeatable(
+                        animation =
+                            keyframes {
+                                durationMillis = 1000
+                                0.0f at 0
+                                1.0f at 250 with FastOutSlowInEasing
+                                0.0f at 500
+                                0.0f at 1000
+                            },
+                        repeatMode = RepeatMode.Restart,
+                    ),
             )
         }
     }
 
     Row(
         verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         animatables.forEach { anim ->
             AnimatedDot(yOffset = -anim.value * travelDistance)
@@ -151,12 +170,13 @@ private fun AnimatedTextDots(dotCount: Int) {
 private fun AnimatedDot(yOffset: Float) {
     Text(
         text = ".",
-        style = MeAppTheme.typography.subHeading1,
-        color = MeAppTheme.colorScheme.wgPrimary,
+        style = MeTheme.typography.subHeading1,
+        color = MeTheme.colorScheme.wgPrimary,
         fontSize = 20.sp,
-        modifier = Modifier.graphicsLayer {
-            translationY = yOffset
-        }
+        modifier =
+            Modifier.graphicsLayer {
+                translationY = yOffset
+            },
     )
 }
 

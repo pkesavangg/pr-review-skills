@@ -31,6 +31,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.dashboard.enum.BOTTOM_NAV_ITEMS
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Stateless bottom navigation bar.
@@ -50,7 +51,7 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
     }
 
     NavigationBar(
-        containerColor = MeAppTheme.colorScheme.primary,
+        containerColor = MeTheme.colorScheme.primaryBackground,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -67,11 +68,12 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
                                 if (item.route in badgeVisible) {
                                     // Dot badge
                                     Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .align(Alignment.BottomEnd)
-                                            .background(Color.Red),
+                                        modifier =
+                                            Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .align(Alignment.BottomEnd)
+                                                .background(Color.Red),
                                     )
                                 }
                             },
@@ -79,21 +81,25 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
                             Image(
                                 painter = painterResource(id = icon),
                                 contentDescription = null,
-                                colorFilter = if (!isSelected || item.route == AppRoute.Main.AppSync) ColorFilter.tint(
-                                    MeAppTheme.colorScheme.subheading,
-                                ) else null,
+                                colorFilter =
+                                    if (!isSelected || item.route == AppRoute.Main.AppSync) {
+                                        ColorFilter.tint(
+                                            MeTheme.colorScheme.textSubheading,
+                                        )
+                                    } else {
+                                        null
+                                    },
                             )
                         }
                     },
                     label = {
                         Text(
                             text = item.label,
-                            color = MeAppTheme.colorScheme.subheading,
+                            color = MeTheme.colorScheme.textSubheading,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.W400,
                             textAlign = TextAlign.Center,
                         )
-
                     },
                     selected = false,
                     onClick = {
@@ -108,7 +114,7 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
 
 @PreviewTheme
 @Composable
-fun MainBottomNavDemoScreenPreview_Light() {
+fun MainBottomNavDemoScreenPreview() {
     MeAppTheme {
         MainBottomNav(badgeVisible = listOf(AppRoute.Main.Dashboard))
     }

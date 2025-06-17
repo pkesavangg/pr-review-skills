@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * CustomDialog composable matching the Figma spec (node 6598-69580).
@@ -41,7 +42,7 @@ fun BaseModal(
     val cardColors =
         CardDefaults
             .cardColors(
-                containerColor = MeAppTheme.colorScheme.primary,
+                containerColor = MeTheme.colorScheme.primaryBackground,
             )
 
     Card(
@@ -50,23 +51,23 @@ fun BaseModal(
         colors = cardColors,
     ) {
         Column(
-            modifier = Modifier.padding(MeAppTheme.spacing.md),
+            modifier = Modifier.padding(MeTheme.spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         ) {
             title?.let {
                 Text(
                     text = it,
-                    style = MeAppTheme.typography.heading4,
-                    color = MeAppTheme.colorScheme.heading,
+                    style = MeTheme.typography.heading4,
+                    color = MeTheme.colorScheme.textHeading,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             body?.let {
                 Text(
                     text = body,
-                    style = MeAppTheme.typography.body3,
-                    color = MeAppTheme.colorScheme.body,
+                    style = MeTheme.typography.body3,
+                    color = MeTheme.colorScheme.textBody,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -80,7 +81,7 @@ fun BaseModal(
             Column(
                 modifier =
                     Modifier
-                        .padding(MeAppTheme.spacing.md),
+                        .padding(MeTheme.spacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(
@@ -95,7 +96,7 @@ fun BaseModal(
                             size = ButtonSize.Small,
                             modifier = Modifier,
                         )
-                        Spacer(modifier = Modifier.width(MeAppTheme.spacing.xs))
+                        Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
                     }
                     if (primaryAction != null) {
                         AppButton(

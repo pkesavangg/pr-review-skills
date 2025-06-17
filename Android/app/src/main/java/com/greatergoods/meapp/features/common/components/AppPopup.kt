@@ -21,11 +21,12 @@ import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.toUpperCase
 import com.greatergoods.meapp.features.common.enum.AppSpacing
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.LocalAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.features.common.strings.AppPopupStrings
+import com.greatergoods.meapp.theme.MeTheme
 
 sealed class AppPopupImageType {
     data class FullImage(
@@ -70,7 +71,7 @@ fun AppPopup(
     val themeMode = LocalAppTheme.current
     Box {
         Column(
-            modifier = Modifier.background(MeAppTheme.colorScheme.primary),
+            modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Image (if any)
@@ -84,13 +85,13 @@ fun AppPopup(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(MeAppTheme.colorScheme.utility)
+                                    .background(MeTheme.colorScheme.utility)
                                     .height(AppSpacing.Modal.Base.ImageHeight),
                         )
                     }
 
                     is AppPopupImageType.DefaultImage -> {
-                        Spacer(Modifier.height(MeAppTheme.spacing.lg + MeAppTheme.spacing.md))
+                        Spacer(Modifier.height(MeTheme.spacing.lg + MeTheme.spacing.md))
                         Image(
                             painter = painterResource(imgType.image),
                             contentDescription = null,
@@ -102,10 +103,10 @@ fun AppPopup(
             Column(
                 modifier =
                     Modifier
-                        .padding(horizontal = MeAppTheme.spacing.md, vertical = MeAppTheme.spacing.lg)
+                        .padding(horizontal = MeTheme.spacing.md, vertical = MeTheme.spacing.lg)
                         .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
             ) {
                 subHeading?.let {
                     AppText(
@@ -122,7 +123,7 @@ fun AppPopup(
                 }
 
                 if (onPrimaryAction != null || onSecondaryAction != null) {
-                    Spacer(Modifier.height(MeAppTheme.spacing.lg))
+                    Spacer(Modifier.height(MeTheme.spacing.lg))
                     AppPopupActions(
                         primaryLabel = primaryLabel,
                         secondaryLabel = secondaryLabel,
@@ -136,7 +137,7 @@ fun AppPopup(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(MeAppTheme.spacing.md),
+                    .padding(MeTheme.spacing.md),
             contentAlignment = Alignment.Center,
         ) {
             AppIcon(
@@ -154,7 +155,7 @@ fun AppPopupModal(content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.width(AppSpacing.Modal.Base.Width),
         shape =
-            MeAppTheme.borderRadius.xl.let {
+            MeTheme.borderRadius.xl.let {
                 RoundedCornerShape(it)
             },
     ) {
@@ -171,7 +172,7 @@ private fun AppPopupActions(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         AppButton(

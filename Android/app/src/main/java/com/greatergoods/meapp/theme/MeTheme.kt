@@ -20,11 +20,12 @@ import com.greatergoods.meapp.theme.token.LocalBorderRadius
 import com.greatergoods.meapp.theme.token.LocalSpacing
 import com.greatergoods.meapp.theme.token.LocalTypography
 import com.greatergoods.meapp.theme.token.SpacingToken
-import android.util.Log
 
-val LocalAppTheme = staticCompositionLocalOf<ThemeMode> {
-    ThemeMode.SYSTEM
-}
+val LocalAppTheme =
+    staticCompositionLocalOf<ThemeMode> {
+        ThemeMode.SYSTEM
+    }
+
 /**
  * Main theme composable that sets up the app's theme.
  * This combines all theme components (colors, typography, spacing, animations) into a single theme.
@@ -66,7 +67,7 @@ fun MeAppTheme(
 /**
  * Object providing access to theme components throughout the app.
  */
-object MeAppTheme {
+object MeTheme {
     // Color
     val colorScheme: ColorScheme
         @Composable @ReadOnlyComposable

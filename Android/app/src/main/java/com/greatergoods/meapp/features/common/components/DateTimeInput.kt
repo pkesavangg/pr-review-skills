@@ -21,7 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
-
+import com.greatergoods.meapp.theme.MeTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -70,6 +70,7 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
+
             is DateTime -> {
                 val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
                 val time =
@@ -100,7 +101,8 @@ sealed class DateTimeValue {
      */
     fun getTimeString(): String =
         when (this) {
-             is Time -> SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
+            is Time ->
+                SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
                         .getInstance()
                         .apply {
@@ -108,6 +110,7 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
+
             is DateTime ->
                 SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
@@ -117,6 +120,7 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
+
             else -> ""
         }
 }
@@ -142,23 +146,23 @@ object DateTimeInputDefaults {
     @Composable
     fun getDatePickerColor(): DatePickerColors =
         DatePickerDefaults.colors(
-            containerColor = MeAppTheme.colorScheme.primary,
-            titleContentColor = MeAppTheme.colorScheme.heading,
-            dayContentColor = MeAppTheme.colorScheme.body,
-            weekdayContentColor = MeAppTheme.colorScheme.body,
-            selectedDayContentColor = MeAppTheme.colorScheme.inverse,
-            selectedDayContainerColor = MeAppTheme.colorScheme.primaryAction,
-            todayContentColor = MeAppTheme.colorScheme.primaryAction,
-            todayDateBorderColor = MeAppTheme.colorScheme.primaryAction,
-            dividerColor = MeAppTheme.colorScheme.utility,
-            navigationContentColor = MeAppTheme.colorScheme.primaryAction,
-            yearContentColor = MeAppTheme.colorScheme.body,
-            currentYearContentColor = MeAppTheme.colorScheme.body,
-            selectedYearContentColor = MeAppTheme.colorScheme.body,
-            headlineContentColor = MeAppTheme.colorScheme.body,
+            containerColor = MeTheme.colorScheme.primaryBackground,
+            titleContentColor = MeTheme.colorScheme.textHeading,
+            dayContentColor = MeTheme.colorScheme.textBody,
+            weekdayContentColor = MeTheme.colorScheme.textBody,
+            selectedDayContentColor = MeTheme.colorScheme.inverseAction,
+            selectedDayContainerColor = MeTheme.colorScheme.primaryAction,
+            todayContentColor = MeTheme.colorScheme.primaryAction,
+            todayDateBorderColor = MeTheme.colorScheme.primaryAction,
+            dividerColor = MeTheme.colorScheme.utility,
+            navigationContentColor = MeTheme.colorScheme.primaryAction,
+            yearContentColor = MeTheme.colorScheme.textBody,
+            currentYearContentColor = MeTheme.colorScheme.textBody,
+            selectedYearContentColor = MeTheme.colorScheme.textBody,
+            headlineContentColor = MeTheme.colorScheme.textBody,
             dateTextFieldColors =
                 TextFieldDefaults.colors(
-                    focusedTextColor = MeAppTheme.colorScheme.primaryAction,
+                    focusedTextColor = MeTheme.colorScheme.primaryAction,
                 ),
         )
 
@@ -169,20 +173,20 @@ object DateTimeInputDefaults {
     @Composable
     fun getTimePickerColor(): TimePickerColors =
         TimePickerDefaults.colors(
-            clockDialColor = MeAppTheme.colorScheme.secondary,
-            clockDialSelectedContentColor = MeAppTheme.colorScheme.inverse,
-            clockDialUnselectedContentColor = MeAppTheme.colorScheme.body,
-            selectorColor = MeAppTheme.colorScheme.primaryAction,
-            periodSelectorBorderColor = MeAppTheme.colorScheme.utility,
-            periodSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
-            periodSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
-            periodSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
-            periodSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
-            timeSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
-            timeSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
-            timeSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
-            timeSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
-            containerColor = MeAppTheme.colorScheme.primary,
+            clockDialColor = MeTheme.colorScheme.secondaryBackground,
+            clockDialSelectedContentColor = MeTheme.colorScheme.inverseAction,
+            clockDialUnselectedContentColor = MeTheme.colorScheme.textBody,
+            selectorColor = MeTheme.colorScheme.primaryAction,
+            periodSelectorBorderColor = MeTheme.colorScheme.utility,
+            periodSelectorSelectedContainerColor = MeTheme.colorScheme.toastBackground,
+            periodSelectorUnselectedContainerColor = MeTheme.colorScheme.secondaryBackground,
+            periodSelectorSelectedContentColor = MeTheme.colorScheme.primaryAction,
+            periodSelectorUnselectedContentColor = MeTheme.colorScheme.textBody,
+            timeSelectorSelectedContainerColor = MeTheme.colorScheme.toastBackground,
+            timeSelectorUnselectedContainerColor = MeTheme.colorScheme.secondaryBackground,
+            timeSelectorSelectedContentColor = MeTheme.colorScheme.primaryAction,
+            timeSelectorUnselectedContentColor = MeTheme.colorScheme.textBody,
+            containerColor = MeTheme.colorScheme.primaryBackground,
         )
 
     /**
@@ -253,7 +257,7 @@ fun DateTimeInput(
 
         // Add spacing between chips if both are shown
         if (mode == DateTimeInputMode.DateTime) {
-            Spacer(Modifier.width(MeAppTheme.spacing.xs))
+            Spacer(Modifier.width(MeTheme.spacing.xs))
         }
 
         // Show time chip if mode is Time or DateTime
@@ -340,14 +344,14 @@ fun DateTimeInput(
     if (formControl != null && isError) {
         Text(
             formControl.error ?: "",
-            color = MeAppTheme.colorScheme.textError,
-            style = MeAppTheme.typography.body3,
+            color = MeTheme.colorScheme.textError,
+            style = MeTheme.typography.body3,
         )
     } else if (supportingText != null) {
         Text(
             supportingText,
-            color = MeAppTheme.colorScheme.subheading,
-            style = MeAppTheme.typography.body3,
+            color = MeTheme.colorScheme.textSubheading,
+            style = MeTheme.typography.body3,
         )
     }
 }

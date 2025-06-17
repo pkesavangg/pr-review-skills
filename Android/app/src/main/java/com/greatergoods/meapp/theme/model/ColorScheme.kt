@@ -13,14 +13,9 @@ import com.greatergoods.meapp.theme.enums.ColorSchemeKey
 @Stable
 data class ColorScheme(
     // Background
-    val primary: Color,
-    val primaryDisabled: Color,
-    val secondary: Color,
-
-    // Support
-    val overlay: Color,
-    val toastBackground: Color,
-
+    val primaryBackground: Color,
+    val primaryBackgroundDisabled: Color,
+    val secondaryBackground: Color,
     // Action
     val primaryAction: Color,
     val primaryActionDisabled: Color,
@@ -28,29 +23,30 @@ data class ColorScheme(
     val secondaryActionDisabled: Color,
     val tertiaryAction: Color,
     val tertiaryActionDisabled: Color,
-    val inverse: Color,
-    val inverseDisabled: Color,
-    val inverseSecondary: Color,
-
+    val inverseAction: Color,
+    val inverseActionDisabled: Color,
+    val inverseActionSecondary: Color,
     // Status
     val goal: Color,
     val success: Color,
     val danger: Color,
     val streak: Color,
     val utility: Color,
+    // Icon Primary
     val iconPrimary: Color,
     val iconSecondary: Color,
     val iconDisabled: Color,
     val loading: Color,
     val loadingError: Color,
-
+    // Support
+    val overlay: Color,
+    val toastBackground: Color,
     // Text
-    val heading: Color,
-    val body: Color,
-    val subheading: Color,
+    val textHeading: Color,
+    val textBody: Color,
+    val textSubheading: Color,
     val textError: Color,
     val textErrorDisabled: Color,
-
     // Brand
     val meAppPrimary: Color,
     val wgPrimary: Color,
@@ -58,22 +54,22 @@ data class ColorScheme(
     /**
      * Holds all semantic color roles for the app's theme.
      *
-     * @property primary Primary background color (neutral-100/neutral-900)
-     * @property primaryDisabled Disabled primary action color (blue-500/blue-975)
-     * @property secondary Secondary background color (neutral-200/neutral-850)
+     * @property primaryBackground Primary background color (neutral-100/neutral-900)
+     * @property primaryBackgroundDisabled Disabled primary action color (blue-500/blue-975)
+     * @property secondaryBackground Secondary background color (neutral-200/neutral-850)
      * @property overlay Overlay support color (neutral-500/neutral-650)
      * @property toastBackground Toast background support color (blue-100/blue-1000)
      * @property primaryAction Primary action color (blue-900/blue-950)
-     * @property primaryDisabled Disabled state color (blue-500/blue-975)
+     * @property primaryBackgroundDisabled Disabled state color (blue-500/blue-975)
      * @property secondaryAction Secondary action color (neutral-900/neutral-650)
-     * @property secondaryDisabled Disabled secondary action color (neutral-400/neutral-600)
-     * @property heading Heading text color (neutral-900/neutral-650)
-     * @property body Body text color (neutral-900/neutral-650)
-     * @property subheading Subheading text color (neutral-600)
+     * @property secondaryActionDisabled Disabled secondary action color (neutral-400/neutral-600)
+     * @property textHeading Heading text color (neutral-900/neutral-650)
+     * @property textBody Body text color (neutral-900/neutral-650)
+     * @property textSubheading Subheading text color (neutral-600)
      * @property error Error color (red-900/red-500)
      * @property errorDisabled Disabled error color (red-100/red-950)
-     * @property inverse Inverse text color (neutral-100/neutral-800)
-     * @property inverseSecondary Inverse secondary text color (neutral-200/neutral-850)
+     * @property inverseAction Inverse text color (neutral-100/neutral-800)
+     * @property inverseActionSecondary Inverse secondary text color (neutral-200/neutral-850)
      * @property goal Goal icon color (green-100/green-200)
      * @property streak Streak icon color (yellow-100/yellow-100)
      * @property utility Utility icon color (neutral-400/neutral-600)
@@ -88,9 +84,9 @@ data class ColorScheme(
          */
         return when (token) {
             // Background
-            ColorSchemeKey.Primary -> primary
-            ColorSchemeKey.PrimaryDisabled -> primaryDisabled
-            ColorSchemeKey.Secondary -> secondary
+            ColorSchemeKey.Primary -> primaryBackground
+            ColorSchemeKey.PrimaryDisabled -> primaryBackgroundDisabled
+            ColorSchemeKey.Secondary -> secondaryBackground
 
             // Support
             ColorSchemeKey.Overlay -> overlay
@@ -103,9 +99,9 @@ data class ColorScheme(
             ColorSchemeKey.SecondaryActionDisabled -> secondaryActionDisabled
             ColorSchemeKey.TertiaryAction -> tertiaryAction
             ColorSchemeKey.TertiaryActionDisabled -> tertiaryActionDisabled
-            ColorSchemeKey.Inverse -> inverse
-            ColorSchemeKey.InverseDisabled -> inverseDisabled
-            ColorSchemeKey.InverseSecondary -> inverseSecondary
+            ColorSchemeKey.Inverse -> inverseAction
+            ColorSchemeKey.InverseDisabled -> inverseActionDisabled
+            ColorSchemeKey.InverseSecondary -> inverseActionSecondary
 
             // Status
             ColorSchemeKey.Goal -> success
@@ -120,9 +116,9 @@ data class ColorScheme(
             ColorSchemeKey.LoadingError -> loadingError
 
             // Text
-            ColorSchemeKey.Heading -> heading
-            ColorSchemeKey.Body -> body
-            ColorSchemeKey.Subheading -> subheading
+            ColorSchemeKey.Heading -> textHeading
+            ColorSchemeKey.Body -> textBody
+            ColorSchemeKey.Subheading -> textSubheading
             ColorSchemeKey.Error -> textError
             ColorSchemeKey.ErrorDisabled -> textErrorDisabled
 

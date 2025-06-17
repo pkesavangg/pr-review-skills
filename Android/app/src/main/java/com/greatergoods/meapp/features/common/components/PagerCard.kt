@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import android.R.attr.subtitle
 
 enum class CardAlignmentType {
@@ -49,7 +50,7 @@ fun AppStyledCard(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = MeAppTheme.spacing.sm)
+                    .padding(horizontal = MeTheme.spacing.sm)
                     .background(backgroundColor)
                     .verticalScroll(rememberScrollState()),
             horizontalAlignment =

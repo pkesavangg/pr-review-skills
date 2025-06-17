@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +38,7 @@ fun DatePickerDialogContent(
                     type = ButtonType.InlineTextPrimary,
                     size = ButtonSize.Small,
                 )
-                Spacer(Modifier.height(MeAppTheme.spacing.xs))
+                Spacer(Modifier.height(MeTheme.spacing.xs))
             }
         },
         dismissButton = {
@@ -48,12 +49,12 @@ fun DatePickerDialogContent(
                     type = ButtonType.InlineTextTertiary,
                     size = ButtonSize.Small,
                 )
-                Spacer(Modifier.height(MeAppTheme.spacing.xs))
+                Spacer(Modifier.height(MeTheme.spacing.xs))
             }
         },
         colors =
             DatePickerDefaults.colors(
-                containerColor = MeAppTheme.colorScheme.primary,
+                containerColor = MeTheme.colorScheme.primaryBackground,
             ),
     ) {
         val pickerColor = DateTimeInputDefaults.getDatePickerColor()

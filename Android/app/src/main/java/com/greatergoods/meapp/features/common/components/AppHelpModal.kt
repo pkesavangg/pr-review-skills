@@ -15,9 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.strings.AppHelpModalStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.features.common.strings.AppHelpModalStrings
+import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Help modal matching Figma (node 14585-12302): shows support phone/email and info.
@@ -39,7 +40,7 @@ fun AppHelpModal(
             },
             imageType = AppPopupImageType.DefaultImage(AppIcons.Outlined.Help),
         ) {
-            Spacer(Modifier.height(MeAppTheme.spacing.md))
+            Spacer(Modifier.height(MeTheme.spacing.md))
             // Phone row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -53,10 +54,10 @@ fun AppHelpModal(
                 Icon(
                     painter = painterResource(id = android.R.drawable.sym_action_call),
                     contentDescription = AppHelpModalStrings.PhoneContentDescription,
-                    tint = MeAppTheme.colorScheme.primaryAction,
+                    tint = MeTheme.colorScheme.primaryAction,
                     modifier = Modifier.size(24.dp),
                 )
-                Spacer(Modifier.width(MeAppTheme.spacing.x2s))
+                Spacer(Modifier.width(MeTheme.spacing.x2s))
                 AppText(
                     text = AppHelpModalStrings.Phone,
                     textType = TextType.Link,
@@ -78,10 +79,10 @@ fun AppHelpModal(
                 Icon(
                     painter = painterResource(id = android.R.drawable.sym_action_email),
                     contentDescription = AppHelpModalStrings.EmailContentDescription,
-                    tint = MeAppTheme.colorScheme.primaryAction,
+                    tint = MeTheme.colorScheme.primaryAction,
                     modifier = Modifier.size(24.dp),
                 )
-                Spacer(Modifier.width(MeAppTheme.spacing.x2s))
+                Spacer(Modifier.width(MeTheme.spacing.x2s))
                 AppText(
                     text = AppHelpModalStrings.Email,
                     textType = TextType.Link,
