@@ -161,13 +161,13 @@ final class SignupStore: ObservableObject {
         signupForm.getError(for: control)
     }
     
-    func showExitAlert() {
+    func showExitAlert(router: Router<AuthRoute>) {
         let alert = AlertModel(
             title: alertLang.SignupExitAlert.title,
             message: alertLang.SignupExitAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.SignupExitAlert.exitButton, type: .primary) { _ in
-                    // TODO: handle exit logic
+                    router.navigateBack()
                 },
                 AlertButtonModel(title: alertLang.SignupExitAlert.returnButton, type: .secondary) { _ in
                 }

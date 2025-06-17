@@ -29,8 +29,13 @@ struct ContentView: View {
                     LandingScreen()
                 }
             }
+            .preferredColorScheme(themeManager.getPreferredAppearanceMode())
+            .onChange(of: colorScheme, { oldValue, newValue in
+                themeManager.syncWithSystemColorScheme(newValue)
+            })
             .task {
                 await viewModel.performAppInitialization()
+                themeManager.syncWithSystemColorScheme(colorScheme)
             }
         }.environmentObject(router)
 
