@@ -176,6 +176,7 @@ object FormValidations {
                                     ValidationType.NOT_IN_RANGE,
                                     ValidationMessages.KG_RANGE,
                                 )
+
                             else -> null
                         }
                     } else {
@@ -185,6 +186,7 @@ object FormValidations {
                                     ValidationType.NOT_IN_RANGE,
                                     ValidationMessages.LB_RANGE,
                                 )
+
                             else -> null
                         }
                     }
@@ -236,19 +238,7 @@ object FormValidations {
             if (value != passwordControl.value) {
                 ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
             } else {
-                value.toIntOrNull()?.toFloat()
-            }
-
-            if (v == null) {
-                ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
-            } else {
-                when {
-                    v < min || v > max -> ValidationError(
-                        ValidationType.NOT_IN_RANGE,
-                        String.format(ValidationMessages.RANGE, min, max),
-                    )
-                    else -> null
-                }
+                null
             }
         }
 
