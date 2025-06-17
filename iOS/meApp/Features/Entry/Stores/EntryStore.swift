@@ -156,8 +156,6 @@ final class EntryStore: ObservableObject {
             // Round to 1 decimal place
             bmi = Double(String(format: "%.1f", bmi)) ?? bmi
             self.manualEntryForm.bmi.value = bmi == 0 ? "" : bmi > self.maxBmiValue ? String(99.9) : String(bmi)
-            print("Calculated BMI: \(bmi)", String(bmi), self.manualEntryForm.bmi.value)
-
             self.manualEntryForm.bmi.validate()
         }
     }
