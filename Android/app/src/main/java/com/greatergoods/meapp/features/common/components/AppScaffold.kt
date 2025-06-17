@@ -35,6 +35,7 @@ fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
     containerColor: Color = colorScheme.primaryBackground,
+    contentColor: Color = colorScheme.secondaryBackground,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
@@ -50,22 +51,23 @@ fun AppScaffold(
                 modifier = Modifier.padding(
                     WindowInsets.safeDrawing
                         .only(WindowInsetsSides.Top)
-                        .asPaddingValues()
-                )
+                        .asPaddingValues(),
+                ),
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = containerColor
+        containerColor = containerColor,
     ) { innerPadding ->
         Box(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding)
                 .padding(
                     WindowInsets.safeDrawing
                         .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                        .asPaddingValues()
+                        .asPaddingValues(),
                 )
-                .background(containerColor),
+                .background(contentColor),
         ) {
             content(Modifier)
         }
