@@ -9,8 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
+import android.R.attr.textAlignment
 
 data class TextAppearance(
     val style: TextStyle,
@@ -22,6 +24,7 @@ enum class TextType {
     Title,
     Subtitle,
     Body,
+    SubHeading,
 }
 
 object TextTypeDefaults {
@@ -50,6 +53,12 @@ object TextTypeDefaults {
                     color = MeAppTheme.colorScheme.body,
                     padding = PaddingValues(bottom = 0.dp),
                 )
+            TextType.SubHeading ->
+                TextAppearance(
+                    style = typography.body3,
+                    color = MeAppTheme.colorScheme.subheading,
+                    padding = PaddingValues(bottom = 0.dp),
+                )
         }
     }
 }
@@ -58,6 +67,8 @@ object TextTypeDefaults {
 fun AppText(
     text: String,
     textType: TextType,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
 ) {
     val textTypeDefault = TextTypeDefaults.appearance(textType)
     Column(
@@ -66,7 +77,7 @@ fun AppText(
                 .wrapContentSize()
                 .padding(textTypeDefault.padding),
     ) {
-        Text(text, style = textTypeDefault.style)
+        Text(text, style = textTypeDefault.style, color = textTypeDefault.color, textAlign = textAlign, modifier = modifier)
     }
 }
 
