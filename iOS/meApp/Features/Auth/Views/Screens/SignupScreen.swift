@@ -69,10 +69,10 @@ struct SignupScreen: View {
             .padding(.top, .spacing2XL)
             // Footer Buttons
             footerButtons
-                .padding(.horizontal, .spacingSM)
-                .padding(.bottom, .spacingSM)
+                .padding(.spacingSM)
             
         }
+        .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
     }
     

@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.greatergoods.meapp.core.service.AccountAuthService
+import com.greatergoods.meapp.app.MeApp
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.AnimationUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog

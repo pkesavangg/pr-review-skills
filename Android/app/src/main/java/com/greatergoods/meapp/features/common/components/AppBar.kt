@@ -19,6 +19,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeAppTheme.typography
 
 /**
  * AppBar composable for top app bars with optional navigation and action icons.
@@ -33,27 +35,25 @@ import com.greatergoods.meapp.theme.MeAppTheme
 fun AppBar(
     title: String? = null,
     modifier: Modifier = Modifier,
-    containerColor: Color = MeAppTheme.colorScheme.inverse,
+    containerColor: Color = colorScheme.primary,
     navigationIcon: (@Composable (() -> Unit))? = null,
     actions: (@Composable (() -> Unit))? = null,
 ) {
-    val colors = MeAppTheme.colorScheme
-    val typography = MeAppTheme.typography
 
     TopAppBar(
         modifier = modifier,
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = containerColor,
-                titleContentColor = colors.heading,
-                navigationIconContentColor = colors.primaryAction,
-                actionIconContentColor = colors.primaryAction,
+                titleContentColor = colorScheme.heading,
+                navigationIconContentColor = colorScheme.primaryAction,
+                actionIconContentColor = colorScheme.primaryAction,
             ),
         title = {
             Text(
                 text = title ?: "",
                 style = typography.heading5,
-                color = colors.heading,
+                color = colorScheme.heading,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { contentDescription = "AppBarTitle" },

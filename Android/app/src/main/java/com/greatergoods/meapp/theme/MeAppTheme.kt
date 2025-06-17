@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.theme.model.Animation
 import com.greatergoods.meapp.theme.model.BorderRadius
@@ -21,6 +22,9 @@ import com.greatergoods.meapp.theme.token.LocalTypography
 import com.greatergoods.meapp.theme.token.SpacingToken
 import android.util.Log
 
+val LocalAppTheme = staticCompositionLocalOf<ThemeMode> {
+    ThemeMode.SYSTEM
+}
 /**
  * Main theme composable that sets up the app's theme.
  * This combines all theme components (colors, typography, spacing, animations) into a single theme.
@@ -46,6 +50,7 @@ fun MeAppTheme(
         }
 
     CompositionLocalProvider(
+        LocalAppTheme provides themeMode,
         LocalColorScheme provides meAppColorScheme,
         LocalTypography provides AppTypography,
         LocalSpacing provides SpacingToken,

@@ -35,16 +35,12 @@ class ServiceRegistry {
         DependencyContainer.shared.register(NotificationHelperService.shared)
         DependencyContainer.shared.register(EntryService.shared)
         DependencyContainer.shared.register(PushNotificationService.shared)
+        DependencyContainer.shared.register(FeedService.shared)
     }
     
     /// Registers services needed after login
     @MainActor func registerSessionServices() {
-        // Example placeholder registration:
-        // DependencyContainer.shared.register(GraphService())
-        //
-        // Note: GraphService is not implemented yet.
-        // This line is included as a reference for how to register session-scoped services.
-        // Add other post-login services here as needed.
+        DependencyContainer.shared.register(FeedService.shared)
     }
 
     /// Deregisters essential services (called during deinit or app shutdown)
@@ -58,16 +54,12 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: NotificationHelperService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: EntryService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PushNotificationService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)
     nonisolated func deregisterSessionServices() {
-        // Example placeholder deregistration:
-        // DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: GraphService.self))
-        //
-        // Note: GraphService is not implemented yet.
-        // This line is included as a reference for how to clean up session-scoped services.
-        // Remove other post-login services here as needed.
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
     }
 
 

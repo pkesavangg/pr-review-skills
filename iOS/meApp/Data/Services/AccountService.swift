@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
@@ -10,7 +11,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
-    
+    var cancellables = Set<AnyCancellable>()
     
     init() {
         // Load initial accounts from local storage
@@ -23,6 +24,15 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } catch {
                 
             }
+            $activeAccount
+                .sink(receiveValue: { data in
+                    if data == nil {
+                        ServiceRegistry.shared.deregisterSessionServices()
+                    } else {
+                        ServiceRegistry.shared.registerSessionServices()
+                    }
+                })
+                .store(in: &cancellables)
         }
     }
     
@@ -121,7 +131,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func switchAccount(to account: Account) async throws {
         // Check network connectivity before switching
         guard networkMonitor.isConnected else {
-            throw NetworkError.noInternet
+            throw HTTPError.noInternet
         }
         do {
             let _ = try await refreshAccount(accountId: account.accountId)
@@ -178,15 +188,37 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 localAccount.update(from: updatedAccount.toAccountDTO())
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(updatedAccount)
                 try await updatePublishedState()
                 return updatedAccount
-            } else {
-                throw error
             }
+            throw error
+        }
+    }
+    
+    func createGoal(_ goal: Goal) async throws -> Account {
+        guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+        do {
+            let response = try await apiRepo.createGoal(goal)
+            localAccount.update(from: response)
+            try await localRepo.updateAccount(localAccount)
+            try await updatePublishedState()
+            return localAccount
+        } catch {
+            if HTTPError.isNetworkError(error) {
+                localAccount.goalSettings?.goalType = goal.type
+                localAccount.goalSettings?.goalWeight = Double(goal.goalWeight)
+                localAccount.goalSettings?.isSynced = false
+                localAccount.goalSettings?.initialWeight = Double(goal.initialWeight)
+                try await localRepo.updateAccount(localAccount)
+                try await updatePublishedState()
+            }
+            throw error
         }
     }
     
@@ -204,8 +236,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
-                localAccount.update(from: profile)
+            if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
@@ -230,11 +261,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                localAccount.weightUnit = bodyComp.weightUnit
-                localAccount.height = String(bodyComp.height)
-                localAccount.activityLevel = bodyComp.activityLevel
+                localAccount.weightSettings?.weightUnit = bodyComp.weightUnit
+                localAccount.weightSettings?.height = String(bodyComp.height)
+                localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
@@ -269,14 +300,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
         guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
-            let response = try await apiRepo.patchDashboardType(type)
-            localAccount.update(from: response)
+            localAccount.dashboardSettings?.dashboardType = String(describing: type)
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
@@ -308,9 +338,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
-                localAccount.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
-                localAccount.shouldSendWeightInEntryNotifications = notifications.shouldSendWeightInEntryNotifications
+            if HTTPError.isNetworkError(error) {
+                localAccount.notificationSettings?.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
+                localAccount.notificationSettings?.shouldSendWeightInEntryNotifications = notifications.shouldSendWeightInEntryNotifications
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
@@ -350,7 +380,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             do {
                 _ = try await refreshAccount(accountId: account.accountId)
             } catch {
-                if NetworkError.isNetworkError(error) {
+                if HTTPError.isNetworkError(error) {
                     continue
                 } else {
                     do {
@@ -389,7 +419,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 // On network error, return local account
                 return localAccount
             }
@@ -429,9 +459,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                let gender = account.gender,
                let zipcode = account.zipcode,
                let dob = account.dob,
-               let weightUnit = account.weightUnit,
-               let height = Double(account.height ?? "0"),
-               let activityLevel = account.activityLevel,
+               let weightUnit = account.weightSettings?.weightUnit,
+               let height = Double(account.weightSettings?.height ?? "0"),
+               let activityLevel = account.weightSettings?.activityLevel,
                !isSynced {
                 let profile = Profile(
                     firstName: firstName,
@@ -447,9 +477,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Body Composition updates
-            if let weightUnit = account.weightUnit,
-               let height = Double(account.height ?? "0"),
-               let activityLevel = account.activityLevel,
+            if let weightUnit = account.weightSettings?.weightUnit,
+               let height = Double(account.weightSettings?.height ?? "0"),
+               let activityLevel = account.weightSettings?.activityLevel,
                !isSynced {
                 let bodyComp = BodyComp(
                     weightUnit: weightUnit,
@@ -460,8 +490,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Notification Settings
-            if let shouldSendEntry = account.shouldSendEntryNotifications,
-               let shouldSendWeightIn = account.shouldSendWeightInEntryNotifications,
+            if let shouldSendEntry = account.notificationSettings?.shouldSendEntryNotifications,
+               let shouldSendWeightIn = account.notificationSettings?.shouldSendWeightInEntryNotifications,
                !isSynced {
                 let notifications = Notifications(
                     shouldSendEntryNotifications: shouldSendEntry,
@@ -471,41 +501,53 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             // Handle Dashboard Type
-            if let dashboardType = account.dashboardType,
+            if let dashboardType = account.dashboardSettings?.dashboardType,
                !isSynced {
-                try await updateDashboardType(type: dashboardType)
+                try await updateDashboardType(type: DashboardType(rawValue: dashboardType) ?? .dashboard4)
             }
             
             // Handle Dashboard Metrics
-            if let metricsString = account.dashboardMetrics,
+            if let metricsString = account.dashboardSettings?.dashboardMetrics,
                !isSynced {
                 let metrics = metricsString.split(separator: ",").map(String.init)
                 try await updateDashboardMetrics(metrics: metrics)
             }
             
             // Handle Streak Status
-            if let isStreakOn = account.isStreakOn,
-               let streakTimestamp = account.streakTimestamp,
+            if let isStreakOn = account.streaksSettings?.isStreakOn,
+               let streakTimestamp = account.streaksSettings?.streakTimestamp,
                !isSynced {
                 try await updateStreak(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp)
             }
             
             // Handle Weightless Mode
-            if let isWeightlessOn = account.isWeightlessOn,
-               let weightlessTimestamp = account.weightlessTimestamp,
-               let weightlessWeight = account.weightlessWeight,
+            if let isWeightlessOn = account.weightlessSettings?.isWeightlessOn,
+               let weightlessTimestamp = account.weightlessSettings?.weightlessTimestamp,
+               let weightlessWeight = account.weightlessSettings?.weightlessWeight,
                !isSynced {
-                try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: weightlessWeight)
+                try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
             }
             
-            // Mark account as synced and update timestamp
+            // Handle Integration Settings
+            if let integrationSettings = account.integrationSettings, !isSynced {
+                let integrations = Integrations(
+                    isFitbitOn: integrationSettings.isFitbitOn,
+                    isMFPOn: integrationSettings.isMfpOn,
+                    isFitbitValid: integrationSettings.isHealthConnectOn,
+                    isMFPValid: integrationSettings.isMfpValid,
+                    isHealthKitOn: integrationSettings.isMfpOn,
+                    isHealthConnectOn: integrationSettings.isHealthConnectOn
+                )
+               let _ = try await updateIntegrations(integrations: integrations)
+            }
+            
+            // Mark account as synced
             account.isSynced = true
-            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
             try await localRepo.updateAccount(account)
             try await updatePublishedState()
             
         } catch {
-            if !NetworkError.isNetworkError(error) {
+            if !HTTPError.isNetworkError(error) {
                 throw error
             }
             // If it's a network error, keep the account marked as unsynced
@@ -523,12 +565,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             let response = try await apiRepo.patchDashboardMetrics(metrics)
             localAccount.update(from: response)
-            localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
@@ -555,10 +596,19 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                localAccount.isStreakOn = isStreakOn
-                localAccount.streakTimestamp = streakTimestamp
+                if let streaksSettings = localAccount.streaksSettings {
+                    streaksSettings.isStreakOn = isStreakOn
+                    streaksSettings.streakTimestamp = streakTimestamp
+                } else {
+                    localAccount.streaksSettings = StreaksSettings(
+                        accountId: localAccount.accountId,
+                        isStreakOn: isStreakOn,
+                        streakTimestamp: streakTimestamp,
+                        isSynced: false
+                    )
+                }
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
@@ -585,7 +635,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if NetworkError.isNetworkError(error) {
+            if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
@@ -660,7 +710,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     /// Updates the published state of active and all accounts.
-    private func updatePublishedState() async throws {
+    func updatePublishedState() async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
         activeAccount = allAccounts.first(where: { $0.isActiveAccount == true })
     }

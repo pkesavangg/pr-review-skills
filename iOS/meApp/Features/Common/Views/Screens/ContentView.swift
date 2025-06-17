@@ -10,73 +10,33 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var viewModel = ContentViewModel()
     @State private var isLogoAnimated = false
+    @StateObject private var router = Router<AuthRoute>()
     
     var body: some View {
-        VStack(spacing: 32) {
-            // Logo Section
-            logoView
-                .scaleEffect(isLogoAnimated ? 1 : 0.8)
-                .opacity(isLogoAnimated ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isLogoAnimated)
-            
-            // Title Section
-            titleView
-                .opacity(isLogoAnimated ? 1 : 0)
-                .offset(y: isLogoAnimated ? 0 : 20)
-                .animation(.easeOut(duration: 0.5).delay(0.3), value: isLogoAnimated)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.actionPrimary)
-        .preferredColorScheme(themeManager.getPreferredAppearanceMode())
-        .onAppear {
-            withAnimation {
-                isLogoAnimated = true
-            }
-        }
-    }
-    // MARK: - UI Components
-    
-    private var logoView: some View {
-        Image(themeManager.isDarkMode ? "meLogoLight" : "meLogoDark")
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 200, height: 200)
-            .shadow(color: theme.actionPrimary.opacity(0.1), radius: 10, x: 0, y: 5)
-            .onTapGesture {
-                withAnimation {
-                    themeManager.isDarkMode.toggle()
-                }
-                isLogoAnimated = false
-                // Slight delay to allow state to reset before re-animating
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    withAnimation {
-                        isLogoAnimated = true
-                    }
+        RoutingView(stack: $router.stack) {
+            VStack(spacing: 32) {
+                if viewModel.isInitializing {
+                    LoadingScreen()
+                } else if viewModel.showDashboardView {
+                        Text(viewModel.dashboardTextView())
+                            .fontOpenSans(.body1)
+                            .foregroundColor(theme.textHeading)
+                    
+                } else if viewModel.showLandingView {
+                    LandingScreen()
                 }
             }
-    }
-    private var titleView: some View {
-        Text("Me.Health")
-            .fontOpenSans(.heading2)
-            .multilineTextAlignment(.center)
-            .foregroundColor(theme.textHeading)
-            .onTapGesture {
-                withAnimation {
-                    themeManager.isDarkMode.toggle()
-                }
-                isLogoAnimated = false
-                // Slight delay to allow state to reset before re-animating
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    withAnimation {
-                        isLogoAnimated = true
-                    }
-                }
+            .task {
+                await viewModel.performAppInitialization()
             }
+        }.environmentObject(router)
+
     }
 }
 
-// MARK: - Preview
 #Preview {
     ContentView()
         .environmentObject(Theme.shared)

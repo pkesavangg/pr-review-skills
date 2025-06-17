@@ -1,0 +1,42 @@
+//
+//  DashboardSettings.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 13/06/25.
+//
+
+
+import Foundation
+import SwiftData
+
+/// Stores user's dashboard configuration.
+///
+/// | Column Name         | Type    | Description                                           |
+/// |--------------------|---------|-------------------------------------------------------|
+/// | accountId          | string  | Foreign key referencing the associated Account       |
+/// | dashboardMetrics   | string  | Comma-separated or encoded list of dashboard metrics |
+/// | dashboardType      | string  | Type or style of dashboard view                      |
+/// | isSynced           | boolean | Whether the settings are synced with the server      |
+
+@Model
+final class DashboardSettings {
+    @Attribute(.unique) var id: String
+    var accountId: String
+    var dashboardMetrics: String?
+    var dashboardType: String?
+    var isSynced: Bool?
+
+    init(accountId: String,
+         dashboardMetrics: String? = nil,
+         dashboardType: String? = nil,
+         isSynced: Bool? = false) {
+        self.id = UUID().uuidString
+        self.accountId = accountId
+        self.dashboardMetrics = dashboardMetrics
+        self.dashboardType = dashboardType
+        self.isSynced = isSynced
+    }
+}
+
+/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety.
+extension DashboardSettings: @unchecked Sendable {}

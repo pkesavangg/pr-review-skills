@@ -30,6 +30,32 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Updates a device in the local storage.
     /// - Parameter device: The device to update.
     func updateDevice(_ device: Device) async throws {
+        let deviceId = device.id
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
+        guard let managedDevice = try context.fetch(descriptor).first else {
+            throw NSError(domain: "ScaleService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Device not found"])
+        }
+        // Update only the properties that may change during sync
+        managedDevice.isSynced = device.isSynced
+        managedDevice.nickname = device.nickname
+        managedDevice.deviceName = device.deviceName
+        managedDevice.deviceType = device.deviceType
+        managedDevice.isDeleted = device.isDeleted
+        managedDevice.isConnected = device.isConnected
+        managedDevice.isWifiConfigured = device.isWifiConfigured
+        managedDevice.mac = device.mac
+        managedDevice.sku = device.sku
+        managedDevice.broadcastId = device.broadcastId
+        managedDevice.broadcastIdString = device.broadcastIdString
+        managedDevice.userNumber = device.userNumber
+        managedDevice.protocolType = device.protocolType
+        managedDevice.password = device.password
+        managedDevice.accountId = device.accountId
+        managedDevice.peripheralIdentifier = device.peripheralIdentifier
+        managedDevice.createdAt = device.createdAt
+        managedDevice.lastModified = device.lastModified
+        managedDevice.token = device.token
+        // Add more fields as needed
         try context.save()
     }
     

@@ -39,28 +39,26 @@ import SwiftUI
 struct LoaderModifier: ViewModifier {
     @Environment(\.appTheme) private var theme
     @Binding var loaderData: LoaderModel?
-
+    @State private var isAnimating = false
     func body(content: Content) -> some View {
         ZStack {
             content
+
             if let loader = loaderData {
                 theme.supportOverlay
                     .ignoresSafeArea()
-                HStack(spacing: .spacingXS) {
-                    HStack {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: theme.textHeading))
-                            .scaleEffect(1)
-                        Text(loader.text)
-                            .fontWeight(.bold)
-                            .fontOpenSans(.body1)
-                            .foregroundColor(theme.textHeading)
-                    }
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: 200)
+
+                // Loader content
+                HStack(spacing: 8) {
+                    LoadingSpinnerIndicator()
+                    Text(loader.text)
+                        .fontOpenSans(.heading5)
+                        .foregroundColor(theme.textHeading)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
-                .frame(width: 269, height: 88)
+                .padding(.horizontal, 20)
+                .frame(height: 88)
                 .background(theme.backgroundPrimary)
                 .cornerRadius(.radiusSM)
             }

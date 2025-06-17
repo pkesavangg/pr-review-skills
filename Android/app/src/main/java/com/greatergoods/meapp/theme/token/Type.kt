@@ -123,6 +123,14 @@ val AppTypography =
                 lineHeight = 20.sp,
                 letterSpacing = 0.sp,
             ),
+        body4 =
+            TextStyle(
+                fontSize = 12.sp,
+                lineHeight = 20.sp,
+                fontFamily = OpenSansFontFamily,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 0.sp,
+            ),
         // Link
         link1 =
             TextStyle(
