@@ -26,12 +26,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.chart.GraphView
 import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
-import com.greatergoods.meapp.features.dashboard.DashBoardViewmodel
+import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 
 @Composable
 fun HistoryGraph() {
-    val dashedBoardViewModel = hiltViewModel<DashBoardViewmodel>()
+    val dashedBoardViewModel = hiltViewModel<DashboardViewModel>()
     val dashBoardState by dashedBoardViewModel.state.collectAsState()
     var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
     var isAddEntryModalVisible by remember { mutableStateOf(false) }

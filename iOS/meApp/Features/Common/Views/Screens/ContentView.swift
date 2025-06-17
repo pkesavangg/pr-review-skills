@@ -11,7 +11,8 @@ struct ContentView: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @State private var isLogoAnimated = false
-    
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(spacing: 32) {
             // Logo Section
@@ -29,9 +30,13 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.actionPrimary)
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
+        .onChange(of: colorScheme) { _, newScheme in
+            themeManager.syncWithSystemColorScheme(newScheme)
+        }
         .onAppear {
             withAnimation {
                 isLogoAnimated = true
+                themeManager.syncWithSystemColorScheme(colorScheme)
             }
         }
     }

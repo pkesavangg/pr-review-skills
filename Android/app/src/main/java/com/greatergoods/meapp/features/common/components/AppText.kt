@@ -20,6 +20,10 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
 import com.greatergoods.meapp.theme.model.Spacing
 import com.greatergoods.meapp.theme.token.LocalSpacing
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.theme.MeAppTheme
+import android.R.attr.textAlignment
 
 data class TextAppearance(
     val style: TextStyle,
@@ -30,7 +34,8 @@ enum class TextType {
     Title,
     Subtitle,
     Body,
-    link,
+    Link,
+    SubHeading,
 }
 
 object TextTypeDefaults {
@@ -62,6 +67,12 @@ object TextTypeDefaults {
                     style = typography.link2,
                     color = colorScheme.primaryAction,
                 )
+            TextType.SubHeading ->
+                TextAppearance(
+                    style = typography.body3,
+                    color = MeAppTheme.colorScheme.subheading,
+                    padding = PaddingValues(bottom = 0.dp),
+                )
         }
     }
 }
@@ -72,7 +83,9 @@ fun AppText(
     textType: TextType,
     action: (() -> Unit)? = null,
     spacing: Dp = LocalSpacing.current.none
-    ) {
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+) {
     val textTypeDefault = TextTypeDefaults.appearance(textType)
     Column(
         modifier =
@@ -84,7 +97,7 @@ fun AppText(
                 },
         horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-        Text(text, style = textTypeDefault.style, color = textTypeDefault.color)
+        Text(text, style = textTypeDefault.style, color = textTypeDefault.color, textAlign = textAlign, modifier = modifier)
         Spacer(Modifier.height(spacing))
     }
 }

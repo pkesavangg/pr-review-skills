@@ -74,20 +74,16 @@ class MetricFieldFormatter: ObservableObject {
         // Extract only digits
         let digitsOnly = input.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
         
-        // Handle empty digits
-        if digitsOnly.isEmpty {
-            return emptyValue
-        }
-        
-        // Remove leading zeros
+        // Allow single zero
         let trimmedDigits = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
+        let digits = trimmedDigits.isEmpty && digitsOnly.contains("0") ? "0" : trimmedDigits
         
-        if trimmedDigits.isEmpty {
+        if digits.isEmpty {
             return emptyValue
         }
         
         // Limit to maxLength digits
-        let limitedDigits = String(trimmedDigits.prefix(config.maxLength))
+        let limitedDigits = String(digits.prefix(config.maxLength))
         let length = limitedDigits.count
         
         switch length {

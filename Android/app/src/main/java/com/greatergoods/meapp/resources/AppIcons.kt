@@ -14,6 +14,7 @@ object AppIcons {
         val Graph = R.drawable.ic_graph
         val History = R.drawable.ic_history
         val Settings = R.drawable.ic_settings
+        val Palceholder = R.drawable.me_placeholder
     }
 
     object Outlined {
@@ -26,5 +27,7 @@ object AppIcons {
         val Graph = R.drawable.ic_graph_selected
         val History = R.drawable.ic_history_selected
         val Settings = R.drawable.ic_settings_selected
+        val Close = R.drawable.ic_popup_close
+        val CloseDark = R.drawable.ic_popup_close_dark
     }
 }
