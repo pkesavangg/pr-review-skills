@@ -29,7 +29,7 @@ object ValidationMessages {
     const val SKU = "SKU must be 4-digit numeric"
     const val REQUIRED = "Must not leave blank"
     const val PASSWORD_MISMATCH = "Passwords mismatch"
-    const val NO_WHITESPACE = "Field cannot be blank or just whitespace"
+    const val NO_WHITESPACE = "Must not leave blank"
     const val INVALID_WEIGHT = "Invalid weight"
     const val KG_RANGE = "Weight must be between 0.1 and 450 kg"
     const val LB_RANGE = "Weight must be between 0.1 and 999 lb"
@@ -176,6 +176,7 @@ object FormValidations {
                                     ValidationType.NOT_IN_RANGE,
                                     ValidationMessages.KG_RANGE,
                                 )
+
                             else -> null
                         }
                     } else {
@@ -185,6 +186,7 @@ object FormValidations {
                                     ValidationType.NOT_IN_RANGE,
                                     ValidationMessages.LB_RANGE,
                                 )
+
                             else -> null
                         }
                     }

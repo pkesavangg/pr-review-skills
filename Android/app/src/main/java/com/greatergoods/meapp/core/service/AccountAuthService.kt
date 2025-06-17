@@ -1,8 +1,10 @@
 package com.greatergoods.meapp.core.service
 
+import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
@@ -10,11 +12,14 @@ import com.greatergoods.meapp.domain.model.common.Gender
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.features.common.model.Toast
+import com.greatergoods.meapp.features.login.strings.LoginStrings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,6 +35,7 @@ constructor(
     private val accountRepository: IAccountRepository,
     private val connectivityObserver: IConnectivityObserver,
     private val tokenManager: TokenManager,
+    private val dialogQueueService: IDialogQueueService
 ) : IAccountAuthService {
     companion object {
         private const val MAX_ACCOUNTS = 10
@@ -69,11 +75,6 @@ constructor(
         email: String,
         password: String,
     ): Account? {
-        if (!isNetworkAvailable()) {
-            AppLog.e(TAG, "No network connection available")
-            _authStateFlow.emit(AuthState.Error("No network connection available"))
-            return null
-        }
         return try {
             val loginResponse = accountRepository.loginInAPI(email, password)
             val info = loginResponse.account
@@ -107,6 +108,7 @@ constructor(
             _isLoginFlow.emit(true)
             savedAccount
         } catch (e: Exception) {
+            handleLoginError(e as HttpException)
             AppLog.e(TAG, "Login failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Login failed"))
             null
@@ -416,4 +418,22 @@ constructor(
      * Checks if network is available using the connectivity observer
      */
     private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
+
+    private fun handleLoginError(error: HttpException) {
+        val loginError = LoginStrings.Error
+        val errorMessage = when (error.code()) {
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> loginError.MessageNotAuth
+            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> loginError.MessageNoConn
+            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> loginError.MessageServError
+            else -> loginError.MessageGeneric
+        }
+        val errorToast = Toast(
+            message = errorMessage,
+            title = loginError.Header,
+            action = null,
+        )
+        dialogQueueService.showToast(
+            errorToast,
+        )
+    }
 }
