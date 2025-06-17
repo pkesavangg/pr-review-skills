@@ -1,9 +1,7 @@
 package com.greatergoods.meapp.features.common.helper.form
 
-import android.util.Patterns
 import java.util.Calendar
-import com.greatergoods.meapp.features.common.helper.form.FormControl
-
+import android.util.Patterns
 
 object ValidationType {
     const val MATCH_PASSWORD = "matchPassword"
@@ -31,7 +29,7 @@ object ValidationMessages {
     const val SKU = "SKU must be 4-digit numeric"
     const val REQUIRED = "Must not leave blank"
     const val PASSWORD_MISMATCH = "Passwords mismatch"
-    const val NO_WHITESPACE = "Field cannot be blank or just whitespace"
+    const val NO_WHITESPACE = "Must not leave blank"
     const val INVALID_WEIGHT = "Invalid weight"
     const val KG_RANGE = "Weight must be between 0.1 and 450 kg"
     const val LB_RANGE = "Weight must be between 0.1 and 999 lb"
@@ -43,6 +41,7 @@ object FormValidations {
             ValidationError(ValidationType.REQUIRED, ValidationMessages.REQUIRED)
         } else null
     }
+
     fun minLength(length: Int, fieldName: String = "Field"): Validator<String> = { value ->
         if (value.length < length)
             ValidationError(ValidationType.MIN_LENGTH, "$fieldName must be at least $length characters long")
@@ -51,7 +50,7 @@ object FormValidations {
 
     fun maxLength(length: Int, fieldName: String = "Field"): Validator<String> = { value ->
         if (value.length > length)
-            ValidationError(ValidationType.MAX_LENGTH, "Maximum value should be $length")
+            ValidationError(ValidationType.MAX_LENGTH, "$fieldName should not exceed $length characters")
         else null
     }
 
@@ -77,7 +76,10 @@ object FormValidations {
         try {
             val intValue = value.toInt()
             if (intValue !in range)
-                ValidationError(ValidationType.NOT_IN_RANGE, String.format(ValidationMessages.RANGE, range.first, range.last))
+                ValidationError(
+                    ValidationType.NOT_IN_RANGE,
+                    String.format(ValidationMessages.RANGE, range.first, range.last),
+                )
             else null
         } catch (e: NumberFormatException) {
             ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
@@ -159,7 +161,10 @@ object FormValidations {
                 ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
             } else {
                 when {
-                    v < min || v > max -> ValidationError(ValidationType.NOT_IN_RANGE, String.format(ValidationMessages.RANGE, min, max))
+                    v < min || v > max -> ValidationError(
+                        ValidationType.NOT_IN_RANGE,
+                        String.format(ValidationMessages.RANGE, min, max),
+                    )
                     else -> null
                 }
             }

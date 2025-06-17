@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.login
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
@@ -8,7 +9,9 @@ import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.login.strings.LoginStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +32,7 @@ class LoginViewModel @Inject constructor(
                     "",
                     emptyList(),
                     emptyList(),
-                    CoroutineScope(SupervisorJob() + Dispatchers.Main)
+                    CoroutineScope(SupervisorJob() + Dispatchers.Main),
                 ),
             ),
         ),
@@ -44,6 +47,7 @@ class LoginViewModel @Inject constructor(
                 FormValidations.required(),
                 FormValidations.noWhitespace(),
                 FormValidations.email(),
+                FormValidations.maxLength(100),
             ),
             asyncValidators = emptyList(),
             scope = viewModelScope,
@@ -54,6 +58,7 @@ class LoginViewModel @Inject constructor(
             validators = listOf(
                 FormValidations.required(),
                 FormValidations.minLength(6, "Password"),
+                FormValidations.maxLength(50),
             ),
             asyncValidators = emptyList(),
             scope = viewModelScope,
@@ -76,25 +81,15 @@ class LoginViewModel @Inject constructor(
         val email = state.value.form.controls.email.value
         val password = state.value.form.controls.password.value
         viewModelScope.launch {
-            try {
-                val account = accountAuthService.login(email, password)
-                if (account == null) {
-                    AppLog.e("logIn", "Login failed - account is null")
-                    handleIntent(LoginIntent.Error("Login failed"))
-                } else {
-                    AppLog.i("logIn", "Login successful for account: ${account.email}")
-                    try {
-                        navigationService.navigateTo(AppRoute.Init.Loading)
-                        AppLog.i("logIn", "Navigation to dashboard successful")
-                        handleIntent(LoginIntent.Success)
-                    } catch (e: Exception) {
-                        AppLog.e("logIn", "Navigation failed", e.toString())
-                        handleIntent(LoginIntent.Error("Navigation failed: ${e.message}"))
-                    }
+            val account = accountAuthService.login(email, password)
+            if (account != null) {
+                try {
+                    navigationService.navigateTo(AppRoute.Init.Loading)
+                    AppLog.i("logIn", "Navigation to dashboard successful")
+                    handleIntent(LoginIntent.Success)
+                } catch (e: Exception) {
+                    AppLog.e("logIn", "Navigation failed", e.toString())
                 }
-            } catch (e: Exception) {
-                AppLog.e("logIn", "Login exception", e.toString())
-                handleIntent(LoginIntent.Error(e.message ?: "Login failed"))
             }
         }
     }
