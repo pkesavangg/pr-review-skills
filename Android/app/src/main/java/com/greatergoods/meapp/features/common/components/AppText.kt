@@ -1,12 +1,9 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,16 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
-import com.greatergoods.meapp.theme.model.Spacing
 import com.greatergoods.meapp.theme.token.LocalSpacing
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.theme.MeAppTheme
-import android.R.attr.textAlignment
 
 data class TextAppearance(
     val style: TextStyle,
@@ -62,16 +54,16 @@ object TextTypeDefaults {
                     color = colorScheme.body,
                 )
 
-            TextType.link ->
+            TextType.Link ->
                 TextAppearance(
                     style = typography.link2,
                     color = colorScheme.primaryAction,
                 )
+
             TextType.SubHeading ->
                 TextAppearance(
                     style = typography.body3,
                     color = MeAppTheme.colorScheme.subheading,
-                    padding = PaddingValues(bottom = 0.dp),
                 )
         }
     }
@@ -81,10 +73,10 @@ object TextTypeDefaults {
 fun AppText(
     text: String,
     textType: TextType,
-    action: (() -> Unit)? = null,
-    spacing: Dp = LocalSpacing.current.none
     modifier: Modifier = Modifier,
+    spacing: Dp = LocalSpacing.current.none,
     textAlign: TextAlign = TextAlign.Start,
+    onClick: (() -> Unit)? = null,
 ) {
     val textTypeDefault = TextTypeDefaults.appearance(textType)
     Column(
@@ -92,12 +84,21 @@ fun AppText(
             Modifier
                 .wrapContentSize()
                 .let {
-                    if (action != null) it.clickable(onClick = action)
-                    else it
+                    if (onClick != null) {
+                        it.clickable(onClick = onClick)
+                    } else {
+                        it
+                    }
                 },
         horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-        Text(text, style = textTypeDefault.style, color = textTypeDefault.color, textAlign = textAlign, modifier = modifier)
+    ) {
+        Text(
+            text,
+            style = textTypeDefault.style,
+            color = textTypeDefault.color,
+            textAlign = textAlign,
+            modifier = modifier,
+        )
         Spacer(Modifier.height(spacing))
     }
 }

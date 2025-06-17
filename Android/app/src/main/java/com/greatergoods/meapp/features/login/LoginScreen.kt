@@ -9,18 +9,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.*
 import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.login.strings.LoginStrings
-import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
 import com.greatergoods.meapp.theme.MeAppTheme.spacing
 import com.greatergoods.meapp.theme.MeAppTheme.typography
@@ -39,14 +38,14 @@ fun LoginScreen() {
             AppIconButton(AppIcons.Default.Close) { }
         },
         actions = {
-            AppIconButton(AppIcons.Outlined.Help) {  }
+            AppIconButton(AppIcons.Outlined.Help) { }
         },
-        containerColor = colorScheme.secondary
+        containerColor = colorScheme.secondary,
     ) { scaffoldModifier ->
         Column(
             modifier = scaffoldModifier.padding(horizontal = spacing.sm, vertical = 0.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            verticalArrangement = Arrangement.Top,
         ) {
             Spacer(Modifier.height(spacing.md))
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
@@ -60,14 +59,14 @@ fun LoginScreen() {
                     label = LoginStrings.EmailLabel,
                     type = AppInputType.TEXT,
                     modifier = Modifier.fillMaxWidth(),
-                    showTrailingIcon = true
+                    showTrailingIcon = true,
                 )
                 AppInput(
                     formControl = passwordControl,
                     label = LoginStrings.PasswordLabel,
                     type = AppInputType.PASSWORD,
                     modifier = Modifier.fillMaxWidth(),
-                    showTrailingIcon = true
+                    showTrailingIcon = true,
                 )
                 Spacer(Modifier.height(spacing.lg))
                 AppButton(
@@ -75,8 +74,8 @@ fun LoginScreen() {
                     enabled = isFormFilled,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                     onClick = {
-                        //TODO: Integrate Login
-                    }
+                        // TODO: Integrate Login
+                    },
                 )
                 Spacer(Modifier.height(spacing.sm))
                 AppButton(
@@ -84,31 +83,34 @@ fun LoginScreen() {
                     type = ButtonType.TextPrimary,
                     size = ButtonSize.Medium,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
-                    onClick = { }
+                    onClick = { },
                 )
             }
             Spacer(Modifier.weight(1f))
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally) {
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 AppText(
                     text = LoginStrings.TermsAgreement,
                     textType = TextType.Subtitle,
                 )
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Absolute.Center) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Absolute.Center,
+                ) {
                     AppText(
                         text = LoginStrings.TermsOfService,
-                        textType = TextType.link,
-                        action = {loginViewModel.openUrl(LoginStrings.TermsOfServiceUrl)}
+                        textType = TextType.Link,
+                        onClick = { loginViewModel.openUrl(LoginStrings.TermsOfServiceUrl) },
                     )
                     Spacer(Modifier.padding(start = spacing.sm))
                     Text(LoginStrings.And, style = typography.body4, color = colorScheme.body)
                     Spacer(Modifier.padding(end = spacing.sm))
                     AppText(
                         text = LoginStrings.PrivacyPolicy,
-                        textType = TextType.link,
-                        action = {loginViewModel.openUrl(LoginStrings.PrivacyPolicyUrl)}
+                        textType = TextType.Link,
+                        onClick = { loginViewModel.openUrl(LoginStrings.PrivacyPolicyUrl) },
                     )
                 }
             }
