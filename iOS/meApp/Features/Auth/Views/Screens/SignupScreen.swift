@@ -72,6 +72,7 @@ struct SignupScreen: View {
                 .padding(.spacingSM)
             
         }
+        .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
     }
     
