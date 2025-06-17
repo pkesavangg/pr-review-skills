@@ -1,9 +1,12 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -15,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -36,10 +38,12 @@ import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.strings.AppInputStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import com.greatergoods.meapp.theme.MeTheme.typography
+import android.R.attr.singleLine
 
 enum class AppInputType {
     TEXT,
@@ -358,14 +362,13 @@ fun <T> InputFieldBase(
 @Composable
 fun AppInputPreview() {
     MeAppTheme {
-       val fakeScope = rememberCoroutineScope()
-       val normal = remember { FormControl("Input", emptyList(), emptyList(), fakeScope) }
-       val disabled = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-       val focused = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-       Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
-           AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
-           AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
-           AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
-       }
+        val normal = remember { FormControl.create("Input", emptyList()) }
+        val disabled = remember { FormControl.create("", emptyList()) }
+        val focused = remember { FormControl.create("", emptyList()) }
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
+            AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
+            AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
+            AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
+        }
     }
 }
