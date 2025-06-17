@@ -4,6 +4,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_UNSPECIFIED
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -18,15 +20,14 @@ import com.greatergoods.meapp.proto.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
+import android.app.UiModeManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
-import androidx.core.view.WindowCompat
 
 /**
  * Main entry point for the MeApp application.
@@ -108,7 +109,6 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 appRepository.themeModeFlow
-                    .map { it.toNightMode() }
                     .distinctUntilChanged()
                     .collect { mode ->
                         applyNightMode(mode)
@@ -117,8 +117,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun applyNightMode(mode: Int) {
-        AppCompatDelegate.setDefaultNightMode(mode)
+    private fun applyNightMode(mode: ThemeMode) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val ui = getSystemService(UI_MODE_SERVICE) as UiModeManager
+            ui.setApplicationNightMode(mode.toUiMode())
+        } else {
+            AppCompatDelegate.setDefaultNightMode(mode.toAppCompatNightMode())
+        }
     }
 
     private fun applyInitialTheme() {
@@ -132,13 +137,20 @@ class MainActivity : AppCompatActivity() {
             runBlocking {
                 appRepository.themeModeFlow.first() // blocks briefly, safe here
             }
-        applyNightMode(initialMode.toNightMode())
+        applyNightMode(initialMode)
     }
 
-    private fun ThemeMode.toNightMode(): Int =
+    private fun ThemeMode.toAppCompatNightMode(): Int =
         when (this) {
             ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
             ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
-            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            else -> MODE_NIGHT_UNSPECIFIED
+        }
+
+    private fun ThemeMode.toUiMode(): Int =
+        when (this) {
+            ThemeMode.LIGHT -> UiModeManager.MODE_NIGHT_NO
+            ThemeMode.DARK -> UiModeManager.MODE_NIGHT_YES
+            else -> UiModeManager.MODE_NIGHT_AUTO
         }
 }
