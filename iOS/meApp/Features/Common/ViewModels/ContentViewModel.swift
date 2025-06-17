@@ -84,6 +84,7 @@ final class ContentViewModel: ObservableObject {
         await pushNotificationService.isNotificationAuthorized()
     }
     
+    // TODO: Implemented for time being. Remove them when dashboardView is implemented.
     @MainActor
      func logout() async {
        do {

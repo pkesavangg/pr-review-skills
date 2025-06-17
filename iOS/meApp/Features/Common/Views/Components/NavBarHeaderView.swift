@@ -54,7 +54,6 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                 }
             }
         }
-        .frame(height: 44)
         .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
     }
 }
