@@ -40,12 +40,7 @@ class ServiceRegistry {
     
     /// Registers services needed after login
     @MainActor func registerSessionServices() {
-        // Example placeholder registration:
-        // DependencyContainer.shared.register(GraphService())
-        //
-        // Note: GraphService is not implemented yet.
-        // This line is included as a reference for how to register session-scoped services.
-        // Add other post-login services here as needed.
+        DependencyContainer.shared.register(FeedService.shared)
     }
 
     /// Deregisters essential services (called during deinit or app shutdown)
@@ -64,12 +59,7 @@ class ServiceRegistry {
 
     /// Deregisters session-level services (call during logout or deinit)
     nonisolated func deregisterSessionServices() {
-        // Example placeholder deregistration:
-        // DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: GraphService.self))
-        //
-        // Note: GraphService is not implemented yet.
-        // This line is included as a reference for how to clean up session-scoped services.
-        // Remove other post-login services here as needed.
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
     }
 
 

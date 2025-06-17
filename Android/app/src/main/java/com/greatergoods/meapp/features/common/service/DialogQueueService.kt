@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.service
 
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.model.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,9 +25,12 @@ class DialogQueueService
         private val _currentDialog = MutableStateFlow<DialogModel?>(null)
         override val currentDialog: StateFlow<DialogModel?> = _currentDialog.asStateFlow()
 
-        private val _currentToast = MutableStateFlow<Toast?>(null)
-        override val currentToast: StateFlow<Toast?> = _currentToast.asStateFlow()
-        private val scope = CoroutineScope(Dispatchers.Main)
+    private val _currentToast = MutableStateFlow<Toast?>(null)
+    override val currentToast: StateFlow<Toast?> = _currentToast.asStateFlow()
+
+    private val _loader = MutableStateFlow<Loader?>(null)
+    override val loader: StateFlow<Loader?> = _loader.asStateFlow()
+    private val scope = CoroutineScope(Dispatchers.Main)
 
         /**
          * Enqueue a dialog. If no dialog is showing, show immediately.
@@ -45,12 +49,26 @@ class DialogQueueService
             _currentToast.value = dialog
         }
 
-        /**
-         * Dismiss the current toast if it exists.
-         */
-        override fun dismissToast() {
-            _currentToast.value = null
-        }
+    /**
+     * Show a loader.
+     */
+    override fun showLoader(loader: Loader) {
+        _loader.value = loader
+    }
+
+    /**
+     * Dismiss the current loader if it exists.
+     */
+    override fun dismissLoader() {
+        _loader.value = null
+    }
+
+    /**
+     * Dismiss the current toast if it exists.
+     */
+    override fun dismissToast() {
+        _currentToast.value = null
+    }
 
         /**
          * Dismiss the current dialog and show the next one after delayMillis.

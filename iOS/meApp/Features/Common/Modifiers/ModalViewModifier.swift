@@ -73,6 +73,7 @@ struct ModalViewModifier: ViewModifier {
                         .transition(.opacity)
                     
                     modal.presentedView
+                        .padding(.horizontal)
                         .transition(.scale)
                 }
                 .zIndex(Double(index))

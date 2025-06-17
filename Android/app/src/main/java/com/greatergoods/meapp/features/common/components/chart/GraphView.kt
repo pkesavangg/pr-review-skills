@@ -4,9 +4,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.enum.GraphSegment
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -37,11 +37,11 @@ import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
+import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
@@ -54,6 +54,7 @@ import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import android.util.Log
 
 private val LegendLabelKey = ExtraStore.Key<List<Double>>()
 
@@ -61,6 +62,7 @@ private val LegendLabelKey = ExtraStore.Key<List<Double>>()
 fun GraphView(
     modifier: Modifier = Modifier,
     graphLines: List<GraphLine>,
+    segment: GraphSegment = GraphSegment.WEEK,
     placeHolder: String? = null,
     selectedData: List<GraphPoint>? = null,
     labelContent: (@Composable () -> Unit)? = null,
@@ -68,7 +70,8 @@ fun GraphView(
 ) {
     if (graphLines.isEmpty() || graphLines.all { it.points.isEmpty() }) {
         Box(
-            modifier = modifier.fillMaxSize(),
+            modifier = modifier
+                .fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -80,6 +83,7 @@ fun GraphView(
         }
         return
     }
+
     val xLabels = remember(graphLines) {
         graphLines.first().points.map { it.x }
 
@@ -93,30 +97,34 @@ fun GraphView(
             }
         }
 
-    val minY = remember(ySeries) {
-        ySeries.flatten().minOfOrNull { it.value.toDouble() }
-    }
     val max = remember(ySeries) {
         ySeries.flatten().maxOfOrNull { it.value.toDouble() }
     }
+
+    val xStep = GraphUtil.rememberXStep(segment)
+    Log.i("CHECKING", segment.toString())
+
+    val scrollState = rememberVicoScrollState(
+        scrollEnabled = true,
+        initialScroll = Scroll.Absolute.End,
+    )
     var markerIndex by remember(xLabels) { mutableIntStateOf(xLabels.lastIndex) }
     var isUpdating by remember { mutableStateOf(false) }
 
     val modelProducer = remember { CartesianChartModelProducer() }
-    val valueFormatter =
-        object : DefaultCartesianMarker.ValueFormatter {
-            override fun format(
-                context: CartesianDrawingContext,
-                targets: List<CartesianMarker.Target>
-            ) =
-                xLabels[markerIndex].label
-        }
+    val valueFormatter = object : DefaultCartesianMarker.ValueFormatter {
+        override fun format(
+            context: CartesianDrawingContext,
+            targets: List<CartesianMarker.Target>
+        ) =
+            xLabels[markerIndex].label
+    }
 
     val markerListener = remember(graphLines) {
         object : CartesianMarkerVisibilityListener {
             override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
                 isUpdating = true
-                markerIndex = targets.first().x.toInt()
+                markerIndex = xLabels.indexOfFirst { it.value == targets.first().x.toLong() }
                 val selectedPoints = graphLines.mapNotNull {
                     val point = it.points.getOrNull(targets.first().x.toInt())
                     point
@@ -137,15 +145,20 @@ fun GraphView(
     }
     // Update chart on graphPoints change
     LaunchedEffect(graphLines) {
+
         isUpdating = true
         markerIndex = xLabels.lastIndex
         isUpdating = false
 
         withContext(Dispatchers.IO) {
             modelProducer.runTransaction {
+
                 lineSeries {
                     ySeries.forEach { y ->
                         series(
+                            x = xLabels.map { label ->
+                                label.value
+                            },
                             y.map { label ->
                                 label.value
                             },
@@ -160,6 +173,7 @@ fun GraphView(
                     }
                 }
             }
+
         }
     }
 
@@ -184,10 +198,7 @@ fun GraphView(
                 )
             },
         ),
-        rangeProvider = CartesianLayerRangeProvider.fixed(
-            minY = minY ?: 0.0,
-            maxY = max ?: 0.0,
-        ),
+        pointSpacing = GraphUtil.rememberPointSpacing(segment, 20.dp),
     )
 
     val layeredMarker = rememberMarker(
@@ -216,13 +227,17 @@ fun GraphView(
             tickLength = 0.dp,
         ),
         bottomAxis = HorizontalAxis.rememberBottom(
-            guideline = null, tickLength = 0.dp, label = null, line = rememberAxisGuidelineComponent(),
+            guideline = null,
+            tickLength = 0.dp,
+            label = null,
+            line = rememberAxisGuidelineComponent(),
         ),
         marker = layeredMarker,
         markerVisibilityListener = markerListener,
         persistentMarkers = if (!isUpdating) {
-            { layeredMarker at markerIndex }
+            { layeredMarker at xLabels[markerIndex].value }
         } else null,
+        getXStep = { xStep },
     )
 
     Column(
@@ -234,10 +249,9 @@ fun GraphView(
             chart = chart,
             modelProducer = modelProducer,
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.4f),
+                .fillMaxSize(),
             animationSpec = tween(1000),
-            scrollState = rememberVicoScrollState(false),
+            scrollState = scrollState,
         )
     }
 }

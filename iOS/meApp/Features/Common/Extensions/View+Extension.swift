@@ -115,8 +115,26 @@ extension View {
     
     /// Dismisses the keyboard when the view is dragged.
     func dismissKeyboardOnDrag() -> some View {
-        return self.gesture(DragGesture().onChanged { _ in
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        })
+        self
+            .contentShape(Rectangle()) // Ensures transparent areas can receive gestures
+            .highPriorityGesture(
+                DragGesture().onChanged { _ in
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            )
+    }
+    
+    /// Applies a border to the view with customizable sides, thickness, and color.
+    /// - Parameters:
+    ///   - sides: An array of sides where the border should be applied.
+    ///   - thickness: The thickness of the border.
+    ///   - color: The color of the border. If nil, the default color will be used.
+    ///   - Returns: A view with a border applied to the specified sides.
+    func border(
+        sides: [BorderModifier.Side] = [.top, .bottom, .leading, .trailing],
+        thickness: CGFloat = 1,
+        color: Color? = nil
+    ) -> some View {
+        modifier(BorderModifier(sides: sides, thickness: thickness, color: color))
     }
 }

@@ -21,7 +21,7 @@ data class ScaleEntry(
         val scaleEntity = scale.scaleEntry
         return DomainScaleEntry(
             operationType = entry.operationType,
-            entryTimestamp = entry.entryTimestamp,
+            entryTimestamp = entry.entryTimestamp.toString(),
             weight = scaleEntity.weight,
             bodyFat = scaleEntity.bodyFat,
             muscleMass = scaleEntity.muscleMass,
@@ -82,7 +82,7 @@ data class ScaleEntry(
             val entryEntity = EntryEntity(
                 id = entryId ?: 0,
                 accountId = accountId,
-                entryTimestamp = scaleEntry.entryTimestamp,
+                entryTimestamp = scaleEntry.entryTimestamp.toLong(),
                 serverTimestamp = null,
                 opTimestamp = null,
                 operationType = scaleEntry.operationType,

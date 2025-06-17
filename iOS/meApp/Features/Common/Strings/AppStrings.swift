@@ -16,6 +16,31 @@ struct CommonStrings {
     static let save = "Save"
     static let skip = "Skip"
     static let logIn = "Log in"
+    static let complete = "Complete"
+    
+    static let dash = "dash"
+    static let entry = "entry"
+    static let history = "history"
+    static let settings = "settings"
+    static let appSync = "appsync"
+    static let optional = "optional"
+}
+
+/// Constants for toast messages used in the app
+struct ToastStrings {
+    static let loginError = "Login Error"
+    static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
+    static let somethingWentWrong = "Something went wrong. Please try again. If the problem continues, contact customer service."
+    static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
+    static let emailInUse = "Email address is already in use"
+    static let errorCreatingAccount = "Error creating account."
+}
+
+/// Constants for help modal strings used in the app
+struct HelpStrings {
+    static let question = "Have a question?"
+    static let generalHelp = "We're here for you. Contact us and we'll be happy to help."
+    static let viewGuide = "View Getting Started Guide"
 }
 
 /// Constants for form validation error messages
@@ -31,6 +56,13 @@ struct FormErrorMessages {
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "passwords do not match"
     static let valueShouldBeEqual = "value should not be equal to current weight"
+    static let minWeightKg = "value should be greater than 0 kg"
+    static let minWeightLb = "value should be greater than 0 lbs"
+    static let maxWeightKg = "value should be less than 450 kg"
+    static let maxWeightLb = "value should be less than 999 lbs"
+    static let minValue = "value should be greater than 0"
+    static let maxValue99 = "value should be less than 99"
+    static let maxValue = {(value: Int) in "value should be less than \(value)"} 
 }
 
 /// Constants for input field labels used in the app
@@ -43,6 +75,23 @@ struct InputFieldLabels {
     static let currentWeight = "current weight"
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
+    static let zipCode = "zipcode"
+    static let weightLabel: (Bool) -> String = { isKg in
+        return isKg ? "weight (kg)" : "weight (lbs)"
+    }
+    static let date = "Date"
+    static let bmi = "bmi"
+    static let bodyFat = "body fat %"
+    static let muscleMass = "muscle mass %"
+    static let bodyWater = "body water %"
+    static let heartRate = "heart rate (bpm)"
+    static let boneMass = "bone mass %"
+    static let visceralFat = "visceral fat (Lv.)"
+    static let subcutaneousFat = "subcutaneous fat %"
+    static let protein = "protein %"
+    static let skeletalMuscles = "skeletal muscles %"
+    static let basalMetabolicRate = "basal metabolic rate (kcal)"
+    static let metabolicAge = "metabolic age (yrs)"
 }
 
 /// Constants for Alert strings used in the app
@@ -55,6 +104,18 @@ struct AlertStrings {
     }
 }
 
+struct LoaderStrings {
+    static let creatingAccount = "Creating account..."
+}
+
+/// Constants for legal text used in the app
+struct LegalStrings {
+    static let termsAndPrivacyText = "By clicking \"COMPLETE\", you are agreeing to our"
+    static let termsOfService = "Terms of Service"
+    static let privacyPolicy = "Privacy Policy"
+    static let andText = "&"
+}
+
 /// Constants for App Assets used in the app
 struct AppAssets {
     static let eyeOpen = "eyeOpen"
@@ -64,4 +125,20 @@ struct AppAssets {
     static let xmark = "xmark"
     static let meLogoDark = "meLogoDark"
     static let meLogoLight = "meLogoLight"
+    static let stamp = "stamp"
+    static let stampDark = "stampDark"
+    static let phone = "phone"
+    static let email = "email"
+    static let loader = "loader"
+    static let dash = "dash"
+    static let dashFill = "dashFill"
+    static let addEntry = "addEntry"
+    static let addEntryFill = "addEntryFill"
+    static let settings = "settings"
+    static let settingsFill = "settingsFill"
+    static let history = "history"
+    static let historyFill = "historyFill"
+    static let appSync = "appSync"
+    static let chevronUp = "chevronUp"
+    static let chevronDown = "chevronDown"
 }

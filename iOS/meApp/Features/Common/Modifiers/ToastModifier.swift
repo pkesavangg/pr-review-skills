@@ -81,20 +81,19 @@ struct ToastModifier: ViewModifier {
     private func toastView(for data: ToastModel) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: .spacingXS) {
-                Text(data.title)
-                    .fontOpenSans(.heading5)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.textHeading)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                if let subtitle = data.message {
-                    Text(subtitle)
-                        .fontOpenSans(.body2)
+                if let title = data.title {
+                    Text(title)
+                        .fontOpenSans(.heading5)
+                        .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
+
+                Text(data.message)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textBody)
+
                 if let buttonTextView = data.btnTextView {
                     Button {
                         data.onClick()
@@ -186,6 +185,9 @@ struct ToastModifier: ViewModifier {
     }
     
     private func removeToast(id: UUID) {
+        if let toast = activeToasts.first(where: { $0.id == id })?.toast {
+            toast.onDismiss?()
+        }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
             activeToasts.removeAll { $0.id == id }
             // Reset offset and dragging state after toast is removed
@@ -194,7 +196,6 @@ struct ToastModifier: ViewModifier {
                 isDragging = false
             }
         }
-        
         if id == activeToasts.first?.id {
             timer?.cancel()
             timer = nil

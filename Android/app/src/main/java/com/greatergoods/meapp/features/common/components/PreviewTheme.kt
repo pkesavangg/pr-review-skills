@@ -27,8 +27,13 @@ import android.content.res.Configuration.UI_MODE_TYPE_NORMAL
  */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.SOURCE)
-@Preview(name = "Phone -  Light", device = PHONE, showSystemUi = true)
-@Preview(name = "Phone - Dark", uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
+@Preview(
+    name = "Phone -  Light",
+    uiMode = Configuration.UI_MODE_NIGHT_NO or UI_MODE_TYPE_NORMAL,
+    device = PHONE,
+    showSystemUi = true,
+)
+@Preview(name = "Phone - Dark", uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL, device = PHONE, showSystemUi = true)
 @Preview(
     name = "Foldable -  Light",
     device = FOLDABLE,
