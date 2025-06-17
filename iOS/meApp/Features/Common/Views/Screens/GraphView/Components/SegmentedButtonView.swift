@@ -10,7 +10,8 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     let segments: [T]
     @Binding var selectedSegment: T
     @Environment(\.appTheme) private var theme
-    @State private var segmentSize: CGSize = .zero
+    /// Stores the width of each segment (indexed by its position in the `segments` array).
+    @State private var segmentWidths: [Int: CGFloat] = [:]
     
     var body: some View {
         HStack(spacing: 0) {
@@ -30,7 +31,10 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                             GeometryReader { geometry in
                                 Color.clear
                                     .onAppear {
-                                        segmentSize = geometry.size
+                                        segmentWidths[index] = geometry.size.width
+                                    }
+                                    .onChange(of: geometry.size.width) {
+                                        segmentWidths[index] = geometry.size.width
                                     }
                             }
                         )
@@ -42,23 +46,36 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
             // Animated background
             RoundedRectangle(cornerRadius: .radiusMD)
                 .fill(theme.actionSecondary)
-                .frame(width: segmentSize.width)
+                .frame(width: selectedWidth())
                 .offset(x: calculateOffset())
-                .animation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0), value: selectedSegment)
+                .animation(
+                    .spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0),
+                    value: selectedSegment
+                )
         )
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }
     
+    /// Calculates the x-offset required to place the highlight behind the selected segment.
     private func calculateOffset() -> CGFloat {
-        guard let selectedIndex = segments.firstIndex(where: { $0.id == selectedSegment.id }) else {
-            return 0
-        }
-        
-        let segmentWidth = segmentSize.width
-        let totalWidth = segmentWidth * CGFloat(segments.count)
-        let startPosition = -totalWidth / 2 + segmentWidth / 2
-        
-        return startPosition + (segmentWidth * CGFloat(selectedIndex))
+        guard
+            let selectedIndex = segments.firstIndex(where: { $0.id == selectedSegment.id }),
+            !segmentWidths.isEmpty
+        else { return 0 }
+
+        let totalWidth = segmentWidths.values.reduce(0, +)
+        let precedingWidth = (0..<selectedIndex).reduce(CGFloat(0)) { $0 + (segmentWidths[$1] ?? 0) }
+        let selectedWidth = segmentWidths[selectedIndex] ?? 0
+
+        // Start from the leading edge (-totalWidth/2), then move past the widths before the selected
+        // segment and finally centre the highlight under the selected segment.
+        return -totalWidth / 2 + precedingWidth + (selectedWidth / 2)
+    }
+
+    /// Returns the width of the currently selected segment (or zero until measured).
+    private func selectedWidth() -> CGFloat {
+        guard let index = segments.firstIndex(where: { $0.id == selectedSegment.id }) else { return 0 }
+        return segmentWidths[index] ?? 0
     }
 }
 

@@ -155,6 +155,8 @@ final class EntryStore: ObservableObject {
 
             // Round to 1 decimal place
             bmi = Double(String(format: "%.1f", bmi)) ?? bmi
+            // If BMI is NaN or negative, set to 0
+            // If BMI exceeds max value, set to 99.9 (To show the error state)
             self.manualEntryForm.bmi.value = bmi == 0 ? "" : bmi > self.maxBmiValue ? String(99.9) : String(bmi)
             if bmi < self.maxBmiValue {
                 self.manualEntryForm.bmi.markAsPristine()
