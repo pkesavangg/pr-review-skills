@@ -16,6 +16,17 @@ enum FocusField: Hashable {
     case weight
     case currentWeight
     case goalWeight
+    case bmi
     case bodyFat
+    case muscleMass
+    case bodyWater
+    case boneMass
+    case visceralFat
+    case heartRate
+    case subcutaneousFat
+    case protein
+    case skeletalMuscles
+    case bmr
+    case metabolicAge
     case none
 }

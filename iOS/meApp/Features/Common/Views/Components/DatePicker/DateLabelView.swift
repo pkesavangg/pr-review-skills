@@ -28,19 +28,9 @@ struct DateLabelView: View {
     }()
 
     var body: some View {
-        Button(action: onTap) {
-            Text(formattedDateString)
-                .fontWeight(.bold)
-                .fontOpenSans(.link1)
-                .foregroundColor(theme.actionPrimary)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: .radiusSM)
-                        .fill(theme.backgroundPrimary)
-                )
+        ChipView(text: formattedDateString) {
+            onTap()
         }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 

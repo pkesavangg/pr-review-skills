@@ -56,6 +56,10 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         let dto = updatedAccount.toAccountDTO()
         return try await httpClient.send(.updateAccount, method: .put, body: dto, needsAuth: true)
     }
+    
+    func createGoal(_ goal: Goal) async throws -> GoalResponse {
+        return try await httpClient.send(.setGoal, method: .post, body: goal, needsAuth: true)
+    }
 
     func patchProfile(_ profile: Profile) async throws -> AccountResponse {
         return try await httpClient.send(.updateProfile, method: .patch, body: profile, needsAuth: true)
@@ -70,13 +74,13 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     }
 
     func patchDashboardType(_ type: DashboardType) async throws -> AccountResponse {
-        struct DashboardTypeRequest: Codable { let type: DashboardType }
-        return try await httpClient.send(.updateDashboardType, method: .patch, body: DashboardTypeRequest(type: type), needsAuth: true)
+        struct DashboardTypeRequest: Codable { let dashboardType: DashboardType }
+        return try await httpClient.send(.updateDashboardType, method: .patch, body: DashboardTypeRequest(dashboardType: type), needsAuth: true)
     }
 
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse {
-        struct DashboardMetricsRequest: Codable { let metrics: [String] }
-        return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(metrics: metrics), needsAuth: true)
+        struct DashboardMetricsRequest: Codable { let dashboardMetrics: [String] }
+        return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(dashboardMetrics: metrics), needsAuth: true)
     }
 
     func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse {

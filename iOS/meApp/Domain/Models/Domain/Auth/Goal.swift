@@ -7,7 +7,7 @@
 
 // MARK: - Goal
 /// A struct representing a user's goal.
-struct Goal {
+struct Goal: Codable {
     let type: GoalType
     let goalWeight: Int
     let initialWeight: Int
