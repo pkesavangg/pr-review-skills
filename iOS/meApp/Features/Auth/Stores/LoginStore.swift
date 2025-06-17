@@ -115,6 +115,11 @@ final class LoginStore: ObservableObject {
             .store(in: &cancellables)
     }
 
+    // MARK: - Helper for email trimming 
+    private func trimmedEmail(_ email: String) -> String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     // MARK: - Login Logic
     func logIn() async {
         loginForm.email.markAsDirty()
@@ -134,7 +139,7 @@ final class LoginStore: ObservableObject {
 
     // MARK: - Password Reset
     func showPasswordResetPrompt() {
-        let emailValue = loginForm.email.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let emailValue = trimmedEmail(loginForm.email.value)
         resetEmail = emailValue
         showResetPrompt = true
         resetError = nil
@@ -154,7 +159,7 @@ final class LoginStore: ObservableObject {
     }
 
     private func handlePasswordReset(email: String) async {
-        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedEmail = trimmedEmail(email)
         let tempEmailControl = FormControl(trimmedEmail, validators: [.required, .email, .maxLength(100)])
         tempEmailControl.markAsDirty()
         tempEmailControl.validate()
@@ -181,7 +186,7 @@ final class LoginStore: ObservableObject {
                 )
             )
         } catch {
-            logger.log(level: .error, tag: logTag, message: "Error:\(error)")
+            logger.log(level: .error, tag: logTag, message: "Error: \(error)")
             resetError = errorLang.passwordResetFailed
         }
         loaderOverride = nil
