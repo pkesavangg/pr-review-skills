@@ -17,14 +17,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import com.greatergoods.meapp.features.common.helper.form.FormValidations.email
 import com.greatergoods.meapp.features.common.strings.AppHelpModalStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.net.Uri
 
 /**
  * Help modal matching Figma (node 14585-12302): shows support phone/email and info.
@@ -45,6 +43,7 @@ fun AppHelpModal(
             AppHelpModalStrings.Title,
             supportingText = AppHelpModalStrings.SupportingText,
             onClose = {
+                onClose()
             },
             imageType = AppPopupImageType.DefaultImage(AppIcons.Outlined.Help),
         ) {
