@@ -46,11 +46,13 @@ object ServiceModule {
     fun provideAccountAuthService(
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
-        tokenManager: TokenManager
+        tokenManager: TokenManager,
+        dialogQueueService: IDialogQueueService
     ): IAccountAuthService = AccountAuthService(
         accountRepository,
         connectivityObserver,
-        tokenManager
+        tokenManager,
+        dialogQueueService,
     )
 
     /**

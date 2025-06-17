@@ -1,9 +1,12 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -15,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -30,19 +32,23 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.toLowerCase
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.helper.form.DecimalInputVisualTransformation
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.strings.AppInputStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import com.greatergoods.meapp.theme.MeTheme.typography
+import android.R.attr.singleLine
 
 enum class AppInputType {
     TEXT,
+    EMAIL,
     PASSWORD,
     NUMBER,
     WEIGHT,
@@ -63,6 +69,7 @@ object AppInputDefaults {
     fun keyboardType(type: AppInputType): KeyboardType =
         when (type) {
             AppInputType.TEXT -> KeyboardType.Text
+            AppInputType.EMAIL -> KeyboardType.Email
             AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL,
             -> KeyboardType.Number
 
@@ -261,6 +268,7 @@ fun <T> InputFieldBase(
         value = inputValue,
         onValueChange = onInputChange,
         modifier = modifier
+            .height(84.dp)
             .fillMaxWidth()
             .focusRequester(focusRequester)
             .onFocusChanged { focusState ->
@@ -272,12 +280,11 @@ fun <T> InputFieldBase(
                     currentOnFocus?.invoke()
                     isFocused = true
                 }
-            }
-            .padding(bottom = spacing.xs),
+            }.padding(horizontal = spacing.xs),
         label = {
             label?.let {
                 Text(
-                    text = label,
+                    text = label.lowercase(),
                     style = typography.body3,
                     color = if (isError) colorScheme.textError else colorScheme.textSubheading,
                 )
@@ -290,6 +297,7 @@ fun <T> InputFieldBase(
                 color = colorScheme.secondaryActionDisabled,
             )
         },
+        textStyle = typography.body2,
         singleLine = true,
         trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
@@ -306,6 +314,7 @@ fun <T> InputFieldBase(
         readOnly = readOnly,
         visualTransformation = inputTransformation,
         isError = isError,
+
         shape = RoundedCornerShape(borderRadius.sm),
         colors =
             TextFieldDefaults.colors(
@@ -352,20 +361,20 @@ fun <T> InputFieldBase(
             }
         },
     )
+    Spacer(Modifier.height(spacing.xs))
 }
 
 @PreviewTheme
 @Composable
 fun AppInputPreview() {
     MeAppTheme {
-       val fakeScope = rememberCoroutineScope()
-       val normal = remember { FormControl("Input", emptyList(), emptyList(), fakeScope) }
-       val disabled = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-       val focused = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-       Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
-           AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
-           AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
-           AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
-       }
+        val normal = remember { FormControl.create("Input", emptyList()) }
+        val disabled = remember { FormControl.create("", emptyList()) }
+        val focused = remember { FormControl.create("", emptyList()) }
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
+            AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
+            AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
+            AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
+        }
     }
 }

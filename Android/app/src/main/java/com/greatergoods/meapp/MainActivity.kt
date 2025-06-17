@@ -49,13 +49,11 @@ class MainActivity : AppCompatActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         applyInitialTheme()
+        initializeSplashScreen()
         super.onCreate(savedInstanceState)
 
         // Configure window to handle insets properly
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-
-        initializeSplashScreen()
         enableEdgeToEdge()
         setContent {
             MeApp()

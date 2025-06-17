@@ -17,11 +17,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
-import com.greatergoods.meapp.features.common.components.*
+import com.greatergoods.meapp.features.common.components.AppButton
+import com.greatergoods.meapp.features.common.components.AppIconButton
+import com.greatergoods.meapp.features.common.components.AppInput
+import com.greatergoods.meapp.features.common.components.AppInputType
+import com.greatergoods.meapp.features.common.components.AppScaffold
+import com.greatergoods.meapp.features.common.components.AppText
+import com.greatergoods.meapp.features.common.components.ButtonSize
+import com.greatergoods.meapp.features.common.components.ButtonType
+import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -40,9 +50,7 @@ fun LoginScreen() {
     AppScaffold(
         title = null,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
-                backStack.removeLast()
-            }
+            AppIconButton(AppIcons.Default.Close) { backStack.removeLast() }
         },
         actions = {
             AppIconButton(AppIcons.Outlined.Help) { }
@@ -73,7 +81,7 @@ fun LoginScreen() {
                 AppInput(
                     formControl = state.form.controls.email,
                     label = LoginStrings.EmailLabel,
-                    type = AppInputType.TEXT,
+                    type = AppInputType.EMAIL,
                     showTrailingIcon = true,
                 )
                 AppInput(
@@ -98,8 +106,7 @@ fun LoginScreen() {
                     onClick = {
                         backStack.addRoute(
                             AppRoute.Home,
-
-                            )
+                        )
                     },
                 )
             }
@@ -112,7 +119,7 @@ fun LoginScreen() {
                     text = LoginStrings.TermsAgreement,
                     textType = TextType.Subtitle,
                 )
-                Spacer(Modifier.height(spacing.xs))
+                Spacer(Modifier.height(spacing.x2s))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Absolute.Center,
@@ -137,7 +144,7 @@ fun LoginScreen() {
     }
 }
 
-@PreviewTheme
+@PreviewTheme()
 @Composable
 fun LoginScreenPreview() {
     MeAppTheme {
