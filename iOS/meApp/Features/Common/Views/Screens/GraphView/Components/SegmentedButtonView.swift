@@ -15,7 +15,11 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     var body: some View {
         HStack(spacing: 0) {
             ForEach(segments) { segment in
-                Button(action: { selectedSegment = segment }) {
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedSegment = segment
+                    }
+                }) {
                     Text(segment.rawValue.uppercased())
                         .fontWeight(.bold)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
