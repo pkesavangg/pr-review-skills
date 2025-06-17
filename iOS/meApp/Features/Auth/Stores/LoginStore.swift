@@ -131,7 +131,16 @@ final class LoginStore: ObservableObject {
             try await accountService.logIn(email: loginForm.email.value, password: loginForm.password.value)
             onLoginSuccess?()
         } catch {
-            logger.log(level: .error, tag: logTag, message: "Error logging in: \(error)")
+            logger.log(level: .error, tag: logTag, message: "Error: \(error)")
+            let errorDescription = (error as NSError).localizedDescription.lowercased()
+            if errorDescription.contains("unauthorized") {
+                notificationService.showToast(
+                    ToastModel(
+                        title: toastLang.loginError,
+                        message: toastLang.invalidCredentials
+                    )
+                )
+            }
         }
         isFormSubmitting = false
         isLoading = false
