@@ -12,6 +12,7 @@ import SwiftUI
 /// Singleton class responsible for managing the current color scheme and dark mode settings of the app.
 final class Theme: ObservableObject {
     static let shared = Theme()
+    @Published var systemColorScheme: ColorScheme = .light
 
     /// Currently active app color scheme.
     @Published var currentColorScheme: AppColorScheme = .primary
@@ -19,6 +20,7 @@ final class Theme: ObservableObject {
     @Published var appearanceMode: AppearanceMode {
         didSet {
             UserDefaults.standard.set(appearanceMode.rawValue, forKey: "appearanceMode")
+            updateWindowInterfaceStyle()
         }
     }
     
@@ -28,11 +30,7 @@ final class Theme: ObservableObject {
             switch appearanceMode {
             case .dark: return true
             case .light: return false
-            case .system:
-                // For system mode, we'll return false here
-                // The actual appearance will be determined by the system
-                // when we return nil from getPreferredAppearanceMode()
-                return false
+            case .system: return systemColorScheme == .dark
             }
         }
         set {
@@ -44,6 +42,11 @@ final class Theme: ObservableObject {
     func getPreferredAppearanceMode() -> ColorScheme? {
         return appearanceMode.colorScheme
     }
+    
+    /// Syncs the system color scheme with the theme manager
+    func syncWithSystemColorScheme(_ systemColorScheme: ColorScheme) {
+        self.systemColorScheme = systemColorScheme
+    }
 
     /// Private initializer to enforce singleton pattern. Loads saved appearance mode from UserDefaults.
     private init() {
@@ -54,6 +57,22 @@ final class Theme: ObservableObject {
         } else {
             // Default to system mode if no saved preference
             appearanceMode = .system
+        }
+        updateWindowInterfaceStyle()
+    }
+    
+    /// Applies the interface style to the window
+    private func updateWindowInterfaceStyle() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
+        guard let window = windowScene.windows.first else { return }
+        
+        switch appearanceMode {
+        case .system:
+            window.overrideUserInterfaceStyle = .unspecified
+        case .light:
+            window.overrideUserInterfaceStyle = .light
+        case .dark:
+            window.overrideUserInterfaceStyle = .dark
         }
     }
 }

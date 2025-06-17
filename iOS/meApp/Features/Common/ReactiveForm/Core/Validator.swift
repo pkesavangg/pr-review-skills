@@ -105,6 +105,22 @@ extension Validator where Value == String {
             value == otherValue()
         }
     }
+    
+    /// Validator that requires the control's value to be greater than 0.
+    public static func minWeight() -> Validator {
+        Validator(type: .minWeight, value: 0) { value in
+            guard let weight = Double(value) else { return false }
+            return weight > Double(0)
+        }
+    }
+    
+    /// Validator that requires the control's value to be less than or equal to the provided maximum weight.
+    public static func maxWeight(_ maximum: Double) -> Validator {
+        Validator(type: .maxWeight, value: maximum) { value in
+            guard let weight = Double(value) else { return true } // Pass if not a number, other validators will catch it
+            return weight <= maximum
+        }
+    }
 }
 
 // MARK: - Integer Validators
@@ -176,4 +192,4 @@ private struct Rule {
         guard let url = URL(string: string) else { return false }
         return UIApplication.shared.canOpenURL(url)
     }
-} 
+}

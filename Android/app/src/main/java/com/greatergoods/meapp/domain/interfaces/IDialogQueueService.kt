@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.domain.interfaces
 
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.model.Toast
 import kotlinx.coroutines.flow.StateFlow
 
@@ -10,8 +11,11 @@ import kotlinx.coroutines.flow.StateFlow
 interface IDialogQueueService {
     val currentDialog: StateFlow<DialogModel?>
     val currentToast: StateFlow<Toast?>
+    val loader: StateFlow<Loader?>
     fun enqueue(dialog: DialogModel)
     fun showToast(dialog: Toast)
+    fun showLoader(loader: Loader)
+    fun dismissLoader()
     fun dismissToast()
     fun dismissCurrent()
     fun clear()

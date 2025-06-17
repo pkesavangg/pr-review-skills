@@ -4,6 +4,7 @@ package com.greatergoods.meapp.domain.services
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -27,4 +28,32 @@ interface IEntryService {
     )
 
     fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
+
+    /**
+     * Gets monthly averages of body scale data for an account using JOINs.
+     * @param accountId The account ID.
+     * @return Flow of monthly averages as PeriodBodyScaleSummary.
+     */
+    fun getMonthlyBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Gets the latest body scale entry for each month for an account using JOINs.
+     * @param accountId The account ID.
+     * @return Flow of latest entries per month as PeriodBodyScaleSummary.
+     */
+    fun getMonthlyBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Gets daywise averages of body scale data for an account using JOINs.
+     * @param accountId The account ID.
+     * @return Flow of daywise averages as PeriodBodyScaleSummary.
+     */
+    fun getDaywiseBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Gets the latest body scale entry for each day for an account using JOINs.
+     * @param accountId The account ID.
+     * @return Flow of latest entries per day as PeriodBodyScaleSummary.
+     */
+    fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
 }

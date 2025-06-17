@@ -56,7 +56,7 @@ struct NameStepView: View {
                         focusedField: $focusedField
                     ) {
                         focusedField = nil
-                        if signupStore.signupForm.firstName.isValid && signupStore.signupForm.lastName.isValid {
+                        if signupStore.isNextEnabled {
                             signupStore.moveToNextStep()
                         }
                     }
@@ -64,6 +64,7 @@ struct NameStepView: View {
                 .padding(.top, .spacingLG)
                 Spacer()
             }
+            .padding(.bottom, .spacing3XL)
             .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
     }
