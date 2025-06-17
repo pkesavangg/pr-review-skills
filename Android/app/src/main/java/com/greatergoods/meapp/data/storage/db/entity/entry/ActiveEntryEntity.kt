@@ -21,9 +21,9 @@ import androidx.room.DatabaseView
 data class ActiveEntryEntity(
     override val id: Long,
     override val accountId: String,
-    override val entryTimestamp: String,
-    override val serverTimestamp: String?,
-    override val opTimestamp: String?,
+    override val entryTimestamp: Long,
+    override val serverTimestamp: Long?,
+    override val opTimestamp: Long?,
     override val operationType: String,
     override val deviceType: String,
     override val deviceId: String,

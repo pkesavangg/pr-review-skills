@@ -17,7 +17,6 @@ import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
             entity = AccountEntity::class,
             parentColumns = ["accountId"],
             childColumns = ["accountId"],
-            onDelete = ForeignKey.CASCADE,
         ),
     ],
     indices = [Index("accountId")],
@@ -26,9 +25,9 @@ data class EntryEntity(
     @PrimaryKey(autoGenerate = true)
     override val id: Long,
     override val accountId: String,
-    override val entryTimestamp: String,
-    override val serverTimestamp: String?,
-    override val opTimestamp: String?,
+    override val entryTimestamp: Long,
+    override val serverTimestamp: Long?,
+    override val opTimestamp: Long?,
     override val operationType: String,
     override val deviceType: String,
     override val deviceId: String,
@@ -36,12 +35,12 @@ data class EntryEntity(
     override val isSynced: Boolean = false,
 ) : BaseEntryEntity
 
-sealed interface BaseEntryEntity {
+interface BaseEntryEntity {
     val id: Long
     val accountId: String
-    val entryTimestamp: String
-    val serverTimestamp: String?
-    val opTimestamp: String?
+    val entryTimestamp: Long
+    val serverTimestamp: Long?
+    val opTimestamp: Long?
     val operationType: String
     val deviceType: String
     val deviceId: String

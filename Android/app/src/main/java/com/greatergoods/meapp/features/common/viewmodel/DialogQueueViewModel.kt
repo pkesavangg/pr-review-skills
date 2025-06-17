@@ -1,11 +1,15 @@
 package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.greatergoods.meapp.domain.interfaces.IDialogQueueHandler
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
+import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.components.LoaderConfig
+import com.greatergoods.meapp.features.common.components.LoaderDefaults
+import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.model.Toast
-import com.greatergoods.meapp.features.common.service.DialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -16,16 +20,17 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class DialogQueueViewModel @Inject constructor(
-    private val dialogQueueService: DialogQueueService
-) : IDialogQueueHandler, ViewModel() {
+    private val dialogQueueService: IDialogQueueService
+) : ViewModel() {
 
-    override val currentDialog: StateFlow<DialogModel?> = dialogQueueService.currentDialog
-    override val currentToast: StateFlow<Toast?> = dialogQueueService.currentToast
+    val currentDialog: StateFlow<DialogModel?> = dialogQueueService.currentDialog
+    val currentToast: StateFlow<Toast?> = dialogQueueService.currentToast
+    val loader: StateFlow<Loader?> = dialogQueueService.loader
 
     /**
      * Enqueue an alert dialog
      */
-    override fun enqueueAlert(
+    fun enqueueAlert(
         title: String,
         message: String,
         dismissText: String,
@@ -48,7 +53,7 @@ class DialogQueueViewModel @Inject constructor(
     /**
      * Enqueue a confirmation dialog
      */
-    override fun enqueueConfirm(
+    fun enqueueConfirm(
         title: String,
         message: String,
         confirmText: String,
@@ -77,8 +82,8 @@ class DialogQueueViewModel @Inject constructor(
     /**
      * Enqueue a custom dialog with arbitrary parameters
      */
-    override fun enqueueCustomDialog(
-        contentKey: String,
+    fun enqueueCustomDialog(
+        contentKey: DialogType,
         params: Map<String, Any?>,
         onDismiss: () -> Unit,
         priority: Int,
@@ -95,10 +100,28 @@ class DialogQueueViewModel @Inject constructor(
         )
     }
 
+    fun showLoader(
+        message: String,
+        loaderStyle: LoaderStyle = LoaderStyle.DASHED,
+        loaderConfig: LoaderConfig = LoaderDefaults.defaultFor(loaderStyle)
+    ) {
+        dialogQueueService.showLoader(
+            Loader(
+                message = message,
+                style = loaderStyle,
+                config = loaderConfig,
+            ),
+        )
+    }
+
+    fun dismissLoader() {
+        dialogQueueService.dismissLoader()
+    }
+
     /**
      * Enqueue a toast message
      */
-    override fun enqueueToast(
+    fun enqueueToast(
         message: String,
         title: String?,
         action: ActionButton?
@@ -115,46 +138,46 @@ class DialogQueueViewModel @Inject constructor(
     /**
      * Dismiss the current dialog and optionally show the next one
      */
-    override fun dismissCurrent(showNext: Boolean) {
+    fun dismissCurrent(showNext: Boolean = true) {
         dialogQueueService.dismissCurrent()
         if (!showNext) {
             dialogQueueService.clear()
         }
     }
 
-    override fun dismissToast() {
+    fun dismissToast() {
         dialogQueueService.dismissToast()
     }
 
     /**
      * Clear all dialogs from the queue
      */
-    override fun clear() {
+    fun clear() {
         dialogQueueService.clear()
     }
 
     /**
      * Check if there are any dialogs in the queue
      */
-    override fun hasPendingDialogs(): Boolean =
+    fun hasPendingDialogs(): Boolean =
         dialogQueueService.getQueueSize() > 0 || dialogQueueService.currentDialog.value != null
 
     /**
      * Get the next dialog in the queue without dequeuing it
      */
-    override fun peekNextDialog(): DialogModel? =
+    fun peekNextDialog(): DialogModel? =
         dialogQueueService.peekNextDialog()
 
     /**
      * Get the number of dialogs in the queue
      */
-    override fun getQueueSize(): Int =
+    fun getQueueSize(): Int =
         dialogQueueService.getQueueSize() + (if (dialogQueueService.currentDialog.value != null) 1 else 0)
 
     /**
      * Update the delay of the current dialog
      */
-    override fun updateCurrentDialogDelay(delayMillis: Long) {
+    fun updateCurrentDialogDelay(delayMillis: Long) {
         val current = dialogQueueService.currentDialog.value
         if (current != null) {
             dialogQueueService.dismissCurrent()
@@ -168,26 +191,6 @@ class DialogQueueViewModel @Inject constructor(
                     delayMillis = delayMillis,
                 )
 
-                is DialogModel.Confirm -> enqueueConfirm(
-                    title = current.title,
-                    message = current.message,
-                    confirmText = current.confirmText,
-                    cancelText = current.cancelText,
-                    onConfirm = current.onConfirm,
-                    onCancel = current.onCancel,
-                    onDismiss = current.onDismiss,
-                    priority = current.confirmPriority,
-                    delayMillis = delayMillis,
-                )
-
-                is DialogModel.Custom -> enqueueCustomDialog(
-                    contentKey = current.contentKey,
-                    params = current.params,
-                    onDismiss = current.onDismiss,
-                    priority = current.customPriority,
-                    delayMillis = delayMillis,
-                )
-
                 else -> {}
             }
         }
@@ -196,7 +199,7 @@ class DialogQueueViewModel @Inject constructor(
     /**
      * Update the priority of the current dialog
      */
-    override fun updateCurrentDialogPriority(priority: Int) {
+    fun updateCurrentDialogPriority(priority: Int) {
         val current = dialogQueueService.currentDialog.value
         if (current != null) {
             dialogQueueService.dismissCurrent()

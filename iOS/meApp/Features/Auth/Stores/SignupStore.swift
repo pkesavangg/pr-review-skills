@@ -127,6 +127,9 @@ final class SignupStore: ObservableObject {
             }
         }
         guard currentStepIndex < steps.count - 1 else { return }
+        if currentStep == .goal  {
+            isGoalSkipped = false
+        }
         currentStepIndex += 1
     }
     
