@@ -21,10 +21,7 @@ struct ContentView: View {
                 if viewModel.isInitializing {
                     LoadingScreen()
                 } else if viewModel.showDashboardView {
-                        Text(viewModel.dashboardTextView())
-                            .fontOpenSans(.body1)
-                            .foregroundColor(theme.textHeading)
-                    
+                    BottomTabBarView()
                 } else if viewModel.showLandingView {
                     LandingScreen()
                 }

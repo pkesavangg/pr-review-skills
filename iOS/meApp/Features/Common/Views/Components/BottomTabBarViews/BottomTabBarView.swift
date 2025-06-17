@@ -38,6 +38,7 @@ struct BottomTabBarView: View {
                         }
                         .opacity(viewModel.selectedTab == tab ? 1 : 0)
                         .allowsHitTesting(viewModel.selectedTab == tab)
+                        .onDisappear { viewModel.removeDeactivationHandler(for: tab) }
                 }
             }
             
