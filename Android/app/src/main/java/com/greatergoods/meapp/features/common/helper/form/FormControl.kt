@@ -5,9 +5,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-typealias Validator<T> = (T) -> String?
-typealias AsyncValidator<T> = suspend (T) -> String?
-
+typealias Validator<T> = (T) -> ValidationError?
+typealias AsyncValidator<T> = suspend (T) -> ValidationError?
+data class ValidationError(
+    val type: String,
+    val message: String
+)
 class FormControl<T>(
     initialValue: T,
     private val validators: List<Validator<T>> = emptyList(),
@@ -17,8 +20,10 @@ class FormControl<T>(
     private val _value = mutableStateOf(initialValue)
     val value: T get() = _value.value
 
-    private val _error = mutableStateOf<String?>(null)
-    val error: String? get() = _error.value
+    private val _error = mutableStateOf<ValidationError?>(null)
+    val error: ValidationError? get() = _error.value
+    val errorMessage: String? get() = _error.value?.message
+    val isError: Boolean get() = _error.value != null && _error.value?.type != null
 
     private val _touched = mutableStateOf(false)
     val touched: Boolean get() = _touched.value
