@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
@@ -10,7 +11,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
-    
+    var cancellables = Set<AnyCancellable>()
     
     init() {
         // Load initial accounts from local storage
@@ -23,6 +24,15 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } catch {
                 
             }
+            $activeAccount
+                .sink(receiveValue: { data in
+                    if data == nil {
+                        ServiceRegistry.shared.deregisterSessionServices()
+                    } else {
+                        ServiceRegistry.shared.registerSessionServices()
+                    }
+                })
+                .store(in: &cancellables)
         }
     }
     
