@@ -1,20 +1,13 @@
 package com.greatergoods.meapp.features.signup.components
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
-import com.greatergoods.meapp.features.common.components.CardAlignmentType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonData
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
@@ -41,9 +34,6 @@ fun GoalStep(
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
             AppText(SignupStrings.goalStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
             AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle,spacing = MeTheme.spacing.md)
             SegmentButtonGroup(
@@ -56,7 +46,6 @@ fun GoalStep(
                 selectedIndex = signupData.goalType.ordinal,
                 onSelected = { index -> onGoalTypeChange(GoalType.entries[index]) },
                 size = SegmentButtonSize.Large,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
             Spacer(modifier = Modifier.height(MeTheme.spacing.md))
@@ -81,7 +70,6 @@ fun GoalStep(
                     onGoalWeightChange(value?.toFloatOrNull())
                 }
             )
-        }
     }
 }
 
