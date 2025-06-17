@@ -34,7 +34,7 @@ final class TokenManager {
         
         if retryCount >= AppConstants.Account.tokenRefreshMaxRetries {
             try await accountService.logOut(accountId: accountId)
-            throw NetworkError.statusCode(HTTPStatusCode.unauthorized.rawValue)
+            throw HTTPError.statusCode(HTTPStatusCode.unauthorized.rawValue)
         }
         
         isRefreshing = true
@@ -48,7 +48,7 @@ final class TokenManager {
         } catch {
             resumeWaitingRequests(with: error)
             
-            if let networkError = error as? NetworkError {
+            if let networkError = error as? HTTPError {
                 switch networkError {
                 case .statusCode(let code):
                     if code == HTTPStatusCode.unauthorized.rawValue {

@@ -141,7 +141,7 @@ struct AppInputField: View {
             } else {
                 if config.isDisabled {
                     disabledIcon
-                } else if config.inputType != .password {
+                } else if config.inputType != .password && !value.isEmpty {
                     clearButton
                 }
             }

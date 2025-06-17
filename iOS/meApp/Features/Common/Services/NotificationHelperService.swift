@@ -63,8 +63,12 @@ class NotificationHelperService: ObservableObject {
     }
 
     func showToast(_ data: ToastModel) {
+        var toast = data
+        toast.onDismiss = { [weak self] in
+            self?.dismissToast()
+        }
         DispatchQueue.main.async {
-            self.toastData = data
+            self.toastData = toast
         }
     }
 

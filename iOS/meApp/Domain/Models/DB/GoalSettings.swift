@@ -27,11 +27,11 @@ final class GoalSettings {
     var accountId: String
     var goalType: GoalType?
     var initialWeight: Double?
-    var goalWeight: String?
+    var goalWeight: Double?
     var goalPercent: Double?
     var isSynced: Bool?
 
-    init(accountId: String, goalType: GoalType?, initialWeight: Double?, goalWeight: String?, goalPercent: Double? = nil, isSynced: Bool? = false) {
+    init(accountId: String, goalType: GoalType?, initialWeight: Double?, goalWeight: Double?, goalPercent: Double? = nil, isSynced: Bool? = false) {
         self.id = UUID().uuidString
         self.accountId = accountId
         self.goalType = goalType

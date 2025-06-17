@@ -19,6 +19,8 @@ enum CustomTextStyle: CaseIterable {
     case body1
     case body2
     case body3
+    case body4
+    case body5
     case link1
     case link2
     case button1
@@ -36,6 +38,8 @@ enum CustomTextStyle: CaseIterable {
         case .body1: return 20
         case .body2: return 16
         case .body3: return 14
+        case .body4: return 12
+        case .body5: return 10
         case .link1: return 16
         case .link2: return 12
         case .button1: return 16
@@ -48,7 +52,7 @@ enum CustomTextStyle: CaseIterable {
         case .heading1, .heading2: return .heavy // Extra Bold
         case .heading3, .heading4, .heading5: return .bold
         case .subHeading1, .subHeading2: return .regular
-        case .body1, .body2, .body3: return .regular
+        case .body1, .body2, .body3, .body4, .body5: return .regular
         case .link1, .link2: return .semibold
         case .button1, .button2: return .semibold
         }
