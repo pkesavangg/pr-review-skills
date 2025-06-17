@@ -14,6 +14,8 @@ import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.typography
 
 @Composable
 fun AppHeightInput(
@@ -65,8 +67,8 @@ fun AppHeightInput(
         val errorMessage = formControl.error?.message ?: ""
         Text(
             errorMessage,
-            color = MeAppTheme.colorScheme.error,
-            style = MeAppTheme.typography.body3,
+            color = colorScheme.textError,
+            style = typography.body3,
         )
     } else if (supportingText != null) {
         Text(

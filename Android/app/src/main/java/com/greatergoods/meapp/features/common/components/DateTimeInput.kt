@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.typography
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -345,8 +347,8 @@ fun DateTimeInput(
         val errorMessage = formControl.error?.message ?: ""
         Text(
             errorMessage,
-            color = MeAppTheme.colorScheme.error,
-            style = MeAppTheme.typography.body3,
+            color = colorScheme.textError,
+            style = typography.body3,
         )
     } else if (supportingText != null) {
         Text(

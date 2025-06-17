@@ -36,10 +36,10 @@ import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.strings.AppInputStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.borderRadius
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
-import com.greatergoods.meapp.theme.MeAppTheme.spacing
-import com.greatergoods.meapp.theme.MeAppTheme.typography
+import com.greatergoods.meapp.theme.MeTheme.borderRadius
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
+import com.greatergoods.meapp.theme.MeTheme.typography
 
 enum class AppInputType {
     TEXT,
@@ -333,7 +333,7 @@ fun <T> InputFieldBase(
                 isError ->
                     Text(
                         errorMessage,
-                        color = colorScheme.error,
+                        color = colorScheme.textError,
                         style = typography.body3,
                     )
 
