@@ -39,23 +39,11 @@ class AppViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            if (accountRepository.getLoggedInAccountsFromDB().firstOrNull().isNullOrEmpty()) {
-                val randomAccount =
-                    Account(
-                        id = "1",
-                        firstName = "John",
-                        lastName = "Doe",
-                        dob = "1990-01-01",
-                        email = "jdoe@me.com",
-                        expiresAt = "2024-01-01",
-                        fcmToken = null,
-                        gender = "M",
-                    )
-            }
-            entryService.updateAllData("1")
-
+            delay(100)
+            navigationService.navigateTo(
+                AppRoute.Auth.Login
+            )
         }
-        initLoadingData("1")
         viewModelScope.launch {
             try {
                 logManager.cleanupOldLogs(5)

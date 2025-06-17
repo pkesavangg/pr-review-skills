@@ -8,9 +8,11 @@ package com.greatergoods.meapp.theme.model
 
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 @Stable
 data class Spacing(
+    val none: Dp = 0.dp,
     val xs: Dp, // Extra Small
     val sm: Dp, // Small
     val md: Dp, // Medium
