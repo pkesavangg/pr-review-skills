@@ -202,6 +202,7 @@ final class SignupStore: ObservableObject {
             if let goal = goal {
                 let _ = try await accountService.createGoal(goal)
             }
+            resetForm()
         } catch {
             handleSignupError(error)
         }
@@ -316,5 +317,35 @@ final class SignupStore: ObservableObject {
         let validator = Validator.maxValue(maxWeight)
         signupForm.currentWeight.addValidator(validator)
         signupForm.goalWeight.addValidator(validator)
+    }
+
+    // MARK: - Form Reset
+
+    /// Resets the signup flow back to its initial pristine state.
+    /// This is useful when the user abandons the signup process and we want to
+    /// discard all entered data while also preventing Combine subscription leaks.
+    func resetForm() {
+        // Cancel existing subscriptions so we don't leak memory.
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+
+        // Replace with a brand-new form instance.
+        signupForm = SignupForm()
+
+        // Reset navigation/UI state.
+        currentStepIndex = SignupStep.name.index
+        isGoalSkipped = false
+        isNextEnabled = false
+        showHeightInchesPicker = false
+        showHeightCmPicker = false
+
+        // Sync height pickers with the default form height.
+        updateHeightPickerValues(from: Int(signupForm.height.value))
+
+        // Re-establish observers that depend on the new form instance.
+        setupFormObservers()
+
+        // Ensure the primary action button reflects the current (reset) state.
+        updateNextButtonState()
     }
 }

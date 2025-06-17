@@ -15,22 +15,27 @@ final class EntryStore: ObservableObject {
     @Injector var accountService: AccountService
     @Injector var notificationService: NotificationHelperService
     @Injector var entryService: EntryService
+    @Injector var logger: LoggerService
 
     // Localization strings
     private let toastLang = ToastStrings.self
     private let commonLang = CommonStrings.self
-
+    private let alertLang = AlertStrings.ManualEntryExitAlert.self
+    private let loaderLang = LoaderStrings.self
+    
     // Form
     @Published var manualEntryForm = ManualEntryForm()
 
     // UI State
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
+    @Published var showMetrics = false
 
     // Maximum BMI that can be set automatically (matches web)
     private let maxBmiValue: Double = 99.0
-
     private var cancellables = Set<AnyCancellable>()
+    
+    let tag = "EntryStore"
     
     var maxSelectableTime: Date {
         // If selected date is today, cap at current time; otherwise end of day
@@ -74,7 +79,7 @@ final class EntryStore: ObservableObject {
                                                      time: manualEntryForm.time.value,
                                                      useUTC: true,
                                                      randomizeSubMinute: true)
-
+        
         let weightStored = ConversionTools.convertDisplayToStored(Double(manualEntryForm.weight.value) ?? 0,
                                                                   forceMetric: false,
                                                                   isMetric: weightUnit == .kg)
@@ -92,11 +97,22 @@ final class EntryStore: ObservableObject {
         let subcutaneousFatPercent = toTenths(manualEntryForm.subcutaneousFat.value)
         let visceralFatLevel = toTenths(manualEntryForm.visceralFat.value)
         let unit = weightUnit == .kg ? WeightUnit.kg.rawValue : WeightUnit.lb.rawValue
+        
+        // Build DB models
 
-        // TODO: Need to handle the api calls
-        print("entryTimestamp: \(entryTimestamp)")
-        print("weight: \(weightStored)")
-        print("bodyFat: \(String(describing: bodyFat)) muscleMass: \(String(describing: muscleMass)) water: \(String(describing: water)) bmi: \(String(describing: bmi)) boneMass: \(String(describing: boneMass)) bmr: \(String(describing: bmr)) metabolicAge: \(String(describing: metabolicAge)) proteinPercent: \(String(describing: proteinPercent)) pulse: \(String(describing: pulse)) skeletalMusclePercent: \(String(describing: skeletalMusclePercent)) subcutaneousFatPercent: \(String(describing: subcutaneousFatPercent)) visceralFatLevel: \(String(describing: visceralFatLevel)) unit: \(unit)")
+        notificationService.showLoader(LoaderModel(
+            text: loaderLang.savingEntry,
+        ))
+        do {
+            // TODO: Need to save the entry using the EntryService
+            // try await entryService.saveNewEntry(entry)
+            // Reset form after successful save so fields are pristine
+            resetForm()
+        } catch {
+            // TODO: handle save failure (e.g., show toast)
+            logger.log(level: .error, tag: self.tag, message: "Failed to save manual entry", data: error)
+        }
+        notificationService.dismissLoader()
     }
 
     // MARK: - Private helpers
@@ -175,5 +191,60 @@ final class EntryStore: ObservableObject {
     private func toTenths(_ string: String) -> Int? {
         guard let value = Double(string) else { return nil }
         return Int(floor(value * 10))
+    }
+
+    // MARK: Exit handling helpers
+    /// Resets the current form to pristine state (used when discarding unsaved changes).
+    func resetForm() {
+        // Cancel existing subscriptions so we don't leak
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        // Replace with a brand-new form instance
+        manualEntryForm = ManualEntryForm()
+        // Re-wire observers that depend on the new form instance
+        manualEntryForm.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+        showMetrics = false
+        setupBmiObservers()
+        updateWeightValidators()
+    }
+    
+    /// Presents an exit confirmation alert when the form has unsaved changes.
+    /// - Parameters:
+    ///   - onConfirm: Executed when user confirms discarding changes.
+    ///   - onCancel:  Executed when user chooses to stay (optional).
+    func showExitAlert(onConfirm: @escaping () -> Void,
+                       onCancel: (() -> Void)? = nil) {
+        let alert = AlertModel(
+            title: alertLang.title,
+            message: alertLang.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.exitButton, type: .primary) { _ in
+                    self.resetForm()
+                    onConfirm()
+                },
+                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in
+                    onCancel?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    /// Async wrapper around `showExitAlert` that suspends until the user makes
+    /// a decision.
+    /// - Returns: `true` if the user confirms discarding changes, `false`
+    ///   otherwise.
+    func confirmDiscardChanges() async -> Bool {
+        await withCheckedContinuation { continuation in
+            showExitAlert(onConfirm: {
+                continuation.resume(returning: true)
+            }, onCancel: {
+                continuation.resume(returning: false)
+            })
+        }
     }
 } 

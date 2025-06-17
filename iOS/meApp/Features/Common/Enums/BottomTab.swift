@@ -47,7 +47,7 @@ enum BottomTab: String, CaseIterable {
     var view: some View {
         switch self {
         case .dash: DashboardView()
-        case .entry: EntryView()
+        case .entry: ManualEntryScreen()
         case .history: HistoryView()
         case .settings: SettingsView()
         case .appsync: AppSyncView()
@@ -91,28 +91,6 @@ struct DetailScreen: View {
                 .navigationTitle("Item \(item)")
         }
         
-    }
-}
-
-
-
-struct EntryView: View {
-    var body: some View {
-        NavigationStack {
-            List(1..<100) { item in
-                NavigationLink {
-                    Text("Entry View Detail for Item \(item)")
-                        .font(.largeTitle)
-                        .navigationTitle("Item \(item)")
-                } label: {
-                    Text("Entry view item \(item)")
-                        .font(.headline)
-                        .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
-                }
-            }
-        }
     }
 }
 

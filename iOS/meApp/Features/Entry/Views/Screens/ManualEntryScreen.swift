@@ -13,6 +13,8 @@ import SwiftUI
 struct ManualEntryScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var entryStore = EntryStore()
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @State private var focusedField: FocusField?
     
     let manualEntryLang = ManualEntryStrings.self
@@ -22,7 +24,7 @@ struct ManualEntryScreen: View {
     
     @State private var showDatePicker = false
     @State private var showTimePicker = false
-    @State private var showMetrics = false
+   
     
     var body: some View {
         VStack(spacing: 0) {
@@ -87,7 +89,7 @@ struct ManualEntryScreen: View {
                                     .fontOpenSans(.heading4)
                                     .foregroundColor(theme.textHeading)
                                 Spacer()
-                                AppIconView(icon: showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
+                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
                                             size: IconSize(width: 24, height: 24))
                                 .foregroundColor(theme.actionPrimary)
                             }
@@ -100,12 +102,12 @@ struct ManualEntryScreen: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation {
-                                showMetrics.toggle()
+                                entryStore.showMetrics.toggle()
                             }
                         }
                         .padding(.bottom, .spacingXS)
                         
-                        if showMetrics {
+                        if entryStore.showMetrics {
                             VStack(spacing: .spacingSM) {
                                 // Input fields for body metrics
                                 
@@ -277,6 +279,8 @@ struct ManualEntryScreen: View {
                                         focusedField = nil
                                         Task {
                                             await entryStore.saveEntry()
+                                            tabViewModel.selectTab(.dash)
+                                            hideKeyboard()
                                         }
                                     }
                                 }
@@ -293,15 +297,27 @@ struct ManualEntryScreen: View {
                         size: .regular,
                         isDisabled: !entryStore.manualEntryForm.isValid,
                     ) {
-                        Task { await entryStore.saveEntry() }
+                        Task {
+                            await entryStore.saveEntry()
+                            tabViewModel.selectTab(.dash)
+                            hideKeyboard()
+                        }
                     }
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
                 .onAppear {
-                    focusedField = .weight
+                    // Register a handler that decides whether the tab can be left.
+                    registerDeactivation {
+                        self.entryStore.showMetrics = false
+                        // If the form is clean we can leave immediately.
+                        guard entryStore.manualEntryForm.isDirty else { return true }
+                        // Otherwise ask the user via the store's confirmation helper.
+                        return await entryStore.confirmDiscardChanges()
+                    }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary)
     }
@@ -309,5 +325,6 @@ struct ManualEntryScreen: View {
 
 #Preview {
     ManualEntryScreen()
+        .environmentObject(BottomTabBarViewModel())
         .environmentObject(Theme.shared)
 }

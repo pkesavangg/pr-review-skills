@@ -23,6 +23,8 @@ import SwiftUI
 /// The tabs are defined via the `BottomTab` enum, and the state is managed by `BottomTabBarViewModel`.
 struct BottomTabBarView: View {
     @StateObject private var viewModel = BottomTabBarViewModel()
+    /// A dictionary to hold deactivation handlers for each tab.
+    @State private var deactivationHandlers: [BottomTab: () async -> Bool] = [:]
     @Environment(\.appTheme) private var theme
     
     var body: some View {
@@ -30,6 +32,10 @@ struct BottomTabBarView: View {
             ZStack {
                 ForEach(viewModel.visibleTabs, id: \.self) { tab in
                     tab.view
+                        .environment(\.registerTabDeactivationHandler) { handler in
+                            // Register a deactivation handler for the tab
+                            deactivationHandlers[tab] = handler
+                        }
                         .opacity(viewModel.selectedTab == tab ? 1 : 0)
                         .allowsHitTesting(viewModel.selectedTab == tab)
                 }
@@ -40,7 +46,7 @@ struct BottomTabBarView: View {
                     ForEach(Array(viewModel.visibleTabs.enumerated()), id: \.element) { index, tab in
                         Spacer()
                         Button {
-                            viewModel.selectTab(tab)
+                            handleTabSelection(tab)
                         } label: {
                             TabBarItemView(
                                 tab: tab,
@@ -61,6 +67,29 @@ struct BottomTabBarView: View {
         }
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
+    }
+
+    // MARK: - Helpers
+    private func handleTabSelection(_ tab: BottomTab) {
+        guard viewModel.selectedTab != tab else { return }
+
+        Task {
+            // Check if there is a deactivation handler for the selected tab
+            // If there is, call it and await the result
+            // If it returns true, switch to the new tab
+            if let canDeactivate = deactivationHandlers[viewModel.selectedTab] {
+                let allowSwitch = await canDeactivate()
+                if allowSwitch {
+                    withAnimation {
+                        viewModel.selectTab(tab)
+                    }
+                }
+            } else {
+                withAnimation {
+                    viewModel.selectTab(tab)
+                }
+            }
+        }
     }
 }
 

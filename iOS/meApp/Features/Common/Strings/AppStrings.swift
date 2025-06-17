@@ -102,10 +102,18 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+    
+    struct ManualEntryExitAlert {
+        static let title = "Your entry has not been saved!"
+        static let message = "Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
 }
 
 struct LoaderStrings {
     static let creatingAccount = "Creating account..."
+    static let savingEntry = "Saving entry..."
 }
 
 /// Constants for legal text used in the app
