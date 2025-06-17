@@ -20,7 +20,7 @@ struct AppInputField: View {
     @Environment(\.appTheme) private var theme
     // Configuration
     var config: TextInputConfig
-    
+
     // Bindings
     @Binding var value: String
     @Binding var focusedField: FocusField?
@@ -130,7 +130,6 @@ struct AppInputField: View {
     
     private var trailingIconView: some View {
         HStack(spacing: 8) {
-            // Custom icon if provided
             if let customIcon = config.customIcon {
                 Button(action: {
                     config.onCustomIconTap?()
