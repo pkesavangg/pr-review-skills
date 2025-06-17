@@ -1,6 +1,7 @@
 package com.greatergoods.meapp
 
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.WindowCompat
@@ -51,6 +52,7 @@ class MainActivity : AppCompatActivity() {
 
         // Configure window to handle insets properly
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
         setContent {
             MeApp()
         }
