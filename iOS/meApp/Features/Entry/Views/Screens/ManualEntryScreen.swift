@@ -279,8 +279,7 @@ struct ManualEntryScreen: View {
                                         focusedField = nil
                                         Task {
                                             await entryStore.saveEntry()
-                                            tabViewModel.selectTab(.dash)
-                                            hideKeyboard()
+                                            performTabSwitchAndHideKeyboard()
                                         }
                                     }
                                 }
@@ -299,8 +298,7 @@ struct ManualEntryScreen: View {
                     ) {
                         Task {
                             await entryStore.saveEntry()
-                            tabViewModel.selectTab(.dash)
-                            hideKeyboard()
+                            performTabSwitchAndHideKeyboard()
                         }
                     }
                 }
@@ -320,6 +318,11 @@ struct ManualEntryScreen: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary)
+    }
+    
+    private func performTabSwitchAndHideKeyboard() {
+        tabViewModel.selectTab(.dash)
+        hideKeyboard()
     }
 }
 
