@@ -23,5 +23,4 @@ struct TextInputConfig {
     var maxLength: Int = 3
     var maxValue: Double? = nil
     var allowWholeNumbers: Bool = false
-    var showsClearButton: Bool = false
 }

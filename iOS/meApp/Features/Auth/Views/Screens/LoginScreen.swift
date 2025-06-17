@@ -35,8 +35,7 @@ struct LoginScreen: View {
                             label: labels.email,
                             inputType: .email,
                             errorMessage: nil,
-                            focusField: .email,
-                            showsClearButton: false
+                            focusField: .email
                         ),
                         value: $email,
                         focusedField: $focusedField
