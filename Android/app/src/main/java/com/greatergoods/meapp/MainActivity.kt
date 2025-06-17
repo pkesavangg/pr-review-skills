@@ -25,6 +25,8 @@ import javax.inject.Inject
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
+import androidx.core.view.WindowCompat
 
 /**
  * Main entry point for the MeApp application.
@@ -47,6 +49,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         applyInitialTheme()
         super.onCreate(savedInstanceState)
+
+        // Configure window to handle insets properly
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+
         initializeSplashScreen()
         enableEdgeToEdge()
         setContent {

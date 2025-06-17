@@ -2,8 +2,13 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,6 +20,7 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 
 /**
  * AppScaffold composable that provides a top app bar using AppBar and a content slot.
+ * Handles window insets properly for status bar, navigation bar, and keyboard.
  *
  * @param title The title to display in the AppBar.
  * @param onLeftIconClick Callback for left icon click.
@@ -41,14 +47,25 @@ fun AppScaffold(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 containerColor = containerColor,
+                modifier = Modifier.padding(
+                    WindowInsets.safeDrawing
+                        .only(WindowInsetsSides.Top)
+                        .asPaddingValues()
+                )
             )
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = containerColor
     ) { innerPadding ->
         Box(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .background(containerColor),
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(
+                    WindowInsets.safeDrawing
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                        .asPaddingValues()
+                )
+                .background(containerColor),
         ) {
             content(Modifier)
         }
