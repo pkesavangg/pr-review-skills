@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.login
+package com.greatergoods.meapp.features.login.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -8,6 +8,10 @@ import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.login.model.LoginFormControls
+import com.greatergoods.meapp.features.login.model.LoginIntent
+import com.greatergoods.meapp.features.login.model.LoginReducer
+import com.greatergoods.meapp.features.login.model.LoginState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,21 +23,21 @@ class LoginViewModel
         private val accountAuthService: IAccountAuthService,
         private val customTabManager: ICustomTabManager,
     ) : BaseIntentViewModel<LoginState, LoginIntent>(
-            initialState =
-                LoginState(
-                    form =
-                        FormGroup(
-                            LoginFormControls(
-                                email = FormControl.create("", emptyList()),
-                                password =
-                                    FormControl.create(
-                                        "",
-                                        emptyList(),
-                                    ),
+    initialState =
+        LoginState(
+            form =
+                FormGroup(
+                    LoginFormControls(
+                        email = FormControl.Companion.create("", emptyList()),
+                        password =
+                            FormControl.Companion.create(
+                                "",
+                                emptyList(),
                             ),
-                        ),
+                    ),
                 ),
-            reducer = LoginReducer(),
+        ),
+    reducer = LoginReducer(),
         ) {
         init {
         }
