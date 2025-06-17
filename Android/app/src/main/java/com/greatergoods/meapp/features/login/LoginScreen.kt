@@ -11,16 +11,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.*
@@ -30,6 +28,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import com.greatergoods.meapp.theme.MeTheme.typography
+import android.util.Log
 
 @Composable
 fun LoginScreen() {
@@ -41,7 +40,9 @@ fun LoginScreen() {
     AppScaffold(
         title = null,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { backStack.removeLast()}
+            AppIconButton(AppIcons.Default.Close) {
+                backStack.removeLast()
+            }
         },
         actions = {
             AppIconButton(AppIcons.Outlined.Help) { }
@@ -54,13 +55,15 @@ fun LoginScreen() {
             verticalArrangement = Arrangement.Top,
         ) {
             Spacer(Modifier.height(spacing.md))
-            Column(modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = { focusManager.clearFocus() }
-                ), horizontalAlignment = Alignment.Start
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { focusManager.clearFocus() },
+                    ),
+                horizontalAlignment = Alignment.Start,
             ) {
                 AppText(
                     text = LoginStrings.WelcomeBack,
@@ -84,7 +87,7 @@ fun LoginScreen() {
                     label = LoginStrings.LoginButton,
                     enabled = viewModel.isFormValid,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
-                    onClick = { viewModel.onSubmit() }
+                    onClick = { viewModel.onSubmit() },
                 )
                 Spacer(Modifier.height(spacing.sm))
                 AppButton(
@@ -93,11 +96,11 @@ fun LoginScreen() {
                     size = ButtonSize.Medium,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                     onClick = {
-                       backStack.addRoute(
-                           AppRoute.Home,
+                        backStack.addRoute(
+                            AppRoute.Home,
 
-                       )
-                    }
+                            )
+                    },
                 )
             }
             Spacer(Modifier.weight(1f))
@@ -117,7 +120,7 @@ fun LoginScreen() {
                     AppText(
                         text = LoginStrings.TermsOfService,
                         textType = TextType.Link,
-                        onClick = {viewModel.openUrl(LoginStrings.TermsOfServiceUrl)}
+                        onClick = { viewModel.openUrl(LoginStrings.TermsOfServiceUrl) },
                     )
                     Spacer(Modifier.padding(start = spacing.sm))
                     Text(LoginStrings.And, style = typography.body4, color = colorScheme.textBody)
@@ -125,7 +128,7 @@ fun LoginScreen() {
                     AppText(
                         text = LoginStrings.PrivacyPolicy,
                         textType = TextType.Link,
-                        onClick = {viewModel.openUrl(LoginStrings.PrivacyPolicyUrl)}
+                        onClick = { viewModel.openUrl(LoginStrings.PrivacyPolicyUrl) },
                     )
                 }
             }

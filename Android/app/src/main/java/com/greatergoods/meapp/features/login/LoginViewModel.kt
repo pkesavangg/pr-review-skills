@@ -29,7 +29,7 @@ class LoginViewModel @Inject constructor(
                     "",
                     emptyList(),
                     emptyList(),
-                    CoroutineScope(SupervisorJob() + Dispatchers.Main)
+                    CoroutineScope(SupervisorJob() + Dispatchers.Main),
                 ),
             ),
         ),
@@ -84,7 +84,7 @@ class LoginViewModel @Inject constructor(
                 } else {
                     AppLog.i("logIn", "Login successful for account: ${account.email}")
                     try {
-                        navigationService.navigateTo(AppRoute.Init.Loading)
+                        navigationService.replaceStack(AppRoute.Init.Loading)
                         AppLog.i("logIn", "Navigation to dashboard successful")
                         handleIntent(LoginIntent.Success)
                     } catch (e: Exception) {

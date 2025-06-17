@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
-import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -48,11 +47,14 @@ class AppViewModel @Inject constructor(
                 if (account != null) {
                     initLoadingData(account.id)
                 } else {
-                    if (accountAuthService.checkForLoggedInUser()) {
-                        AppRoute.Auth.UserList
-                    } else {
-                        navigationService.navigateTo(AppRoute.Auth.Login)
-                    }
+                    navigationService.navigateTo(
+                        route =
+                            if (accountAuthService.checkForLoggedInUser()) {
+                                AppRoute.Auth.UserList
+                            } else {
+                                AppRoute.Auth.Landing
+                            },
+                    )
                 }
             }
         }

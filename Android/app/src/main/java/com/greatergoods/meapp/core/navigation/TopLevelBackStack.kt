@@ -64,7 +64,7 @@ class TopLevelBackStack<T : NavKey>(
     }
 
     fun removeLast(topLevel: T? = null) {
-        val topLevel = topLevel ?: initialKey.first
+        val topLevel = topLevel ?: startKey.first
         val stack = topLevelStacks[topLevel]
         if (stack != null && stack.isNotEmpty()) {
             stack.removeLastOrNull()
