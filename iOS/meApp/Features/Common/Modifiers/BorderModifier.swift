@@ -15,13 +15,14 @@ import SwiftUI
 ///    .modifier(BorderModifier(sides: [.top, .bottom], thickness: 2, color: .blue))
 /// ```
 struct BorderModifier: ViewModifier {
-    enum Side {
+    @Environment(\.appTheme) var theme
+    enum Side: CaseIterable, Hashable {
         case top, bottom, leading, trailing
     }
 
     let sides: [Side]
     let thickness: CGFloat
-    let color: Color
+    var color: Color?
 
     func body(content: Content) -> some View {
         content.overlay(
@@ -37,26 +38,20 @@ struct BorderModifier: ViewModifier {
     private func borderView(for side: Side) -> some View {
         switch side {
         case .top:
-            Rectangle()
-                .frame(height: thickness)
-                .foregroundColor(color)
-                .alignmentGuide(.top) { $0[.top] }
-                .frame(maxHeight: .infinity, alignment: .top)
+            makeBorder(width: nil, height: thickness, alignment: .top)
         case .bottom:
-            Rectangle()
-                .frame(height: thickness)
-                .foregroundColor(color)
-                .frame(maxHeight: .infinity, alignment: .bottom)
+            makeBorder(width: nil, height: thickness, alignment: .bottom)
         case .leading:
-            Rectangle()
-                .frame(width: thickness)
-                .foregroundColor(color)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            makeBorder(width: thickness, height: nil, alignment: .leading)
         case .trailing:
-            Rectangle()
-                .frame(width: thickness)
-                .foregroundColor(color)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            makeBorder(width: thickness, height: nil, alignment: .trailing)
         }
+    }
+
+    private func makeBorder(width: CGFloat?, height: CGFloat?, alignment: Alignment) -> some View {
+        Rectangle()
+            .frame(width: width, height: height)
+            .foregroundColor(color ?? theme.statusUtility)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
     }
 }
