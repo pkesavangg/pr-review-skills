@@ -30,13 +30,12 @@ struct DatePickerView: View {
             .datePickerStyle(.graphical)
             .labelsHidden()
             .tint(theme.actionPrimary)
-            .padding(.bottom,8)
+            .padding(.bottom, .spacingXS)
             .background(
                 RoundedRectangle(cornerRadius: .radiusSM)
                     .fill(theme.backgroundPrimary)
             )
-            .padding(.horizontal,16)
-            .padding(.top,8)
+            .padding(.top, .spacingXS)
         }
     }
 }

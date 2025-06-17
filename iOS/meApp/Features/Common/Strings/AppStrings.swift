@@ -16,6 +16,13 @@ struct CommonStrings {
     static let save = "Save"
     static let skip = "Skip"
     static let complete = "Complete"
+    
+    static let dash = "dash"
+    static let entry = "entry"
+    static let history = "history"
+    static let settings = "settings"
+    static let appSync = "appsync"
+    static let optional = "optional"
 }
 
 /// Constants for toast messages used in the app
@@ -48,6 +55,13 @@ struct FormErrorMessages {
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "passwords do not match"
     static let valueShouldBeEqual = "value should not be equal to current weight"
+    static let minWeightKg = "value should be greater than 0 kg"
+    static let minWeightLb = "value should be greater than 0 lbs"
+    static let maxWeightKg = "value should be less than 450 kg"
+    static let maxWeightLb = "value should be less than 999 lbs"
+    static let minValue = "value should be greater than 0"
+    static let maxValue99 = "value should be less than 99"
+    static let maxValue = {(value: Int) in "value should be less than \(value)"} 
 }
 
 /// Constants for input field labels used in the app
@@ -61,6 +75,22 @@ struct InputFieldLabels {
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
     static let zipCode = "zipcode"
+    static let weightLabel: (Bool) -> String = { isKg in
+        return isKg ? "weight (kg)" : "weight (lbs)"
+    }
+    static let date = "Date"
+    static let bmi = "bmi"
+    static let bodyFat = "body fat %"
+    static let muscleMass = "muscle mass %"
+    static let bodyWater = "body water %"
+    static let heartRate = "heart rate (bpm)"
+    static let boneMass = "bone mass %"
+    static let visceralFat = "visceral fat (Lv.)"
+    static let subcutaneousFat = "subcutaneous fat %"
+    static let protein = "protein %"
+    static let skeletalMuscles = "skeletal muscles %"
+    static let basalMetabolicRate = "basal metabolic rate (kcal)"
+    static let metabolicAge = "metabolic age (yrs)"
 }
 
 /// Constants for Alert strings used in the app
@@ -97,4 +127,15 @@ struct AppAssets {
     static let phone = "phone"
     static let email = "email"
     static let loader = "loader"
+    static let dash = "dash"
+    static let dashFill = "dashFill"
+    static let addEntry = "addEntry"
+    static let addEntryFill = "addEntryFill"
+    static let settings = "settings"
+    static let settingsFill = "settingsFill"
+    static let history = "history"
+    static let historyFill = "historyFill"
+    static let appSync = "appSync"
+    static let chevronUp = "chevronUp"
+    static let chevronDown = "chevronDown"
 }

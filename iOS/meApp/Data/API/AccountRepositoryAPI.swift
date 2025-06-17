@@ -56,6 +56,10 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         let dto = updatedAccount.toAccountDTO()
         return try await httpClient.send(.updateAccount, method: .put, body: dto, needsAuth: true)
     }
+    
+    func createGoal(_ goal: Goal) async throws -> GoalResponse {
+        return try await httpClient.send(.setGoal, method: .post, body: goal, needsAuth: true)
+    }
 
     func patchProfile(_ profile: Profile) async throws -> AccountResponse {
         return try await httpClient.send(.updateProfile, method: .patch, body: profile, needsAuth: true)

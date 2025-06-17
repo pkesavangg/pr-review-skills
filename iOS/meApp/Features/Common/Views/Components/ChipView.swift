@@ -18,6 +18,7 @@ struct ChipView: View {
             onTap?()
         }) {
             Text(text)
+                .fontWeight(.bold)
                 .fontOpenSans(.link1)
                 .foregroundColor(theme.actionPrimary)
                 .padding(.horizontal, .spacingSM)
