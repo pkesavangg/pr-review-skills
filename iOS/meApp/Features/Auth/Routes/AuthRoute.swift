@@ -16,9 +16,9 @@ enum AuthRoute: Routable {
     var body: some View {
         switch self {
         case .login:
-            EmptyView() // TODO: Replace with login view
+            LoginScreen() 
         case .signup:
-            EmptyView() // TODO: Replace with Signup view
+            SignupScreen() 
         }
     }
 }
