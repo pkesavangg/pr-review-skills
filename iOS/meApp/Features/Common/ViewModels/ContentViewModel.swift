@@ -84,14 +84,16 @@ final class ContentViewModel: ObservableObject {
         await pushNotificationService.isNotificationAuthorized()
     }
     
-    // TODO: Implemented for time being. Remove them when dashboardView is implemented.
+#if DEBUG
     @MainActor
-     func logout() async {
-       do {
-         try await accountService.logOut(accountId: accountService.activeAccount?.accountId)
-         await performAppInitialization()
-       } catch {
-         logger.log(level: .error, tag: "ContentViewModel", message: "Force logout failed: \(error)")
-       }
-     }
+    func logout() async {
+        do {
+            try await accountService.logOut(accountId: accountService.activeAccount?.accountId)
+            await performAppInitialization()
+        } catch {
+            logger.log(level: .error, tag: "ContentViewModel", message: "Force logout failed: \(error)")
+        }
+    }
+#endif
+    
 }
