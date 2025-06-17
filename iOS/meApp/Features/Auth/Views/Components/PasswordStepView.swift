@@ -119,6 +119,7 @@ struct PasswordStepView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, .spacingMD)
             }
+            .padding(.bottom, .spacing3XL)
             .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
     }

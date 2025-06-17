@@ -83,6 +83,28 @@ public class FormControl<Value: Equatable>: AbstractControl {
         setValidityByErrors()
     }
     
+    /// Adds a validator to the control.
+    /// - Parameter validator: The validator to add.
+    public func addValidator(_ validator: Validator<Value>) {
+        // Prevent adding duplicate validator types
+        if !validators.contains(where: { $0.type == validator.type }) {
+            validators.append(validator)
+            if validateType == .automatic {
+                validate()
+            }
+        }
+    }
+    
+    /// Removes a validator of a specific type from the control.
+    /// - Parameter type: The type of validator to remove.
+    public func removeValidator(ofType type: ValidatorType) {
+        let beforeCount = validators.count
+        validators.removeAll { $0.type == type }
+        if beforeCount != validators.count, validateType == .automatic {
+            validate()
+        }
+    }
+    
     private func setValidityByErrors() {
         isValid = !errors.hasError
     }

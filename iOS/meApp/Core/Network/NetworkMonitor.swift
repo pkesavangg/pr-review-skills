@@ -16,7 +16,7 @@ import Combine
 final class NetworkMonitor {
     static let shared = NetworkMonitor()
     
-    var isConnected = false
+    var isConnected = true
     var connectionType: NWInterface.InterfaceType?
     
     private let monitor = NWPathMonitor()

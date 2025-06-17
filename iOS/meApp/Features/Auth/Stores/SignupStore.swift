@@ -17,6 +17,7 @@ final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var accountService: AccountService
     var alertLang = AlertStrings.self
+    var loaderLang = LoaderStrings.self
     
     @Published var currentStepIndex: Int = SignupStep.name.index {
         didSet {
@@ -46,6 +47,7 @@ final class SignupStore: ObservableObject {
         (0...9).map { "\($0)" }
     ]
     
+    private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
     
     init() {
@@ -175,28 +177,34 @@ final class SignupStore: ObservableObject {
     }
     
     func showHelpModal() {
-        // TODO: Implement help modal logic
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(HelpModalView(){
+                self.notificationService.dismissModal()
+            })
+        ))
     }
     
     func createUser() async {
-        notificationService.showLoader(LoaderModel())
-
+        notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
+        
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value
-
+        
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            let account = try await accountService.signUp(
+            let _ = try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
-            // TODO: Handle success
+            // Create the goal if it's not skipped
+            if let goal = goal {
+                let _ = try await accountService.createGoal(goal)
+            }
         } catch {
-            // TODO: Handle error
+            handleSignupError(error)
         }
-
         notificationService.dismissLoader()
     }
     
@@ -206,14 +214,14 @@ final class SignupStore: ObservableObject {
             return signupForm.goalWeight.isValid
         } else {
             return signupForm.currentWeight.isValid &&
-                   signupForm.goalWeight.isValid &&
-                   !signupForm.formErrors[.weightEqual]
+            signupForm.goalWeight.isValid &&
+            !signupForm.formErrors[.weightEqual]
         }
     }
     
     private func generateProfile() -> Profile {
         let formattedDOB = DateTimeTools.formatDateToYMD_Local(signupForm.birthday.value)
-
+        
         return Profile(
             firstName: removeWhiteSpace(signupForm.firstName.value),
             lastName: removeWhiteSpace(signupForm.lastName.value),
@@ -228,16 +236,16 @@ final class SignupStore: ObservableObject {
     
     private func generateGoalRequest() -> Goal? {
         guard !isGoalSkipped else { return nil }
-
+        
         let useMetric = signupForm.useMetric.value
         let goalTypeValue = signupForm.goalType.value
         let current = Double(signupForm.currentWeight.value) ?? 0.0
         let target = Double(signupForm.goalWeight.value) ?? 0.0
-
+        
         let convert = { (w: Double) -> Int in
             ConversionTools.convertDisplayToStored(w, forceMetric: useMetric)
         }
-
+        
         if goalTypeValue == GoalType.maintain.rawValue {
             return Goal(
                 type: .maintain,
@@ -256,6 +264,29 @@ final class SignupStore: ObservableObject {
         }
     }
     
+    private func handleSignupError(_ error: Error) {
+        var toastMessage: String?
+        let toastTitle: String = toastLang.errorCreatingAccount
+
+        switch error {
+        case HTTPError.badRequest:
+            toastMessage = toastLang.emailInUse
+
+        case HTTPError.noInternet:
+            break // No message needed, handled by NetworkMonitor
+
+        case HTTPError.serverError:
+            toastMessage = toastLang.serverError
+
+        default:
+            toastMessage = toastLang.somethingWentWrong
+        }
+
+        if let message = toastMessage {
+            notificationService.showToast(ToastModel(title: toastTitle, message: message))
+        }
+    }
+    
     private func setupFormObservers() {
         signupForm.formDidChange
             .receive(on: DispatchQueue.main)
@@ -266,10 +297,24 @@ final class SignupStore: ObservableObject {
         // Observe useMetric changes
         signupForm.useMetric.$value
             .dropFirst()
-            .sink { [weak self] _ in
+            .sink { [weak self] isMetric in
                 guard let self = self else { return }
                 self.updateHeightPickerValues(from: Int(self.signupForm.height.value))
+                self.updateWeightValidators(isMetric: isMetric)
             }
             .store(in: &cancellables)
+    }
+    
+    private func updateWeightValidators(isMetric: Bool) {
+        let maxWeight = isMetric ? 450.0 : 999.0
+
+        // Remove old validator
+        signupForm.currentWeight.removeValidator(ofType: .maxWeight)
+        signupForm.goalWeight.removeValidator(ofType: .maxWeight)
+
+        // Add new validator
+        let validator = Validator.maxWeight(maxWeight)
+        signupForm.currentWeight.addValidator(validator)
+        signupForm.goalWeight.addValidator(validator)
     }
 }

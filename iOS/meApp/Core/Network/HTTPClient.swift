@@ -11,6 +11,7 @@ import Foundation
 final class HTTPClient {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService
+    @Injector var notificationHelperService: NotificationHelperService
     private let tokenManager = TokenManager.shared
     private init() {}
     
@@ -82,7 +83,7 @@ final class HTTPClient {
         do {
             return try await performRequest(request)
         } catch {
-            if let networkError = error as? NetworkError {
+            if let networkError = error as? HTTPError {
                 switch networkError {
                 case .statusCode(let code):
                     if code == HTTPStatusCode.unauthorized.rawValue && needsAuth && !skipTokenCheck {
@@ -106,17 +107,20 @@ final class HTTPClient {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
+            throw HTTPError.invalidResponse
         }
         
         // Map raw status code to enum
         guard let status = HTTPStatusCode(rawValue: httpResponse.statusCode) else {
-            throw NetworkError.statusCode(httpResponse.statusCode)
+            throw HTTPError.statusCode(httpResponse.statusCode)
         }
         
         // Check for success status
         guard status.isSuccess else {
-            throw NetworkError.statusCode(status.rawValue)
+            if let status = HTTPStatusCode(rawValue: httpResponse.statusCode) {
+                throw HTTPError.from(status: status)
+            }
+            throw HTTPError.statusCode(status.rawValue)
         }
         
         // Handle 204 No Content
@@ -124,7 +128,7 @@ final class HTTPClient {
             if let emptyResponse = EmptyResponse() as? T {
                 return emptyResponse
             } else {
-                throw NetworkError.decodingError
+                throw HTTPError.decodingError
             }
         }
         
@@ -150,7 +154,7 @@ final class HTTPClient {
 #if DEBUG
             print("🔍 HTTPClient Decoding Error: \(error)")
 #endif
-            throw NetworkError.decodingError
+            throw HTTPError.decodingError
         }
     }
     
@@ -179,7 +183,7 @@ final class HTTPClient {
         accountId: String? = nil
     ) async throws -> URLRequest {
         guard var request = endpoint.urlRequest else {
-            throw NetworkError.invalidRequest
+            throw HTTPError.badRequest
         }
         
         request.httpMethod = method.rawValue
@@ -201,7 +205,10 @@ final class HTTPClient {
     // MARK: - Connectivity Check
     private func checkConnectivity() async throws {
         if !NetworkMonitor.shared.isConnected {
-            throw NetworkError.noInternet
+            notificationHelperService.showToast(ToastModel(
+                message: ToastStrings.unableToConnect
+            ))
+            throw HTTPError.noInternet
         }
     }
 }
