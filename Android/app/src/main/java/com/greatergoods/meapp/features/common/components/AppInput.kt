@@ -1,12 +1,8 @@
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -36,11 +32,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.helper.form.DecimalInputVisualTransformation
 import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.strings.AppInputStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.borderRadius
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
-import com.greatergoods.meapp.theme.MeAppTheme.typography
+import com.greatergoods.meapp.theme.MeTheme.borderRadius
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.typography
 
 enum class AppInputType {
     TEXT,
@@ -48,13 +45,11 @@ enum class AppInputType {
     NUMBER,
     WEIGHT,
     BODY_COMP,
-    BODY_COMP_DECIMAL
+    BODY_COMP_DECIMAL,
 }
 
 object AppInputDefaults {
-    fun visualTransformation(
-        type: AppInputType,
-    ): VisualTransformation =
+    fun visualTransformation(type: AppInputType): VisualTransformation =
         when (type) {
             AppInputType.PASSWORD -> PasswordVisualTransformation()
 
@@ -66,8 +61,9 @@ object AppInputDefaults {
     fun keyboardType(type: AppInputType): KeyboardType =
         when (type) {
             AppInputType.TEXT -> KeyboardType.Text
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL
-                -> KeyboardType.Number
+            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL,
+            -> KeyboardType.Number
+
             AppInputType.PASSWORD -> KeyboardType.Password
             else -> KeyboardType.Unspecified
         }
@@ -194,8 +190,8 @@ fun <T> InputFieldBase(
 
     val inputTextColor =
         when {
-            !enabled -> colorScheme.subheading
-            else -> colorScheme.body
+            !enabled -> colorScheme.textSubheading
+            else -> colorScheme.textBody
         }
 
     val inputValue = value
@@ -261,25 +257,26 @@ fun <T> InputFieldBase(
     TextField(
         value = inputValue,
         onValueChange = onInputChange,
-        modifier = modifier
-            .fillMaxWidth()
-            .focusRequester(focusRequester)
-            .onFocusChanged { focusState ->
-                if (!focusState.isFocused && isFocused) {
-                    currentOnBlur?.invoke()
-                    formControl?.onBlur() // handle touched on blur
-                    isFocused = false
-                } else if (focusState.isFocused && !isFocused) {
-                    currentOnFocus?.invoke()
-                    isFocused = true
-                }
-            },
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused && isFocused) {
+                        currentOnBlur?.invoke()
+                        formControl?.onBlur() // handle touched on blur
+                        isFocused = false
+                    } else if (focusState.isFocused && !isFocused) {
+                        currentOnFocus?.invoke()
+                        isFocused = true
+                    }
+                },
         label = {
             label?.let {
                 Text(
                     text = label,
                     style = typography.body3,
-                    color =  if (isError) colorScheme.error else colorScheme.subheading,
+                    color = if (isError) colorScheme.textError else colorScheme.textSubheading,
                 )
             }
         },
@@ -287,60 +284,64 @@ fun <T> InputFieldBase(
             Text(
                 text = placeHolder,
                 style = typography.body2,
-                color = colorScheme.secondaryDisabled,
+                color = colorScheme.secondaryActionDisabled,
             )
         },
         trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
-        keyboardActions = KeyboardActions(
-            onDone = {
-                onDone?.invoke()
-                focusManager.clearFocus()
-                keyboardController?.hide()
-            },
-            onNext = { onNext?.invoke() },
-        ),
+        keyboardActions =
+            KeyboardActions(
+                onDone = {
+                    onDone?.invoke()
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                },
+                onNext = { onNext?.invoke() },
+            ),
         enabled = enabled,
         readOnly = readOnly,
         visualTransformation = inputTransformation,
         isError = isError,
         shape = RoundedCornerShape(borderRadius.sm),
-        colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-            errorIndicatorColor = Color.Transparent,
-            focusedContainerColor =  colorScheme.primary,
-            unfocusedContainerColor =  colorScheme.primary,
-            disabledContainerColor = colorScheme.secondaryDisabled,
-            errorContainerColor =  colorScheme.primary,
-            focusedTextColor = inputTextColor,
-            unfocusedTextColor = inputTextColor,
-            disabledTextColor = colorScheme.subheading,
-            errorTextColor = inputTextColor,
-            focusedPlaceholderColor = colorScheme.secondaryDisabled,
-            unfocusedPlaceholderColor = colorScheme.secondaryDisabled,
-            disabledPlaceholderColor = colorScheme.secondaryDisabled,
-            cursorColor = colorScheme.primaryAction,
-            errorCursorColor = colorScheme.error,
-        ),
+        colors =
+            TextFieldDefaults.colors(
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                errorIndicatorColor = Color.Transparent,
+                focusedContainerColor = colorScheme.primaryBackground,
+                unfocusedContainerColor = colorScheme.primaryBackground,
+                disabledContainerColor = colorScheme.secondaryActionDisabled,
+                errorContainerColor = colorScheme.primaryBackground,
+                focusedTextColor = inputTextColor,
+                unfocusedTextColor = inputTextColor,
+                disabledTextColor = colorScheme.textSubheading,
+                errorTextColor = inputTextColor,
+                focusedPlaceholderColor = colorScheme.secondaryActionDisabled,
+                unfocusedPlaceholderColor = colorScheme.secondaryActionDisabled,
+                disabledPlaceholderColor = colorScheme.secondaryActionDisabled,
+                cursorColor = colorScheme.primaryAction,
+                errorCursorColor = colorScheme.textError,
+            ),
         supportingText = {
             when {
                 isError ->
                     Text(
                         formControl.error ?: "",
-                        color = colorScheme.error,
+                        color = colorScheme.textError,
                         style = typography.body3,
                     )
+
                 supportingText != null ->
                     Text(
                         supportingText,
-                        color = colorScheme.subheading,
+                        color = colorScheme.textSubheading,
                         style = typography.body3,
                     )
+
                 else ->
                     Text(
-                        " ",
+                        AppInputStrings.EmptySpace,
                         style = typography.body3,
                     )
             }
@@ -352,24 +353,24 @@ fun <T> InputFieldBase(
 @Composable
 fun AppInputPreview() {
     MeAppTheme {
-       val fakeScope = rememberCoroutineScope()
-       val normal = remember { FormControl("Input", emptyList(), emptyList(), fakeScope) }
-       val error = remember { FormControl("Input", listOf({ "This field is required" }), emptyList(), fakeScope) }
-       val password =
-           remember { FormControl("", listOf({ "Password must be at least 8 characters" }), emptyList(), fakeScope) }
-       val disabled = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-       val focused = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-       Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
-           AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
-           AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
-           AppInput(
-               formControl = error,
-               label = "Error Input",
-               type = AppInputType.TEXT,
-               supportingText = "supporting text",
-           )
-           AppInput(formControl = password, label = "Password with Error", type = AppInputType.PASSWORD)
-           AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
-       }
+        val fakeScope = rememberCoroutineScope()
+        val normal = remember { FormControl("Input", emptyList(), emptyList(), fakeScope) }
+        val error = remember { FormControl("Input", listOf({ "This field is required" }), emptyList(), fakeScope) }
+        val password =
+            remember { FormControl("", listOf({ "Password must be at least 8 characters" }), emptyList(), fakeScope) }
+        val disabled = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
+        val focused = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
+            AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
+            AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
+            AppInput(
+                formControl = error,
+                label = "Error Input",
+                type = AppInputType.TEXT,
+                supportingText = "supporting text",
+            )
+            AppInput(formControl = password, label = "Password with Error", type = AppInputType.PASSWORD)
+            AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
+        }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 fun AppHeightInput(
@@ -30,7 +31,12 @@ fun AppHeightInput(
     val currentValue = formControl?.value ?: value ?: localState.value
     val isError = formControl?.error?.isNullOrBlank()?.not() == true
 
-    AppChip(currentValue.getString(), selected = isModalTriggered, enabled = enabled && !readOnly, modifier = modifier) {
+    AppChip(
+        currentValue.getString(),
+        selected = isModalTriggered,
+        enabled = enabled && !readOnly,
+        modifier = modifier,
+    ) {
         if (enabled && !readOnly) {
             isModalTriggered = true
         }
@@ -58,14 +64,14 @@ fun AppHeightInput(
     if (formControl != null && isError) {
         Text(
             formControl.error ?: "",
-            color = MeAppTheme.colorScheme.error,
-            style = MeAppTheme.typography.body3,
+            color = MeTheme.colorScheme.textError,
+            style = MeTheme.typography.body3,
         )
     } else if (supportingText != null) {
         Text(
             supportingText,
-            color = MeAppTheme.colorScheme.subheading,
-            style = MeAppTheme.typography.body3,
+            color = MeTheme.colorScheme.textSubheading,
+            style = MeTheme.typography.body3,
         )
     }
 }
@@ -76,7 +82,8 @@ fun AppHeightInputPreview() {
     MeAppTheme {
         Column(Modifier.fillMaxSize()) {
             val fakeScope = rememberCoroutineScope()
-            val heightControl = remember { FormControl<HeightInput>(HeightInput.FtIn(5, 1), emptyList(), emptyList(), fakeScope) }
+            val heightControl =
+                remember { FormControl<HeightInput>(HeightInput.FtIn(5, 1), emptyList(), emptyList(), fakeScope) }
             AppHeightInput(formControl = heightControl)
             AppHeightInput(value = HeightInput.FtIn(5, 7), onValueChange = {})
         }

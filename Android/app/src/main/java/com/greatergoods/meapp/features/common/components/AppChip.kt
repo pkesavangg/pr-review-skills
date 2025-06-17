@@ -22,6 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Enum defining the visual style of the chip component.
@@ -55,7 +56,7 @@ object ChipButtonDefaults {
     @Composable
     fun backgroundColor(type: ChipType): Color =
         when (type) {
-            ChipType.Solid -> MeAppTheme.colorScheme.primary
+            ChipType.Solid -> MeTheme.colorScheme.primaryBackground
         }
 
     /**
@@ -64,7 +65,7 @@ object ChipButtonDefaults {
     @Composable
     fun contentColor(type: ChipType): Color =
         when (type) {
-            ChipType.Solid -> MeAppTheme.colorScheme.primaryAction
+            ChipType.Solid -> MeTheme.colorScheme.primaryAction
         }
 
     /**
@@ -79,7 +80,7 @@ object ChipButtonDefaults {
             ChipType.Solid ->
                 BorderStroke(
                     1.5.dp,
-                    if (selected) MeAppTheme.colorScheme.primaryAction else Color.Transparent,
+                    if (selected) MeTheme.colorScheme.primaryAction else Color.Transparent,
                 )
             // TODO: val borderInDp = with(LocalDensity.current) { 1.5f.toDp() }
         }
@@ -90,9 +91,9 @@ object ChipButtonDefaults {
     @Composable
     fun horizontalPadding(size: ChipSize): Dp =
         when (size) {
-            ChipSize.Small -> MeAppTheme.spacing.sm
-            ChipSize.Medium -> MeAppTheme.spacing.lg
-            ChipSize.Large -> MeAppTheme.spacing.xl
+            ChipSize.Small -> MeTheme.spacing.sm
+            ChipSize.Medium -> MeTheme.spacing.lg
+            ChipSize.Large -> MeTheme.spacing.xl
         }
 
     /**
@@ -101,9 +102,9 @@ object ChipButtonDefaults {
     @Composable
     fun verticalPadding(size: ChipSize): Dp =
         when (size) {
-            ChipSize.Small -> MeAppTheme.spacing.xs
-            ChipSize.Medium -> MeAppTheme.spacing.sm
-            ChipSize.Large -> MeAppTheme.spacing.lg
+            ChipSize.Small -> MeTheme.spacing.xs
+            ChipSize.Medium -> MeTheme.spacing.sm
+            ChipSize.Large -> MeTheme.spacing.lg
         }
 
     /**
@@ -112,9 +113,9 @@ object ChipButtonDefaults {
     @Composable
     fun textStyle(size: ChipSize): TextStyle =
         when (size) {
-            ChipSize.Small -> MeAppTheme.typography.link1
-            ChipSize.Medium -> MeAppTheme.typography.button1
-            ChipSize.Large -> MeAppTheme.typography.button1
+            ChipSize.Small -> MeTheme.typography.link1
+            ChipSize.Medium -> MeTheme.typography.button1
+            ChipSize.Large -> MeTheme.typography.button1
         }
 
     /**
@@ -123,9 +124,9 @@ object ChipButtonDefaults {
     @Composable
     fun cornerRadius(size: ChipSize): Dp =
         when (size) {
-            ChipSize.Small -> MeAppTheme.borderRadius.xs
-            ChipSize.Medium -> MeAppTheme.borderRadius.sm
-            ChipSize.Large -> MeAppTheme.borderRadius.md
+            ChipSize.Small -> MeTheme.borderRadius.xs
+            ChipSize.Medium -> MeTheme.borderRadius.sm
+            ChipSize.Large -> MeTheme.borderRadius.md
         }
 
     /**

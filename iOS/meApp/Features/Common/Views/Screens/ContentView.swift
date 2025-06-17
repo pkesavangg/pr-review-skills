@@ -21,9 +21,19 @@ struct ContentView: View {
                 if viewModel.isInitializing {
                     LoadingScreen()
                 } else if viewModel.showDashboardView {
+#if DEBUG
+                    VStack{
                         Text(viewModel.dashboardTextView())
                             .fontOpenSans(.body1)
                             .foregroundColor(theme.textHeading)
+                        
+                        ButtonView(text: "Logout", type: .primary, size: .regular, isDisabled: false, action:{
+                            Task { await viewModel.logout()
+                            }})
+                        
+                    }
+                    
+#endif
                     
                 } else if viewModel.showLandingView {
                     LandingScreen()

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 // Button style types
 enum class ButtonType {
@@ -60,10 +61,10 @@ object AppButtonDefaults {
     ): Color =
         when (type) {
             ButtonType.PrimaryFilled, ButtonType.PrimaryOutlined ->
-                if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
+                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
 
             ButtonType.SecondaryFilled, ButtonType.SecondaryOutlined ->
-                if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
+                if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
 
             else -> Color.Transparent
         }
@@ -78,13 +79,13 @@ object AppButtonDefaults {
     ): Color =
         when (type) {
             ButtonType.PrimaryFilled, ButtonType.PrimaryOutlined, ButtonType.TextSecondary, ButtonType.InlineTextSecondary ->
-                if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
+                if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
 
             ButtonType.SecondaryFilled, ButtonType.SecondaryOutlined, ButtonType.TextPrimary, ButtonType.InlineTextPrimary ->
-                if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
+                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
 
             ButtonType.TextTertiary, ButtonType.InlineTextTertiary ->
-                if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryDisabled
+                if (enabled) MeTheme.colorScheme.tertiaryAction else MeTheme.colorScheme.tertiaryActionDisabled
         }
 
     /**
@@ -99,13 +100,13 @@ object AppButtonDefaults {
             ButtonType.PrimaryOutlined ->
                 BorderStroke(
                     1.dp,
-                    if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled,
+                    if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled,
                 )
 
             ButtonType.SecondaryOutlined ->
                 BorderStroke(
                     1.dp,
-                    if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled,
+                    if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled,
                 )
 
             else -> null
@@ -129,8 +130,8 @@ object AppButtonDefaults {
             return 0.dp
         }
         return when (size) {
-            ButtonSize.Small -> MeAppTheme.spacing.sm
-            ButtonSize.Medium -> MeAppTheme.spacing.lg
+            ButtonSize.Small -> MeTheme.spacing.sm
+            ButtonSize.Medium -> MeTheme.spacing.lg
             ButtonSize.Large -> 48.dp
         }
     }
@@ -147,8 +148,8 @@ object AppButtonDefaults {
     @Composable
     fun textStyle(size: ButtonSize): TextStyle =
         when (size) {
-            ButtonSize.Large, ButtonSize.Medium -> MeAppTheme.typography.button1
-            ButtonSize.Small -> MeAppTheme.typography.button2
+            ButtonSize.Large, ButtonSize.Medium -> MeTheme.typography.button1
+            ButtonSize.Small -> MeTheme.typography.button2
         }
 
     // Applies text transformation

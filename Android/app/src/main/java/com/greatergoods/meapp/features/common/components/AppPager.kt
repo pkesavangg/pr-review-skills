@@ -1,4 +1,3 @@
-
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +17,7 @@ import com.greatergoods.meapp.features.common.components.CardAlignmentType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.theme.MeAppTheme
-
+import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 fun <T> AppHorizontalPager(
@@ -30,7 +29,7 @@ fun <T> AppHorizontalPager(
     HorizontalPager(
         state = pagerState,
         userScrollEnabled = false,
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
     ) { page ->
         content(steps[page])
     }
@@ -43,34 +42,39 @@ fun <T> AppHorizontalPager(
 @Composable
 fun AppHorizontalPagerPreview() {
     MeAppTheme {
-        data class PageContent(val title: String, val description: String, val pageNumber: Int)
+        data class PageContent(
+            val title: String,
+            val description: String,
+            val pageNumber: Int,
+        )
 
         // Create a list of example data for the pager
-        val myPages = listOf(
-            PageContent("Welcome", "This is the first page of our amazing app!", 1),
-            PageContent("Features", "Discover all the cool features we have.", 2),
-            PageContent("Settings", "Customize your experience here.", 3),
-            PageContent("About Us", "Learn more about our team and mission.", 4)
-        )
+        val myPages =
+            listOf(
+                PageContent("Welcome", "This is the first page of our amazing app!", 1),
+                PageContent("Features", "Discover all the cool features we have.", 2),
+                PageContent("Settings", "Customize your experience here.", 3),
+                PageContent("About Us", "Learn more about our team and mission.", 4),
+            )
 
         // Remember the PagerState, linking it to the size of your data list
         val pagerState = rememberPagerState(pageCount = { myPages.size })
 
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+            color = MeTheme.colorScheme.primaryBackground,
         ) {
-            Column(
-            ) {
+            Column {
                 // Use your HorizontalPager composable
                 AppHorizontalPager(
                     steps = myPages, // Pass your list of data
                     pagerState = pagerState, // Pass the PagerState
-                    modifier = Modifier.weight(1f) // Make it fill available vertical space
-                ) { pageContent -> // This lambda defines how each 'PageContent' item is displayed
+                    modifier = Modifier.weight(1f), // Make it fill available vertical space
+                ) { pageContent ->
+                    // This lambda defines how each 'PageContent' item is displayed
                     AppStyledCard(
                         cardAlignmentType = CardAlignmentType.TopCenter,
-                        modifier = Modifier.padding(top = 32.dp)
+                        modifier = Modifier.padding(top = 32.dp),
                     ) {
                         AppText("Title-one", TextType.Title)
                         AppText("Subtitle", TextType.Subtitle)
@@ -84,15 +88,14 @@ fun AppHorizontalPagerPreview() {
                 // Optional: Add an indicator for the current page
                 Text(
                     text = "Swipe to navigate. Current Page: ${pagerState.currentPage + 1}",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
     }
 }
-
-
