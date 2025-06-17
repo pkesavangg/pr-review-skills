@@ -16,19 +16,10 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     var onLeadingTap: (() -> Void)?
     var onTrailingTap: (() -> Void)?
     var canShowBorder = false
+    
     var body: some View {
-        HStack (alignment: .center){
-            if let leadingContent = leadingContent {
-                Button(action: {
-                    onLeadingTap?()
-                }) {
-                    leadingContent()
-                        .foregroundColor(theme.actionPrimary)
-                }
-            }
-            
-            Spacer()
-            
+        ZStack {
+            // Center Title
             if let title = title {
                 Text(title)
                     .fontOpenSans(.heading5)
@@ -36,22 +27,33 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     .foregroundColor(theme.actionSecondary)
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
-                    .padding(.leading, leadingContent == nil ? 30 : 0)
-                    .padding(.trailing, trailingContent == nil ? 30 : 0)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
             
-            Spacer()
-            
-            if let trailingContent = trailingContent {
-                Button(action: {
-                    onTrailingTap?()
-                }) {
-                    trailingContent()
-                        .foregroundColor(theme.actionPrimary)
+            HStack {
+                // Leading Content
+                if let leadingContent = leadingContent {
+                    Button(action: {
+                        onLeadingTap?()
+                    }) {
+                        leadingContent()
+                            .foregroundColor(theme.actionPrimary)
+                    }
+                }
+                
+                Spacer()
+                
+                // Trailing Content
+                if let trailingContent = trailingContent {
+                    Button(action: {
+                        onTrailingTap?()
+                    }) {
+                        trailingContent()
+                            .foregroundColor(theme.actionPrimary)
+                    }
                 }
             }
         }
-        .padding(.bottom, .spacingSM)
         .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
     }
 }
@@ -65,13 +67,13 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
         onLeadingTap: {},
         onTrailingTap: {}
     )
-    NavbarHeaderView<EmptyView, EmptyView>(title: "Title Only")
+    NavbarHeaderView<EmptyView, EmptyView>(title: "Middle Title")
     NavbarHeaderView<EmptyView, _>(
-        title: "Trailing Only",
+        title: "Middle Title",
         trailingContent: { Image(systemName: "xmark") }
     )
     NavbarHeaderView<_, EmptyView>(
-        title: "Leading Only",
+        title: "Middle Title",
         leadingContent: { Image(systemName: "xmark") },
         onLeadingTap: {}
     )
