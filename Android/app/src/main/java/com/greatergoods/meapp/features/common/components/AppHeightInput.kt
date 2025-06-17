@@ -86,7 +86,7 @@ fun AppHeightInputPreview() {
         Column(Modifier.fillMaxSize()) {
             val fakeScope = rememberCoroutineScope()
             val heightControl =
-                remember { FormControl<HeightInput>(HeightInput.FtIn(5, 1), emptyList(), emptyList(), fakeScope) }
+                remember { FormControl.create<HeightInput>(HeightInput.FtIn(5, 1), emptyList(), ) }
             AppHeightInput(formControl = heightControl)
             AppHeightInput(value = HeightInput.FtIn(5, 7), onValueChange = {})
         }

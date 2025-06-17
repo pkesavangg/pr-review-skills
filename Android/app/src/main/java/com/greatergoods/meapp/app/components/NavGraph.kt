@@ -8,7 +8,7 @@ import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
 import com.greatergoods.meapp.features.entry.EntryScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
-import com.greatergoods.meapp.features.login.LoginScreen
+import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 
 /**
