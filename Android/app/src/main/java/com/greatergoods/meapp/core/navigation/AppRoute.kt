@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.core.navigation
 
 import androidx.navigation3.runtime.NavKey
+import com.example.nav3integration.PublicRoute
 import kotlinx.serialization.Serializable
 
 /**
@@ -16,68 +17,43 @@ sealed class AppRoute : NavKey {
         data object Loading : Init()
     }
 
+    @Serializable
+    data object Home : AppRoute()
+
+    @Serializable
+    data object App : AppRoute()
+
     /**
-     * Main navigation routes for primary app sections.
+     * Main navigation routes for the app.
      */
     @Serializable
     sealed class Main : AppRoute() {
         @Serializable
-        data object Feeds : Main()
+        data object Dashboard : Main()
 
         @Serializable
-        data object MyScales : Main()
+        data object Entry : Main()
 
         @Serializable
-        data object Entries : Main()
+        data object History : Main()
 
         @Serializable
-        data object AddEntry : Main()
-
-        /**
-         * Nested routes for device details.
-         */
-        sealed class DeviceDetail : Main() {
-            @Serializable
-            data object Overview : DeviceDetail()
-
-            @Serializable
-            data object Settings : DeviceDetail()
-        }
-    }
-
-    /**
-     * Product-related navigation routes.
-     */
-    @Serializable
-    sealed class Product : AppRoute() {
-        @Serializable
-        data object ProductList : Product()
+        data object Settings : Main()
 
         @Serializable
-        data class ProductDetail(val id: String) : Product()
-    }
-
-    /**
-     * Home navigation route.
-     */
-    @Serializable
-    sealed class Home : AppRoute() {
-        @Serializable
-        data object HomeScreen : Home()
+        data object AppSync : Main()
     }
 
     /**
      * Authentication-related navigation routes.
      */
     @Serializable
-    sealed class Auth : AppRoute() {
-        @Serializable
-        data object AuthScreen : Auth()
+    sealed class Auth : AppRoute(), PublicRoute {
 
         @Serializable
-        data object LoginScreen : Auth()
+        data object Login : Auth()
 
         @Serializable
-        data object UserListScreen : Auth()
+        data object UserList : Auth()
     }
 }

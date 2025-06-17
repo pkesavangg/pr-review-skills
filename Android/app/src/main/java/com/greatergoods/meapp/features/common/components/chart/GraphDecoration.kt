@@ -24,7 +24,7 @@ import android.text.Layout
 @Composable
 fun rememberHorizontalLine(key: ExtraStore.Key<List<Double>>, markerIndex: Int): Decoration {
     val fill = fill(Color(0xFF458239))
-    val line = rememberLineComponent(fill = fill, thickness = 2.dp)
+    val line = rememberLineComponent(fill = fill(Color(0xFF458239)), thickness = 2.dp)
     val labelComponent =
         rememberTextComponent(
             typeface = Typeface.DEFAULT_BOLD,
@@ -57,7 +57,7 @@ fun rememberHorizontalLine(key: ExtraStore.Key<List<Double>>, markerIndex: Int):
         override fun drawUnderLayers(context: CartesianDrawingContext) {
             HorizontalLine(
                 y = { it[key][markerIndex] },
-                line = line,
+                line = line.copy(fill = fill(Color.Transparent)),
             ).drawOverLayers(context)
         }
     }

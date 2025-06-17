@@ -29,16 +29,15 @@ fun SampleAppScaffoldScreen() {
 
     AppScaffold(
         title = "Sample App Scaffold",
-        navigationIcon =  ,
-        rightIcon = {  },
         modifier = Modifier.Companion.statusBarsPadding()
     ) { modifier ->
         Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(MeAppTheme.spacing.lg),
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .padding(MeAppTheme.spacing.lg),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.Companion.CenterHorizontally
+            horizontalAlignment = Alignment.Companion.CenterHorizontally,
         ) {
             Text("This is a sample screen using AppScaffold.", style = MeAppTheme.typography.body1)
             if (leftClicked) {

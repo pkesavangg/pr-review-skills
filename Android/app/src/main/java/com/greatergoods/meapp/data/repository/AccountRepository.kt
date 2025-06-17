@@ -1,30 +1,26 @@
 package com.greatergoods.meapp.data.repository
 
-import android.util.Log
-import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.network.TokenManager
-import com.greatergoods.meapp.data.storage.db.dao.AccountDao
-import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
-import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.data.api.IAuthAPI
+import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.data.storage.db.dao.AccountDao
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
+import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
-import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
-import com.greatergoods.meapp.data.api.IAuthAPI
-import com.greatergoods.meapp.data.api.IUserAPI
-import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
+import android.util.Log
 
 /**
  * Implementation of the IAccountRepository interface.
@@ -37,7 +33,6 @@ class AccountRepository @Inject constructor(
     private val tokenManager: TokenManager,
     private val authAPI: IAuthAPI,
     private val userAPI: IUserAPI,
-    private val accountEntityMapper: AccountEntityMapper
 ) : IAccountRepository {
 
     companion object {
@@ -95,7 +90,7 @@ class AccountRepository @Inject constructor(
      */
     override suspend fun addAccountInDB(account: com.greatergoods.meapp.domain.model.Account): com.greatergoods.meapp.domain.model.Account {
         Log.d(TAG, "Adding account: ${account.email}")
-        val accountEntity = accountEntityMapper.toEntity(account)
+        val accountEntity = AccountEntityMapper.toEntity(account)
         accountDao.insertAccount(accountEntity)
         return account
     }
@@ -157,8 +152,8 @@ class AccountRepository @Inject constructor(
                 accountId = tokens["accountId"] ?: "",
                 accessToken = tokens["accessToken"],
                 refreshToken = tokens["refreshToken"],
-                expiresAt = tokens["expiresAt"]
-            )
+                expiresAt = tokens["expiresAt"],
+            ),
         )
     }
 
@@ -172,7 +167,7 @@ class AccountRepository @Inject constructor(
             accountId = "", // Set the correct account id if available
             accessToken = response.accessToken,
             refreshToken = response.refreshToken,
-            expiresAt = response.expiresAt
+            expiresAt = response.expiresAt,
         )
     }
 
@@ -200,7 +195,7 @@ class AccountRepository @Inject constructor(
             isExpired = entity.isExpired,
             isSynced = entity.isSynced,
             lastActiveTime = entity.lastActiveTime,
-            zipcode = entity.zipcode
+            zipcode = entity.zipcode,
         )
     }
 }

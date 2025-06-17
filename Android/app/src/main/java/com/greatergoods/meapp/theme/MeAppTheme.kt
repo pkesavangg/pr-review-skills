@@ -5,16 +5,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.theme.model.Animation
+import com.greatergoods.meapp.theme.model.BorderRadius
 import com.greatergoods.meapp.theme.model.ColorScheme
 import com.greatergoods.meapp.theme.model.Spacing
 import com.greatergoods.meapp.theme.model.Typography
 import com.greatergoods.meapp.theme.token.AnimationToken
+import com.greatergoods.meapp.theme.token.AppTypography
+import com.greatergoods.meapp.theme.token.BorderRadiusToken
 import com.greatergoods.meapp.theme.token.LocalAnimation
+import com.greatergoods.meapp.theme.token.LocalBorderRadius
 import com.greatergoods.meapp.theme.token.LocalSpacing
+import com.greatergoods.meapp.theme.token.LocalTypography
 import com.greatergoods.meapp.theme.token.SpacingToken
 
+val LocalAppTheme = staticCompositionLocalOf<ThemeMode> {
+    ThemeMode.SYSTEM
+}
 /**
  * Main theme composable that sets up the app's theme.
  * This combines all theme components (colors, typography, spacing, animations) into a single theme.
@@ -40,10 +49,12 @@ fun MeAppTheme(
         }
 
     CompositionLocalProvider(
+        LocalAppTheme provides themeMode,
         LocalColorScheme provides meAppColorScheme,
         LocalTypography provides AppTypography,
         LocalSpacing provides SpacingToken,
         LocalAnimation provides AnimationToken,
+        LocalBorderRadius provides BorderRadiusToken,
     ) {
         MaterialTheme(
             content = content,
@@ -74,4 +85,9 @@ object MeAppTheme {
     val animation: Animation
         @Composable @ReadOnlyComposable
         get() = LocalAnimation.current
+
+    // Border Radius
+    val borderRadius: BorderRadius
+        @Composable @ReadOnlyComposable
+        get() = LocalBorderRadius.current
 }
