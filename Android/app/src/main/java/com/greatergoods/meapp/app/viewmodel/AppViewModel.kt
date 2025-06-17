@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
-import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IUserRepository
@@ -33,16 +32,14 @@ class AppViewModel @Inject constructor(
     private val logManager: LogManager
 ) : BaseIntentViewModel<AppState, AppIntent>(
     initialState = AppState(),
-    reducer = AppReducer()
+    reducer = AppReducer(),
 ) {
     private var currentAccount: UserAccount? = null
 
     init {
         viewModelScope.launch {
             delay(100)
-            navigationService.navigateTo(
-                AppRoute.Auth.Login
-            )
+            navigationService.replaceStack(AppRoute.Auth.Landing)
         }
         viewModelScope.launch {
             try {

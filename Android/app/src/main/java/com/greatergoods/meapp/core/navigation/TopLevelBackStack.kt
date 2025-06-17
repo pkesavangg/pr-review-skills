@@ -43,6 +43,22 @@ class TopLevelBackStack<T : NavKey>(
         }
     }
 
+    fun replaceStack(route: List<T>, topLevel: T? = null) {
+        val topLevel = topLevel ?: startKey.first
+        val stack = topLevelStacks.getOrPut(topLevel) { mutableStateListOf() }
+        stack.apply {
+            clear()
+            route.forEach { r ->
+                if (requiresLogin(r)) {
+                    onLoginSuccessRoute = Pair(topLevel, r)
+                    stack.add(loginKey)
+                } else {
+                    stack.add(r)
+                }
+            }
+        }
+    }
+
     fun getStackForTopLevel(topLevel: T): List<T> {
         return topLevelStacks[topLevel]?.toList() ?: emptyList()
     }
