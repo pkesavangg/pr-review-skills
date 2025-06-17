@@ -12,13 +12,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import com.greatergoods.meapp.features.common.helper.form.FormValidations.email
 import com.greatergoods.meapp.features.common.strings.AppHelpModalStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 
 /**
  * Help modal matching Figma (node 14585-12302): shows support phone/email and info.
@@ -26,11 +32,13 @@ import com.greatergoods.meapp.theme.MeTheme
  * @param onClose Called when the close button is pressed.
  * @param modifier Modifier for styling.
  */
+@SuppressLint("UseKtx")
 @Composable
 fun AppHelpModal(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     AppPopupModal {
         AppPopup(
             true,
@@ -42,13 +50,22 @@ fun AppHelpModal(
         ) {
             Spacer(Modifier.height(MeTheme.spacing.md))
             // Phone row
+            val phoneNumber = AppHelpModalStrings.Phone
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier =
-                    Modifier.wrapContentSize().clickable(
-                        true,
-                    ) { },
+                    Modifier
+                        .wrapContentSize()
+                        .clickable(
+                            true,
+                        ) {
+                            val intent =
+                                Intent(Intent.ACTION_DIAL).apply {
+                                    data = "tel:$phoneNumber".toUri()
+                                }
+                            context.startActivity(intent)
+                        },
             ) {
                 // TODO: Replace with custom phone icon if available
                 Icon(
@@ -59,7 +76,7 @@ fun AppHelpModal(
                 )
                 Spacer(Modifier.width(MeTheme.spacing.x2s))
                 AppText(
-                    text = AppHelpModalStrings.Phone,
+                    text = phoneNumber,
                     textType = TextType.Link,
                     textAlign = TextAlign.Start,
                 )
@@ -73,7 +90,13 @@ fun AppHelpModal(
                         .wrapContentSize()
                         .clickable(
                             true,
-                        ) { },
+                        ) {
+                            val intent =
+                                Intent(Intent.ACTION_SENDTO).apply {
+                                    data = "mailto:$AppHelpModalStrings.Email".toUri()
+                                }
+                            context.startActivity(intent)
+                        },
             ) {
                 // TODO: Replace with custom email icon if available
                 Icon(
