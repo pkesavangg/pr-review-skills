@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DatePickerColors
 import androidx.compose.material3.DatePickerDefaults
@@ -148,23 +149,23 @@ object DateTimeInputDefaults {
     @Composable
     fun getDatePickerColor(): DatePickerColors =
         DatePickerDefaults.colors(
-            containerColor = MeTheme.colorScheme.primaryBackground,
-            titleContentColor = MeTheme.colorScheme.textHeading,
-            dayContentColor = MeTheme.colorScheme.textBody,
-            weekdayContentColor = MeTheme.colorScheme.textBody,
-            selectedDayContentColor = MeTheme.colorScheme.inverseAction,
-            selectedDayContainerColor = MeTheme.colorScheme.primaryAction,
-            todayContentColor = MeTheme.colorScheme.primaryAction,
-            todayDateBorderColor = MeTheme.colorScheme.primaryAction,
-            dividerColor = MeTheme.colorScheme.utility,
-            navigationContentColor = MeTheme.colorScheme.primaryAction,
-            yearContentColor = MeTheme.colorScheme.textBody,
-            currentYearContentColor = MeTheme.colorScheme.textBody,
-            selectedYearContentColor = MeTheme.colorScheme.textBody,
-            headlineContentColor = MeTheme.colorScheme.textBody,
+            containerColor = colorScheme.primaryBackground,
+            titleContentColor = colorScheme.textHeading,
+            dayContentColor = colorScheme.textBody,
+            weekdayContentColor = colorScheme.textBody,
+            selectedDayContentColor = colorScheme.inverseAction,
+            selectedDayContainerColor = colorScheme.primaryAction,
+            todayContentColor = colorScheme.primaryAction,
+            todayDateBorderColor = colorScheme.primaryAction,
+            dividerColor = colorScheme.utility,
+            navigationContentColor = colorScheme.primaryAction,
+            yearContentColor = colorScheme.textBody,
+            currentYearContentColor = colorScheme.textBody,
+            selectedYearContentColor = colorScheme.textBody,
+            headlineContentColor = colorScheme.textBody,
             dateTextFieldColors =
                 TextFieldDefaults.colors(
-                    focusedTextColor = MeTheme.colorScheme.primaryAction,
+                    focusedTextColor = colorScheme.primaryAction,
                 ),
         )
 
@@ -175,20 +176,20 @@ object DateTimeInputDefaults {
     @Composable
     fun getTimePickerColor(): TimePickerColors =
         TimePickerDefaults.colors(
-            clockDialColor = MeTheme.colorScheme.secondaryBackground,
-            clockDialSelectedContentColor = MeTheme.colorScheme.inverseAction,
-            clockDialUnselectedContentColor = MeTheme.colorScheme.textBody,
-            selectorColor = MeTheme.colorScheme.primaryAction,
-            periodSelectorBorderColor = MeTheme.colorScheme.utility,
-            periodSelectorSelectedContainerColor = MeTheme.colorScheme.toastBackground,
-            periodSelectorUnselectedContainerColor = MeTheme.colorScheme.secondaryBackground,
-            periodSelectorSelectedContentColor = MeTheme.colorScheme.primaryAction,
-            periodSelectorUnselectedContentColor = MeTheme.colorScheme.textBody,
-            timeSelectorSelectedContainerColor = MeTheme.colorScheme.toastBackground,
-            timeSelectorUnselectedContainerColor = MeTheme.colorScheme.secondaryBackground,
-            timeSelectorSelectedContentColor = MeTheme.colorScheme.primaryAction,
-            timeSelectorUnselectedContentColor = MeTheme.colorScheme.textBody,
-            containerColor = MeTheme.colorScheme.primaryBackground,
+            clockDialColor = colorScheme.secondaryBackground,
+            clockDialSelectedContentColor = colorScheme.inverseAction,
+            clockDialUnselectedContentColor = colorScheme.textBody,
+            selectorColor = colorScheme.primaryAction,
+            periodSelectorBorderColor = colorScheme.utility,
+            periodSelectorSelectedContainerColor = colorScheme.toastBackground,
+            periodSelectorUnselectedContainerColor = colorScheme.secondaryBackground,
+            periodSelectorSelectedContentColor = colorScheme.primaryAction,
+            periodSelectorUnselectedContentColor = colorScheme.textBody,
+            timeSelectorSelectedContainerColor = colorScheme.toastBackground,
+            timeSelectorUnselectedContainerColor = colorScheme.secondaryBackground,
+            timeSelectorSelectedContentColor = colorScheme.primaryAction,
+            timeSelectorUnselectedContentColor = colorScheme.textBody,
+            containerColor = colorScheme.primaryBackground,
         )
 
     /**
@@ -241,37 +242,46 @@ fun DateTimeInput(
     }
     // Error state
     val isError = formControl?.isError ?: false
-
-    Row {
-        // Show date chip if mode is Date or DateTime
-        if (mode == DateTimeInputMode.Date || mode == DateTimeInputMode.DateTime) {
-            AppChip(
-                label = localState.getDateString(),
-                selected = isDateDialogOpen,
-                enabled = enabled && !readOnly,
-                modifier = modifier,
-            ) {
-                if (enabled && !readOnly) {
-                    isDateDialogOpen = true
+    Column {
+        if (label != null) {
+            Text(
+                label,
+                color = colorScheme.textHeading,
+                style = typography.heading4,
+            )
+            Spacer(Modifier.height(MeTheme.spacing.sm))
+        }
+        Row {
+            // Show date chip if mode is Date or DateTime
+            if (mode == DateTimeInputMode.Date || mode == DateTimeInputMode.DateTime) {
+                AppChip(
+                    label = localState.getDateString(),
+                    selected = isDateDialogOpen,
+                    enabled = enabled && !readOnly,
+                    modifier = modifier,
+                ) {
+                    if (enabled && !readOnly) {
+                        isDateDialogOpen = true
+                    }
                 }
             }
-        }
 
-        // Add spacing between chips if both are shown
-        if (mode == DateTimeInputMode.DateTime) {
-            Spacer(Modifier.width(MeTheme.spacing.xs))
-        }
+            // Add spacing between chips if both are shown
+            if (mode == DateTimeInputMode.DateTime) {
+                Spacer(Modifier.width(MeTheme.spacing.xs))
+            }
 
-        // Show time chip if mode is Time or DateTime
-        if (mode == DateTimeInputMode.Time || mode == DateTimeInputMode.DateTime) {
-            AppChip(
-                label = localState.getTimeString(),
-                selected = isTimeDialogOpen,
-                enabled = enabled && !readOnly,
-                modifier = modifier,
-            ) {
-                if (enabled && !readOnly) {
-                    isTimeDialogOpen = true
+            // Show time chip if mode is Time or DateTime
+            if (mode == DateTimeInputMode.Time || mode == DateTimeInputMode.DateTime) {
+                AppChip(
+                    label = localState.getTimeString(),
+                    selected = isTimeDialogOpen,
+                    enabled = enabled && !readOnly,
+                    modifier = modifier,
+                ) {
+                    if (enabled && !readOnly) {
+                        isTimeDialogOpen = true
+                    }
                 }
             }
         }
@@ -353,8 +363,8 @@ fun DateTimeInput(
     } else if (supportingText != null) {
         Text(
             supportingText,
-            color = MeTheme.colorScheme.textSubheading,
-            style = MeTheme.typography.body3,
+            color = colorScheme.textSubheading,
+            style = typography.body3,
         )
     }
 }
@@ -399,6 +409,7 @@ fun DateTimeInputPreview() {
             )
             DateTimeInput(value = DateTimeValue.Time(10, 45), onValueChange = {}, mode = DateTimeInputMode.Time)
             DateTimeInput(
+                label = "Label",
                 value = DateTimeValue.DateTime(System.currentTimeMillis(), 16, 0),
                 onValueChange = {},
                 mode = DateTimeInputMode.DateTime,

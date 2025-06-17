@@ -25,9 +25,12 @@ class AppViewModel @Inject constructor(
     private val accountAuthService: IAccountAuthService,
     private val logManager: LogManager
 ) : BaseIntentViewModel<AppState, AppIntent>(
-    initialState = AppState(),
     reducer = AppReducer(),
 ) {
+
+    override fun provideInitialState(): AppState {
+        return AppState()
+    }
 
     init {
         initLogic()

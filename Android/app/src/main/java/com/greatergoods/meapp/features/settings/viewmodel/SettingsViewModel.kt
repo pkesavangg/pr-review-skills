@@ -13,9 +13,12 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     // Inject services here as needed
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
-    initialState = SettingsState(),
-    reducer = SettingsReducer()
+    reducer = SettingsReducer(),
 ) {
+    override fun provideInitialState(): SettingsState {
+        return SettingsState() // Provide the initial state for settings
+    }
+
     init {
         handleIntent(SettingsIntent.LoadSettings)
         // Add loading logic as needed

@@ -21,21 +21,29 @@ class LoginViewModel @Inject constructor(
     private val accountAuthService: IAccountAuthService,
     private val customTabManager: ICustomTabManager,
 ) : BaseIntentViewModel<LoginState, LoginIntent>(
-    initialState = LoginState(
-        form = FormGroup(
-            LoginFormControls(
-                email = FormControl("", emptyList(), emptyList(), CoroutineScope(SupervisorJob() + Dispatchers.Main)),
-                password = FormControl(
-                    "",
-                    emptyList(),
-                    emptyList(),
-                    CoroutineScope(SupervisorJob() + Dispatchers.Main),
-                ),
-            ),
-        ),
-    ),
     reducer = LoginReducer(),
 ) {
+    override fun provideInitialState(): LoginState {
+        return LoginState(
+            form = FormGroup(
+                LoginFormControls(
+                    email = FormControl(
+                        "",
+                        emptyList(),
+                        emptyList(),
+                        CoroutineScope(SupervisorJob() + Dispatchers.Main),
+                    ),
+                    password = FormControl(
+                        "",
+                        emptyList(),
+                        emptyList(),
+                        CoroutineScope(SupervisorJob() + Dispatchers.Main),
+                    ),
+                ),
+            ),
+        )
+    }
+
     init {
         // Create form controls with proper validators using viewModelScope
         val emailControl = FormControl(

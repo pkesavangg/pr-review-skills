@@ -18,12 +18,15 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val entryService: IEntryService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
-    initialState = DashboardState(),
     reducer = DashboardReducer(),
 ) {
     init {
         handleIntent(DashboardIntent.LoadEntries)
         loadEntries()
+    }
+
+    override fun provideInitialState(): DashboardState {
+        return DashboardState()
     }
 
     /**

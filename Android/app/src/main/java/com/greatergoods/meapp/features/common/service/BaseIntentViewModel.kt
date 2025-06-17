@@ -10,13 +10,17 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 abstract class BaseIntentViewModel<State : IReducer.State, Intent : IReducer.Intent>(
-    initialState: State, private val reducer: IReducer<State, Intent>
+    private val reducer: IReducer<State, Intent>
 ) : BaseViewModel() {
-    private val _state: MutableStateFlow<State> = MutableStateFlow(initialState)
+
+    private val _state: MutableStateFlow<State> = MutableStateFlow(provideInitialState())
     val state: StateFlow<State>
         get() = _state.asStateFlow()
 
     protected val _event: MutableSharedFlow<Intent> = MutableSharedFlow()
+
+    // Subclass must provide initial state
+    protected abstract fun provideInitialState(): State
     val event: SharedFlow<Intent>
         get() = _event.asSharedFlow()
 
