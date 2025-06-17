@@ -15,6 +15,7 @@ struct CommonStrings {
     static let back = "Back"
     static let save = "Save"
     static let skip = "Skip"
+    static let logIn = "Log in"
     static let complete = "Complete"
     
     static let dash = "dash"
@@ -122,6 +123,8 @@ struct AppAssets {
     static let closeCircle = "closeCircle"
     static let helpCircle = "helpCircle"
     static let xmark = "xmark"
+    static let meLogoDark = "meLogoDark"
+    static let meLogoLight = "meLogoLight"
     static let stamp = "stamp"
     static let stampDark = "stampDark"
     static let phone = "phone"

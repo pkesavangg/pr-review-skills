@@ -35,6 +35,7 @@ class ServiceRegistry {
         DependencyContainer.shared.register(NotificationHelperService.shared)
         DependencyContainer.shared.register(EntryService.shared)
         DependencyContainer.shared.register(PushNotificationService.shared)
+        DependencyContainer.shared.register(FeedService.shared)
     }
     
     /// Registers services needed after login
@@ -53,6 +54,7 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: NotificationHelperService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: EntryService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PushNotificationService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)
