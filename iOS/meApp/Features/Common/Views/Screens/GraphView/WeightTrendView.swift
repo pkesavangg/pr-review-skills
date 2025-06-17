@@ -17,11 +17,22 @@ struct WeightTrendView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                WeightDisplayView(
-                    weightText: String(format: "%05.1f", selectedWeight ?? 0),
-                    unitText: "lbs"
-                )
-                .padding(.bottom, 10)
+                
+                VStack(alignment: .leading){
+                    WeightDisplayView(
+                        weightText: String(format: "%05.1f", selectedWeight ?? 0),
+                        unitText: "lbs"
+                    )
+                    
+                    Text("jun 7 - 13, 2024")
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                        .padding(.leading, 16)
+                        .padding(.top, 10)
+                }
+                .padding(.bottom, 8)
+                
+                
                 
                 GraphView(
                     operations: operations,
@@ -33,7 +44,7 @@ struct WeightTrendView: View {
                     segments: TimePeriod.allCases,
                     selectedSegment: $selectedSegment
                 )
-                .padding(.top, 10)
+                .padding(.top, 18)
             }
             .background(theme.textInverse)
             .edgesIgnoringSafeArea(.all)

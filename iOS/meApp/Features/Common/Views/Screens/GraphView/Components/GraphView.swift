@@ -15,22 +15,35 @@ struct GraphView: View {
     @StateObject private var viewModel = GraphViewModel()
     @Environment(\.appTheme) private var theme
 
+    private let weekDaysAbbr = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    private let yearMonthsInitial = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
+
     var body: some View {
         ZStack(alignment: .trailing) {
             Chart {
+                // Solid Y-axis grid lines (overlayed for control)
                 ForEach(viewModel.yAxisTicks, id: \.self) { tick in
-                    chartGridLine(tick: tick)
+                    RuleMark(y: .value("Y Grid", tick))
+                        .lineStyle(StrokeStyle(lineWidth: 1))
+                        .foregroundStyle(theme.statusUtility)
+                        .zIndex(-1)
                 }
-                if let selected = viewModel.selectedEntry, let date = selected.date, let weight = selected.weight {
-                    chartRuleMark(date: date, weight: weight, selected: selected)
+                // Dotted X-axis grid lines
+                ForEach(xAxisGridPositions(), id: \.self) { position in
+                    RuleMark(x: .value("X Grid", position))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        .foregroundStyle(theme.statusUtility)
+                        .zIndex(-1)
                 }
                 chartLineMarks()
                 chartPointMarks()
             }
             .chartYScale(domain: 175...190)
-            .chartXScale(domain: viewModel.xAxisDomain(for: operations))
+            .chartXScale(domain: xAxisDomain())
             .chartYAxis {
                 AxisMarks(values: .automatic) { value in
+                    AxisGridLine()
+                        .foregroundStyle(theme.statusUtility)
                     AxisTick()
                     AxisValueLabel {
                         if let doubleValue = value.as(Double.self) {
@@ -42,7 +55,15 @@ struct GraphView: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: .automatic) { _ in AxisTick() }
+                AxisMarks(values: xAxisLabels()) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    AxisValueLabel {
+                        if let date = value.as(Date.self) {
+                            xLabel(for: date)
+                        }
+                    }
+                }
             }
             .frame(height: 300)
             .background(
@@ -73,15 +94,123 @@ struct GraphView: View {
         }
     }
 
-    // MARK: - ChartContentBuilders
+    // MARK: - X Axis Helpers
 
-    @ChartContentBuilder
-    private func chartGridLine(tick: Double) -> some ChartContent {
-        RuleMark(y: .value("Y Grid", tick))
-            .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-            .foregroundStyle(theme.statusUtility)
-            .zIndex(-1)
+    private func xAxisDomain() -> ClosedRange<Date> {
+        switch selectedSegmentTitle {
+        case TimePeriod.week.displayName:
+            // Always show Sunday to Saturday for week
+            guard let start = weekStartDate() else { return Date()...Date() }
+            let end = Calendar.current.date(byAdding: .day, value: 6, to: start)!
+            return start...end
+        case TimePeriod.year.displayName:
+            // Always show Jan to Dec for year
+            guard let start = yearStartDate() else { return Date()...Date() }
+            let end = Calendar.current.date(byAdding: .month, value: 11, to: start)!
+            return start...end
+        case TimePeriod.month.displayName:
+            // Always show the full month for month
+            guard let start = monthStartDate() else { return Date()...Date() }
+            let end = Calendar.current.date(byAdding: .month, value: 1, to: start)!
+            let lastDay = Calendar.current.date(byAdding: .day, value: -1, to: end)!
+            return start...lastDay
+        default:
+            return viewModel.xAxisDomain(for: operations)
+        }
     }
+
+    private func xAxisLabels() -> [Date] {
+        switch selectedSegmentTitle {
+        case TimePeriod.week.displayName:
+            return weekLabels()
+        case TimePeriod.month.displayName:
+            return monthLabels()
+        case TimePeriod.year.displayName:
+            return yearLabels()
+        default:
+            return []
+        }
+    }
+
+    private func xAxisGridPositions() -> [Date] {
+        xAxisLabels()
+    }
+
+    private func weekStartDate() -> Date? {
+        // Use current week or week of last entry if exists
+        let referenceDate = operations.last?.date ?? Date()
+        return referenceDate.startOfWeek
+    }
+
+    private func yearStartDate() -> Date? {
+        // Use current year or year of last entry if exists
+        let referenceDate = operations.last?.date ?? Date()
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year], from: referenceDate)
+        return cal.date(from: comps)
+    }
+
+    private func monthStartDate() -> Date? {
+        // Use current month or month of last entry if exists
+        let referenceDate = operations.last?.date ?? Date()
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: referenceDate)
+        return cal.date(from: comps)
+    }
+
+    private func weekLabels() -> [Date] {
+        guard let start = weekStartDate() else { return [] }
+        return (0..<7).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: start) }
+    }
+
+    private func monthLabels() -> [Date] {
+        guard let start = monthStartDate() else { return [] }
+        var labels: [Date] = []
+        let cal = Calendar.current
+        if let range = cal.range(of: .day, in: .month, for: start) {
+            let daysInMonth = range.count
+            // Split into 4 weeks, label as [1, 8, 15, 22]
+            let days = [1, 8, 15, 22]
+            for d in days {
+                // Clamp to last day of the month
+                let day = min(d, daysInMonth)
+                if let labelDate = cal.date(bySetting: .day, value: day, of: start) {
+                    labels.append(labelDate)
+                }
+            }
+        }
+        return labels
+    }
+
+    private func yearLabels() -> [Date] {
+        guard let start = yearStartDate() else { return [] }
+        return (0..<12).compactMap { Calendar.current.date(byAdding: .month, value: $0, to: start) }
+    }
+
+    @ViewBuilder
+    private func xLabel(for date: Date) -> some View {
+        switch selectedSegmentTitle {
+        case TimePeriod.week.displayName:
+            let weekday = Calendar.current.component(.weekday, from: date)
+            Text(weekDaysAbbr[(weekday - 1) % 7])
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.textSubheading)
+        case TimePeriod.month.displayName:
+            let day = Calendar.current.component(.day, from: date)
+            Text("\(day)")
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.textSubheading)
+        case TimePeriod.year.displayName:
+            let month = Calendar.current.component(.month, from: date)
+            Text(yearMonthsInitial[(month - 1) % 12])
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.textSubheading)
+        default:
+            EmptyView()
+        }
+    }
+
+    // MARK: - ChartContentBuilders
 
     @ChartContentBuilder
     private func chartRuleMark(date: Date, weight: Double, selected: BathScaleOperationDTO) -> some ChartContent {
@@ -134,7 +263,7 @@ struct GraphView: View {
                     x: .value("Date", date),
                     y: .value("Weight", weight)
                 )
-                .symbolSize(viewModel.selectedEntry?.id == entry.id ? 120 : 40)
+                .symbolSize(viewModel.selectedEntry?.id == entry.id ? 256 : 64)
                 .foregroundStyle(theme.actionPrimary)
             }
         }
@@ -151,5 +280,16 @@ struct GraphView: View {
             .fontWeight(.semibold)
             .foregroundColor(theme.textSubheading)
             .padding(.vertical, 1.5)
+    }
+}
+
+private extension Date {
+    // Returns the start of the week (Sunday)
+    var startOfWeek: Date? {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
+        guard let weekStart = cal.date(from: comps) else { return nil }
+        let weekday = cal.component(.weekday, from: weekStart)
+        return cal.date(byAdding: .day, value: 1 - weekday, to: weekStart)
     }
 }

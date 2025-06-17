@@ -23,13 +23,13 @@ struct ContentView: View {
                 } else if viewModel.showDashboardView {
 #if DEBUG
                     VStack{
-                        Text(viewModel.dashboardTextView())
-                            .fontOpenSans(.body1)
-                            .foregroundColor(theme.textHeading)
+                        WeightTrendView()
+                            .padding(.horizontal)
                         
                         ButtonView(text: "Logout", type: .primary, size: .regular, isDisabled: false, action:{
                             Task { await viewModel.logout()
                             }})
+                        .padding(.top)
                         
                     }
                     

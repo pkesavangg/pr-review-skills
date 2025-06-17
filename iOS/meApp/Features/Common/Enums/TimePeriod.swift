@@ -11,7 +11,7 @@ enum TimePeriod: String, CaseIterable, Identifiable {
     case week
     case month
     case year
-    case label
+    case total
     
     var id: String { self.rawValue }
     var displayName: String { self.rawValue }
