@@ -16,4 +16,32 @@ object EntryScreenStrings {
     const val NoteLabel = "Note"
     /** Text for the save button. */
     const val SaveButton = "Save"
+    /** Label for the body mass index (BMI) input field. */
+    const val BODY_MASS_INDEX_LABEL = "Body Mass Index"
+    /** Label for the body fat input field. */
+    const val BODY_FAT_LABEL = "Body Fat"
+    /** Label for the muscle mass input field. */
+    const val MUSCLE_MASS_LABEL = "Muscle Mass"
+    /** Label for the body water input field. */
+    const val BODY_WATER_LABEL = "Body Water"
+    /** Label for the heart rate input field. */
+    const val HEART_RATE_LABEL = "Heart Rate"
+    /** Label for the bone mass input field. */
+    const val BONE_MASS_LABEL = "Bone Mass"
+    /** Label for the visceral fat input field. */
+    const val VISCERAL_FAT_LABEL = "Visceral Fat"
+    /** Label for the subcutaneous fat input field. */
+    const val SUBCUTANEOUS_FAT_LABEL = "Subcutaneous Fat"
+    /** Label for the protein input field. */
+    const val PROTEIN_LABEL = "Protein"
+    /** Label for the skeletal muscles input field. */
+    const val SKELETAL_MUSCLES_LABEL = "Skeletal Muscles"
+    /** Label for the BMR input field. */
+    const val BMR_LABEL = "Basel Metabolic Rate"
+    /** Label for the metabolic age input field. */
+    const val METABOLIC_AGE_LABEL = "Metabolic Age"
+    /** Title for the metrics section card. */
+    const val METRICS_SECTION_TITLE = "Body Metrics"
+    /** Optional subheading for the metrics section card. */
+    const val METRICS_SECTION_SUBHEADING = "Optional"
 }

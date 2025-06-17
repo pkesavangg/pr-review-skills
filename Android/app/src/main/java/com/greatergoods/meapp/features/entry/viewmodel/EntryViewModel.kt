@@ -21,7 +21,7 @@ class EntryViewModel @Inject constructor(
     override fun provideInitialState(): EntryState {
         return EntryState(
             form = FormGroup(
-                EntryFormControls.create(viewModelScope),
+                EntryFormControls.create(viewModelScope, true),
             ),
         )
     }

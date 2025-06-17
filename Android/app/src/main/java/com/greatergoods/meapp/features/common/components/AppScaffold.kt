@@ -55,7 +55,6 @@ fun AppScaffold(
                 ),
             )
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = containerColor,
     ) { innerPadding ->
         Box(
