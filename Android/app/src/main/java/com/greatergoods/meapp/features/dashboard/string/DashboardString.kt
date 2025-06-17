@@ -6,6 +6,6 @@ object DashboardString {
         const val entry = "entry"
         const val history = "history"
         const val settings = "settings"
-        const val appsync = "ic_appsync"
+        const val appsync = "appsync"
     }
 }

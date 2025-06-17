@@ -9,7 +9,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.nav3integration.rememberTopLevelBackStack
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
-import com.greatergoods.meapp.features.auth.AppViewModel
+import com.greatergoods.meapp.features.auth.viewmodel.AppViewModel
 import com.greatergoods.meapp.features.common.components.DialogHost
 import com.greatergoods.meapp.features.common.components.NavHost
 import com.greatergoods.meapp.theme.MeAppTheme

@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.auth
+package com.greatergoods.meapp.features.auth.viewmodel
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.proto.ThemeMode

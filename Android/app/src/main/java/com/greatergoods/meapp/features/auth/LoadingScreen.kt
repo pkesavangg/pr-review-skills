@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.sample
+package com.greatergoods.meapp.features.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
