@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.auth.viewmodel
+package com.greatergoods.meapp.app.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -104,7 +104,7 @@ class AppViewModel @Inject constructor(
                 // - Load user preferences
                 // - Initialize services
                 // - Cache necessary data
-                navigationService.autoLogin()
+                // navigationService.autoLogin()
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately
             }
