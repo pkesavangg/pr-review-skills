@@ -4,9 +4,14 @@ import AppHorizontalPager
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.BottomAppBar
@@ -38,32 +43,50 @@ import kotlinx.coroutines.launch
 fun PagerBottomAppBar(
     modifier: Modifier = Modifier,
     leadingContent: @Composable () -> Unit,
-    middleContent: @Composable () -> Unit = {},
+    middleContent: @Composable () -> Unit,
     trailingContent: @Composable () -> Unit,
-    content: @Composable (modifier: Modifier) -> Unit,
+    content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        bottomBar =
-            {
-                BottomAppBar(
-                    modifier = modifier.fillMaxWidth(), // Ensure it fills the width
-                    containerColor = Color.Transparent, // Use Material3 color scheme
+        bottomBar = {
+            BottomAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            WindowInsets.safeDrawing
+                                .only(WindowInsetsSides.Bottom)
+                                .asPaddingValues(),
+                        ),
+                containerColor = Color.Transparent,
+            ) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(MeTheme.spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(MeTheme.spacing.sm),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        leadingContent()
-                        Spacer(modifier = Modifier.weight(1f))
-                        middleContent()
-                        Spacer(modifier = Modifier.width(8.dp))
-                        trailingContent()
-                    }
+                    leadingContent()
+                    Spacer(modifier = Modifier.weight(1f))
+                    middleContent()
+                    Spacer(modifier = Modifier.width(8.dp))
+                    trailingContent()
                 }
-            },
+            }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
-        content(Modifier.padding(paddingValues))
+        content(
+            Modifier
+                .padding(paddingValues)
+                .padding(
+                    WindowInsets.safeDrawing
+                        .only(WindowInsetsSides.Horizontal)
+                        .asPaddingValues(),
+                ),
+        )
     }
 }
 
