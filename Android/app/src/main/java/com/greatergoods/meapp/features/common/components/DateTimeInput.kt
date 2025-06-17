@@ -238,7 +238,7 @@ fun DateTimeInput(
         localState = currentValue
     }
     // Error state
-    val isError = !formControl?.error.isNullOrBlank()
+    val isError = formControl?.isError ?: false
 
     Row {
         // Show date chip if mode is Date or DateTime
@@ -342,10 +342,11 @@ fun DateTimeInput(
 
     // Show error or supporting text
     if (formControl != null && isError) {
+        val errorMessage = formControl.error?.message ?: ""
         Text(
-            formControl.error ?: "",
-            color = MeTheme.colorScheme.textError,
-            style = MeTheme.typography.body3,
+            errorMessage,
+            color = MeAppTheme.colorScheme.error,
+            style = MeAppTheme.typography.body3,
         )
     } else if (supportingText != null) {
         Text(

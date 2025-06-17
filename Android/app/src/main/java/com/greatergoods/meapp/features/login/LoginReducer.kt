@@ -29,6 +29,8 @@ data class LoginState(
 sealed class LoginIntent : IReducer.Intent {
     object Submit : LoginIntent()
     data class Error(val message: String) : LoginIntent()
+    data class UpdateForm(val form: FormGroup<LoginFormControls>) : LoginIntent()
+    object Success : LoginIntent()
 }
 
 /**
@@ -43,17 +45,12 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
             is LoginIntent.Error -> {
                 state.copy(isLoading = false, error = intent.message)
             }
+            is LoginIntent.UpdateForm -> {
+                state.copy(form = intent.form)
+            }
+            is LoginIntent.Success -> {
+                state.copy(isLoading = false, error = null)
+            }
         }
     }
-}
-
-/**
- * Helper to create initial LoginState with form group and validators.
- */
-fun createInitialLoginState(scope: CoroutineScope): LoginState {
-    val email = FormControl("", listOf(FormValidations.required(), FormValidations.email()), emptyList(), scope)
-    val password = FormControl("", listOf(FormValidations.required(), FormValidations.minLength(6)), emptyList(), scope)
-    val controls = LoginFormControls(email = email, password = password)
-    val formGroup = FormGroup(controls)
-    return LoginState(form = formGroup)
 }

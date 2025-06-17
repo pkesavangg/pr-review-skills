@@ -29,7 +29,7 @@ fun AppHeightInput(
     var isModalTriggered by remember { mutableStateOf(false) }
     val localState = remember { mutableStateOf(value ?: HeightInput.FtIn(0, 0)) }
     val currentValue = formControl?.value ?: value ?: localState.value
-    val isError = formControl?.error?.isNullOrBlank()?.not() == true
+    val isError = formControl?.isError ?: false
 
     AppChip(
         currentValue.getString(),
@@ -62,10 +62,11 @@ fun AppHeightInput(
     }
     // Optionally show error/supporting text below
     if (formControl != null && isError) {
+        val errorMessage = formControl.error?.message ?: ""
         Text(
-            formControl.error ?: "",
-            color = MeTheme.colorScheme.textError,
-            style = MeTheme.typography.body3,
+            errorMessage,
+            color = MeAppTheme.colorScheme.error,
+            style = MeAppTheme.typography.body3,
         )
     } else if (supportingText != null) {
         Text(

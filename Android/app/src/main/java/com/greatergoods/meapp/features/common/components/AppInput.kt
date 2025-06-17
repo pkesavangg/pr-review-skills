@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,9 +36,10 @@ import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.strings.AppInputStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeTheme.borderRadius
-import com.greatergoods.meapp.theme.MeTheme.colorScheme
-import com.greatergoods.meapp.theme.MeTheme.typography
+import com.greatergoods.meapp.theme.MeAppTheme.borderRadius
+import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeAppTheme.spacing
+import com.greatergoods.meapp.theme.MeAppTheme.typography
 
 enum class AppInputType {
     TEXT,
@@ -175,8 +177,9 @@ fun <T> InputFieldBase(
     val currentOnFocus by rememberUpdatedState(onFocus)
     val currentOnBlur by rememberUpdatedState(onBlur)
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
 
-    val isError = formControl?.error.isNullOrBlank().not()
+    val isError = formControl?.error?.type != null && (formControl.dirty || formControl.touched)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val isPassword = inputType == AppInputType.PASSWORD
@@ -257,20 +260,20 @@ fun <T> InputFieldBase(
     TextField(
         value = inputValue,
         onValueChange = onInputChange,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester)
-                .onFocusChanged { focusState ->
-                    if (!focusState.isFocused && isFocused) {
-                        currentOnBlur?.invoke()
-                        formControl?.onBlur() // handle touched on blur
-                        isFocused = false
-                    } else if (focusState.isFocused && !isFocused) {
-                        currentOnFocus?.invoke()
-                        isFocused = true
-                    }
-                },
+        modifier = modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .onFocusChanged { focusState ->
+                if (!focusState.isFocused && isFocused) {
+                    currentOnBlur?.invoke()
+                    formControl?.onBlur() // handle touched on blur
+                    isFocused = false
+                } else if (focusState.isFocused && !isFocused) {
+                    currentOnFocus?.invoke()
+                    isFocused = true
+                }
+            }
+            .padding(bottom = spacing.xs),
         label = {
             label?.let {
                 Text(
@@ -287,6 +290,7 @@ fun <T> InputFieldBase(
                 color = colorScheme.secondaryActionDisabled,
             )
         },
+        singleLine = true,
         trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
         keyboardActions =
@@ -324,11 +328,12 @@ fun <T> InputFieldBase(
                 errorCursorColor = colorScheme.textError,
             ),
         supportingText = {
+            val errorMessage = formControl?.error?.message ?: ""
             when {
                 isError ->
                     Text(
-                        formControl.error ?: "",
-                        color = colorScheme.textError,
+                        errorMessage,
+                        color = colorScheme.error,
                         style = typography.body3,
                     )
 
@@ -353,24 +358,14 @@ fun <T> InputFieldBase(
 @Composable
 fun AppInputPreview() {
     MeAppTheme {
-        val fakeScope = rememberCoroutineScope()
-        val normal = remember { FormControl("Input", emptyList(), emptyList(), fakeScope) }
-        val error = remember { FormControl("Input", listOf({ "This field is required" }), emptyList(), fakeScope) }
-        val password =
-            remember { FormControl("", listOf({ "Password must be at least 8 characters" }), emptyList(), fakeScope) }
-        val disabled = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-        val focused = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
-            AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
-            AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
-            AppInput(
-                formControl = error,
-                label = "Error Input",
-                type = AppInputType.TEXT,
-                supportingText = "supporting text",
-            )
-            AppInput(formControl = password, label = "Password with Error", type = AppInputType.PASSWORD)
-            AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
-        }
+       val fakeScope = rememberCoroutineScope()
+       val normal = remember { FormControl("Input", emptyList(), emptyList(), fakeScope) }
+       val disabled = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
+       val focused = remember { FormControl("", emptyList(), emptyList(), fakeScope) }
+       Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
+           AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
+           AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
+           AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
+       }
     }
 }

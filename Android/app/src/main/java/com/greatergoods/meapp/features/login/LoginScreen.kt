@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.login
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.helper.form.FormControl
@@ -33,11 +36,12 @@ fun LoginScreen() {
     val viewModel: LoginViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
     val backStack = LocalNavBackStack.current
-
+    val focusManager = LocalFocusManager.current
+    val interactionSource = remember { MutableInteractionSource() }
     AppScaffold(
         title = null,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { }
+            AppIconButton(AppIcons.Default.Close) { backStack.removeLast()}
         },
         actions = {
             AppIconButton(AppIcons.Outlined.Help) { }
@@ -50,7 +54,14 @@ fun LoginScreen() {
             verticalArrangement = Arrangement.Top,
         ) {
             Spacer(Modifier.height(spacing.md))
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = { focusManager.clearFocus() }
+                ), horizontalAlignment = Alignment.Start
+            ) {
                 AppText(
                     text = LoginStrings.WelcomeBack,
                     textType = TextType.Title,
@@ -60,17 +71,15 @@ fun LoginScreen() {
                     formControl = state.form.controls.email,
                     label = LoginStrings.EmailLabel,
                     type = AppInputType.TEXT,
-                    modifier = Modifier.fillMaxWidth(),
                     showTrailingIcon = true,
                 )
                 AppInput(
                     formControl = state.form.controls.password,
                     label = LoginStrings.PasswordLabel,
                     type = AppInputType.PASSWORD,
-                    modifier = Modifier.fillMaxWidth(),
                     showTrailingIcon = true,
                 )
-                Spacer(Modifier.height(spacing.lg))
+                Spacer(Modifier.height(spacing.xs))
                 AppButton(
                     label = LoginStrings.LoginButton,
                     enabled = viewModel.isFormValid,
@@ -100,22 +109,23 @@ fun LoginScreen() {
                     text = LoginStrings.TermsAgreement,
                     textType = TextType.Subtitle,
                 )
+                Spacer(Modifier.height(spacing.xs))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Absolute.Center,
                 ) {
                     AppText(
                         text = LoginStrings.TermsOfService,
-                        textType = TextType.link,
-                        action = {viewModel.openUrl(LoginStrings.TermsOfServiceUrl)}
+                        textType = TextType.Link,
+                        onClick = {viewModel.openUrl(LoginStrings.TermsOfServiceUrl)}
                     )
                     Spacer(Modifier.padding(start = spacing.sm))
                     Text(LoginStrings.And, style = typography.body4, color = colorScheme.textBody)
                     Spacer(Modifier.padding(end = spacing.sm))
                     AppText(
                         text = LoginStrings.PrivacyPolicy,
-                        textType = TextType.link,
-                        action = {viewModel.openUrl(LoginStrings.PrivacyPolicyUrl)}
+                        textType = TextType.Link,
+                        onClick = {viewModel.openUrl(LoginStrings.PrivacyPolicyUrl)}
                     )
                 }
             }
