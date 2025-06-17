@@ -128,12 +128,12 @@ extension View {
     /// - Parameters:
     ///   - sides: An array of sides where the border should be applied.
     ///   - thickness: The thickness of the border.
-    ///   - color: The color of the border.
+    ///   - color: The color of the border. If nil, the default color will be used.
     ///   - Returns: A view with a border applied to the specified sides.
     func border(
         sides: [BorderModifier.Side] = [.top, .bottom, .leading, .trailing],
         thickness: CGFloat = 1,
-        color: Color = Environment(\.appTheme).wrappedValue.statusUtility
+        color: Color? = nil
     ) -> some View {
         modifier(BorderModifier(sides: sides, thickness: thickness, color: color))
     }

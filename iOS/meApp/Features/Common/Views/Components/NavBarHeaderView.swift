@@ -15,7 +15,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     var trailingContent: (() -> Trailing)?
     var onLeadingTap: (() -> Void)?
     var onTrailingTap: (() -> Void)?
-    
+    var canShowBorder = false
     var body: some View {
         HStack (alignment: .center){
             if let leadingContent = leadingContent {
@@ -51,6 +51,8 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                 }
             }
         }
+        .padding(.bottom, .spacingSM)
+        .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
     }
 }
 
