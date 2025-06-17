@@ -11,7 +11,7 @@ struct VersionAndCopyrightView: View {
     @Environment(\.appTheme) var theme
     let lang = LoadingScreenStrings.self
     private var appVersion: String {
-        Bundle.main.infoDictionary?[lang.versionKey] as? String ?? "-"
+        AppInfo.appVersion
     }
     
     var body: some View {
