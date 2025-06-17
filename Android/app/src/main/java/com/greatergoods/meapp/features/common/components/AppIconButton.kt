@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 // Types for icon button color schemes
 enum class AppIconButtonType { Primary, Secondary, Tertiary }
@@ -22,14 +23,20 @@ object AppIconButtonDefaults {
      * Returns icon color based on button type and enabled state.
      */
     @Composable
-    fun contentColor(type: AppIconButtonType, enabled: Boolean): Color = when (type) {
-        AppIconButtonType.Primary ->
-            if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
-        AppIconButtonType.Secondary ->
-            if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
-        AppIconButtonType.Tertiary ->
-            if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryActionDisabled
-    }
+    fun contentColor(
+        type: AppIconButtonType,
+        enabled: Boolean,
+    ): Color =
+        when (type) {
+            AppIconButtonType.Primary ->
+                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryBackgroundDisabled
+
+            AppIconButtonType.Secondary ->
+                if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
+
+            AppIconButtonType.Tertiary ->
+                if (enabled) MeTheme.colorScheme.tertiaryAction else MeTheme.colorScheme.tertiaryActionDisabled
+        }
 }
 
 /**

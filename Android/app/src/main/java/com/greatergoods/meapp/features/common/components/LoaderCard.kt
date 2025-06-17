@@ -10,18 +10,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.model.Loader
+import com.greatergoods.meapp.theme.MeAppTheme
 
 @Composable
 fun LoaderCard(loader: Loader) {
     Dialog(onDismissRequest = { }) {
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
             AppLoader(
-                modifier = Modifier
-                    .padding(vertical = 32.dp, horizontal = 40.dp),
+                modifier =
+                    Modifier
+                        .padding(vertical = 32.dp, horizontal = 40.dp),
                 message = loader.message,
                 isLoading = true,
                 style = loader.style,
             )
         }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun LoaderCardTheme() {
+    MeAppTheme {
+        LoaderCard(loader = Loader(message = "Loading"))
     }
 }

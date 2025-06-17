@@ -19,7 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
-import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -44,7 +44,7 @@ fun AddScaleEntriesModal(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Scale Entries", style = MeAppTheme.typography.heading2) },
+        title = { Text("Add Scale Entries", style = MeTheme.typography.heading2) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
@@ -102,11 +102,13 @@ fun AddScaleEntriesModal(
 /**
  * Enum representing the period type for entry generation.
  */
-enum class PeriodType(val displayName: String) {
+enum class PeriodType(
+    val displayName: String,
+) {
     WEEK("Week"),
     MONTH("Month"),
     YEAR("Year"),
-    ANY("Any/Total")
+    ANY("Any/Total"),
 }
 
 /**
@@ -116,49 +118,69 @@ enum class PeriodType(val displayName: String) {
  * @param period PeriodType for distribution.
  * @return List of ScaleEntry.
  */
-private fun generateScaleEntries(count: Int, period: PeriodType): List<ScaleEntry> {
+private fun generateScaleEntries(
+    count: Int,
+    period: PeriodType,
+): List<ScaleEntry> {
     val now = LocalDateTime.now()
     val zone = ZoneId.of("America/Los_Angeles")
     val weightList = (50..70).toList()
-    val daysRange = when (period) {
-        PeriodType.WEEK -> 6
-        PeriodType.MONTH -> 29
-        PeriodType.YEAR -> 364
-        PeriodType.ANY -> 365 * 10 - 1
-    }
-    val daysList = when (period) {
-        PeriodType.ANY -> List(count) { Random.nextInt(0, daysRange) }
-        else -> if (count > daysRange + 1) List(count) { it % (daysRange + 1) } else (0..daysRange).shuffled()
-            .take(count)
-    }
+    val daysRange =
+        when (period) {
+            PeriodType.WEEK -> 6
+            PeriodType.MONTH -> 29
+            PeriodType.YEAR -> 364
+            PeriodType.ANY -> 365 * 10 - 1
+        }
+    val daysList =
+        when (period) {
+            PeriodType.ANY -> List(count) { Random.nextInt(0, daysRange) }
+            else ->
+                if (count > daysRange + 1) {
+                    List(count) { it % (daysRange + 1) }
+                } else {
+                    (0..daysRange)
+                        .shuffled()
+                        .take(count)
+                }
+        }
     return daysList.mapIndexed { index, daysAgo ->
-        val date = now.minusDays(daysAgo.toLong()).withHour(8 + (index % 12)).withMinute(0).withSecond(0).withNano(0)
+        val date =
+            now
+                .minusDays(daysAgo.toLong())
+                .withHour(8 + (index % 12))
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0)
         val timestamp = ZonedDateTime.of(date, zone).toInstant().toEpochMilli()
         ScaleEntry(
-            entry = com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity(
-                id = (1000 + index).toLong(),
-                accountId = "account_${1000 + index}",
-                entryTimestamp = timestamp,
-                serverTimestamp = null,
-                opTimestamp = null,
-                operationType = "CREATE",
-                deviceType = "SCALE",
-                deviceId = "device_${1000 + index}",
-                attempts = 0,
-                isSynced = false,
-            ),
-            scale = com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics(
-                scaleEntry = com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity(
+            entry =
+                com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity(
                     id = (1000 + index).toLong(),
-                    weight = weightList.random(),
-                    bodyFat = 200 + index,
-                    muscleMass = 200 + index,
-                    water = 400 + index,
-                    bmi = 2200 + index,
-                    source = "manual",
+                    accountId = "account_${1000 + index}",
+                    entryTimestamp = timestamp,
+                    serverTimestamp = null,
+                    opTimestamp = null,
+                    operationType = "CREATE",
+                    deviceType = "SCALE",
+                    deviceId = "device_${1000 + index}",
+                    attempts = 0,
+                    isSynced = false,
                 ),
-                scaleEntryMetric = null,
-            ),
+            scale =
+                com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics(
+                    scaleEntry =
+                        com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity(
+                            id = (1000 + index).toLong(),
+                            weight = weightList.random(),
+                            bodyFat = 200 + index,
+                            muscleMass = 200 + index,
+                            water = 400 + index,
+                            bmi = 2200 + index,
+                            source = "manual",
+                        ),
+                    scaleEntryMetric = null,
+                ),
         )
     }
 }

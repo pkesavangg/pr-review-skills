@@ -15,14 +15,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.features.common.components.*
+import com.greatergoods.meapp.features.common.components.AppButton
+import com.greatergoods.meapp.features.common.components.AppIconButton
+import com.greatergoods.meapp.features.common.components.AppInput
+import com.greatergoods.meapp.features.common.components.AppInputType
+import com.greatergoods.meapp.features.common.components.AppScaffold
+import com.greatergoods.meapp.features.common.components.AppText
+import com.greatergoods.meapp.features.common.components.ButtonSize
+import com.greatergoods.meapp.features.common.components.ButtonType
+import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
-import com.greatergoods.meapp.theme.MeAppTheme.spacing
-import com.greatergoods.meapp.theme.MeAppTheme.typography
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
+import com.greatergoods.meapp.theme.MeTheme.typography
 
 @Composable
 fun LoginScreen() {
@@ -40,7 +49,7 @@ fun LoginScreen() {
         actions = {
             AppIconButton(AppIcons.Outlined.Help) { }
         },
-        containerColor = colorScheme.secondary,
+        containerColor = colorScheme.secondaryBackground,
     ) { scaffoldModifier ->
         Column(
             modifier = scaffoldModifier.padding(horizontal = spacing.sm, vertical = 0.dp),
@@ -105,7 +114,7 @@ fun LoginScreen() {
                         onClick = { loginViewModel.openUrl(LoginStrings.TermsOfServiceUrl) },
                     )
                     Spacer(Modifier.padding(start = spacing.sm))
-                    Text(LoginStrings.And, style = typography.body4, color = colorScheme.body)
+                    Text(LoginStrings.And, style = typography.body4, color = colorScheme.textBody)
                     Spacer(Modifier.padding(end = spacing.sm))
                     AppText(
                         text = LoginStrings.PrivacyPolicy,

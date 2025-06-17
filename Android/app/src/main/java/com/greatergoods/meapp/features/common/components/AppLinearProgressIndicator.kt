@@ -19,8 +19,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.animation
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.animation
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
 
 enum class AppLinearProgressType {
     Primary,

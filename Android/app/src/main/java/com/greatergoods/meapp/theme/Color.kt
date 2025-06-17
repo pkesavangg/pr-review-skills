@@ -26,50 +26,46 @@ import com.greatergoods.meapp.theme.token.LightColorToken
  * Maps each semantic color role (background, action, text, etc.) to the appropriate token from [LightColorToken].
  * These tokens are derived from the design system's color palette (see reference image).
  */
-val LightColorScheme = ColorScheme(
-    // Background
-    primary = LightColorToken.primary,
-    primaryDisabled = LightColorToken.primaryDisabled,
-    secondary = LightColorToken.secondary,
-
-    // Support
-    overlay = LightColorToken.overlay,
-    toastBackground = LightColorToken.toastBackground,
-
-    // Action
-    primaryAction = LightColorToken.primaryAction,
-    primaryActionDisabled = LightColorToken.primaryActionDisabled,
-    secondaryAction = LightColorToken.secondaryAction,
-    secondaryActionDisabled = LightColorToken.secondaryActionDisabled,
-    tertiaryAction = LightColorToken.tertiaryAction,
-    tertiaryActionDisabled = LightColorToken.tertiaryActionDisabled,
-    inverse = LightColorToken.inverse,
-    inverseDisabled = LightColorToken.inverseDisabled,
-    inverseSecondary = LightColorToken.inverseSecondary,
-
-    // Status
-    goal = LightColorToken.goal,
-    success = LightColorToken.success,
-    danger = LightColorToken.danger,
-    streak = LightColorToken.streak,
-    utility = LightColorToken.utility,
-    iconPrimary = LightColorToken.iconPrimary,
-    iconSecondary = LightColorToken.iconSecondary,
-    iconDisabled = LightColorToken.iconDisabled,
-    loading = LightColorToken.loading,
-    loadingError = LightColorToken.loadingError,
-
-    // Text
-    heading = LightColorToken.heading,
-    body = LightColorToken.body,
-    subheading = LightColorToken.subheading,
-    textError = LightColorToken.textError,
-    textErrorDisabled = LightColorToken.textErrorDisabled,
-
-    // Brand
-    meAppPrimary = LightColorToken.meAppPrimary,
-    wgPrimary = LightColorToken.wgPrimary,
-)
+val LightColorScheme =
+    ColorScheme(
+        // Background
+        primaryBackground = LightColorToken.primary,
+        primaryBackgroundDisabled = LightColorToken.primaryDisabled,
+        secondaryBackground = LightColorToken.secondary,
+        // Support
+        overlay = LightColorToken.overlay,
+        toastBackground = LightColorToken.toastBackground,
+        // Action
+        primaryAction = LightColorToken.primaryAction,
+        primaryActionDisabled = LightColorToken.primaryActionDisabled,
+        secondaryAction = LightColorToken.secondaryAction,
+        secondaryActionDisabled = LightColorToken.secondaryActionDisabled,
+        tertiaryAction = LightColorToken.tertiaryAction,
+        tertiaryActionDisabled = LightColorToken.tertiaryActionDisabled,
+        inverseAction = LightColorToken.inverse,
+        inverseActionDisabled = LightColorToken.inverseDisabled,
+        inverseActionSecondary = LightColorToken.inverseSecondary,
+        // Status
+        goal = LightColorToken.goal,
+        success = LightColorToken.success,
+        danger = LightColorToken.danger,
+        streak = LightColorToken.streak,
+        utility = LightColorToken.utility,
+        iconPrimary = LightColorToken.iconPrimary,
+        iconSecondary = LightColorToken.iconSecondary,
+        iconDisabled = LightColorToken.iconDisabled,
+        loading = LightColorToken.loading,
+        loadingError = LightColorToken.loadingError,
+        // Text
+        textHeading = LightColorToken.heading,
+        textBody = LightColorToken.body,
+        textSubheading = LightColorToken.subheading,
+        textError = LightColorToken.textError,
+        textErrorDisabled = LightColorToken.textErrorDisabled,
+        // Brand
+        meAppPrimary = LightColorToken.meAppPrimary,
+        wgPrimary = LightColorToken.wgPrimary,
+    )
 
 /**
  * Semantic color mapping for the dark theme.
@@ -77,50 +73,46 @@ val LightColorScheme = ColorScheme(
  * Maps each semantic color role (background, action, text, etc.) to the appropriate token from [DarkColorToken].
  * These tokens are derived from the design system's color palette (see reference image).
  */
-val DarkColorScheme = ColorScheme(
-    // Background
-    primary = DarkColorToken.primary,
-    primaryDisabled = DarkColorToken.primaryDisabled,
-    secondary = DarkColorToken.secondary,
-
-    // Support
-    overlay = DarkColorToken.overlay,
-    toastBackground = DarkColorToken.toastBackground,
-
-    // Action
-    primaryAction = DarkColorToken.primaryAction,
-    primaryActionDisabled = DarkColorToken.primaryActionDisabled,
-    secondaryAction = DarkColorToken.secondaryAction,
-    secondaryActionDisabled = DarkColorToken.secondaryActionDisabled,
-    tertiaryAction = DarkColorToken.tertiaryAction,
-    tertiaryActionDisabled = DarkColorToken.tertiaryActionDisabled,
-    inverse = DarkColorToken.inverse,
-    inverseDisabled = DarkColorToken.inverseDisabled,
-    inverseSecondary = DarkColorToken.inverseSecondary,
-
-    // Status
-    goal = DarkColorToken.goal,
-    success = DarkColorToken.success,
-    danger = DarkColorToken.danger,
-    streak = DarkColorToken.streak,
-    utility = DarkColorToken.utility,
-    iconPrimary = DarkColorToken.iconPrimary,
-    iconSecondary = DarkColorToken.iconSecondary,
-    iconDisabled = DarkColorToken.iconDisabled,
-    loading = DarkColorToken.loading,
-    loadingError = DarkColorToken.loadingError,
-
-    // Text
-    heading = DarkColorToken.heading,
-    body = DarkColorToken.body,
-    subheading = DarkColorToken.subheading,
-    textError = DarkColorToken.textError,
-    textErrorDisabled = DarkColorToken.textErrorDisabled,
-
-    // Brand
-    meAppPrimary = DarkColorToken.meAppPrimary,
-    wgPrimary = DarkColorToken.wgPrimary,
-)
+val DarkColorScheme =
+    ColorScheme(
+        // Background
+        primaryBackground = DarkColorToken.primary,
+        primaryBackgroundDisabled = DarkColorToken.primaryDisabled,
+        secondaryBackground = DarkColorToken.secondary,
+        // Support
+        overlay = DarkColorToken.overlay,
+        toastBackground = DarkColorToken.toastBackground,
+        // Action
+        primaryAction = DarkColorToken.primaryAction,
+        primaryActionDisabled = DarkColorToken.primaryActionDisabled,
+        secondaryAction = DarkColorToken.secondaryAction,
+        secondaryActionDisabled = DarkColorToken.secondaryActionDisabled,
+        tertiaryAction = DarkColorToken.tertiaryAction,
+        tertiaryActionDisabled = DarkColorToken.tertiaryActionDisabled,
+        inverseAction = DarkColorToken.inverse,
+        inverseActionDisabled = DarkColorToken.inverseDisabled,
+        inverseActionSecondary = DarkColorToken.inverseSecondary,
+        // Status
+        goal = DarkColorToken.goal,
+        success = DarkColorToken.success,
+        danger = DarkColorToken.danger,
+        streak = DarkColorToken.streak,
+        utility = DarkColorToken.utility,
+        iconPrimary = DarkColorToken.iconPrimary,
+        iconSecondary = DarkColorToken.iconSecondary,
+        iconDisabled = DarkColorToken.iconDisabled,
+        loading = DarkColorToken.loading,
+        loadingError = DarkColorToken.loadingError,
+        // Text
+        textHeading = DarkColorToken.heading,
+        textBody = DarkColorToken.body,
+        textSubheading = DarkColorToken.subheading,
+        textError = DarkColorToken.textError,
+        textErrorDisabled = DarkColorToken.textErrorDisabled,
+        // Brand
+        meAppPrimary = DarkColorToken.meAppPrimary,
+        wgPrimary = DarkColorToken.wgPrimary,
+    )
 
 /**
  * CompositionLocal for accessing the current [ColorScheme] instance in the Compose hierarchy.

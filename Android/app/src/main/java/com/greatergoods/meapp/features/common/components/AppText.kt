@@ -14,7 +14,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.token.LocalSpacing
 
 data class TextAppearance(
@@ -33,25 +34,25 @@ enum class TextType {
 object TextTypeDefaults {
     @Composable
     fun appearance(type: TextType): TextAppearance {
-        val typography = MeAppTheme.typography
+        val typography = MeTheme.typography
 
         return when (type) {
             TextType.Title ->
                 TextAppearance(
                     style = typography.heading4,
-                    color = colorScheme.heading,
+                    color = colorScheme.textHeading,
                 )
 
             TextType.Subtitle ->
                 TextAppearance(
                     style = typography.subHeading2,
-                    color = colorScheme.body,
+                    color = colorScheme.textBody,
                 )
 
             TextType.Body ->
                 TextAppearance(
                     style = typography.body2,
-                    color = colorScheme.body,
+                    color = colorScheme.textBody,
                 )
 
             TextType.Link ->
@@ -63,7 +64,7 @@ object TextTypeDefaults {
             TextType.SubHeading ->
                 TextAppearance(
                     style = typography.body3,
-                    color = MeAppTheme.colorScheme.subheading,
+                    color = MeTheme.colorScheme.textSubheading,
                 )
         }
     }
