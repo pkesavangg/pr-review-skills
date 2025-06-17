@@ -31,9 +31,7 @@ struct WeightTrendView: View {
                         .padding(.top, 10)
                 }
                 .padding(.bottom, 8)
-                
-                
-                
+
                 GraphView(
                     operations: operations,
                     selectedSegmentTitle: selectedSegment.displayName,
@@ -62,61 +60,114 @@ struct WeightTrendView: View {
 }
 
 // Temporary mock data for BathScaleOperationDTO used for preview/testing purposes.
-// Remove this block when integrating with live data from the Bluetooth scale or backend.
 func sampleOperations(for segment: String) -> [BathScaleOperationDTO] {
     let calendar = Calendar.current
     let now = Date()
-    let count: Int
+    var operations: [BathScaleOperationDTO] = []
+    
     switch segment.uppercased() {
     case "WEEK":
-        count = Int.random(in: 5...7)
-    case "MONTH":
-        count = Int.random(in: 7...10)
-    case "YEAR":
-        count = 12
-    case "LABEL":
-        count = 15
-    default:
-        count = 7
-    }
-    return Array((0..<count).map { offset in
-        // Pick a weight in the range 176...189 (inclusive), randomly, with 1 decimal
-        let weight = Double(Int.random(in: 1760...1890)) / 10.0
-        let date: Date
-        switch segment.uppercased() {
-        case "WEEK":
-            date = calendar.date(byAdding: .day, value: -offset, to: now)!
-        case "MONTH":
-            date = calendar.date(byAdding: .day, value: -offset, to: now)!
-        case "YEAR":
-            date = calendar.date(byAdding: .month, value: -offset, to: now)!
-        case "LABEL":
-            date = calendar.date(byAdding: .day, value: -offset*2, to: now)!
-        default:
-            date = calendar.date(byAdding: .day, value: -offset, to: now)!
+        // Generate data for the last 2 weeks
+        for dayOffset in (-13...0) {
+            let date = calendar.date(byAdding: .day, value: dayOffset, to: now)!
+            // Generate 1-2 entries per day
+            let entriesPerDay = Int.random(in: 1...2)
+            for _ in 0..<entriesPerDay {
+                let weight = Double(Int.random(in: 1760...1890)) / 10.0
+                let hourOffset = Int.random(in: 0...23)
+                let minuteOffset = Int.random(in: 0...59)
+                let entryDate = calendar.date(bySettingHour: hourOffset, minute: minuteOffset, second: 0, of: date)!
+                operations.append(createOperation(date: entryDate, weight: weight))
+            }
         }
-        let isoString = ISO8601DateFormatter().string(from: date)
-        return BathScaleOperationDTO(
-            accountId: nil,
-            bmr: nil,
-            bmi: nil,
-            bodyFat: nil,
-            boneMass: nil,
-            entryTimestamp: isoString,
-            impedance: nil,
-            metabolicAge: nil,
-            muscleMass: nil,
-            operationType: nil,
-            proteinPercent: nil,
-            pulse: nil,
-            serverTimestamp: nil,
-            skeletalMusclePercent: nil,
-            source: nil,
-            subcutaneousFatPercent: nil,
-            unit: nil,
-            visceralFatLevel: nil,
-            water: nil,
-            weight: weight
-        )
-    }.reversed())
+        
+    case "MONTH":
+        // Generate data for the last 2 months
+        for dayOffset in (-60...0) {
+            let date = calendar.date(byAdding: .day, value: dayOffset, to: now)!
+            // 70% chance of having an entry each day
+            if Double.random(in: 0...1) < 0.7 {
+                let weight = Double(Int.random(in: 1760...1890)) / 10.0
+                let hourOffset = Int.random(in: 0...23)
+                let minuteOffset = Int.random(in: 0...59)
+                let entryDate = calendar.date(bySettingHour: hourOffset, minute: minuteOffset, second: 0, of: date)!
+                operations.append(createOperation(date: entryDate, weight: weight))
+            }
+        }
+        
+    case "YEAR":
+        // Generate data for the last 2 years
+        for monthOffset in (-24...0) {
+            let date = calendar.date(byAdding: .month, value: monthOffset, to: now)!
+            // Generate 2-4 entries per month
+            let entriesPerMonth = Int.random(in: 2...4)
+            for _ in 0..<entriesPerMonth {
+                let weight = Double(Int.random(in: 1760...1890)) / 10.0
+                let dayOffset = Int.random(in: 1...28)
+                let hourOffset = Int.random(in: 0...23)
+                let minuteOffset = Int.random(in: 0...59)
+                if let entryDate = calendar.date(bySetting: .day, value: dayOffset, of: date)?
+                    .addingTimeInterval(Double(hourOffset * 3600 + minuteOffset * 60)) {
+                    operations.append(createOperation(date: entryDate, weight: weight))
+                }
+            }
+        }
+        
+    case "TOTAL":
+        // Generate data for the last 3 years
+        for monthOffset in (-36...0) {
+            let date = calendar.date(byAdding: .month, value: monthOffset, to: now)!
+            // Generate 1-3 entries per month
+            let entriesPerMonth = Int.random(in: 1...3)
+            for _ in 0..<entriesPerMonth {
+                let weight = Double(Int.random(in: 1760...1890)) / 10.0
+                let dayOffset = Int.random(in: 1...28)
+                let hourOffset = Int.random(in: 0...23)
+                let minuteOffset = Int.random(in: 0...59)
+                if let entryDate = calendar.date(bySetting: .day, value: dayOffset, of: date)?
+                    .addingTimeInterval(Double(hourOffset * 3600 + minuteOffset * 60)) {
+                    operations.append(createOperation(date: entryDate, weight: weight))
+                }
+            }
+        }
+        
+    default:
+        // Default to week view
+        for dayOffset in (-6...0) {
+            let date = calendar.date(byAdding: .day, value: dayOffset, to: now)!
+            let weight = Double(Int.random(in: 1760...1890)) / 10.0
+            let hourOffset = Int.random(in: 0...23)
+            let minuteOffset = Int.random(in: 0...59)
+            let entryDate = calendar.date(bySettingHour: hourOffset, minute: minuteOffset, second: 0, of: date)!
+            operations.append(createOperation(date: entryDate, weight: weight))
+        }
+    }
+    
+    return operations.sorted { $0.date ?? Date() < $1.date ?? Date() }
+}
+
+private func createOperation(date: Date, weight: Double) -> BathScaleOperationDTO {
+    let isoString = ISO8601DateFormatter().string(from: date)
+    return BathScaleOperationDTO(
+        accountId: nil,
+        bmr: nil,
+        bmi: nil,
+        bodyFat: nil,
+        boneMass: nil,
+        entryTimestamp: isoString,
+        impedance: nil,
+        metabolicAge: nil,
+        muscleMass: nil,
+        operationType: nil,
+        proteinPercent: nil,
+        pulse: nil,
+        serverTimestamp: nil,
+        skeletalMusclePercent: nil,
+        source: nil,
+        subcutaneousFatPercent: nil,
+        unit: nil,
+        visceralFatLevel: nil,
+        water: nil,
+        weight: weight
+    )
 }

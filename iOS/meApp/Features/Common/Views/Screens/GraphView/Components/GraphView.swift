@@ -14,6 +14,8 @@ struct GraphView: View {
     @Binding var selectedWeight: Double?
     @StateObject private var viewModel = GraphViewModel()
     @Environment(\.appTheme) private var theme
+    @GestureState private var dragOffset: CGFloat = 0
+    @State private var currentDateRange: ClosedRange<Date> = Date()...Date()
 
     private let weekDaysAbbr = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     private let yearMonthsInitial = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
@@ -21,12 +23,14 @@ struct GraphView: View {
     var body: some View {
         ZStack(alignment: .trailing) {
             Chart {
-                // Solid Y-axis grid lines (overlayed for control)
-                ForEach(viewModel.yAxisTicks, id: \.self) { tick in
-                    RuleMark(y: .value("Y Grid", tick))
-                        .lineStyle(StrokeStyle(lineWidth: 1))
-                        .foregroundStyle(theme.statusUtility)
-                        .zIndex(-1)
+                // Y-axis grid lines with goal weight (no RuleMark for goalWeight!)
+                ForEach(viewModel.yAxisTicksWithGoal(), id: \.self) { tick in
+                    if tick != viewModel.goalWeight {
+                        RuleMark(y: .value("Y Grid", tick))
+                            .lineStyle(StrokeStyle(lineWidth: 1))
+                            .foregroundStyle(theme.statusUtility)
+                            .zIndex(-1)
+                    }
                 }
                 // Dotted X-axis grid lines
                 ForEach(xAxisGridPositions(), id: \.self) { position in
@@ -39,17 +43,22 @@ struct GraphView: View {
                 chartPointMarks()
             }
             .chartYScale(domain: 175...190)
-            .chartXScale(domain: xAxisDomain())
+            .chartXScale(domain: currentDateRange)
             .chartYAxis {
-                AxisMarks(values: .automatic) { value in
-                    AxisGridLine()
-                        .foregroundStyle(theme.statusUtility)
-                    AxisTick()
-                    AxisValueLabel {
-                        if let doubleValue = value.as(Double.self) {
-                            Text("\(Int(doubleValue))")
-                                .fontOpenSans(.subHeading2)
-                                .zIndex(1)
+                AxisMarks(values: viewModel.yAxisTicksWithGoal()) { value in
+                    if let doubleValue = value.as(Double.self) {
+                        if doubleValue != viewModel.goalWeight {
+                            AxisGridLine()
+                            AxisTick()
+                        }
+                        if doubleValue == viewModel.goalWeight {
+                            AxisValueLabel {
+                                goalWeightBubbleLabel(doubleValue)
+                            }
+                        } else {
+                            AxisValueLabel {
+                                regularYAxisLabel(doubleValue)
+                            }
                         }
                     }
                 }
@@ -81,17 +90,81 @@ struct GraphView: View {
                     Color.clear
                         .contentShape(Rectangle())
                         .gesture(
-                            viewModel.dragGesture(
-                                proxy: proxy,
-                                operations: operations,
-                                selectedWeight: $selectedWeight
-                            )
+                            DragGesture()
+                                .updating($dragOffset) { value, state, _ in
+                                    state = value.translation.width
+                                }
+                                .onEnded { value in
+                                    let threshold: CGFloat = 50
+                                    if abs(value.translation.width) > threshold {
+                                        let direction: SwipeDirection = value.translation.width > 0 ? .right : .left
+                                        handleSwipe(direction: direction)
+                                    }
+                                }
                         )
                 }
             }
             .onPreferenceChange(AnnotationHeightKey.self) { viewModel.annotationHeight = $0 }
             .zIndex(1)
         }
+        .onAppear {
+            currentDateRange = xAxisDomain()
+        }
+        .onChange(of: selectedSegmentTitle) { _, _ in
+            currentDateRange = xAxisDomain()
+        }
+    }
+
+    private func handleSwipe(direction: SwipeDirection) {
+        let calendar = Calendar.current
+        var newRange: ClosedRange<Date>
+        
+        switch selectedSegmentTitle {
+        case TimePeriod.week.displayName:
+            let daysToAdd = direction == .left ? -7 : 7
+            newRange = calendar.date(byAdding: .day, value: daysToAdd, to: currentDateRange.lowerBound)!...calendar.date(byAdding: .day, value: daysToAdd, to: currentDateRange.upperBound)!
+            
+        case TimePeriod.month.displayName:
+            let monthsToAdd = direction == .left ? -1 : 1
+            newRange = calendar.date(byAdding: .month, value: monthsToAdd, to: currentDateRange.lowerBound)!...calendar.date(byAdding: .month, value: monthsToAdd, to: currentDateRange.upperBound)!
+            
+        case TimePeriod.year.displayName:
+            let yearsToAdd = direction == .left ? -1 : 1
+            newRange = calendar.date(byAdding: .year, value: yearsToAdd, to: currentDateRange.lowerBound)!...calendar.date(byAdding: .year, value: yearsToAdd, to: currentDateRange.upperBound)!
+            
+        default:
+            newRange = currentDateRange
+        }
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentDateRange = newRange
+        }
+    }
+
+    @ViewBuilder
+    private func goalWeightBubbleLabel(_ value: Double) -> some View {
+        Text("\(Int(value))")
+            .fontWeight(.bold)
+            .fontOpenSans(.body3)
+            .foregroundColor(.white)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(Capsule().fill(theme.statusSuccess))
+            .background(
+                GeometryReader { bubbleGeo in
+                    Color.clear
+                        .preference(key: AnnotationHeightKey.self, value: bubbleGeo.size.height)
+                }
+            )
+            .zIndex(100)
+    }
+
+    @ViewBuilder
+    private func regularYAxisLabel(_ value: Double) -> some View {
+        Text("\(Int(value))")
+            .fontOpenSans(.subHeading2)
+            .foregroundColor(theme.textSubheading)
+            .zIndex(1)
     }
 
     // MARK: - X Axis Helpers
@@ -99,17 +172,14 @@ struct GraphView: View {
     private func xAxisDomain() -> ClosedRange<Date> {
         switch selectedSegmentTitle {
         case TimePeriod.week.displayName:
-            // Always show Sunday to Saturday for week
             guard let start = weekStartDate() else { return Date()...Date() }
             let end = Calendar.current.date(byAdding: .day, value: 6, to: start)!
             return start...end
         case TimePeriod.year.displayName:
-            // Always show Jan to Dec for year
             guard let start = yearStartDate() else { return Date()...Date() }
             let end = Calendar.current.date(byAdding: .month, value: 11, to: start)!
             return start...end
         case TimePeriod.month.displayName:
-            // Always show the full month for month
             guard let start = monthStartDate() else { return Date()...Date() }
             let end = Calendar.current.date(byAdding: .month, value: 1, to: start)!
             let lastDay = Calendar.current.date(byAdding: .day, value: -1, to: end)!
@@ -137,13 +207,11 @@ struct GraphView: View {
     }
 
     private func weekStartDate() -> Date? {
-        // Use current week or week of last entry if exists
         let referenceDate = operations.last?.date ?? Date()
         return referenceDate.startOfWeek
     }
 
     private func yearStartDate() -> Date? {
-        // Use current year or year of last entry if exists
         let referenceDate = operations.last?.date ?? Date()
         let cal = Calendar.current
         let comps = cal.dateComponents([.year], from: referenceDate)
@@ -151,7 +219,6 @@ struct GraphView: View {
     }
 
     private func monthStartDate() -> Date? {
-        // Use current month or month of last entry if exists
         let referenceDate = operations.last?.date ?? Date()
         let cal = Calendar.current
         let comps = cal.dateComponents([.year, .month], from: referenceDate)
@@ -165,18 +232,19 @@ struct GraphView: View {
 
     private func monthLabels() -> [Date] {
         guard let start = monthStartDate() else { return [] }
-        var labels: [Date] = []
         let cal = Calendar.current
-        if let range = cal.range(of: .day, in: .month, for: start) {
-            let daysInMonth = range.count
-            // Split into 4 weeks, label as [1, 8, 15, 22]
-            let days = [1, 8, 15, 22]
-            for d in days {
-                // Clamp to last day of the month
-                let day = min(d, daysInMonth)
-                if let labelDate = cal.date(bySetting: .day, value: day, of: start) {
-                    labels.append(labelDate)
-                }
+        guard let range = cal.range(of: .day, in: .month, for: start) else { return [] }
+        let daysInMonth = range.count
+
+        let gridCount = max(4, min(daysInMonth, 6))
+        let step = Double(daysInMonth - 1) / Double(gridCount - 1)
+
+        var labels: [Date] = []
+        for i in 0..<gridCount {
+            let day = 1 + Int(round(step * Double(i)))
+            let safeDay = min(day, daysInMonth)
+            if let labelDate = cal.date(bySetting: .day, value: safeDay, of: start) {
+                labels.append(labelDate)
             }
         }
         return labels
@@ -213,34 +281,6 @@ struct GraphView: View {
     // MARK: - ChartContentBuilders
 
     @ChartContentBuilder
-    private func chartRuleMark(date: Date, weight: Double, selected: BathScaleOperationDTO) -> some ChartContent {
-        RuleMark(x: .value("Selected Date", date))
-            .lineStyle(StrokeStyle(lineWidth: 1))
-            .foregroundStyle(theme.statusUtility)
-            .annotation(position: .top, alignment: viewModel.ruleMarkAlignment(for: selected, in: operations)) {
-                ruleMarkDateLabel(date: date)
-            }
-            .annotation(position: .bottom, alignment: viewModel.ruleMarkAlignment(for: selected, in: operations)) {
-                let offsetY = viewModel.annotationBubbleOffset()
-                Text("\(Int(weight))")
-                    .fontWeight(.bold)
-                    .fontOpenSans(.body3)
-                    .foregroundColor(theme.textInverse)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 1)
-                    .background(Capsule().fill(theme.statusSuccess))
-                    .background(
-                        GeometryReader { bubbleGeo in
-                            theme.textInverse
-                                .preference(key: AnnotationHeightKey.self, value: bubbleGeo.size.height)
-                        }
-                    )
-                    .offset(y: offsetY)
-                    .zIndex(100)
-            }
-    }
-
-    @ChartContentBuilder
     private func chartLineMarks() -> some ChartContent {
         ForEach(operations) { entry in
             if let date = entry.date, let weight = entry.weight {
@@ -268,23 +308,9 @@ struct GraphView: View {
             }
         }
     }
-
-    @ViewBuilder
-    private func ruleMarkDateLabel(date: Date) -> some View {
-        let dateText = selectedSegmentTitle == TimePeriod.week.displayName
-            ? date.formatted(.dateTime.day(.twoDigits).month(.abbreviated).year(.defaultDigits))
-            : date.formatted(.dateTime.month(.abbreviated).year(.defaultDigits))
-
-        Text(dateText.lowercased())
-            .fontOpenSans(.subHeading2)
-            .fontWeight(.semibold)
-            .foregroundColor(theme.textSubheading)
-            .padding(.vertical, 1.5)
-    }
 }
 
 private extension Date {
-    // Returns the start of the week (Sunday)
     var startOfWeek: Date? {
         let cal = Calendar.current
         let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
