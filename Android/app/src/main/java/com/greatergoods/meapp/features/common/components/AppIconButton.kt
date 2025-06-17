@@ -28,7 +28,7 @@ object AppIconButtonDefaults {
         AppIconButtonType.Secondary ->
             if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
         AppIconButtonType.Tertiary ->
-            if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryDisabled
+            if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryActionDisabled
     }
 }
 

@@ -48,15 +48,14 @@ val LightColorScheme = ColorScheme(
     inverseSecondary = LightColorToken.inverseSecondary,
 
     // Status
+    goal = LightColorToken.goal,
     success = LightColorToken.success,
-    error = LightColorToken.error,
-    errorDisabled = LightColorToken.errorDisabled,
+    danger = LightColorToken.danger,
     streak = LightColorToken.streak,
     utility = LightColorToken.utility,
     iconPrimary = LightColorToken.iconPrimary,
-    iconPrimaryDisabled = LightColorToken.iconPrimaryDisabled,
     iconSecondary = LightColorToken.iconSecondary,
-    iconSecondaryDisabled = LightColorToken.iconSecondaryDisabled,
+    iconDisabled = LightColorToken.iconDisabled,
     loading = LightColorToken.loading,
     loadingError = LightColorToken.loadingError,
 
@@ -100,15 +99,14 @@ val DarkColorScheme = ColorScheme(
     inverseSecondary = DarkColorToken.inverseSecondary,
 
     // Status
+    goal = DarkColorToken.goal,
     success = DarkColorToken.success,
-    error = DarkColorToken.error,
-    errorDisabled = DarkColorToken.errorDisabled,
+    danger = DarkColorToken.danger,
     streak = DarkColorToken.streak,
     utility = DarkColorToken.utility,
     iconPrimary = DarkColorToken.iconPrimary,
-    iconPrimaryDisabled = DarkColorToken.iconPrimaryDisabled,
     iconSecondary = DarkColorToken.iconSecondary,
-    iconSecondaryDisabled = DarkColorToken.iconSecondaryDisabled,
+    iconDisabled = DarkColorToken.iconDisabled,
     loading = DarkColorToken.loading,
     loadingError = DarkColorToken.loadingError,
 

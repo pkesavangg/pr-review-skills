@@ -84,7 +84,7 @@ object AppButtonDefaults {
                 if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
 
             ButtonType.TextTertiary, ButtonType.InlineTextTertiary ->
-                if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryDisabled
+                if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryActionDisabled
         }
 
     /**

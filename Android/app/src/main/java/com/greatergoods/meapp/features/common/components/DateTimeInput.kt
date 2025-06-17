@@ -340,7 +340,7 @@ fun DateTimeInput(
     if (formControl != null && isError) {
         Text(
             formControl.error ?: "",
-            color = MeAppTheme.colorScheme.error,
+            color = MeAppTheme.colorScheme.textError,
             style = MeAppTheme.typography.body3,
         )
     } else if (supportingText != null) {

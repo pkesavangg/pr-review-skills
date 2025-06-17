@@ -279,7 +279,7 @@ fun <T> InputFieldBase(
                 Text(
                     text = label,
                     style = typography.body3,
-                    color =  if (isError) colorScheme.error else colorScheme.subheading,
+                    color =  if (isError) colorScheme.textError else colorScheme.subheading,
                 )
             }
         },
@@ -287,7 +287,7 @@ fun <T> InputFieldBase(
             Text(
                 text = placeHolder,
                 style = typography.body2,
-                color = colorScheme.secondaryDisabled,
+                color = colorScheme.secondaryActionDisabled,
             )
         },
         trailingIcon = trailingIcon,
@@ -312,24 +312,24 @@ fun <T> InputFieldBase(
             errorIndicatorColor = Color.Transparent,
             focusedContainerColor =  colorScheme.primary,
             unfocusedContainerColor =  colorScheme.primary,
-            disabledContainerColor = colorScheme.secondaryDisabled,
+            disabledContainerColor = colorScheme.secondaryActionDisabled,
             errorContainerColor =  colorScheme.primary,
             focusedTextColor = inputTextColor,
             unfocusedTextColor = inputTextColor,
             disabledTextColor = colorScheme.subheading,
             errorTextColor = inputTextColor,
-            focusedPlaceholderColor = colorScheme.secondaryDisabled,
-            unfocusedPlaceholderColor = colorScheme.secondaryDisabled,
-            disabledPlaceholderColor = colorScheme.secondaryDisabled,
+            focusedPlaceholderColor = colorScheme.secondaryActionDisabled,
+            unfocusedPlaceholderColor = colorScheme.secondaryActionDisabled,
+            disabledPlaceholderColor = colorScheme.secondaryActionDisabled,
             cursorColor = colorScheme.primaryAction,
-            errorCursorColor = colorScheme.error,
+            errorCursorColor = colorScheme.textError,
         ),
         supportingText = {
             when {
                 isError ->
                     Text(
                         formControl.error ?: "",
-                        color = colorScheme.error,
+                        color = colorScheme.textError,
                         style = typography.body3,
                     )
                 supportingText != null ->

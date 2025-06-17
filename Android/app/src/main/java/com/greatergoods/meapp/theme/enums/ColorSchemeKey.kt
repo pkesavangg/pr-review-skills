@@ -28,15 +28,14 @@ enum class ColorSchemeKey {
     InverseSecondary,
 
     // Status
+    Goal,
     Success,
-    Error,
-    ErrorDisabled,
+    Danger,
     Streak,
     Utility,
     IconPrimary,
-    IconPrimaryDisabled,
     IconSecondary,
-    IconSecondaryDisabled,
+    IconDisabled,
     Loading,
     LoadingError,
 

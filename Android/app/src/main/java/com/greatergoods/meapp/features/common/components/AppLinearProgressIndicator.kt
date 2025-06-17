@@ -32,7 +32,7 @@ object AppLinearProgressDefaults {
     fun getProgressColor(type: AppLinearProgressType): Color =
         when (type) {
             AppLinearProgressType.Primary -> colorScheme.primaryAction
-            AppLinearProgressType.Success -> colorScheme.goal
+            AppLinearProgressType.Success -> colorScheme.success
         }
 
     @Composable

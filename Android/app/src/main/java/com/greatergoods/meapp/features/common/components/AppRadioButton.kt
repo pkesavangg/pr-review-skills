@@ -39,8 +39,8 @@ fun AppRadioButton(
         RadioButtonDefaults.colors(
             selectedColor = colorScheme.primaryAction,
             unselectedColor = colorScheme.utility,
-            disabledSelectedColor = colorScheme.secondaryDisabled,
-            disabledUnselectedColor = colorScheme.secondaryDisabled,
+            disabledSelectedColor = colorScheme.secondaryActionDisabled,
+            disabledUnselectedColor = colorScheme.secondaryActionDisabled,
         )
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -59,7 +59,7 @@ fun AppRadioButton(
                 style = typography.body2,
                 color =
                     when {
-                        !enabled -> colorScheme.secondaryDisabled
+                        !enabled -> colorScheme.secondaryActionDisabled
                         else -> colorScheme.body
                     },
             )

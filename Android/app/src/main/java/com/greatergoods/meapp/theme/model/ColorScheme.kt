@@ -33,15 +33,14 @@ data class ColorScheme(
     val inverseSecondary: Color,
 
     // Status
+    val goal: Color,
     val success: Color,
-    val error: Color,
-    val errorDisabled: Color,
+    val danger: Color,
     val streak: Color,
     val utility: Color,
     val iconPrimary: Color,
-    val iconPrimaryDisabled: Color,
     val iconSecondary: Color,
-    val iconSecondaryDisabled: Color,
+    val iconDisabled: Color,
     val loading: Color,
     val loadingError: Color,
 
@@ -109,15 +108,14 @@ data class ColorScheme(
             ColorSchemeKey.InverseSecondary -> inverseSecondary
 
             // Status
+            ColorSchemeKey.Goal -> success
             ColorSchemeKey.Success -> success
-            ColorSchemeKey.Error -> error
-            ColorSchemeKey.ErrorDisabled -> errorDisabled
+            ColorSchemeKey.Danger -> danger
             ColorSchemeKey.Streak -> streak
             ColorSchemeKey.Utility -> utility
             ColorSchemeKey.IconPrimary -> iconPrimary
-            ColorSchemeKey.IconPrimaryDisabled -> iconPrimaryDisabled
             ColorSchemeKey.IconSecondary -> iconSecondary
-            ColorSchemeKey.IconSecondaryDisabled -> iconSecondaryDisabled
+            ColorSchemeKey.IconDisabled -> iconDisabled
             ColorSchemeKey.Loading -> loading
             ColorSchemeKey.LoadingError -> loadingError
 
