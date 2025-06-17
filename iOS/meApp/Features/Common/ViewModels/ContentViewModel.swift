@@ -85,7 +85,7 @@ final class ContentViewModel: ObservableObject {
     }
     
     @MainActor
-     func forceLogout() async {
+     func logout() async {
        do {
          try await accountService.logOut(accountId: accountService.activeAccount?.accountId)
          await performAppInitialization()

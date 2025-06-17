@@ -27,8 +27,8 @@ struct ContentView: View {
                             .fontOpenSans(.body1)
                             .foregroundColor(theme.textHeading)
                         
-                        Button("Force Logout") {
-                            Task { await viewModel.forceLogout() }
+                        Button("Logout") {
+                            Task { await viewModel.logout() }
                         }
                         .buttonStyle(.borderedProminent)
                     }

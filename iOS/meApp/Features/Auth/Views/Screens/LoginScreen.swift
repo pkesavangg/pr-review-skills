@@ -15,124 +15,130 @@ struct LoginScreen: View {
     let labels = InputFieldLabels.self
     let commonLang = CommonStrings.self
     let lang = LoginScreenStrings.self
-    
-    // Bridge FocusState to Binding for AppInputField
+    let legalStrings = LegalStrings.self
     private var focusBinding: Binding<FocusField?> {
         Binding(
             get: { focusedField },
             set: { focusedField = $0 }
         )
     }
-    
+
     var body: some View {
         ZStack {
-            theme.backgroundSecondary
-                .ignoresSafeArea()
-            VStack (alignment: .center) {
-                VStack (alignment: .leading) {
+            theme.backgroundSecondary.ignoresSafeArea()
+            VStack(alignment: .center) {
+
+                NavbarHeaderView(
+                    title: "",
+                    leadingContent: { Image(AppAssets.xmark) },
+                    trailingContent: { Image(AppAssets.helpCircle) },
+                    onLeadingTap: { router.navigateBack() },
+                    onTrailingTap: { store.openHelp() }
+                )
+                .padding(.bottom, .spacingLG)
+
+                VStack(alignment: .leading) {
                     Text(lang.welcomeBack)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.top, .spacingLG)
-                    // email Input Field
+
+                    // Email Input Field
                     AppInputField(
                         config: TextInputConfig(
                             label: labels.email,
                             inputType: .email,
-                            errorMessage: store.isEmailValid || store.email.isEmpty ? nil : "Invalid email",
-                            focusField: .email,
-                            showsClearButton: false
+                            errorMessage: store.emailError,
+                            focusField: .email
                         ),
-                        value: $store.email,
+                        value: $store.loginForm.email.value,
                         focusedField: focusBinding
                     ) {
-                        focusedField = .email
+                        store.setEmailTouched()
+                        focusedField = .password
                     }
-                    // password Input Field
+                    // Password Input Field
                     AppInputField(
                         config: TextInputConfig(
                             label: labels.password,
                             placeholder: lang.passwordPlaceholder,
                             inputType: store.showPassword ? .text : .password,
                             submitLabel: .done,
-                            errorMessage: store.isPasswordValid || store.password.isEmpty ? nil : "Password must be 6-50 characters"
+                            errorMessage: store.passwordError
                         ),
-                        value: $store.password,
-                        focusedField: focusBinding,
+                        value: $store.loginForm.password.value,
+                        focusedField: focusBinding
                     ) {
+                        store.setPasswordTouched()
                         focusedField = nil
+                        if store.isFormValid {
+                            Task { await store.logIn() }
+                        }
                     }
                 }
                 .padding(.vertical, .spacingMD)
-                
-                // Login Button
-                ButtonView(text: commonLang.logIn, type: .primary, size: .regular, isDisabled: !store.isFormValid || store.isFormSubmitting, action: {
-                    focusedField = nil
-                    Task { await store.logIn() }
-                })
+
+                ButtonView(
+                    text: commonLang.logIn,
+                    type: .primary,
+                    size: .regular,
+                    isDisabled: !store.isFormValid || store.isFormSubmitting,
+                    action: {
+                        focusedField = nil
+                        store.loginForm.email.markAsDirty()
+                        store.loginForm.password.markAsDirty()
+                        if store.isFormValid {
+                            Task { await store.logIn() }
+                        }
+                    }
+                )
                 .padding(.bottom, .spacingSM)
-                
-                // Forgot Password
-                ButtonView(text: lang.forgotPassword, type: .linkBlueDefault, size: .small, isDisabled: false, action: {
-                    store.showPasswordResetPrompt()
-                })
-                
+
+                ButtonView(
+                    text: lang.forgotPassword,
+                    type: .linkBlueDefault,
+                    size: .small,
+                    isDisabled: false,
+                    action: { store.showPasswordResetPrompt() }
+                )
+
                 Spacer()
-                
-                VStack(spacing: .spacingXS/2){
+
+                VStack(spacing: .spacingXS/2) {
                     Text(lang.byLoggingIn)
                         .fontOpenSans(.subHeading2)
                         .foregroundColor(theme.actionSecondary)
-                    HStack(spacing: .spacingMD/2){
-                        ButtonView(text: lang.termsOfService, type: .linkBlueDefault, size: .small, isDisabled: false, action: {
-                            store.openTerms()
-                        })
-                        Text(lang.and)
+                    HStack(spacing: .spacingMD/2) {
+                        ButtonView(
+                            text: legalStrings.termsOfService,
+                            type: .linkBlueDefault,
+                            size: .small,
+                            isDisabled: false,
+                            action: { store.openTerms() }
+                        )
+                        Text(legalStrings.andText)
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.actionSecondary)
-                        ButtonView(text: lang.privacyPolicy, type: .linkBlueDefault, size: .small, isDisabled: false, action: {
-                            store.openPrivacy()
-                        })
+                        ButtonView(
+                            text: legalStrings.privacyPolicy,
+                            type: .linkBlueDefault,
+                            size: .small,
+                            isDisabled: false,
+                            action: { store.openPrivacy() }
+                        )
                     }
                 }
             }
             .padding(.horizontal, .spacingSM)
         }
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                NavbarHeaderView(
-                    title: "",
-                    leadingContent: { Image(AppAssets.xmark) },
-                    trailingContent: { Image(AppAssets.helpCircle) },
-                    onLeadingTap: {
-                        router.navigateBack()
-                    },
-                    onTrailingTap: {
-                        store.openHelp()
-                    }
-                )
-            }
-        }
         .navigationBarBackButtonHidden(true)
-        // MARK: In-App Browser Presentation
         .inAppBrowser(
-            url: store.browserURL ?? URL(string: "https://greatergoods.com")!,
-            isPresented: Binding(
-                get: { store.showPrivacyBrowser || store.showTermsBrowser || store.showHelpBrowser },
-                set: { newValue in
-                    if (!newValue) {
-                        store.showPrivacyBrowser = false
-                        store.showTermsBrowser = false
-                        store.showHelpBrowser = false
-                        store.browserURL = nil
-                    }
-                }
-            )
+            url: store.presentingBrowserURL,
+            isPresented: store.isBrowserPresented
         )
-        .presentLoader(loaderData: Binding(
-            get: { store.isLoading ? LoaderModel(text: "Loggin in...") : nil },
-            set: { _ in }
-        ))
+        .presentLoader(loaderData: store.loaderData)
+        .onAppear {
+            store.onLoginSuccess = { router.navigateBack() }
+        }
     }
 }
 
