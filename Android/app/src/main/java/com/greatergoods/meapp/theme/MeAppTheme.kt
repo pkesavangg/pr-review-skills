@@ -20,6 +20,7 @@ import com.greatergoods.meapp.theme.token.LocalBorderRadius
 import com.greatergoods.meapp.theme.token.LocalSpacing
 import com.greatergoods.meapp.theme.token.LocalTypography
 import com.greatergoods.meapp.theme.token.SpacingToken
+import android.util.Log
 
 val LocalAppTheme = staticCompositionLocalOf<ThemeMode> {
     ThemeMode.SYSTEM
