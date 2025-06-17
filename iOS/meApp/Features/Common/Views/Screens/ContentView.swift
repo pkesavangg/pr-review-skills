@@ -27,10 +27,10 @@ struct ContentView: View {
                             .fontOpenSans(.body1)
                             .foregroundColor(theme.textHeading)
                         
-                        Button("Logout") {
-                            Task { await viewModel.logout() }
-                        }
-                        .buttonStyle(.borderedProminent)
+                        ButtonView(text: "", type: .primary, size: .regular, isDisabled: false, action:{
+                            Task { await viewModel.logout()
+                            }})
+                        
                     }
                     
                 } else if viewModel.showLandingView {
