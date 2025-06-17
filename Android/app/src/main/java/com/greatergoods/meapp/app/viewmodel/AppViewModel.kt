@@ -47,7 +47,7 @@ class AppViewModel @Inject constructor(
                 if (account != null) {
                     initLoadingData(account.id)
                 } else {
-                    navigationService.navigateTo(
+                    navigationService.replaceStack(
                         route =
                             if (accountAuthService.checkForLoggedInUser()) {
                                 AppRoute.Auth.UserList
