@@ -51,7 +51,7 @@ class LoginViewModel
                 val account = accountAuthService.login(email, password)
                 if (account != null) {
                     try {
-                        navigationService.navigateTo(AppRoute.Init.Loading)
+                        navigationService.replaceStack(AppRoute.Init.Loading)
                         AppLog.i("logIn", "Navigation to dashboard successful")
                         handleIntent(LoginIntent.Success)
                     } catch (e: Exception) {
