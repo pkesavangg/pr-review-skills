@@ -14,32 +14,46 @@ import com.greatergoods.meapp.theme.enums.ColorSchemeKey
 data class ColorScheme(
     // Background
     val primary: Color,
+    val primaryDisabled: Color,
     val secondary: Color,
+
     // Support
     val overlay: Color,
     val toastBackground: Color,
+
     // Action
     val primaryAction: Color,
-    val primaryDisabled: Color,
+    val primaryActionDisabled: Color,
     val secondaryAction: Color,
-    val secondaryDisabled: Color,
+    val secondaryActionDisabled: Color,
     val tertiaryAction: Color,
-    val tertiaryDisabled: Color,
+    val tertiaryActionDisabled: Color,
+    val inverse: Color,
+    val inverseDisabled: Color,
+    val inverseSecondary: Color,
+
+    // Status
+    val goal: Color,
+    val success: Color,
+    val danger: Color,
+    val streak: Color,
+    val utility: Color,
+    val iconPrimary: Color,
+    val iconSecondary: Color,
+    val iconDisabled: Color,
+    val loading: Color,
+    val loadingError: Color,
+
     // Text
     val heading: Color,
     val body: Color,
     val subheading: Color,
-    val error: Color,
-    val errorDisabled: Color,
-    val inverse: Color,
-    val inverseDisabled: Color,
-    val inverseSecondary: Color,
-    // Icon
-    val goal: Color,
-    val streak: Color,
-    val utility: Color,
+    val textError: Color,
+    val textErrorDisabled: Color,
+
     // Brand
-    val brand: Color,
+    val meAppPrimary: Color,
+    val wgPrimary: Color,
 ) {
     /**
      * Holds all semantic color roles for the app's theme.
@@ -73,29 +87,48 @@ data class ColorScheme(
          * @return The corresponding color for the current theme.
          */
         return when (token) {
+            // Background
             ColorSchemeKey.Primary -> primary
+            ColorSchemeKey.PrimaryDisabled -> primaryDisabled
             ColorSchemeKey.Secondary -> secondary
 
+            // Support
             ColorSchemeKey.Overlay -> overlay
             ColorSchemeKey.ToastBackground -> toastBackground
 
+            // Action
             ColorSchemeKey.PrimaryAction -> primaryAction
-            ColorSchemeKey.DisabledState -> primaryDisabled
+            ColorSchemeKey.PrimaryActionDisabled -> primaryActionDisabled
             ColorSchemeKey.SecondaryAction -> secondaryAction
-            ColorSchemeKey.SecondaryDisabled -> secondaryDisabled
-
-            ColorSchemeKey.Heading -> heading
-            ColorSchemeKey.Subheading -> subheading
-            ColorSchemeKey.Error -> error
-            ColorSchemeKey.Disabled -> errorDisabled
+            ColorSchemeKey.SecondaryActionDisabled -> secondaryActionDisabled
+            ColorSchemeKey.TertiaryAction -> tertiaryAction
+            ColorSchemeKey.TertiaryActionDisabled -> tertiaryActionDisabled
             ColorSchemeKey.Inverse -> inverse
+            ColorSchemeKey.InverseDisabled -> inverseDisabled
             ColorSchemeKey.InverseSecondary -> inverseSecondary
 
-            ColorSchemeKey.Goal -> goal
+            // Status
+            ColorSchemeKey.Goal -> success
+            ColorSchemeKey.Success -> success
+            ColorSchemeKey.Danger -> danger
             ColorSchemeKey.Streak -> streak
             ColorSchemeKey.Utility -> utility
+            ColorSchemeKey.IconPrimary -> iconPrimary
+            ColorSchemeKey.IconSecondary -> iconSecondary
+            ColorSchemeKey.IconDisabled -> iconDisabled
+            ColorSchemeKey.Loading -> loading
+            ColorSchemeKey.LoadingError -> loadingError
 
-            ColorSchemeKey.Brand -> brand
+            // Text
+            ColorSchemeKey.Heading -> heading
+            ColorSchemeKey.Body -> body
+            ColorSchemeKey.Subheading -> subheading
+            ColorSchemeKey.Error -> textError
+            ColorSchemeKey.ErrorDisabled -> textErrorDisabled
+
+            // Brand
+            ColorSchemeKey.MeAppPrimary -> meAppPrimary
+            ColorSchemeKey.WgPrimary -> wgPrimary
         }
     }
 }

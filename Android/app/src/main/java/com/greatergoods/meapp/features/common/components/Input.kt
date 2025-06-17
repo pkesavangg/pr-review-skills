@@ -116,7 +116,7 @@ fun <T> InputField(
 
     val labelColor =
         when {
-            isError -> colors.error
+            isError -> colors.textError
             isDisabled -> colors.subheading.copy(alpha = 0.5f)
             else -> colors.subheading
         }
@@ -133,8 +133,8 @@ fun <T> InputField(
         }
     val iconTint =
         when {
-            isError -> colors.error
-            isDisabled -> colors.secondaryDisabled
+            isError -> colors.textError
+            isDisabled -> colors.secondaryActionDisabled
             else -> colors.primaryAction
         }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
@@ -271,7 +271,7 @@ fun <T> InputField(
                     errorTextColor = inputTextColor,
                     // Set cursor color
                     cursorColor = colors.primaryAction,
-                    errorCursorColor = colors.error,
+                    errorCursorColor = colors.textError,
                 ),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             enabled = enabled,
@@ -289,7 +289,7 @@ fun <T> InputField(
                 isError ->
                     Text(
                         error,
-                        color = colors.error,
+                        color = colors.textError,
                         style = typography.body3,
                     )
 

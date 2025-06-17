@@ -103,7 +103,7 @@ fun SampleFormScreen() {
                 Text(
                     text = formGroup.groupError!!,
                     style = typography.body2,
-                    color = colorScheme.error
+                    color = colorScheme.textError
                 )
             }
         }
