@@ -21,6 +21,7 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
 import com.greatergoods.meapp.theme.MeAppTheme.typography
+import com.greatergoods.meapp.features.common.strings.AppBarStrings
 
 /**
  * AppBar composable for top app bars with optional navigation and action icons.
@@ -56,7 +57,7 @@ fun AppBar(
                 color = colorScheme.heading,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { contentDescription = "AppBarTitle" },
+                modifier = Modifier.semantics { contentDescription = AppBarStrings.AppBarTitleContentDescription },
             )
         },
         navigationIcon = { navigationIcon?.invoke() },

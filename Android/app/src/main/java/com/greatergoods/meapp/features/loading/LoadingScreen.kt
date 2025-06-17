@@ -152,7 +152,7 @@ private fun AnimatedDot(yOffset: Float) {
     Text(
         text = ".",
         style = MeAppTheme.typography.subHeading1,
-        color = MeAppTheme.colorScheme.brand,
+        color = MeAppTheme.colorScheme.wgPrimary,
         fontSize = 20.sp,
         modifier = Modifier.graphicsLayer {
             translationY = yOffset

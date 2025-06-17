@@ -1,0 +1,101 @@
+package com.greatergoods.meapp.features.common.components
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.features.common.strings.AppHelpModalStrings
+
+/**
+ * Help modal matching Figma (node 14585-12302): shows support phone/email and info.
+ *
+ * @param onClose Called when the close button is pressed.
+ * @param modifier Modifier for styling.
+ */
+@Composable
+fun AppHelpModal(
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AppPopupModal {
+        AppPopup(
+            true,
+            AppHelpModalStrings.Title,
+            supportingText = AppHelpModalStrings.SupportingText,
+            onClose = {
+            },
+            imageType = AppPopupImageType.DefaultImage(AppIcons.Outlined.Help),
+        ) {
+            Spacer(Modifier.height(MeAppTheme.spacing.md))
+            // Phone row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier =
+                    Modifier.wrapContentSize().clickable(
+                        true,
+                    ) { },
+            ) {
+                // TODO: Replace with custom phone icon if available
+                Icon(
+                    painter = painterResource(id = android.R.drawable.sym_action_call),
+                    contentDescription = AppHelpModalStrings.PhoneContentDescription,
+                    tint = MeAppTheme.colorScheme.primaryAction,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(MeAppTheme.spacing.x2s))
+                AppText(
+                    text = AppHelpModalStrings.Phone,
+                    textType = TextType.Link,
+                    textAlign = TextAlign.Start,
+                )
+            }
+            // Email row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier =
+                    Modifier
+                        .wrapContentSize()
+                        .clickable(
+                            true,
+                        ) { },
+            ) {
+                // TODO: Replace with custom email icon if available
+                Icon(
+                    painter = painterResource(id = android.R.drawable.sym_action_email),
+                    contentDescription = AppHelpModalStrings.EmailContentDescription,
+                    tint = MeAppTheme.colorScheme.primaryAction,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(MeAppTheme.spacing.x2s))
+                AppText(
+                    text = AppHelpModalStrings.Email,
+                    textType = TextType.Link,
+                    textAlign = TextAlign.Start,
+                )
+            }
+        }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun AppHelpModalPreview() {
+    MeAppTheme {
+        AppHelpModal(onClose = {})
+    }
+}

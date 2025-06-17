@@ -21,8 +21,11 @@ import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.toUpperCase
 import com.greatergoods.meapp.features.common.enum.AppSpacing
+import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.LocalAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 
 sealed class AppPopupImageType {
     data class FullImage(
@@ -54,15 +57,17 @@ fun AppPopup(
     visible: Boolean,
     heading: String,
     supportingText: String,
-    onPrimaryAction: () -> Unit,
-    onSecondaryAction: () -> Unit,
     onClose: () -> Unit,
-    primaryLabel: String,
-    secondaryLabel: String,
     modifier: Modifier = Modifier,
     imageType: AppPopupImageType? = null,
     subHeading: String? = null,
+    onPrimaryAction: (() -> Unit)? = null,
+    onSecondaryAction: (() -> Unit)? = null,
+    primaryLabel: String = "",
+    secondaryLabel: String = "",
+    content: @Composable (() -> Unit)? = null,
 ) {
+    val themeMode = LocalAppTheme.current
     Box {
         Column(
             modifier = Modifier.background(MeAppTheme.colorScheme.primary),
@@ -111,13 +116,20 @@ fun AppPopup(
                 }
                 AppText(heading, TextType.Title, textAlign = TextAlign.Center)
                 AppText(supportingText, TextType.Body, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(MeAppTheme.spacing.lg))
-                AppPopupActions(
-                    primaryLabel = primaryLabel,
-                    secondaryLabel = secondaryLabel,
-                    onPrimaryAction = onPrimaryAction,
-                    onSecondaryAction = onSecondaryAction,
-                )
+
+                content?.let {
+                    content()
+                }
+
+                if (onPrimaryAction != null || onSecondaryAction != null) {
+                    Spacer(Modifier.height(MeAppTheme.spacing.lg))
+                    AppPopupActions(
+                        primaryLabel = primaryLabel,
+                        secondaryLabel = secondaryLabel,
+                        onPrimaryAction = onPrimaryAction ?: {},
+                        onSecondaryAction = onSecondaryAction ?: {},
+                    )
+                }
             }
         }
         Box(
@@ -128,8 +140,8 @@ fun AppPopup(
             contentAlignment = Alignment.Center,
         ) {
             AppIcon(
-                id = AppIcons.Filled.Close,
-                contentDescription = "Logo",
+                id = if (themeMode == ThemeMode.LIGHT) AppIcons.Filled.Close else AppIcons.Filled.CloseDark,
+                contentDescription = AppPopupStrings.LogoContentDescription,
                 modifier = Modifier.align(Alignment.TopEnd),
                 type = AppIconType.Default,
             )

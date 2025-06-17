@@ -47,6 +47,7 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.launch
 import android.app.Activity
+import com.greatergoods.meapp.features.common.strings.InputStrings
 
 /**
  * Enum for supported input types.
@@ -157,7 +158,7 @@ fun <T> InputField(
                 @Composable {
                     Icon(
                         painter = painterResource(id = AppIcons.Outlined.Close),
-                        contentDescription = "Error",
+                        contentDescription = InputStrings.ErrorContentDescription,
                         tint = iconTint,
                         modifier = Modifier.size(20.dp),
                     )
@@ -168,7 +169,7 @@ fun <T> InputField(
                 @Composable {
                     val iconResId =
                         if (passwordVisible) AppIcons.Default.EyeClosed else AppIcons.Default.EyeOpened // Assume you have these drawables
-                    val contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                    val contentDescription = if (passwordVisible) InputStrings.HidePasswordContentDescription else InputStrings.ShowPasswordContentDescription
                     Icon(
                         painter = painterResource(id = iconResId),
                         contentDescription = contentDescription,
@@ -186,7 +187,7 @@ fun <T> InputField(
                 @Composable {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_close_outlined),
-                        contentDescription = "Clear",
+                        contentDescription = InputStrings.ClearContentDescription,
                         tint = iconTint,
                         modifier =
                             Modifier
@@ -302,7 +303,7 @@ fun <T> InputField(
 
                 else ->
                     Text(
-                        " ", // empty space for layout consistency
+                        InputStrings.EmptySpace, // empty space for layout consistency
                         style = typography.body3,
                     )
             }
@@ -381,7 +382,7 @@ fun ReviewPrompt(viewModel: ReviewViewModel = hiltViewModel()) {
                 }
             },
         ) {
-            Text("Leave a Review")
+            Text(InputStrings.LeaveAReview)
         }
     }
 }

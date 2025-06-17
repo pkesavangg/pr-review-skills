@@ -29,7 +29,7 @@ object AppIconDefaults {
             AppIconType.Primary -> MeAppTheme.colorScheme.primaryAction
             AppIconType.Secondary -> MeAppTheme.colorScheme.inverse
             AppIconType.Tertiary -> MeAppTheme.colorScheme.tertiaryAction
-            AppIconType.Danger -> MeAppTheme.colorScheme.error
+            AppIconType.Danger -> MeAppTheme.colorScheme.textError
             AppIconType.Default -> Color.Unspecified
         }
 }
