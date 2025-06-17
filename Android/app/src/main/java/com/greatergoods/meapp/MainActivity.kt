@@ -3,13 +3,30 @@ package com.greatergoods.meapp
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.greatergoods.meapp.core.service.AccountAuthService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.AnimationUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.repository.AppRepository
+import com.greatergoods.meapp.data.repository.UserRepository
+import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.domain.repository.IUserRepository
+import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.proto.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import android.app.UiModeManager
 import android.content.Context
@@ -23,33 +40,30 @@ import android.util.Log
  * Handles UI composition and top-level navigation, including intent-based navigation.
  */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+
+
+    lateinit var appRepository: IAppRepository
     /**
      * Injected service for handling app-level navigation events.
      */
     @Inject
     lateinit var eventService: IAppEventService
 
+
     /**
      * Called when the activity is starting. Sets up Compose content and handles navigation intents.
      * @param savedInstanceState The previously saved instance state, if any.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Set up splash screen exit animation
-        val uiModeManager = this.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_NO)
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-        }
-
-        initializeSplashScreen()
-
+        applyInitialTheme()
         super.onCreate(savedInstanceState)
+        initializeSplashScreen()
         enableEdgeToEdge()
         setContent {
-                  MeApp()
-                  }
+            MeApp()
+        }
+        observeThemeChanges()
         handleIntentNavigationIfNeeded(intent)
     }
 
@@ -92,4 +106,48 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun observeThemeChanges() {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                appRepository.themeModeFlow
+                    .map { it.toNightMode() }
+                    .distinctUntilChanged()
+                    .collect { mode ->
+                        applyNightMode(mode)
+                    }
+            }
+        }
+    }
+
+    private fun applyNightMode(mode: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val ui = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+            if (ui.nightMode != mode) {
+                ui.setApplicationNightMode(mode)
+            }
+        } else if (AppCompatDelegate.getDefaultNightMode() != mode) {
+            AppCompatDelegate.setDefaultNightMode(mode)
+        }
+    }
+
+
+    private fun applyInitialTheme() {
+        appRepository = AppRepository(
+            UserDataStore(applicationContext),
+            FcmDataStore(applicationContext)
+        )
+
+        val initialMode = runBlocking {
+            appRepository.themeModeFlow.first()          // blocks briefly, safe here
+        }
+        applyNightMode(initialMode.toNightMode())
+    }
+
+    private fun ThemeMode.toNightMode(): Int = when (this) {
+        ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+        ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
+        else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+    }
+
 }
