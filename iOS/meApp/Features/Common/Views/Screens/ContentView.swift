@@ -13,25 +13,27 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel = ContentViewModel()
     @State private var isLogoAnimated = false
+    @StateObject private var router = Router<AuthRoute>()
     
     var body: some View {
-        VStack(spacing: 32) {
-            if viewModel.isInitializing {
-                LoadingScreen()
-            } else if viewModel.showDashboardView {
-                Text(viewModel.dashboardTextView())
-                    .fontOpenSans(.body1)
-                    .foregroundColor(theme.textHeading)
-
-            } else if viewModel.showLandingView {
-                Text(viewModel.landingTextView())
-                    .fontOpenSans(.body1)
-                    .foregroundColor(theme.textHeading)
+        RoutingView(stack: $router.stack) {
+            VStack(spacing: 32) {
+                if viewModel.isInitializing {
+                    LoadingScreen()
+                } else if viewModel.showDashboardView {
+                        Text(viewModel.dashboardTextView())
+                            .fontOpenSans(.body1)
+                            .foregroundColor(theme.textHeading)
+                    
+                } else if viewModel.showLandingView {
+                    LandingScreen()
+                }
             }
-        }
-        .task {
-            await viewModel.performAppInitialization()
-        }
+            .task {
+                await viewModel.performAppInitialization()
+            }
+        }.environmentObject(router)
+
     }
 }
 

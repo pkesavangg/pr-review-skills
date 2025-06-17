@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import UserNotifications
 
 @MainActor
 final class ContentViewModel: ObservableObject {
@@ -20,11 +21,21 @@ final class ContentViewModel: ObservableObject {
     @Injector var feedService : FeedService
     @Injector var entryService : EntryService
     @Injector var logger : LoggerService
+    @Injector var pushNotificationService : PushNotificationService
 
     func performAppInitialization() async {
         isInitializing = true
         let loggedIn = await checkLoginStatus()
-        if loggedIn { await loadData() }
+        if loggedIn {
+            // Check if notifications are required for the current account/scales
+            let notificationsRequired = await areNotificationsRequired()
+            if notificationsRequired {
+                await pushNotificationService.setupPushNotifications()
+            } else {
+                await pushNotificationService.updateDeviceInfo()
+            }
+            await loadData()
+        }
         await routeToLandingOrApp(isLoggedIn: loggedIn)
         isInitializing = false
     }
@@ -67,5 +78,9 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - View Texts - For Testing Purposes.
     func dashboardTextView() -> String { "Dashboard Screen" }
-    func landingTextView() -> String { "Landing Screen" }
+
+    // MARK: - Notification Permission Logic
+    private func areNotificationsRequired() async -> Bool {
+        await pushNotificationService.isNotificationAuthorized()
+    }
 }
