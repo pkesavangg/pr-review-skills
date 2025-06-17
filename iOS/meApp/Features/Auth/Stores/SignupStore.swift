@@ -306,11 +306,11 @@ final class SignupStore: ObservableObject {
         let maxWeight = isMetric ? 450.0 : 999.0
 
         // Remove old validator
-        signupForm.currentWeight.removeValidator(ofType: .maxWeight)
-        signupForm.goalWeight.removeValidator(ofType: .maxWeight)
+        signupForm.currentWeight.removeValidator(ofType: .maxValue)
+        signupForm.goalWeight.removeValidator(ofType: .maxValue)
 
         // Add new validator
-        let validator = Validator.maxWeight(maxWeight)
+        let validator = Validator.maxValue(maxWeight)
         signupForm.currentWeight.addValidator(validator)
         signupForm.goalWeight.addValidator(validator)
     }
