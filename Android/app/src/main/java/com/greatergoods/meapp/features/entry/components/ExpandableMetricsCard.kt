@@ -27,9 +27,6 @@ import com.greatergoods.meapp.features.entry.viewmodel.R4ScaleMetricsFormControl
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 
 /**
  * Expandable card for metrics section, with animated expand/collapse, title, and optional subheading.
@@ -87,22 +84,21 @@ fun ExpandableMetricsCard(
 @Composable
 private fun ExpandableMetricsCardPreview() {
     MeAppTheme {
-        val fakeScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         val general = GeneralMetricsFormControls(
-            bodyMassIndex = FormControl("", emptyList(), emptyList(), fakeScope),
-            bodyFat = FormControl("", emptyList(), emptyList(), fakeScope),
-            muscleMass = FormControl("", emptyList(), emptyList(), fakeScope),
-            bodyWater = FormControl("", emptyList(), emptyList(), fakeScope),
+            bodyMassIndex = FormControl.create("", emptyList()),
+            bodyFat = FormControl.create("", emptyList()),
+            muscleMass = FormControl.create("", emptyList()),
+            bodyWater = FormControl.create("", emptyList()),
         )
         val r4 = R4ScaleMetricsFormControls(
-            heartRate = FormControl("", emptyList(), emptyList(), fakeScope),
-            boneMass = FormControl("", emptyList(), emptyList(), fakeScope),
-            visceralFat = FormControl("", emptyList(), emptyList(), fakeScope),
-            subcutaneousFat = FormControl("", emptyList(), emptyList(), fakeScope),
-            protein = FormControl("", emptyList(), emptyList(), fakeScope),
-            skeletalMuscles = FormControl("", emptyList(), emptyList(), fakeScope),
-            bmr = FormControl("", emptyList(), emptyList(), fakeScope),
-            metabolicAge = FormControl("", emptyList(), emptyList(), fakeScope),
+            heartRate = FormControl.create("", emptyList()),
+            boneMass = FormControl.create("", emptyList()),
+            visceralFat = FormControl.create("", emptyList()),
+            subcutaneousFat = FormControl.create("", emptyList()),
+            protein = FormControl.create("", emptyList()),
+            skeletalMuscles = FormControl.create("", emptyList()),
+            bmr = FormControl.create("", emptyList()),
+            metabolicAge = FormControl.create("", emptyList()),
         )
         ExpandableMetricsCard(
             title = EntryScreenStrings.METRICS_SECTION_TITLE,

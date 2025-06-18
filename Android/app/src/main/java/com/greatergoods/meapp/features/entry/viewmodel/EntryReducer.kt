@@ -53,35 +53,31 @@ data class EntryFormControls(
             includeR4ScaleMetrics: Boolean = false
         ): EntryFormControls = EntryFormControls(
             weightDateTime = WeightDateTimeFormControls(
-                weight = FormControl(
+                weight = FormControl.create(
                     initialValue = "",
                     validators = listOf(FormValidations.required()),
-                    asyncValidators = emptyList(),
-                    scope = scope,
                 ),
-                dateTime = FormControl(
+                dateTime = FormControl.create(
                     initialValue = DateTimeValue.DateTime(System.currentTimeMillis(), 12, 0),
                     validators = emptyList(),
-                    asyncValidators = emptyList(),
-                    scope = scope,
                 ),
             ),
             generalMetrics = GeneralMetricsFormControls(
-                bodyMassIndex = FormControl("", emptyList(), emptyList(), scope),
-                bodyFat = FormControl("", emptyList(), emptyList(), scope),
-                muscleMass = FormControl("", emptyList(), emptyList(), scope),
-                bodyWater = FormControl("", emptyList(), emptyList(), scope),
+                bodyMassIndex = FormControl.create("", emptyList()),
+                bodyFat = FormControl.create("", emptyList()),
+                muscleMass = FormControl.create("", emptyList()),
+                bodyWater = FormControl.create("", emptyList()),
                 // Add more general metrics here if needed
             ),
             r4ScaleMetrics = if (includeR4ScaleMetrics) R4ScaleMetricsFormControls(
-                heartRate = FormControl("", emptyList(), emptyList(), scope),
-                boneMass = FormControl("", emptyList(), emptyList(), scope),
-                visceralFat = FormControl("", emptyList(), emptyList(), scope),
-                subcutaneousFat = FormControl("", emptyList(), emptyList(), scope),
-                protein = FormControl("", emptyList(), emptyList(), scope),
-                skeletalMuscles = FormControl("", emptyList(), emptyList(), scope),
-                bmr = FormControl("", emptyList(), emptyList(), scope),
-                metabolicAge = FormControl("", emptyList(), emptyList(), scope),
+                heartRate = FormControl.create("", emptyList()),
+                boneMass = FormControl.create("", emptyList()),
+                visceralFat = FormControl.create("", emptyList()),
+                subcutaneousFat = FormControl.create("", emptyList()),
+                protein = FormControl.create("", emptyList()),
+                skeletalMuscles = FormControl.create("", emptyList()),
+                bmr = FormControl.create("", emptyList()),
+                metabolicAge = FormControl.create("", emptyList()),
 
                 ) else null,
         )

@@ -48,11 +48,6 @@ fun AppScaffold(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 containerColor = containerColor,
-                modifier = Modifier.padding(
-                    WindowInsets.safeDrawing
-                        .only(WindowInsetsSides.Top)
-                        .asPaddingValues(),
-                ),
             )
         },
         containerColor = containerColor,
@@ -60,12 +55,7 @@ fun AppScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(
-                    WindowInsets.safeDrawing
-                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                        .asPaddingValues(),
-                )
+                .padding(top = innerPadding.calculateTopPadding())
                 .background(contentColor),
         ) {
             content(Modifier)

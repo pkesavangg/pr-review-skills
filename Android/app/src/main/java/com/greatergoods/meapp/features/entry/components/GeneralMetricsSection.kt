@@ -57,12 +57,11 @@ fun GeneralMetricsSection(controls: GeneralMetricsFormControls) {
 @Composable
 private fun GeneralMetricsSectionPreview() {
     MeAppTheme {
-        val fakeScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         val controls = GeneralMetricsFormControls(
-            bodyMassIndex = FormControl("", emptyList(), emptyList(), fakeScope),
-            bodyFat = FormControl("", emptyList(), emptyList(), fakeScope),
-            muscleMass = FormControl("", emptyList(), emptyList(), fakeScope),
-            bodyWater = FormControl("", emptyList(), emptyList(), fakeScope),
+            bodyMassIndex = FormControl.create("", emptyList()),
+            bodyFat = FormControl.create("", emptyList()),
+            muscleMass = FormControl.create("", emptyList()),
+            bodyWater = FormControl.create("", emptyList()),
         )
         GeneralMetricsSection(controls)
     }

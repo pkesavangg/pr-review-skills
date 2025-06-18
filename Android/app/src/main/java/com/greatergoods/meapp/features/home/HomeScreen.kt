@@ -21,7 +21,7 @@ fun HomeScreen(
             MainBottomNav()
         },
     ) {
-        Surface(modifier = Modifier.padding(it)) {
+        Surface(modifier = Modifier.padding(bottom = it.calculateBottomPadding())) {
             HomeNavHost(
                 topLevelBackStack = topLevelBackStack,
             )
