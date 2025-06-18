@@ -5,6 +5,8 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.features.common.enum.AppValidator.EMAIL
+import com.greatergoods.meapp.features.common.enum.AppValidator.PASSWORD
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
@@ -45,7 +47,7 @@ constructor(
                         "",
                         listOf(
                             FormValidations.required(),
-                            FormValidations.maxLength(100),
+                            FormValidations.maxLength(EMAIL.maxLength),
                             FormValidations.email(),
                         ),
                     ),
@@ -53,8 +55,8 @@ constructor(
                     FormControl.create(
                         "",
                         listOf(
-                            FormValidations.minLength(6),
-                            FormValidations.maxLength(50),
+                            FormValidations.minLength(PASSWORD.minLength),
+                            FormValidations.maxLength(PASSWORD.maxLength),
                         ),
                     ),
             )
@@ -81,8 +83,10 @@ constructor(
                 message = LoginStrings.LoaderMessage,
             ),
         )
-        if (!state.value.form.validate()) return
-        handleIntent(LoginIntent.Submit)
+        if (!state.value.form.validate()) {
+            dialogQueueService.dismissLoader()
+            return
+        }
         val email = state.value.form.controls.email.value
         val password = state.value.form.controls.password.value
         viewModelScope.launch {
