@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.typography
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -238,7 +240,7 @@ fun DateTimeInput(
         localState = currentValue
     }
     // Error state
-    val isError = !formControl?.error.isNullOrBlank()
+    val isError = formControl?.isError ?: false
 
     Row {
         // Show date chip if mode is Date or DateTime
@@ -342,10 +344,11 @@ fun DateTimeInput(
 
     // Show error or supporting text
     if (formControl != null && isError) {
+        val errorMessage = formControl.error?.message ?: ""
         Text(
-            formControl.error ?: "",
-            color = MeTheme.colorScheme.textError,
-            style = MeTheme.typography.body3,
+            errorMessage,
+            color = colorScheme.textError,
+            style = typography.body3,
         )
     } else if (supportingText != null) {
         Text(
@@ -368,22 +371,18 @@ fun DateTimeInputPreview() {
             val fakeScope = rememberCoroutineScope()
             val dateControl =
                 remember {
-                    FormControl<DateTimeValue>(
+                    FormControl.create<DateTimeValue>(
                         DateTimeValue.Date(System.currentTimeMillis()),
                         emptyList(),
-                        emptyList(),
-                        fakeScope,
                     )
                 }
             val timeControl =
-                remember { FormControl<DateTimeValue>(DateTimeValue.Time(14, 30), emptyList(), emptyList(), fakeScope) }
+                remember { FormControl.create<DateTimeValue>(DateTimeValue.Time(14, 30), emptyList()) }
             val dateTimeControl =
                 remember {
-                    FormControl<DateTimeValue>(
+                    FormControl.create<DateTimeValue>(
                         DateTimeValue.DateTime(System.currentTimeMillis(), 9, 15),
                         emptyList(),
-                        emptyList(),
-                        fakeScope,
                     )
                 }
             DateTimeInput(formControl = dateControl, mode = DateTimeInputMode.Date)

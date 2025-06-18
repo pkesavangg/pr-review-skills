@@ -48,6 +48,17 @@ fun NavigationObserver(
                     is NavigationIntent.AutoLogin -> {
                         backStack.autoLogin()
                     }
+
+                    is NavigationIntent.ReplaceStack -> {
+                        backStack.replaceStack(intent.route, intent.topLevel)
+                    }
+
+                    is NavigationIntent.ReplaceStackSingle -> {
+                        backStack.replaceStack(
+                            listOf(intent.route),
+                            intent.topLevel,
+                        )
+                    }
                 }
             }
     }

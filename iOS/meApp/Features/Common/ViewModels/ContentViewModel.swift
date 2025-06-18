@@ -11,9 +11,8 @@ import UserNotifications
 final class ContentViewModel: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var currentAccount: Account?
-    @Published var showDashboardView: Bool = false
-    @Published var showLandingView: Bool = false
-    @Published var isInitializing: Bool = true
+    /// Represents the current screen that should be visible in `ContentView`.
+    @Published var contentViewState: ContentViewState = .initializing
     @Published var entries: [Entry] = []
 
     @Injector var accountService: AccountService
@@ -22,9 +21,33 @@ final class ContentViewModel: ObservableObject {
     @Injector var entryService : EntryService
     @Injector var logger : LoggerService
     @Injector var pushNotificationService : PushNotificationService
+    
+    /// A set to hold Combine cancellables for this view model.
+    private var cancellables = Set<AnyCancellable>()
+    
+    init() {
+        accountService.$activeAccount
+            // Avoid unnecessary re-initialisation when the account ID hasn't changed
+            .removeDuplicates { lhs, rhs in
+                lhs?.accountId == rhs?.accountId
+            }
+            .sink { [weak self] account in
+                guard let self else { return }
+                self.currentAccount = account
+                self.isLoggedIn = (account != nil)
+
+                // Prevent recursive calls while an initialisation cycle is already running
+                guard self.contentViewState != .initializing else { return }
+
+                Task { [weak self] in
+                    await self?.performAppInitialization()
+                }
+            }
+            .store(in: &cancellables)
+    }
 
     func performAppInitialization() async {
-        isInitializing = true
+        contentViewState = .initializing
         let loggedIn = await checkLoginStatus()
         if loggedIn {
             // Check if notifications are required for the current account/scales
@@ -36,8 +59,7 @@ final class ContentViewModel: ObservableObject {
             }
             await loadData()
         }
-        await routeToLandingOrApp(isLoggedIn: loggedIn)
-        isInitializing = false
+        await updateViewState(isLoggedIn: loggedIn)
     }
 
     // MARK: - Login Status Check
@@ -70,14 +92,10 @@ final class ContentViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Routing Logic
-    func routeToLandingOrApp(isLoggedIn: Bool) async {
-        showDashboardView = isLoggedIn
-        showLandingView = !isLoggedIn
+    // MARK: - View State Management
+    func updateViewState(isLoggedIn: Bool) async {
+        contentViewState = isLoggedIn ? .dashboard : .landing
     }
-
-    // MARK: - View Texts - For Testing Purposes.
-    func dashboardTextView() -> String { "Dashboard Screen" }
 
     // MARK: - Notification Permission Logic
     private func areNotificationsRequired() async -> Bool {
