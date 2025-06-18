@@ -79,8 +79,8 @@ struct LoginScreen: View {
 
                 ButtonView(
                     text: commonLang.logIn,
-                    type: .primary,
-                    size: .regular,
+                    type: .filledPrimary,
+                    size: .large,
                     isDisabled: !store.isFormValid || store.isFormSubmitting,
                     action: {
                         focusedField = nil
@@ -95,7 +95,7 @@ struct LoginScreen: View {
 
                 ButtonView(
                     text: lang.forgotPassword,
-                    type: .linkBlueDefault,
+                    type: .textPrimary,
                     size: .small,
                     isDisabled: false,
                     action: { store.showPasswordResetPrompt() }
@@ -107,10 +107,10 @@ struct LoginScreen: View {
                     Text(lang.byLoggingIn)
                         .fontOpenSans(.subHeading2)
                         .foregroundColor(theme.actionSecondary)
-                    HStack(spacing: .spacingMD/2) {
+                    HStack() {
                         ButtonView(
                             text: legalStrings.termsOfService,
-                            type: .linkBlueDefault,
+                            type: .textPrimary,
                             size: .small,
                             isDisabled: false,
                             action: { store.openTerms() }
@@ -120,7 +120,7 @@ struct LoginScreen: View {
                             .foregroundColor(theme.actionSecondary)
                         ButtonView(
                             text: legalStrings.privacyPolicy,
-                            type: .linkBlueDefault,
+                            type: .textPrimary,
                             size: .small,
                             isDisabled: false,
                             action: { store.openPrivacy() }

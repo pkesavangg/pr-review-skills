@@ -64,8 +64,8 @@ extension View {
     ///   - cornerRadius: The corner radius of the button.
     ///   - buttonSize: The size of the button (regular or small).
     /// - Returns: A view styled as a bordered button.
-    func borderedButtonStyle(backgroundColor: Color, borderColor: Color, cornerRadius: CGFloat, buttonSize: ButtonSize) -> some View {
-        self.modifier(BorderedButtonStyle(backgroundColor: backgroundColor, borderColor: borderColor, cornerRadius: cornerRadius, buttonSize: buttonSize))
+    func borderedButtonStyle(backgroundColor: Color, borderColor: Color, buttonSize: ButtonSize) -> some View {
+        self.modifier(BorderedButtonStyle(backgroundColor: backgroundColor, borderColor: borderColor,buttonSize: buttonSize))
     }
     
     /// Applies a flat button style with customizable background, corner radius, and size.
@@ -74,9 +74,17 @@ extension View {
     ///   - cornerRadius: The corner radius of the button.
     ///   - buttonSize: The size of the button (regular or small).
     /// - Returns: A view styled as a flat button.
-    func flatButtonStyle(backgroundColor: Color, cornerRadius: CGFloat, buttonSize: ButtonSize) -> some View {
-        self.modifier(FlatButtonStyle(backgroundColor: backgroundColor, cornerRadius: cornerRadius, buttonSize: buttonSize))
-    }
+    func flatButtonStyle(
+            foregroundColor: Color,
+            backgroundColor: Color,
+            buttonSize: ButtonSize
+        ) -> some View {
+            self.modifier(FlatButtonStyle(
+                foregroundColor: foregroundColor,
+                backgroundColor: backgroundColor,
+                buttonSize: buttonSize
+            ))
+        }
     
     /// Presents a picker sheet with the provided configuration.
     /// - Parameters:

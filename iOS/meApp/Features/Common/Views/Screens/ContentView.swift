@@ -27,7 +27,7 @@ struct ContentView: View {
                             .fontOpenSans(.body1)
                             .foregroundColor(theme.textHeading)
                         
-                        ButtonView(text: "Logout", type: .primary, size: .regular, isDisabled: false, action:{
+                        ButtonView(text: "Logout", type: .filledPrimary, size: .large, isDisabled: false, action:{
                             Task { await viewModel.logout()
                             }})
                         

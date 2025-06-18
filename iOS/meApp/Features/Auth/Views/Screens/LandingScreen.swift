@@ -41,13 +41,13 @@ struct LandingScreen: View {
               .padding(.top, .spacingSM)
               .padding(.horizontal,.spacingLG)
               
-              ButtonView(text: lang.learnMore, type: .linkWhiteDefault, size: .regular, isDisabled: false, action: {})
+              ButtonView(text: lang.learnMore, type: .textSecondary, size: .large, isDisabled: false, action: {})
                   .padding(.top, .spacingXS)
                   .padding(.bottom,.spacing2XL)
               
               VStack(alignment: .center, spacing: .spacingSM){
-                  ButtonView(text: lang.signUp, type: .secondary, size: .regular, isDisabled: false, action: {router.navigate(to: .signup)})
-                  ButtonView(text: commonLang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {
+                  ButtonView(text: lang.signUp, type: .filledSecondary, size: .large, isDisabled: false, action: {router.navigate(to: .signup)})
+                  ButtonView(text: commonLang.logIn, type: .outlinedSecondary, size: .large, isDisabled: false, action: {
                       router.navigate(to: .login)
                   })
               }
