@@ -214,4 +214,50 @@ final class DateTimeTools {
         df.timeZone = TimeZone.current
         return df.string(from: date)
     }
+    
+    /// Combines a calendar `date` (uses Y-M-D) with a separate `time` (H:M:S) component into a single `Date`.
+    /// - Parameters:
+    ///   - date: Date whose Y-M-D components will be kept.
+    ///   - time: Date whose H-M-S (and nanoseconds) components will be applied.
+    /// - Returns: Combined `Date` in the user's current timezone (falls back to `date` on failure).
+    static func combineDate(_ date: Date, withTime time: Date) -> Date {
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: time)
+        components.hour = timeComponents.hour
+        components.minute = timeComponents.minute
+        components.second = timeComponents.second
+        components.nanosecond = timeComponents.nanosecond
+        components.timeZone = TimeZone.current
+        return calendar.date(from: components) ?? date
+    }
+
+    /// Creates an ISO-8601 string like `2025-06-16T08:24:50.624Z` from a separate date and time selection.
+    /// - Parameters:
+    ///   - date: Date that provides the calendar day.
+    ///   - time: Date that provides the time of day.
+    ///   - useUTC: When `true`, result is in UTC with a `Z` suffix; otherwise it is in the user's timezone.
+    /// - Returns: ISO-8601 string with fractional seconds.
+    static func isoString(date: Date,
+                          time: Date,
+                          useUTC: Bool = true,
+                          randomizeSubMinute: Bool = false) -> String {
+        var combined = combineDate(date, withTime: time)
+
+        if randomizeSubMinute {
+            let calendar = Calendar.current
+            var comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: combined)
+            comps.second = Int.random(in: 0..<60)
+            comps.nanosecond = Int.random(in: 0..<1_000) * 1_000_000 // random ms ↦ ns
+            comps.timeZone = TimeZone.current
+            combined = calendar.date(from: comps) ?? combined
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if useUTC {
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        }
+        return formatter.string(from: combined)
+    }
 }

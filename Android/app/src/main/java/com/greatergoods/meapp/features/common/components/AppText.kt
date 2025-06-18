@@ -45,7 +45,7 @@ object TextTypeDefaults {
 
             TextType.Subtitle ->
                 TextAppearance(
-                    style = typography.subHeading2,
+                    style = typography.subHeading1,
                     color = colorScheme.textBody,
                 )
 

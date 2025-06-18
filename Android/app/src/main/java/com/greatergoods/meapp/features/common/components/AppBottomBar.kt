@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.components
 
 import AppHorizontalPager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +43,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PagerBottomAppBar(
     modifier: Modifier = Modifier,
+    containerColor: Color = Color.Transparent,
     leadingContent: @Composable () -> Unit,
     middleContent: @Composable () -> Unit,
     trailingContent: @Composable () -> Unit,
@@ -49,6 +51,7 @@ fun PagerBottomAppBar(
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = containerColor,
         bottomBar = {
             BottomAppBar(
                 modifier =
@@ -59,7 +62,7 @@ fun PagerBottomAppBar(
                                 .only(WindowInsetsSides.Bottom)
                                 .asPaddingValues(),
                         ),
-                containerColor = Color.Transparent,
+                containerColor = containerColor,
             ) {
                 Row(
                     modifier =
@@ -71,7 +74,7 @@ fun PagerBottomAppBar(
                     leadingContent()
                     Spacer(modifier = Modifier.weight(1f))
                     middleContent()
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
                     trailingContent()
                 }
             }
@@ -85,7 +88,7 @@ fun PagerBottomAppBar(
                     WindowInsets.safeDrawing
                         .only(WindowInsetsSides.Horizontal)
                         .asPaddingValues(),
-                ),
+                ).background(containerColor),
         )
     }
 }

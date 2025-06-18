@@ -26,7 +26,6 @@ class NotificationManager(
 ) {
     init {
         createChannels()
-        fetchFCMToken()
     }
 
     /**
