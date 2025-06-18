@@ -14,7 +14,7 @@ struct MonthSummaryItem: View {
 
     let month: HistoryMonth
     let weightUnit: String
-    /// Localized date formatter: "Dec 2025"
+    /// Localized date formatter: "MMM yyyy"
     private var monthYearText: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
@@ -30,7 +30,7 @@ struct MonthSummaryItem: View {
 
     private var changeText: String {
         guard let cStr = month.change, let c = Double(cStr) else { return "--" }
-        return String(format: "%@%.1f %@", c >= 0 ? "+" : "", c, weightUnit)
+        return String(format: "%@%.1f %@", c >= 0 ? "+" : "-", c, weightUnit)
     }
 
     var body: some View {
@@ -40,7 +40,7 @@ struct MonthSummaryItem: View {
                 Text(monthYearText)
                     .fontOpenSans(.heading5)
                     .foregroundColor(theme.textHeading)
-                Text("\(month.count ?? 0) entries")
+                Text("\(month.count ?? 0) \(HistoryListStrings.entries)")
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
             }
@@ -50,23 +50,23 @@ struct MonthSummaryItem: View {
                 Text(avgWeightText)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
-                Text("average")
+                Text(HistoryListStrings.average)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
             }
             Spacer(minLength: .spacingMD)
-          
+
             // Change
             VStack(alignment: .leading) {
                 Text(changeText)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
-                Text("change")
+                Text(HistoryListStrings.change)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textSubheading)
             }
-            // Chevron
-            Image(systemName: "chevron.right")
+            // Chevron icon
+            AppIconView(icon: AppAssets.chevronRight)
                 .foregroundColor(theme.statusIconPrimary)
         }
         .padding(.vertical, .spacingSM)

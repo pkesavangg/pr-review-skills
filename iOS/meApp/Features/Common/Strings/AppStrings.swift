@@ -17,7 +17,7 @@ struct CommonStrings {
     static let skip = "Skip"
     static let logIn = "Log in"
     static let complete = "Complete"
-    
+
     static let dash = "dash"
     static let entry = "entry"
     static let history = "history"
@@ -62,7 +62,7 @@ struct FormErrorMessages {
     static let maxWeightLb = "value should be less than 999 lbs"
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
-    static let maxValue = {(value: Int) in "value should be less than \(value)"} 
+    static let maxValue = {(value: Int) in "value should be less than \(value)"}
 }
 
 /// Constants for input field labels used in the app
@@ -146,4 +146,5 @@ struct AppAssets {
     static let appSync = "appSync"
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
+    static let chevronRight = "chevronRight"
 }
