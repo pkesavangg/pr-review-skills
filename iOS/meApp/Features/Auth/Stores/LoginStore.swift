@@ -124,26 +124,44 @@ final class LoginStore: ObservableObject {
     func logIn() async {
         loginForm.email.markAsDirty()
         loginForm.password.markAsDirty()
+
+        guard loginForm.isValid else { return }
+
         isFormSubmitting = true
         isLoading = true
         errorMessage = nil
+
+        defer {
+            isFormSubmitting = false
+            isLoading = false
+        }
+
         do {
-            try await accountService.logIn(email: loginForm.email.value, password: loginForm.password.value)
+            try await accountService.logIn(
+                email: loginForm.email.value,
+                password: loginForm.password.value
+            )
             onLoginSuccess?()
         } catch {
-            logger.log(level: .error, tag: logTag, message: "Error: \(error)")
-            let errorDescription = (error as NSError).localizedDescription.lowercased()
-            if errorDescription.contains("unauthorized") {
-                notificationService.showToast(
-                    ToastModel(
-                        title: toastLang.loginError,
-                        message: toastLang.invalidCredentials
-                    )
-                )
-            }
+            logger.log(level: .error, tag: logTag, message: "Login Error: \(error)")
+            handleLoginError(error)
         }
-        isFormSubmitting = false
-        isLoading = false
+    }
+
+    private func handleLoginError(_ error: Error) {
+        let httpError = error as? HTTPError
+        switch httpError {
+        case .unauthorized:
+            showToast(title: toastLang.loginError, message: toastLang.invalidCredentials)
+        case .timeout, .noInternet, .statusCode(0):
+            showToast(title: toastLang.networkError, message: toastLang.unableToConnect)
+        default:
+            showToast(title: toastLang.loginError, message: toastLang.somethingWentWrong)
+        }
+    }
+
+    private func showToast(title: String, message: String) {
+        notificationService.showToast(ToastModel(title: title, message: message))
     }
 
     // MARK: - Password Reset

@@ -30,6 +30,7 @@ struct CommonStrings {
 /// Constants for toast messages used in the app
 struct ToastStrings {
     static let loginError = "Login Error"
+    static let networkError = "Network Error"
     static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
     static let somethingWentWrong = "Something went wrong. Please try again. If the problem continues, contact customer service."
     static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
