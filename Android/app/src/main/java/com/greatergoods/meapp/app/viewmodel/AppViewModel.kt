@@ -47,11 +47,14 @@ class AppViewModel @Inject constructor(
                 if (account != null) {
                     initLoadingData(account.id)
                 } else {
-                    if (accountAuthService.checkForLoggedInUser()) {
-                        AppRoute.Auth.UserList
-                    } else {
-                        navigationService.navigateTo(AppRoute.Auth.Login)
-                    }
+                    navigationService.replaceStack(
+                        route =
+                            if (accountAuthService.checkForLoggedInUser()) {
+                                AppRoute.Auth.UserList
+                            } else {
+                                AppRoute.Auth.Landing
+                            },
+                    )
                 }
             }
         }

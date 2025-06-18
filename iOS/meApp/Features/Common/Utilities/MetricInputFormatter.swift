@@ -97,19 +97,20 @@ class MetricFieldFormatter: ObservableObject {
     }
     
     private func formatWholeNumber(_ input: String) -> String {
+        // Extract only numeric characters
         let digitsOnly = input.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
         
-        if digitsOnly.isEmpty {
+        // If nothing numeric, return empty (cleared value)
+        guard !digitsOnly.isEmpty else {
             return emptyValue
         }
         
+        // Remove leading zeros but keep a single zero when the entire string is zeros (e.g. "0" → "0", "000" → "0")
         let trimmedDigits = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
+        let normalizedDigits = trimmedDigits.isEmpty ? "0" : trimmedDigits
         
-        if trimmedDigits.isEmpty {
-            return emptyValue
-        }
-        
-        let limitedDigits = String(trimmedDigits.prefix(config.maxLength))
+        // Enforce maxLength constraint
+        let limitedDigits = String(normalizedDigits.prefix(config.maxLength))
         return limitedDigits
     }
 }

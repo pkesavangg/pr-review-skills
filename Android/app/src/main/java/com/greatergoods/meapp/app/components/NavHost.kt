@@ -1,14 +1,17 @@
 package com.greatergoods.meapp.app.components
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigation3.ui.rememberSceneSetupNavEntryDecorator
 import com.example.nav3integration.TopLevelBackStack
+import com.greatergoods.meapp.app.viewmodel.AppViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
-import com.greatergoods.meapp.app.viewmodel.AppViewModel
 import com.greatergoods.meapp.features.home.HomeScreen
 import com.greatergoods.meapp.features.loading.LoadingScreen
 
@@ -27,6 +30,11 @@ fun NavHost(
         topLevelBackStack,
     )
     NavDisplay(
+        entryDecorators = listOf(
+            rememberSceneSetupNavEntryDecorator(),
+            rememberSavedStateNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
         onBack = {
             topLevelBackStack.removeLast(AppRoute.App)
@@ -45,6 +53,11 @@ fun HomeNavHost(
     topLevelBackStack: TopLevelBackStack<NavKey>,
 ) {
     NavDisplay(
+        entryDecorators = listOf(
+            rememberSceneSetupNavEntryDecorator(),
+            rememberSavedStateNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {
             topLevelBackStack.removeLast(AppRoute.Home)

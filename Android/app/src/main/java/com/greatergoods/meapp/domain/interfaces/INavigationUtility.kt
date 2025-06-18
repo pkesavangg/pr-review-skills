@@ -11,6 +11,16 @@ interface INavigationUtility {
 
     suspend fun navigateTo(route: AppRoute, topLevel: AppRoute? = null, popUpTo: AppRoute? = null)
 
+    suspend fun replaceStack(
+        route: AppRoute,
+        topLevel: AppRoute? = null,
+    )
+
+    suspend fun replaceStack(
+        route: List<AppRoute>,
+        topLevel: AppRoute? = null,
+    )
+
     suspend fun navigateBack(
         topLevel: AppRoute? = null,
     )
@@ -39,6 +49,16 @@ sealed interface NavigationIntent {
     ) : NavigationIntent
 
     data class NavigateBack(
+        val topLevel: AppRoute? = null,
+    ) : NavigationIntent
+
+    data class ReplaceStack(
+        val route: List<AppRoute>,
+        val topLevel: AppRoute? = null,
+    ) : NavigationIntent
+
+    data class ReplaceStackSingle(
+        val route: AppRoute,
         val topLevel: AppRoute? = null,
     ) : NavigationIntent
 

@@ -28,13 +28,12 @@ struct TimePickerView: View {
             .datePickerStyle(.wheel)
             .labelsHidden()
             .tint(theme.actionPrimary)
-            .padding(.bottom, .spacingXS)
+            .padding(.vertical, .spacingXS)
+            .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: .radiusSM)
+                RoundedRectangle(cornerRadius: .radiusMD)
                     .fill(theme.backgroundPrimary)
             )
-            .padding(.top, .spacingXS)
-            .frame(maxWidth: .infinity)
         }
     }
 }

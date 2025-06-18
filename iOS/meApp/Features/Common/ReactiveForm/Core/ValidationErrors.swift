@@ -41,8 +41,8 @@ public enum ValidatorType: Hashable {
     case passwordMatch
     case weightEqual
     case url
-    case minWeight // New validator type for minimum weight
-    case maxWeight
+    case minValue
+    case maxValue
     
     public func hash(into hasher: inout Hasher) {
         hasher.combine(String(describing: self))
