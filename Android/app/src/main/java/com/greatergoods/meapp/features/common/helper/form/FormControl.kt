@@ -13,7 +13,7 @@ typealias AsyncValidator<T> = suspend (T) -> ValidationError?
 
 data class ValidationError(
     val type: String,
-    val message: String
+    val message: String,
 )
 
 /**
@@ -81,7 +81,11 @@ class FormControl<T> private constructor(
      * @param validator The async validator function
      * @param scope The coroutine scope to run the validator in
      */
-    fun addAsyncValidator(type: String, validator: AsyncValidator<T>, scope: CoroutineScope) {
+    fun addAsyncValidator(
+        type: String,
+        validator: AsyncValidator<T>,
+        scope: CoroutineScope,
+    ) {
         _asyncValidators.value = _asyncValidators.value + AsyncValidatorWrapper(type, validator, scope)
         validate()
     }
@@ -90,12 +94,14 @@ class FormControl<T> private constructor(
      * Removes a validator by type
      */
     fun removeValidator(type: String) {
-        _validators.value = _validators.value.filter { validator ->
-            validator(value)?.type != type
-        }
-        _asyncValidators.value = _asyncValidators.value.filter { wrapper ->
-            wrapper.type != type
-        }
+        _validators.value =
+            _validators.value.filter { validator ->
+                validator(value)?.type != type
+            }
+        _asyncValidators.value =
+            _asyncValidators.value.filter { wrapper ->
+                wrapper.type != type
+            }
         validate()
     }
 
@@ -158,10 +164,11 @@ class FormControl<T> private constructor(
         fun <T> create(
             initialValue: T,
             validators: List<Validator<T>> = emptyList(),
-        ): FormControl<T> = FormControl(
-            initialValue = initialValue,
-            validators = validators
-        )
+        ): FormControl<T> =
+            FormControl(
+                initialValue = initialValue,
+                validators = validators,
+            )
     }
 
     /**
@@ -170,7 +177,7 @@ class FormControl<T> private constructor(
     private data class AsyncValidatorWrapper<T>(
         val type: String,
         val validator: AsyncValidator<T>,
-        val scope: CoroutineScope
+        val scope: CoroutineScope,
     )
 }
 

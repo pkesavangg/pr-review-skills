@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.login
+package com.greatergoods.meapp.features.login.screen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -32,13 +31,13 @@ import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.login.viewmodel.LoginViewModel
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import com.greatergoods.meapp.theme.MeTheme.typography
-import android.util.Log
 
 @Composable
 fun LoginScreen() {

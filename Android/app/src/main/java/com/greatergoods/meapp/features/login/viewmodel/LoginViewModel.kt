@@ -7,6 +7,7 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
@@ -23,21 +24,32 @@ class LoginViewModel
         private val accountAuthService: IAccountAuthService,
         private val customTabManager: ICustomTabManager,
     ) : BaseIntentViewModel<LoginState, LoginIntent>(
-    initialState =
-        LoginState(
-            form =
-                FormGroup(
-                    LoginFormControls(
-                        email = FormControl.Companion.create("", emptyList()),
-                        password =
-                            FormControl.Companion.create(
-                                "",
-                                emptyList(),
+            initialState =
+                LoginState(
+                    form =
+                        FormGroup(
+                            LoginFormControls(
+                                email =
+                                    FormControl.Companion.create(
+                                        "",
+                                        listOf(
+                                            FormValidations.required(),
+                                            FormValidations.maxLength(100),
+                                            FormValidations.email(),
+                                        ),
+                                    ),
+                                password =
+                                    FormControl.Companion.create(
+                                        "",
+                                        listOf(
+                                            FormValidations.minLength(6),
+                                            FormValidations.maxLength(50),
+                                        ),
+                                    ),
                             ),
-                    ),
+                        ),
                 ),
-        ),
-    reducer = LoginReducer(),
+            reducer = LoginReducer(),
         ) {
         init {
         }
