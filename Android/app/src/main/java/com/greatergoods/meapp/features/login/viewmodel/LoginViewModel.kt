@@ -82,6 +82,9 @@ constructor(
         }
     }
 
+    fun openResetPassword() {
+    }
+
     /**
      * Opens a URL using the injected CustomTabManager.
      * @param url The URL to open.

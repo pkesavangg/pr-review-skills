@@ -414,6 +414,15 @@ constructor(
         }
     }
 
+    override suspend fun resetPassword(email: String): Boolean {
+
+        return try {
+            this.accountRepository.resetPasswordInAPI(email)
+        } catch (e: HttpException) {
+            false
+        }
+    }
+
     /**
      * Checks if network is available using the connectivity observer
      */
@@ -437,3 +446,41 @@ constructor(
         )
     }
 }
+
+// object AuthToastProvider {
+//
+//     fun getSuccessToast(action: AuthAction): Toast {
+//         val msg = when (action) {
+//             AuthAction.LOGIN -> LoginStrings.Success.LoginSuccess
+//             AuthAction.SIGNUP -> LoginStrings.Success.SignupSuccess
+//             AuthAction.RESET_PASSWORD -> LoginStrings.Success.ResetPasswordSuccess
+//         }
+//
+//         return Toast(
+//             title = LoginStrings.Success.Header,
+//             message = msg,
+//             action = null,
+//         )
+//     }
+//
+//     fun getErrorToast(action: AuthAction, error: HttpException?): Toast {
+//         val errorStrings = LoginStrings.Error
+//
+//         val message = when (error?.code()) {
+//             HttpErrorConfig.ResponseCode.UNAUTHORIZED -> when (action) {
+//                 AuthAction.LOGIN -> errorStrings.MessageNotAuth
+//                 else -> errorStrings.MessageGeneric
+//             }
+//
+//             HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> errorStrings.MessageNoConn
+//             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> errorStrings.MessageServError
+//             else -> errorStrings.MessageGeneric
+//         }
+//
+//         return Toast(
+//             title = errorStrings.Header,
+//             message = message,
+//             action = null,
+//         )
+//     }
+// }

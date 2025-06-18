@@ -25,7 +25,6 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
@@ -36,10 +35,14 @@ import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.features.login.viewmodel.LoginViewModel
 import com.greatergoods.meapp.resources.AppIcons
@@ -66,6 +69,15 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
     val interactionSource = remember { MutableInteractionSource() }
     val emailFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
+    val resetEmailControl = remember {
+        FormControl.create(
+            initialValue = "",
+            validators = listOf(
+                FormValidations.required(),
+                FormValidations.email(),
+            ),
+        )
+    }
 
     AppScaffold(
         title = null,
@@ -143,8 +155,22 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
                         size = ButtonSize.Medium,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         onClick = {
-                            backStack.addRoute(
-                                AppRoute.Home,
+                            dialogQueueViewModel.enqueueCustomDialog(
+                                contentKey = DialogType.PasswordReset,
+                                params = mapOf(
+                                    "emailControl" to resetEmailControl,
+                                    "isSubmitEnabled" to { resetEmailControl.error == null && resetEmailControl.value.isNotBlank() },
+                                    "onSubmit" to {
+                                        // handle password reset submit here
+                                        // e.g., call viewModel.resetPassword(resetEmailControl.value)
+                                    },
+                                    "onCancel" to {
+                                        // handle cancel if needed
+                                    },
+                                ),
+                                onDismiss = {},
+                                priority = 100,
+                                delayMillis = 0L,
                             )
                         },
                     )
