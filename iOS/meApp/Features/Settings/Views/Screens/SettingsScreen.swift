@@ -104,7 +104,7 @@ struct SettingsScreen: View {
             .fontOpenSans(.heading4)
             .foregroundColor(theme.textHeading)
             .textCase(.none)
-            .padding(.bottom, .spacingSM)
+            .padding(.bottom, .spacingXS)
             .padding(.leading, -16)
     }
 
