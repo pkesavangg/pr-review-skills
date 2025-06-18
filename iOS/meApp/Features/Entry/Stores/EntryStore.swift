@@ -30,6 +30,8 @@ final class EntryStore: ObservableObject {
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
     @Published var showMetrics = false
+    @Published var showDatePicker = false
+    @Published var showTimePicker = false
 
     // Maximum BMI that can be set automatically (matches web)
     private let maxBmiValue: Double = 99.0
@@ -99,18 +101,53 @@ final class EntryStore: ObservableObject {
         let unit = weightUnit == .kg ? WeightUnit.kg.rawValue : WeightUnit.lb.rawValue
         
         // Build DB models
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+
+                let scaleEntry = BathScaleEntry(
+                    weight: weightStored,
+                    bodyFat: bodyFat,
+                    muscleMass: muscleMass,
+                    water: water,
+                    bmi: bmi,
+                    source: "manual"
+                )
+
+                let scaleMetric = BathScaleMetric(
+                    bmr: bmr,
+                    metabolicAge: metabolicAge,
+                    proteinPercent: proteinPercent,
+                    pulse: pulse,
+                    skeletalMusclePercent: skeletalMusclePercent,
+                    subcutaneousFatPercent: subcutaneousFatPercent,
+                    visceralFatLevel: visceralFatLevel,
+                    boneMass: boneMass,
+                    impedance: nil,
+                    unit: unit
+                )
+
+                let entry = Entry(
+                    entryTimestamp: entryTimestamp,
+                    accountId: accountId,
+                    operationType: "create",
+                    deviceType: "manual",
+                    isSynced: false
+                )
+                entry.scaleEntry = scaleEntry
+                entry.scaleEntryMetric = scaleMetric
+
 
         notificationService.showLoader(LoaderModel(
             text: loaderLang.savingEntry,
         ))
         do {
-            // TODO: Need to save the entry using the EntryService
-            // try await entryService.saveNewEntry(entry)
+             try await entryService.saveNewEntry(entry)
             // Reset form after successful save so fields are pristine
             resetForm()
+            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
         } catch {
             // TODO: handle save failure (e.g., show toast)
             logger.log(level: .error, tag: self.tag, message: "Failed to save manual entry", data: error)
+            notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
         }
         notificationService.dismissLoader()
     }
@@ -208,6 +245,8 @@ final class EntryStore: ObservableObject {
             }
             .store(in: &cancellables)
         showMetrics = false
+        showDatePicker = false
+        showTimePicker = false
         setupBmiObservers()
         updateWeightValidators()
     }
@@ -241,6 +280,7 @@ final class EntryStore: ObservableObject {
     func confirmDiscardChanges() async -> Bool {
         await withCheckedContinuation { continuation in
             showExitAlert(onConfirm: {
+                self.resetForm()
                 continuation.resume(returning: true)
             }, onCancel: {
                 continuation.resume(returning: false)

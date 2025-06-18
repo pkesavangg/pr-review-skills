@@ -21,11 +21,6 @@ struct ManualEntryScreen: View {
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
-    
-    @State private var showDatePicker = false
-    @State private var showTimePicker = false
-   
-    
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<EmptyView, EmptyView>(title: manualEntryLang.title, canShowBorder: true)
@@ -55,28 +50,28 @@ struct ManualEntryScreen: View {
                         
                         HStack(spacing: .spacingSM) {
                             DateLabelView(date: entryStore.manualEntryForm.date.value) {
-                                withAnimation { showDatePicker.toggle()
-                                    if showTimePicker {
-                                        showTimePicker = false
+                                withAnimation { entryStore.showDatePicker.toggle()
+                                    if entryStore.showTimePicker {
+                                        entryStore.showTimePicker = false
                                     }
                                 }
                             }
                             TimeLabelView(time: entryStore.manualEntryForm.time.value) {
                                 withAnimation {
-                                    showTimePicker.toggle()
-                                    if showDatePicker {
-                                        showDatePicker = false
+                                    entryStore.showTimePicker.toggle()
+                                    if entryStore.showDatePicker {
+                                        entryStore.showDatePicker = false
                                     }
                                 }
                             }
                         }
                         
                         // Pickers
-                        DatePickerView(isPresented: $showDatePicker,
+                        DatePickerView(isPresented: $entryStore.showDatePicker,
                                        date: $entryStore.manualEntryForm.date.value,
                                        endDate: Date())
                         
-                        TimePickerView(isPresented: $showTimePicker,
+                        TimePickerView(isPresented: $entryStore.showTimePicker,
                                        time: $entryStore.manualEntryForm.time.value,
                                        endTime: entryStore.maxSelectableTime)
                     }
@@ -90,7 +85,7 @@ struct ManualEntryScreen: View {
                                     .foregroundColor(theme.textHeading)
                                 Spacer()
                                 AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
-                                            size: IconSize(width: 24, height: 24))
+                                            size: IconSize(width: 32, height: 32))
                                 .foregroundColor(theme.actionPrimary)
                             }
                             
@@ -307,7 +302,6 @@ struct ManualEntryScreen: View {
                 .onAppear {
                     // Register a handler that decides whether the tab can be left.
                     registerDeactivation {
-                        self.entryStore.showMetrics = false
                         // If the form is clean we can leave immediately.
                         guard entryStore.manualEntryForm.isDirty else { return true }
                         // Otherwise ask the user via the store's confirmation helper.
