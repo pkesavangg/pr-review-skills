@@ -35,24 +35,25 @@ struct SettingsScreen: View {
     
     private func accountActionSection() -> some View {
         Section {
-            Button {
-                settingsStore.handleLogout()
-            } label: {
-                actionLabelText(settingsLang.logOut)
-            }
-            
-            Button {
-                settingsStore.handleDeleteAccount()
-            } label: {
-                actionLabelText(settingsLang.deleteAccount, isDestructive: true)
-            }
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.logOut,
+                canShowChevron: false,
+                onTap: {
+                    settingsStore.handleLogout()
+                }
+            ))
+            .settingsRowInsets()
+
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.deleteAccount,
+                canShowChevron: false,
+                isDestructive: true,
+                onTap: {
+                    settingsStore.handleDeleteAccount()
+                }
+            ))
+            .settingsRowInsets()
         }
-    }
-    
-    private func actionLabelText(_ text: String, isDestructive: Bool = false) -> some View {
-        Text(text)
-            .fontOpenSans(.body2)
-            .foregroundColor(isDestructive ? theme.textError: theme.textBody)
     }
 }
 
