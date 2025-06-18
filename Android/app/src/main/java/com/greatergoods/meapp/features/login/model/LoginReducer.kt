@@ -54,6 +54,8 @@ sealed class LoginIntent : IReducer.Intent {
     /** Trigger login submission. */
     object Submit : LoginIntent()
 
+    data class OpenInAppBrowser(val url: String) : LoginIntent()
+
     /** Show an error message. */
     data class Error(
         val message: String,
@@ -98,5 +100,7 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
             is LoginIntent.Success -> {
                 state.copy(isLoading = false, error = null)
             }
+
+            else -> state
         }
 }

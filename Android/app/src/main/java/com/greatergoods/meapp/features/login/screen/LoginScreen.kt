@@ -20,10 +20,10 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
@@ -38,6 +38,7 @@ import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.features.login.viewmodel.LoginViewModel
@@ -52,9 +53,15 @@ import com.greatergoods.meapp.theme.MeTheme.typography
  */
 @Composable
 fun LoginScreen() {
-    val viewModel: LoginViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
+    val viewmodel: LoginViewModel = hiltViewModel()
+    val state by viewmodel.state.collectAsState()
+    LoginContent(state, viewmodel::handleIntent)
+}
+
+@Composable
+private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit) {
     val backStack = LocalNavBackStack.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
     val emailFocusRequester = remember { FocusRequester() }
@@ -111,8 +118,9 @@ fun LoginScreen() {
                         showTrailingIcon = true,
                         imeAction = ImeAction.Done,
                         onImeAction = {
-                            viewModel.onSubmit()
+                            handleIntent(LoginIntent.Submit)
                             focusManager.clearFocus()
+                            keyboardController?.hide()
                         },
                         modifier = Modifier
                             .semantics { contentType = ContentType.Password }
@@ -124,7 +132,8 @@ fun LoginScreen() {
                         enabled = state.form.isValid && !state.isLoading,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         onClick = {
-                            viewModel.onSubmit()
+                            keyboardController?.hide()
+                            handleIntent(LoginIntent.Submit)
                         },
                     )
                     Spacer(Modifier.height(spacing.sm))
@@ -158,7 +167,7 @@ fun LoginScreen() {
                             text = LoginStrings.TermsOfService,
                             textType = TextType.Link,
                             onClick = {
-                                viewModel.openUrl(LoginStrings.TermsOfServiceUrl)
+                                handleIntent(LoginIntent.OpenInAppBrowser(LoginStrings.TermsOfServiceUrl))
                             },
                         )
                         Spacer(Modifier.padding(start = spacing.sm))
@@ -168,7 +177,7 @@ fun LoginScreen() {
                             text = LoginStrings.PrivacyPolicy,
                             textType = TextType.Link,
                             onClick = {
-                                viewModel.openUrl(LoginStrings.PrivacyPolicyUrl)
+                                handleIntent(LoginIntent.OpenInAppBrowser(LoginStrings.PrivacyPolicyUrl))
                             },
                         )
                     }

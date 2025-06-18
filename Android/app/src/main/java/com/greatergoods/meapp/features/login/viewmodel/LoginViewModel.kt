@@ -37,10 +37,23 @@ constructor(
     }
 
     /**
+     * Handles incoming intents and updates the state accordingly.
+     * @param intent The intent to handle.
+     */
+    override fun handleIntent(intent: LoginIntent) {
+        super.handleIntent(intent)
+        when (intent) {
+            is LoginIntent.Submit -> onSubmit()
+            is LoginIntent.OpenInAppBrowser -> openUrl(intent.url)
+            else -> null
+        }
+    }
+
+    /**
      * Handles the login form submission. Validates the form, shows loading, and attempts login.
      * On success, navigates to the dashboard. On failure, shows an error message.
      */
-    fun onSubmit() {
+    private fun onSubmit() {
         dialogQueueService.showLoader(
             message = LoginStrings.LoaderMessage,
         )

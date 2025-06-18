@@ -60,7 +60,7 @@ internal object LightColorToken {
 
     // Brand
     val meAppPrimary = ColorPalette.Teal100 // #65CEC8
-    val wgPrimary = ColorPalette.Blue900 // #1565C0
+    val wgPrimary = ColorPalette.Teal100 // #1565C0
 }
 
 /**
@@ -113,5 +113,5 @@ internal object DarkColorToken {
 
     // Brand
     val meAppPrimary = ColorPalette.Teal200 // #00B3A6
-    val wgPrimary = ColorPalette.Blue900 // #1565C0
+    val wgPrimary = ColorPalette.Teal200 // #1565C0
 }
