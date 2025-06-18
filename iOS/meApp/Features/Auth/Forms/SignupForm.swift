@@ -18,8 +18,8 @@ class SignupForm: ObservableForm {
     }()
     var gender = FormControl("", validators: [.required])
     var goalType = FormControl(GoalTypeSegment.losegainValue, validators: [.required])
-    var currentWeight = FormControl("", validators: [.required, .minWeight()])
-    var goalWeight = FormControl("", validators: [.required, .minWeight()])
+    var currentWeight = FormControl("", validators: [.required, .minValue()])
+    var goalWeight = FormControl("", validators: [.required, .minValue()])
     var useMetric = FormControl(false)
     var height = FormControl(Double(700))
     var email = FormControl("", validators: [.required, .email, .maxLength(200)])
@@ -102,12 +102,12 @@ class SignupForm: ObservableForm {
                 return FormErrorMessages.maxLength(maxLength)
             }
         }
-        if control.errors[.minWeight] {
+        if control.errors[.minValue] {
             if control === currentWeight || control === goalWeight {
                 return useMetric.value ? FormErrorMessages.minWeightKg : FormErrorMessages.minWeightLb
             }
         }
-        if control.errors[.maxWeight], let _ = control.errors.value(for: .maxWeight) as? Double {
+        if control.errors[.maxValue], let _ = control.errors.value(for: .maxValue) as? Double {
             if control === currentWeight || control === goalWeight {
                 return useMetric.value ? FormErrorMessages.maxWeightKg : FormErrorMessages.maxWeightLb
             }

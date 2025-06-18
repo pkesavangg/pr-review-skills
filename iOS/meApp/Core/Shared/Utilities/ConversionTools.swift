@@ -91,7 +91,7 @@ final class ConversionTools {
     // MARK: - BMI
     /// Calculates BMI from weight (tenths of lbs) and height (tenths of inches)
     /// Returns 0 if height is zero to avoid division by zero.
-    static func calculateBMI(weight: Int, height: Int) -> Int {
+    static func calculateBMI(weight: Double, height: Int) -> Int {
         guard height != 0 else { return 0 }
         // BMI = (weight / height / height) * 100000
         return Int(round((Double(weight) / Double(height) / Double(height)) * 100000))
