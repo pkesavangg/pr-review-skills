@@ -202,7 +202,6 @@ fun AppChip(
             .height(height)
             .defaultMinSize(minWidth = minWidth)
     val maxLines = 1
-    LocalDensity.current
 
     FilterChip(
         shape = shape,
