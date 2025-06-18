@@ -175,7 +175,7 @@ object DateTimeInputDefaults {
             titleContentColor = colorScheme.textHeading,
             dayContentColor = colorScheme.textBody,
             weekdayContentColor = colorScheme.textBody,
-            disabledDayContentColor = colorScheme.iconDisabled,
+            disabledDayContentColor = colorScheme.iconSecondaryDisabled,
             selectedDayContentColor = colorScheme.inverseAction,
             selectedDayContainerColor = colorScheme.primaryAction,
             todayContentColor = colorScheme.primaryAction,

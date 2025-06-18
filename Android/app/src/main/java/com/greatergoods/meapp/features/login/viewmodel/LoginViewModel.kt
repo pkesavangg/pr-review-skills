@@ -6,11 +6,6 @@ import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
-import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
-import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.common.helper.form.FormGroup
-import com.greatergoods.meapp.features.common.helper.form.FormValidations
-import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
@@ -47,9 +42,7 @@ constructor(
      */
     fun onSubmit() {
         dialogQueueService.showLoader(
-            Loader(
-                message = LoginStrings.LoaderMessage,
-            ),
+            message = LoginStrings.LoaderMessage,
         )
         if (!state.value.form.validate()) {
             dialogQueueService.dismissLoader()
