@@ -16,9 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.features.common.model.Toast
-import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
 
 /**
  * Stateless UI for displaying a toast card.
@@ -30,16 +30,18 @@ import com.greatergoods.meapp.theme.MeAppTheme
 fun ToastCard(
     modifier: Modifier = Modifier,
     toast: Toast,
-    clearToast: () -> Unit = {}
+    clearToast: () -> Unit = {},
 ) {
     Card(
-        modifier = modifier
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp),
+        modifier =
+            modifier
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MeAppTheme.colorScheme.toastBackground,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = colorScheme.toastBackground,
+            ),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -48,7 +50,8 @@ fun ToastCard(
             toast.title?.let {
                 Text(
                     text = it,
-                    style = MeAppTheme.typography.heading5,
+                    style = MeTheme.typography.heading5,
+                    color = colorScheme.textBody,
                 )
             }
             Row(
@@ -58,25 +61,24 @@ fun ToastCard(
             ) {
                 Text(
                     text = toast.message,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 14.sp,
-                    style = MeAppTheme.typography.body2,
+                    style = MeTheme.typography.body2,
+                    color = colorScheme.textBody,
                 )
             }
             toast.action?.let {
                 Text(
                     text = it.text.uppercase(),
-                    style = MeAppTheme.typography.button2,
+                    style = MeTheme.typography.button2,
                     fontWeight = FontWeight.Bold,
-                    color = MeAppTheme.colorScheme.primaryAction,
-                    modifier = Modifier
-                        .padding(vertical = 6.dp, horizontal = 2.dp)
-                        .clickable {
-                            it.action()
-                            clearToast()
-                        },
+                    color = colorScheme.primaryAction,
+                    modifier =
+                        Modifier
+                            .padding(vertical = 6.dp, horizontal = 2.dp)
+                            .clickable {
+                                it.action()
+                                clearToast()
+                            },
                 )
-
             }
         }
     }

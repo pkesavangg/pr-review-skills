@@ -47,6 +47,30 @@ class AppEventService : IAppEventService {
         )
     }
 
+    override suspend fun replaceStack(
+        route: AppRoute,
+        topLevel: AppRoute?,
+    ) {
+        emitNavigationIntent(
+            NavigationIntent.ReplaceStack(
+                listOf(route),
+                topLevel,
+            ),
+        )
+    }
+
+    override suspend fun replaceStack(
+        route: List<AppRoute>,
+        topLevel: AppRoute?,
+    ) {
+        emitNavigationIntent(
+            NavigationIntent.ReplaceStack(
+                route,
+                topLevel,
+            ),
+        )
+    }
+
     override suspend fun login() {
         emitNavigationIntent(
             NavigationIntent.Login,

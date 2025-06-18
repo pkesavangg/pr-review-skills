@@ -125,12 +125,19 @@ val AppTypography =
             ),
         body4 =
             TextStyle(
-                fontSize = 12.sp,
-                lineHeight = 20.sp,
                 fontFamily = OpenSansFontFamily,
                 fontWeight = FontWeight.Normal,
+                fontSize = 12.sp,
+                lineHeight = 20.sp,
                 letterSpacing = 0.sp,
             ),
+        body5 = TextStyle(
+            fontFamily = OpenSansFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 10.sp,
+            lineHeight = 16.sp,
+            letterSpacing = 0.sp,
+        ),
         // Link
         link1 =
             TextStyle(

@@ -118,6 +118,11 @@ struct AlertStrings {
 struct LoaderStrings {
     static let creatingAccount = "Creating account..."
     static let savingEntry = "Saving entry..."
+    static let loggingAccount = "Logging in..."
+}
+
+struct URLStrings {
+    static let baseUrl =  "https://greatergoods.com/"
 }
 
 /// Constants for legal text used in the app
