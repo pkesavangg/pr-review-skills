@@ -11,14 +11,15 @@ struct LandingScreen: View {
     @Environment(\.appTheme) var theme
     @EnvironmentObject var themeManager: Theme
     @Environment(\.colorScheme) private var colorScheme
-    @EnvironmentObject var router: Router<AuthRoute>
+    @StateObject private var router = Router<AuthRoute>()
     let lang = LandingScreenStrings.self
     let commonLang = CommonStrings.self
     
   var body: some View {
-      ZStack {
-          theme.actionPrimary
-              .ignoresSafeArea()
+      RoutingView(stack: $router.stack) {
+          ZStack {
+              theme.actionPrimary
+                  .ignoresSafeArea()
 
           VStack(alignment: .center) {
               
@@ -56,8 +57,10 @@ struct LandingScreen: View {
               Spacer()
                   .frame(minHeight: .spacing6XL)
 
-              VersionAndCopyrightView()
+                  VersionAndCopyrightView()
+              }
           }
       }
+      .environmentObject(router)
     }
 }

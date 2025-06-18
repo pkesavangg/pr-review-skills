@@ -1,0 +1,54 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Code Review & Refactor Best Practices (MeApp Android)
+
+## 1. Analyze the Existing Code
+- Carefully review the current implementation for architecture, logic, and design patterns.
+- Identify code smells, anti-patterns, or deviations from Android best practices.
+- Check for maintainability, readability, and separation of concerns.
+
+## 2. Simplify and Optimize
+- Refactor code to improve clarity, reduce complexity, and eliminate redundancy.
+- Extract logic into helper functions or classes where appropriate.
+- Prefer composition over inheritance.
+- Remove unnecessary nesting and inline complex initializations into private helpers.
+- Ensure code is DRY (Don't Repeat Yourself) and SOLID.
+
+## 3. Scalability & Performance
+- Ensure the codebase is modular and easy to extend.
+- Use efficient data structures and algorithms.
+- Avoid unnecessary recompositions or allocations in Compose.
+- Minimize memory and CPU usage, especially in UI and background operations.
+
+## 4. Strict Android & Jetpack Compose Standards
+- Follow the latest Android and Jetpack Compose best practices.
+- Use dependency injection (Hilt/Dagger) for all dependencies.
+- No business logic in UI composables.
+- All strings, dimensions, and colors must be externalized (no hardcoding).
+- Use the app's design system for all UI elements.
+- Add KDoc for all public classes, functions, and properties.
+- Ensure accessibility (content descriptions, etc.).
+- Use previews for all composables.
+- Use proper state management (ViewModel, StateFlow, etc.).
+- Use only one main composable per file (with previews).
+
+## 5. Testing and Validation
+- Add or update unit tests and UI tests as needed.
+- Ensure all code paths are covered and edge cases are handled.
+
+## 6. Build and Fix Until Clean
+- After all changes, **run a full build of the Android application**.
+- If any errors or warnings are present, fix them immediately.
+- Repeat the build and fix process until the codebase is clean and the app runs without issues.
+
+---
+
+**Summary:**
+> For every feature or refactor: 1. Analyze → 2. Simplify/Optimize → 3. Ensure Scalability/Performance → 4. Enforce Android/Compose Standards → 5. Test → 6. Build and Fix Until Clean.
+
+---
+
+This rule must be followed for all future code changes and reviews.

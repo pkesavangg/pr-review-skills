@@ -13,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.typography
 
 @Composable
 fun AppHeightInput(
@@ -28,9 +31,14 @@ fun AppHeightInput(
     var isModalTriggered by remember { mutableStateOf(false) }
     val localState = remember { mutableStateOf(value ?: HeightInput.FtIn(0, 0)) }
     val currentValue = formControl?.value ?: value ?: localState.value
-    val isError = formControl?.error?.isNullOrBlank()?.not() == true
+    val isError = formControl?.isError ?: false
 
-    AppChip(currentValue.getString(), selected = isModalTriggered, enabled = enabled && !readOnly, modifier = modifier) {
+    AppChip(
+        currentValue.getString(),
+        selected = isModalTriggered,
+        enabled = enabled && !readOnly,
+        modifier = modifier,
+    ) {
         if (enabled && !readOnly) {
             isModalTriggered = true
         }
@@ -56,16 +64,17 @@ fun AppHeightInput(
     }
     // Optionally show error/supporting text below
     if (formControl != null && isError) {
+        val errorMessage = formControl.error?.message ?: ""
         Text(
-            formControl.error ?: "",
-            color = MeAppTheme.colorScheme.error,
-            style = MeAppTheme.typography.body3,
+            errorMessage,
+            color = colorScheme.textError,
+            style = typography.body3,
         )
     } else if (supportingText != null) {
         Text(
             supportingText,
-            color = MeAppTheme.colorScheme.subheading,
-            style = MeAppTheme.typography.body3,
+            color = MeTheme.colorScheme.textSubheading,
+            style = MeTheme.typography.body3,
         )
     }
 }
@@ -76,7 +85,8 @@ fun AppHeightInputPreview() {
     MeAppTheme {
         Column(Modifier.fillMaxSize()) {
             val fakeScope = rememberCoroutineScope()
-            val heightControl = remember { FormControl<HeightInput>(HeightInput.FtIn(5, 1), emptyList(), emptyList(), fakeScope) }
+            val heightControl =
+                remember { FormControl.create<HeightInput>(HeightInput.FtIn(5, 1), emptyList(), ) }
             AppHeightInput(formControl = heightControl)
             AppHeightInput(value = HeightInput.FtIn(5, 7), onValueChange = {})
         }

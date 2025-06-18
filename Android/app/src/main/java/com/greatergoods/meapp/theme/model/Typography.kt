@@ -20,7 +20,8 @@ import androidx.compose.ui.text.TextStyle
  * @property body1 Main body text style, used for primary content.
  * @property body2 Secondary body text style, used for secondary content.
  * @property body3 Tertiary body text style, used for less prominent content.
- * @property body4
+ * @property body4 Fourth body text style, used for less prominent content.
+ * @property body5 Fifth body text style, used for less prominent content.
  * @property link1 Primary link style, used for main interactive text links.
  * @property link2 Secondary link style, used for less prominent links.
  * @property button1 Primary button text style.
@@ -39,7 +40,8 @@ data class Typography(
     val body1: TextStyle, // Main body text
     val body2: TextStyle, // Secondary body text
     val body3: TextStyle, // Tertiary body text
-    val body4: TextStyle,
+    val body4: TextStyle, // Fourth body text
+    val body5: TextStyle, // Fifth body text
     val link1: TextStyle, // Primary link
     val link2: TextStyle, // Secondary link
     val button1: TextStyle, // Primary button

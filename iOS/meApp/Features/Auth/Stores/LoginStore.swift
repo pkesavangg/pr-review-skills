@@ -208,7 +208,7 @@ final class LoginStore: ObservableObject {
             showResetPrompt = false
             notificationService.showToast(
                 ToastModel(
-                    title: toastLang.passwordResetSuccessTitle,
+                    title: toastLang.success,
                     message: toastLang.passwordResetSuccessMessage(trimmedEmail)
                 )
             )

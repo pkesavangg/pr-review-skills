@@ -22,7 +22,7 @@ import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
-import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
@@ -66,28 +66,29 @@ fun GraphView(
     placeHolder: String? = null,
     selectedData: List<GraphPoint>? = null,
     labelContent: (@Composable () -> Unit)? = null,
-    onSelected: (List<GraphPoint>) -> Unit
+    onSelected: (List<GraphPoint>) -> Unit,
 ) {
     if (graphLines.isEmpty() || graphLines.all { it.points.isEmpty() }) {
         Box(
-            modifier = modifier
-                .fillMaxSize(),
+            modifier =
+                modifier
+                    .fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = placeHolder ?: "No data",
                 modifier = Modifier.padding(16.dp),
-                color = MeAppTheme.colorScheme.body,
-                style = MeAppTheme.typography.heading5,
+                color = MeTheme.colorScheme.textBody,
+                style = MeTheme.typography.heading5,
             )
         }
         return
     }
 
-    val xLabels = remember(graphLines) {
-        graphLines.first().points.map { it.x }
-
-    }
+    val xLabels =
+        remember(graphLines) {
+            graphLines.first().points.map { it.x }
+        }
     val ySeries =
         remember(graphLines) {
             graphLines.map { graphLine ->
@@ -97,68 +98,77 @@ fun GraphView(
             }
         }
 
-    val max = remember(ySeries) {
-        ySeries.flatten().maxOfOrNull { it.value.toDouble() }
-    }
+    val max =
+        remember(ySeries) {
+            ySeries.flatten().maxOfOrNull { it.value.toDouble() }
+        }
 
     val xStep = GraphUtil.rememberXStep(segment)
     Log.i("CHECKING", segment.toString())
 
-    val scrollState = rememberVicoScrollState(
-        scrollEnabled = true,
-        initialScroll = Scroll.Absolute.End,
-    )
+    val scrollState =
+        rememberVicoScrollState(
+            scrollEnabled = true,
+            initialScroll = Scroll.Absolute.End,
+        )
     var markerIndex by remember(xLabels) { mutableIntStateOf(xLabels.lastIndex) }
     var isUpdating by remember { mutableStateOf(false) }
 
     val modelProducer = remember { CartesianChartModelProducer() }
-    val valueFormatter = object : DefaultCartesianMarker.ValueFormatter {
-        override fun format(
-            context: CartesianDrawingContext,
-            targets: List<CartesianMarker.Target>
-        ) =
-            xLabels[markerIndex].label
-    }
+    val valueFormatter =
+        object : DefaultCartesianMarker.ValueFormatter {
+            override fun format(
+                context: CartesianDrawingContext,
+                targets: List<CartesianMarker.Target>,
+            ) = xLabels[markerIndex].label
+        }
 
-    val markerListener = remember(graphLines) {
-        object : CartesianMarkerVisibilityListener {
-            override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-                isUpdating = true
-                markerIndex = xLabels.indexOfFirst { it.value == targets.first().x.toLong() }
-                val selectedPoints = graphLines.mapNotNull {
-                    val point = it.points.getOrNull(targets.first().x.toInt())
-                    point
+    val markerListener =
+        remember(graphLines) {
+            object : CartesianMarkerVisibilityListener {
+                override fun onShown(
+                    marker: CartesianMarker,
+                    targets: List<CartesianMarker.Target>,
+                ) {
+                    isUpdating = true
+                    markerIndex = xLabels.indexOfFirst { it.value == targets.first().x.toLong() }
+                    val selectedPoints =
+                        graphLines.mapNotNull {
+                            val point = it.points.getOrNull(targets.first().x.toInt())
+                            point
+                        }
+                    onSelected(
+                        selectedPoints,
+                    )
                 }
-                onSelected(
-                    selectedPoints,
-                )
-            }
 
-            override fun onHidden(marker: CartesianMarker) {
-                isUpdating = false
-            }
+                override fun onHidden(marker: CartesianMarker) {
+                    isUpdating = false
+                }
 
-            override fun onUpdated(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-                onShown(marker, targets)
+                override fun onUpdated(
+                    marker: CartesianMarker,
+                    targets: List<CartesianMarker.Target>,
+                ) {
+                    onShown(marker, targets)
+                }
             }
         }
-    }
     // Update chart on graphPoints change
     LaunchedEffect(graphLines) {
-
         isUpdating = true
         markerIndex = xLabels.lastIndex
         isUpdating = false
 
         withContext(Dispatchers.IO) {
             modelProducer.runTransaction {
-
                 lineSeries {
                     ySeries.forEach { y ->
                         series(
-                            x = xLabels.map { label ->
-                                label.value
-                            },
+                            x =
+                                xLabels.map { label ->
+                                    label.value
+                                },
                             y.map { label ->
                                 label.value
                             },
@@ -166,79 +176,93 @@ fun GraphView(
                     }
                 }
                 extras { extraStore ->
-                    extraStore[LegendLabelKey] = ySeries.flatMap { y ->
-                        y.map { label ->
-                            label.value.toDouble()
+                    extraStore[LegendLabelKey] =
+                        ySeries.flatMap { y ->
+                            y.map { label ->
+                                label.value.toDouble()
+                            }
                         }
-                    }
                 }
             }
-
         }
     }
 
-    val primaryLayer = rememberLineCartesianLayer(
-        lineProvider = LineCartesianLayer.LineProvider.series(
-            listOf(Color(0xFF1565C0)).map {
-                LineCartesianLayer.rememberLine(
-                    fill = LineCartesianLayer.LineFill.single(fill(it)),
-                    stroke = LineCartesianLayer.LineStroke.continuous(
-                        thickness = 3.dp,
-                    ),
-                    pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
-                    pointProvider = LineCartesianLayer.PointProvider.single(
-                        point = LineCartesianLayer.Point(
-                            rememberShapeComponent(
-                                fill(it),
-                                CorneredShape.Pill,
-                                strokeThickness = 2.dp,
-                            ),
+    val primaryLayer =
+        rememberLineCartesianLayer(
+            lineProvider =
+                LineCartesianLayer.LineProvider.series(
+                    listOf(Color(0xFF1565C0)).map {
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(fill(it)),
+                            stroke =
+                                LineCartesianLayer.LineStroke.continuous(
+                                    thickness = 3.dp,
+                                ),
+                            pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
+                            pointProvider =
+                                LineCartesianLayer.PointProvider.single(
+                                    point =
+                                        LineCartesianLayer.Point(
+                                            rememberShapeComponent(
+                                                fill(it),
+                                                CorneredShape.Pill,
+                                                strokeThickness = 2.dp,
+                                            ),
+                                        ),
+                                ),
+                        )
+                    },
+                ),
+            pointSpacing = GraphUtil.rememberPointSpacing(segment, 20.dp),
+        )
+
+    val layeredMarker =
+        rememberMarker(
+            valueFormatter = valueFormatter,
+            decorations = listOf(rememberHorizontalLine(LegendLabelKey, markerIndex)),
+        )
+
+    val chart =
+        rememberCartesianChart(
+            primaryLayer,
+            endAxis =
+                VerticalAxis.rememberEnd(
+                    valueFormatter =
+                        CartesianValueFormatter { _, value, _ ->
+                            if (value.toInt() != 0) value.roundToInt().toString() else " "
+                        },
+                    itemPlacer =
+                        VerticalAxis.ItemPlacer.step(
+                            step = {
+                                max?.let {
+                                    it / 5
+                                }
+                            },
                         ),
-                    ),
-                )
-            },
-        ),
-        pointSpacing = GraphUtil.rememberPointSpacing(segment, 20.dp),
-    )
-
-    val layeredMarker = rememberMarker(
-        valueFormatter = valueFormatter,
-        decorations = listOf(rememberHorizontalLine(LegendLabelKey, markerIndex)),
-    )
-
-    val chart = rememberCartesianChart(
-        primaryLayer,
-        endAxis = VerticalAxis.rememberEnd(
-            valueFormatter = CartesianValueFormatter { _, value, _ ->
-                if (value.toInt() != 0) value.roundToInt().toString() else " "
-            },
-            itemPlacer = VerticalAxis.ItemPlacer.step(
-                step = {
-                    max?.let {
-                        it / 5
-                    }
+                    size = BaseAxis.Size.fixed(20.dp),
+                    line = null,
+                    guideline = rememberAxisGuidelineComponent(),
+                    label = rememberTextComponent(color = Color(0xFF7B726E)),
+                    verticalLabelPosition = Position.Vertical.Top,
+                    tickLength = 0.dp,
+                ),
+            bottomAxis =
+                HorizontalAxis.rememberBottom(
+                    guideline = null,
+                    tickLength = 0.dp,
+                    label = null,
+                    line = rememberAxisGuidelineComponent(),
+                ),
+            marker = layeredMarker,
+            markerVisibilityListener = markerListener,
+            persistentMarkers =
+                if (!isUpdating) {
+                    { layeredMarker at xLabels[markerIndex].value }
+                } else {
+                    null
                 },
-            ),
-            size = BaseAxis.Size.fixed(20.dp),
-            line = null,
-            guideline = rememberAxisGuidelineComponent(),
-            label = rememberTextComponent(color = Color(0xFF7B726E)),
-            verticalLabelPosition = Position.Vertical.Top,
-            tickLength = 0.dp,
-        ),
-        bottomAxis = HorizontalAxis.rememberBottom(
-            guideline = null,
-            tickLength = 0.dp,
-            label = null,
-            line = rememberAxisGuidelineComponent(),
-        ),
-        marker = layeredMarker,
-        markerVisibilityListener = markerListener,
-        persistentMarkers = if (!isUpdating) {
-            { layeredMarker at xLabels[markerIndex].value }
-        } else null,
-        getXStep = { xStep },
-    )
+            getXStep = { xStep },
+        )
 
     Column(
         modifier = modifier,
@@ -248,8 +272,9 @@ fun GraphView(
         CartesianChartHost(
             chart = chart,
             modelProducer = modelProducer,
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize(),
             animationSpec = tween(1000),
             scrollState = scrollState,
         )

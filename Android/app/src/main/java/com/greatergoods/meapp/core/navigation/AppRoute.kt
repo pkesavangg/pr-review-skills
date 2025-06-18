@@ -12,7 +12,7 @@ sealed class AppRoute : NavKey {
      * Initial navigation routes (e.g., splash, onboarding).
      */
     @Serializable
-    sealed class Init : AppRoute() {
+    sealed class Init : AppRoute(), PublicRoute {
         @Serializable
         data object Loading : Init()
     }
@@ -49,6 +49,9 @@ sealed class AppRoute : NavKey {
      */
     @Serializable
     sealed class Auth : AppRoute(), PublicRoute {
+
+        @Serializable
+        data object Landing : Auth()
 
         @Serializable
         data object Login : Auth()

@@ -14,7 +14,8 @@ object AppIcons {
         val Graph = R.drawable.ic_graph
         val History = R.drawable.ic_history
         val Settings = R.drawable.ic_settings
-        val Palceholder = R.drawable.me_placeholder
+        val Placeholder = R.drawable.me_placeholder
+        val Stamp = R.drawable.gg_stamp
     }
 
     object Outlined {

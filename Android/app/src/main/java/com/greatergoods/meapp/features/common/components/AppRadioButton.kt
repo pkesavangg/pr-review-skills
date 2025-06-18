@@ -13,9 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
-import com.greatergoods.meapp.theme.MeAppTheme.spacing
-import com.greatergoods.meapp.theme.MeAppTheme.typography
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
+import com.greatergoods.meapp.theme.MeTheme.typography
 
 /**
  * A theme-aware radio button composable using Material3 RadioButton and MeAppTheme tokens.
@@ -39,8 +40,8 @@ fun AppRadioButton(
         RadioButtonDefaults.colors(
             selectedColor = colorScheme.primaryAction,
             unselectedColor = colorScheme.utility,
-            disabledSelectedColor = colorScheme.secondaryDisabled,
-            disabledUnselectedColor = colorScheme.secondaryDisabled,
+            disabledSelectedColor = colorScheme.secondaryActionDisabled,
+            disabledUnselectedColor = colorScheme.secondaryActionDisabled,
         )
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -59,8 +60,8 @@ fun AppRadioButton(
                 style = typography.body2,
                 color =
                     when {
-                        !enabled -> colorScheme.secondaryDisabled
-                        else -> colorScheme.body
+                        !enabled -> colorScheme.secondaryActionDisabled
+                        else -> colorScheme.textBody
                     },
             )
         }
@@ -74,7 +75,7 @@ fun AppRadioButton(
 @Composable
 fun AppRadioButtonPreview() {
     MeAppTheme {
-        Column(verticalArrangement = Arrangement.spacedBy(MeAppTheme.spacing.md)) {
+        Column(verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.md)) {
             AppRadioButton(selected = true, enabled = true, label = "Selected")
             AppRadioButton(selected = false, enabled = true, label = "Unselected")
             AppRadioButton(selected = true, enabled = false, label = "Selected Disabled")

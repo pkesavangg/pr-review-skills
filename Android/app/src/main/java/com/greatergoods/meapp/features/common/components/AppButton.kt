@@ -23,6 +23,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 // Button style types
 enum class ButtonType {
@@ -59,11 +60,11 @@ object AppButtonDefaults {
         enabled: Boolean,
     ): Color =
         when (type) {
-            ButtonType.PrimaryFilled, ButtonType.PrimaryOutlined ->
-                if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
+            ButtonType.PrimaryFilled ->
+                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
 
-            ButtonType.SecondaryFilled, ButtonType.SecondaryOutlined ->
-                if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
+            ButtonType.SecondaryFilled ->
+                if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
 
             else -> Color.Transparent
         }
@@ -77,14 +78,14 @@ object AppButtonDefaults {
         enabled: Boolean,
     ): Color =
         when (type) {
-            ButtonType.PrimaryFilled, ButtonType.PrimaryOutlined, ButtonType.TextSecondary, ButtonType.InlineTextSecondary ->
-                if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled
+            ButtonType.PrimaryFilled, ButtonType.SecondaryOutlined, ButtonType.TextSecondary, ButtonType.InlineTextSecondary ->
+                if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
 
-            ButtonType.SecondaryFilled, ButtonType.SecondaryOutlined, ButtonType.TextPrimary, ButtonType.InlineTextPrimary ->
-                if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled
+            ButtonType.SecondaryFilled, ButtonType.PrimaryOutlined, ButtonType.TextPrimary, ButtonType.InlineTextPrimary ->
+                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
 
             ButtonType.TextTertiary, ButtonType.InlineTextTertiary ->
-                if (enabled) MeAppTheme.colorScheme.tertiaryAction else MeAppTheme.colorScheme.tertiaryDisabled
+                if (enabled) MeTheme.colorScheme.tertiaryAction else MeTheme.colorScheme.tertiaryActionDisabled
         }
 
     /**
@@ -99,13 +100,13 @@ object AppButtonDefaults {
             ButtonType.PrimaryOutlined ->
                 BorderStroke(
                     1.dp,
-                    if (enabled) MeAppTheme.colorScheme.inverse else MeAppTheme.colorScheme.inverseDisabled,
+                    if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled,
                 )
 
             ButtonType.SecondaryOutlined ->
                 BorderStroke(
                     1.dp,
-                    if (enabled) MeAppTheme.colorScheme.primaryAction else MeAppTheme.colorScheme.primaryDisabled,
+                    if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled,
                 )
 
             else -> null
@@ -115,8 +116,8 @@ object AppButtonDefaults {
     fun height(size: ButtonSize): Dp =
         when (size) {
             ButtonSize.Small -> 30.dp
-            ButtonSize.Medium -> 40.dp
-            ButtonSize.Large -> 48.dp
+            ButtonSize.Medium -> 45.dp
+            ButtonSize.Large -> 40.dp
         }
 
     // Horizontal padding by size
@@ -129,9 +130,9 @@ object AppButtonDefaults {
             return 0.dp
         }
         return when (size) {
-            ButtonSize.Small -> MeAppTheme.spacing.sm
-            ButtonSize.Medium -> MeAppTheme.spacing.lg
-            ButtonSize.Large -> 48.dp
+            ButtonSize.Small -> MeTheme.spacing.sm
+            ButtonSize.Medium -> MeTheme.spacing.md
+            ButtonSize.Large -> MeTheme.spacing.lg
         }
     }
 
@@ -139,16 +140,16 @@ object AppButtonDefaults {
     fun minWidth(size: ButtonSize): Dp =
         when (size) {
             ButtonSize.Small -> 75.dp
-            ButtonSize.Medium -> 150.dp
-            ButtonSize.Large -> 200.dp
+            ButtonSize.Medium -> 130.dp
+            ButtonSize.Large -> 160.dp
         }
 
     // Text style by size
     @Composable
     fun textStyle(size: ButtonSize): TextStyle =
         when (size) {
-            ButtonSize.Large, ButtonSize.Medium -> MeAppTheme.typography.button1
-            ButtonSize.Small -> MeAppTheme.typography.button2
+            ButtonSize.Large, ButtonSize.Medium -> MeTheme.typography.button1
+            ButtonSize.Small -> MeTheme.typography.button2
         }
 
     // Applies text transformation
@@ -197,7 +198,9 @@ fun AppButton(
     val vPadding = 0.dp
     val maxLines = 1
 
-    val buttonModifier = modifier.height(height).defaultMinSize(minWidth = minWidth)
+    val buttonModifier = modifier
+        .height(height)
+        .defaultMinSize(minWidth = minWidth)
     val buttonColors =
         ButtonDefaults.buttonColors(
             containerColor = backgroundColor,
