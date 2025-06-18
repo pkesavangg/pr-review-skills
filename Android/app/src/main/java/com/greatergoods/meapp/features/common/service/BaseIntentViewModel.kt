@@ -13,7 +13,7 @@ abstract class BaseIntentViewModel<State : IReducer.State, Intent : IReducer.Int
     private val reducer: IReducer<State, Intent>
 ) : BaseViewModel() {
 
-    private val _state: MutableStateFlow<State> = MutableStateFlow(provideInitialState())
+    protected val _state: MutableStateFlow<State> = MutableStateFlow(provideInitialState())
     val state: StateFlow<State>
         get() = _state.asStateFlow()
 

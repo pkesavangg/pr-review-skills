@@ -1,6 +1,7 @@
 package com.greatergoods.meapp
 
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_UNSPECIFIED
@@ -26,6 +27,7 @@ import android.app.UiModeManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 
 /**
  * Main entry point for the MeApp application.
@@ -50,6 +52,7 @@ class MainActivity : AppCompatActivity() {
         initializeSplashScreen()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        enableEdgeToEdge()
         setContent {
             MeApp()
         }

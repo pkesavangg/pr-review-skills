@@ -126,6 +126,28 @@ sealed class DateTimeValue {
 
             else -> ""
         }
+
+    /**
+     * Returns the timestamp in milliseconds for the value.
+     */
+    fun getTimestamp(): Long =
+        when (this) {
+            is Date -> millis
+            is Time -> Calendar.getInstance().apply {
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+            }.timeInMillis
+
+            is DateTime -> Calendar.getInstance().apply {
+                timeInMillis = millis
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+            }.timeInMillis
+        }
 }
 
 /**
@@ -153,6 +175,7 @@ object DateTimeInputDefaults {
             titleContentColor = colorScheme.textHeading,
             dayContentColor = colorScheme.textBody,
             weekdayContentColor = colorScheme.textBody,
+            disabledDayContentColor = colorScheme.iconDisabled,
             selectedDayContentColor = colorScheme.inverseAction,
             selectedDayContainerColor = colorScheme.primaryAction,
             todayContentColor = colorScheme.primaryAction,

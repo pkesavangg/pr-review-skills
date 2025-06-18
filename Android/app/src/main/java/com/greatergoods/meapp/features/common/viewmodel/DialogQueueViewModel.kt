@@ -106,11 +106,9 @@ class DialogQueueViewModel @Inject constructor(
         loaderConfig: LoaderConfig = LoaderDefaults.defaultFor(loaderStyle)
     ) {
         dialogQueueService.showLoader(
-            Loader(
-                message = message,
-                style = loaderStyle,
-                config = loaderConfig,
-            ),
+            message = message,
+            style = loaderStyle,
+            config = loaderConfig,
         )
     }
 

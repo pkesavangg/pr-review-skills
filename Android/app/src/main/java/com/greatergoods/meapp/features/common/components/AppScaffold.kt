@@ -2,13 +2,9 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +44,7 @@ fun AppScaffold(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 containerColor = containerColor,
+                modifier = Modifier.systemBarsPadding(),
             )
         },
         containerColor = containerColor,
@@ -55,7 +52,7 @@ fun AppScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
+                .padding(innerPadding)
                 .background(contentColor),
         ) {
             content(Modifier)

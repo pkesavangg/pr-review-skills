@@ -86,13 +86,16 @@ data class EntryFormControls(
 
 data class EntryState(
     val form: FormGroup<EntryFormControls>,
+    val weightMode: String = "lbs",
     val isLoading: Boolean = false,
 ) : IReducer.State
 
 /**
  * Intent for entry actions, such as loading, selecting, adding, and deleting entries.
  */
-sealed interface EntryIntent : IReducer.Intent
+sealed interface EntryIntent : IReducer.Intent {
+    data object Save : EntryIntent
+}
 
 /**
  * Reducer for the entry state, handling intents to update months, entries, and errors.

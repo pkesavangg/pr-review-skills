@@ -14,6 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppInput
@@ -27,6 +28,8 @@ import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.entry.components.ExpandableMetricsCard
 import com.greatergoods.meapp.features.entry.strings.EntryScreenStrings
+import com.greatergoods.meapp.features.entry.viewmodel.EntryIntent
+import com.greatergoods.meapp.features.entry.viewmodel.EntryState
 import com.greatergoods.meapp.features.entry.viewmodel.EntryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -36,6 +39,12 @@ fun EntryScreen(
 ) {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
+    EntryScreenContent(state, viewModel::handleIntent)
+}
+
+@Composable
+private fun EntryScreenContent(state: EntryState, handleIntent: (EntryIntent) -> Unit) {
+    val keyBoardController = LocalSoftwareKeyboardController.current
     val controls = state.form.controls
     val scrollState = rememberScrollState()
     AppScaffold(EntryScreenStrings.Title) {
@@ -48,7 +57,7 @@ fun EntryScreen(
         ) {
             AppInput(
                 formControl = controls.weightDateTime.weight,
-                label = EntryScreenStrings.WEIGHT_LABEL,
+                label = EntryScreenStrings.WEIGHT_LABEL.plus(state.weightMode),
                 type = AppInputType.NUMBER,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -72,7 +81,10 @@ fun EntryScreen(
                     label = EntryScreenStrings.SaveButton,
                     size = ButtonSize.Large,
                     type = ButtonType.PrimaryFilled,
-                    onClick = { /* TODO: Implement save logic */ },
+                    onClick = {
+                        keyBoardController?.hide()
+                        handleIntent(EntryIntent.Save)
+                    },
                 )
             }
             Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))

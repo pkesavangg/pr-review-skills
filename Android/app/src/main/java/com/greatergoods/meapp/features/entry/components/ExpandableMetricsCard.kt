@@ -56,12 +56,12 @@ fun ExpandableMetricsCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = MeTheme.typography.heading4)
+                Text(title, style = MeTheme.typography.heading4, color = MeTheme.colorScheme.textHeading)
                 if (subheading != null) {
                     Text(
                         subheading,
                         style = MeTheme.typography.subHeading1,
-                        color = MeTheme.colorScheme.textSubheading
+                        color = MeTheme.colorScheme.textSubheading,
                     )
                 }
             }
