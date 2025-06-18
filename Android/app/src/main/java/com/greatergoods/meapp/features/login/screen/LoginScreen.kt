@@ -39,6 +39,9 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import com.greatergoods.meapp.theme.MeTheme.typography
 
+/**
+ * Login screen composable. Displays the login form, handles user input, and shows loading/error states.
+ */
 @Composable
 fun LoginScreen() {
     val viewModel: LoginViewModel = hiltViewModel()
@@ -92,7 +95,7 @@ fun LoginScreen() {
                 Spacer(Modifier.height(spacing.xs))
                 AppButton(
                     label = LoginStrings.LoginButton,
-                    enabled = viewModel.isFormValid,
+                    enabled = viewModel.isFormValid && !state.isLoading,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                     onClick = { viewModel.onSubmit() },
                 )
