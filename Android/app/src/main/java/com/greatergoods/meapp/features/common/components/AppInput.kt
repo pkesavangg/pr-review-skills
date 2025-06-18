@@ -62,7 +62,9 @@ object AppInputDefaults {
         when (type) {
             AppInputType.PASSWORD -> PasswordVisualTransformation()
 
-            AppInputType.WEIGHT, AppInputType.BODY_COMP_DECIMAL -> DecimalInputVisualTransformation(decimalDigits = 1)
+            AppInputType.WEIGHT, AppInputType.BODY_COMP_DECIMAL -> DecimalInputVisualTransformation(
+                decimalDigits = 1
+            )
 
             else -> VisualTransformation.None // Default case for other AppInputTypes
         }
@@ -72,7 +74,7 @@ object AppInputDefaults {
             AppInputType.TEXT -> KeyboardType.Text
             AppInputType.EMAIL -> KeyboardType.Email
             AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL,
-            -> KeyboardType.Number
+                -> KeyboardType.Number
 
             AppInputType.PASSWORD -> KeyboardType.Password
             else -> KeyboardType.Unspecified
@@ -107,7 +109,9 @@ object AppInputDefaults {
         value: T?,
     ): String =
         when (type) {
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP -> value?.toString() ?: ""
+            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP -> value?.toString()
+                ?: ""
+
             else -> value?.toString() ?: ""
         }
 
@@ -130,21 +134,25 @@ class InputFocusManager {
         focusRequesters.add(requester)
         return focusRequesters.lastIndex
     }
+
     fun unregister(requester: FocusRequester) {
         focusRequesters.remove(requester)
     }
+
     fun focusNext(current: FocusRequester) {
         val idx = focusRequesters.indexOf(current)
         if (idx >= 0 && idx < focusRequesters.lastIndex) {
             focusRequesters[idx + 1].requestFocus()
         }
     }
+
     fun focusPrevious(current: FocusRequester) {
         val idx = focusRequesters.indexOf(current)
         if (idx > 0) {
             focusRequesters[idx - 1].requestFocus()
         }
     }
+
     fun clearAllFocus() {
         focusRequesters.forEach { it.freeFocus() }
     }
@@ -230,10 +238,10 @@ fun <T> InputFieldBase(
     val showPasswordToggle = isPassword && showTrailingIcon
     val showClearButton =
         formControl?.value?.toString()?.isNotEmpty() == true &&
-            !isPassword &&
-            enabled &&
-            !readOnly &&
-            showTrailingIcon
+                !isPassword &&
+                enabled &&
+                !readOnly &&
+                showTrailingIcon
 
     val inputTextColor =
         when {
@@ -248,7 +256,8 @@ fun <T> InputFieldBase(
             onValueChange(newValue as T?)
         } else {
             val filtered = AppInputDefaults.filterValue(inputType, newValue)
-            val convertedValue = AppInputDefaults.stringToValue(inputType, filtered, formControl) as T?
+            val convertedValue =
+                AppInputDefaults.stringToValue(inputType, filtered, formControl) as T?
             if (convertedValue != null) {
                 formControl?.onValueChange(convertedValue)
             }
@@ -269,8 +278,10 @@ fun <T> InputFieldBase(
         when {
             showPasswordToggle -> {
                 @Composable {
-                    val iconResId = if (passwordVisible) AppIcons.Default.EyeClosed else AppIcons.Default.EyeOpened
-                    val contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                    val iconResId =
+                        if (passwordVisible) AppIcons.Default.EyeClosed else AppIcons.Default.EyeOpened
+                    val contentDescription =
+                        if (passwordVisible) "Hide password" else "Show password"
                     AppIcon(
                         id = iconResId,
                         contentDescription = contentDescription,
@@ -317,7 +328,7 @@ fun <T> InputFieldBase(
                     currentOnFocus?.invoke()
                     isFocused = true
                 }
-            }.padding(horizontal = spacing.xs),
+            },
         label = {
             label?.let {
                 Text(
@@ -393,7 +404,7 @@ fun <T> InputFieldBase(
             when {
                 isError ->
                     Text(
-                        errorMessage,
+                        errorMessage.lowercase(),
                         color = colorScheme.textError,
                         style = typography.body3,
                     )
@@ -423,10 +434,18 @@ fun AppInputPreview() {
         val normal = remember { FormControl.create("Input", emptyList()) }
         val disabled = remember { FormControl.create("", emptyList()) }
         val focused = remember { FormControl.create("", emptyList()) }
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(16.dp)
+        ) {
             AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
             AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
-            AppInput(formControl = disabled, label = "Disabled Input", type = AppInputType.TEXT, enabled = false)
+            AppInput(
+                formControl = disabled,
+                label = "Disabled Input",
+                type = AppInputType.TEXT,
+                enabled = false
+            )
         }
     }
 }

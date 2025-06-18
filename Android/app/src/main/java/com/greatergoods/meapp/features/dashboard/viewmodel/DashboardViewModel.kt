@@ -1,14 +1,13 @@
 package com.greatergoods.meapp.features.dashboard.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -19,12 +18,15 @@ import kotlinx.coroutines.launch
 class DashboardViewModel @Inject constructor(
     private val entryService: IEntryService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
-    initialState = DashboardState(),
-    reducer = DashboardReducer()
+    reducer = DashboardReducer(),
 ) {
     init {
         handleIntent(DashboardIntent.LoadEntries)
         loadEntries()
+    }
+
+    override fun provideInitialState(): DashboardState {
+        return DashboardState()
     }
 
     /**
@@ -53,8 +55,11 @@ class DashboardViewModel @Inject constructor(
      */
     fun addEntry(entries: List<ScaleEntry>) {
         viewModelScope.launch {
-            entryService.addEntry(entries)
-            handleIntent(DashboardIntent.AddEntries(entries))
+            dialogQueueService.showToast(
+                Toast(
+                    message = "Adding ${entries.size} entries",
+                ),
+            )
         }
     }
 }

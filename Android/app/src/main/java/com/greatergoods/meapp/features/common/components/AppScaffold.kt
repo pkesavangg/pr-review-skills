@@ -2,18 +2,15 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
@@ -47,19 +44,15 @@ fun AppScaffold(
                 actions = actions,
                 containerColor = appBarColor,
                 modifier =
-                    Modifier.padding(
-                        WindowInsets.safeDrawing
-                            .only(WindowInsetsSides.Top)
-                            .asPaddingValues(),
-                    ),
+                    Modifier.systemBarsPadding(),
             )
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = appBarColor,
     ) { innerPadding ->
         Box(
             modifier =
                 Modifier
+                    .fillMaxSize()
                     .padding(innerPadding)
                     .background(containerColor),
         ) {
@@ -75,6 +68,9 @@ fun AppScaffoldPreview() {
     MeAppTheme {
         AppScaffold(
             title = "App Scaffold Title",
+            containerColor = MeTheme.colorScheme.secondaryBackground,
+            navigationIcon = { AppIconButton(AppIcons.Default.Close) {} },
+            actions = { AppIconButton(AppIcons.Outlined.Help) {} }
         ) { modifier ->
             Box(modifier = modifier) {
                 Text(

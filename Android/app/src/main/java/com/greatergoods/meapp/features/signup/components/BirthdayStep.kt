@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.signup.components
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,7 +10,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
-import com.greatergoods.meapp.features.common.components.CardAlignmentType
 import com.greatergoods.meapp.features.common.components.DateTimeInput
 import com.greatergoods.meapp.features.common.components.DateTimeInputMode
 import com.greatergoods.meapp.features.common.components.DateTimeValue
@@ -37,14 +38,16 @@ fun BirthdayStep(
         AppStyledCard(
             cardAlignmentType = LocalCardAlignment.current
         ) {
-                AppText(SignupStrings.birthdayStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-                AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle,spacing = MeTheme.spacing.md)
-                DateTimeInput(
-                    value = signupData.birthday?.let { DateTimeValue.Date(it) },
-                    onValueChange = { if (it is DateTimeValue.Date) onBirthdayChange(it.millis) },
-                    mode = DateTimeInputMode.Date
-                )
+            AppText(SignupStrings.birthdayStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+            AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle,spacing = MeTheme.spacing.md)
+            DateTimeInput(
+                value = signupData.birthday?.let { DateTimeValue.Date(it) },
+                onValueChange = { if (it is DateTimeValue.Date) onBirthdayChange(it.millis) },
+                mode = DateTimeInputMode.Date
+            )
+            Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
         }
+
     }
 
 @PreviewTheme

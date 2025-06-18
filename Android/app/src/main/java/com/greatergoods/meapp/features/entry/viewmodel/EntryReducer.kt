@@ -1,56 +1,105 @@
 package com.greatergoods.meapp.features.entry.viewmodel
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
-import com.greatergoods.meapp.domain.model.common.HistoryMonth
-import com.greatergoods.meapp.domain.model.storage.entry.Entry
+import com.greatergoods.meapp.features.common.components.DateTimeValue
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import kotlinx.coroutines.CoroutineScope
 
 /**
- * UI state for the entry feature, holding loading state, months, entries, and errors.
- *
- * @property isLoading Whether data is currently loading.
- * @property months List of history months.
- * @property selectedMonth The currently selected month.
- * @property monthEntries List of entries for the selected month.
- * @property selectedEntry The currently selected entry.
- * @property errorMessage Error message if any error occurs.
+ * Form controls for weight and date/time (always present)
  */
+data class WeightDateTimeFormControls(
+    val weight: FormControl<String>,
+    val dateTime: FormControl<DateTimeValue>,
+)
+
+/**
+ * Form controls for general metrics (optional section, e.g., height)
+ */
+data class GeneralMetricsFormControls(
+    val bodyMassIndex: FormControl<String>, // BMI
+    val bodyFat: FormControl<String>,
+    val muscleMass: FormControl<String>,
+    val bodyWater: FormControl<String>
+)
+
+/**
+ * R4/scale/device-dependent metrics (optional section)
+ */
+data class R4ScaleMetricsFormControls(
+    val heartRate: FormControl<String>,
+    val boneMass: FormControl<String>,
+    val visceralFat: FormControl<String>,
+    val subcutaneousFat: FormControl<String>,
+    val protein: FormControl<String>,
+    val skeletalMuscles: FormControl<String>,
+    val bmr: FormControl<String>, // Basel Metabolic Rate
+    val metabolicAge: FormControl<String>
+)
+
+/**
+ * Main entry form controls, composed of the three groups above
+ */
+data class EntryFormControls(
+    val weightDateTime: WeightDateTimeFormControls,
+    val generalMetrics: GeneralMetricsFormControls,
+    val r4ScaleMetrics: R4ScaleMetricsFormControls? = null
+) {
+    companion object {
+        fun create(
+            scope: CoroutineScope,
+            includeR4ScaleMetrics: Boolean = false
+        ): EntryFormControls = EntryFormControls(
+            weightDateTime = WeightDateTimeFormControls(
+                weight = FormControl.create(
+                    initialValue = "",
+                    validators = listOf(FormValidations.required()),
+                ),
+                dateTime = FormControl.create(
+                    initialValue = DateTimeValue.DateTime(System.currentTimeMillis(), 12, 0),
+                    validators = emptyList(),
+                ),
+            ),
+            generalMetrics = GeneralMetricsFormControls(
+                bodyMassIndex = FormControl.create("", emptyList()),
+                bodyFat = FormControl.create("", emptyList()),
+                muscleMass = FormControl.create("", emptyList()),
+                bodyWater = FormControl.create("", emptyList()),
+                // Add more general metrics here if needed
+            ),
+            r4ScaleMetrics = if (includeR4ScaleMetrics) R4ScaleMetricsFormControls(
+                heartRate = FormControl.create("", emptyList()),
+                boneMass = FormControl.create("", emptyList()),
+                visceralFat = FormControl.create("", emptyList()),
+                subcutaneousFat = FormControl.create("", emptyList()),
+                protein = FormControl.create("", emptyList()),
+                skeletalMuscles = FormControl.create("", emptyList()),
+                bmr = FormControl.create("", emptyList()),
+                metabolicAge = FormControl.create("", emptyList()),
+
+                ) else null,
+        )
+    }
+}
+
 data class EntryState(
+    val form: FormGroup<EntryFormControls>,
+    val weightMode: String = "lbs",
     val isLoading: Boolean = false,
-    val months: List<HistoryMonth> = emptyList(),
-    val selectedMonth: HistoryMonth? = null,
-    val monthEntries: List<Entry> = emptyList(),
-    val selectedEntry: Entry? = null,
-    val errorMessage: String? = null,
 ) : IReducer.State
 
 /**
  * Intent for entry actions, such as loading, selecting, adding, and deleting entries.
  */
 sealed interface EntryIntent : IReducer.Intent {
-    object LoadMonths : EntryIntent
-    data class SetMonths(val months: List<HistoryMonth>) : EntryIntent
-    data class SelectMonth(val month: HistoryMonth) : EntryIntent
-    data class SetMonthEntries(val entries: List<Entry>) : EntryIntent
-    data class SelectEntry(val entry: Entry) : EntryIntent
-    data class AddEntry(val entry: Entry) : EntryIntent
-    data class DeleteEntry(val entry: Entry) : EntryIntent
-    data class SetError(val message: String) : EntryIntent
-    object ClearError : EntryIntent
+    data object Save : EntryIntent
 }
 
 /**
  * Reducer for the entry state, handling intents to update months, entries, and errors.
  */
 class EntryReducer : IReducer<EntryState, EntryIntent> {
-    override fun reduce(state: EntryState, intent: EntryIntent): EntryState? = when (intent) {
-        is EntryIntent.SetMonths -> state.copy(months = intent.months, isLoading = false, errorMessage = null)
-        is EntryIntent.SelectMonth -> state.copy(selectedMonth = intent.month, isLoading = false, errorMessage = null)
-        is EntryIntent.SetMonthEntries -> state.copy(monthEntries = intent.entries, isLoading = false, errorMessage = null)
-        is EntryIntent.SelectEntry -> state.copy(selectedEntry = intent.entry, errorMessage = null)
-        is EntryIntent.AddEntry -> state.copy(monthEntries = state.monthEntries + intent.entry, errorMessage = null)
-        is EntryIntent.DeleteEntry -> state.copy(monthEntries = state.monthEntries.filter { it != intent.entry }, errorMessage = null)
-        is EntryIntent.SetError -> state.copy(errorMessage = intent.message, isLoading = false)
-        EntryIntent.ClearError -> state.copy(errorMessage = null)
-        EntryIntent.LoadMonths -> state.copy(isLoading = true)
-    }
+    override fun reduce(state: EntryState, intent: EntryIntent): EntryState? = state
 }
