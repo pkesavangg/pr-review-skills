@@ -33,6 +33,7 @@ object SettingsScreenStrings {
     const val GreaterGoodsDotCom = "GreaterGoods.com"
 
     // Actions
+    const val SwitchAccounts = "Switch Accounts"
     const val LogOut = "Log Out"
     const val DeleteAccount = "Delete Account"
     const val Edit = "EDIT"

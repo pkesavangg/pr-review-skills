@@ -16,6 +16,7 @@ object AppIcons {
         val Settings = R.drawable.ic_settings
         val Placeholder = R.drawable.me_placeholder
         val Stamp = R.drawable.gg_stamp
+        val RightCaret = R.drawable.ic_right_caret
     }
 
     object Outlined {
@@ -30,5 +31,6 @@ object AppIcons {
         val Settings = R.drawable.ic_settings_selected
         val Close = R.drawable.ic_popup_close
         val CloseDark = R.drawable.ic_popup_close_dark
+        val CaretDown = R.drawable.ic_filled_caret_down
     }
 }

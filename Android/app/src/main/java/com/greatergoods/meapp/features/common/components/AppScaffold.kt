@@ -23,8 +23,6 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
  * Handles window insets properly for status bar, navigation bar, and keyboard.
  *
  * @param title The title to display in the AppBar.
- * @param onLeftIconClick Callback for left icon click.
- * @param onRightIconClick Callback for right icon click (optional).
  * @param modifier Modifier for the Scaffold.
  * @param actions Optional composable for actions.
  * @param navigationIcon Optional composable for left icon.
@@ -34,7 +32,8 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
-    containerColor: Color = colorScheme.primaryBackground,
+    containerColor: Color = colorScheme.secondaryBackground,
+    appBarColor: Color = colorScheme.primaryBackground,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
@@ -46,27 +45,25 @@ fun AppScaffold(
                 title = title,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                containerColor = containerColor,
-                modifier = Modifier.padding(
-                    WindowInsets.safeDrawing
-                        .only(WindowInsetsSides.Top)
-                        .asPaddingValues()
-                )
+                containerColor = appBarColor,
+                modifier =
+                    Modifier.padding(
+                        WindowInsets.safeDrawing
+                            .only(WindowInsetsSides.Top)
+                            .asPaddingValues(),
+                    ),
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = containerColor
+        containerColor = appBarColor,
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(
-                    WindowInsets.safeDrawing
-                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                        .asPaddingValues()
-                )
-                .background(containerColor),
+            modifier =
+                Modifier
+                    .padding(innerPadding)
+                    .background(containerColor),
         ) {
+
             content(Modifier)
         }
     }

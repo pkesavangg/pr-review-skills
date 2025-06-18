@@ -8,38 +8,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
-import com.greatergoods.meapp.features.common.components.AppIcon
+import com.greatergoods.meapp.features.common.components.AppProfileAvatar
+import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.settings.strings.SettingsScreenStrings
-import com.greatergoods.meapp.features.settings.viewmodel.SettingsViewModel
-import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun UserProfileSection(viewModel: SettingsViewModel = hiltViewModel()) {
-    UserProfileContent({ viewModel.onEditProfileClick() })
-}
-
-@Composable
-fun UserProfileContent(onEditProfileClick: () -> Unit) {
+fun UserProfileSection(onEditProfileClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth(),
     ) {
         // Profile Image Placeholder
-        AppIcon(
-            AppIcons.Default.Settings,
-            contentDescription = SettingsScreenStrings.ProfileImage,
-        )
+        AppProfileAvatar("Vivek")
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         Text(
             text = "Kristin",
             style = MeTheme.typography.heading4,
             color = MeTheme.colorScheme.textHeading,
         )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
         Text(
             text = "kstazrad@gmail.com",
             style = MeTheme.typography.body2,
@@ -48,6 +39,7 @@ fun UserProfileContent(onEditProfileClick: () -> Unit) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         AppButton(
             SettingsScreenStrings.Edit,
+            size = ButtonSize.Small,
             onClick = { onEditProfileClick() },
         )
     }
@@ -57,6 +49,6 @@ fun UserProfileContent(onEditProfileClick: () -> Unit) {
 @Composable
 fun UserProfileSectionPreview() {
     MeAppTheme {
-        UserProfileContent({})
+        UserProfileSection {  }
     }
 }
