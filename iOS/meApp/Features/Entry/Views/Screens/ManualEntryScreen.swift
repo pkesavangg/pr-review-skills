@@ -13,17 +13,14 @@ import SwiftUI
 struct ManualEntryScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var entryStore = EntryStore()
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @State private var focusedField: FocusField?
     
     let manualEntryLang = ManualEntryStrings.self
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
-    
-    @State private var showDatePicker = false
-    @State private var showTimePicker = false
-    @State private var showMetrics = false
-    
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<EmptyView, EmptyView>(title: manualEntryLang.title, canShowBorder: true)
@@ -53,28 +50,28 @@ struct ManualEntryScreen: View {
                         
                         HStack(spacing: .spacingSM) {
                             DateLabelView(date: entryStore.manualEntryForm.date.value) {
-                                withAnimation { showDatePicker.toggle()
-                                    if showTimePicker {
-                                        showTimePicker = false
+                                withAnimation { entryStore.showDatePicker.toggle()
+                                    if entryStore.showTimePicker {
+                                        entryStore.showTimePicker = false
                                     }
                                 }
                             }
                             TimeLabelView(time: entryStore.manualEntryForm.time.value) {
                                 withAnimation {
-                                    showTimePicker.toggle()
-                                    if showDatePicker {
-                                        showDatePicker = false
+                                    entryStore.showTimePicker.toggle()
+                                    if entryStore.showDatePicker {
+                                        entryStore.showDatePicker = false
                                     }
                                 }
                             }
                         }
                         
                         // Pickers
-                        DatePickerView(isPresented: $showDatePicker,
+                        DatePickerView(isPresented: $entryStore.showDatePicker,
                                        date: $entryStore.manualEntryForm.date.value,
                                        endDate: Date())
                         
-                        TimePickerView(isPresented: $showTimePicker,
+                        TimePickerView(isPresented: $entryStore.showTimePicker,
                                        time: $entryStore.manualEntryForm.time.value,
                                        endTime: entryStore.maxSelectableTime)
                     }
@@ -87,8 +84,8 @@ struct ManualEntryScreen: View {
                                     .fontOpenSans(.heading4)
                                     .foregroundColor(theme.textHeading)
                                 Spacer()
-                                AppIconView(icon: showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
-                                            size: IconSize(width: 24, height: 24))
+                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
+                                            size: IconSize(width: 32, height: 32))
                                 .foregroundColor(theme.actionPrimary)
                             }
                             
@@ -100,12 +97,12 @@ struct ManualEntryScreen: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation {
-                                showMetrics.toggle()
+                                entryStore.showMetrics.toggle()
                             }
                         }
                         .padding(.bottom, .spacingXS)
                         
-                        if showMetrics {
+                        if entryStore.showMetrics {
                             VStack(spacing: .spacingSM) {
                                 // Input fields for body metrics
                                 
@@ -277,6 +274,7 @@ struct ManualEntryScreen: View {
                                         focusedField = nil
                                         Task {
                                             await entryStore.saveEntry()
+                                            performTabSwitchAndHideKeyboard()
                                         }
                                     }
                                 }
@@ -293,21 +291,37 @@ struct ManualEntryScreen: View {
                         size: .regular,
                         isDisabled: !entryStore.manualEntryForm.isValid,
                     ) {
-                        Task { await entryStore.saveEntry() }
+                        Task {
+                            await entryStore.saveEntry()
+                            performTabSwitchAndHideKeyboard()
+                        }
                     }
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
                 .onAppear {
-                    focusedField = .weight
+                    // Register a handler that decides whether the tab can be left.
+                    registerDeactivation {
+                        // If the form is clean we can leave immediately.
+                        guard entryStore.manualEntryForm.isDirty else { return true }
+                        // Otherwise ask the user via the store's confirmation helper.
+                        return await entryStore.confirmDiscardChanges()
+                    }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary)
+    }
+    
+    private func performTabSwitchAndHideKeyboard() {
+        tabViewModel.selectTab(.dash)
+        hideKeyboard()
     }
 }
 
 #Preview {
     ManualEntryScreen()
+        .environmentObject(BottomTabBarViewModel())
         .environmentObject(Theme.shared)
 }
