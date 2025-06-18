@@ -10,7 +10,6 @@ import Combine
 import SwiftUI
 
 /// Store / ViewModel that powers the History feature (monthly summaries, month detail, entry detail, metric info).
-/// Mirrors the architecture used in `SignupStore`.
 @MainActor
 final class HistoryStore: ObservableObject {
 
@@ -73,7 +72,7 @@ final class HistoryStore: ObservableObject {
         } else {
             expandedEntries.insert(id)
         }
-        
+
     }
 
     /// User tapped a metric inside an expanded entry.

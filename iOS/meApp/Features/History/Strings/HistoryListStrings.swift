@@ -2,13 +2,17 @@
 //  HistoryListStrings.swift
 //  meApp
 //
-//  Created by Barath Chittibabu on 18/06/25.
+//  Created by Generated on 18/06/25.
 //
 
 import Foundation
 
-struct HistoryListStrings {
+/// Centralised localisation keys/strings for History List screen.
+enum HistoryListStrings {
+    static let title = "History"
     static let entries = "entries"
     static let average = "average"
     static let change = "change"
+    static let emptyState = "No history data yet"
+    static let retry = "Retry"
 }

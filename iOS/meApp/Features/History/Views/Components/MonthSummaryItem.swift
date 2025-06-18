@@ -25,51 +25,64 @@ struct MonthSummaryItem: View {
 
     private var avgWeightText: String {
         guard let w = month.weight else { return "--" }
-        return String(format: "%.1f %@", w, weightUnit)
+        let weight = WeightValueConvertor.formatWeight(w, showSymbol: false)
+        return String(format: "%@ %@", weight, weightUnit)
     }
 
     private var changeText: String {
         guard let cStr = month.change, let c = Double(cStr) else { return "--" }
-        return String(format: "%@%.1f %@", c >= 0 ? "+" : "-", c, weightUnit)
+        let change = WeightValueConvertor.formatWeight(c, showSymbol: true)
+        return String(format: "%@ %@", change, weightUnit)
     }
 
     var body: some View {
-        HStack(spacing: .spacingMD) {
+        HStack() {
             // Month & entry count
             VStack(alignment: .leading) {
                 Text(monthYearText)
                     .fontOpenSans(.heading5)
                     .foregroundColor(theme.textHeading)
+
                 Text("\(month.count ?? 0) \(HistoryListStrings.entries)")
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
+
             }
-            Spacer(minLength: .spacingMD)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             // Average weight
             VStack(alignment: .leading) {
                 Text(avgWeightText)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
+
                 Text(HistoryListStrings.average)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
             }
-            Spacer(minLength: .spacingMD)
-
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, .spacingSM)
+            
             // Change
             VStack(alignment: .leading) {
                 Text(changeText)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
+
                 Text(HistoryListStrings.change)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textSubheading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, .spacingSM)
+
             // Chevron icon
-            AppIconView(icon: AppAssets.chevronRight)
+           AppIconView(icon: AppAssets.chevronRight)
                 .foregroundColor(theme.statusIconPrimary)
+
         }
-        .padding(.vertical, .spacingSM)
+        .padding(.vertical, .spacingMD)
+        .padding(.horizontal, .spacingSM)
     }
 }
 
@@ -94,7 +107,7 @@ struct MonthSummaryItem_Previews: PreviewProvider {
             min: nil,
             max: nil
         )
-        MonthSummaryItem(month: month, weightUnit: "lbs")
+      MonthSummaryItem(month: month, weightUnit: "kg")
             .themeable()
             .environmentObject(Theme.shared)
             .previewLayout(.sizeThatFits)

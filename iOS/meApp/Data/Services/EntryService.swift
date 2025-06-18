@@ -84,42 +84,50 @@ final class EntryService: EntryServiceProtocol {
     }
 
     // MARK: - Month/History
-    func getMonthsAll() async throws -> [HistoryMonth] {
+    	func getMonthsAll() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId)
-        let grouped = Dictionary(grouping: entries) { entry in
-            String(entry.entryTimestamp.prefix(7))
-        }
+        // Group by YYYY-MM prefix
+        let grouped = Dictionary(grouping: entries) { String($0.entryTimestamp.prefix(7)) }
+
         var result: [HistoryMonth] = []
-        for (month, entries) in grouped {
-            // Calculate weights string
-            let weightPairs: [String] = entries.compactMap { e in
+
+        let validMonthRegex = try! NSRegularExpression(pattern: "^\\d{4}-\\d{2}$")
+
+        for (monthKey, monthEntries) in grouped {
+            // Skip keys that are not in YYYY-MM format to avoid malformed months like "+05723"
+            if validMonthRegex.firstMatch(in: monthKey, range: NSRange(location: 0, length: monthKey.count)) == nil {
+                continue
+            }
+
+            // Build the `weights` concatenated string  "<w>|<ts>,<w>|<ts>"  like the SQL query
+            let weightPairs = monthEntries.compactMap { e -> String? in
                 guard let w = e.scaleEntry?.weight else { return nil }
                 return "\(w)|\(e.entryTimestamp)"
             }
-            let weights = weightPairs.joined(separator: ",")
-            // Calculate weight values
-            let weightValues: [Double] = entries.compactMap {
-                guard let w = $0.scaleEntry?.weight else { return nil }
-                return Double(w)
-            }
-            let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
+            let weightsConcat = weightPairs.joined(separator: ",")
+
+            // Numeric helpers
+            let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.map(Double.init)
+            let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
             let minWeight = weightValues.min()
             let maxWeight = weightValues.max()
-            // Calculate change
-            let firstEntry = entries.min(by: { $0.entryTimestamp < $1.entryTimestamp })
-            let lastEntry = entries.max(by: { $0.entryTimestamp < $1.entryTimestamp })
+
+            // Change = last - first by timestamp order
+            let sortedByTime = monthEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
+            let firstWeight = sortedByTime.first?.scaleEntry?.weight
+            let lastWeight  = sortedByTime.last?.scaleEntry?.weight
             let change: String? = {
-                guard let first = firstEntry?.scaleEntry?.weight,
-                      let last = lastEntry?.scaleEntry?.weight else { return nil }
-                return String(format: "%.1f", last - first)
+                guard let f = firstWeight, let l = lastWeight else { return nil }
+                return String(format: "%.1f", Double(l - f))
             }()
-            let historyMonth = HistoryMonth(
-                id: month,
+
+            let hm = HistoryMonth(
+                id: monthKey,
                 weight: avgWeight,
-                entryTimestamp: month,
-                count: entries.count,
-                weights: weights,
+                entryTimestamp: monthKey,
+                count: monthEntries.count, // distinct timestamps already unique in SwiftData model
+                weights: weightsConcat,
                 change: change,
                 bodyFat: nil,
                 muscleMass: nil,
@@ -127,13 +135,15 @@ final class EntryService: EntryServiceProtocol {
                 bmi: nil,
                 date: nil,
                 time: nil,
-                month: String(month.suffix(2)),
-                year: String(month.prefix(4)),
+                month: String(monthKey.suffix(2)),
+                year: String(monthKey.prefix(4)),
                 min: minWeight,
                 max: maxWeight
             )
-            result.append(historyMonth)
+            result.append(hm)
         }
+
+        // Sort descending by month key
         return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
 
