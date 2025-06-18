@@ -5,12 +5,12 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
 import java.util.Calendar
+import com.greatergoods.meapp.features.common.components.asTime
+import com.greatergoods.meapp.features.common.components.clampTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,6 +18,8 @@ fun TimePickerDialogContent(
     initial: DateTimeValue.Time? = null,
     onCancel: () -> Unit,
     onOk: (Int, Int) -> Unit,
+    minValue: DateTimeValue? = null,
+    maxValue: DateTimeValue? = null,
 ) {
     val currentTime = Calendar.getInstance()
     val hour = initial?.hour ?: currentTime.get(Calendar.HOUR_OF_DAY)
@@ -29,14 +31,19 @@ fun TimePickerDialogContent(
             is24Hour = false, // Use 12-hour format with AM/PM
         )
 
+    val minTime = minValue.asTime()
+    val maxTime = maxValue.asTime()
     TimePickerDialog(
         timePickerState,
         onDismiss = {
             onCancel()
         },
         onConfirm = {
-            onOk(timePickerState.hour, timePickerState.minute)
+            val (clampedHour, clampedMinute) = clampTime(timePickerState.hour, timePickerState.minute, minTime, maxTime)
+            onOk(clampedHour, clampedMinute)
         },
+        minTime = minTime,
+        maxTime = maxTime,
     )
 }
 
@@ -46,6 +53,8 @@ fun TimePickerDialog(
     timePickerState: TimePickerState,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
+    minTime: DateTimeValue.Time? = null,
+    maxTime: DateTimeValue.Time? = null,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         BaseModal(
@@ -53,6 +62,11 @@ fun TimePickerDialog(
                 ActionButton(
                     text = "OK", // TODO: Use string resource
                     action = {
+                        val (clampedHour, clampedMinute) = clampTime(timePickerState.hour, timePickerState.minute, minTime, maxTime)
+                        // Set the clamped time in the state before confirming
+                        if (clampedHour != timePickerState.hour || clampedMinute != timePickerState.minute) {
+                            // Not ideal: TimePickerState is not mutable directly, so just call onConfirm with clamped values
+                        }
                         onConfirm()
                     },
                 ),

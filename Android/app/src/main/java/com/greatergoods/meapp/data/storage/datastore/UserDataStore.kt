@@ -161,7 +161,7 @@ class UserDataStore(
         if (current.accountsMap.containsKey(accountId)) {
             throw IllegalStateException("Account with ID $accountId already exists")
         }
-        
+
         val updated = current.toBuilder().apply {
             val account = UserAccount.newBuilder()
                 .setIsActive(isActive)
@@ -198,19 +198,19 @@ class UserDataStore(
         themeMode: ThemeMode? = null
     ) {
         val current = getData()
-        val existingAccount = current.accountsMap[accountId] 
+        val existingAccount = current.accountsMap[accountId]
             ?: throw IllegalStateException("No account found with ID $accountId")
-        
+
         val updated = current.toBuilder().apply {
             val accountBuilder = existingAccount.toBuilder()
-            
+
             isActive?.let { accountBuilder.setIsActive(it) }
             syncTimestamp?.let { accountBuilder.setSyncTimestamp(it) }
             refreshToken?.let { accountBuilder.setRefreshToken(it) }
             accessToken?.let { accountBuilder.setAccessToken(it) }
             expiresAt?.let { accountBuilder.setExpiresAt(it) }
             themeMode?.let { accountBuilder.setThemeMode(it) }
-            
+
             putAccounts(accountId, accountBuilder.build())
         }.build()
         updateData { updated }

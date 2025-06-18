@@ -12,7 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.spacing
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
 
 sealed class HeightInput {
     data class Cm(
@@ -82,7 +83,7 @@ fun AppHeightPickerModal(
             ),
         secondaryAction = ActionButton(text = "Cancel", action = { onCancel() }),
     ) {
-        Spacer(Modifier.height(MeAppTheme.spacing.xs))
+        Spacer(Modifier.height(MeTheme.spacing.xs))
         when (value) {
             is HeightInput.Cm -> {
                 AppPicker(

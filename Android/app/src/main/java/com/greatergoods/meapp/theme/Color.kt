@@ -29,33 +29,42 @@ import com.greatergoods.meapp.theme.token.LightColorToken
 val LightColorScheme =
     ColorScheme(
         // Background
-        primary = LightColorToken.primary,
-        secondary = LightColorToken.secondary,
+        primaryBackground = LightColorToken.primary,
+        primaryBackgroundDisabled = LightColorToken.primaryDisabled,
+        secondaryBackground = LightColorToken.secondary,
         // Support
         overlay = LightColorToken.overlay,
         toastBackground = LightColorToken.toastBackground,
         // Action
         primaryAction = LightColorToken.primaryAction,
-        primaryDisabled = LightColorToken.primaryActionDisabled,
+        primaryActionDisabled = LightColorToken.primaryActionDisabled,
         secondaryAction = LightColorToken.secondaryAction,
-        secondaryDisabled = LightColorToken.secondaryDisabled,
+        secondaryActionDisabled = LightColorToken.secondaryActionDisabled,
         tertiaryAction = LightColorToken.tertiaryAction,
-        tertiaryDisabled = LightColorToken.tertiaryDisabled,
-        // Text
-        heading = LightColorToken.heading,
-        body = LightColorToken.body,
-        subheading = LightColorToken.subheading,
-        error = LightColorToken.error,
-        errorDisabled = LightColorToken.errorDisabled,
-        inverse = LightColorToken.inverse,
-        inverseDisabled = LightColorToken.inverseDisabled,
-        inverseSecondary = LightColorToken.inverseSecondary,
-        // Icon
+        tertiaryActionDisabled = LightColorToken.tertiaryActionDisabled,
+        inverseAction = LightColorToken.inverse,
+        inverseActionDisabled = LightColorToken.inverseDisabled,
+        inverseActionSecondary = LightColorToken.inverseSecondary,
+        // Status
         goal = LightColorToken.goal,
+        success = LightColorToken.success,
+        danger = LightColorToken.danger,
         streak = LightColorToken.streak,
         utility = LightColorToken.utility,
+        iconPrimary = LightColorToken.iconPrimary,
+        iconSecondary = LightColorToken.iconSecondary,
+        iconDisabled = LightColorToken.iconDisabled,
+        loading = LightColorToken.loading,
+        loadingError = LightColorToken.loadingError,
+        // Text
+        textHeading = LightColorToken.heading,
+        textBody = LightColorToken.body,
+        textSubheading = LightColorToken.subheading,
+        textError = LightColorToken.textError,
+        textErrorDisabled = LightColorToken.textErrorDisabled,
         // Brand
-        brand = LightColorToken.brand,
+        meAppPrimary = LightColorToken.meAppPrimary,
+        wgPrimary = LightColorToken.wgPrimary,
     )
 
 /**
@@ -67,33 +76,42 @@ val LightColorScheme =
 val DarkColorScheme =
     ColorScheme(
         // Background
-        primary = DarkColorToken.background,
-        secondary = DarkColorToken.secondary,
+        primaryBackground = DarkColorToken.primary,
+        primaryBackgroundDisabled = DarkColorToken.primaryDisabled,
+        secondaryBackground = DarkColorToken.secondary,
         // Support
         overlay = DarkColorToken.overlay,
         toastBackground = DarkColorToken.toastBackground,
         // Action
         primaryAction = DarkColorToken.primaryAction,
-        primaryDisabled = DarkColorToken.primaryActionDisabled,
+        primaryActionDisabled = DarkColorToken.primaryActionDisabled,
         secondaryAction = DarkColorToken.secondaryAction,
-        secondaryDisabled = DarkColorToken.secondaryDisabled,
+        secondaryActionDisabled = DarkColorToken.secondaryActionDisabled,
         tertiaryAction = DarkColorToken.tertiaryAction,
-        tertiaryDisabled = DarkColorToken.tertiaryDisabled,
-        // Text
-        heading = DarkColorToken.heading,
-        body = DarkColorToken.body,
-        subheading = DarkColorToken.subheading,
-        error = DarkColorToken.error,
-        errorDisabled = DarkColorToken.errorDisabled,
-        inverse = DarkColorToken.inverse,
-        inverseDisabled = DarkColorToken.inverseDisabled,
-        inverseSecondary = DarkColorToken.inverseSecondary,
-        // Icon
+        tertiaryActionDisabled = DarkColorToken.tertiaryActionDisabled,
+        inverseAction = DarkColorToken.inverse,
+        inverseActionDisabled = DarkColorToken.inverseDisabled,
+        inverseActionSecondary = DarkColorToken.inverseSecondary,
+        // Status
         goal = DarkColorToken.goal,
+        success = DarkColorToken.success,
+        danger = DarkColorToken.danger,
         streak = DarkColorToken.streak,
         utility = DarkColorToken.utility,
+        iconPrimary = DarkColorToken.iconPrimary,
+        iconSecondary = DarkColorToken.iconSecondary,
+        iconDisabled = DarkColorToken.iconDisabled,
+        loading = DarkColorToken.loading,
+        loadingError = DarkColorToken.loadingError,
+        // Text
+        textHeading = DarkColorToken.heading,
+        textBody = DarkColorToken.body,
+        textSubheading = DarkColorToken.subheading,
+        textError = DarkColorToken.textError,
+        textErrorDisabled = DarkColorToken.textErrorDisabled,
         // Brand
-        brand = DarkColorToken.brand,
+        meAppPrimary = DarkColorToken.meAppPrimary,
+        wgPrimary = DarkColorToken.wgPrimary,
     )
 
 /**

@@ -9,6 +9,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.launch
@@ -18,28 +19,26 @@ fun <T> HorizontalPagerWithBottomNavigation(
     steps: List<T>,
     pagerState: PagerState,
     modifier: Modifier = Modifier,
+    containerColor: Color = Color.Transparent,
     leadingContent: @Composable () -> Unit,
     middleContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable () -> Unit,
-    progressIndicator: @Composable (() -> Unit)? = null,
     pageContent: @Composable (T) -> Unit,
 ) {
     PagerBottomAppBar(
         modifier = modifier,
+        containerColor = containerColor,
         leadingContent = leadingContent,
         middleContent = { middleContent?.invoke() },
         trailingContent = trailingContent,
         content = { innerModifier ->
-            progressIndicator?.invoke() // show if provided
-            Column(modifier = innerModifier.fillMaxSize()) {
                 AppHorizontalPager(
                     steps = steps,
                     pagerState = pagerState,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 ) { item ->
                     pageContent(item)
                 }
-            }
         }
     )
 }
@@ -97,11 +96,6 @@ fun PagerWithBottomNavigationPreview() {
                         }
                     }
                 }
-            },
-            progressIndicator = {
-                AppLinearProgressIndicator(
-                    progress = (pagerState.currentPage + 1).toFloat() / pages.size
-                )
             },
             pageContent = { page ->
                 AppStyledCard(

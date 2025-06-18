@@ -107,18 +107,18 @@ extension Validator where Value == String {
     }
     
     /// Validator that requires the control's value to be greater than 0.
-    public static func minWeight() -> Validator {
-        Validator(type: .minWeight, value: 0) { value in
-            guard let weight = Double(value) else { return false }
+    public static func minValue() -> Validator {
+        Validator(type: .minValue, value: 0) { value in
+            guard let weight = Double(value) else { return true } // Pass if not a number, other validators will catch it
             return weight > Double(0)
         }
     }
     
     /// Validator that requires the control's value to be less than or equal to the provided maximum weight.
-    public static func maxWeight(_ maximum: Double) -> Validator {
-        Validator(type: .maxWeight, value: maximum) { value in
+    public static func maxValue(_ maximum: Double) -> Validator {
+        Validator(type: .maxValue, value: maximum) { value in
             guard let weight = Double(value) else { return true } // Pass if not a number, other validators will catch it
-            return weight <= maximum
+            return weight < maximum
         }
     }
 }

@@ -25,16 +25,17 @@ fun DashedCircularLoader(
     strokeWidth: Float = 5f,
     dashLength: Float = 18f,
     gapLength: Float = 10f,
-    sweepAngle: Float = 300f // Partial circle
+    sweepAngle: Float = 300f, // Partial circle
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "loader")
     val startAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
         label = "angle",
     )
 
@@ -45,11 +46,12 @@ fun DashedCircularLoader(
             startAngle = startAngle,
             sweepAngle = sweepAngle,
             useCenter = false,
-            style = Stroke(
-                width = strokeWidth,
-                cap = StrokeCap.Round,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashLength, gapLength), 0f),
-            ),
+            style =
+                Stroke(
+                    width = strokeWidth,
+                    cap = StrokeCap.Round,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashLength, gapLength), 0f),
+                ),
         )
     }
 }

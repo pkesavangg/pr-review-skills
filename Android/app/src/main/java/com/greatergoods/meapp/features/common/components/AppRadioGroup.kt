@@ -12,7 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.spacing
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
 
 /**
  * Data class representing a radio button option for use in AppRadioGroup.
@@ -51,8 +52,8 @@ fun <T> AppRadioGroup(
         groupLabel?.let {
             Text(
                 text = it,
-                style = MeAppTheme.typography.subHeading1,
-                color = MeAppTheme.colorScheme.subheading,
+                style = MeTheme.typography.subHeading1,
+                color = MeTheme.colorScheme.textSubheading,
                 modifier = Modifier.padding(bottom = spacing.xs),
             )
         }

@@ -6,6 +6,7 @@ import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 
 enum class DialogType {
     HeightPicker,
+    HelpPopup,
 }
 
 @Composable
@@ -26,6 +27,16 @@ fun DialogHost() {
                     onOk = { data ->
                         // You can add callback logic here to return the selected value
                         dialog.onConfirm?.let { it(data) }
+                        dialogQueueViewModel.dismissCurrent()
+                    },
+                )
+            }
+
+            DialogType.HelpPopup -> {
+                // Custom dialog for help popup
+                AppHelpModal(
+                    onClose = {
+                        dialog.onDismiss()
                         dialogQueueViewModel.dismissCurrent()
                     },
                 )
