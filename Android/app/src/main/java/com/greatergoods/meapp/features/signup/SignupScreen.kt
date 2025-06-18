@@ -1,10 +1,13 @@
 package com.greatergoods.meapp.features.signup
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -70,20 +73,21 @@ fun SignupScreen(
     AppScaffold(
         title = "",
         containerColor = MeTheme.colorScheme.secondaryBackground,
-        navigationIcon = { AppIconButton(AppIcons.Default.Close) {} },
+        navigationIcon = {  AppIconButton(AppIcons.Default.Close) {}  },
         actions = { AppIconButton(AppIcons.Outlined.Help) {} }
     ) {
-        Column(modifier = Modifier) {
+        Column(modifier = Modifier.fillMaxSize()
+             ) {
             AppLinearProgressIndicator(
                 progress = uiState.progress,
                 modifier = Modifier
                     .padding(
-                        bottom = 24.dp,
-                        top = 16.dp,
+                        bottom = MeTheme.spacing.md,
+                        top = MeTheme.spacing.sm,
                         start = MeTheme.spacing.sm,
                         end = MeTheme.spacing.sm
                     )
-                    .height(8.dp)
+                    .height(MeTheme.spacing.xs)
             )
             CompositionLocalProvider(LocalCardAlignment provides cardAlignment) {
                 SignupPager(
@@ -106,6 +110,7 @@ private fun SignupPager(
     onNext: () -> Unit,
     onBack: () -> Unit,
 ) {
+
     HorizontalPagerWithBottomNavigation(
         steps = uiState.steps,
         containerColor = MeTheme.colorScheme.secondaryBackground,
@@ -140,47 +145,51 @@ private fun SignupPager(
         },
         pageContent = { step ->
             val signupData = uiState.signupData
-            when (step) {
-                SignupStep.NAME -> NameStep(
-                    signupData = signupData,
-                    onFirstNameChange = { onDataChange(signupData.copy(firstName = it)) },
-                    onLastNameChange = { onDataChange(signupData.copy(lastName = it)) }
-                )
+                Column(
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                ) {
+                    when (step) {
+                        SignupStep.NAME -> NameStep(
+                            signupData = signupData,
+                            onFirstNameChange = { onDataChange(signupData.copy(firstName = it)) },
+                            onLastNameChange = { onDataChange(signupData.copy(lastName = it)) }
+                        )
 
-                SignupStep.BIRTHDAY -> BirthdayStep(
-                    signupData = signupData,
-                    onBirthdayChange = { onDataChange(signupData.copy(birthday = it)) }
-                )
+                        SignupStep.BIRTHDAY -> BirthdayStep(
+                            signupData = signupData,
+                            onBirthdayChange = { onDataChange(signupData.copy(birthday = it)) }
+                        )
 
-                SignupStep.GENDER -> GenderStep(
-                    signupData = signupData,
-                    onGenderChange = { onDataChange(signupData.copy(gender = it)) }
-                )
+                        SignupStep.GENDER -> GenderStep(
+                            signupData = signupData,
+                            onGenderChange = { onDataChange(signupData.copy(gender = it)) }
+                        )
 
-                SignupStep.HEIGHT -> HeightStep(
-                    signupData = signupData,
-                    onHeightChange = { onDataChange(signupData.copy(height = it)) }
-                )
+                        SignupStep.HEIGHT -> HeightStep(
+                            signupData = signupData,
+                            onHeightChange = { onDataChange(signupData.copy(height = it)) }
+                        )
 
-                SignupStep.GOAL -> GoalStep(
-                    signupData = signupData,
-                    onGoalTypeChange = { onDataChange(signupData.copy(goalType = it)) },
-                    onCurrentWeightChange = { onDataChange(signupData.copy(currentWeight = it)) },
-                    onGoalWeightChange = { onDataChange(signupData.copy(goalWeight = it)) },
-                )
+                        SignupStep.GOAL -> GoalStep(
+                            signupData = signupData,
+                            onGoalTypeChange = { onDataChange(signupData.copy(goalType = it)) },
+                            onCurrentWeightChange = { onDataChange(signupData.copy(currentWeight = it)) },
+                            onGoalWeightChange = { onDataChange(signupData.copy(goalWeight = it)) },
+                        )
 
-                SignupStep.EMAIL -> EmailStep(
-                    signupData = signupData,
-                    onEmailChange = { onDataChange(signupData.copy(email = it)) }
-                )
+                        SignupStep.EMAIL -> EmailStep(
+                            signupData = signupData,
+                            onEmailChange = { onDataChange(signupData.copy(email = it)) }
+                        )
 
-                SignupStep.PASSWORD -> PasswordStep(
-                    signupData = signupData,
-                    onPasswordChange = { onDataChange(signupData.copy(password = it)) },
-                    onConfirmPasswordChange = { onDataChange(signupData.copy(confirmPassword = it)) },
-                    onZipcodeChange = { onDataChange(signupData.copy(zipcode = it)) }
-                )
-            }
+                        SignupStep.PASSWORD -> PasswordStep(
+                            signupData = signupData,
+                            onPasswordChange = { onDataChange(signupData.copy(password = it)) },
+                            onConfirmPasswordChange = { onDataChange(signupData.copy(confirmPassword = it)) },
+                            onZipcodeChange = { onDataChange(signupData.copy(zipcode = it)) }
+                        )
+                    }
+                }
         }
     )
 }

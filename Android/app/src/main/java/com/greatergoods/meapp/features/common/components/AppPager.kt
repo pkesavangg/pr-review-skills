@@ -29,7 +29,7 @@ fun <T> AppHorizontalPager(
         userScrollEnabled = false,
         modifier = modifier.fillMaxSize()
     ) { page ->
-        content(steps[page])
+            content(steps[page])
     }
 }
 
