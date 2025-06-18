@@ -7,7 +7,6 @@
 
 import Foundation
 
-@MainActor
 final class HTTPClient {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService
@@ -167,7 +166,7 @@ final class HTTPClient {
             }
             return account
         } else {
-            guard let account = accountService.activeAccount else {
+            guard let account = await accountService.activeAccount else {
                 throw AccountError.noActiveAccount
             }
             return account
@@ -204,8 +203,8 @@ final class HTTPClient {
     
     // MARK: - Connectivity Check
     private func checkConnectivity() async throws {
-        if !NetworkMonitor.shared.isConnected {
-            notificationHelperService.showToast(ToastModel(
+        if await !NetworkMonitor.shared.isConnected {
+            await notificationHelperService.showToast(ToastModel(
                 message: ToastStrings.unableToConnect
             ))
             throw HTTPError.noInternet

@@ -36,6 +36,8 @@ final class SignupStore: ObservableObject {
     @Published var showHeightInchesPicker = false
     @Published var showHeightCmPicker = false
     
+    var onSignupSuccess: (() -> Void)?
+    
     let heightInchesOptions: [[String]] = [
         (2...7).map { "\($0)" },
         (0...11).map { "\($0)" }
@@ -161,7 +163,12 @@ final class SignupStore: ObservableObject {
         signupForm.getError(for: control)
     }
     
-    func showExitAlert(router: Router<AuthRoute>) {
+    func handleExit(router: Router<AuthRoute>) {
+        // If the form is not dirty, simply navigate back else show an alert
+        if !signupForm.isDirty {
+            router.navigateBack()
+            return
+        }
         let alert = AlertModel(
             title: alertLang.SignupExitAlert.title,
             message: alertLang.SignupExitAlert.message,
@@ -202,6 +209,7 @@ final class SignupStore: ObservableObject {
             if let goal = goal {
                 let _ = try await accountService.createGoal(goal)
             }
+            onSignupSuccess?()
             resetForm()
         } catch {
             handleSignupError(error)
