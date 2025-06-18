@@ -71,7 +71,6 @@ fun LoginScreen() {
         containerColor = colorScheme.secondaryBackground,
     ) { scaffoldModifier ->
         Column(
-            modifier = scaffoldModifier.padding(horizontal = spacing.sm, vertical = 0.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top,
         ) {

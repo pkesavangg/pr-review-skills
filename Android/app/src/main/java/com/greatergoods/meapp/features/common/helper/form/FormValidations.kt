@@ -1,10 +1,5 @@
 package com.greatergoods.meapp.features.common.helper.form
 
-import com.greatergoods.meapp.features.common.enum.AppValidator.EMAIL
-import com.greatergoods.meapp.features.common.enum.AppValidator.SKU
-import com.greatergoods.meapp.features.common.enum.AppValidator.WEIGHT_KG
-import com.greatergoods.meapp.features.common.enum.AppValidator.WEIGHT_LB
-import com.greatergoods.meapp.features.common.enum.AppValidator.BODY_COMP
 import java.util.Calendar
 
 object ValidationType {
@@ -25,18 +20,18 @@ object ValidationMessages {
     const val RANGE = "value must be between %d and %d"
     const val INVALID_NUMBER = "invalid number"
     const val INVALID_EMAIL = "must use a valid email"
-    const val PATTERN = "value does not match required pattern"
+    const val PATTERN = "invalid"
     const val NOT_SAME = "value should not be same as other field"
     const val GREATER_THAN = "value must be greater than %s"
     const val LESS_THAN = "value must be less than %s"
     const val FUTURE_TIME = "date must not be in the future"
-    const val SKU = "SKU must be 4-digit numeric"
+    const val SKU = "model number invalid"
     const val REQUIRED = "must not leave blank"
     const val PASSWORD_MISMATCH = "passwords mismatch"
     const val NO_WHITESPACE = "must not leave blank"
     const val INVALID_WEIGHT = "invalid weight"
-    const val KG_RANGE = "weight must be between 0.1 and 450 kg"
-    const val LB_RANGE = "weight must be between 0.1 and 999 lb"
+    const val KG_RANGE = "weight must be between 0kg and 450 kg"
+    const val LB_RANGE = "weight must be between 0lbs and 999 lbs"
 }
 
 object FormValidations {
@@ -75,7 +70,7 @@ object FormValidations {
 
     fun email(): Validator<String> =
         { value ->
-            if (!EMAIL.matches(value)) {
+            if (!AppValidatorConfig.Email.PATTERN.matches(value)) {
                 ValidationError(ValidationType.EMAIL, ValidationMessages.INVALID_EMAIL)
             } else {
                 null
@@ -151,7 +146,7 @@ object FormValidations {
 
     fun skuValidator(): Validator<String> =
         { value ->
-            if (!SKU.matches(value)) {
+            if (!AppValidatorConfig.SKU.PATTERN.matches(value)) {
                 ValidationError(ValidationType.PATTERN, ValidationMessages.SKU)
             } else {
                 null
@@ -175,7 +170,7 @@ object FormValidations {
                 } else {
                     if (unitType == "kg") {
                         when {
-                            v <= WEIGHT_KG.min || v > WEIGHT_KG.max ->
+                            v <= AppValidatorConfig.WeightKg.MIN || v > AppValidatorConfig.WeightKg.MAX ->
                                 ValidationError(
                                     ValidationType.NOT_IN_RANGE,
                                     ValidationMessages.KG_RANGE,
@@ -185,7 +180,7 @@ object FormValidations {
                         }
                     } else {
                         when {
-                            v <= WEIGHT_LB.min || v > WEIGHT_LB.max ->
+                            v <= AppValidatorConfig.WeightLb.MIN || v > AppValidatorConfig.WeightLb.MAX ->
                                 ValidationError(
                                     ValidationType.NOT_IN_RANGE,
                                     ValidationMessages.LB_RANGE,
@@ -199,8 +194,8 @@ object FormValidations {
         }
 
     fun bodyCompValidator(
-        min: Int = BODY_COMP.min,
-        max: Int = BODY_COMP.max,
+        min: Int = AppValidatorConfig.BodyComp.MIN,
+        max: Int = AppValidatorConfig.BodyComp.MAX,
         allowDecimal: Boolean = true,
     ): Validator<String> =
         { value ->

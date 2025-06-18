@@ -5,8 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
-import com.greatergoods.meapp.features.common.enum.AppValidator.EMAIL
-import com.greatergoods.meapp.features.common.enum.AppValidator.PASSWORD
+import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
@@ -47,7 +46,7 @@ constructor(
                         "",
                         listOf(
                             FormValidations.required(),
-                            FormValidations.maxLength(EMAIL.maxLength),
+                            FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH),
                             FormValidations.email(),
                         ),
                     ),
@@ -55,8 +54,8 @@ constructor(
                     FormControl.create(
                         "",
                         listOf(
-                            FormValidations.minLength(PASSWORD.minLength),
-                            FormValidations.maxLength(PASSWORD.maxLength),
+                            FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH),
+                            FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
                         ),
                     ),
             )
