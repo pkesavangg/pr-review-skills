@@ -20,8 +20,6 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
  * Handles window insets properly for status bar, navigation bar, and keyboard.
  *
  * @param title The title to display in the AppBar.
- * @param onLeftIconClick Callback for left icon click.
- * @param onRightIconClick Callback for right icon click (optional).
  * @param modifier Modifier for the Scaffold.
  * @param actions Optional composable for actions.
  * @param navigationIcon Optional composable for left icon.
@@ -31,8 +29,8 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
-    containerColor: Color = colorScheme.primaryBackground,
-    contentColor: Color = colorScheme.secondaryBackground,
+    containerColor: Color = colorScheme.secondaryBackground,
+    appBarColor: Color = colorScheme.primaryBackground,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
@@ -44,18 +42,19 @@ fun AppScaffold(
                 title = title,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                containerColor = containerColor,
-                modifier = Modifier.systemBarsPadding(),
+                containerColor = appBarColor,
             )
         },
-        containerColor = containerColor,
+        containerColor = appBarColor,
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(contentColor),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(containerColor),
         ) {
+
             content(Modifier)
         }
     }
