@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
@@ -97,7 +98,8 @@ fun LoginScreen() {
                     nextFocusRequester = passwordFocusRequester,
                     modifier =
                         Modifier
-                            .focusRequester(emailFocusRequester)
+                            .semantics { contentType = ContentType.Username }
+                            .focusRequester(emailFocusRequester),
                 )
                 AppInput(
                     formControl = state.form.controls.password,
@@ -109,12 +111,14 @@ fun LoginScreen() {
                         viewModel.onSubmit()
                         focusManager.clearFocus()
                     },
-                    modifier = Modifier.focusRequester(passwordFocusRequester),
+                    modifier = Modifier
+                        .semantics { contentType = ContentType.Password }
+                        .focusRequester(passwordFocusRequester),
                 )
                 Spacer(Modifier.height(spacing.xs))
                 AppButton(
                     label = LoginStrings.LoginButton,
-                    enabled = viewModel.isFormValid && !state.isLoading,
+                    enabled = state.form.isValid && !state.isLoading,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                     onClick = { viewModel.onSubmit() },
                 )
