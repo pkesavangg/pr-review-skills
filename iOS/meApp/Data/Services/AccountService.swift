@@ -92,7 +92,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     /// Logs out the current active account or a specific account by ID.
-    func logOut(accountId: String?) async throws {
+    func logOut(accountId: String? = nil) async throws {
         // Always try API, fallback to local only if network error
         // if accountId is nil, use current logged in account
         guard let accountId = accountId ?? activeAccount?.accountId else {
