@@ -170,7 +170,6 @@ fun SettingsScreen() {
                         ),
                     ),
             )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
         }
     }
 }

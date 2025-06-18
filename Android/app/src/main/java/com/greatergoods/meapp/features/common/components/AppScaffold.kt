@@ -43,8 +43,6 @@ fun AppScaffold(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 containerColor = appBarColor,
-                modifier =
-                    Modifier.systemBarsPadding(),
             )
         },
         containerColor = appBarColor,
