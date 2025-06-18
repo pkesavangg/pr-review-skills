@@ -13,7 +13,6 @@ struct BasicButtonStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .foregroundColor(foreGroundColor)
-            .fontWeight(.bold)
     }
 }
 
