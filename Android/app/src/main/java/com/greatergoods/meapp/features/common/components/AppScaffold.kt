@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
@@ -66,6 +67,9 @@ fun AppScaffoldPreview() {
     MeAppTheme {
         AppScaffold(
             title = "App Scaffold Title",
+            containerColor = MeTheme.colorScheme.secondaryBackground,
+            navigationIcon = { AppIconButton(AppIcons.Default.Close) {} },
+            actions = { AppIconButton(AppIcons.Outlined.Help) {} }
         ) { modifier ->
             Box(modifier = modifier) {
                 Text(
