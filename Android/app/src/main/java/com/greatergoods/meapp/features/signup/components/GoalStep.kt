@@ -34,42 +34,39 @@ fun GoalStep(
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
-            AppText(SignupStrings.goalStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-            AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle,spacing = MeTheme.spacing.md)
-            SegmentButtonGroup(
-                data = GoalType.entries.toTypedArray().mapIndexed { index, label ->
-                    SegmentButtonData(id = index, label = when(label){
-                        GoalType.MAINTAIN -> SignupStrings.goalStepMaintain
-                        GoalType.LOSE_GAIN -> SignupStrings.goalStepLoseGain
-                    })
-                },
-                selectedIndex = signupData.goalType.ordinal,
-                onSelected = { index -> onGoalTypeChange(GoalType.entries[index]) },
-                size = SegmentButtonSize.Large,
-            )
+        AppText(SignupStrings.goalStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+        AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        val list = GoalType.entries.toList()
+        SegmentButtonGroup(
+            data = list,
+            selectedData = signupData.goalType,
+            onSelected = { data -> onGoalTypeChange(data) },
+            size = SegmentButtonSize.Large,
+            key = GoalType::name,
+        )
 
-            Spacer(modifier = Modifier.height(MeTheme.spacing.md))
+        Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
-            // Current weight input (disabled for maintain)
-            AppInput<String>(
-                formControl = null,
-                type = AppInputType.WEIGHT,
-                label = SignupStrings.goalStepCurrentWeight,
-                enabled = signupData.goalType != GoalType.MAINTAIN,
-                onValueChange = { value ->
-                    onCurrentWeightChange(value?.toFloatOrNull())
-                }
-            )
+        // Current weight input (disabled for maintain)
+        AppInput<String>(
+            formControl = null,
+            type = AppInputType.WEIGHT,
+            label = SignupStrings.goalStepCurrentWeight,
+            enabled = signupData.goalType != GoalType.MAINTAIN,
+            onValueChange = { value ->
+                onCurrentWeightChange(value?.toFloatOrNull())
+            },
+        )
 
-            // Goal weight input
-            AppInput<String>(
-                formControl = null,
-                type = AppInputType.WEIGHT,
-                label = SignupStrings.goalStepGoalWeight,
-                onValueChange = { value ->
-                    onGoalWeightChange(value?.toFloatOrNull())
-                }
-            )
+        // Goal weight input
+        AppInput<String>(
+            formControl = null,
+            type = AppInputType.WEIGHT,
+            label = SignupStrings.goalStepGoalWeight,
+            onValueChange = { value ->
+                onGoalWeightChange(value?.toFloatOrNull())
+            },
+        )
     }
 }
 
@@ -82,7 +79,7 @@ fun GoalStepPreview() {
                 goalType = GoalType.LOSE_GAIN,
                 currentWeight = 150f,
                 goalWeight = 140f,
-                useMetric = false
+                useMetric = false,
             ),
             onGoalTypeChange = {},
             onCurrentWeightChange = {},

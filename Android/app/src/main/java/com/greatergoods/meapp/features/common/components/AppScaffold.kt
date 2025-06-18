@@ -39,13 +39,14 @@ fun AppScaffold(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            AppBar(
-                title = title,
-                navigationIcon = navigationIcon,
-                actions = actions,
-                containerColor = containerColor,
-                modifier = Modifier.systemBarsPadding(),
-            )
+            if (title != null)
+                AppBar(
+                    title = title,
+                    navigationIcon = navigationIcon,
+                    actions = actions,
+                    containerColor = containerColor,
+                    modifier = Modifier.systemBarsPadding(),
+                )
         },
         containerColor = containerColor,
     ) { innerPadding ->
