@@ -109,7 +109,7 @@ final class EntryStore: ObservableObject {
                     muscleMass: muscleMass,
                     water: water,
                     bmi: bmi,
-                    source: "manual"
+                    source: EntrySource.manual.rawValue,
                 )
 
                 let scaleMetric = BathScaleMetric(
@@ -128,8 +128,8 @@ final class EntryStore: ObservableObject {
                 let entry = Entry(
                     entryTimestamp: entryTimestamp,
                     accountId: accountId,
-                    operationType: "create",
-                    deviceType: "manual",
+                    operationType: EntrySource.manual.rawValue,
+                    deviceType: DeviceType.scale.rawValue,
                     isSynced: false
                 )
                 entry.scaleEntry = scaleEntry

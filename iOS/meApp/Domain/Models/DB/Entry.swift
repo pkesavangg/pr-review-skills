@@ -52,17 +52,18 @@ final class Entry {
         self.deviceType = deviceType
         self.isSynced = isSynced
     }
-
-    convenience init(from dto: BathScaleOperationDTO, isSynced: Bool = false) {
-        let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
-        self.init(
-            id: UUID(),
-            entryTimestamp: timestamp,
-            accountId: dto.accountId ?? "",
-            operationType: dto.operationType ?? "",
-            serverTimestamp: dto.serverTimestamp,
-            isSynced: isSynced
-        )
+    
+    init(from dto: BathScaleOperationDTO, isSynced: Bool = false) {
+            let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
+            self.id = UUID()
+            self.entryTimestamp = timestamp
+            self.accountId = dto.accountId ?? ""
+            self.operationType = dto.operationType ?? ""
+            self.serverTimestamp = dto.serverTimestamp
+            self.deviceType = DeviceType.scale.rawValue
+            self.isSynced = isSynced
+            self.scaleEntry = BathScaleEntry(from: dto)
+            self.scaleEntryMetric = BathScaleMetric(from: dto)
     }
 
     func toOperationDTO() -> BathScaleOperationDTO {
