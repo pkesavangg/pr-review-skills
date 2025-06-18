@@ -25,11 +25,54 @@ struct SettingsScreen: View {
                 theme.backgroundSecondary
                     .ignoresSafeArea()
                 List {
+                    supportSection()
                     accountActionSection()
                 }
                 .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
             }
+            .inAppBrowser(
+                url: settingsStore.presentingBrowserURL,
+                isPresented: settingsStore.isBrowserPresented
+            )
+        }
+    }
+    
+    private func supportSection() -> some View {
+        Section(header:
+            sectionHeader(title: settingsLang.supportSettings)
+        ) {
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.helpAndCustomerService,
+                onTap: {
+                    settingsStore.openHelp()
+                }
+            ))
+            .settingsRowInsets()
+            
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.privacyPolicy,
+                onTap: {
+                    settingsStore.openPrivacy()
+                }
+            ))
+            .settingsRowInsets()
+            
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.termsOfService,
+                onTap: {
+                    settingsStore.openTerms()
+                }
+            ))
+            .settingsRowInsets()
+            
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.greaterGoodsWebsite,
+                onTap: {
+                    settingsStore.openGreaterGoods()
+                }
+            ))
+            .settingsRowInsets()
         }
     }
     
@@ -43,7 +86,7 @@ struct SettingsScreen: View {
                 }
             ))
             .settingsRowInsets()
-
+            
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.deleteAccount,
                 canShowChevron: false,
@@ -55,6 +98,16 @@ struct SettingsScreen: View {
             .settingsRowInsets()
         }
     }
+    
+    private func sectionHeader(title: String) -> some View {
+        Text(title)
+            .fontOpenSans(.heading4)
+            .foregroundColor(theme.textHeading)
+            .textCase(.none)
+            .padding(.bottom, .spacingSM)
+            .padding(.leading, -16)
+    }
+
 }
 
 #Preview {
