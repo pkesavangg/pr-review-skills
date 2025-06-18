@@ -16,40 +16,94 @@ class GraphViewModel: ObservableObject {
     @Published var currentDateRange: ClosedRange<Date> = Date()...Date()
     @Published var isAnimating: Bool = false
 
-    // Main Y ticks (175, 180, 185, 190)
     let yAxisTicks: [Double] = stride(from: 175, through: 190, by: 5).map { $0 }
-    // Goal weight (for now: 178)
     let goalWeight: Double = 178
 
-    // Y axis ticks including goal weight if not present
+    private let calendar = Calendar.current
+
     func yAxisTicksWithGoal() -> [Double] {
         var ticks = yAxisTicks
-        if !ticks.contains(goalWeight) {
-            ticks.append(goalWeight)
-        }
-        ticks.sort()
-        return ticks
+        if !ticks.contains(goalWeight) { ticks.append(goalWeight) }
+        return ticks.sorted()
     }
 
-    /// Correction value for vertical offset of annotation bubble (tunes for visual alignment)
-    private let annotationYCorrection: CGFloat = 180
-
-    func xAxisDomain(for operations: [BathScaleOperationDTO]) -> ClosedRange<Date> {
-        let dates = operations.compactMap { $0.date }
-        guard let min = dates.min(), let max = dates.max() else {
-            let now = Date()
-            return now...now
+    func xAxisDomain(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> ClosedRange<Date> {
+        switch period {
+        case .week:
+            guard let start = weekStartDate(operations) else { return Date()...Date() }
+            return start...calendar.date(byAdding: .day, value: 6, to: start)!
+        case .month:
+            guard let start = monthStartDate(operations),
+                  let range = calendar.range(of: .day, in: .month, for: start) else { return Date()...Date() }
+            return start...calendar.date(byAdding: .day, value: range.count - 1, to: start)!
+        case .year:
+            guard let start = yearStartDate(operations) else { return Date()...Date() }
+            return start...calendar.date(byAdding: .month, value: 11, to: start)!
+        case .total:
+            let dates = operations.compactMap { $0.date }
+            guard let min = dates.min(), let max = dates.max() else {
+                let now = Date()
+                return now...now
+            }
+            return min...max
         }
-        return min == max ? (min.addingTimeInterval(-1800))...(max.addingTimeInterval(1800)) : min...max
     }
 
-    func ruleMarkAlignment(for selected: BathScaleOperationDTO, in operations: [BathScaleOperationDTO]) -> Alignment {
-        guard let idx = operations.firstIndex(where: { $0.id == selected.id }) else { return .center }
-        switch idx {
-        case 0: return .leading
-        case operations.count - 1: return .topTrailing
-        default: return .center
+    func xAxisLabels(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> [Date] {
+        switch period {
+        case .week:
+            guard let start = weekStartDate(operations) else { return [] }
+            return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
+        case .month:
+            guard let start = monthStartDate(operations),
+                  let range = calendar.range(of: .day, in: .month, for: start) else { return [] }
+            let daysInMonth = range.count
+            let gridCount = max(4, min(daysInMonth, 6))
+            let step = Double(daysInMonth - 1) / Double(gridCount - 1)
+            return (0..<gridCount).compactMap {
+                let safeDay = min(1 + Int(round(step * Double($0))), daysInMonth)
+                return calendar.date(bySetting: .day, value: safeDay, of: start)
+            }
+        case .year:
+            guard let start = yearStartDate(operations) else { return [] }
+            return (0..<12).compactMap { calendar.date(byAdding: .month, value: $0, to: start) }
+        case .total:
+            return []
         }
+    }
+
+    func xLabelString(for date: Date, period: TimePeriod) -> String? {
+        switch period {
+        case .week:
+            return WeekDay.abbreviation(for: calendar.component(.weekday, from: date))
+        case .month:
+            return "\(calendar.component(.day, from: date))"
+        case .year:
+            return Month.initial(for: calendar.component(.month, from: date))
+        case .total:
+            return nil
+        }
+    }
+
+    func paddedOperations(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> [BathScaleOperationDTO] {
+        guard !operations.isEmpty else { return [] }
+        let domain = xAxisDomain(for: period, operations: operations)
+        var padded = operations.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
+        let isoFormatter = ISO8601DateFormatter()
+
+        if let first = padded.first, let firstDate = first.date,
+           firstDate > domain.lowerBound,
+           operations.contains(where: { ($0.date ?? .distantPast) < domain.lowerBound }) {
+            padded.insert(first.copy(with: isoFormatter.string(from: domain.lowerBound)), at: 0)
+        }
+
+        if let last = padded.last, let lastDate = last.date,
+           lastDate < domain.upperBound,
+           operations.contains(where: { ($0.date ?? .distantFuture) > domain.upperBound }) {
+            padded.append(last.copy(with: isoFormatter.string(from: domain.upperBound)))
+        }
+
+        return padded
     }
 
     func getSelectedEntry(at location: CGPoint, proxy: ChartProxy, operations: [BathScaleOperationDTO]) -> (entry: BathScaleOperationDTO, pointY: CGFloat)? {
@@ -59,98 +113,88 @@ class GraphViewModel: ObservableObject {
                 guard let d = op.date else { return nil }
                 return (op, d)
             })
-                .min(by: { abs($0.1.timeIntervalSince(date)) < abs($1.1.timeIntervalSince(date)) })?.0 else {
+            .min(by: { abs($0.1.timeIntervalSince(date)) < abs($1.1.timeIntervalSince(date)) })?.0 else {
             return nil
         }
-        if let weight = nearest.weight, let y = proxy.position(forY: weight) {
-            return (entry: nearest, pointY: y)
-        }
-        return nil
+        guard let weight = nearest.weight, let y = proxy.position(forY: weight) else { return nil }
+        return (nearest, y)
     }
 
-    func dragGesture(
-        proxy: ChartProxy,
-        operations: [BathScaleOperationDTO],
-        selectedWeight: Binding<Double?>
-    ) -> some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                self.updateSelectedEntry(
-                    at: value.location,
-                    using: proxy,
-                    operations: operations,
-                    selectedWeight: selectedWeight
-                )
+    // MARK: - Date Helpers
+
+    private func weekStartDate(_ operations: [BathScaleOperationDTO]) -> Date? {
+        calendar.dateInterval(of: .weekOfYear, for: operations.last?.date ?? Date())?.start
+    }
+
+    private func monthStartDate(_ operations: [BathScaleOperationDTO]) -> Date? {
+        let date = operations.last?.date ?? Date()
+        let comps = calendar.dateComponents([.year, .month], from: date)
+        return calendar.date(from: comps)
+    }
+
+    private func yearStartDate(_ operations: [BathScaleOperationDTO]) -> Date? {
+        let date = operations.last?.date ?? Date()
+        return calendar.date(from: calendar.dateComponents([.year], from: date))
+    }
+
+    func periodPages(operations: [BathScaleOperationDTO], selectedPeriod: TimePeriod) -> [[BathScaleOperationDTO]] {
+        guard selectedPeriod != .total else {
+            return [operations.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }]
+        }
+
+        let grouped = Dictionary(grouping: operations) { op -> Date in
+            let date = op.date ?? Date()
+            switch selectedPeriod {
+            case .week:
+                return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+            case .month:
+                return calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+            case .year:
+                return calendar.date(from: calendar.dateComponents([.year], from: date)) ?? date
+            case .total:
+                return .distantPast
             }
-            .onEnded { value in
-                self.updateSelectedEntry(
-                    at: value.location,
-                    using: proxy,
-                    operations: operations,
-                    selectedWeight: selectedWeight
-                )
-            }
+        }
+
+        return grouped
+            .sorted { $0.key < $1.key }
+            .map { $0.value.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) } }
     }
 
-    private func updateSelectedEntry(
-        at location: CGPoint,
-        using proxy: ChartProxy,
-        operations: [BathScaleOperationDTO],
-        selectedWeight: Binding<Double?>
-    ) {
-        guard let result = getSelectedEntry(at: location, proxy: proxy, operations: operations) else {
-            selectedWeight.wrappedValue = nil
-            selectedEntry = nil
-            return
+    func periodLabel(for ops: [BathScaleOperationDTO], period: TimePeriod) -> String? {
+        guard let minDate = ops.compactMap(\.date).min(),
+              let maxDate = ops.compactMap(\.date).max() else { return nil }
+        func formatRange(start: Date, end: Date) -> String {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = "LLL"
+            let startMonth = formatter.string(from: start).lowercased()
+            let startDay = calendar.component(.day, from: start)
+            let endDay = calendar.component(.day, from: end)
+            let year = calendar.component(.year, from: end)
+            return "\(startMonth) \(startDay) - \(endDay), \(year)"
         }
-        selectedEntry = result.entry
-        selectedPointY = result.pointY
-        selectedWeight.wrappedValue = result.entry.weight
-    }
-
-    func annotationBubbleOffset(
-        pointRadius: CGFloat = .radius2XL,
-        extraOffset: CGFloat = 5
-    ) -> CGFloat {
-        let bubbleHeight = annotationHeight
-        return selectedPointY - (chartHeight / 2) + pointRadius + extraOffset - (bubbleHeight / 2) - annotationYCorrection
-    }
-
-    func handleSwipe(direction: SwipeDirection, currentRange: ClosedRange<Date>, segment: String) {
-        guard !isAnimating else { return }
-        isAnimating = true
-        
-        let calendar = Calendar.current
-        let newRange: ClosedRange<Date>
-        
-        switch segment {
-        case TimePeriod.week.displayName:
-            let daysToAdd = direction == .left ? -7 : 7
-            newRange = calendar.date(byAdding: .day, value: daysToAdd, to: currentRange.lowerBound)!...calendar.date(byAdding: .day, value: daysToAdd, to: currentRange.upperBound)!
-            
-        case TimePeriod.month.displayName:
-            let monthsToAdd = direction == .left ? -1 : 1
-            newRange = calendar.date(byAdding: .month, value: monthsToAdd, to: currentRange.lowerBound)!...calendar.date(byAdding: .month, value: monthsToAdd, to: currentRange.upperBound)!
-            
-        case TimePeriod.year.displayName:
-            let yearsToAdd = direction == .left ? -1 : 1
-            newRange = calendar.date(byAdding: .year, value: yearsToAdd, to: currentRange.lowerBound)!...calendar.date(byAdding: .year, value: yearsToAdd, to: currentRange.upperBound)!
-            
-        default:
-            newRange = currentRange
-        }
-        
-        withAnimation(.easeInOut(duration: 0.3)) {
-            currentDateRange = newRange
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.isAnimating = false
+        switch period {
+        case .week:
+            let start = calendar.dateInterval(of: .weekOfYear, for: maxDate)?.start ?? minDate
+            return formatRange(start: start, end: calendar.date(byAdding: .day, value: 6, to: start)!)
+        case .month:
+            let comps = calendar.dateComponents([.year, .month], from: maxDate)
+            guard let start = calendar.date(from: comps),
+                  let range = calendar.range(of: .day, in: .month, for: start) else { return nil }
+            return formatRange(start: start, end: calendar.date(byAdding: .day, value: range.count - 1, to: start)!)
+        case .year:
+            let comps = calendar.dateComponents([.year], from: maxDate)
+            guard let start = calendar.date(from: comps) else { return nil }
+            return formatRange(start: start, end: calendar.date(byAdding: .month, value: 11, to: start)!)
+        case .total:
+            return formatRange(start: minDate, end: maxDate)
         }
     }
-}
 
-enum SwipeDirection {
-    case left
-    case right
+    func weightLabel(operations: [BathScaleOperationDTO], selectedPeriod: TimePeriod, selectedPage: Int) -> String? {
+        let pages = periodPages(operations: operations, selectedPeriod: selectedPeriod)
+        guard selectedPage < pages.count else { return nil }
+        return periodLabel(for: pages[selectedPage], period: selectedPeriod)
+    }
 }

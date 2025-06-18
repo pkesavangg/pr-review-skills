@@ -6,54 +6,71 @@
 //
 
 import SwiftUI
-import Charts
 
 struct WeightTrendView: View {
     @State private var selectedSegment: TimePeriod = .month
     @State private var selectedWeight: Double? = nil
     @State private var operations: [BathScaleOperationDTO] = sampleOperations(for: TimePeriod.month.rawValue)
+    @State private var selectedPage: Int = 0
     @Environment(\.appTheme) private var theme
+    @StateObject private var viewModel = GraphViewModel()
+    
+    private var weightLabel: String? {
+        viewModel.weightLabel(
+            operations: operations,
+            selectedPeriod: selectedSegment,
+            selectedPage: selectedPage
+        )
+    }
     
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                
-                VStack(alignment: .leading){
+                VStack(alignment: .leading) {
                     WeightDisplayView(
                         weightText: String(format: "%05.1f", selectedWeight ?? 0),
                         unitText: "lbs"
                     )
                     
-                    Text("jun 7 - 13, 2024")
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
-                        .padding(.leading, 16)
-                        .padding(.top, 10)
+                    if let label = weightLabel {
+                        Text(label)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                            .padding(.leading, 16)
+                            .padding(.top, 10)
+                    }
                 }
                 .padding(.bottom, 8)
-
+                
                 GraphView(
                     operations: operations,
-                    selectedSegmentTitle: selectedSegment.displayName,
-                    selectedWeight: $selectedWeight
+                    selectedPeriod: selectedSegment,
+                    selectedWeight: $selectedWeight,
+                    selectedPage: $selectedPage
                 )
-
+                .frame(height: 400)
+                .padding(.horizontal, 10)
+                
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
                     selectedSegment: $selectedSegment
                 )
                 .padding(.top, 18)
+                .padding(.horizontal, 15)
             }
             .background(theme.textInverse)
             .edgesIgnoringSafeArea(.all)
             .zIndex(1)
         }
-        .onChange(of: selectedSegment) { oldValue, newValue in
+        .onChange(of: selectedSegment) { _, newValue in
             self.operations = sampleOperations(for: newValue.rawValue)
             self.selectedWeight = operations.last?.weight
+            self.selectedPage = 0
         }
     }
+    
 }
+
 
 #Preview {
     WeightTrendView()

@@ -33,4 +33,29 @@ extension BathScaleOperationDTO: Identifiable {
         let formatter = ISO8601DateFormatter()
         return formatter.date(from: entryTimestamp)
     }
+    
+    func copy(with newTimestamp: String) -> BathScaleOperationDTO {
+        .init(
+            accountId: accountId,
+            bmr: bmr,
+            bmi: bmi,
+            bodyFat: bodyFat,
+            boneMass: boneMass,
+            entryTimestamp: newTimestamp,
+            impedance: impedance,
+            metabolicAge: metabolicAge,
+            muscleMass: muscleMass,
+            operationType: operationType,
+            proteinPercent: proteinPercent,
+            pulse: pulse,
+            serverTimestamp: serverTimestamp,
+            skeletalMusclePercent: skeletalMusclePercent,
+            source: source,
+            subcutaneousFatPercent: subcutaneousFatPercent,
+            unit: unit,
+            visceralFatLevel: visceralFatLevel,
+            water: water,
+            weight: weight
+        )
+    }    
 }
