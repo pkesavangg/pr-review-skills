@@ -287,8 +287,8 @@ struct ManualEntryScreen: View {
                     // Save button
                     ButtonView(
                         text: commonLang.save,
-                        type: .primary,
-                        size: .regular,
+                        type: .filledPrimary,
+                        size: .large,
                         isDisabled: !entryStore.manualEntryForm.isValid,
                     ) {
                         Task {
