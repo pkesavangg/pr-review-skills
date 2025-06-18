@@ -9,7 +9,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SettingsSection
@@ -18,13 +21,25 @@ import com.greatergoods.meapp.features.common.model.SettingsItem
 import com.greatergoods.meapp.features.common.model.SettingsItemType
 import com.greatergoods.meapp.features.settings.components.UserProfileSection
 import com.greatergoods.meapp.features.settings.strings.SettingsScreenStrings
+import com.greatergoods.meapp.features.settings.viewmodel.SettingsIntent
+import com.greatergoods.meapp.features.settings.viewmodel.SettingsState
+import com.greatergoods.meapp.features.settings.viewmodel.SettingsViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
-//
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
+    val viewmodel: SettingsViewModel = hiltViewModel()
+    val state by viewmodel.state.collectAsState()
+    SettingsScreenContent(state, viewmodel::handleIntent)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreenContent(
+    state: SettingsState,
+    handleIntent: (SettingsIntent) -> Unit,
+) {
     AppScaffold(title = SettingsScreenStrings.Title) {
         Column(
             modifier =
@@ -33,7 +48,7 @@ fun SettingsScreen() {
                     .verticalScroll(rememberScrollState())
                     .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
         ) {
-            UserProfileSection {}
+            UserProfileSection(state.account) {}
             Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
             // Account Settings Section
             SettingsSection(
@@ -160,7 +175,9 @@ fun SettingsScreen() {
                         SettingsItem(
                             title = SettingsScreenStrings.LogOut,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.Logout)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.DeleteAccount,
@@ -178,6 +195,6 @@ fun SettingsScreen() {
 @Composable
 fun SettingsScreenPreview() {
     MeAppTheme {
-        SettingsScreen()
+        SettingsScreenContent(SettingsState(), {  })
     }
 }

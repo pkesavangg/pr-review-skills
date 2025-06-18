@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppProfileAvatar
 import com.greatergoods.meapp.features.common.components.ButtonSize
@@ -17,22 +18,28 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun UserProfileSection(onEditProfileClick: () -> Unit) {
+fun UserProfileSection(
+    account: Account?,
+    onEditProfileClick: () -> Unit,
+) {
+    val firstName = account?.firstName ?: " "
+    val email = account?.email ?: ""
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth(),
     ) {
         // Profile Image Placeholder
-        AppProfileAvatar("Vivek")
+        AppProfileAvatar(firstName)
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         Text(
-            text = "Kristin",
+            text = firstName,
             style = MeTheme.typography.heading4,
             color = MeTheme.colorScheme.textHeading,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
         Text(
-            text = "kstazrad@gmail.com",
+            text = email,
             style = MeTheme.typography.body2,
             color = MeTheme.colorScheme.textBody,
         )
@@ -49,6 +56,15 @@ fun UserProfileSection(onEditProfileClick: () -> Unit) {
 @Composable
 fun UserProfileSectionPreview() {
     MeAppTheme {
-        UserProfileSection {  }
+        UserProfileSection(
+            Account(
+                "1",
+                "John",
+                "Doe",
+                dob = "1990-01-01",
+                email = "john.mckinley@examplepetstore.com",
+                gender = "m",
+            ),
+        ) { }
     }
 }

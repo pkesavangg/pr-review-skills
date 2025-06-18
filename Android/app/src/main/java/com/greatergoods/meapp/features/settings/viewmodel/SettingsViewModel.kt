@@ -1,9 +1,10 @@
 package com.greatergoods.meapp.features.settings.viewmodel
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.service.DialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -17,8 +18,40 @@ import javax.inject.Inject
 class SettingsViewModel
     @Inject
     constructor(
-        private val accountRepository: IAccountRepository,
-    ) : ViewModel() {
+        private val authService: IAccountAuthService,
+        private val dialogService: DialogQueueService,
+    ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
+            SettingsReducer(),
+        ) {
+        override fun provideInitialState(): SettingsState = SettingsState()
+
+        init {
+            getUserProfile()
+        }
+
+        fun getUserProfile() {
+            viewModelScope.launch {
+                authService.activeAccountFlow.collect {
+                    handleIntent(SettingsIntent.updateAccount(it))
+                }
+            }
+        }
+
+        override fun handleIntent(intent: SettingsIntent) {
+            super.handleIntent(intent)
+            when (intent) {
+                is SettingsIntent.updateAccount -> {
+                    _state.value = _state.value.copy(account = intent.account)
+                }
+
+                is SettingsIntent.Logout -> {
+                    onLogOutClick()
+                }
+
+                else -> {}
+            }
+        }
+
         fun onEditProfileClick() {
             AppLog.d("SettingsViewModel", "Edit profile clicked")
             // TODO: Navigate to edit profile screen
@@ -113,11 +146,12 @@ class SettingsViewModel
             AppLog.d("SettingsViewModel", "Log out clicked")
             viewModelScope.launch {
                 try {
-                    // TODO: Navigate to login screen
-                    // accountRepository.logOut()
+                    val account = state.value.account
+                    if (account != null) {
+                        authService.logout(account.id)
+                    }
                 } catch (e: Exception) {
                     AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
-                    // TODO: Show error message
                 }
             }
         }
