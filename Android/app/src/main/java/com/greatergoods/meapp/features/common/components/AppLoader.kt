@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 enum class LoaderStyle {
     CIRCULAR,
@@ -198,8 +199,8 @@ fun AppLoader(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = message,
-                style = MeAppTheme.typography.heading5,
-                color = MeAppTheme.colorScheme.body,
+                style = MeTheme.typography.heading5,
+                color = MeTheme.colorScheme.textBody,
             )
         }
     }

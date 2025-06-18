@@ -2,17 +2,25 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
 
 /**
  * AppScaffold composable that provides a top app bar using AppBar and a content slot.
+ * Handles window insets properly for status bar, navigation bar, and keyboard.
  *
  * @param title The title to display in the AppBar.
  * @param onLeftIconClick Callback for left icon click.
@@ -26,25 +34,39 @@ import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
 fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
-    containerColor: Color = colorScheme.primary,
+    containerColor: Color = colorScheme.primaryBackground,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
         topBar = {
             AppBar(
                 title = title,
                 navigationIcon = navigationIcon,
                 actions = actions,
-                containerColor = containerColor
+                containerColor = containerColor,
+                modifier = Modifier.padding(
+                    WindowInsets.safeDrawing
+                        .only(WindowInsetsSides.Top)
+                        .asPaddingValues()
+                )
             )
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = containerColor
     ) { innerPadding ->
-        Box(modifier = Modifier
-            .padding(innerPadding)
-            .background(containerColor)) {
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(
+                    WindowInsets.safeDrawing
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                        .asPaddingValues()
+                )
+                .background(containerColor),
+        ) {
             content(Modifier)
         }
     }
@@ -60,7 +82,7 @@ fun AppScaffoldPreview() {
             Box(modifier = modifier) {
                 Text(
                     text = "Scaffold content goes here",
-                    style = MeAppTheme.typography.body1,
+                    style = MeTheme.typography.body1,
                 )
             }
         }

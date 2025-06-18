@@ -10,6 +10,7 @@ import SwiftUI
 struct SignupScreen: View {
     @StateObject var signupStore = SignupStore()
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject var router: Router<AuthRoute>
     var commonLang = CommonStrings.self
     
     private var stepViews: [AnyView] {
@@ -50,7 +51,7 @@ struct SignupScreen: View {
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 onLeadingTap: {
-                    signupStore.showExitAlert()
+                    signupStore.showExitAlert(router: router)
                 },
                 onTrailingTap: {
                     signupStore.showHelpModal()
@@ -111,36 +112,6 @@ struct SignupScreen: View {
                     signupStore.moveToNextStep()
                 }
             })
-        }
-    }
-}
-
-// TODO: Need to replace with the PageHeaderview from the common components
-import SwiftUI
-
-struct PageHeaderView: View {
-    @Environment(\.appTheme) private var theme
-    let leadingButtonView: AnyView
-    var trailingButtonView: AnyView?
-    let onLeadingButtonTap: (() -> Void)?
-    let onTrailingButtonTap: (() -> Void)?
-    let title: String? = nil
-    
-    var body: some View {
-        HStack {
-            leadingButtonView
-            Spacer()
-            if let title = title {
-                Text(title)
-                    .fontOpenSans(.heading5)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.trailing, trailingButtonView != nil ? 0 : 24)
-            }
-            Spacer()
-            
-            if let view = trailingButtonView {
-                view
-            }
         }
     }
 }

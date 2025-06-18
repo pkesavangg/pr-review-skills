@@ -1,5 +1,8 @@
 package com.greatergoods.meapp.core.di
 
+import com.greatergoods.meapp.core.network.TokenManager
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import com.greatergoods.meapp.core.service.AccountAuthService
 import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppEventService
@@ -8,10 +11,12 @@ import com.greatergoods.meapp.core.service.pushNotification.NotificationManager 
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
+import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
+import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.domain.services.IDeviceService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IIntegrationService
@@ -31,6 +36,25 @@ import android.content.Context
 @Module
 @InstallIn(SingletonComponent::class)
 object ServiceModule {
+    /**
+     * Provides a singleton instance of [IAccountAuthService].
+     * @param accountAuthService The implementation of AccountAuthService.
+     * @return [IAccountAuthService] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideAccountAuthService(
+        accountRepository: IAccountRepository,
+        connectivityObserver: IConnectivityObserver,
+        tokenManager: TokenManager,
+        dialogQueueService: IDialogQueueService
+    ): IAccountAuthService = AccountAuthService(
+        accountRepository,
+        connectivityObserver,
+        tokenManager,
+        dialogQueueService,
+    )
+
     /**
      * Provides a singleton instance of [IAppEventService].
      * @return [AppEventService] instance.

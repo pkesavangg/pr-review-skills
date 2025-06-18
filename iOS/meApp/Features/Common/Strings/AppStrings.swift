@@ -36,13 +36,16 @@ struct ToastStrings {
     static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
     static let emailInUse = "Email address is already in use"
     static let errorCreatingAccount = "Error creating account."
-    static let passwordResetSuccessTitle = "Success!"
     static let invalidEmailTitle = "Invalid Email ID!"
     static let invalidEmailMessage = "Enter a valid email address."
     static let invalidCredentials = "Your Email or password is incorrect. Please try again."
     static let passwordResetSuccessMessage = { (email: String) in
         "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 10 minutes."
     }
+    static let success = "Success!"
+    static let entryAdded = "Entry added."
+    static let errorSavingEntry = "Error saving new entry!"
+    static let pleaseTryAgain = "Please try again."
 }
 
 /// Constants for help modal strings used in the app
@@ -117,10 +120,18 @@ struct AlertStrings {
         static let passwordResetTitle = "Password Reset"
         static let enterEmailMessage = "Enter your email below."
     }
+
+    struct ManualEntryExitAlert {
+        static let title = "Your entry has not been saved!"
+        static let message = "Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
 }
 
 struct LoaderStrings {
     static let creatingAccount = "Creating account..."
+    static let savingEntry = "Saving entry..."
     static let loggingAccount = "Logging in..."
     static let sendingEmail = "Sending email..."
 }

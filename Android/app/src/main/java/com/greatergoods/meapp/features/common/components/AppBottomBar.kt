@@ -1,16 +1,21 @@
 package com.greatergoods.meapp.features.common.components
 
 import AppHorizontalPager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -37,33 +43,53 @@ import kotlinx.coroutines.launch
 @Composable
 fun PagerBottomAppBar(
     modifier: Modifier = Modifier,
+    containerColor: Color = Color.Transparent,
     leadingContent: @Composable () -> Unit,
-    middleContent: @Composable () -> Unit = {},
+    middleContent: @Composable () -> Unit,
     trailingContent: @Composable () -> Unit,
-    content: @Composable (modifier: Modifier) -> Unit,
+    content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
-        modifier = modifier.fillMaxSize() ,
-        bottomBar =
-            {
-                BottomAppBar(
-                modifier = modifier.fillMaxWidth(), // Ensure it fills the width
-                containerColor = Color.Transparent, // Use Material3 color scheme
+        modifier = modifier.fillMaxSize(),
+        containerColor = containerColor,
+        bottomBar = {
+            BottomAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            WindowInsets.safeDrawing
+                                .only(WindowInsetsSides.Bottom)
+                                .asPaddingValues(),
+                        ),
+                containerColor = containerColor,
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(MeAppTheme.spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(MeTheme.spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     leadingContent()
                     Spacer(modifier = Modifier.weight(1f))
                     middleContent()
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
                     trailingContent()
                 }
             }
-            }
-    ){ paddingValues ->
-        content( Modifier.padding(paddingValues))
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { paddingValues ->
+        content(
+            Modifier
+                .padding(paddingValues)
+                .padding(
+                    WindowInsets.safeDrawing
+                        .only(WindowInsetsSides.Horizontal)
+                        .asPaddingValues(),
+                ).background(containerColor),
+        )
     }
 }
 
@@ -71,14 +97,19 @@ fun PagerBottomAppBar(
 @Composable
 fun BottomAppBarPreview() {
     MeAppTheme {
-        data class PageContent(val title: String, val description: String, val pageNumber: Int)
-        // Create a list of example data for the pager
-        val myPages = listOf(
-            PageContent("Welcome", "This is the first page of our amazing app!", 1),
-            PageContent("Features", "Discover all the cool features we have.", 2),
-            PageContent("Settings", "Customize your experience here.", 3),
-            PageContent("About Us", "Learn more about our team and mission.", 4)
+        data class PageContent(
+            val title: String,
+            val description: String,
+            val pageNumber: Int,
         )
+        // Create a list of example data for the pager
+        val myPages =
+            listOf(
+                PageContent("Welcome", "This is the first page of our amazing app!", 1),
+                PageContent("Features", "Discover all the cool features we have.", 2),
+                PageContent("Settings", "Customize your experience here.", 3),
+                PageContent("About Us", "Learn more about our team and mission.", 4),
+            )
         // Remember the PagerState, linking it to the size of your data list
         val pagerState = rememberPagerState(pageCount = { myPages.size })
         val coroutineScope = rememberCoroutineScope() // Coroutine scope for animated scrolls
@@ -87,7 +118,7 @@ fun BottomAppBarPreview() {
         val isLastPage = pagerState.currentPage == myPages.lastIndex
         val nextLabel = if (isLastPage) "DONE" else "NEXT"
 
-        PagerBottomAppBar (
+        PagerBottomAppBar(
             leadingContent = {
                 AppButton(type = ButtonType.TextPrimary, label = "BACK", size = ButtonSize.Small) {
                     if (!isFirstPage) {
@@ -98,14 +129,14 @@ fun BottomAppBarPreview() {
                 }
             },
             middleContent = {
-                AppButton(type = ButtonType.TextTertiary, label = "SKIP",size = ButtonSize.Small) {
+                AppButton(type = ButtonType.TextTertiary, label = "SKIP", size = ButtonSize.Small) {
                     coroutineScope.launch {
                         pagerState.animateScrollToPage(myPages.lastIndex)
                     }
                 }
             },
             trailingContent = {
-                AppButton(type = ButtonType.PrimaryFilled, label = nextLabel,size = ButtonSize.Small) {
+                AppButton(type = ButtonType.PrimaryFilled, label = nextLabel, size = ButtonSize.Small) {
                     coroutineScope.launch {
                         if (!isLastPage) {
                             pagerState.animateScrollToPage(pagerState.currentPage + 1)
@@ -116,10 +147,11 @@ fun BottomAppBarPreview() {
                     }
                 }
             },
-            content =  { modifier -> // 'modifier' here includes the padding from Scaffold
+            content = { modifier ->
+                // 'modifier' here includes the padding from Scaffold
                 Surface(
                     modifier = modifier.fillMaxSize(), // Apply the passed modifier with padding
-                    color = MaterialTheme.colorScheme.background
+                    color = MeTheme.colorScheme.primaryBackground,
                 ) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -131,11 +163,12 @@ fun BottomAppBarPreview() {
                         AppHorizontalPager(
                             steps = myPages, // Pass your list of data,
                             pagerState = pagerState, // Pass the PagerState
-                            modifier = Modifier.weight(1f) // Make it fill available vertical space
-                        ) { pageContent -> // This lambda defines how each 'PageContent' item is displayed
+                            modifier = Modifier.weight(1f), // Make it fill available vertical space
+                        ) { pageContent ->
+                            // This lambda defines how each 'PageContent' item is displayed
                             AppStyledCard(
                                 cardAlignmentType = CardAlignmentType.TopCenter,
-                                modifier = Modifier.padding(top = 32.dp)
+                                modifier = Modifier.padding(top = 32.dp),
                             ) {
                                 AppText("Title-one", TextType.Title)
                                 AppText("Subtitle", TextType.Subtitle)
@@ -149,17 +182,16 @@ fun BottomAppBarPreview() {
                         // Optional: Add an indicator for the current page
                         Text(
                             text = "Swipe to navigate. Current Page: ${pagerState.currentPage + 1}",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                            style = MeTheme.typography.body3,
+                            color = MeTheme.colorScheme.tertiaryAction,
                         )
                     }
                 }
-            }
+            },
         )
     }
 }
-
-

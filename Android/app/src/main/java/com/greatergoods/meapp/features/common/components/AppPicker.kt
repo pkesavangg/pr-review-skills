@@ -33,9 +33,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeAppTheme.colorScheme
-import com.greatergoods.meapp.theme.MeAppTheme.spacing
-import com.greatergoods.meapp.theme.MeAppTheme.typography
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
+import com.greatergoods.meapp.theme.MeTheme.typography
 import kotlinx.coroutines.launch
 
 class PickerState<T>(
@@ -73,7 +73,7 @@ fun <T> AppPicker(
     val coroutineScope = rememberCoroutineScope()
     val snapFling = rememberSnapFlingBehavior(listState)
 
-    val dividerColor = colorScheme.body
+    val dividerColor = colorScheme.textBody
 
     // Convert dp to px **in the composable function body**
     val pxPerItem = with(LocalDensity.current) { itemHeight.toPx() }
@@ -146,9 +146,9 @@ fun <T> AppPicker(
                                 },
                             color =
                                 if (isSelected) {
-                                    colorScheme.body
+                                    colorScheme.textBody
                                 } else {
-                                    colorScheme.subheading
+                                    colorScheme.textSubheading
                                 },
                             textAlign = TextAlign.Center,
                         )

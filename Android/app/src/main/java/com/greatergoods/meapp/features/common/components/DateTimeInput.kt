@@ -21,13 +21,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.theme.MeAppTheme
-
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.typography
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import com.greatergoods.meapp.features.common.components.asMillis
+import com.greatergoods.meapp.features.common.components.asTime
+import com.greatergoods.meapp.features.common.components.clampTime
 
 /**
- * Represents the value for DateTimeInput.
+* Represents the value for DateTimeInput.
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
 sealed class DateTimeValue {
@@ -70,6 +75,7 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
+
             is DateTime -> {
                 val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
                 val time =
@@ -100,7 +106,8 @@ sealed class DateTimeValue {
      */
     fun getTimeString(): String =
         when (this) {
-             is Time -> SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
+            is Time ->
+                SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
                         .getInstance()
                         .apply {
@@ -108,6 +115,7 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
+
             is DateTime ->
                 SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
                     Calendar
@@ -117,6 +125,7 @@ sealed class DateTimeValue {
                             set(Calendar.MINUTE, minute)
                         }.time,
                 )
+
             else -> ""
         }
 }
@@ -142,23 +151,23 @@ object DateTimeInputDefaults {
     @Composable
     fun getDatePickerColor(): DatePickerColors =
         DatePickerDefaults.colors(
-            containerColor = MeAppTheme.colorScheme.primary,
-            titleContentColor = MeAppTheme.colorScheme.heading,
-            dayContentColor = MeAppTheme.colorScheme.body,
-            weekdayContentColor = MeAppTheme.colorScheme.body,
-            selectedDayContentColor = MeAppTheme.colorScheme.inverse,
-            selectedDayContainerColor = MeAppTheme.colorScheme.primaryAction,
-            todayContentColor = MeAppTheme.colorScheme.primaryAction,
-            todayDateBorderColor = MeAppTheme.colorScheme.primaryAction,
-            dividerColor = MeAppTheme.colorScheme.utility,
-            navigationContentColor = MeAppTheme.colorScheme.primaryAction,
-            yearContentColor = MeAppTheme.colorScheme.body,
-            currentYearContentColor = MeAppTheme.colorScheme.body,
-            selectedYearContentColor = MeAppTheme.colorScheme.body,
-            headlineContentColor = MeAppTheme.colorScheme.body,
+            containerColor = MeTheme.colorScheme.primaryBackground,
+            titleContentColor = MeTheme.colorScheme.textHeading,
+            dayContentColor = MeTheme.colorScheme.textBody,
+            weekdayContentColor = MeTheme.colorScheme.textBody,
+            selectedDayContentColor = MeTheme.colorScheme.inverseAction,
+            selectedDayContainerColor = MeTheme.colorScheme.primaryAction,
+            todayContentColor = MeTheme.colorScheme.primaryAction,
+            todayDateBorderColor = MeTheme.colorScheme.primaryAction,
+            dividerColor = MeTheme.colorScheme.utility,
+            navigationContentColor = MeTheme.colorScheme.primaryAction,
+            yearContentColor = MeTheme.colorScheme.textBody,
+            currentYearContentColor = MeTheme.colorScheme.textBody,
+            selectedYearContentColor = MeTheme.colorScheme.textBody,
+            headlineContentColor = MeTheme.colorScheme.textBody,
             dateTextFieldColors =
                 TextFieldDefaults.colors(
-                    focusedTextColor = MeAppTheme.colorScheme.primaryAction,
+                    focusedTextColor = MeTheme.colorScheme.primaryAction,
                 ),
         )
 
@@ -169,20 +178,20 @@ object DateTimeInputDefaults {
     @Composable
     fun getTimePickerColor(): TimePickerColors =
         TimePickerDefaults.colors(
-            clockDialColor = MeAppTheme.colorScheme.secondary,
-            clockDialSelectedContentColor = MeAppTheme.colorScheme.inverse,
-            clockDialUnselectedContentColor = MeAppTheme.colorScheme.body,
-            selectorColor = MeAppTheme.colorScheme.primaryAction,
-            periodSelectorBorderColor = MeAppTheme.colorScheme.utility,
-            periodSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
-            periodSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
-            periodSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
-            periodSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
-            timeSelectorSelectedContainerColor = MeAppTheme.colorScheme.toastBackground,
-            timeSelectorUnselectedContainerColor = MeAppTheme.colorScheme.secondary,
-            timeSelectorSelectedContentColor = MeAppTheme.colorScheme.primaryAction,
-            timeSelectorUnselectedContentColor = MeAppTheme.colorScheme.body,
-            containerColor = MeAppTheme.colorScheme.primary,
+            clockDialColor = MeTheme.colorScheme.secondaryBackground,
+            clockDialSelectedContentColor = MeTheme.colorScheme.inverseAction,
+            clockDialUnselectedContentColor = MeTheme.colorScheme.textBody,
+            selectorColor = MeTheme.colorScheme.primaryAction,
+            periodSelectorBorderColor = MeTheme.colorScheme.utility,
+            periodSelectorSelectedContainerColor = MeTheme.colorScheme.toastBackground,
+            periodSelectorUnselectedContainerColor = MeTheme.colorScheme.secondaryBackground,
+            periodSelectorSelectedContentColor = MeTheme.colorScheme.primaryAction,
+            periodSelectorUnselectedContentColor = MeTheme.colorScheme.textBody,
+            timeSelectorSelectedContainerColor = MeTheme.colorScheme.toastBackground,
+            timeSelectorUnselectedContainerColor = MeTheme.colorScheme.secondaryBackground,
+            timeSelectorSelectedContentColor = MeTheme.colorScheme.primaryAction,
+            timeSelectorUnselectedContentColor = MeTheme.colorScheme.textBody,
+            containerColor = MeTheme.colorScheme.primaryBackground,
         )
 
     /**
@@ -208,6 +217,8 @@ object DateTimeInputDefaults {
  * @param supportingText Optional supporting text below.
  * @param enabled Whether the input is enabled.
  * @param readOnly Whether the input is read-only.
+ * @param minValue Optional minimum value (Date, Time, or DateTime).
+ * @param maxValue Optional maximum value (Date, Time, or DateTime).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,6 +232,8 @@ fun DateTimeInput(
     supportingText: String? = null,
     enabled: Boolean = true,
     readOnly: Boolean = false,
+    minValue: DateTimeValue? = null,
+    maxValue: DateTimeValue? = null,
 ) {
     // State for dialog visibility
     var isDateDialogOpen by remember { mutableStateOf(false) }
@@ -234,7 +247,13 @@ fun DateTimeInput(
         localState = currentValue
     }
     // Error state
-    val isError = !formControl?.error.isNullOrBlank()
+    val isError = formControl?.isError ?: false
+
+    // Extract min/max for date and time
+    val minDateMillis = minValue.asMillis()
+    val maxDateMillis = maxValue.asMillis()
+    val minTime = minValue.asTime()
+    val maxTime = maxValue.asTime()
 
     Row {
         // Show date chip if mode is Date or DateTime
@@ -253,7 +272,7 @@ fun DateTimeInput(
 
         // Add spacing between chips if both are shown
         if (mode == DateTimeInputMode.DateTime) {
-            Spacer(Modifier.width(MeAppTheme.spacing.xs))
+            Spacer(Modifier.width(MeTheme.spacing.xs))
         }
 
         // Show time chip if mode is Time or DateTime
@@ -299,6 +318,8 @@ fun DateTimeInput(
                 }
                 localState = newValue
             },
+            minValue = minValue,
+            maxValue = maxValue,
         )
     }
     // Show time picker dialog if needed
@@ -315,15 +336,16 @@ fun DateTimeInput(
             onCancel = { isTimeDialogOpen = false },
             onOk = { hour, minute ->
                 isTimeDialogOpen = false
+                val (clampedHour, clampedMinute) = clampTime(hour, minute, minTime, maxTime)
                 val newValue =
                     if (mode == DateTimeInputMode.Time) {
-                        DateTimeValue.Time(hour, minute)
+                        DateTimeValue.Time(clampedHour, clampedMinute)
                     } else {
                         val dateTime = localState as? DateTimeValue.DateTime
                         DateTimeValue.DateTime(
                             dateTime?.millis ?: System.currentTimeMillis(),
-                            hour,
-                            minute,
+                            clampedHour,
+                            clampedMinute,
                         )
                     }
                 if (formControl != null) {
@@ -333,21 +355,24 @@ fun DateTimeInput(
                 }
                 localState = newValue
             },
+            minValue = minValue,
+            maxValue = maxValue,
         )
     }
 
     // Show error or supporting text
     if (formControl != null && isError) {
+        val errorMessage = formControl.error?.message ?: ""
         Text(
-            formControl.error ?: "",
-            color = MeAppTheme.colorScheme.error,
-            style = MeAppTheme.typography.body3,
+            errorMessage,
+            color = colorScheme.textError,
+            style = typography.body3,
         )
     } else if (supportingText != null) {
         Text(
             supportingText,
-            color = MeAppTheme.colorScheme.subheading,
-            style = MeAppTheme.typography.body3,
+            color = MeTheme.colorScheme.textSubheading,
+            style = MeTheme.typography.body3,
         )
     }
 }
@@ -364,22 +389,18 @@ fun DateTimeInputPreview() {
             val fakeScope = rememberCoroutineScope()
             val dateControl =
                 remember {
-                    FormControl<DateTimeValue>(
+                    FormControl.create<DateTimeValue>(
                         DateTimeValue.Date(System.currentTimeMillis()),
                         emptyList(),
-                        emptyList(),
-                        fakeScope,
                     )
                 }
             val timeControl =
-                remember { FormControl<DateTimeValue>(DateTimeValue.Time(14, 30), emptyList(), emptyList(), fakeScope) }
+                remember { FormControl.create<DateTimeValue>(DateTimeValue.Time(14, 30), emptyList()) }
             val dateTimeControl =
                 remember {
-                    FormControl<DateTimeValue>(
+                    FormControl.create<DateTimeValue>(
                         DateTimeValue.DateTime(System.currentTimeMillis(), 9, 15),
                         emptyList(),
-                        emptyList(),
-                        fakeScope,
                     )
                 }
             DateTimeInput(formControl = dateControl, mode = DateTimeInputMode.Date)
@@ -399,3 +420,35 @@ fun DateTimeInputPreview() {
         }
     }
 }
+
+
+fun DateTimeValue?.asMillis(): Long? = when (this) {
+    is DateTimeValue.Date -> this.millis
+    is DateTimeValue.DateTime -> this.millis
+    else -> null
+}
+
+fun DateTimeValue?.asTime(): DateTimeValue.Time? = when (this) {
+    is DateTimeValue.Time -> this
+    is DateTimeValue.DateTime -> DateTimeValue.Time(this.hour, this.minute)
+    else -> null
+}
+
+fun clampTime(hour: Int, minute: Int, min: DateTimeValue.Time?, max: DateTimeValue.Time?): Pair<Int, Int> {
+    var h = hour
+    var m = minute
+    min?.let {
+        if (h < it.hour || (h == it.hour && m < it.minute)) {
+            h = it.hour
+            m = it.minute
+        }
+    }
+    max?.let {
+        if (h > it.hour || (h == it.hour && m > it.minute)) {
+            h = it.hour
+            m = it.minute
+        }
+    }
+    return h to m
+}
+
