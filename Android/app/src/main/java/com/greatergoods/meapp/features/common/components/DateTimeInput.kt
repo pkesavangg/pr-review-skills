@@ -27,9 +27,12 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import com.greatergoods.meapp.features.common.components.asMillis
+import com.greatergoods.meapp.features.common.components.asTime
+import com.greatergoods.meapp.features.common.components.clampTime
 
 /**
- * Represents the value for DateTimeInput.
+* Represents the value for DateTimeInput.
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
 sealed class DateTimeValue {
@@ -214,6 +217,8 @@ object DateTimeInputDefaults {
  * @param supportingText Optional supporting text below.
  * @param enabled Whether the input is enabled.
  * @param readOnly Whether the input is read-only.
+ * @param minValue Optional minimum value (Date, Time, or DateTime).
+ * @param maxValue Optional maximum value (Date, Time, or DateTime).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -227,6 +232,8 @@ fun DateTimeInput(
     supportingText: String? = null,
     enabled: Boolean = true,
     readOnly: Boolean = false,
+    minValue: DateTimeValue? = null,
+    maxValue: DateTimeValue? = null,
 ) {
     // State for dialog visibility
     var isDateDialogOpen by remember { mutableStateOf(false) }
@@ -241,6 +248,12 @@ fun DateTimeInput(
     }
     // Error state
     val isError = formControl?.isError ?: false
+
+    // Extract min/max for date and time
+    val minDateMillis = minValue.asMillis()
+    val maxDateMillis = maxValue.asMillis()
+    val minTime = minValue.asTime()
+    val maxTime = maxValue.asTime()
 
     Row {
         // Show date chip if mode is Date or DateTime
@@ -305,6 +318,8 @@ fun DateTimeInput(
                 }
                 localState = newValue
             },
+            minValue = minValue,
+            maxValue = maxValue,
         )
     }
     // Show time picker dialog if needed
@@ -321,15 +336,16 @@ fun DateTimeInput(
             onCancel = { isTimeDialogOpen = false },
             onOk = { hour, minute ->
                 isTimeDialogOpen = false
+                val (clampedHour, clampedMinute) = clampTime(hour, minute, minTime, maxTime)
                 val newValue =
                     if (mode == DateTimeInputMode.Time) {
-                        DateTimeValue.Time(hour, minute)
+                        DateTimeValue.Time(clampedHour, clampedMinute)
                     } else {
                         val dateTime = localState as? DateTimeValue.DateTime
                         DateTimeValue.DateTime(
                             dateTime?.millis ?: System.currentTimeMillis(),
-                            hour,
-                            minute,
+                            clampedHour,
+                            clampedMinute,
                         )
                     }
                 if (formControl != null) {
@@ -339,6 +355,8 @@ fun DateTimeInput(
                 }
                 localState = newValue
             },
+            minValue = minValue,
+            maxValue = maxValue,
         )
     }
 
@@ -402,3 +420,35 @@ fun DateTimeInputPreview() {
         }
     }
 }
+
+
+fun DateTimeValue?.asMillis(): Long? = when (this) {
+    is DateTimeValue.Date -> this.millis
+    is DateTimeValue.DateTime -> this.millis
+    else -> null
+}
+
+fun DateTimeValue?.asTime(): DateTimeValue.Time? = when (this) {
+    is DateTimeValue.Time -> this
+    is DateTimeValue.DateTime -> DateTimeValue.Time(this.hour, this.minute)
+    else -> null
+}
+
+fun clampTime(hour: Int, minute: Int, min: DateTimeValue.Time?, max: DateTimeValue.Time?): Pair<Int, Int> {
+    var h = hour
+    var m = minute
+    min?.let {
+        if (h < it.hour || (h == it.hour && m < it.minute)) {
+            h = it.hour
+            m = it.minute
+        }
+    }
+    max?.let {
+        if (h > it.hour || (h == it.hour && m > it.minute)) {
+            h = it.hour
+            m = it.minute
+        }
+    }
+    return h to m
+}
+

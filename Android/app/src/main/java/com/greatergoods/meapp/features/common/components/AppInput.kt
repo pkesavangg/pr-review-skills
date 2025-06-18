@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -120,6 +121,35 @@ object AppInputDefaults {
         }
 }
 
+/**
+ * Manages focus for a group of input fields.
+ */
+class InputFocusManager {
+    private val focusRequesters = mutableListOf<FocusRequester>()
+    fun register(requester: FocusRequester): Int {
+        focusRequesters.add(requester)
+        return focusRequesters.lastIndex
+    }
+    fun unregister(requester: FocusRequester) {
+        focusRequesters.remove(requester)
+    }
+    fun focusNext(current: FocusRequester) {
+        val idx = focusRequesters.indexOf(current)
+        if (idx >= 0 && idx < focusRequesters.lastIndex) {
+            focusRequesters[idx + 1].requestFocus()
+        }
+    }
+    fun focusPrevious(current: FocusRequester) {
+        val idx = focusRequesters.indexOf(current)
+        if (idx > 0) {
+            focusRequesters[idx - 1].requestFocus()
+        }
+    }
+    fun clearAllFocus() {
+        focusRequesters.forEach { it.freeFocus() }
+    }
+}
+
 @Composable
 fun <T> AppInput(
     formControl: FormControl<T>?,
@@ -132,12 +162,15 @@ fun <T> AppInput(
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
     onValueChange: ((T?) -> Unit)? = null,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: (() -> Unit)? = null,
+    nextFocusRequester: FocusRequester? = null,
 ) {
     val visualTransformation = AppInputDefaults.visualTransformation(type)
     val keyboardOptions =
         KeyboardOptions(
             keyboardType = AppInputDefaults.keyboardType(type),
-            imeAction = AppInputDefaults.imeAction(type),
+            imeAction = imeAction,
         )
     InputFieldBase(
         modifier = modifier,
@@ -153,6 +186,8 @@ fun <T> AppInput(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         showTrailingIcon = showTrailingIcon,
+        onImeAction = onImeAction,
+        nextFocusRequester = nextFocusRequester,
     )
 }
 
@@ -179,6 +214,8 @@ fun <T> InputFieldBase(
     onDone: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
     onValueChange: ((T?) -> Unit)? = null,
+    onImeAction: (() -> Unit)? = null,
+    nextFocusRequester: FocusRequester? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val currentOnFocus by rememberUpdatedState(onFocus)
@@ -304,11 +341,26 @@ fun <T> InputFieldBase(
         keyboardActions =
             KeyboardActions(
                 onDone = {
+                    if (onImeAction != null) {
+                        onImeAction()
+                    } else if (nextFocusRequester != null) {
+                        nextFocusRequester.requestFocus()
+                    } else {
+                        focusManager.clearFocus()
+                    }
                     onDone?.invoke()
-                    focusManager.clearFocus()
                     keyboardController?.hide()
                 },
-                onNext = { onNext?.invoke() },
+                onNext = {
+                    if (onImeAction != null) {
+                        onImeAction()
+                    } else if (nextFocusRequester != null) {
+                        nextFocusRequester.requestFocus()
+                    } else {
+                        focusManager.clearFocus()
+                    }
+                    onNext?.invoke()
+                },
             ),
         enabled = enabled,
         readOnly = readOnly,
@@ -378,3 +430,4 @@ fun AppInputPreview() {
         }
     }
 }
+

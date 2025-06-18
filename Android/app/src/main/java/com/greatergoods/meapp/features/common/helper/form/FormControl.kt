@@ -157,6 +157,16 @@ class FormControl<T> private constructor(
         _touched.value = true
     }
 
+    /**
+     * Returns true if the current value passes all sync validators (regardless of touched/dirty state).
+     */
+    fun isValueValid(): Boolean {
+        for (validator in _validators.value) {
+            if (validator(value) != null) return false
+        }
+        return true
+    }
+
     companion object {
         /**
          * Creates a new FormControl instance
@@ -191,6 +201,13 @@ class FormGroup<T : Any>(
 ) {
     private val _groupError = mutableStateOf<String?>(null)
     val groupError: String? get() = _groupError.value
+
+    /**
+     * Returns true if all controls and group-level validation are currently valid.
+     * This checks all sync validators for each control, even if untouched.
+     */
+    val isValid: Boolean
+        get() = controls.toList().all { it.isValueValid() } && groupError == null
 
     /**
      * Validates all controls in the group and runs group-level validation

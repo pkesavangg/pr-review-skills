@@ -16,7 +16,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -31,8 +37,8 @@ import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
-import com.greatergoods.meapp.features.login.viewmodel.LoginViewModel
 import com.greatergoods.meapp.features.login.strings.LoginStrings
+import com.greatergoods.meapp.features.login.viewmodel.LoginViewModel
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
@@ -49,6 +55,8 @@ fun LoginScreen() {
     val backStack = LocalNavBackStack.current
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
+    val emailFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
     AppScaffold(
         title = null,
         navigationIcon = {
@@ -66,13 +74,14 @@ fun LoginScreen() {
         ) {
             Spacer(Modifier.height(spacing.md))
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { focusManager.clearFocus() },
-                    ),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { focusManager.clearFocus() },
+                        ),
                 horizontalAlignment = Alignment.Start,
             ) {
                 AppText(
@@ -85,17 +94,31 @@ fun LoginScreen() {
                     label = LoginStrings.EmailLabel,
                     type = AppInputType.EMAIL,
                     showTrailingIcon = true,
+                    imeAction = ImeAction.Next,
+                    nextFocusRequester = passwordFocusRequester,
+                    modifier =
+                        Modifier
+                            .semantics { contentType = ContentType.Username }
+                            .focusRequester(emailFocusRequester),
                 )
                 AppInput(
                     formControl = state.form.controls.password,
                     label = LoginStrings.PasswordLabel,
                     type = AppInputType.PASSWORD,
                     showTrailingIcon = true,
+                    imeAction = ImeAction.Done,
+                    onImeAction = {
+                        viewModel.onSubmit()
+                        focusManager.clearFocus()
+                    },
+                    modifier = Modifier
+                        .semantics { contentType = ContentType.Password }
+                        .focusRequester(passwordFocusRequester),
                 )
                 Spacer(Modifier.height(spacing.xs))
                 AppButton(
                     label = LoginStrings.LoginButton,
-                    enabled = viewModel.isFormValid && !state.isLoading,
+                    enabled = state.form.isValid && !state.isLoading,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                     onClick = { viewModel.onSubmit() },
                 )
