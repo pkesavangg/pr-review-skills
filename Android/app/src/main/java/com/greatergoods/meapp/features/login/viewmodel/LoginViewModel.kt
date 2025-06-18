@@ -6,6 +6,11 @@ import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
@@ -41,9 +46,15 @@ constructor(
      * On success, navigates to the dashboard. On failure, shows an error message.
      */
     fun onSubmit() {
-        state.value.form.forceShowAllErrors()
-        if (!state.value.form.validate()) return
-        handleIntent(LoginIntent.Submit)
+        dialogQueueService.showLoader(
+            Loader(
+                message = LoginStrings.LoaderMessage,
+            ),
+        )
+        if (!state.value.form.validate()) {
+            dialogQueueService.dismissLoader()
+            return
+        }
         val email = state.value.form.controls.email.value
         val password = state.value.form.controls.password.value
         viewModelScope.launch {
@@ -59,6 +70,8 @@ constructor(
             } catch (e: Exception) {
                 AppLog.e("logIn", "Login failed", e.toString())
                 handleIntent(LoginIntent.Error(LoginStrings.Error.MessageGeneric))
+            } finally {
+                dialogQueueService.dismissLoader()
             }
         }
     }

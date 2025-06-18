@@ -32,10 +32,12 @@ data class ColorScheme(
     val danger: Color,
     val streak: Color,
     val utility: Color,
-    // Icon Primary
+    // Icon
     val iconPrimary: Color,
+    val iconPrimaryDisabled: Color,
     val iconSecondary: Color,
-    val iconDisabled: Color,
+    val iconSecondaryDisabled: Color,
+    // Loading
     val loading: Color,
     val loadingError: Color,
     // Support
@@ -110,8 +112,9 @@ data class ColorScheme(
             ColorSchemeKey.Streak -> streak
             ColorSchemeKey.Utility -> utility
             ColorSchemeKey.IconPrimary -> iconPrimary
+            ColorSchemeKey.IconPrimaryDisabled -> iconPrimaryDisabled
             ColorSchemeKey.IconSecondary -> iconSecondary
-            ColorSchemeKey.IconDisabled -> iconDisabled
+            ColorSchemeKey.IconSecondaryDisabled -> iconSecondaryDisabled
             ColorSchemeKey.Loading -> loading
             ColorSchemeKey.LoadingError -> loadingError
 

@@ -404,7 +404,7 @@ fun <T> InputFieldBase(
             when {
                 isError ->
                     Text(
-                        errorMessage,
+                        errorMessage.lowercase(),
                         color = colorScheme.textError,
                         style = typography.body3,
                     )
