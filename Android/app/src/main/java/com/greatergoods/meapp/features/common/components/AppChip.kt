@@ -18,11 +18,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import android.util.Log
 
 /**
  * Enum defining the visual style of the chip component.
@@ -200,6 +204,8 @@ fun AppChip(
             .height(height)
             .defaultMinSize(minWidth = minWidth)
     val maxLines = 1
+    val density = LocalDensity.current
+
     FilterChip(
         shape = shape,
         colors =
@@ -227,7 +233,12 @@ fun AppChip(
             Text(
                 text,
                 style = textStyle,
-                modifier = Modifier.padding(horizontal = hPadding, vertical = vPadding),
+                fontSize = 16.sp,
+                modifier = Modifier
+                    .padding(horizontal = hPadding, vertical = vPadding)
+                    .onSizeChanged {
+                        Log.i("CHECKING", with(density) { it.width.toDp() }.toString())
+                    },
                 maxLines = maxLines,
             )
         },

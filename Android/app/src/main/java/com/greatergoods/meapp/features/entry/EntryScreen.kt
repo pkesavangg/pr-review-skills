@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +23,7 @@ import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.DateTimeInput
 import com.greatergoods.meapp.features.common.components.DateTimeInputMode
+import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.entry.components.ExpandableMetricsCard
 import com.greatergoods.meapp.features.entry.strings.EntryScreenStrings
@@ -39,44 +39,43 @@ fun EntryScreen(
     val controls = state.form.controls
     val scrollState = rememberScrollState()
     AppScaffold(EntryScreenStrings.Title) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = MeTheme.spacing.md)
-                    .padding(top = MeTheme.spacing.md),
-                verticalArrangement = Arrangement.Top,
-            ) {
-                AppInput(
-                    formControl = controls.weightDateTime.weight,
-                    label = EntryScreenStrings.WEIGHT_LABEL,
-                    type = AppInputType.NUMBER,
-                    modifier = Modifier.fillMaxWidth(),
+        Column(
+            modifier = Modifier
+                .verticalScroll(scrollState)
+                .padding(horizontal = MeTheme.spacing.sm)
+                .padding(top = MeTheme.spacing.md),
+            verticalArrangement = Arrangement.Top,
+        ) {
+            AppInput(
+                formControl = controls.weightDateTime.weight,
+                label = EntryScreenStrings.WEIGHT_LABEL,
+                type = AppInputType.NUMBER,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            DateTimeInput(
+                formControl = controls.weightDateTime.dateTime,
+                mode = DateTimeInputMode.DateTime,
+                label = EntryScreenStrings.DATE_LABEL,
+                maxValue = DateTimeValue.Date(System.currentTimeMillis()),
+            )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
+            // Metrics section as a single expandable card
+            ExpandableMetricsCard(
+                title = EntryScreenStrings.METRICS_SECTION_TITLE,
+                subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
+                generalMetrics = controls.generalMetrics,
+                r4ScaleMetrics = controls.r4ScaleMetrics,
+            )
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                AppButton(
+                    enabled = controls.weightDateTime.weight.validate(),
+                    label = EntryScreenStrings.SaveButton,
+                    size = ButtonSize.Large,
+                    type = ButtonType.PrimaryFilled,
+                    onClick = { /* TODO: Implement save logic */ },
                 )
-                DateTimeInput(
-                    formControl = controls.weightDateTime.dateTime,
-                    mode = DateTimeInputMode.DateTime,
-                    label = EntryScreenStrings.DATE_LABEL,
-                )
-                Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
-                // Metrics section as a single expandable card
-                ExpandableMetricsCard(
-                    title = EntryScreenStrings.METRICS_SECTION_TITLE,
-                    subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
-                    generalMetrics = controls.generalMetrics,
-                    r4ScaleMetrics = controls.r4ScaleMetrics,
-                )
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    AppButton(
-                        enabled = controls.weightDateTime.weight.validate(),
-                        label = EntryScreenStrings.SaveButton,
-                        size = ButtonSize.Large,
-                        type = ButtonType.PrimaryFilled,
-                        onClick = { /* TODO: Implement save logic */ },
-                    )
-                }
-                Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
             }
+            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
         }
     }
 }

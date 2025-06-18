@@ -58,7 +58,11 @@ fun ExpandableMetricsCard(
             Column(Modifier.weight(1f)) {
                 Text(title, style = MeTheme.typography.heading4)
                 if (subheading != null) {
-                    Text(subheading, style = MeTheme.typography.body3, color = MeTheme.colorScheme.textSubheading)
+                    Text(
+                        subheading,
+                        style = MeTheme.typography.subHeading1,
+                        color = MeTheme.colorScheme.textSubheading
+                    )
                 }
             }
             Icon(
@@ -69,9 +73,11 @@ fun ExpandableMetricsCard(
             )
         }
         AnimatedVisibility(visible = expanded) {
-            GeneralMetricsSection(generalMetrics)
-            r4ScaleMetrics?.let { r4Controls ->
-                R4ScaleMetricsSection(r4Controls)
+            Column {
+                GeneralMetricsSection(generalMetrics)
+                r4ScaleMetrics?.let { r4Controls ->
+                    R4ScaleMetricsSection(r4Controls)
+                }
             }
         }
         val spacing = if (!expanded) MeTheme.spacing.x3l else MeTheme.spacing.xl

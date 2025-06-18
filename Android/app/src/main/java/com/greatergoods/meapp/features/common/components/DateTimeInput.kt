@@ -28,12 +28,9 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import com.greatergoods.meapp.features.common.components.asMillis
-import com.greatergoods.meapp.features.common.components.asTime
-import com.greatergoods.meapp.features.common.components.clampTime
 
 /**
-* Represents the value for DateTimeInput.
+ * Represents the value for DateTimeInput.
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
 sealed class DateTimeValue {
@@ -108,7 +105,7 @@ sealed class DateTimeValue {
     fun getTimeString(): String =
         when (this) {
             is Time ->
-                SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
+                SimpleDateFormat("hh:mma", Locale.getDefault()).format(
                     Calendar
                         .getInstance()
                         .apply {
@@ -118,7 +115,7 @@ sealed class DateTimeValue {
                 )
 
             is DateTime ->
-                SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
+                SimpleDateFormat("hh:mma", Locale.getDefault()).format(
                     Calendar
                         .getInstance()
                         .apply {
@@ -249,11 +246,11 @@ fun DateTimeInput(
     }
     // Error state
     val isError = formControl?.isError ?: false
-  val minDateMillis = minValue.asMillis()
-    val maxDateMillis = maxValue.asMillis()
+    minValue.asMillis()
+    maxValue.asMillis()
     val minTime = minValue.asTime()
     val maxTime = maxValue.asTime()
-Column {
+    Column {
         if (label != null) {
             Text(
                 label,
@@ -394,7 +391,7 @@ Column {
 fun DateTimeInputPreview() {
     MeAppTheme {
         Column(Modifier.fillMaxSize()) {
-            val fakeScope = rememberCoroutineScope()
+            rememberCoroutineScope()
             val dateControl =
                 remember {
                     FormControl.create<DateTimeValue>(
@@ -429,7 +426,6 @@ fun DateTimeInputPreview() {
         }
     }
 }
-
 
 fun DateTimeValue?.asMillis(): Long? = when (this) {
     is DateTimeValue.Date -> this.millis
