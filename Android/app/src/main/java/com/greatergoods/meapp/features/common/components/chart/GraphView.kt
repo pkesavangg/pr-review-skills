@@ -54,7 +54,6 @@ import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
-import android.util.Log
 
 private val LegendLabelKey = ExtraStore.Key<List<Double>>()
 
@@ -104,7 +103,6 @@ fun GraphView(
         }
 
     val xStep = GraphUtil.rememberXStep(segment)
-    Log.i("CHECKING", segment.toString())
 
     val scrollState =
         rememberVicoScrollState(

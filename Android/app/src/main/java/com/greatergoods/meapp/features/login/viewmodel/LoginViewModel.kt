@@ -5,11 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
-import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
-import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
-import com.greatergoods.meapp.features.common.helper.form.FormValidations
-import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
@@ -32,45 +28,13 @@ constructor(
     private val accountAuthService: IAccountAuthService,
     private val customTabManager: ICustomTabManager,
 ) : BaseIntentViewModel<LoginState, LoginIntent>(
-    initialState = createInitialState(),
     reducer = LoginReducer(),
 ) {
-    init {
+    override fun provideInitialState(): LoginState {
+        return LoginState(
+            form = FormGroup(LoginFormControls.create()),
+        )
     }
-
-    companion object {
-        private fun createLoginFormControls() =
-            LoginFormControls(
-                email =
-                    FormControl.create(
-                        "",
-                        listOf(
-                            FormValidations.required(),
-                            FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH),
-                            FormValidations.email(),
-                        ),
-                    ),
-                password =
-                    FormControl.create(
-                        "",
-                        listOf(
-                            FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH),
-                            FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
-                        ),
-                    ),
-            )
-
-        private fun createInitialState() =
-            LoginState(
-                form = FormGroup(createLoginFormControls()),
-            )
-    }
-
-    /**
-     * Returns true if the form is valid.
-     */
-    val isFormValid: Boolean
-        get() = state.value.form.validate()
 
     /**
      * Handles the login form submission. Validates the form, shows loading, and attempts login.
@@ -78,9 +42,7 @@ constructor(
      */
     fun onSubmit() {
         dialogQueueService.showLoader(
-            Loader(
-                message = LoginStrings.LoaderMessage,
-            ),
+            message = LoginStrings.LoaderMessage,
         )
         if (!state.value.form.validate()) {
             dialogQueueService.dismissLoader()

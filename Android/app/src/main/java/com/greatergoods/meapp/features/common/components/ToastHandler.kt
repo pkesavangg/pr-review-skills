@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -39,7 +40,7 @@ fun ToastHandler(
 ) {
     val screenWith = LocalWindowInfo.current.containerSize.width
     val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
+    LocalConfiguration.current
     val screenWidthPx = with(density) { screenWith.dp.toPx() }
     val toastWidthPx = screenWidthPx * 0.8f
     val dragState =
@@ -67,7 +68,7 @@ fun ToastHandler(
         }
     }
     if (toast != null) {
-        SnackbarHost(hostState = hostState) { snackbarData ->
+        SnackbarHost(hostState = hostState, modifier = Modifier.statusBarsPadding()) { snackbarData ->
             if (!isDismissed.value) {
                 // Auto-dismiss after delay
                 LaunchedEffect(snackbarData) {

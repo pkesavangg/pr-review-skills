@@ -16,6 +16,7 @@ object AppIcons {
         val Settings = R.drawable.ic_settings
         val Placeholder = R.drawable.me_placeholder
         val Stamp = R.drawable.gg_stamp
+        val ChevronDown = R.drawable.chevron_down
     }
 
     object Outlined {

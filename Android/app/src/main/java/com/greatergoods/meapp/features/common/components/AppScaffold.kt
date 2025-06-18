@@ -2,13 +2,9 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +31,7 @@ fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
     containerColor: Color = colorScheme.primaryBackground,
+    contentColor: Color = colorScheme.secondaryBackground,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
@@ -47,25 +44,16 @@ fun AppScaffold(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 containerColor = containerColor,
-                modifier = Modifier.padding(
-                    WindowInsets.safeDrawing
-                        .only(WindowInsetsSides.Top)
-                        .asPaddingValues()
-                )
+                modifier = Modifier.systemBarsPadding(),
             )
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = containerColor
+        containerColor = containerColor,
     ) { innerPadding ->
         Box(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding)
-                .padding(
-                    WindowInsets.safeDrawing
-                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                        .asPaddingValues()
-                )
-                .background(containerColor),
+                .background(contentColor),
         ) {
             content(Modifier)
         }
