@@ -7,6 +7,7 @@ object AppIcons {
         val Close = R.drawable.ic_close
         val EyeOpened = R.drawable.ic_eye_open
         val EyeClosed = R.drawable.ic_eye_close
+        val Banner = R.drawable.weight_gurus_banner
         val Logo = R.drawable.ic_logo_light
         val LogoDark = R.drawable.ic_logo_dark
         val Plus = R.drawable.ic_plus

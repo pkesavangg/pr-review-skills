@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,10 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.LocalAutofillHighlightColor
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,7 +23,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -33,19 +33,16 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.toLowerCase
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.helper.form.DecimalInputVisualTransformation
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.strings.AppInputStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import com.greatergoods.meapp.theme.MeTheme.typography
-import android.R.attr.singleLine
 
 enum class AppInputType {
     TEXT,
@@ -63,7 +60,7 @@ object AppInputDefaults {
             AppInputType.PASSWORD -> PasswordVisualTransformation()
 
             AppInputType.WEIGHT, AppInputType.BODY_COMP_DECIMAL -> DecimalInputVisualTransformation(
-                decimalDigits = 1
+                decimalDigits = 1,
             )
 
             else -> VisualTransformation.None // Default case for other AppInputTypes
@@ -180,23 +177,25 @@ fun <T> AppInput(
             keyboardType = AppInputDefaults.keyboardType(type),
             imeAction = imeAction,
         )
-    InputFieldBase(
-        modifier = modifier,
-        formControl = formControl,
-        label = label.toString().lowercase(),
-        value = AppInputDefaults.valueToString(type, formControl?.value),
-        onValueChange = onValueChange,
-        placeHolder = placeHolder,
-        enabled = enabled,
-        readOnly = readOnly,
-        supportingText = supportingText,
-        inputType = type,
-        visualTransformation = visualTransformation,
-        keyboardOptions = keyboardOptions,
-        showTrailingIcon = showTrailingIcon,
-        onImeAction = onImeAction,
-        nextFocusRequester = nextFocusRequester,
-    )
+    CompositionLocalProvider(LocalAutofillHighlightColor provides Color.Transparent) {
+        InputFieldBase(
+            modifier = modifier,
+            formControl = formControl,
+            label = label.toString().lowercase(),
+            value = AppInputDefaults.valueToString(type, formControl?.value),
+            onValueChange = onValueChange,
+            placeHolder = placeHolder,
+            enabled = enabled,
+            readOnly = readOnly,
+            supportingText = supportingText,
+            inputType = type,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
+            showTrailingIcon = showTrailingIcon,
+            onImeAction = onImeAction,
+            nextFocusRequester = nextFocusRequester,
+        )
+    }
 }
 
 /**
@@ -229,7 +228,7 @@ fun <T> InputFieldBase(
     val currentOnFocus by rememberUpdatedState(onFocus)
     val currentOnBlur by rememberUpdatedState(onBlur)
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
+    remember { MutableInteractionSource() }
 
     val isError = formControl?.error?.type != null && (formControl.dirty || formControl.touched)
     val focusManager = LocalFocusManager.current
@@ -238,10 +237,10 @@ fun <T> InputFieldBase(
     val showPasswordToggle = isPassword && showTrailingIcon
     val showClearButton =
         formControl?.value?.toString()?.isNotEmpty() == true &&
-                !isPassword &&
-                enabled &&
-                !readOnly &&
-                showTrailingIcon
+            !isPassword &&
+            enabled &&
+            !readOnly &&
+            showTrailingIcon
 
     val inputTextColor =
         when {
@@ -436,7 +435,7 @@ fun AppInputPreview() {
         val focused = remember { FormControl.create("", emptyList()) }
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         ) {
             AppInput(formControl = normal, label = "Normal Input", type = AppInputType.TEXT)
             AppInput(formControl = focused, label = "Focused Input", type = AppInputType.TEXT)
@@ -444,7 +443,7 @@ fun AppInputPreview() {
                 formControl = disabled,
                 label = "Disabled Input",
                 type = AppInputType.TEXT,
-                enabled = false
+                enabled = false,
             )
         }
     }
