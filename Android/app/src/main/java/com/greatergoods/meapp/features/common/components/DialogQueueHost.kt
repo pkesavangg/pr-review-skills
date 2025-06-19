@@ -30,9 +30,9 @@ import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 fun DialogQueueHost(
     dialogQueueViewModel: DialogQueueViewModel,
     customDialogContent: (
-        @Composable (
-            DialogModel.Custom,
-        ) -> Unit
+    @Composable (
+        DialogModel.Custom,
+    ) -> Unit
     )? = null,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -55,7 +55,7 @@ fun DialogQueueHost(
             is DialogModel.Alert -> {
                 AlertDialog(
                     onDismissRequest = {
-                        dialog.onDismiss()
+                        dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()
                     },
                     title = { Text(dialog.title) },
@@ -63,7 +63,6 @@ fun DialogQueueHost(
                     confirmButton = {
                         Button(
                             onClick = {
-                                dialog.onDismiss()
                                 dialogQueueViewModel.dismissCurrent()
                             },
                         ) {
@@ -76,7 +75,7 @@ fun DialogQueueHost(
             is DialogModel.Confirm -> {
                 AlertDialog(
                     onDismissRequest = {
-                        dialog.onDismiss()
+                        dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()
                     },
                     title = { Text(dialog.title) },
@@ -85,7 +84,6 @@ fun DialogQueueHost(
                         Button(
                             onClick = {
                                 dialog.onConfirm?.invoke()
-                                dialog.onDismiss()
                                 dialogQueueViewModel.dismissCurrent()
                             },
                         ) {
@@ -96,7 +94,6 @@ fun DialogQueueHost(
                         Button(
                             onClick = {
                                 dialog.onCancel?.invoke()
-                                dialog.onDismiss()
                                 dialogQueueViewModel.dismissCurrent()
                             },
                         ) {
@@ -110,7 +107,7 @@ fun DialogQueueHost(
                 if (customDialogContent != null) {
                     Dialog(
                         onDismissRequest = {
-                            dialog.onDismiss()
+                            dialog.onDismiss?.let { it() }
                             dialogQueueViewModel.dismissCurrent()
                         },
                         content = {
@@ -123,7 +120,7 @@ fun DialogQueueHost(
                     // Fallback: treat as alert
                     AlertDialog(
                         onDismissRequest = {
-                            dialog.onDismiss()
+                            dialog.onDismiss?.let { it() }
                             dialogQueueViewModel.dismissCurrent()
                         },
                         title = { Text(dialog.contentKey.toString()) },
@@ -131,7 +128,6 @@ fun DialogQueueHost(
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    dialog.onDismiss()
                                     dialogQueueViewModel.dismissCurrent()
                                 },
                             ) {

@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,7 +17,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +35,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.reflect.KProperty1
 
 /**
  * Represents the different sizes available for segment buttons.
@@ -73,7 +73,7 @@ object SegmentButtonDefaults {
      */
     fun minWidth(size: SegmentButtonSize): Dp =
         when (size) {
-            SegmentButtonSize.Small -> 0.dp
+            SegmentButtonSize.Small -> 80.dp
             SegmentButtonSize.Medium -> 120.dp
             SegmentButtonSize.Large -> 160.dp
             // TODO: Need to update after UX answered
@@ -83,7 +83,7 @@ object SegmentButtonDefaults {
      * Horizontal spacing between segment buttons in LazyRow.
      */
     val segmentSpacing: Dp
-        @Composable get() = MeTheme.spacing.lg
+        @Composable get() = MeTheme.spacing.xs
 
     /**
      * Returns the horizontal padding for the given segment button size.
@@ -102,7 +102,7 @@ object SegmentButtonDefaults {
     @Composable
     fun textStyle(size: SegmentButtonSize): TextStyle =
         when (size) {
-            SegmentButtonSize.Small -> MeTheme.typography.button1
+            SegmentButtonSize.Small -> MeTheme.typography.link1
             SegmentButtonSize.Medium -> MeTheme.typography.button1
             SegmentButtonSize.Large -> MeTheme.typography.button1
         }
@@ -130,28 +130,31 @@ object SegmentButtonDefaults {
  * allowing single selection similar to radio buttons.
  *
  * @param data List of segment labels to display
- * @param selectedIndex Index of the currently selected segment
+ * @param selectedData Currently selected segment
+ * @param key Property to extract the label from each segment data item
  * @param onSelected Callback when a segment is selected
  * @param modifier Modifier to be applied to the component
  * @param size Size variant of the segment button
  */
 @Composable
-fun SegmentButtonGroup(
-    data: List<SegmentButtonData>,
-    selectedIndex: Int,
+fun <T> SegmentButtonGroup(
     modifier: Modifier = Modifier,
+    data: List<T>,
+    selectedData: T,
+    key: KProperty1<T, String>,
     size: SegmentButtonSize = SegmentButtonSize.Small,
-    onSelected: (Int) -> Unit,
+    onSelected: (T) -> Unit,
 ) {
     val minWidth = SegmentButtonDefaults.minWidth(size)
     val horizontalPadding = SegmentButtonDefaults.horizontalPadding(size)
-    val verticalPadding = 0.dp
     val horizontalSpacedBy = SegmentButtonDefaults.segmentSpacing
     val colors = SegmentButtonDefaults.colors()
     val textStyle = SegmentButtonDefaults.textStyle(size)
     val shape = RoundedCornerShape(SegmentButtonDefaults.cornerRadius())
     val density = LocalDensity.current
-    val segmentButtonModifier = modifier.height(IntrinsicSize.Min).defaultMinSize(minWidth = minWidth)
+    val segmentButtonModifier = modifier
+        .height(38.dp)
+        .defaultMinSize(minWidth = minWidth)
     val maxLines = 2
 
     val listState = rememberLazyListState()
@@ -165,12 +168,12 @@ fun SegmentButtonGroup(
             (rowWidthPx - calculatedItemWidthPx) / 2f
         }
 
-    LaunchedEffect(selectedIndex, rowWidthPx, calculatedItemWidthPx) {
+    LaunchedEffect(selectedData, rowWidthPx, calculatedItemWidthPx) {
         // Add calculatedItemWidthPx to dependencies
         if (data.isNotEmpty() && calculatedItemWidthPx > 0) { // Ensure width is calculated
             coroutineScope.launch {
                 listState.animateScrollToItem(
-                    index = selectedIndex,
+                    index = data.indexOf(selectedData),
                     scrollOffset = -centerOffsetPx.roundToInt(),
                 )
             }
@@ -180,6 +183,7 @@ fun SegmentButtonGroup(
     LazyRow(
         state = listState,
         horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy, Alignment.Start),
+        contentPadding = PaddingValues(horizontal = horizontalPadding),
         modifier =
             Modifier
                 .onSizeChanged { rowWidthPx = it.width },
@@ -199,15 +203,15 @@ fun SegmentButtonGroup(
             ) {
                 SegmentedButton(
                     shape = shape,
-                    onClick = { onSelected(index) },
+                    onClick = { onSelected(option) },
                     colors = colors,
                     icon = {},
-                    selected = index == selectedIndex,
+                    selected = option == selectedData,
                     label = {
                         Text(
-                            text = option.label,
+                            text = key.get(option),
                             style = textStyle,
-                            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                            modifier = Modifier.padding(horizontal = horizontalPadding),
                             maxLines = maxLines,
                         )
                     },
@@ -225,50 +229,68 @@ fun SegmentButtonGroup(
 @Composable
 fun SegmentButtonPreview() {
     MeAppTheme {
-        Column(
-            // modifier = Modifier.padding(MeTheme.spacing.md),
-        ) {
+        val sampleSmallData = listOf("Day", "Week", "Month").mapIndexed { index, label ->
+            SegmentButtonData(id = index, label = label)
+        }
+        val sampleMediumData = listOf(
+            "Overview",
+            "Details",
+            "Settings",
+            "Profile",
+            "Weight",
+            "Height",
+            "Activity",
+        ).mapIndexed { index, label ->
+            SegmentButtonData(id = index, label = label)
+        }
+        val sampleLargeData =
+            listOf(
+                "Day",
+                "Week",
+                "Month",
+                "Overview",
+                "Details",
+                "Settings",
+                "Profile",
+                "Weight",
+                "Height",
+                "Activity",
+            ).mapIndexed { index, label ->
+                SegmentButtonData(id = index, label = label)
+            }
+
+        var selectedSmallData by remember { mutableStateOf(sampleSmallData[0]) }
+        var selectedMediumData by remember { mutableStateOf(sampleMediumData[0]) }
+        var selectedLargeData by remember { mutableStateOf(sampleLargeData[0]) }
+
+        Column {
             // --- Small size ---
-            var selectedSmallIndex by remember { mutableStateOf(1) }
             SegmentButtonGroup(
                 data =
-                    listOf("Day", "Week", "Month").mapIndexed { index, label ->
-                        SegmentButtonData(id = index, label = label)
-                    },
-                selectedIndex = selectedSmallIndex,
-                onSelected = { selectedSmallIndex = it },
+                    sampleSmallData,
+                key = SegmentButtonData::label,
+                selectedData = selectedSmallData,
+                onSelected = { selectedSmallData = it },
                 size = SegmentButtonSize.Small,
             )
 
             // --- Medium size ---
-            var selectedMediumIndex by remember { mutableStateOf(0) }
             SegmentButtonGroup(
                 data =
-                    listOf(
-                        "Overview",
-                        "Details",
-                        "Settings",
-                        "Profile",
-                        "Weight",
-                        "Height",
-                        "Activity",
-                    ).mapIndexed { index, label ->
-                        SegmentButtonData(id = index, label = label)
-                    },
-                selectedIndex = selectedMediumIndex,
-                onSelected = { selectedMediumIndex = it },
+                    sampleMediumData,
+                key = SegmentButtonData::label,
+                selectedData = selectedMediumData,
+                onSelected = { selectedMediumData = it },
                 size = SegmentButtonSize.Medium,
             )
 
             // --- Large size ---
-            var selectedLargeIndex by remember { mutableStateOf(2) }
             SegmentButtonGroup(
                 data =
-                    listOf("All", "Active", "Completed").mapIndexed { index, label ->
-                        SegmentButtonData(id = index, label = label)
-                    },
-                selectedIndex = selectedLargeIndex,
-                onSelected = { selectedLargeIndex = it },
+                    sampleLargeData,
+                key = SegmentButtonData::label,
+                selectedData = selectedLargeData,
+                onSelected = { selectedLargeData = it },
                 size = SegmentButtonSize.Large,
             )
         }

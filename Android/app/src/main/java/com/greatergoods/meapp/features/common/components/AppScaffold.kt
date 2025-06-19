@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,23 +35,24 @@ fun AppScaffold(
     content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize(),
         topBar = {
-            AppBar(
-                title = title,
-                navigationIcon = navigationIcon,
-                actions = actions,
-                containerColor = appBarColor,
-            )
+            if (title != null || navigationIcon != null || actions != null)
+                AppBar(
+                    title = title,
+                    navigationIcon = navigationIcon,
+                    actions = actions,
+                    containerColor = appBarColor,
+                )
         },
         containerColor = appBarColor,
     ) { innerPadding ->
         Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .background(containerColor),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding())
+                .background(containerColor),
         ) {
 
             content(Modifier)
@@ -66,9 +66,9 @@ fun AppScaffoldPreview() {
     MeAppTheme {
         AppScaffold(
             title = "App Scaffold Title",
-            containerColor = MeTheme.colorScheme.secondaryBackground,
+            containerColor = colorScheme.secondaryBackground,
             navigationIcon = { AppIconButton(AppIcons.Default.Close) {} },
-            actions = { AppIconButton(AppIcons.Outlined.Help) {} }
+            actions = { AppIconButton(AppIcons.Outlined.Help) {} },
         ) { modifier ->
             Box(modifier = modifier) {
                 Text(
