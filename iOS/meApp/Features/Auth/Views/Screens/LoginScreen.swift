@@ -84,6 +84,7 @@ struct LoginScreen: View {
                     isDisabled: !store.isFormValid || store.isFormSubmitting,
                     action: {
                         focusedField = nil
+                        hideKeyboard()
                         store.loginForm.email.markAsDirty()
                         store.loginForm.password.markAsDirty()
                         if store.isFormValid {
