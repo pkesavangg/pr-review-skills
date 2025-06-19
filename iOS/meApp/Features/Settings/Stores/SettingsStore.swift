@@ -154,7 +154,7 @@ class SettingsStore: ObservableObject {
     }
 
     var profileName: String {
-        if let firstName = activeAccount?.firstName, !firstName.isEmpty {
+        if let firstName = activeAccount?.firstName {
             return firstName
         }
         return activeAccount?.firstName ?? ""
