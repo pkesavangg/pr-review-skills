@@ -2,8 +2,7 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -46,6 +45,18 @@ enum class SegmentButtonSize {
     Large, // Large segment button (height: 48dp)
 }
 
+/**
+ * Represents the different types of segment button layouts.
+ */
+enum class SegmentButtonType {
+    /** Single row layout without scrolling - uses SingleChoiceSegmentedButtonRow */
+    Single,
+    /** Multi-item scrollable layout - uses LazyRow for horizontal scrolling */
+    Scrollable,
+}
+
+
+
 /*
 * Segment button data
  */
@@ -73,7 +84,7 @@ object SegmentButtonDefaults {
      */
     fun minWidth(size: SegmentButtonSize): Dp =
         when (size) {
-            SegmentButtonSize.Small -> 80.dp
+            SegmentButtonSize.Small -> 0.dp
             SegmentButtonSize.Medium -> 120.dp
             SegmentButtonSize.Large -> 160.dp
             // TODO: Need to update after UX answered
@@ -83,7 +94,7 @@ object SegmentButtonDefaults {
      * Horizontal spacing between segment buttons in LazyRow.
      */
     val segmentSpacing: Dp
-        @Composable get() = MeTheme.spacing.xs
+        @Composable get() = MeTheme.spacing.lg
 
     /**
      * Returns the horizontal padding for the given segment button size.
@@ -102,7 +113,7 @@ object SegmentButtonDefaults {
     @Composable
     fun textStyle(size: SegmentButtonSize): TextStyle =
         when (size) {
-            SegmentButtonSize.Small -> MeTheme.typography.link1
+            SegmentButtonSize.Small -> MeTheme.typography.button1
             SegmentButtonSize.Medium -> MeTheme.typography.button1
             SegmentButtonSize.Large -> MeTheme.typography.button1
         }
@@ -130,11 +141,11 @@ object SegmentButtonDefaults {
  * allowing single selection similar to radio buttons.
  *
  * @param data List of segment labels to display
- * @param selectedData Currently selected segment
- * @param key Property to extract the label from each segment data item
+ * @param selectedIndex Index of the currently selected segment
  * @param onSelected Callback when a segment is selected
  * @param modifier Modifier to be applied to the component
  * @param size Size variant of the segment button
+ * @param type Type of layout - Single (non-scrollable) or Scrollable (with LazyRow)
  */
 @Composable
 fun <T> SegmentButtonGroup(
@@ -143,19 +154,19 @@ fun <T> SegmentButtonGroup(
     selectedData: T,
     key: KProperty1<T, String>,
     size: SegmentButtonSize = SegmentButtonSize.Small,
+    type: SegmentButtonType = SegmentButtonType.Single,
     onSelected: (T) -> Unit,
 ) {
     val minWidth = SegmentButtonDefaults.minWidth(size)
     val horizontalPadding = SegmentButtonDefaults.horizontalPadding(size)
+    val verticalPadding = 0.dp
     val horizontalSpacedBy = SegmentButtonDefaults.segmentSpacing
     val colors = SegmentButtonDefaults.colors()
     val textStyle = SegmentButtonDefaults.textStyle(size)
     val shape = RoundedCornerShape(SegmentButtonDefaults.cornerRadius())
     val density = LocalDensity.current
-    val segmentButtonModifier = modifier
-        .height(38.dp)
-        .defaultMinSize(minWidth = minWidth)
-    val maxLines = 2
+    val segmentButtonModifier = modifier.height(IntrinsicSize.Min)
+    val maxLines = 1
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -180,27 +191,12 @@ fun <T> SegmentButtonGroup(
         }
     }
 
-    LazyRow(
-        state = listState,
-        horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy, Alignment.Start),
-        contentPadding = PaddingValues(horizontal = horizontalPadding),
-        modifier =
-            Modifier
-                .onSizeChanged { rowWidthPx = it.width },
-    ) {
-        itemsIndexed(data) { index, option ->
-            SingleChoiceSegmentedButtonRow(
-                modifier =
-                    Modifier
-                        .onSizeChanged {
-                            // This calculates the width of the current segment button.
-                            // You might want to take the max width of all items if they vary.
-                            // For simplicity, we'll just set it for the first one encountered or update if a larger one is found.
-                            if (it.width > calculatedItemWidthPx) {
-                                calculatedItemWidthPx = it.width
-                            }
-                        },
-            ) {
+    if (type == SegmentButtonType.Single) {
+        // Single row layout - all buttons in one non-scrollable row
+        SingleChoiceSegmentedButtonRow(
+            modifier = modifier,
+        ) {
+            data.forEachIndexed { index, option ->
                 SegmentedButton(
                     shape = shape,
                     onClick = { onSelected(option) },
@@ -211,12 +207,61 @@ fun <T> SegmentButtonGroup(
                         Text(
                             text = key.get(option),
                             style = textStyle,
-                            modifier = Modifier.padding(horizontal = horizontalPadding),
+                            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
                             maxLines = maxLines,
                         )
                     },
                     modifier = segmentButtonModifier,
                 )
+            }
+        }
+    } else {
+        // Scrollable layout - horizontal scrolling with LazyRow
+        LazyRow(
+            state = listState,
+            horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy, Alignment.Start),
+            modifier =
+                modifier
+                    .onSizeChanged { rowWidthPx = it.width },
+        ) {
+            itemsIndexed(data) { index, option ->
+                SingleChoiceSegmentedButtonRow(
+                    modifier =
+                        Modifier
+                            .onSizeChanged {
+                                // This calculates the width of the current segment button.
+                                // You might want to take the max width of all items if they vary.
+                                // For simplicity, we'll just set it for the first one encountered or update if a larger one is found.
+                                if (it.width > calculatedItemWidthPx) {
+                                    calculatedItemWidthPx = it.width
+                                }
+                            },
+                ) {
+                    SegmentedButton(
+                        shape = shape,
+                        onClick = { onSelected(option) },
+                        colors = colors,
+                        icon = {},
+                        selected = option == selectedData,
+                        label = {
+                            Text(
+                                text = key.get(option),
+                                style = textStyle,
+                                modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                                maxLines = maxLines,
+                            )
+                        },
+                        modifier = segmentButtonModifier
+                            .onSizeChanged {
+                                // This calculates the width of the current segment button.
+                                // You might want to take the max width of all items if they vary.
+                                // For simplicity, we'll just set it for the first one encountered or update if a larger one is found.
+                                if (it.width > calculatedItemWidthPx) {
+                                    calculatedItemWidthPx = it.width
+                                }
+                            },
+                    )
+                }
             }
         }
     }
@@ -229,25 +274,15 @@ fun <T> SegmentButtonGroup(
 @Composable
 fun SegmentButtonPreview() {
     MeAppTheme {
-        val sampleSmallData = listOf("Day", "Week", "Month").mapIndexed { index, label ->
-            SegmentButtonData(id = index, label = label)
-        }
-        val sampleMediumData = listOf(
-            "Overview",
-            "Details",
-            "Settings",
-            "Profile",
-            "Weight",
-            "Height",
-            "Activity",
-        ).mapIndexed { index, label ->
-            SegmentButtonData(id = index, label = label)
-        }
-        val sampleLargeData =
-            listOf(
-                "Day",
-                "Week",
-                "Month",
+        Column(
+            modifier = Modifier.padding(MeTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),
+        ) {
+
+            val sampleSmallData = listOf("Day", "Week", "Month").mapIndexed { index, label ->
+                SegmentButtonData(id = index, label = label)
+            }
+            val sampleMediumData = listOf(
                 "Overview",
                 "Details",
                 "Settings",
@@ -258,13 +293,27 @@ fun SegmentButtonPreview() {
             ).mapIndexed { index, label ->
                 SegmentButtonData(id = index, label = label)
             }
+            val sampleLargeData =
+                listOf(
+                    "Day",
+                    "Week",
+                    "Month",
+                    "Overview",
+                    "Details",
+                    "Settings",
+                    "Profile",
+                    "Weight",
+                    "Height",
+                    "Activity",
+                ).mapIndexed { index, label ->
+                    SegmentButtonData(id = index, label = label)
+                }
 
-        var selectedSmallData by remember { mutableStateOf(sampleSmallData[0]) }
-        var selectedMediumData by remember { mutableStateOf(sampleMediumData[0]) }
-        var selectedLargeData by remember { mutableStateOf(sampleLargeData[0]) }
-
-        Column {
-            // --- Small size ---
+            var selectedSmallData by remember { mutableStateOf(sampleSmallData[0]) }
+            var selectedMediumData by remember { mutableStateOf(sampleMediumData[0]) }
+            var selectedLargeData by remember { mutableStateOf(sampleLargeData[0]) }
+            // --- Single Type - Small size ---
+            var selectedSmallIndex by remember { mutableStateOf(1) }
             SegmentButtonGroup(
                 data =
                     sampleSmallData,
@@ -274,7 +323,8 @@ fun SegmentButtonPreview() {
                 size = SegmentButtonSize.Small,
             )
 
-            // --- Medium size ---
+            // --- Scrollable Type - Medium size ---
+            var selectedMediumIndex by remember { mutableStateOf(0) }
             SegmentButtonGroup(
                 data =
                     sampleMediumData,
@@ -284,7 +334,8 @@ fun SegmentButtonPreview() {
                 size = SegmentButtonSize.Medium,
             )
 
-            // --- Large size ---
+            // --- Single Type - Large size ---
+            var selectedLargeIndex by remember { mutableStateOf(2) }
             SegmentButtonGroup(
                 data =
                     sampleLargeData,
@@ -292,6 +343,17 @@ fun SegmentButtonPreview() {
                 selectedData = selectedLargeData,
                 onSelected = { selectedLargeData = it },
                 size = SegmentButtonSize.Large,
+            )
+
+            // --- Scrollable Type - Many items ---
+            var selectedScrollableIndex by remember { mutableStateOf(3) }
+            SegmentButtonGroup(
+                data = sampleLargeData,
+                key = SegmentButtonData::label,
+                selectedData = selectedLargeData,
+                onSelected = { selectedLargeData = it },
+                size = SegmentButtonSize.Small,
+                type = SegmentButtonType.Scrollable,
             )
         }
     }
