@@ -61,34 +61,6 @@ class EntryService @Inject constructor(
      */
     override suspend fun updateAllData(accountId: String) {
         this.accountId = accountId
-        _isUpdating.value = true
-        try {
-            entryRepository.getLastNDaysEntries(accountId, 7)
-            val last30DaysFlow = entryRepository.getLastNDaysEntries(accountId, 30)
-            val monthsLastYearFlow = entryRepository.getMonthsLastYear(accountId)
-            val monthsAllFlow = entryRepository.getMonthsAll(accountId)
-
-            // last7DaysFlow.collect { entries ->
-            //     _last7Days.value = entries
-            // }
-            //
-            last30DaysFlow.collect { entries ->
-                _last30Days.value = entries
-            }
-
-            monthsLastYearFlow.collect { months ->
-                _monthsLastYear.value = months
-            }
-
-            monthsAllFlow.collect { months ->
-                _monthsAll.value = months
-            }
-            updateLatestEntry(accountId)
-
-            updateProgress(accountId)
-        } finally {
-            _isUpdating.value = false
-        }
     }
 
     /**
@@ -168,7 +140,7 @@ class EntryService @Inject constructor(
 
             // 2. Add new operations to unsynced list
             newEntries.forEach { entry ->
-                unSyncedEntries.add(0, entry)
+                unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = accountId!!)))
             }
             deleteOps.forEach { entry ->
                 unSyncedEntries.add(0, entry)

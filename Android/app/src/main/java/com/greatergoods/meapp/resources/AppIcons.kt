@@ -7,6 +7,7 @@ object AppIcons {
         val Close = R.drawable.ic_close
         val EyeOpened = R.drawable.ic_eye_open
         val EyeClosed = R.drawable.ic_eye_close
+        val Banner = R.drawable.weight_gurus_banner
         val Logo = R.drawable.ic_logo_light
         val LogoDark = R.drawable.ic_logo_dark
         val Plus = R.drawable.ic_plus
@@ -16,6 +17,8 @@ object AppIcons {
         val Settings = R.drawable.ic_settings
         val Placeholder = R.drawable.me_placeholder
         val Stamp = R.drawable.gg_stamp
+        val RightCaret = R.drawable.ic_right_caret
+        val ChevronDown = R.drawable.ic_chevron_down
     }
 
     object Outlined {
@@ -30,5 +33,6 @@ object AppIcons {
         val Settings = R.drawable.ic_settings_selected
         val Close = R.drawable.ic_popup_close
         val CloseDark = R.drawable.ic_popup_close_dark
+        val CaretDown = R.drawable.ic_filled_caret_down
     }
 }

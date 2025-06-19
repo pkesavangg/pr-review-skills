@@ -45,7 +45,7 @@ object TextTypeDefaults {
 
             TextType.Subtitle ->
                 TextAppearance(
-                    style = typography.subHeading2,
+                    style = typography.subHeading1,
                     color = colorScheme.textBody,
                 )
 
@@ -77,6 +77,7 @@ fun AppText(
     modifier: Modifier = Modifier,
     spacing: Dp = LocalSpacing.current.none,
     textAlign: TextAlign = TextAlign.Start,
+    color: Color? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val textTypeDefault = TextTypeDefaults.appearance(textType)
@@ -96,7 +97,7 @@ fun AppText(
         Text(
             text,
             style = textTypeDefault.style,
-            color = textTypeDefault.color,
+            color = color ?: textTypeDefault.color,
             textAlign = textAlign,
             modifier = modifier,
         )

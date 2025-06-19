@@ -136,6 +136,7 @@ struct LoginScreen: View {
             isPresented: store.isBrowserPresented
         )
         .presentLoader(loaderData: store.loaderData)
+        .presentAlert(alertData: $store.alertData)
         .onAppear {
             store.onLoginSuccess = { router.navigateBack() }
         }
