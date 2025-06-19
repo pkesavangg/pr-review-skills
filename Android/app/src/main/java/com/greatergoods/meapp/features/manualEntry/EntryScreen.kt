@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.entry
+package com.greatergoods.meapp.features.manualEntry
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -30,17 +30,16 @@ import com.greatergoods.meapp.features.common.components.DateTimeInputMode
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.model.DialogModel
-import com.greatergoods.meapp.features.entry.components.ExpandableMetricsCard
-import com.greatergoods.meapp.features.entry.strings.EntryScreenStrings
-import com.greatergoods.meapp.features.entry.viewmodel.EntryIntent
-import com.greatergoods.meapp.features.entry.viewmodel.EntryState
-import com.greatergoods.meapp.features.entry.viewmodel.EntryViewModel
+import com.greatergoods.meapp.features.manualEntry.components.ExpandableMetricsCard
+import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
+import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryIntent
+import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryState
+import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun EntryScreen(
-) {
+fun EntryScreen() {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
     val backStack = LocalNavBackStack.current
@@ -62,16 +61,20 @@ fun EntryScreen(
 }
 
 @Composable
-private fun EntryScreenContent(state: EntryState, handleIntent: (EntryIntent) -> Unit) {
+private fun EntryScreenContent(
+    state: EntryState,
+    handleIntent: (EntryIntent) -> Unit,
+) {
     val keyBoardController = LocalSoftwareKeyboardController.current
     val controls = state.form.controls
     val scrollState = rememberScrollState()
     AppScaffold(EntryScreenStrings.Title) {
         Column(
-            modifier = Modifier
-                .verticalScroll(scrollState)
-                .padding(horizontal = MeTheme.spacing.sm)
-                .padding(top = MeTheme.spacing.md),
+            modifier =
+                Modifier
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = MeTheme.spacing.sm)
+                    .padding(top = MeTheme.spacing.md),
             verticalArrangement = Arrangement.Top,
         ) {
             AppInput(
