@@ -89,6 +89,13 @@ final class HistoryStore: ObservableObject {
         }
     }
 
+    // MARK: - Manual Refresh -------------------------------------------------
+
+    /// Refresh the entries for the month that is currently selected (used by pull-to-refresh UI)
+    func refreshSelectedMonth() async {
+        guard let month = selectedMonth else { return }
+        await loadEntries(for: month)
+    }
 
     // MARK: - Internal helpers -------------------------------------------
 

@@ -60,6 +60,9 @@ struct HistoryListScreen: View {
                 }
             }
           }
+          .refreshable {
+              await store.refreshSelectedMonth()
+          }
         }
     }
 }

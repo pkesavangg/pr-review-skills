@@ -75,6 +75,9 @@ struct HistoryMonthListScreen: View {
                       }
                   }
               }
+              .refreshable {
+                  await historyStore.refreshSelectedMonth()
+              }
           }
     }
 }
