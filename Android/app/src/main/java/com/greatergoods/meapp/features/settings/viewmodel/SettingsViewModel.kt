@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.settings.strings.SettingsScreenStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -141,15 +142,17 @@ class SettingsViewModel
             // TODO: Open GreaterGoods.com in browser
         }
 
-        fun onLogOutClick() {
-            AppLog.d("SettingsViewModel", "Log out clicked")
-
+    /*
+     * Show a confirmation dialog before logging out.
+     */
+        private fun onLogOutClick() {
+            val logoutModalString = SettingsScreenStrings.LogoutDialog
             dialogQueueService.enqueue(
                 DialogModel.Confirm(
-                    "Log out",
-                    "Are you sure you want to log out?",
-                    "Log out",
-                    "Cancel",
+                    logoutModalString.Title,
+                    logoutModalString.Body,
+                    logoutModalString.Confirm,
+                    logoutModalString.Cancel,
                     onDismiss = {},
                     onConfirm = {
                         logout()
@@ -158,7 +161,8 @@ class SettingsViewModel
             )
         }
 
-        fun logout() {
+        private fun logout() {
+            dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
             viewModelScope.launch {
                 try {
                     val account = state.value.account
@@ -167,6 +171,8 @@ class SettingsViewModel
                     }
                 } catch (e: Exception) {
                     AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
+                } finally {
+                    dialogQueueService.dismissLoader()
                 }
             }
         }
