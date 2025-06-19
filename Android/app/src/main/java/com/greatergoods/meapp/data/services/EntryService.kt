@@ -38,13 +38,6 @@ class EntryService @Inject constructor(
 
     private val _last30Days = MutableStateFlow<List<Entry>>(listOf())
     override val last30Days = _last30Days.asStateFlow()
-
-    private val _monthsLastYear = MutableStateFlow<List<HistoryMonth>?>(null)
-    override val monthsLastYear: StateFlow<List<HistoryMonth>?> = _monthsLastYear.asStateFlow()
-
-    private val _monthsAll = MutableStateFlow<List<HistoryMonth>?>(null)
-    override val monthsAll: StateFlow<List<HistoryMonth>?> = _monthsAll.asStateFlow()
-
     private val _progress = MutableStateFlow<Progress?>(null)
     override val progress: StateFlow<Progress?> = _progress.asStateFlow()
 
@@ -54,12 +47,15 @@ class EntryService @Inject constructor(
     private var accountId: String? = null
     private var initialWeight: Double? = null
 
+    override val monthlyAverage: Flow<List<HistoryMonth>> =
+        entryRepository.getMonthlyAverage(accountId ?: "")
+
     /**
      * Updates all entry-related data for the given account.
      * Fetches latest entry, last 7 and 30 days entries, and updates progress.
      * @param accountId The account ID to update data for.
      */
-    override suspend fun updateAllData(accountId: String) {
+    override suspend fun updateAccountId(accountId: String) {
         this.accountId = accountId
     }
 

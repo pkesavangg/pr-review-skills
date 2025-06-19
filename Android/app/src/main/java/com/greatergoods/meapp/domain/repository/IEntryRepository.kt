@@ -160,18 +160,11 @@ interface IEntryRepository {
     fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>>
 
     /**
-     * Gets monthly aggregated data for the last year.
-     * @param accountId The account ID
-     * @return Flow of list of monthly aggregated data
-     */
-    fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>>
-
-    /**
      * Gets all monthly aggregated data.
      * @param accountId The account ID
      * @return Flow of list of all monthly aggregated data
      */
-    fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>>
+    fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>>
 
     /**
      * Gets the operation count for an account.

@@ -198,25 +198,12 @@ class EntryRepository @Inject constructor(
         }
 
     /**
-     * Gets monthly aggregated data for the last year.
-     * @param accountId The account ID
-     * @return Flow of list of monthly aggregated data
-     */
-    override fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>> {
-        return flow {
-            emit(listOf())
-        }
-    }
-
-    /**
      * Gets all monthly aggregated data.
      * @param accountId The account ID
      * @return Flow of list of all monthly aggregated data
      */
-    override fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>> {
-        return flow {
-            emit(listOf())
-        }
+    override fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> {
+        return entryDao.getMonthlyHistory(accountId)
     }
 
     /**

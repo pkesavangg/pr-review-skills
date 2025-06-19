@@ -10,6 +10,7 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.BpmEntry
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -532,4 +533,47 @@ interface EntryDao {
     fun getDaywiseBodyScaleLatestWithJoin(
         accountId: String
     ): Flow<List<PeriodBodyScaleSummary>>
+
+    @Query(
+        """
+    WITH entries_with_period AS (
+        SELECT
+            e.entryTimestamp,
+            bse.weight,
+            strftime('%Y-%m', datetime(e.entryTimestamp / 1000, 'unixepoch')) AS period
+        FROM entry e
+        LEFT JOIN body_scale_entry bse ON e.id = bse.id
+        WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
+    ),
+    first_last AS (
+        SELECT
+            period,
+            MIN(entryTimestamp) AS firstTimestamp,
+            MAX(entryTimestamp) AS lastTimestamp
+        FROM entries_with_period
+        GROUP BY period
+    ),
+    joined AS (
+        SELECT
+            fl.period,
+            fl.firstTimestamp,
+            fl.lastTimestamp,
+            (SELECT weight FROM entries_with_period WHERE entryTimestamp = fl.firstTimestamp) AS firstWeight,
+            (SELECT weight FROM entries_with_period WHERE entryTimestamp = fl.lastTimestamp) AS lastWeight,
+            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
+            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
+        FROM first_last fl
+    )
+    SELECT
+        firstTimestamp AS entryTimestamp,
+        avgWeight,
+        entryCount,
+        lastWeight - firstWeight AS change
+    FROM joined
+    ORDER BY period DESC
+    """,
+    )
+    fun getMonthlyHistory(
+        accountId: String
+    ): Flow<List<HistoryMonth>>
 }

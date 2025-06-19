@@ -6,6 +6,7 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the history feature, managing state and handling history intents.
@@ -25,6 +26,13 @@ class HistoryViewModel @Inject constructor(
 
     init {
         handleIntent(HistoryIntent.LoadHistory)
+        viewModelScope.launch {
+            Log.i("CHECKING", "Monthly Average:")
+
+            entryService.monthlyAverage.collect {
+                Log.i("CHECKING", "Monthly Average: $it")
+            }
+        }
         loadHistory()
     }
 
