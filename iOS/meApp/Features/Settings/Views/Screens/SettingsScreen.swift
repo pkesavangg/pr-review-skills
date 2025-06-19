@@ -60,7 +60,7 @@ struct SettingsScreen: View {
         .environmentObject(settingsStore)
         // Appearance selection dialog
         .confirmationDialog(
-            "Choose Appearance",
+            settingsLang.appearance,
             isPresented: $showingAppearanceDialog,
             titleVisibility: .visible
         ) {
@@ -73,7 +73,7 @@ struct SettingsScreen: View {
         }
         // Unit selection dialog
         .confirmationDialog(
-            "Choose Units",
+            settingsLang.unitType,
             isPresented: $showingUnitDialog,
             titleVisibility: .visible
         ) {
@@ -87,27 +87,27 @@ struct SettingsScreen: View {
         }
         // Gender dialog
         .confirmationDialog(
-            "Biological Sex",
+            settingsLang.biologicalSex,
             isPresented: $showingGenderDialog,
             titleVisibility: .visible
         ) {
-            Button("Male") { settingsStore.updateGender(.male) }
-            Button("Female") { settingsStore.updateGender(.female) }
+            Button(Sex.male.rawValue.capitalized) { settingsStore.updateGender(.male) }
+            Button(Sex.female.rawValue.capitalized) { settingsStore.updateGender(.female) }
             Button(CommonStrings.cancel, role: .cancel) {}
         }
         // Activity level dialog
         .confirmationDialog(
-            "Activity Level",
+            settingsLang.activityLevel,
             isPresented: $showingActivityDialog,
             titleVisibility: .visible
         ) {
-            Button("Normal") { settingsStore.updateActivityLevel(.normal) }
-            Button("Athlete") { settingsStore.updateActivityLevel(.athlete) }
+            Button(ActivityLevel.normal.rawValue.capitalized) { settingsStore.updateActivityLevel(.normal) }
+            Button(ActivityLevel.athlete.rawValue.capitalized) { settingsStore.updateActivityLevel(.athlete) }
             Button(CommonStrings.cancel, role: .cancel) {}
         }
         // Notifications dialog
         .confirmationDialog(
-            "Notifications",
+            settingsLang.notifications,
             isPresented: $showingNotificationDialog,
             titleVisibility: .visible
         ) {
@@ -118,7 +118,7 @@ struct SettingsScreen: View {
         }
         // Streak dialog
         .confirmationDialog(
-            "Streaks",
+            settingsLang.streaks,
             isPresented: $showingStreakDialog,
             titleVisibility: .visible
         ) {
