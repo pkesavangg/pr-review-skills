@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.features.common.service
 
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
-import com.greatergoods.meapp.features.common.components.LoaderConfig
 import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Loader
@@ -54,8 +53,8 @@ constructor() : IDialogQueueService {
     /**
      * Show a loader.
      */
-    override fun showLoader(message: String, style: LoaderStyle, config: LoaderConfig) {
-        _loader.value = Loader(message, style, config)
+    override fun showLoader(message: String, style: LoaderStyle) {
+        _loader.value = Loader(message, style)
     }
 
     /**
@@ -116,5 +115,9 @@ constructor() : IDialogQueueService {
                 _currentDialog.value = next
             }
         }
+    }
+
+    override fun showDialog(dialog: DialogModel) {
+        this.enqueue(dialog.updatePriority(1))
     }
 }

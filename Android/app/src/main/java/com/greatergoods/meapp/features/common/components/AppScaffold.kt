@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.common.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Scaffold
@@ -10,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Red
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
@@ -37,15 +39,15 @@ fun AppScaffold(
     content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize(),
         topBar = {
-            if (title != null)
+            if (title != null || navigationIcon != null || actions != null)
                 AppBar(
                     title = title,
                     navigationIcon = navigationIcon,
                     actions = actions,
                     containerColor = containerColor,
-                    modifier = Modifier.systemBarsPadding(),
                 )
         },
         containerColor = containerColor,
@@ -53,7 +55,7 @@ fun AppScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
                 .background(contentColor),
         ) {
             content(Modifier)

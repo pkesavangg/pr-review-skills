@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.domain.interfaces
 
-import com.greatergoods.meapp.features.common.components.LoaderConfig
-import com.greatergoods.meapp.features.common.components.LoaderDefaults
 import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Loader
@@ -20,7 +18,10 @@ interface IDialogQueueService {
     fun showLoader(
         message: String,
         style: LoaderStyle = LoaderStyle.DASHED,
-        config: LoaderConfig = LoaderDefaults.defaultFor(style)
+    )
+
+    fun showDialog(
+        dialog: DialogModel,
     )
 
     fun dismissLoader()

@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.entry
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
@@ -26,6 +29,7 @@ import com.greatergoods.meapp.features.common.components.DateTimeInput
 import com.greatergoods.meapp.features.common.components.DateTimeInputMode
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.entry.components.ExpandableMetricsCard
 import com.greatergoods.meapp.features.entry.strings.EntryScreenStrings
 import com.greatergoods.meapp.features.entry.viewmodel.EntryIntent
@@ -39,7 +43,22 @@ fun EntryScreen(
 ) {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
+    val backStack = LocalNavBackStack.current
     EntryScreenContent(state, viewModel::handleIntent)
+
+    if (state.form.controls.weightDateTime.weight.dirty) {
+        BackHandler {
+            viewModel.dialogQueueService.enqueue(
+                DialogModel.Confirm(
+                    title = "Alert",
+                    message = "Are you sure you want to discard changes?",
+                    onConfirm = {
+                        backStack.removeLast(AppRoute.Home)
+                    },
+                ),
+            )
+        }
+    }
 }
 
 @Composable

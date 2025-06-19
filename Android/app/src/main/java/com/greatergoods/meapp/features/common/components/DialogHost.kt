@@ -21,7 +21,7 @@ fun DialogHost() {
                 AppHeightPickerModal(
                     value = dialog.params.get("value") as HeightInput,
                     onCancel = {
-                        dialog.onDismiss()
+                        dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()
                     },
                     onOk = { data ->
@@ -36,7 +36,7 @@ fun DialogHost() {
                 // Custom dialog for help popup
                 AppHelpModal(
                     onClose = {
-                        dialog.onDismiss()
+                        dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()
                     },
                 )
