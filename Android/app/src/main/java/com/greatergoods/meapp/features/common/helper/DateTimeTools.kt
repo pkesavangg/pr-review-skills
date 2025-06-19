@@ -14,7 +14,6 @@ import java.util.Locale
  * Provides similar functionality to the Angular DatetimeToolsService.
  */
 object DateTimeTools {
-
     /**
      * Gets today's date formatted as "September 4, 1986"
      */
@@ -26,82 +25,81 @@ object DateTimeTools {
     /**
      * Gets formatted date from ISO string as "September 4, 1986"
      */
-    fun getFormattedDate(dateString: String): String {
-        return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+    fun getFormattedDate(dateString: String): String =
+        try {
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault()))
         } catch (e: Exception) {
             "Invalid Date"
         }
-    }
 
     /**
      * Gets formatted day as "Sept 4th"
      */
-    fun getFormattedDay(dateString: String): String {
-        return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+    fun getFormattedDay(dateString: String): String =
+        try {
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             val day = date.dayOfMonth
-            val suffix = when {
-                day in 11..13 -> "th"
-                day % 10 == 1 -> "st"
-                day % 10 == 2 -> "nd"
-                day % 10 == 3 -> "rd"
-                else -> "th"
-            }
+            val suffix =
+                when {
+                    day in 11..13 -> "th"
+                    day % 10 == 1 -> "st"
+                    day % 10 == 2 -> "nd"
+                    day % 10 == 3 -> "rd"
+                    else -> "th"
+                }
             "${date.format(DateTimeFormatter.ofPattern("MMM", Locale.getDefault()))} $day$suffix"
         } catch (e: Exception) {
             "Invalid Date"
         }
-    }
 
     /**
      * Gets formatted day with time as "Aug 22, 4:38pm"
      */
-    fun getFormattedDayWithTime(dateString: String): String {
-        return try {
+    fun getFormattedDayWithTime(dateString: String): String =
+        try {
             val dateTime = LocalDateTime.parse(dateString)
             dateTime.format(DateTimeFormatter.ofPattern("MMM d, h:mma", Locale.getDefault()))
         } catch (e: Exception) {
             "Invalid DateTime"
         }
-    }
 
     /**
      * Gets formatted month and day as "Sept 4"
      */
-    fun getFormattedMonthDay(dateString: String): String {
-        return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+    fun getFormattedMonthDay(dateString: String): String =
+        try {
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             date.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))
         } catch (e: Exception) {
             "Invalid Date"
         }
-    }
 
     /**
      * Gets formatted time as "8:30 PM"
      */
-    fun getFormattedTime(timeString: String): String {
-        return try {
+    fun getFormattedTime(timeString: String): String =
+        try {
             val dateTime = LocalDateTime.parse(timeString)
             dateTime.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
         } catch (e: Exception) {
             "Invalid Time"
         }
-    }
 
     /**
      * Gets month abbreviation as "Jan"
@@ -110,11 +108,12 @@ object DateTimeTools {
         if (dateString.isBlank()) return "---"
 
         return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
         } catch (e: Exception) {
             "---"
@@ -128,11 +127,12 @@ object DateTimeTools {
         if (dateString.isBlank()) return "----"
 
         return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             date.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
         } catch (e: Exception) {
             "----"
@@ -146,11 +146,12 @@ object DateTimeTools {
         if (dateString.isBlank()) return "----"
 
         return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault()))
         } catch (e: Exception) {
             "----"
@@ -164,11 +165,12 @@ object DateTimeTools {
         if (dateString.isBlank()) return "----"
 
         return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             date.year.toString()
         } catch (e: Exception) {
             "----"
@@ -182,11 +184,12 @@ object DateTimeTools {
         if (dateString.isBlank()) return -1
 
         return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString).toLocalDate()
-            } else {
-                LocalDate.parse(dateString)
-            }
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString).toLocalDate()
+                } else {
+                    LocalDate.parse(dateString)
+                }
             date.dayOfWeek.value
         } catch (e: Exception) {
             -1
@@ -196,21 +199,18 @@ object DateTimeTools {
     /**
      * Gets current datetime as ISO string
      */
-    fun getCurrentDatetimeIsoString(): String {
-        return Instant.now().toString()
-    }
+    fun getCurrentDatetimeIsoString(): String = Instant.now().toString()
 
     /**
      * Converts date string to ISO format
      */
-    fun getDatetimeIsoString(dateString: String): String {
-        return try {
+    fun getDatetimeIsoString(dateString: String): String =
+        try {
             val dateTime = LocalDateTime.parse(dateString)
             dateTime.atZone(ZoneId.systemDefault()).toInstant().toString()
         } catch (e: Exception) {
             getCurrentDatetimeIsoString()
         }
-    }
 
     /**
      * Gets current time with timezone as "2022-08-22 14:26:38.954039+05:30"
@@ -224,22 +224,28 @@ object DateTimeTools {
     /**
      * Gets datetime ISO string for interval days ago from start date
      */
-    fun getIntervalDatetimeIsoString(interval: Int, start: String? = null): String {
-        val startDate = if (start != null) {
-            try {
-                LocalDateTime.parse(start)
-            } catch (e: Exception) {
+    fun getIntervalDatetimeIsoString(
+        interval: Int,
+        start: String? = null,
+    ): String {
+        val startDate =
+            if (start != null) {
+                try {
+                    LocalDateTime.parse(start)
+                } catch (e: Exception) {
+                    LocalDateTime.now()
+                }
+            } else {
                 LocalDateTime.now()
             }
-        } else {
-            LocalDateTime.now()
-        }
 
-        val intervalDate = startDate.minusDays(interval.toLong())
-            .withHour(0)
-            .withMinute(0)
-            .withSecond(0)
-            .withNano(0)
+        val intervalDate =
+            startDate
+                .minusDays(interval.toLong())
+                .withHour(0)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0)
 
         return intervalDate.atZone(ZoneId.systemDefault()).toInstant().toString()
     }
@@ -247,43 +253,46 @@ object DateTimeTools {
     /**
      * Gets date string formatted for date picker as "2024-01-01T00:00:00"
      */
-    fun getDateStringFormattedForDatePicker(dateString: String): String {
-        return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString)
-            } else {
-                LocalDate.parse(dateString).atStartOfDay()
-            }
+    fun getDateStringFormattedForDatePicker(dateString: String): String =
+        try {
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString)
+                } else {
+                    LocalDate.parse(dateString).atStartOfDay()
+                }
             date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
         } catch (e: Exception) {
             LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
         }
-    }
 
     /**
      * Gets minimum birthday offset for date picker (13 years ago)
      */
-    fun getMinBirthdayOffsetForDatePicker(): String {
-        val minDate = LocalDateTime.now()
-            .minusYears(13)
-            .withHour(0)
-            .withMinute(0)
-            .withSecond(0)
-            .withNano(0)
-
-        return minDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+    fun getMinBirthdayOffsetForDatePicker(): Long {
+        val minDate =
+            LocalDateTime
+                .now()
+                .minusYears(13)
+                .toLocalDate()
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        return minDate
     }
 
     /**
      * Gets maximum birthday offset for date picker (120 years ago - oldest allowed)
      */
     fun getMaxBirthdayOffsetForDatePicker(): String {
-        val maxDate = LocalDateTime.now()
-            .minusYears(120)
-            .withHour(0)
-            .withMinute(0)
-            .withSecond(0)
-            .withNano(0)
+        val maxDate =
+            LocalDateTime
+                .now()
+                .minusYears(120)
+                .withHour(0)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0)
 
         return maxDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
     }
@@ -291,25 +300,23 @@ object DateTimeTools {
     /**
      * Gets birthday formatted string in UTC
      */
-    fun getBirthdayFormattedString(dateString: String): String {
-        return try {
-            val date = if (dateString.contains('T')) {
-                LocalDateTime.parse(dateString)
-            } else {
-                LocalDate.parse(dateString).atStartOfDay()
-            }
+    fun getBirthdayFormattedString(dateString: String): String =
+        try {
+            val date =
+                if (dateString.contains('T')) {
+                    LocalDateTime.parse(dateString)
+                } else {
+                    LocalDate.parse(dateString).atStartOfDay()
+                }
             date.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
         } catch (e: Exception) {
             LocalDateTime.now().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
         }
-    }
 
     /**
      * Gets user's timezone ID
      */
-    fun getUserTimezone(): String {
-        return ZoneId.systemDefault().id
-    }
+    fun getUserTimezone(): String = ZoneId.systemDefault().id
 
     /**
      * Gets user's timezone offset in minutes

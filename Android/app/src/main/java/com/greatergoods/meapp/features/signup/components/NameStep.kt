@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
@@ -28,13 +31,13 @@ import com.greatergoods.meapp.theme.MeTheme
 fun NameStep(
     firstNameControl: FormControl<String>,
     lastNameControl: FormControl<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val firstNameFocusRequester = remember { FocusRequester() }
     val lastNameFocusRequester = remember { FocusRequester() }
 
     AppStyledCard(
-        cardAlignmentType = LocalCardAlignment.current
+        cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.nameStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.nameStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
@@ -44,14 +47,20 @@ fun NameStep(
             label = SignupStrings.firstNameLabel,
             imeAction = ImeAction.Next,
             nextFocusRequester = lastNameFocusRequester,
-            modifier = Modifier.focusRequester(firstNameFocusRequester)
+            modifier =
+                Modifier
+                    .semantics { contentType = ContentType.Username }
+                    .focusRequester(firstNameFocusRequester),
         )
         AppInput(
             formControl = lastNameControl,
             type = AppInputType.TEXT,
             label = SignupStrings.lastNameLabel,
             imeAction = ImeAction.Done,
-            modifier = Modifier.focusRequester(lastNameFocusRequester)
+            modifier =
+                Modifier
+                    .semantics { contentType = ContentType.Password }
+                    .focusRequester(lastNameFocusRequester),
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }
