@@ -56,6 +56,7 @@ struct ToastStrings {
     static let pleaseTryAgain = "Please try again."
     static let errorUpdatingProfile = "Error updating profile"
     static let profileSaved = "Profile saved successfully."
+    static let csvExported = ".CSV file sent. Please check your email."
 }
 
 /// Constants for help modal strings used in the app
@@ -157,6 +158,13 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+    
+    struct CsvExportAlert {
+        static let title = "Download Weight History"
+        static let message = "An email with your measurement history will be sent to the email address associated with this account."
+        static let sendButton = "Send"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -167,6 +175,7 @@ struct LoaderStrings {
     static let loggingOut = "Logging out..."
     static let deletingAccount = "Deleting account..."
     static let sendingEmail = "Sending email..."
+    static let sendingCsv = "Sending .CSV File..."
 }
 
 struct URLStrings {

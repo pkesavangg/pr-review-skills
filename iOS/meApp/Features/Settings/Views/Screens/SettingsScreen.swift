@@ -89,7 +89,9 @@ struct SettingsScreen: View {
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.integrations))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData))
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData, onTap: {
+                settingsStore.handleExport()
+            }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.changePassword))
                 .settingsRowInsets()

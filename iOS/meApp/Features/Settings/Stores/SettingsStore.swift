@@ -15,6 +15,7 @@ import SwiftUI
 class SettingsStore: ObservableObject {
     @Injector var accountService: AccountService
     @Injector var notificationService: NotificationHelperService
+    @Injector var entryService: EntryService
     @Injector var logger: LoggerService
     var theme = Theme.shared
     
@@ -235,6 +236,22 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    // MARK: - Handle export
+    func handleExport() {
+        let alert = AlertModel(
+            title: alertLang.CsvExportAlert.title,
+            message: alertLang.CsvExportAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in
+                    self.exportData()
+                },
+                AlertButtonModel(title: alertLang.CsvExportAlert.cancelButton, type: .secondary) { _ in
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
     // MARK: - Edit Profile Helpers
     
     func handleEditProfileExit(router: Router<SettingsRoute>) {
@@ -338,5 +355,19 @@ class SettingsStore: ObservableObject {
         
         // Re-populate with the latest account data so the screen isn't blank.
         populateEditFormIfNeeded()
+    }
+    
+    // MARK: - Export Data
+    private func exportData() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
+            do {
+                try await entryService.exportCSV()
+                notificationService.showToast(ToastModel(message: toastLang.csvExported))
+            } catch {
+                logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
     }
 }
