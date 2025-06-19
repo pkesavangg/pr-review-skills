@@ -194,9 +194,11 @@ class EntryService @Inject constructor(
 
             // 5. Get operations from API
             val operationCount = entryRepository.getOperationCount(accountId!!)
-            val operationsFromAPI = try {
-                entryRepository.getOperationsFromAPI(_lastUpdated.value)
-                    .map { fromScaleApiEntry(it, accountId = accountId ?: "") }
+            val operationsFromApi = mutableListOf<ScaleEntry>()
+            try {
+                val result = entryRepository.getOperationsFromAPI(null)
+                val scaleEntries = result.map { fromScaleApiEntry(it, accountId = accountId!!) }
+                operationsFromApi.addAll(scaleEntries)
             } catch (e: Exception) {
                 AppLog.e("EntryService", "Error getting operations from API", e.toString())
                 // If API fails, store successful operations as placeholders
@@ -208,14 +210,13 @@ class EntryService @Inject constructor(
                     userHasOperations = operationCount > 0,
                     arePlaceholders = true,
                 )
-                emptyList()
             }
 
             // 6. Execute operations from API
-            if (operationsFromAPI.isNotEmpty()) {
+            if (operationsFromApi.isNotEmpty()) {
                 EntryServiceHelper.executeOperations(
                     entryRepository,
-                    operationsFromAPI,
+                    operationsFromApi,
                 )
             }
 

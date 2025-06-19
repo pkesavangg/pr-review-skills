@@ -20,5 +20,5 @@ interface EntryApi {
 
 data class OperationsResponse(
     val operations: List<ScaleApiEntry>,
-    val timestamp: Long
+    val timestamp: String
 )

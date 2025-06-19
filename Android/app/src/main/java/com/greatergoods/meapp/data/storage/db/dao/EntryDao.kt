@@ -394,7 +394,7 @@ interface EntryDao {
           AVG(bsem.visceralFatLevel) AS visceralFatLevel,
           AVG(bsem.boneMass) AS boneMass,
           AVG(bsem.impedance) AS impedance,
-          MAX(bsem.unit) AS unit
+          MAX(e.unit) AS unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
@@ -433,7 +433,7 @@ interface EntryDao {
           bsem.visceralFatLevel,
           bsem.boneMass,
           bsem.impedance,
-          bsem.unit
+          e.unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
@@ -476,7 +476,7 @@ interface EntryDao {
           AVG(bsem.visceralFatLevel) AS visceralFatLevel,
           AVG(bsem.boneMass) AS boneMass,
           AVG(bsem.impedance) AS impedance,
-          MAX(bsem.unit) AS unit
+          MAX(e.unit) AS unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
@@ -515,7 +515,7 @@ interface EntryDao {
           bsem.visceralFatLevel,
           bsem.boneMass,
           bsem.impedance,
-          bsem.unit
+          e.unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id

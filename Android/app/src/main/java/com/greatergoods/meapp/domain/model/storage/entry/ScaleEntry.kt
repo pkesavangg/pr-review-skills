@@ -3,7 +3,8 @@ package com.greatergoods.meapp.domain.model.storage.entry
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
-import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry as DomainScaleEntry
+import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
+import java.time.Instant
 
 /**
  * Represents a scale entry, combining EntryEntity and ScaleEntryWithMetrics.
@@ -16,12 +17,14 @@ data class ScaleEntry(
      * Converts this database scale entry to the domain model ScaleEntry.
      * @return The domain model ScaleEntry.
      */
-    fun toScaleApiEntry(): DomainScaleEntry {
+    fun toScaleApiEntry(): ScaleApiEntry {
         val metrics = scale.scaleEntryMetric
         val scaleEntity = scale.scaleEntry
-        return DomainScaleEntry(
-            operationType = entry.operationType,
-            entryTimestamp = entry.entryTimestamp.toString(),
+        val ms = entry.entryTimestamp
+        val iso = Instant.ofEpochMilli(ms).toString()
+        return ScaleApiEntry(
+            operationType = entry.operationType.lowercase(),
+            entryTimestamp = iso,
             weight = scaleEntity.weight,
             bodyFat = scaleEntity.bodyFat,
             muscleMass = scaleEntity.muscleMass,
@@ -29,7 +32,7 @@ data class ScaleEntry(
             water = scaleEntity.water,
             bmi = scaleEntity.bmi,
             source = scaleEntity.source,
-            unit = metrics?.unit ?: "kg",
+            unit = entry.unit,
             impedance = metrics?.impedance,
             pulse = metrics?.pulse,
             visceralFatLevel = metrics?.visceralFatLevel,
@@ -38,6 +41,7 @@ data class ScaleEntry(
             skeletalMusclePercent = metrics?.skeletalMusclePercent,
             bmr = metrics?.bmr,
             metabolicAge = metrics?.metabolicAge,
+            serverTimestamp = iso,
         )
     }
 
@@ -49,7 +53,7 @@ data class ScaleEntry(
          * @param accountId The account ID.
          * @return The ScaleEntry database model.
          */
-        fun fromScaleApiEntry(scaleEntry: DomainScaleEntry, entryId: Long? = null, accountId: String): ScaleEntry {
+        fun fromScaleApiEntry(scaleEntry: ScaleApiEntry, entryId: Long? = null, accountId: String): ScaleEntry {
 
             val scaleEntryEntity = BodyScaleEntryEntity(
                 id = entryId ?: 0,
@@ -72,22 +76,24 @@ data class ScaleEntry(
                 visceralFatLevel = scaleEntry.visceralFatLevel ?: 0,
                 boneMass = scaleEntry.boneMass,
                 impedance = scaleEntry.impedance ?: 0,
-                unit = scaleEntry.unit,
             )
 
             val scaleEntity = ScaleEntryWithMetrics(
                 scaleEntry = scaleEntryEntity,
                 scaleEntryMetric = scaleEntryMetricEntity,
             )
+            val isoString = scaleEntry.entryTimestamp
+            val epochMillis = Instant.parse(isoString).toEpochMilli()
             val entryEntity = EntryEntity(
                 id = entryId ?: 0,
                 accountId = accountId,
-                entryTimestamp = scaleEntry.entryTimestamp.toLong(),
+                entryTimestamp = epochMillis,
                 serverTimestamp = null,
                 opTimestamp = null,
                 operationType = scaleEntry.operationType,
                 deviceType = "scale",
                 deviceId = "manual",
+                unit = scaleEntry.unit,
                 isSynced = true,
             )
             return ScaleEntry(entryEntity, scaleEntity)

@@ -28,5 +28,6 @@ data class ActiveEntryEntity(
     override val deviceType: String,
     override val deviceId: String,
     override val attempts: Int = 0,
+    override val unit: String? = "lb",
     override val isSynced: Boolean = false,
 ) : BaseEntryEntity

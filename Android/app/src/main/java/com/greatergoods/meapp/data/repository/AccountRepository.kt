@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.data.repository
 
+import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IUserAPI
@@ -30,7 +31,7 @@ import android.util.Log
 class AccountRepository @Inject constructor(
     private val accountDao: AccountDao,
     private val userDataStore: UserDataStore,
-    private val tokenManager: TokenManager,
+    private val tokenManager: ITokenManager,
     private val authAPI: IAuthAPI,
     private val userAPI: IUserAPI,
 ) : IAccountRepository {

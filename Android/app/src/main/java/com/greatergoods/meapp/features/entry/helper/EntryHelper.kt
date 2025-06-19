@@ -22,6 +22,7 @@ object EntryHelper {
             entryTimestamp = weightDateTime.dateTime.value.getTimestamp(), // Assuming DateTimeValue has .timestamp: Long
             serverTimestamp = null,
             opTimestamp = now,
+            unit = "lb", // or whatever is relevant
             operationType = OperationType.CREATE.name, // or appropriate value
             deviceType = "scale",     // or from context
             deviceId = "TODO",        // from current device
@@ -51,7 +52,6 @@ object EntryHelper {
                 visceralFatLevel = it.visceralFat.toIntSafe(),
                 boneMass = it.boneMass.toIntSafe(),
                 impedance = 0, // You didn’t provide this in form controls – use 0 or calculate if needed
-                unit = weightMode, // or whatever is relevant
             )
         }
 
