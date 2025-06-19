@@ -1,7 +1,9 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -164,6 +166,7 @@ fun <T> AppInput(
     placeHolder: String = "",
     enabled: Boolean = true,
     readOnly: Boolean = false,
+    showOutline: Boolean = false,
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
     onValueChange: ((T?) -> Unit)? = null,
@@ -187,6 +190,7 @@ fun <T> AppInput(
             placeHolder = placeHolder,
             enabled = enabled,
             readOnly = readOnly,
+            showOutline = showOutline,
             supportingText = supportingText,
             inputType = type,
             visualTransformation = visualTransformation,
@@ -210,6 +214,7 @@ fun <T> InputFieldBase(
     placeHolder: String = "",
     enabled: Boolean = true,
     inputType: AppInputType = AppInputType.TEXT,
+    showOutline: Boolean = false,
     readOnly: Boolean = false,
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
@@ -315,7 +320,7 @@ fun <T> InputFieldBase(
         value = inputValue,
         onValueChange = onInputChange,
         modifier = modifier
-            .height(84.dp)
+            .height(56.dp)
             .fillMaxWidth()
             .focusRequester(focusRequester)
             .onFocusChanged { focusState ->
@@ -327,7 +332,14 @@ fun <T> InputFieldBase(
                     currentOnFocus?.invoke()
                     isFocused = true
                 }
-            },
+            }
+            .then(
+                if (showOutline) Modifier.border(
+                    width = 1.dp,
+                    color = if (isError) colorScheme.textError else colorScheme.utility,
+                    shape = RoundedCornerShape(size = borderRadius.sm),
+                ) else Modifier,
+            ),
         label = {
             label?.let {
                 Text(
@@ -398,31 +410,28 @@ fun <T> InputFieldBase(
                 cursorColor = colorScheme.primaryAction,
                 errorCursorColor = colorScheme.textError,
             ),
-        supportingText = {
-            val errorMessage = formControl?.error?.message ?: ""
-            when {
-                isError ->
-                    Text(
-                        errorMessage.lowercase(),
-                        color = colorScheme.textError,
-                        style = typography.body3,
-                    )
-
-                supportingText != null ->
-                    Text(
-                        supportingText,
-                        color = colorScheme.textSubheading,
-                        style = typography.body3,
-                    )
-
-                else ->
-                    Text(
-                        AppInputStrings.EmptySpace,
-                        style = typography.body3,
-                    )
-            }
-        },
     )
+    Box(modifier = Modifier.padding(top = spacing.xs, start = spacing.sm)) {
+        val errorMessage = formControl?.error?.message.orEmpty()
+        when {
+            isError -> Text(
+                text = errorMessage.lowercase(),
+                color = colorScheme.textError,
+                style = typography.body3,
+            )
+
+            supportingText != null -> Text(
+                text = supportingText,
+                color = colorScheme.textSubheading,
+                style = typography.body3,
+            )
+
+            else -> Text(
+                text = AppInputStrings.EmptySpace,
+                style = typography.body3,
+            )
+        }
+    }
     Spacer(Modifier.height(spacing.xs))
 }
 

@@ -47,9 +47,15 @@ fun PasswordResetModal(
         ),
         secondaryAction = ActionButton(
             text = ForgotPasswordDialogStrings.CancelButton,
-            action = {  viewModel.handleIntent(ForgotPasswordDialogIntent.Close) },
+            action = { 
+                viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
+                onDismiss()
+            },
         ),
-        onDismiss = onDismiss,
+        onDismiss = { 
+            viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
+            onDismiss()
+        },
         modifier = modifier,
     ) {
         AppInput(
@@ -57,6 +63,7 @@ fun PasswordResetModal(
             label = ForgotPasswordDialogStrings.EmailLabel,
             type = AppInputType.EMAIL,
             imeAction = ImeAction.Done,
+            showOutline = true,
             onImeAction = { viewModel.handleIntent(ForgotPasswordDialogIntent.Submit) },
             modifier = Modifier,
         )

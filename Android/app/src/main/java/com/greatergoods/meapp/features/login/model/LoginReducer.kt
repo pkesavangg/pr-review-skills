@@ -4,6 +4,7 @@ import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.login.strings.LoginStrings
 
 /**
  * Controls for Login form.
@@ -19,7 +20,7 @@ data class LoginFormControls(
                     initialValue = "",
                     validators = listOf(
                         FormValidations.required(),
-                        FormValidations.maxLength(100),
+                        FormValidations.maxLength(100, LoginStrings.EmailLabel),
                         FormValidations.email(),
                     ),
                 ),
@@ -27,29 +28,8 @@ data class LoginFormControls(
                 FormControl.create(
                     initialValue = "",
                     validators = listOf(
-                        FormValidations.minLength(6),
-                        FormValidations.maxLength(50),
-                    ),
-                ),
-        )
-    }
-}
-
-/**
- * Controls for Reset Password form.
- */
-data class ResetPasswordFormControls(
-    val email: FormControl<String>,
-) {
-    companion object {
-        fun create() = ResetPasswordFormControls(
-            email =
-                FormControl.create(
-                    initialValue = "",
-                    validators = listOf(
-                        FormValidations.required(),
-                        FormValidations.maxLength(100),
-                        FormValidations.email(),
+                        FormValidations.minLength(6, LoginStrings.EmailLabel),
+                        FormValidations.maxLength(50, LoginStrings.EmailLabel),
                     ),
                 ),
         )
