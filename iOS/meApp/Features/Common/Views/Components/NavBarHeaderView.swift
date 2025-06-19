@@ -55,6 +55,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
             }
         }
         .padding(.bottom, .spacingSM)
+        .background(theme.backgroundSecondary)
         .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
     }
 }

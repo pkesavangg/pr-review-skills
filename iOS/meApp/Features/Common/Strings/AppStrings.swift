@@ -17,6 +17,7 @@ struct CommonStrings {
     static let skip = "Skip"
     static let logIn = "Log in"
     static let complete = "Complete"
+    static let edit = "Edit"
     
     static let dash = "dash"
     static let entry = "entry"
@@ -24,6 +25,13 @@ struct CommonStrings {
     static let settings = "settings"
     static let appSync = "appsync"
     static let optional = "optional"
+    static let unitKgCm = "kg & cm"
+    static let unitLbsFeet = "lbs & feet"
+    static let on = "On"
+    static let off = "Off"
+    static let dark = "Dark"
+    static let light = "Light"
+    static let system = "System Settings"
 }
 
 /// Constants for toast messages used in the app
@@ -174,4 +182,5 @@ struct AppAssets {
     static let appSync = "appSync"
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
+    static let chevronRight = "chevronRight"
 }

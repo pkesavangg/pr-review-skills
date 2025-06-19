@@ -19,7 +19,7 @@ struct InitialIconView: View {
     var body: some View {
         let textColor = textColor ?? theme.backgroundPrimary
         let backgroundColor = backgroundColor ?? theme.statusIconPrimary
-        Text(character)
+        Text(character.uppercased())
             .font(.system(size: size * 0.5, weight: .semibold))
             .foregroundColor(style == .fill ? textColor : backgroundColor)
             .frame(width: size, height: size)

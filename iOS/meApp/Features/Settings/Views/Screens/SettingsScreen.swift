@@ -24,12 +24,18 @@ struct SettingsScreen: View {
             ZStack {
                 theme.backgroundSecondary
                     .ignoresSafeArea()
-                List {
-                    supportSection()
-                    accountActionSection()
+                VStack(spacing: 0) {
+                    List {
+                        profileHeader()
+                        accountSettingsSection()
+                        profileSettingsSection()
+                        appSettingsSection()
+                        supportSection()
+                        accountActionSection()
+                    }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
                 }
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
             }
             .inAppBrowser(
                 url: settingsStore.presentingBrowserURL,
@@ -38,9 +44,89 @@ struct SettingsScreen: View {
         }
     }
     
+    private func profileHeader() -> some View {
+        VStack(spacing: .spacingXS) {
+            InitialIconView(
+                character: settingsStore.profileInitial,
+                size: 41,
+                style: .fill
+            )
+            Text(settingsStore.profileName)
+                .fontOpenSans(.heading4)
+                .foregroundColor(theme.textHeading)
+            Text(settingsStore.profileEmail)
+                .fontOpenSans(.body2)
+                .foregroundColor(theme.textBody)
+            
+            ButtonView(
+                text: CommonStrings.edit,
+                type: .primary,
+                size: .regular,
+                isDisabled: false,
+                action: {
+                    // TODO: Implement profile edit navigation
+                }
+            )
+            .padding(.top, .spacingSM)
+        }
+        .frame(maxWidth: .infinity)
+        .listRowBackground(Color.clear)
+    }
+    
+    private func accountSettingsSection() -> some View {
+        Section(header: sectionHeader(title: settingsLang.accountSettings)) {
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.addEditScales))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.integrations))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.changePassword))
+                .settingsRowInsets()
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func profileSettingsSection() -> some View {
+        Section(header: sectionHeader(title: settingsLang.profileSettings)) {
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.goalSetting))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.biologicalSex, value: settingsStore.biologicalSexText))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.activityLevel, value: settingsStore.activityLevelText))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.unitType, value: settingsStore.unitTypeText))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.weightless, value: settingsStore.weightlessText))
+                .settingsRowInsets()
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func appSettingsSection() -> some View {
+        Section(header: sectionHeader(title: settingsLang.appSettings)) {
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.notifications, value: settingsStore.notificationsOnText))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.messages))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.streaks, value: settingsStore.streaksOnText))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.appPermissions))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.appearance, value: settingsStore.appearanceModeText))
+                .settingsRowInsets()
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
     private func supportSection() -> some View {
         Section(header:
-            sectionHeader(title: settingsLang.supportSettings)
+                    sectionHeader(title: settingsLang.supportSettings)
         ) {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.helpAndCustomerService,
@@ -74,6 +160,8 @@ struct SettingsScreen: View {
             ))
             .settingsRowInsets()
         }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
     }
     
     private func accountActionSection() -> some View {
@@ -97,6 +185,8 @@ struct SettingsScreen: View {
             ))
             .settingsRowInsets()
         }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
     }
     
     private func sectionHeader(title: String) -> some View {
@@ -107,7 +197,6 @@ struct SettingsScreen: View {
             .padding(.bottom, .spacingXS)
             .padding(.leading, -16)
     }
-
 }
 
 #Preview {
