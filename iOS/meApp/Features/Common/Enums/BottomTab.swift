@@ -57,24 +57,10 @@ enum BottomTab: String, CaseIterable {
 
 // TODO: Test Views need to replace with actual views
 struct DashboardView: View {
-    @EnvironmentObject private var viewModel: BottomTabBarViewModel
-
+    @Environment(\.appTheme) private var theme
     var body: some View {
-        NavigationStack {
-            List(1..<100) { item in
-                NavigationLink {
-                    DetailScreen(item: item)
-                        .onAppear { viewModel.showTabBar = false }
-                } label: {
-                    Text("Item \(item)")
-                        .font(.headline)
-                        .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
-                }
-            }
-            .onAppear { viewModel.showTabBar = true }
-        }
+        Text("Dashboard View")
+            .foregroundColor(theme.textHeading)
     }
 }
 
