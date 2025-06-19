@@ -46,22 +46,13 @@ fun DialogHost() {
             }
 
             DialogType.PasswordReset -> {
-                val emailControl =
-                    dialog.params["emailControl"] as? com.greatergoods.meapp.features.common.helper.form.FormControl<String>
-                        ?: return@DialogQueueHost
-                val isSubmitEnabledLambda = dialog.params["isSubmitEnabled"] as? (() -> Boolean)
-                val isSubmitEnabled = isSubmitEnabledLambda?.invoke() ?: true
+                val email = dialog.params["email"] as? String ?: ""
                 PasswordResetModal(
-                    emailControl = emailControl,
-                    onSubmit = {
-                        dialog.onConfirm?.invoke(Unit)
-                        dialogQueueViewModel.dismissCurrent()
-                    },
-                    onCancel = {
+                    email = email,
+                    onDismiss = {
                         dialog.onDismiss()
                         dialogQueueViewModel.dismissCurrent()
-                    },
-                    isSubmitEnabled = isSubmitEnabled,
+                    }
                 )
             }
 

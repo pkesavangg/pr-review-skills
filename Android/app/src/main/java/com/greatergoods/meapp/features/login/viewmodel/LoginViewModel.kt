@@ -13,7 +13,6 @@ import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginReducer
 import com.greatergoods.meapp.features.login.model.LoginState
-import com.greatergoods.meapp.features.login.model.ResetPasswordFormControls
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -87,21 +86,14 @@ constructor(
      * Opens the Forgot Password modal.
      */
     private fun openForgotPasswordModal() {
-        val emailControl = ResetPasswordFormControls.create().email
+        val loginEmail = state.value.form.controls.email.value
         dialogQueueService.enqueue(
             DialogModel.Custom(
                 contentKey = DialogType.PasswordReset,
                 params = mapOf(
-                    "emailControl" to emailControl,
-                    "isSubmitEnabled" to { emailControl.error == null && emailControl.value.isNotBlank() },
+                    "email" to loginEmail
                 ),
-                onDismiss = {
-                    emailControl.reset()
-                },
-                onConfirm = { email ->
-                    val emailValue = emailControl.value
-                    resetPassword(emailValue)
-                },
+                onDismiss = {},
             ),
         )
     }
@@ -124,22 +116,6 @@ constructor(
      */
     private fun openInAppBrowser(url: String) {
         customTabManager.openChromeTab(url)
-    }
-
-    private fun resetPassword(email: String) {
-        dialogQueueService.showLoader(
-            message = LoginStrings.ForgotPasswordDialogStrings.LoaderMessage,
-        )
-        viewModelScope.launch {
-            try {
-                accountAuthService.resetPassword(email)
-                AppLog.i("resetPassword", "Password reset requested for email: $email")
-            } catch (e: Exception) {
-                AppLog.e("resetPassword", "Reset Password failed", e.toString())
-            } finally {
-                dialogQueueService.dismissLoader()
-            }
-        }
     }
 
     private fun navigateToDashboard() {
