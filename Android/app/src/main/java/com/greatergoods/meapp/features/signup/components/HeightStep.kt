@@ -1,11 +1,12 @@
 package com.greatergoods.meapp.features.signup.components
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.components.AppHeightInput
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
-import com.greatergoods.meapp.features.common.components.CardAlignmentType
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
@@ -34,6 +35,7 @@ fun HeightStep(
                     onValueChange = onHeightChange,
                     label = SignupStrings.heightLabel,
                 )
+            Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
         }
     }
 

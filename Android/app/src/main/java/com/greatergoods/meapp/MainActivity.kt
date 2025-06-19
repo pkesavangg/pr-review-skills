@@ -27,7 +27,6 @@ import android.app.UiModeManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 
 /**
  * Main entry point for the MeApp application.
@@ -51,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         applyInitialTheme()
         initializeSplashScreen()
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         setContent {
             MeApp()
