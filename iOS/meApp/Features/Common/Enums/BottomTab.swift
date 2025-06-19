@@ -12,7 +12,7 @@ import SwiftUI
 /// Each tab has a label, icon, filled icon, and a corresponding view.
 enum BottomTab: String, CaseIterable {
     case dash, entry, history, settings, appsync
-    
+
     var label: String {
         switch self {
         case .dash: return CommonStrings.dash
@@ -22,7 +22,7 @@ enum BottomTab: String, CaseIterable {
         case .appsync: return CommonStrings.appSync
         }
     }
-    
+
     var icon: String {
         switch self {
         case .dash: return AppAssets.dash
@@ -32,7 +32,7 @@ enum BottomTab: String, CaseIterable {
         case .appsync: return AppAssets.appSync
         }
     }
-    
+
     var filledIcon: String {
         switch self {
         case .dash: return AppAssets.dashFill
@@ -42,13 +42,13 @@ enum BottomTab: String, CaseIterable {
         case .appsync: return AppAssets.appSync
         }
     }
-    
+
     @ViewBuilder
     var view: some View {
         switch self {
         case .dash: DashboardView()
         case .entry: ManualEntryScreen()
-        case .history: HistoryView()
+        case .history: HistoryListScreen()
         case .settings: SettingsScreen()
         case .appsync: AppSyncView()
         }
@@ -58,7 +58,7 @@ enum BottomTab: String, CaseIterable {
 // TODO: Test Views need to replace with actual views
 struct DashboardView: View {
     @EnvironmentObject private var viewModel: BottomTabBarViewModel
-    
+
     var body: some View {
         NavigationStack {
             List(1..<100) { item in
@@ -90,19 +90,9 @@ struct DetailScreen: View {
                 .font(.largeTitle)
                 .navigationTitle("Item \(item)")
         }
-        
+
     }
 }
-
-struct HistoryView: View {
-    var body: some View {
-        Text("History View")
-            .font(.largeTitle)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white)
-    }
-}
-
 
 struct AppSyncView: View {
     var body: some View {

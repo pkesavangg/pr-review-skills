@@ -17,13 +17,11 @@ import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.DialogHost
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import android.annotation.SuppressLint
 
 /**
  * Main app composable. Sets up theme, navigation, and global dialog queue host.
  * Handles window insets properly for the entire app.
  */
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MeApp() {
     val appViewModel: AppViewModel = hiltViewModel()

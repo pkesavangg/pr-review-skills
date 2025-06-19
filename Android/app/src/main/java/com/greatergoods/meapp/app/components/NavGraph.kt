@@ -11,6 +11,7 @@ import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.landing.LandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
+import com.greatergoods.meapp.features.signup.SignupScreen
 
 /**
  * Registers the entries for the authentication screens.
@@ -19,6 +20,7 @@ import com.greatergoods.meapp.features.settings.SettingsScreen
 fun EntryProviderBuilder<NavKey>.authEntries() {
     entry<AppRoute.Auth.Landing> { LandingScreen() }
     entry<AppRoute.Auth.Login> { LoginScreen() }
+    entry<AppRoute.Auth.Signup> { SignupScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {
