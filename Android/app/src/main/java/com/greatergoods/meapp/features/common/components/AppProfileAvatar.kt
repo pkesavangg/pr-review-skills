@@ -28,7 +28,7 @@ import com.greatergoods.meapp.theme.MeTheme
 fun AppProfileAvatar(
     text: String,
     modifier: Modifier = Modifier,
-    size: Dp = 30.dp,
+    size: Dp = 40.dp,
     backgroundColor: Color = MeTheme.colorScheme.primaryAction,
     textColor: Color = MeTheme.colorScheme.inverseAction,
 ) {

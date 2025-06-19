@@ -3,8 +3,8 @@ package com.greatergoods.meapp.features.settings.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.common.service.DialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,7 +19,6 @@ class SettingsViewModel
     @Inject
     constructor(
         private val authService: IAccountAuthService,
-        private val dialogService: DialogQueueService,
     ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
             SettingsReducer(),
         ) {
@@ -144,6 +143,22 @@ class SettingsViewModel
 
         fun onLogOutClick() {
             AppLog.d("SettingsViewModel", "Log out clicked")
+
+            dialogQueueService.enqueue(
+                DialogModel.Confirm(
+                    "Log out",
+                    "Are you sure you want to log out?",
+                    "Log out",
+                    "Cancel",
+                    onDismiss = {},
+                    onConfirm = {
+                        logout()
+                    },
+                ),
+            )
+        }
+
+        fun logout() {
             viewModelScope.launch {
                 try {
                     val account = state.value.account
