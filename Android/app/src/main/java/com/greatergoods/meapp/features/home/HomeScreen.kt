@@ -15,18 +15,18 @@ import com.greatergoods.meapp.features.common.components.MainBottomNav
  * Home screen displaying current user data, logout option, and switch account section.
  */
 @Composable
-fun HomeScreen(
-) {
+fun HomeScreen() {
     val topLevelBackStack = LocalNavBackStack.current
     Scaffold(
         bottomBar = {
-            MainBottomNav()
+            MainBottomNav(showAppsync = false)
         },
     ) {
         Surface(
-            modifier = Modifier
-                .padding(bottom = it.calculateBottomPadding())
-                .background(Red),
+            modifier =
+                Modifier
+                    .padding(bottom = it.calculateBottomPadding())
+                    .background(Red),
         ) {
             HomeNavHost(
                 topLevelBackStack = topLevelBackStack,
