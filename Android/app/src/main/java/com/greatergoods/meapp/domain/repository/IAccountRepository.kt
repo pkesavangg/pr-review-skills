@@ -6,6 +6,7 @@ import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import kotlinx.coroutines.flow.Flow
+import retrofit2.Response
 
 /**
  * Repository interface for managing user account operations.
@@ -41,7 +42,7 @@ interface IAccountRepository {
     /**
      * Requests password reset via API and returns true if successful.
      */
-    suspend fun resetPasswordInAPI(email: String): Boolean
+    suspend fun resetPasswordInAPI(email: String): Response<Unit>
 
     /**
      * Refreshes the token via API and returns a Token.

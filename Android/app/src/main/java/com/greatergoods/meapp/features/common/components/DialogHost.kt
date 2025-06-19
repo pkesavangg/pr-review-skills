@@ -2,11 +2,14 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
+import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
 
 enum class DialogType {
     HeightPicker,
     HelpPopup,
+    PasswordReset,
 }
 
 @Composable
@@ -32,13 +35,24 @@ fun DialogHost() {
                 )
             }
 
-            DialogType.HelpPopup -> {
+            HelpPopup -> {
                 // Custom dialog for help popup
                 AppHelpModal(
                     onClose = {
                         dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()
                     },
+                )
+            }
+
+            DialogType.PasswordReset -> {
+                val email = dialog.params["email"] as? String ?: ""
+                PasswordResetModal(
+                    email = email,
+                    onDismiss = {
+                        dialog.onDismiss()
+                        dialogQueueViewModel.dismissCurrent()
+                    }
                 )
             }
 

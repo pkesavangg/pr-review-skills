@@ -33,17 +33,19 @@ import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.dashboard.enum.BOTTOM_NAV_ITEMS
+import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Stateless bottom navigation bar.
  *
- * @param selectedIndex The index of the currently selected item.
- * @param onItemSelected Callback when an item is selected (index, item).
  */
 @Composable
-fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
+fun MainBottomNav(
+    badgeVisible: List<AppRoute> = emptyList(),
+    showAppsync: Boolean = false,
+) {
     var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
     val topBackStack = LocalNavBackStack.current
     val backStack = topBackStack.getStackForTopLevel(AppRoute.Home)
@@ -64,7 +66,7 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
                 val isSelected = (selectedItem == item)
                 val icon =
                     if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
-
+                if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
                 NavigationBarItem(
                     icon = {
                         BadgedBox(
@@ -118,18 +120,19 @@ fun MainBottomNav(badgeVisible: List<AppRoute> = emptyList()) {
 
 fun Modifier.topBorder(
     strokeWidth: Dp,
-    color: Color
-): Modifier = this.then(
-    Modifier.drawBehind {
-        val px = strokeWidth.toPx()
-        drawLine(
-            color = color,
-            start = Offset(0f, 0f),
-            end = Offset(size.width, 0f),
-            strokeWidth = px,
-        )
-    },
-)
+    color: Color,
+): Modifier =
+    this.then(
+        Modifier.drawBehind {
+            val px = strokeWidth.toPx()
+            drawLine(
+                color = color,
+                start = Offset(0f, 0f),
+                end = Offset(size.width, 0f),
+                strokeWidth = px,
+            )
+        },
+    )
 
 @PreviewTheme
 @Composable

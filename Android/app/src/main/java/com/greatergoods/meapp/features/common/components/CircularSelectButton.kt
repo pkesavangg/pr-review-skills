@@ -42,7 +42,19 @@ object CircularButtonDefaults {
     fun borderStroke(color: Color): BorderStroke =
         BorderStroke(2.dp, color)
 
-    val defaultSize: Dp = 150.dp
+    val defaultSize: Dp = 128.dp
+
+    // Applies text transformation
+    fun transformText(
+        text: String,
+        transform: TextTransform,
+    ): String =
+        when (transform) {
+            TextTransform.UPPERCASE -> text.uppercase()
+            TextTransform.LOWERCASE -> text.lowercase()
+            TextTransform.CAPITALIZE -> text.replaceFirstChar { it.uppercase() }
+            TextTransform.NONE -> text
+        }
 }
 
 
@@ -59,16 +71,18 @@ object CircularButtonDefaults {
 fun CircularSelectButton(
     text: String,
     isSelected: Boolean,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    textTransform: TextTransform = TextTransform.UPPERCASE,
     selectedBackgroundColor: Color? = null,
     unselectedContentColor: Color? = null,
     borderColor: Color? = null,
+    onClick: () -> Unit,
 ) {
     val containerColor = CircularButtonDefaults.containerColor(isSelected, selectedBackgroundColor)
     val contentColor = CircularButtonDefaults.contentColor(isSelected, selectedColor = null, unselectedColor = unselectedContentColor)
     val resolvedBorderColor = CircularButtonDefaults.borderColor(isSelected, customColor = borderColor)
 
+    val text = CircularButtonDefaults.transformText(text, textTransform)
     OutlinedButton(
         onClick = onClick,
         shape = CircleShape,

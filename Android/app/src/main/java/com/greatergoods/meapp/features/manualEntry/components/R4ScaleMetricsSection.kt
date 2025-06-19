@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.entry.components
+package com.greatergoods.meapp.features.manualEntry.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,8 +9,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.entry.strings.EntryScreenStrings
-import com.greatergoods.meapp.features.entry.viewmodel.R4ScaleMetricsFormControls
+import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
+import com.greatergoods.meapp.features.manualEntry.viewmodel.R4ScaleMetricsFormControls
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -77,16 +77,17 @@ fun R4ScaleMetricsSection(controls: R4ScaleMetricsFormControls) {
 @Composable
 private fun R4ScaleMetricsSectionPreview() {
     MeAppTheme {
-        val controls = R4ScaleMetricsFormControls(
-            heartRate = FormControl.create("", emptyList()),
-            boneMass = FormControl.create("", emptyList()),
-            visceralFat = FormControl.create("", emptyList()),
-            subcutaneousFat = FormControl.create("", emptyList()),
-            protein = FormControl.create("", emptyList()),
-            skeletalMuscles = FormControl.create("", emptyList()),
-            bmr = FormControl.create("", emptyList()),
-            metabolicAge = FormControl.create("", emptyList()),
-        )
+        val controls =
+            R4ScaleMetricsFormControls(
+                heartRate = FormControl.create("", emptyList()),
+                boneMass = FormControl.create("", emptyList()),
+                visceralFat = FormControl.create("", emptyList()),
+                subcutaneousFat = FormControl.create("", emptyList()),
+                protein = FormControl.create("", emptyList()),
+                skeletalMuscles = FormControl.create("", emptyList()),
+                bmr = FormControl.create("", emptyList()),
+                metabolicAge = FormControl.create("", emptyList()),
+            )
         R4ScaleMetricsSection(controls)
     }
 }
