@@ -76,6 +76,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
             AppIconButton(AppIcons.Outlined.Help) { }
         },
         containerColor = colorScheme.secondaryBackground,
+        appBarColor = colorScheme.secondaryBackground
     ) { scaffoldModifier ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

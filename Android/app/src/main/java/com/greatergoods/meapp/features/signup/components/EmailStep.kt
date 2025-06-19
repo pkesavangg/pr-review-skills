@@ -1,10 +1,13 @@
 package com.greatergoods.meapp.features.signup.components
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.components.AppStyledCard
@@ -12,7 +15,8 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
-import com.greatergoods.meapp.features.signup.model.SignupData
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -22,34 +26,32 @@ import com.greatergoods.meapp.theme.MeTheme
  */
 @Composable
 fun EmailStep(
-    signupData: SignupData,
-    onEmailChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    emailControl: FormControl<String>,
 ) {
-        AppStyledCard(
-            cardAlignmentType = LocalCardAlignment.current
-        ) {
-            Column {
-                AppText(SignupStrings.emailStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-                AppText(SignupStrings.emailStepSubtitle, TextType.Subtitle,spacing = MeTheme.spacing.md)
-                AppInput<String>(
-                    formControl = null,
-                    type = AppInputType.TEXT,
-                    label = SignupStrings.emailLabel,
-                    onValueChange = { onEmailChange(it ?: "") }
-                )
-                Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
-            }
-        }
+    val emailFocusRequester = remember { FocusRequester() }
+
+    AppStyledCard(
+        cardAlignmentType = LocalCardAlignment.current
+    ) {
+        AppText(SignupStrings.emailStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+        AppText(SignupStrings.emailStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        AppInput(
+            formControl = emailControl,
+            type = AppInputType.EMAIL,
+            label = SignupStrings.emailLabel,
+            imeAction = ImeAction.Done,
+            modifier = Modifier.focusRequester(emailFocusRequester)
+        )
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }
+}
 
 @PreviewTheme
 @Composable
 fun EmailStepPreview() {
     MeAppTheme {
         EmailStep(
-            signupData = SignupData(email = "user@example.com"),
-            onEmailChange = {}
+            emailControl = FormControl.create("", listOf(FormValidations.required(), FormValidations.email())),
         )
     }
 }
