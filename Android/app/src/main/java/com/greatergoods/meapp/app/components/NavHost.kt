@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.app.components
 
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
@@ -30,6 +32,7 @@ fun NavHost(
         topLevelBackStack,
     )
     NavDisplay(
+        modifier = Modifier.navigationBarsPadding(),
         entryDecorators = listOf(
             rememberSceneSetupNavEntryDecorator(),
             rememberSavedStateNavEntryDecorator(),
