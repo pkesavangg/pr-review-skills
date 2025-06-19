@@ -15,6 +15,7 @@ import SwiftUI
 class SettingsStore: ObservableObject {
     @Injector var accountService: AccountService
     @Injector var notificationService: NotificationHelperService
+    @Injector var entryService: EntryService
     @Injector var logger: LoggerService
     var theme = Theme.shared
     
@@ -237,6 +238,22 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    // MARK: - Handle export
+    func handleExport() {
+        let alert = AlertModel(
+            title: alertLang.CsvExportAlert.title,
+            message: alertLang.CsvExportAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in
+                    self.exportData()
+                },
+                AlertButtonModel(title: alertLang.CsvExportAlert.cancelButton, type: .secondary) { _ in
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
     // MARK: - Edit Profile Helpers
     
     func handleEditProfileExit(router: Router<SettingsRoute>) {
@@ -370,28 +387,44 @@ class SettingsStore: ObservableObject {
         guard changePasswordForm.isValid else { return }
         
         Task {
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
+            notificationService.showLoader(LoaderModel(text: loaderLang.saving))
             do {
                 try await accountService.updatePassword(
                     oldPassword: changePasswordForm.currentPassword.value,
                     newPassword: changePasswordForm.newPassword.value
                 )
-                notificationService.showToast(ToastModel(title: ToastStrings.success, message: "Password updated."))
+                notificationService.showToast(ToastModel(message: toastLang.passwordUpdated))
                 resetChangePasswordForm()
                 router.navigateBack()
                 logger.log(level: .info, tag: tag, message: "Password updated successfully")
             } catch {
                 var toastMessage: String = ToastStrings.somethingWentWrong
+                let toastTitle: String = ToastStrings.errorUpdatingPassword
                 switch error {
                 case HTTPError.badRequest:
-                    toastMessage = "Incorrect current password."
+                    toastMessage = toastLang.restartAndTryAgain
                 case HTTPError.noInternet:
-                    toastMessage = ToastStrings.unableToConnect
-                default:
                     break
+                case HTTPError.serverError:
+                    toastMessage = toastLang.serverError
+                default:
+                    toastMessage = toastLang.somethingWentWrong
                 }
-                notificationService.showToast(ToastModel(title: ToastStrings.loginError, message: toastMessage))
+                notificationService.showToast(ToastModel(title: toastTitle, message: toastMessage))
                 logger.log(level: .error, tag: tag, message: "Password update failed:", data: error.localizedDescription)
+            }
+        }
+    }
+    
+    // MARK: - Export Data
+    private func exportData() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
+            do {
+                try await entryService.exportCSV()
+                notificationService.showToast(ToastModel(message: toastLang.csvExported))
+            } catch {
+                logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
         }
