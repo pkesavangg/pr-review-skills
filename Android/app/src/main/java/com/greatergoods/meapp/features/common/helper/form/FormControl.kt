@@ -30,6 +30,7 @@ class FormControl<T> private constructor(
 ) {
     private val _value = mutableStateOf(initialValue)
     val value: T get() = _value.value
+    private var _initialValue = initialValue
 
     private val _error = mutableStateOf<ValidationError?>(null)
     val error: ValidationError? get() = _error.value
@@ -180,6 +181,21 @@ class FormControl<T> private constructor(
         return true
     }
 
+    /**
+     * Resets the control to its initial state
+     * @param newInitialValue Optional new initial value to set
+     */
+    fun reset(newInitialValue: T? = null) {
+        val valueToReset = newInitialValue ?: _initialValue
+        _initialValue = valueToReset
+        _value.value = valueToReset
+        _error.value = null
+        _touched.value = false
+        _dirty.value = false
+        _pending.value = false
+        validationJob?.cancel()
+    }
+
     companion object {
         /**
          * Creates a new FormControl instance
@@ -260,6 +276,21 @@ class FormGroup<T : Any>(
      */
     fun forceShowAllErrors() {
         controls.toList().forEach { it.forceShowError() }
+    }
+
+    /**
+     * Resets all controls in the group to their initial state
+     * @param newValues Optional map of field names to new initial values
+     */
+    fun resetForm() {
+        controls.javaClass.declaredFields.forEach { field ->
+            field.isAccessible = true
+            val control = field.get(controls)
+            if (control is FormControl<*>) {
+                control.reset()
+            }
+        }
+        _groupError.value = null
     }
 }
 

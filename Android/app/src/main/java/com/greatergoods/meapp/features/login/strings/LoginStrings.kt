@@ -17,13 +17,12 @@ object LoginStrings {
     const val PrivacyPolicyUrl = "https://greatergoods.com/legal/privacy-policy"
     const val LoaderMessage = "Logging in..."
 
-    object Error {
-        const val Header = "Login Error"
-        const val MessageGeneric =
-            "Something went wrong. Please try again. If the problem continues, contact customer service."
-        const val MessageNotAuth = "Your email or password is incorrect. Please try again."
-        const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
-        const val MessageServError =
-            "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
+    object ForgotPasswordDialogStrings {
+        const val Title = "Password Reset"
+        const val Subtitle = "Enter your email below."
+        const val EmailLabel = "email"
+        const val SubmitButton = "SUBMIT"
+        const val CancelButton = "CANCEL"
+        const val LoaderMessage = "Sending email..."
     }
 }

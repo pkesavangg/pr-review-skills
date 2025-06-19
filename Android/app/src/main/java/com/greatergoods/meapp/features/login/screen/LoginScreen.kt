@@ -25,7 +25,6 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
@@ -38,6 +37,9 @@ import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
 import com.greatergoods.meapp.features.login.strings.LoginStrings
@@ -73,7 +75,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
             AppIconButton(AppIcons.Default.Close) { backStack.removeLast() }
         },
         actions = {
-            AppIconButton(AppIcons.Outlined.Help) { }
+            AppIconButton(AppIcons.Outlined.Help) { handleIntent(LoginIntent.OpenHelpModal) }
         },
         containerColor = colorScheme.secondaryBackground,
     ) { scaffoldModifier ->
@@ -142,11 +144,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
                         type = ButtonType.TextPrimary,
                         size = ButtonSize.Medium,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
-                        onClick = {
-                            backStack.addRoute(
-                                AppRoute.Home,
-                            )
-                        },
+                        onClick = { handleIntent(LoginIntent.OpenForgotPasswordModal) },
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -192,6 +190,20 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
 @Composable
 fun LoginScreenPreview() {
     MeAppTheme {
-        LoginScreen()
+        val dummyLoginState = LoginState(
+            form = FormGroup(
+                controls = LoginFormControls(
+                    email = FormControl.create(""),
+                    password = FormControl.create(""),
+                ),
+            ),
+            isLoading = false,
+            error = null,
+        )
+
+        LoginContent(
+            state = dummyLoginState,
+            handleIntent = {},
+        )
     }
 }
