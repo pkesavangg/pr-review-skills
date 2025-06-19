@@ -85,6 +85,10 @@ struct SettingsScreen: View {
             }
             Button(CommonStrings.cancel, role: .cancel) {}
         }
+        .sheet(isPresented: $settingsStore.showWeightLessPage, content: {
+            WeightlessScreen()
+                .environmentObject(settingsStore)
+        })
         // Gender dialog
         .confirmationDialog(
             "Biological Sex",
@@ -202,7 +206,12 @@ struct SettingsScreen: View {
                     showingUnitDialog = true
                 }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.weightless, value: settingsStore.weightlessText))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.weightless,
+                value: settingsStore.weightlessText,
+                onTap: {
+                    settingsStore.showWeightLessPage = true
+                }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)

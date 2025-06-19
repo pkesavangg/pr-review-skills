@@ -66,6 +66,7 @@ struct ToastStrings {
     static let streakSettingUpdated = "Streak settings updated."
     static let activitySettingUpdated = "Activity level updated."
     static let genderUpdated = "Gender updated."
+    static let weightlessUpdated = "Weightless settings updated."
     static let somethingWentWrongTitle = "Something went wrong!"
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
 }

@@ -25,6 +25,8 @@ class SettingsStore: ObservableObject {
     @Published var editProfileForm = EditProfileForm()
     // Change-Password flow
     @Published var changePasswordForm = ChangePasswordForm()
+    // Weightless-mode form
+    @Published var weightlessForm = WeightlessForm()
     
     var cancellables = Set<AnyCancellable>()
     
@@ -42,6 +44,9 @@ class SettingsStore: ObservableObject {
     @Published var showTermsBrowser: Bool = false
     @Published var showGreaterGoodsBrowser: Bool = false
     @Published var browserURL: URL? = nil
+
+    // MARK: - Weightless Page State
+    @Published var showWeightLessPage: Bool = false
     
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
@@ -68,6 +73,7 @@ class SettingsStore: ObservableObject {
             .sink { [weak self] account in
                 self?.activeAccount = account
                 self?.populateEditFormIfNeeded()
+                self?.populateWeightlessFormIfNeeded()
             }
             .store(in: &accountService.cancellables)
     }
@@ -574,5 +580,118 @@ class SettingsStore: ObservableObject {
             }
             notificationService.dismissLoader()
         }
+    }
+
+    // MARK: - Weightless Helpers
+    /// Persists weightless mode changes.
+    /// - Parameters:
+    ///   - isOn: Whether weightless mode is enabled.
+    ///   - storedWeight: Anchor weight in *stored units* (tenths-of-lbs).
+    ///   - onSuccess: optional completion handler after successful save.
+    func updateWeightlessMode(isOn: Bool, storedWeight: Int, onSuccess: (() -> Void)? = nil) {
+        guard let account = activeAccount else { return }
+        let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
+        let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
+        if currentOn == isOn && currentWeightStored == storedWeight { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                let timestamp = DateTimeTools.getCurrentDatetimeIsoString()
+                _ = try await accountService.updateWeightless(isWeightlessOn: isOn, weightlessTimestamp: timestamp, weightlessWeight: Double(storedWeight))
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
+                logger.log(level: .info, tag: tag, message: "Weightless settings updated")
+                onSuccess?()
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+
+    // MARK: - Weightless Form Helpers
+
+    /// Populates the Weightless settings form with the current account values (only once, when pristine).
+    func populateWeightlessFormIfNeeded() {
+        guard let account = activeAccount else { return }
+
+        // Avoid overriding any in-progress edits.
+        if !weightlessForm.isDirty {
+            if let isOn = account.weightlessSettings?.isWeightlessOn {
+                weightlessForm.isOn.value = isOn
+                weightlessForm.isOn.markAsPristine()
+            }
+
+            if let storedWeight = account.weightlessSettings?.weightlessWeight {
+                // Convert stored tenths-of-lbs value to display unit.
+                let unit = account.weightSettings?.weightUnit ?? .lb
+                let display: Double = unit == .kg
+                    ? ConversionTools.convertStoredToKg(Int(storedWeight))
+                    : ConversionTools.convertStoredToLbs(Int(storedWeight))
+
+                weightlessForm.weight.value = String(format: "%.2f", display)
+                weightlessForm.weight.markAsPristine()
+            }
+            print("Weightless form populated with initial values: \(weightlessForm.isOn.value), \(weightlessForm.weight.value)")
+            weightlessForm.validate()
+        }
+    }
+
+    /// Handles the exit action from the Weightless screen. Shows an alert if there are unsaved changes.
+    func handleWeightlessExit(router: Router<SettingsRoute>) {
+        if !weightlessForm.isDirty {
+            resetWeightlessForm()
+            router.navigateBack()
+            return
+        }
+
+        let alert = AlertModel(
+            title: WeightlessStrings.ExitAlert.title,
+            message: WeightlessStrings.ExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: WeightlessStrings.ExitAlert.exitButton, type: .primary) { _ in
+                    self.resetWeightlessForm()
+                    router.navigateBack()
+                },
+                AlertButtonModel(title: WeightlessStrings.ExitAlert.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    /// Validates and saves Weightless settings to the server.
+    func saveWeightless(router: Router<SettingsRoute>) {
+        // Run validation first.
+        weightlessForm.validate()
+
+        // No changes – simply dismiss.
+        guard weightlessForm.isDirty else {
+            router.navigateBack();
+            return
+        }
+
+        // If toggle is on, ensure the weight field is valid.
+        if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
+
+        // Convert display value to stored tenths-of-lbs (server format).
+        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let storedWeight: Int = {
+            if let val = Double(weightlessForm.weight.value) {
+                return ConversionTools.convertDisplayToStored(val, isMetric: unit == .kg)
+            }
+            return 0
+        }()
+
+        updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight) { [weak self] in
+            self?.resetWeightlessForm()
+            router.navigateBack()
+        }
+    }
+
+    /// Resets the Weightless form to a pristine state.
+    func resetWeightlessForm() {
+        weightlessForm = WeightlessForm()
+        populateWeightlessFormIfNeeded()
     }
 }
