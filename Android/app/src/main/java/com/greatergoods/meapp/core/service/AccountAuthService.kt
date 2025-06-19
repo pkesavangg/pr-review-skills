@@ -9,12 +9,12 @@ import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
-import com.greatergoods.meapp.domain.model.common.Gender
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
+import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -175,13 +175,10 @@ constructor(
                     AppLog.e(TAG, "Failed to logout account ${account.id}", e.toString())
                 }
             }
-
             // Clear all accounts from database
             accountRepository.removeAllAccountsInDB()
-
             // Clear tokens
             tokenManager.clearTokens()
-
             AppLog.d(TAG, "All accounts logged out successfully")
             _authStateFlow.emit(AuthState.LoggedOut())
             _isLoginFlow.emit(false)
@@ -198,11 +195,7 @@ constructor(
      * @return The created account or null if creation fails
      */
     override suspend fun addAccount(request: Map<String, Any>): Account? {
-        if (!isNetworkAvailable()) {
-            AppLog.e(TAG, "No network connection available")
-            _authStateFlow.emit(AuthState.Error("No network connection available"))
-            return null
-        }
+
         val currentAccounts = loggedInAccountsFlow.first()
         if (currentAccounts.size >= MAX_ACCOUNTS) {
             AppLog.e(TAG, "Maximum account limit reached")
@@ -215,11 +208,7 @@ constructor(
                     email = request["email"] as String,
                     firstName = request["firstName"] as String,
                     lastName = request["lastName"] as String,
-                    gender =
-                        when ((request["gender"] as? String)?.lowercase()) {
-                            "female" -> Gender.FEMALE
-                            else -> Gender.MALE
-                        },
+                    gender = request["gender"] as String,
                     zipcode = request["zipcode"] as? String ?: "00000",
                     password = request["password"] as String,
                     dob = request["dob"] as String,
@@ -259,7 +248,8 @@ constructor(
             _authStateFlow.emit(AuthState.AccountAdded(savedAccount))
             _isSignUpFlow.emit(true)
             savedAccount
-        } catch (e: Exception) {
+        }  catch (e: Exception) {
+            handleSignupError(e as HttpException)
             AppLog.e(TAG, "Account creation failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Account creation failed"))
             null
@@ -486,5 +476,31 @@ constructor(
             action = null,
         )
         dialogQueueService.showToast(errorToast)
+    }
+
+    /**
+     * Handles signup errors by displaying appropriate error messages based on the HTTP status code.
+     * @param error The HttpException containing the error details
+     */
+    private fun handleSignupError(error: HttpException) {
+        val signupError = SignupStrings.Error
+        val errorMessage = when (error.code()) {
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> signupError.MessageNotAuth
+            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> signupError.MessageNoConn
+            HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
+            else -> signupError.MessageGeneric
+        }
+        val errorHeader = when(error.code()){
+            HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
+            else -> signupError.Header
+        }
+        val errorToast = Toast(
+            message = errorMessage,
+            title = errorHeader,
+            action = null,
+        )
+        dialogQueueService.showToast(
+            errorToast,
+        )
     }
 }

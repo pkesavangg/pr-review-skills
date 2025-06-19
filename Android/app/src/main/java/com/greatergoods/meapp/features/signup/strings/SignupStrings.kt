@@ -3,8 +3,7 @@ package com.greatergoods.meapp.features.signup.strings
 /**
  * String constants for the signup feature
  */
-class SignupStrings {
-    companion object {
+object SignupStrings {
         // NameStep strings
         const val nameStepTitle = "What's your name?"
         const val nameStepSubtitle = "We just need a first name or even a nickname. But rest assured we protect whatever info you give us."
@@ -14,13 +13,14 @@ class SignupStrings {
         // BirthdayStep strings
         const val birthdayStepTitle = "When were you born?"
         const val birthdayStepSubtitle = "your age helps us accurately calculate body metrics and healthy ranges. Note: You must be 13+ to make an account."
+        const val birthdayLabel = "Date of Birth"
 
         // GenderStep strings
         const val genderStepTitle = "What is your biological sex?"
         const val genderStepSubtitle = "This is also important in determining body metrics and healthy ranges according to CDC and AHA health guidelines." +
-            " Please choose what most closely reflects your body type and makes you most comfortable."
-        const val genderMale = "MALE"
-        const val genderFemale = "FEMALE"
+            " We use this information to provide you with the most accurate metrics and health ranges. Your information is private and secure."
+        const val genderMale = "Male"
+        const val genderFemale = "Female"
 
         // Goal step strings
         const val goalStepTitle = "Set a goal!"
@@ -46,13 +46,30 @@ class SignupStrings {
         const val passwordLabel = "Password"
         const val confirmPasswordLabel = "confirm password"
         const val zipcodeLabel = "zipcode"
+        const val passwordStepFooter = "By clicking 'COMPLETE', you are agreeing to our"
+        const val TermsOfService = "Terms of Service"
+        const val And = "&"
+        const val PrivacyPolicy = "Privacy Policy"
+        const val TermsOfServiceUrl = "https://greatergoods.com/legal/weight-gurus-tos"
+        const val PrivacyPolicyUrl = "https://greatergoods.com/legal/privacy-policy"
 
         // SignupScreen buttons
         const val backButton = "BACK"
         const val skipButton = "SKIP"
         const val createAccountButton = "CREATE ACCOUNT"
         const val nextButton = "NEXT"
-        const val completeButton = "COMPLETE"
+        const val completeButton = "Complete"
 
-    }
+        // Loader message
+        const val LoaderMessage = "Creating your account..."
+
+        object Error {
+            const val Header = "Signup Error"
+            const val accountExistHeader = "Error creating account"
+            const val MessageNotAuth = "Unable to create account. Please check your information and try again."
+            const val MessageGeneric =
+                "Something went wrong. Please try again. If the problem continues, contact customer service."
+            const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
+            const val accountExist = "Email address is already in use"
+        }
 }

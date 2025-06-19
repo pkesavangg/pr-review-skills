@@ -7,6 +7,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
 typealias AsyncValidator<T> = suspend (T) -> ValidationError?
@@ -262,6 +263,7 @@ class FormGroup<T : Any>(
 
         for (validator in groupValidators) {
             val err = validator(controls)
+            Log.d("hello", "Group validator: $err")
             if (err != null) {
                 _groupError.value = err
                 return false
