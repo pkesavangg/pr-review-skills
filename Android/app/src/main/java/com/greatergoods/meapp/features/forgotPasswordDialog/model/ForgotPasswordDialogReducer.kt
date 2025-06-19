@@ -4,6 +4,7 @@ import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.login.strings.LoginStrings
 
 /**
  * Controls for Forgot Password Dialog form.
@@ -17,7 +18,7 @@ data class ForgotPasswordDialogFormControls(
                 initialValue = "",
                 validators = listOf(
                     FormValidations.required(),
-                    FormValidations.maxLength(100),
+                    FormValidations.maxLength(100, LoginStrings.ForgotPasswordDialogStrings.EmailLabel),
                     FormValidations.email(),
                 ),
             ),
@@ -96,7 +97,7 @@ class ForgotPasswordDialogReducer : IReducer<ForgotPasswordDialogState, ForgotPa
                 val updatedForm = state.form.controls.copy(
                     email = state.form.controls.email.apply {
                         onValueChange(intent.email)
-                    }
+                    },
                 )
                 state.copy(form = FormGroup(updatedForm))
             }

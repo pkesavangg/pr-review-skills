@@ -41,7 +41,7 @@ constructor(
         super.handleIntent(intent)
         when (intent) {
             is ForgotPasswordDialogIntent.Submit -> onSubmit()
-            is ForgotPasswordDialogIntent.Close -> dismissModal()
+            is ForgotPasswordDialogIntent.Close -> resetForm()
             is ForgotPasswordDialogIntent.SetEmail -> setEmail(intent.email)
             else -> null
         }
@@ -52,6 +52,9 @@ constructor(
      * @param email The email to set as initial value.
      */
     fun setInitialEmail(email: String) {
+        // Reset form first to clear any previous state
+        resetForm()
+
         if (email.isNotBlank()) {
             handleIntent(ForgotPasswordDialogIntent.SetEmail(email))
         }
@@ -96,18 +99,9 @@ constructor(
                 AppLog.e("resetPassword", "Reset Password failed", e.toString())
             } finally {
                 dialogQueueService.dismissLoader()
-                state.value.form.controls.email.reset()
+                resetForm()
             }
         }
-    }
-
-    /**
-     * Handles successful password reset.
-     */
-    private fun dismissModal() {
-        // Reset the form after success
-        state.value.form.controls.email.reset()
-        dialogQueueService.dismissCurrent()
     }
 
     /**
@@ -118,5 +112,12 @@ constructor(
         if (email.isNotBlank()) {
             state.value.form.controls.email.onValueChange(email)
         }
+    }
+
+    /**
+     * Resets the form to its initial state, clearing all values and errors.
+     */
+    private fun resetForm() {
+        state.value.form.controls.email.reset()
     }
 }
