@@ -50,9 +50,9 @@ fun DialogHost() {
                 PasswordResetModal(
                     email = email,
                     onDismiss = {
-                        dialog.onDismiss()
+                        dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()
-                    }
+                    },
                 )
             }
 
