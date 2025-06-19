@@ -4,7 +4,7 @@ data class ScaleApiEntry(
     val operationType: String,
     val entryTimestamp: String,
     val serverTimestamp: String?,
-    val weight: Int,
+    val weight: Double,
     val bodyFat: Int?,
     val muscleMass: Int?,
     val boneMass: Int,

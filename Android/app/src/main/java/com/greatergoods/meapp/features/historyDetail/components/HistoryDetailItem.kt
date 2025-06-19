@@ -77,17 +77,17 @@ fun HistoryDetailItem(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(
-                    text = (item.scale.scaleEntry.weight / 10.0).toString(),
+                    text = (item.scale.scaleEntry.weight).toString(),
                     style = MeTheme.typography.heading3,
                     color = MeTheme.colorScheme.textBody,
                     textAlign = TextAlign.End,
                 )
-                    Text(
-                        text = item.entry.unit ?: "lb",
-                        style = MeTheme.typography.subHeading2,
-                        color = MeTheme.colorScheme.textSubheading,
-                        modifier = Modifier.padding(start = MeTheme.spacing.x2s),
-                    )
+                Text(
+                    text = item.entry.unit ?: "lb",
+                    style = MeTheme.typography.subHeading2,
+                    color = MeTheme.colorScheme.textSubheading,
+                    modifier = Modifier.padding(start = MeTheme.spacing.x2s),
+                )
             }
 
             // Chevron
@@ -132,7 +132,7 @@ fun HistoryDetailItemPreview() {
                         scale = ScaleEntryWithMetrics(
                             scaleEntry = BodyScaleEntryEntity(
                                 id = 478,
-                                weight = 50,
+                                weight = 50.0,
                                 bodyFat = 0,
                                 muscleMass = 0,
                                 water = 0,

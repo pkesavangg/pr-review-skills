@@ -45,7 +45,7 @@ object EntryHelper {
         val scaleEntry =
             BodyScaleEntryEntity(
                 id = 0L, // Will be set by DB
-                weight = weightDateTime.weight.toIntSafe(),
+                weight = weightDateTime.weight.value.toDouble(),
                 bodyFat = generalMetrics.bodyFat.toIntSafe(),
                 muscleMass = generalMetrics.muscleMass.toIntSafe(),
                 water = generalMetrics.bodyWater.toIntSafe(),
@@ -94,8 +94,8 @@ object EntryHelper {
 
         return this.copy(
             entryTimestamp = monthYear,
-            avgWeight = avgWeight?.div(10.0).rounded(),
-            change = change?.div(10.0).rounded(),
+            avgWeight = avgWeight.rounded(),
+            change = change.rounded(),
             // entryCount is already Int? so no need to change
         )
     }

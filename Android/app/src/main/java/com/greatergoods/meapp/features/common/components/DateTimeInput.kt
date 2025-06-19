@@ -218,12 +218,17 @@ object DateTimeInputDefaults {
     /**
      * Returns the default value for a given DateTimeInputMode.
      */
-    fun defaultValueForMode(mode: DateTimeInputMode): DateTimeValue =
-        when (mode) {
-            DateTimeInputMode.Date -> DateTimeValue.Date(System.currentTimeMillis())
-            DateTimeInputMode.Time -> DateTimeValue.Time(12, 0)
-            DateTimeInputMode.DateTime -> DateTimeValue.DateTime(System.currentTimeMillis(), 12, 0)
+    fun defaultValueForMode(mode: DateTimeInputMode): DateTimeValue {
+        val calendar = Calendar.getInstance()
+        val currentTimeMillis = calendar.timeInMillis
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        return when (mode) {
+            DateTimeInputMode.Date -> DateTimeValue.Date(currentTimeMillis)
+            DateTimeInputMode.Time -> DateTimeValue.Time(hour, minute)
+            DateTimeInputMode.DateTime -> DateTimeValue.DateTime(currentTimeMillis, hour, minute)
         }
+    }
 }
 
 /**
@@ -263,7 +268,7 @@ fun DateTimeInput(
     val currentValue = formControl?.value ?: value
     // Local state for the input value
     var localState by remember { mutableStateOf(currentValue ?: DateTimeInputDefaults.defaultValueForMode(mode)) }
-    // Keep localState in sync with external value
+    // Keep localState in sync with external valuex
     if (currentValue != null && currentValue != localState) {
         localState = currentValue
     }

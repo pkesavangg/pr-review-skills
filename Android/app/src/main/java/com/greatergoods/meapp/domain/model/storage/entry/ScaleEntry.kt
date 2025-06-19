@@ -22,7 +22,7 @@ data class ScaleEntry(
         return ScaleApiEntry(
             operationType = entry.operationType.lowercase(),
             entryTimestamp = entry.entryTimestamp,
-            weight = scaleEntity.weight,
+            weight = scaleEntity.weight * 10.0,
             bodyFat = scaleEntity.bodyFat,
             muscleMass = scaleEntity.muscleMass,
             boneMass = metrics?.boneMass ?: 0,
@@ -54,7 +54,7 @@ data class ScaleEntry(
 
             val scaleEntryEntity = BodyScaleEntryEntity(
                 id = entryId ?: 0,
-                weight = scaleEntry.weight,
+                weight = scaleEntry.weight / 10.0,
                 bodyFat = scaleEntry.bodyFat,
                 muscleMass = scaleEntry.muscleMass,
                 water = scaleEntry.water,

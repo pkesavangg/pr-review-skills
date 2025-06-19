@@ -25,9 +25,9 @@ import com.greatergoods.meapp.theme.MeAppTheme
 @Composable
 fun HistoryDetailScreen(monthKey: String) {
     val viewModel: HistoryDetailViewModel = hiltViewModel<HistoryDetailViewModel, HistoryDetailViewModel.Factory>(
-        creationCallback = {factory ->
+        creationCallback = { factory ->
             factory.create(monthKey)
-        }
+        },
     )
     val state by viewModel.state.collectAsState()
     val isRefreshing = state.isLoading
@@ -93,7 +93,7 @@ fun HistoryDetailScreenPreview() {
                     scale = ScaleEntryWithMetrics(
                         scaleEntry = BodyScaleEntryEntity(
                             id = 478,
-                            weight = 50,
+                            weight = 50.0,
                             bodyFat = 0,
                             muscleMass = 0,
                             water = 0,
@@ -131,7 +131,7 @@ fun HistoryDetailScreenPreview() {
                     scale = ScaleEntryWithMetrics(
                         scaleEntry = BodyScaleEntryEntity(
                             id = 479,
-                            weight = 70,
+                            weight = 70.0,
                             bodyFat = 0,
                             muscleMass = 0,
                             water = 0,

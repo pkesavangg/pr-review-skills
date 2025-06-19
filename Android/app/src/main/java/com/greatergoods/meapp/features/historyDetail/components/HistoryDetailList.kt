@@ -56,7 +56,7 @@ fun HistoryDetailListPreview() {
                     scale = ScaleEntryWithMetrics(
                         scaleEntry = BodyScaleEntryEntity(
                             id = 478,
-                            weight = 50,
+                            weight = 50.0,
                             bodyFat = 0,
                             muscleMass = 0,
                             water = 0,
@@ -94,7 +94,7 @@ fun HistoryDetailListPreview() {
                     scale = ScaleEntryWithMetrics(
                         scaleEntry = BodyScaleEntryEntity(
                             id = 479,
-                            weight = 70,
+                            weight = 70.0,
                             bodyFat = 0,
                             muscleMass = 0,
                             water = 0,
