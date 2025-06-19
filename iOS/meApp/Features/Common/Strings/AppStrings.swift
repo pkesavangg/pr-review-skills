@@ -61,6 +61,13 @@ struct ToastStrings {
     static let errorUpdatingPassword = "Error updating password."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
+    static let unitSettingUpdated = "Unit settings updated."
+    static let notificationSettingUpdated = "Notification settings updated."
+    static let streakSettingUpdated = "Streak settings updated."
+    static let activitySettingUpdated = "Activity level updated."
+    static let genderUpdated = "Gender updated."
+    static let somethingWentWrongTitle = "Something went wrong!"
+    static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
 }
 
 /// Constants for help modal strings used in the app
@@ -188,6 +195,7 @@ struct LoaderStrings {
     static let deletingAccount = "Deleting account..."
     static let sendingEmail = "Sending email..."
     static let sendingCsv = "Sending .CSV File..."
+    static let loading = "Loading..."
 }
 
 struct URLStrings {

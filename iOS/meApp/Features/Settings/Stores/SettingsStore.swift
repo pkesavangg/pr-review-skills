@@ -443,4 +443,136 @@ class SettingsStore: ObservableObject {
     func resetChangePasswordForm() {
         changePasswordForm = ChangePasswordForm()
     }
+    
+    // MARK: - Weight Unit Helpers
+    /// Updates the user's preferred weight/height unit and persists it via `AccountService`.
+    /// - Parameter unit: The newly selected `WeightUnit`.
+    func updateWeightUnit(_ unit: WeightUnit) {
+        guard let account = activeAccount else { return }
+        // Skip if no change
+        guard account.weightSettings?.weightUnit != unit else { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                let bodyComp = BodyComp(
+                   weightUnit: unit,
+                     height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+                   activityLevel: account.weightSettings?.activityLevel ?? .normal)
+                _ = try await accountService.updateBodyComp(bodyComp)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
+                logger.log(level: .info, tag: tag, message: "Weight unit updated to \(unit.rawValue)")
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                logger.log(level: .error, tag: tag, message: "Weight unit update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    // MARK: - Activity Level Helpers
+    func updateActivityLevel(_ level: ActivityLevel) {
+        guard let account = activeAccount else { return }
+        guard account.weightSettings?.activityLevel != level else { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                let bodyComp = BodyComp(
+                    weightUnit: account.weightSettings?.weightUnit ?? .lb,
+                    height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+                    activityLevel: level
+                )
+                _ = try await accountService.updateBodyComp(bodyComp)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.activitySettingUpdated))
+                logger.log(level: .info, tag: tag, message: "Activity level updated to \(level.rawValue)")
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                logger.log(level: .error, tag: tag, message: "Activity level update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+
+    // MARK: - Notification Preference Helpers
+    func updateNotificationPreference(_ preference: NotificationPreference) {
+        guard let account = activeAccount else { return }
+        let currentPref: NotificationPreference = {
+            let settings = account.notificationSettings
+            if settings?.shouldSendEntryNotifications == true {
+                return settings?.shouldSendWeightInEntryNotifications == true ? .enableWithWeight : .enable
+            } else {
+                return .disable
+            }
+        }()
+        guard currentPref != preference else { return }
+
+        let notifications = Notifications(
+            shouldSendEntryNotifications: preference != .disable,
+            shouldSendWeightInEntryNotifications: preference == .enableWithWeight
+        )
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                _ = try await accountService.updateNotifications(notifications: notifications)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.notificationSettingUpdated))
+                logger.log(level: .info, tag: tag, message: "Notification preference updated to \(preference)")
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                logger.log(level: .error, tag: tag, message: "Notification preference update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+
+    // MARK: - Streak Helpers
+    func updateStreakStatus(_ isOn: Bool) {
+        guard let account = activeAccount else { return }
+        guard account.streaksSettings?.isStreakOn != isOn else { return }
+
+        let timestamp = DateTimeTools.getCurrentDatetimeIsoString()
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                _ = try await accountService.updateStreak(isStreakOn: isOn, streakTimestamp: timestamp)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.streakSettingUpdated))
+                logger.log(level: .info, tag: tag, message: "Streak status updated to \(isOn)")
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                logger.log(level: .error, tag: tag, message: "Streak status update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+
+    // MARK: - Gender Helpers
+    func updateGender(_ sex: Sex) {
+        guard let account = activeAccount else { return }
+        guard account.gender != sex else { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                let profile = Profile(
+                    firstName: account.firstName ?? "",
+                    lastName: account.lastName ?? "",
+                    email: account.email,
+                    gender: sex,
+                    zipcode: account.zipcode ?? "",
+                    dob: account.dob ?? "",
+                    weightUnit: account.weightSettings?.weightUnit ?? .lb,
+                    height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+                    activityLevel: account.weightSettings?.activityLevel ?? .normal
+                )
+                _ = try await accountService.updateProfile(profile, canSaveOffline: true)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                logger.log(level: .info, tag: tag, message: "Gender updated to \(sex.rawValue)")
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                logger.log(level: .error, tag: tag, message: "Gender update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
 }
