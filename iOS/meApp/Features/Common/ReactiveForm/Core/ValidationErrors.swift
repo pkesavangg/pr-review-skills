@@ -40,6 +40,7 @@ public enum ValidatorType: Hashable {
     case phoneNumber
     case passwordMatch
     case weightEqual
+    case passwordDifferent
     case url
     case minValue
     case maxValue

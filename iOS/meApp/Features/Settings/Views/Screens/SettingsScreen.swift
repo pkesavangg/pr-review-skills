@@ -12,35 +12,119 @@ import SwiftUI
 /// This screen allows users to configure various application settings.
 struct SettingsScreen: View {
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject var settingsStore = SettingsStore()
+    @StateObject private var router = Router<SettingsRoute>()
+    // Dialog state controls
+    @State private var showingAppearanceDialog: Bool = false
+    @State private var showingUnitDialog: Bool = false
+    @State private var showingGenderDialog: Bool = false
+    @State private var showingActivityDialog: Bool = false
+    @State private var showingNotificationDialog: Bool = false
+    @State private var showingStreakDialog: Bool = false
     
     let settingsLang = SettingsStrings.self
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
     var body: some View {
-        VStack(spacing: 0) {
-            NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
-            ZStack {
-                theme.backgroundSecondary
-                    .ignoresSafeArea()
-                VStack(spacing: 0) {
-                    List {
-                        profileHeader()
-                        accountSettingsSection()
-                        profileSettingsSection()
-                        appSettingsSection()
-                        supportSection()
-                        accountActionSection()
+        RoutingView(stack: $router.stack) {
+            VStack(spacing: 0) {
+                NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
+                ZStack {
+                    theme.backgroundSecondary
+                        .ignoresSafeArea()
+                    VStack(spacing: 0) {
+                        List {
+                            profileHeader()
+                            accountSettingsSection()
+                            profileSettingsSection()
+                            appSettingsSection()
+                            supportSection()
+                            accountActionSection()
+                        }
+                        .listStyle(.insetGrouped)
+                        .scrollContentBackground(.hidden)
                     }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
+                }
+                .inAppBrowser(
+                    url: settingsStore.presentingBrowserURL,
+                    isPresented: settingsStore.isBrowserPresented
+                )
+            }
+            .onAppear {
+                tabViewModel.showTabBar = true
+            }
+        }
+        .environmentObject(router)
+        .environmentObject(settingsStore)
+        // Appearance selection dialog
+        .confirmationDialog(
+            "Choose Appearance",
+            isPresented: $showingAppearanceDialog,
+            titleVisibility: .visible
+        ) {
+            ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                Button(mode.rawValue) {
+                    Theme.shared.appearanceMode = mode
                 }
             }
-            .inAppBrowser(
-                url: settingsStore.presentingBrowserURL,
-                isPresented: settingsStore.isBrowserPresented
-            )
+            Button(CommonStrings.cancel, role: .cancel) {}
+        }
+        // Unit selection dialog
+        .confirmationDialog(
+            "Choose Units",
+            isPresented: $showingUnitDialog,
+            titleVisibility: .visible
+        ) {
+            Button(CommonStrings.unitLbsFeet) {
+                settingsStore.updateWeightUnit(.lb)
+            }
+            Button(CommonStrings.unitKgCm) {
+                settingsStore.updateWeightUnit(.kg)
+            }
+            Button(CommonStrings.cancel, role: .cancel) {}
+        }
+        // Gender dialog
+        .confirmationDialog(
+            "Biological Sex",
+            isPresented: $showingGenderDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Male") { settingsStore.updateGender(.male) }
+            Button("Female") { settingsStore.updateGender(.female) }
+            Button(CommonStrings.cancel, role: .cancel) {}
+        }
+        // Activity level dialog
+        .confirmationDialog(
+            "Activity Level",
+            isPresented: $showingActivityDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Normal") { settingsStore.updateActivityLevel(.normal) }
+            Button("Athlete") { settingsStore.updateActivityLevel(.athlete) }
+            Button(CommonStrings.cancel, role: .cancel) {}
+        }
+        // Notifications dialog
+        .confirmationDialog(
+            "Notifications",
+            isPresented: $showingNotificationDialog,
+            titleVisibility: .visible
+        ) {
+            ForEach(NotificationPreference.allCases, id: \.self) { pref in
+                Button(pref.title) { settingsStore.updateNotificationPreference(pref) }
+            }
+            Button(CommonStrings.cancel, role: .cancel) {}
+        }
+        // Streak dialog
+        .confirmationDialog(
+            "Streaks",
+            isPresented: $showingStreakDialog,
+            titleVisibility: .visible
+        ) {
+            Button(CommonStrings.on) { settingsStore.updateStreakStatus(true) }
+            Button(CommonStrings.off) { settingsStore.updateStreakStatus(false) }
+            Button(CommonStrings.cancel, role: .cancel) {}
         }
     }
     
@@ -64,7 +148,8 @@ struct SettingsScreen: View {
                 size: .regular,
                 isDisabled: false,
                 action: {
-                    // TODO: Implement profile edit navigation
+                    tabViewModel.showTabBar = false
+                    router.navigate(to: .editProfile)
                 }
             )
             .padding(.top, .spacingSM)
@@ -79,9 +164,15 @@ struct SettingsScreen: View {
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.integrations))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData))
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData, onTap: {
+                settingsStore.handleExport()
+            }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.changePassword))
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.changePassword,
+                                                       onTap: {
+                                                           tabViewModel.showTabBar = false
+                                                           router.navigate(to: .changePassword)
+                                                       }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -92,13 +183,24 @@ struct SettingsScreen: View {
         Section(header: sectionHeader(title: settingsLang.profileSettings)) {
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.goalSetting))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.biologicalSex, value: settingsStore.biologicalSexText))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.biologicalSex,
+                value: settingsStore.biologicalSexText,
+                onTap: { showingGenderDialog = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.activityLevel, value: settingsStore.activityLevelText))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.activityLevel,
+                value: settingsStore.activityLevelText,
+                onTap: { showingActivityDialog = true }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.unitType, value: settingsStore.unitTypeText))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.unitType,
+                value: settingsStore.unitTypeText,
+                onTap: {
+                    showingUnitDialog = true
+                }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.weightless, value: settingsStore.weightlessText))
                 .settingsRowInsets()
@@ -109,15 +211,26 @@ struct SettingsScreen: View {
     
     private func appSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.appSettings)) {
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.notifications, value: settingsStore.notificationsOnText))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.notifications,
+                value: settingsStore.notificationsOnText,
+                onTap: { showingNotificationDialog = true }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.messages))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.streaks, value: settingsStore.streaksOnText))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.streaks,
+                value: settingsStore.streaksOnText,
+                onTap: { showingStreakDialog = true }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.appPermissions))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.appearance, value: settingsStore.appearanceModeText))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.appearance,
+                value: settingsStore.appearanceModeText,
+                onTap: {
+                    showingAppearanceDialog = true
+                }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -126,7 +239,7 @@ struct SettingsScreen: View {
     
     private func supportSection() -> some View {
         Section(header:
-                    sectionHeader(title: settingsLang.supportSettings)
+                sectionHeader(title: settingsLang.supportSettings)
         ) {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.helpAndCustomerService,

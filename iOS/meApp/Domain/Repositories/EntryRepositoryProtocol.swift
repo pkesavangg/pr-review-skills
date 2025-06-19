@@ -92,5 +92,4 @@ protocol EntryRepositoryProtocol {
     ///   - newEntries: Entries to create.
     ///   - deleteOps: Entries to delete.
     func syncEntries(newEntries: [Entry]) async throws
-
 }

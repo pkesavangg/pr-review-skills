@@ -78,4 +78,8 @@ protocol EntryServiceProtocol {
     /// Calculates and retrieves the user's current streak (consecutive days with entries).
     /// - Returns: The current streak count.
     func getStreak() async throws -> Streak
+        
+    // MARK: - Export
+    /// Exports all entries to a CSV file.
+    func exportCSV() async throws
 }
