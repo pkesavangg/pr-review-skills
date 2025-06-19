@@ -20,6 +20,9 @@ class SettingsStore: ObservableObject {
     
     @Published var activeAccount: Account?
     
+    // Edit-Profile flow
+    @Published var editProfileForm = EditProfileForm()
+    
     var cancellables = Set<AnyCancellable>()
     
     // Localization strings
@@ -36,7 +39,7 @@ class SettingsStore: ObservableObject {
     @Published var showTermsBrowser: Bool = false
     @Published var showGreaterGoodsBrowser: Bool = false
     @Published var browserURL: URL? = nil
-
+    
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
         Binding(
@@ -51,7 +54,7 @@ class SettingsStore: ObservableObject {
             }
         )
     }
-
+    
     /// Browser URL used by the view
     var presentingBrowserURL: URL {
         browserURL ?? legalURLs.greaterGoodsWebsite
@@ -61,6 +64,7 @@ class SettingsStore: ObservableObject {
         accountService.$activeAccount
             .sink { [weak self] account in
                 self?.activeAccount = account
+                self?.populateEditFormIfNeeded()
             }
             .store(in: &accountService.cancellables)
     }
@@ -130,21 +134,21 @@ class SettingsStore: ObservableObject {
         browserURL = legalURLs.privacyPolicy
         showPrivacyBrowser = true
     }
-
+    
     func openTerms() {
         browserURL = legalURLs.termsOfService
         showTermsBrowser = true
     }
-
+    
     func openHelp() {
         // TODO: Need to handle this
     }
-
+    
     func openGreaterGoods() {
         browserURL = legalURLs.greaterGoodsWebsite
         showGreaterGoodsBrowser = true
     }
-
+    
     // MARK: - Computed Profile Info
     var profileInitial: String {
         if let firstInitial = activeAccount?.firstName?.first {
@@ -152,37 +156,37 @@ class SettingsStore: ObservableObject {
         }
         return ""
     }
-
+    
     var profileName: String {
         if let firstName = activeAccount?.firstName {
             return firstName
         }
         return activeAccount?.firstName ?? ""
     }
-
+    
     var profileEmail: String {
         activeAccount?.email ?? ""
     }
-
+    
     // Derived setting values
     var biologicalSexText: String {
         guard let sex = activeAccount?.gender else { return "" }
         return sex.rawValue.capitalized
     }
-
+    
     var activityLevelText: String {
         activeAccount?.weightSettings?.activityLevel?.rawValue.capitalized ?? ""
     }
-
+    
     var heightText: String {
         // Height is stored as tenths-of-inches (e.g. "681" == 5′8″ / 173 cm)
         guard let heightStr = activeAccount?.weightSettings?.height,
               let storedHeightDouble = Double(heightStr) else {
             return ""
         }
-
+        
         let storedHeight = Int(round(storedHeightDouble))
-
+        
         switch activeAccount?.weightSettings?.weightUnit {
         case .kg: // Metric preference – show centimeters
             let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
@@ -194,7 +198,7 @@ class SettingsStore: ObservableObject {
             return ""
         }
     }
-
+    
     var unitTypeText: String {
         switch activeAccount?.weightSettings?.weightUnit {
         case .kg: return commonLang.unitKgCm
@@ -202,11 +206,11 @@ class SettingsStore: ObservableObject {
         case .none: return ""
         }
     }
-
+    
     var weightlessText: String {
         (activeAccount?.weightlessSettings?.isWeightlessOn ?? false) ? commonLang.on : commonLang.off
     }
-
+    
     var notificationsOnText: String {
         guard let settings = activeAccount?.notificationSettings else {
             return commonLang.off
@@ -217,7 +221,7 @@ class SettingsStore: ObservableObject {
             return commonLang.off
         }
     }
-
+    
     var streaksOnText: String { (activeAccount?.streaksSettings?.isStreakOn ?? false) ? commonLang.on : commonLang.off }
     
     var appearanceModeText: String {
@@ -229,5 +233,110 @@ class SettingsStore: ObservableObject {
         case .system:
             return commonLang.system
         }
+    }
+    
+    // MARK: - Edit Profile Helpers
+    
+    func handleEditProfileExit(router: Router<SettingsRoute>) {
+        // If the form is not dirty, simply navigate back else show an alert
+        if !editProfileForm.isDirty {
+            resetEditProfileForm() // Reset form to pristine state
+            router.navigateBack()
+            return
+        }
+        let alert = AlertModel(
+            title: alertLang.EditProfileExitAlert.title,
+            message: alertLang.EditProfileExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.EditProfileExitAlert.exitButton, type: .primary) { _ in
+                    self.resetEditProfileForm() // Reset form to pristine state
+                    router.navigateBack()
+                },
+                AlertButtonModel(title: alertLang.EditProfileExitAlert.returnButton, type: .secondary) { _ in
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Populates the form with existing profile data (only once, on first load).
+    func populateEditFormIfNeeded() {
+        guard let account = activeAccount else { return }
+        
+        // Only populate if the user hasn't started editing (keep any in-flight changes).
+        if !editProfileForm.isDirty {
+            editProfileForm.firstName.value = account.firstName ?? ""
+            editProfileForm.lastName.value  = account.lastName ?? ""
+            editProfileForm.email.value     = account.email
+            editProfileForm.zipcode.value   = account.zipcode ?? ""
+            
+            if let dobString = account.dob, let dob = DateTimeTools.parse(dobString) {
+                editProfileForm.birthday.value = dob
+            }
+            editProfileForm.firstName.markAsPristine()
+            editProfileForm.lastName.markAsPristine()
+            editProfileForm.email.markAsPristine()
+            editProfileForm.zipcode.markAsPristine()
+            editProfileForm.birthday.markAsPristine()
+            editProfileForm.validate()
+        }
+    }
+    
+    /// Persists the edited profile via `AccountService`, showing loader / toast as appropriate.
+    func saveProfile(router: Router<SettingsRoute>) {
+        guard editProfileForm.isValid else { return }
+        
+        let profile = Profile(
+            firstName: removeWhiteSpace(editProfileForm.firstName.value),
+            lastName:  removeWhiteSpace(editProfileForm.lastName.value),
+            email:     removeWhiteSpace(editProfileForm.email.value),
+            gender:  activeAccount?.gender ?? .male,
+            zipcode:  removeWhiteSpace(editProfileForm.zipcode.value),
+            dob: DateTimeTools.formatDateToYMD_Local(editProfileForm.birthday.value),
+            weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
+            height: activeAccount?.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+            activityLevel: activeAccount?.weightSettings?.activityLevel ?? .normal
+        )
+        Task {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
+            do {
+                let _ = try await accountService.updateProfile(profile)
+                // Reset dirty flags so the form becomes pristine again.
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                resetEditProfileForm()
+                router.navigateBack()
+                logger.log(level: .info, tag: tag, message: "Profile updated successfully")
+            } catch {
+                var toastMessage: String?
+                let toastTitle: String = toastLang.errorUpdatingProfile
+                switch error {
+                case HTTPError.badRequest:
+                    toastMessage = toastLang.emailInUse
+                case HTTPError.noInternet:
+                    break
+                case HTTPError.serverError:
+                    toastMessage = toastLang.serverError
+                default:
+                    toastMessage = toastLang.somethingWentWrong
+                }
+                if let message = toastMessage {
+                    notificationService.showToast(ToastModel(title: toastTitle, message: message))
+                }
+                logger.log(level: .error, tag: tag, message: "Profile update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    // MARK: - Reset Helpers
+    
+    /// Resets the edit-profile form back to a pristine state while keeping current account data pre-filled.
+    /// Useful when the user discards changes or after a successful save so future edits start clean.
+    func resetEditProfileForm() {
+        // Replace with a brand-new form instance (drops any Combine subscriptions tied to the old one).
+        editProfileForm = EditProfileForm()
+        
+        // Re-populate with the latest account data so the screen isn't blank.
+        populateEditFormIfNeeded()
     }
 }

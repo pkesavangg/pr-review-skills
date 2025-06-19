@@ -54,6 +54,8 @@ struct ToastStrings {
     static let entryAdded = "Entry added."
     static let errorSavingEntry = "Error saving new entry!"
     static let pleaseTryAgain = "Please try again."
+    static let errorUpdatingProfile = "Error updating profile"
+    static let profileSaved = "Profile saved successfully."
 }
 
 /// Constants for help modal strings used in the app
@@ -149,11 +151,18 @@ struct AlertStrings {
         static let deleteButton = "Delete"
         static let cancelButton = "Cancel"
     }
+    struct EditProfileExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?."
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
 }
 
 struct LoaderStrings {
     static let creatingAccount = "Creating account..."
     static let savingEntry = "Saving entry..."
+    static let saving = "Saving..."
     static let loggingAccount = "Logging in..."
     static let loggingOut = "Logging out..."
     static let deletingAccount = "Deleting account..."

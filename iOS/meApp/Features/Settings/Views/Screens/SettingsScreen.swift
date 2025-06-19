@@ -12,36 +12,45 @@ import SwiftUI
 /// This screen allows users to configure various application settings.
 struct SettingsScreen: View {
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject var settingsStore = SettingsStore()
+    @StateObject private var router = Router<SettingsRoute>()
     
     let settingsLang = SettingsStrings.self
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
     var body: some View {
-        VStack(spacing: 0) {
-            NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
-            ZStack {
-                theme.backgroundSecondary
-                    .ignoresSafeArea()
-                VStack(spacing: 0) {
-                    List {
-                        profileHeader()
-                        accountSettingsSection()
-                        profileSettingsSection()
-                        appSettingsSection()
-                        supportSection()
-                        accountActionSection()
+        RoutingView(stack: $router.stack) {
+            VStack(spacing: 0) {
+                NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
+                ZStack {
+                    theme.backgroundSecondary
+                        .ignoresSafeArea()
+                    VStack(spacing: 0) {
+                        List {
+                            profileHeader()
+                            accountSettingsSection()
+                            profileSettingsSection()
+                            appSettingsSection()
+                            supportSection()
+                            accountActionSection()
+                        }
+                        .listStyle(.insetGrouped)
+                        .scrollContentBackground(.hidden)
                     }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
                 }
+                .inAppBrowser(
+                    url: settingsStore.presentingBrowserURL,
+                    isPresented: settingsStore.isBrowserPresented
+                )
             }
-            .inAppBrowser(
-                url: settingsStore.presentingBrowserURL,
-                isPresented: settingsStore.isBrowserPresented
-            )
+            .onAppear {
+                tabViewModel.showTabBar = true
+            }
         }
+        .environmentObject(router)
+        .environmentObject(settingsStore)
     }
     
     private func profileHeader() -> some View {
@@ -64,7 +73,8 @@ struct SettingsScreen: View {
                 size: .regular,
                 isDisabled: false,
                 action: {
-                    // TODO: Implement profile edit navigation
+                    tabViewModel.showTabBar = false
+                    router.navigate(to: .editProfile)
                 }
             )
             .padding(.top, .spacingSM)

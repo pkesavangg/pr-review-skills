@@ -236,14 +236,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if HTTPError.isNetworkError(error) {
-                localAccount.isSynced = false
-                try await localRepo.updateAccount(localAccount)
-                try await updatePublishedState()
-                return localAccount
-            } else {
-                throw error
-            }
+            // User can't able to update profile in offline
+            throw error
         }
     }
     

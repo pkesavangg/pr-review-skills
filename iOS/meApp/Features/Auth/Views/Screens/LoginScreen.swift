@@ -26,8 +26,7 @@ struct LoginScreen: View {
     var body: some View {
         ZStack {
             theme.backgroundSecondary.ignoresSafeArea()
-            VStack(alignment: .center) {
-
+            VStack {
                 NavbarHeaderView(
                     title: "",
                     leadingContent: { Image(AppAssets.xmark) },
@@ -36,100 +35,102 @@ struct LoginScreen: View {
                     onTrailingTap: { store.openHelp() }
                 )
                 .padding(.bottom, .spacingLG)
+                
+                VStack(alignment: .center) {
+                    VStack(alignment: .leading) {
+                        Text(lang.welcomeBack)
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
 
-                VStack(alignment: .leading) {
-                    Text(lang.welcomeBack)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
-
-                    // Email Input Field
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.email,
-                            inputType: .email,
-                            errorMessage: store.emailError,
-                            focusField: .email
-                        ),
-                        value: $store.loginForm.email.value,
-                        focusedField: focusBinding
-                    ) {
-                        store.setEmailTouched()
-                        focusedField = .password
-                    }
-                    // Password Input Field
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.password,
-                            placeholder: lang.passwordPlaceholder,
-                            inputType: store.showPassword ? .text : .password,
-                            submitLabel: .done,
-                            errorMessage: store.passwordError
-                        ),
-                        value: $store.loginForm.password.value,
-                        focusedField: focusBinding
-                    ) {
-                        store.setPasswordTouched()
-                        focusedField = nil
-                        if store.isFormValid {
-                            Task { await store.logIn() }
+                        // Email Input Field
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: labels.email,
+                                inputType: .email,
+                                errorMessage: store.emailError,
+                                focusField: .email
+                            ),
+                            value: $store.loginForm.email.value,
+                            focusedField: focusBinding
+                        ) {
+                            store.setEmailTouched()
+                            focusedField = .password
+                        }
+                        // Password Input Field
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: labels.password,
+                                placeholder: lang.passwordPlaceholder,
+                                inputType: store.showPassword ? .text : .password,
+                                submitLabel: .done,
+                                errorMessage: store.passwordError
+                            ),
+                            value: $store.loginForm.password.value,
+                            focusedField: focusBinding
+                        ) {
+                            store.setPasswordTouched()
+                            focusedField = nil
+                            if store.isFormValid {
+                                Task { await store.logIn() }
+                            }
                         }
                     }
-                }
-                .padding(.vertical, .spacingMD)
+                    .padding(.vertical, .spacingMD)
 
-                ButtonView(
-                    text: commonLang.logIn,
-                    type: .primary,
-                    size: .regular,
-                    isDisabled: !store.isFormValid || store.isFormSubmitting,
-                    action: {
-                        focusedField = nil
-                        hideKeyboard()
-                        store.loginForm.email.markAsDirty()
-                        store.loginForm.password.markAsDirty()
-                        if store.isFormValid {
-                            Task { await store.logIn() }
+                    ButtonView(
+                        text: commonLang.logIn,
+                        type: .primary,
+                        size: .regular,
+                        isDisabled: !store.isFormValid || store.isFormSubmitting,
+                        action: {
+                            focusedField = nil
+                            hideKeyboard()
+                            store.loginForm.email.markAsDirty()
+                            store.loginForm.password.markAsDirty()
+                            if store.isFormValid {
+                                Task { await store.logIn() }
+                            }
                         }
-                    }
-                )
-                .padding(.bottom, .spacingSM)
+                    )
+                    .padding(.bottom, .spacingSM)
 
-                ButtonView(
-                    text: lang.forgotPassword,
-                    type: .linkBlueDefault,
-                    size: .small,
-                    isDisabled: false,
-                    action: { store.showPasswordResetPrompt() }
-                )
+                    ButtonView(
+                        text: lang.forgotPassword,
+                        type: .linkBlueDefault,
+                        size: .small,
+                        isDisabled: false,
+                        action: { store.showPasswordResetPrompt() }
+                    )
 
-                Spacer()
+                    Spacer()
 
-                VStack(spacing: .spacingXS/2) {
-                    Text(lang.byLoggingIn)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.actionSecondary)
-                    HStack(spacing: .spacingMD/2) {
-                        ButtonView(
-                            text: legalStrings.termsOfService,
-                            type: .linkBlueDefault,
-                            size: .small,
-                            isDisabled: false,
-                            action: { store.openTerms() }
-                        )
-                        Text(legalStrings.andText)
+                    VStack(spacing: .spacingXS/2) {
+                        Text(lang.byLoggingIn)
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.actionSecondary)
-                        ButtonView(
-                            text: legalStrings.privacyPolicy,
-                            type: .linkBlueDefault,
-                            size: .small,
-                            isDisabled: false,
-                            action: { store.openPrivacy() }
-                        )
+                        HStack(spacing: .spacingMD/2) {
+                            ButtonView(
+                                text: legalStrings.termsOfService,
+                                type: .linkBlueDefault,
+                                size: .small,
+                                isDisabled: false,
+                                action: { store.openTerms() }
+                            )
+                            Text(legalStrings.andText)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundColor(theme.actionSecondary)
+                            ButtonView(
+                                text: legalStrings.privacyPolicy,
+                                type: .linkBlueDefault,
+                                size: .small,
+                                isDisabled: false,
+                                action: { store.openPrivacy() }
+                            )
+                        }
                     }
                 }
+                .padding(.horizontal, .spacingSM)
             }
-            .padding(.horizontal, .spacingSM)
         }
         .navigationBarBackButtonHidden(true)
         .inAppBrowser(
