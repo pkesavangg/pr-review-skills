@@ -25,9 +25,9 @@ class HistoryViewModel
         fun loadHistory() {
             viewModelScope.launch {
                 entryService.last30Days.collect { entries ->
-                    if (entries != null) {
-                        handleIntent(HistoryIntent.SetHistoryItems(entries))
-                    }
+                    // if (entries != null) {
+                    //     handleIntent(HistoryIntent.SetHistoryItems(entries))
+                    // }
                 }
                 // TODO: Load history from repository/service
                 // For now, just set a sample list

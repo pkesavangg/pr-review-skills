@@ -1,16 +1,11 @@
 package com.greatergoods.meapp.features.history
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -24,7 +19,6 @@ import com.greatergoods.meapp.features.history.viewmodel.HistoryIntent
 import com.greatergoods.meapp.features.history.viewmodel.HistoryState
 import com.greatergoods.meapp.features.history.viewmodel.HistoryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 fun HistoryScreen() {
@@ -48,7 +42,7 @@ fun HistoryScreenContent(
 ) {
     AppScaffold(
         title = HistoryScreenStrings.Title,
-        isRefreshing = isRefreshing,
+        isRefreshing = state.isLoading,
         onRefresh = onRefresh,
     ) { modifier ->
         Box(modifier = modifier.fillMaxSize()) {
@@ -56,9 +50,11 @@ fun HistoryScreenContent(
                 state.isLoading && !isRefreshing -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
+
                 state.historyItems.isEmpty() -> {
                     HistoryEmptyState(onRetry = { handleIntent(HistoryIntent.Retry) })
                 }
+
                 else -> {
                     val items = state.historyItems.filterIsInstance<HistoryItemModel>()
                     HistoryList(
@@ -77,11 +73,12 @@ fun HistoryScreenContent(
 @Composable
 fun HistoryScreenPreview() {
     MeAppTheme {
-        val sampleItems = listOf(
-            HistoryItemModel("Dec 2022", "5 Entries", "148.6 lbs", "-1.4 lbs"),
-            HistoryItemModel("Nov 2022", "6 Entries", "150.0 lbs", "+0.2 lbs"),
-            HistoryItemModel("Oct 2022", "4 Entries", "140.0 lbs", "+0.2 lbs"),
-        )
+        val sampleItems =
+            listOf(
+                HistoryItemModel("Dec 2022", "5 Entries", "148.6 lbs", "-1.4 lbs"),
+                HistoryItemModel("Nov 2022", "6 Entries", "150.0 lbs", "+0.2 lbs"),
+                HistoryItemModel("Oct 2022", "4 Entries", "140.0 lbs", "+0.2 lbs"),
+            )
         HistoryScreenContent(
             state = HistoryState(historyItems = sampleItems),
             isRefreshing = false,

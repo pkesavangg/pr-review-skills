@@ -9,12 +9,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppText
-import com.greatergoods.meapp.features.common.components.ButtonType
+import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.history.strings.HistoryScreenStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.components.TextType
 
 /**
  * Empty state for the history screen, shown when there are no history items.
@@ -38,7 +37,6 @@ fun HistoryEmptyState(onRetry: () -> Unit) {
         AppButton(
             label = HistoryScreenStrings.ConnectScale,
             onClick = onRetry,
-            type = ButtonType.InlineTextPrimary
         )
     }
 }
