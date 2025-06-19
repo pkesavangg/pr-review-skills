@@ -32,26 +32,6 @@ struct WeightValueConvertor {
         }
     }
 
-    /// Converts weight between units
-    static func convert(value: Double, from: WeightUnit, to: WeightUnit) -> Double {
-        // Convert to stored value first (tenths of lbs)
-        let stored: Int
-        switch from {
-        case .kg:
-            stored = ConversionTools.convertKgToStored(value)
-        case .lb:
-            stored = ConversionTools.convertLbsToStored(value)
-        }
-
-        // Convert stored value to target unit
-        switch to {
-        case .kg:
-            return ConversionTools.convertStoredToKg(stored)
-        case .lb:
-            return ConversionTools.convertStoredToLbs(stored)
-        }
-    }
-
     /// Helper to format weight with optional plus symbol
     private static func formatWithSymbol(_ value: Double, showSymbol: Bool) -> String {
         if showSymbol && value > 0 {
