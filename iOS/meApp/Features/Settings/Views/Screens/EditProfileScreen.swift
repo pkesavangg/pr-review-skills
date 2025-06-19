@@ -122,8 +122,10 @@ struct EditProfileScreen: View {
                     .frame(maxWidth: .infinity, alignment: .center)
 
                 }
-                .padding(.top, .spacingLG)
+                .padding(.vertical, .spacingLG)
+                .padding(.bottom, .spacingXL)
             }
+            .scrollDismissesKeyboard(.interactively)
             .padding(.horizontal, .spacingSM)
             .navigationBarHidden(true)
         }

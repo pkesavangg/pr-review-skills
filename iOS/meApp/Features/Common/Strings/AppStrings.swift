@@ -153,7 +153,7 @@ struct AlertStrings {
     }
     struct EditProfileExitAlert {
         static let title = "Confirm"
-        static let message = "You have unsaved changes. Are you sure you want to exit?."
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
