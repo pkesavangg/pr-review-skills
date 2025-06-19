@@ -13,6 +13,7 @@ struct AppConstants {
     struct LegalURLs {
         static let privacyPolicy = URL(string: "https://greatergoods.com/legal/privacy-policy")!
         static let termsOfService = URL(string: "https://greatergoods.com/legal/weight-gurus-tos")!
+        static let greaterGoodsWebsite = URL(string: "https://greatergoods.com")!
     }
     /// Constants for help/contact info
     struct Help {

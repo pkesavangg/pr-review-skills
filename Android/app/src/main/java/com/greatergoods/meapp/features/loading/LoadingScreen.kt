@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,12 +23,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.greatergoods.meapp.features.common.components.MEImage
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.loading.string.LoadingString
 import com.greatergoods.meapp.resources.AppIcons
@@ -47,46 +49,31 @@ fun LoadingScreen() {
                 .background(MeTheme.colorScheme.primaryAction),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Spacer that takes less space to push content slightly above center
-            Spacer(modifier = Modifier.weight(0.5f)) // less than half
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                MEImage(
-                    lightMode = AppIcons.Default.Logo,
-                    darkMode = AppIcons.Default.LogoDark,
-                    contentDescription = LoadingString.LOADING,
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                LoadingTextWithDots()
-            }
-
-            // Spacer that takes more space below
-            Spacer(modifier = Modifier.weight(0.6f)) // more than half
+            Image(
+                painter = painterResource(id = AppIcons.Default.Banner),
+                contentDescription = LoadingString.LOADING,
+                colorFilter = ColorFilter.tint(MeTheme.colorScheme.inverseAction),
+            )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
+            LoadingTextWithDots()
         }
 
         // Footer
-        Column(
+        Box(
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(bottom = MeTheme.spacing.md),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = LoadingString.FOOTER_BRAND,
-                color = MeTheme.colorScheme.inverseAction,
-                style = MeTheme.typography.subHeading2,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = LoadingString.FOOTER_VERSION,
+                text = LoadingString.VERSION,
                 color = MeTheme.colorScheme.inverseAction,
                 style = MeTheme.typography.subHeading2,
                 textAlign = TextAlign.Center,
@@ -172,7 +159,7 @@ private fun AnimatedDot(yOffset: Float) {
         text = ".",
         style = MeTheme.typography.subHeading1,
         color = MeTheme.colorScheme.wgPrimary,
-        fontSize = 20.sp,
+        fontSize = 16.sp,
         modifier =
             Modifier.graphicsLayer {
                 translationY = yOffset

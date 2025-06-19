@@ -2,11 +2,15 @@ import Foundation
 
 @MainActor
 final class EntryService: EntryServiceProtocol {
+    @Injector var logger: LoggerService
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
     private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
     static let shared = EntryService(accountService: AccountService.shared)
+    
+    let tag = "EntryService"
+    
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
     }
@@ -16,7 +20,7 @@ final class EntryService: EntryServiceProtocol {
         guard let account = try await accountService.getActiveAccount() else {
             throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
         }
-        return ""
+        return account.accountId
     }
 
     // MARK: - CRUD
@@ -332,7 +336,7 @@ final class EntryService: EntryServiceProtocol {
             let now = ISO8601DateFormatter().string(from: Date())
             try? await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: now)
         } catch {
-            // If sync fails, leave as isSynced = false for retry
+            logger.log(level: .error, tag: tag, message: "Failed to sync unsynced entries:", data: error.localizedDescription)
         }
     }
 

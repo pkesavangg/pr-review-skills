@@ -1,17 +1,22 @@
 package com.greatergoods.meapp.features.common.components
 
 import AppHorizontalPager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.BottomAppBar
@@ -42,24 +47,24 @@ import kotlinx.coroutines.launch
 @Composable
 fun PagerBottomAppBar(
     modifier: Modifier = Modifier,
+    containerColor: Color = Color.Transparent,
     leadingContent: @Composable () -> Unit,
     middleContent: @Composable () -> Unit,
     trailingContent: @Composable () -> Unit,
     content: @Composable (Modifier) -> Unit,
 ) {
+    val insets = WindowInsets.ime.union(WindowInsets.navigationBars)
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = containerColor,
         bottomBar = {
             BottomAppBar(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(
-                            WindowInsets.safeDrawing
-                                .only(WindowInsetsSides.Bottom)
-                                .asPaddingValues(),
-                        ),
-                containerColor = Color.Transparent,
+                        .consumeWindowInsets(insets),
+                containerColor = containerColor,
+                windowInsets = insets
             ) {
                 Row(
                     modifier =
@@ -71,22 +76,25 @@ fun PagerBottomAppBar(
                     leadingContent()
                     Spacer(modifier = Modifier.weight(1f))
                     middleContent()
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
                     trailingContent()
                 }
             }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
-        content(
-            Modifier
-                .padding(paddingValues)
-                .padding(
-                    WindowInsets.safeDrawing
-                        .only(WindowInsetsSides.Horizontal)
-                        .asPaddingValues(),
-                ),
-        )
+        Column(
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            content(
+                Modifier
+                    .padding(
+                        WindowInsets.safeDrawing
+                            .only(WindowInsetsSides.Horizontal)
+                            .asPaddingValues(),
+                    ).background(containerColor),
+            )
+        }
     }
 }
 

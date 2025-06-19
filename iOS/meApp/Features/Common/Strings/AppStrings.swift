@@ -11,6 +11,7 @@ import Foundation
 struct CommonStrings {
     static let done = "Done"
     static let cancel = "Cancel"
+    static let submit = "Submit"
     static let next = "Next"
     static let back = "Back"
     static let save = "Save"
@@ -29,11 +30,18 @@ struct CommonStrings {
 /// Constants for toast messages used in the app
 struct ToastStrings {
     static let loginError = "Login Error"
+    static let networkError = "Network Error"
     static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
     static let somethingWentWrong = "Something went wrong. Please try again. If the problem continues, contact customer service."
     static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
     static let emailInUse = "Email address is already in use"
     static let errorCreatingAccount = "Error creating account."
+    static let invalidEmailTitle = "Invalid Email ID!"
+    static let invalidEmailMessage = "Enter a valid email address."
+    static let invalidCredentials = "Your Email or password is incorrect. Please try again."
+    static let passwordResetSuccessMessage = { (email: String) in
+        "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 10 minutes."
+    }
     static let success = "Success!"
     static let entryAdded = "Entry added."
     static let errorSavingEntry = "Error saving new entry!"
@@ -67,6 +75,7 @@ struct FormErrorMessages {
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
     static let maxValue = {(value: Int) in "value should be less than \(value)"}
+    static let passwordResetFailed = "Failed to send password reset email."
 }
 
 /// Constants for input field labels used in the app
@@ -106,12 +115,31 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
-    
+
+    struct ResetPasswordAlert {
+        static let passwordResetTitle = "Password Reset"
+        static let enterEmailMessage = "Enter your email below."
+    }
+
     struct ManualEntryExitAlert {
         static let title = "Your entry has not been saved!"
         static let message = "Are you sure you want to exit?"
         static let exitButton = "Exit"
         static let returnButton = "Return"
+    }
+
+    struct LogoutAlert {
+        static let title = "Log Out"
+        static let message = "Are you sure you want to log out?"
+        static let logoutButton = "Log Out"
+        static let cancelButton = "Cancel"
+    }
+
+    struct DeleteAccountAlert {
+        static let title = "Delete Your Account"
+        static let message = "Are you sure you want to delete your account? This action cannot be undone."
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
     }
 }
 
@@ -119,6 +147,9 @@ struct LoaderStrings {
     static let creatingAccount = "Creating account..."
     static let savingEntry = "Saving entry..."
     static let loggingAccount = "Logging in..."
+    static let loggingOut = "Logging out..."
+    static let deletingAccount = "Deleting account..."
+    static let sendingEmail = "Sending email..."
 }
 
 struct URLStrings {

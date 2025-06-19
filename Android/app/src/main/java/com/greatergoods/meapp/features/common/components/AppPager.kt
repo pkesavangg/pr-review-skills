@@ -1,16 +1,14 @@
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.CardAlignmentType
@@ -29,9 +27,9 @@ fun <T> AppHorizontalPager(
     HorizontalPager(
         state = pagerState,
         userScrollEnabled = false,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize()
     ) { page ->
-        content(steps[page])
+            content(steps[page])
     }
 }
 
@@ -42,39 +40,34 @@ fun <T> AppHorizontalPager(
 @Composable
 fun AppHorizontalPagerPreview() {
     MeAppTheme {
-        data class PageContent(
-            val title: String,
-            val description: String,
-            val pageNumber: Int,
-        )
+        data class PageContent(val title: String, val description: String, val pageNumber: Int)
 
         // Create a list of example data for the pager
-        val myPages =
-            listOf(
-                PageContent("Welcome", "This is the first page of our amazing app!", 1),
-                PageContent("Features", "Discover all the cool features we have.", 2),
-                PageContent("Settings", "Customize your experience here.", 3),
-                PageContent("About Us", "Learn more about our team and mission.", 4),
-            )
+        val myPages = listOf(
+            PageContent("Welcome", "This is the first page of our amazing app!", 1),
+            PageContent("Features", "Discover all the cool features we have.", 2),
+            PageContent("Settings", "Customize your experience here.", 3),
+            PageContent("About Us", "Learn more about our team and mission.", 4)
+        )
 
         // Remember the PagerState, linking it to the size of your data list
         val pagerState = rememberPagerState(pageCount = { myPages.size })
 
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MeTheme.colorScheme.primaryBackground,
+            color = MaterialTheme.colorScheme.background
         ) {
             Column {
                 // Use your HorizontalPager composable
                 AppHorizontalPager(
                     steps = myPages, // Pass your list of data
                     pagerState = pagerState, // Pass the PagerState
-                    modifier = Modifier.weight(1f), // Make it fill available vertical space
+                    modifier = Modifier.weight(1f) // Make it fill available vertical space
                 ) { pageContent ->
                     // This lambda defines how each 'PageContent' item is displayed
                     AppStyledCard(
                         cardAlignmentType = CardAlignmentType.TopCenter,
-                        modifier = Modifier.padding(top = 32.dp),
+                        modifier = Modifier.padding(top = MeTheme.spacing.md)
                     ) {
                         AppText("Title-one", TextType.Title)
                         AppText("Subtitle", TextType.Subtitle)
@@ -84,18 +77,9 @@ fun AppHorizontalPagerPreview() {
                         )
                     }
                 }
-
-                // Optional: Add an indicator for the current page
-                Text(
-                    text = "Swipe to navigate. Current Page: ${pagerState.currentPage + 1}",
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }
 }
+
+

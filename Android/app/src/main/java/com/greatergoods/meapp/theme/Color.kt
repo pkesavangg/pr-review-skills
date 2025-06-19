@@ -51,9 +51,12 @@ val LightColorScheme =
         danger = LightColorToken.danger,
         streak = LightColorToken.streak,
         utility = LightColorToken.utility,
+        // Icon
         iconPrimary = LightColorToken.iconPrimary,
+        iconPrimaryDisabled = LightColorToken.iconPrimaryDisabled,
         iconSecondary = LightColorToken.iconSecondary,
-        iconDisabled = LightColorToken.iconDisabled,
+        iconSecondaryDisabled = LightColorToken.iconSecondaryDisabled,
+        // Loading
         loading = LightColorToken.loading,
         loadingError = LightColorToken.loadingError,
         // Text
@@ -98,9 +101,12 @@ val DarkColorScheme =
         danger = DarkColorToken.danger,
         streak = DarkColorToken.streak,
         utility = DarkColorToken.utility,
+        // Icon
         iconPrimary = DarkColorToken.iconPrimary,
+        iconPrimaryDisabled = DarkColorToken.iconPrimaryDisabled,
         iconSecondary = DarkColorToken.iconSecondary,
-        iconDisabled = DarkColorToken.iconDisabled,
+        iconSecondaryDisabled = DarkColorToken.iconSecondaryDisabled,
+        // Loading
         loading = DarkColorToken.loading,
         loadingError = DarkColorToken.loadingError,
         // Text
