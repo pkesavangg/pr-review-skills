@@ -111,7 +111,7 @@ struct SettingsScreen: View {
             isPresented: $showingNotificationDialog,
             titleVisibility: .visible
         ) {
-            ForEach(SettingsStore.NotificationPreference.allCases, id: \.self) { pref in
+            ForEach(NotificationPreference.allCases, id: \.self) { pref in
                 Button(pref.title) { settingsStore.updateNotificationPreference(pref) }
             }
             Button(CommonStrings.cancel, role: .cancel) {}
@@ -239,7 +239,7 @@ struct SettingsScreen: View {
     
     private func supportSection() -> some View {
         Section(header:
-                    sectionHeader(title: settingsLang.supportSettings)
+                sectionHeader(title: settingsLang.supportSettings)
         ) {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.helpAndCustomerService,
