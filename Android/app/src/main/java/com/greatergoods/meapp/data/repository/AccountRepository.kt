@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.core.network.ITokenManager
-import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
@@ -17,6 +16,7 @@ import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -198,5 +198,15 @@ class AccountRepository @Inject constructor(
             lastActiveTime = entity.lastActiveTime,
             zipcode = entity.zipcode,
         )
+    }
+
+    override suspend fun updateSyncTimeStamp(timeStamp: String) {
+        val accountId = accountDao.getActiveAccount().first()?.account?.id ?: ""
+        userDataStore.updateSyncTimestamp(accountId, timeStamp)
+    }
+
+    override suspend fun getSyncTimeStamp(): Flow<String> {
+        return userDataStore.currentAccountFlow
+            .map { it?.syncTimestamp ?: "" } // Return empty string if null
     }
 }

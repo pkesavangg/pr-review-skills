@@ -3,7 +3,7 @@ package com.greatergoods.meapp.domain.model.api.entry
 data class ScaleApiEntry(
     val operationType: String,
     val entryTimestamp: String,
-    val serverTimestamp: String,
+    val serverTimestamp: String?,
     val weight: Int,
     val bodyFat: Int?,
     val muscleMass: Int?,

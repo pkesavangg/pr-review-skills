@@ -24,6 +24,7 @@ import java.util.Map.entry
  * Data Access Object (DAO) for the entry table.
  * Provides methods to interact with the entry data in the database.
  * Includes methods for basic CRUD operations and specialized queries for different types of entries.
+ * All datetime values are stored and handled in ISO 8601 format (e.g. "2025-06-19T06:30:00.000Z")
  */
 @Dao
 interface EntryDao {
@@ -79,11 +80,10 @@ interface EntryDao {
      */
     @Transaction
     suspend fun delete(entry: Entry) {
-        val timestamp = System.currentTimeMillis()
         val deleteEntry = entry.entry.copy(
             id = 0,
             operationType = "DELETE",
-            opTimestamp = timestamp,
+            opTimestamp = entry.entry.opTimestamp,
         )
         insertEntryEntity(deleteEntry)
     }
@@ -103,7 +103,7 @@ interface EntryDao {
      * @return The latest Entry with relations if found, null otherwise
      */
     @Transaction
-    @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY entryTimestamp DESC LIMIT 1")
+    @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
     fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry>?
 
     /**
@@ -117,10 +117,10 @@ interface EntryDao {
     suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
 
     /**
-     * Get the latest entry for a specific account with all related details.
+     * Get entries within a time range for a specific account.
      * @param accountId The account ID
-     * @param startTime The start timestamp
-     * @param endTime The end timestamp
+     * @param startTime The start time in ISO 8601 format
+     * @param endTime The end time in ISO 8601 format
      * @return A Flow of entries within the time range with relations
      */
     @Transaction
@@ -129,15 +129,15 @@ interface EntryDao {
         SELECT *
         FROM entry_view
         WHERE accountId = :accountId
-          AND entryTimestamp BETWEEN :startTime AND :endTime
+          AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
           AND entryTimestamp IN (
             SELECT MAX(entryTimestamp)
             FROM entry_view
             WHERE accountId = :accountId
-              AND entryTimestamp BETWEEN :startTime AND :endTime
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp/1000, 'unixepoch'))
+              AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp))
           )
-        ORDER BY entryTimestamp DESC
+        ORDER BY datetime(entryTimestamp) DESC
     """,
     )
     fun getEntriesByTimeRange(
@@ -322,7 +322,7 @@ interface EntryDao {
     suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
 
     /**
-     * Get entries for a specific month and year.
+     * Get entries for a specific month.
      * @param accountId The account ID
      * @param month The month in YYYY-MM format
      * @return Flow of list of entries for the specified month
@@ -332,8 +332,8 @@ interface EntryDao {
         """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-        AND strftime('%Y-%m', datetime(entryTimestamp/1000, 'unixepoch')) = :month
-        ORDER BY entryTimestamp DESC
+        AND strftime('%Y-%m', datetime(entryTimestamp)) = :month
+        ORDER BY datetime(entryTimestamp) DESC
     """,
     )
     fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
@@ -379,7 +379,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
           MAX(e.entryTimestamp) AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
@@ -418,7 +418,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
           e.entryTimestamp,
           bse.weight,
           bse.bodyFat,
@@ -443,7 +443,7 @@ interface EntryDao {
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m', datetime(entryTimestamp/1000, 'unixepoch'))
+            GROUP BY strftime('%Y-%m', datetime(entryTimestamp))
           )
         ORDER BY period DESC
     """,
@@ -461,7 +461,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m-%d', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS period,
           MAX(e.entryTimestamp) AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
@@ -500,7 +500,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m-%d', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS period,
           e.entryTimestamp,
           bse.weight,
           bse.bodyFat,
@@ -525,7 +525,7 @@ interface EntryDao {
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp/1000, 'unixepoch'))
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp))
           )
         ORDER BY period DESC
     """,
@@ -540,8 +540,8 @@ interface EntryDao {
         SELECT
             e.entryTimestamp,
             bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp / 1000, 'unixepoch')) AS period
-        FROM entry e
+            strftime('%Y-%m', datetime(e.entryTimestamp)) AS period
+        FROM entry_view e
         LEFT JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
     ),

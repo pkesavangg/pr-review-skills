@@ -58,6 +58,7 @@ fun AppScaffold(
                     containerColor = appBarColor,
                 )
         },
+        containerColor = appBarColor
     ) { innerPadding ->
         Box(
             modifier = Modifier

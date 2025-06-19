@@ -2,6 +2,7 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.data.api.EntryApi
+import com.greatergoods.meapp.data.api.OperationsResponse
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
@@ -173,16 +174,16 @@ class EntryRepository @Inject constructor(
      * @param lastUpdated The last updated timestamp, or null.
      * @return List of operations.
      */
-    override suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleApiEntry> {
+    override suspend fun getOperationsFromAPI(syncTimeStamp: String): OperationsResponse? {
         return try {
-            val response = if (lastUpdated != null) {
-                entryApi.getOperations(lastUpdated)
+            val response = if (syncTimeStamp.isNotBlank()) {
+                entryApi.getOperations(syncTimeStamp)
             } else {
                 entryApi.getAllOperations()
             }
-            response.operations.map { it }
+            response
         } catch (e: Exception) {
-            emptyList()
+            null
         }
     }
 
@@ -203,6 +204,7 @@ class EntryRepository @Inject constructor(
      * @return Flow of list of all monthly aggregated data
      */
     override fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> {
+        Log.d("CHECKING", "Monthly history size: ${accountId}")
         return entryDao.getMonthlyHistory(accountId)
     }
 

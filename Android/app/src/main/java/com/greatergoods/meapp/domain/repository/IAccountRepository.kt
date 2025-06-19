@@ -2,9 +2,9 @@ package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -17,26 +17,32 @@ interface IAccountRepository {
      * Logs in via API and returns LoginResponse.
      */
     suspend fun loginInAPI(email: String, password: String): LoginResponse
+
     /**
      * Signs up via API and returns LoginResponse.
      */
     suspend fun signupInAPI(request: CreateAccountRequest): LoginResponse
+
     /**
      * Logs out via API.
      */
     suspend fun logoutInAPI(fcmToken: String?)
+
     /**
      * Gets account info via API and returns AccountResponse.
      */
     suspend fun getAccountInAPI(): AccountResponse
+
     /**
      * Updates password via API and returns true if successful.
      */
     suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Boolean
+
     /**
      * Requests password reset via API and returns true if successful.
      */
     suspend fun resetPasswordInAPI(email: String): Boolean
+
     /**
      * Refreshes the token via API and returns a Token.
      */
@@ -51,4 +57,7 @@ interface IAccountRepository {
     fun getLoggedInAccountsFromDB(): Flow<List<Account>>
     suspend fun updateTokensInDB(tokens: Map<String, String>)
     suspend fun updateLastActiveTimeInDB(accountId: String)
+
+    suspend fun updateSyncTimeStamp(timeStamp: String)
+    suspend fun getSyncTimeStamp(): Flow<String>
 }

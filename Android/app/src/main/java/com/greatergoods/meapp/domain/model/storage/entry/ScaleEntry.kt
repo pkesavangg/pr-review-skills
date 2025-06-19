@@ -4,7 +4,6 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
-import java.time.Instant
 
 /**
  * Represents a scale entry, combining EntryEntity and ScaleEntryWithMetrics.
@@ -20,11 +19,9 @@ data class ScaleEntry(
     fun toScaleApiEntry(): ScaleApiEntry {
         val metrics = scale.scaleEntryMetric
         val scaleEntity = scale.scaleEntry
-        val ms = entry.entryTimestamp
-        val iso = Instant.ofEpochMilli(ms).toString()
         return ScaleApiEntry(
             operationType = entry.operationType.lowercase(),
-            entryTimestamp = iso,
+            entryTimestamp = entry.entryTimestamp,
             weight = scaleEntity.weight,
             bodyFat = scaleEntity.bodyFat,
             muscleMass = scaleEntity.muscleMass,
@@ -41,7 +38,7 @@ data class ScaleEntry(
             skeletalMusclePercent = metrics?.skeletalMusclePercent,
             bmr = metrics?.bmr,
             metabolicAge = metrics?.metabolicAge,
-            serverTimestamp = iso,
+            serverTimestamp = entry.serverTimestamp,
         )
     }
 
@@ -82,13 +79,11 @@ data class ScaleEntry(
                 scaleEntry = scaleEntryEntity,
                 scaleEntryMetric = scaleEntryMetricEntity,
             )
-            val isoString = scaleEntry.entryTimestamp
-            val epochMillis = Instant.parse(isoString).toEpochMilli()
             val entryEntity = EntryEntity(
                 id = entryId ?: 0,
                 accountId = accountId,
-                entryTimestamp = epochMillis,
-                serverTimestamp = null,
+                entryTimestamp = scaleEntry.entryTimestamp,
+                serverTimestamp = scaleEntry.serverTimestamp,
                 opTimestamp = null,
                 operationType = scaleEntry.operationType,
                 deviceType = "scale",

@@ -28,7 +28,7 @@ fun HistoryScreen() {
     HistoryScreenContent(
         state = state,
         isRefreshing = isRefreshing,
-        onRefresh = { viewModel.loadHistory() },
+        onRefresh = {  },
         handleIntent = viewModel::handleIntent,
     )
 }

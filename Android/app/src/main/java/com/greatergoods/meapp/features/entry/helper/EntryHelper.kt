@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.entry.helper
 
+import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.data.services.OperationType
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
@@ -15,13 +16,13 @@ object EntryHelper {
     }
 
     fun EntryFormControls.toScaleEntry(weightMode: String): ScaleEntry {
-        val now = System.currentTimeMillis()
+        System.currentTimeMillis()
         val entryEntity = EntryEntity(
             id = 0L, // Let Room auto-generate
             accountId = "TODO", // Replace with actual user/account ID
-            entryTimestamp = weightDateTime.dateTime.value.getTimestamp(), // Assuming DateTimeValue has .timestamp: Long
+            entryTimestamp = DateTimeConverter.timestampToIso(weightDateTime.dateTime.value.getTimestamp()), // Assuming DateTimeValue has .timestamp: Long
             serverTimestamp = null,
-            opTimestamp = now,
+            opTimestamp = null,
             unit = "lb", // or whatever is relevant
             operationType = OperationType.CREATE.name, // or appropriate value
             deviceType = "scale",     // or from context
