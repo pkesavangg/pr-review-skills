@@ -1,9 +1,5 @@
 package com.greatergoods.meapp.core.config
 
-import com.greatergoods.meapp.core.config.HttpErrorConfig.ResponseCode.FORBIDDEN
-import com.greatergoods.meapp.core.config.HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR
-import com.greatergoods.meapp.core.config.HttpErrorConfig.ResponseCode.UNAUTHORIZED
-
 class HttpErrorConfig {
     /**
      * Configuration class for HTTP error responses and status codes
@@ -15,7 +11,7 @@ class HttpErrorConfig {
         const val NOT_FOUND = 404
         const val INTERNAL_SERVER_ERROR = 500
         const val BAD_REQUEST = 400
-        const val NO_INTERNET_CONNECTION = 599
+        const val NO_INTERNET_CONNECTION = 0
     }
     object ResponseMessage {
         // HTTP Error Messages

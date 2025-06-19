@@ -7,6 +7,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
 typealias AsyncValidator<T> = suspend (T) -> ValidationError?
@@ -242,17 +243,17 @@ class FormGroup<T : Any>(
      * Returns a map of all form control values where the key is the field name
      * and the value is the current value of that form control
      */
-    fun getValues(): Map<String, Any?> {
-        return controls.javaClass.declaredFields.mapNotNull { field ->
-            field.isAccessible = true
-            val control = field.get(controls) as? FormControl<*>
-            if (control != null) {
-                field.name to control.value
-            } else {
-                null
-            }
-        }.toMap()
-    }
+    fun getValues(): Map<String, Any?> =
+        controls.javaClass.declaredFields
+            .mapNotNull { field ->
+                field.isAccessible = true
+                val control = field.get(controls) as? FormControl<*>
+                if (control != null) {
+                    field.name to control.value
+                } else {
+                    null
+                }
+            }.toMap()
 
     /**
      * Validates all controls in the group and runs group-level validation
@@ -262,6 +263,7 @@ class FormGroup<T : Any>(
 
         for (validator in groupValidators) {
             val err = validator(controls)
+            Log.d("hello", "Group validator: $err")
             if (err != null) {
                 _groupError.value = err
                 return false

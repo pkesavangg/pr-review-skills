@@ -12,7 +12,6 @@ import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
-import com.greatergoods.meapp.features.common.helper.DateTimeTools
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
@@ -26,34 +25,32 @@ import java.util.Locale
  * Step for collecting user's birthday
  */
 @Composable
-fun BirthdayStep(
-    birthdayControl: FormControl<String>,
-) {
+fun BirthdayStep(birthdayControl: FormControl<String>) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
 
     // Helper function to convert string to DateTimeValue.Date
-    fun stringToDateTimeValue(dateString: String): DateTimeValue.Date? {
-        return try {
+    fun stringToDateTimeValue(dateString: String): DateTimeValue.Date? =
+        try {
             val date = dateTimeFormat.parse(dateString)
             date?.let { DateTimeValue.Date(it.time) }
         } catch (e: Exception) {
             null
         }
-    }
 
     AppStyledCard(
-        cardAlignmentType = LocalCardAlignment.current
+        cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.birthdayStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
         DateTimeInput(
-            value = try {
-                val date = dateFormat.parse(birthdayControl.value)
-                date?.let { DateTimeValue.Date(it.time) }
-            } catch (e: Exception) {
-                null
-            },
+            value =
+                try {
+                    val date = dateFormat.parse(birthdayControl.value)
+                    date?.let { DateTimeValue.Date(it.time) }
+                } catch (e: Exception) {
+                    null
+                },
             onValueChange = { dateTimeValue ->
                 if (dateTimeValue is DateTimeValue.Date) {
                     val formattedDate = dateFormat.format(Date(dateTimeValue.millis))
