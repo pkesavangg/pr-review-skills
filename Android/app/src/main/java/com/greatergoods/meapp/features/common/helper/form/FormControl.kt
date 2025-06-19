@@ -242,17 +242,17 @@ class FormGroup<T : Any>(
      * Returns a map of all form control values where the key is the field name
      * and the value is the current value of that form control
      */
-    fun getValues(): Map<String, Any?> {
-        return controls.javaClass.declaredFields.mapNotNull { field ->
-            field.isAccessible = true
-            val control = field.get(controls) as? FormControl<*>
-            if (control != null) {
-                field.name to control.value
-            } else {
-                null
-            }
-        }.toMap()
-    }
+    fun getValues(): Map<String, Any?> =
+        controls.javaClass.declaredFields
+            .mapNotNull { field ->
+                field.isAccessible = true
+                val control = field.get(controls) as? FormControl<*>
+                if (control != null) {
+                    field.name to control.value
+                } else {
+                    null
+                }
+            }.toMap()
 
     /**
      * Validates all controls in the group and runs group-level validation
