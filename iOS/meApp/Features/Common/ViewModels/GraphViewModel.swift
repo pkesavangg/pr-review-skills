@@ -197,4 +197,10 @@ class GraphViewModel: ObservableObject {
         guard selectedPage < pages.count else { return nil }
         return periodLabel(for: pages[selectedPage], period: selectedPeriod)
     }
+
+    /// Returns all operations sorted by date for continuous line rendering
+    /// This ensures smooth transitions when swiping between pages
+    func continuousOperations(operations: [BathScaleOperationDTO], selectedPeriod: TimePeriod) -> [BathScaleOperationDTO] {
+        return operations.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
+    }
 }
