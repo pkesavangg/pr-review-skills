@@ -35,6 +35,7 @@ enum Endpoint {
     case operationsR4(startTimestamp: String?)
     case submitOperation
     case operationsCSV(utcOffset: Int?, download: Bool?)
+    case operationsR4CSV(utcOffset: Int?, download: Bool?)
     case flags
     case clearFlag(flagId: String)
     case feed
@@ -100,17 +101,9 @@ enum Endpoint {
         case .submitOperation:
             return request(path: "/operation")
         case .operationsCSV(let utcOffset, let download):
-            var components = URLComponents(string: "\(API.baseURL)/operation/csv")
-            var queryItems: [URLQueryItem] = []
-            if let offset = utcOffset {
-                queryItems.append(URLQueryItem(name: "utcOffset", value: "\(offset)"))
-            }
-            if let shouldDownload = download, shouldDownload {
-                queryItems.append(URLQueryItem(name: "download", value: "true"))
-            }
-            components?.queryItems = queryItems
-            guard let url = components?.url else { return nil }
-            return URLRequest(url: url)
+                return csvRequest(path: "/operation/csv/", utcOffset: utcOffset, download: download)
+        case .operationsR4CSV(let utcOffset, let download):
+                return csvRequest(path: "/operation/r4/csv/", utcOffset: utcOffset, download: download)
         case .flags:
             return request(path: "/account/flag")
         case .clearFlag(let flagId):
@@ -142,6 +135,21 @@ enum Endpoint {
     // MARK: - Shared URL Construction Helper
     private func request(path: String) -> URLRequest? {
         guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
+        return URLRequest(url: url)
+    }
+   
+    // Helper for CSV-style endpoints with optional download and offset query parameters
+    private func csvRequest(path: String, utcOffset: Int?, download: Bool?) -> URLRequest? {
+        var components = URLComponents(string: "\(API.baseURL)\(path)")
+        var queryItems: [URLQueryItem] = []
+        if let offset = utcOffset {
+            queryItems.append(URLQueryItem(name: "utcOffset", value: "\(offset)"))
+        }
+        if let shouldDownload = download, shouldDownload {
+            queryItems.append(URLQueryItem(name: "download", value: "true"))
+        }
+        components?.queryItems = queryItems
+        guard let url = components?.url else { return nil }
         return URLRequest(url: url)
     }
 }

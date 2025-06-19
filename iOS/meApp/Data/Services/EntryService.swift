@@ -14,7 +14,7 @@ final class EntryService: EntryServiceProtocol {
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
     }
-
+    
     // MARK: - Helper
     private func getAccountId() async throws -> String {
         guard let account = try await accountService.getActiveAccount() else {
@@ -22,27 +22,27 @@ final class EntryService: EntryServiceProtocol {
         }
         return account.accountId
     }
-
+    
     // MARK: - CRUD
     func clearAllData() async {
         try? await localRepo.deleteAllEntries()
     }
-
+    
     func saveNewEntry(_ entry: Entry) async throws {
         let entry = entry
         entry.isSynced = false
         try await localRepo.saveEntry(entry)
         await syncUnsyncedEntries()
     }
-
+    
     func saveNewEntries(_ entries: [Entry]) async throws {
-      for entry in entries {
+        for entry in entries {
             entry.isSynced = false
             try await localRepo.saveEntry(entry)
         }
         await syncUnsyncedEntries()
     }
-
+    
     func deleteEntry(_ entry: Entry) async throws {
         let deletedEntry = entry
         deletedEntry.operationType = "delete"
@@ -50,43 +50,43 @@ final class EntryService: EntryServiceProtocol {
         try await localRepo.saveEntry(deletedEntry)
         await syncUnsyncedEntries()
     }
-
+    
     // MARK: - Query
     func getAllEntries() async throws -> [Entry] {
         let accountId = try await getAccountId()
         return try await localRepo.fetchEntries(forUserId: accountId)
     }
-
+    
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
         let accountId = try await getAccountId()
         return try await localRepo.checkEntryTimestampExists(forUserId: accountId, entryTimestamp: entryTimestamp)
     }
-
+    
     func getEntryCount() async throws -> Int {
         let accountId = try await getAccountId()
         return try await localRepo.fetchEntryCount(forUserId: accountId)
     }
-
+    
     func getOldestEntry() async throws -> Entry? {
         let accountId = try await getAccountId()
         return try await localRepo.fetchOldestEntry(forUserId: accountId)
     }
-
+    
     func getLatestEntry() async throws -> Entry? {
         let accountId = try await getAccountId()
         return try await localRepo.fetchLatestEntry(forUserId: accountId)
     }
-
+    
     func getEntries(lastNDays: Int) async throws -> [Entry] {
         let accountId = try await getAccountId()
         return try await localRepo.fetchEntries(lastNDays: lastNDays, userId: accountId)
     }
-
+    
     func getEntries(forMonth month: String) async throws -> [Entry] {
         let accountId = try await getAccountId()
         return try await localRepo.fetchEntries(forMonth: month, userId: accountId)
     }
-
+    
     // MARK: - Month/History
     func getMonthsAll() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
@@ -140,11 +140,11 @@ final class EntryService: EntryServiceProtocol {
         }
         return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
-
+    
     func getMonthDetail(month: String) async throws -> [Entry] {
         return try await getEntries(forMonth: month)
     }
-
+    
     func getMonthYear() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId)
@@ -203,7 +203,7 @@ final class EntryService: EntryServiceProtocol {
         }
         return result
     }
-
+    
     // MARK: - Progress/Stats
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
@@ -242,7 +242,7 @@ final class EntryService: EntryServiceProtocol {
             year: Int(year)
         )
     }
-
+    
     func getStreak() async throws -> Streak {
         let accountId = try await getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId)
@@ -270,7 +270,7 @@ final class EntryService: EntryServiceProtocol {
         }
         return Streak(current: currentStreak, max: maxStreak)
     }
-
+    
     // MARK: - Sync Logic
     /// Sync all unsynced entries with the remote backend. Call this on app start or after network recovery.
     public func syncAllEntriesWithRemote() async {
@@ -297,13 +297,13 @@ final class EntryService: EntryServiceProtocol {
             let lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
             let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
             await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-
+            
             try? await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
         } catch {
             // If sync fails, leave as isSynced = false for retry
         }
     }
-
+    
     /// Internal: Sync only unsynced entries (used after local changes)
     private func syncUnsyncedEntries() async {
         let accountId: String
@@ -329,7 +329,7 @@ final class EntryService: EntryServiceProtocol {
             logger.log(level: .error, tag: tag, message: "Failed to sync unsynced entries:", data: error.localizedDescription)
         }
     }
-
+    
     /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp)
     private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async {
         // For each remote op, check if local entry exists
@@ -351,5 +351,17 @@ final class EntryService: EntryServiceProtocol {
                 try? await localRepo.saveEntry(newEntry)
             }
         }
+    }
+    
+    // MARK: - Export
+    /// Exports entries as CSV based on current dashboard type (4 or 12 metrics)
+    func exportCSV() async throws {
+        // Determine account and dashboard setting
+        let accountId = try await getAccountId()
+        guard let account = try await accountService.getActiveAccount() else {
+            throw AccountError.noActiveAccount
+        }
+        let useR4Endpoint = account.dashboardSettings?.dashboardType == DashboardType.dashboard12.rawValue
+        let _ = try? await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
     }
 }
