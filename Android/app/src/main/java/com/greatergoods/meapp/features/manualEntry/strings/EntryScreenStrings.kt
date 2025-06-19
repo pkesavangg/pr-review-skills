@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.entry.strings
+package com.greatergoods.meapp.features.manualEntry.strings
 
 /**
  * Strings used in the EntryScreen UI.

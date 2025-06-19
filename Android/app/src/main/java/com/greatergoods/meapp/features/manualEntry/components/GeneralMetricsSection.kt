@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.entry.components
+package com.greatergoods.meapp.features.manualEntry.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -6,17 +6,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
-import com.greatergoods.meapp.features.entry.strings.EntryScreenStrings
-import com.greatergoods.meapp.features.entry.viewmodel.GeneralMetricsFormControls
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
+import com.greatergoods.meapp.features.manualEntry.viewmodel.GeneralMetricsFormControls
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import com.greatergoods.meapp.features.common.helper.form.FormControl
 
 /**
  * Composable section for general metrics (BMI, Body Fat, Muscle Mass, Body Water).
@@ -57,12 +53,13 @@ fun GeneralMetricsSection(controls: GeneralMetricsFormControls) {
 @Composable
 private fun GeneralMetricsSectionPreview() {
     MeAppTheme {
-        val controls = GeneralMetricsFormControls(
-            bodyMassIndex = FormControl.create("", emptyList()),
-            bodyFat = FormControl.create("", emptyList()),
-            muscleMass = FormControl.create("", emptyList()),
-            bodyWater = FormControl.create("", emptyList()),
-        )
+        val controls =
+            GeneralMetricsFormControls(
+                bodyMassIndex = FormControl.create("", emptyList()),
+                bodyFat = FormControl.create("", emptyList()),
+                muscleMass = FormControl.create("", emptyList()),
+                bodyWater = FormControl.create("", emptyList()),
+            )
         GeneralMetricsSection(controls)
     }
 }

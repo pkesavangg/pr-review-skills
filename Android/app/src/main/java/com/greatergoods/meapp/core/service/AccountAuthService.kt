@@ -4,6 +4,7 @@ import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
@@ -13,7 +14,7 @@ import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.model.Toast
-import com.greatergoods.meapp.features.login.strings.LoginStrings
+import com.greatergoods.meapp.features.common.strings.ToastStrings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -23,6 +24,7 @@ import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
@@ -108,8 +110,8 @@ constructor(
             _authStateFlow.emit(AuthState.LoggedIn(savedAccount))
             _isLoginFlow.emit(true)
             savedAccount
-        } catch (e: Exception) {
-            handleLoginError(e as HttpException)
+        } catch (e: HttpException) {
+            showErrorToast(AuthAction.LOGIN, e)
             AppLog.e(TAG, "Login failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Login failed"))
             null
@@ -415,26 +417,75 @@ constructor(
         }
     }
 
+    override suspend fun resetPassword(email: String) {
+
+        try {
+            val response = this.accountRepository.resetPasswordInAPI(email)
+            if (response.isSuccessful) {
+                Log.d(TAG, "Successfully reset password: $response")
+                AppLog.d(TAG, "Successfully reset password")
+                showSuccessToast(AuthAction.RESET_PASSWORD, email)
+            } else {
+                AppLog.e(TAG, "Failed to reset password: ${response.code()} - ${response.message()}")
+                showErrorToast(AuthAction.RESET_PASSWORD, HttpException(response))
+            }
+        } catch (e: HttpException) {
+            AppLog.e(TAG, "Failed to reset password", e.toString())
+            showErrorToast(AuthAction.RESET_PASSWORD, e)
+        }
+    }
+
     /**
      * Checks if network is available using the connectivity observer
      */
     private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
+    fun showSuccessToast(action: AuthAction, data: String? = null) {
+        val (title, message) = when (action) {
+            AuthAction.RESET_PASSWORD -> ToastStrings.Success.ResetPasswordSuccess.Header to
+                ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
 
-    private fun handleLoginError(error: HttpException) {
-        val loginError = LoginStrings.Error
-        val errorMessage = when (error.code()) {
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> loginError.MessageNotAuth
-            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> loginError.MessageNoConn
-            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> loginError.MessageServError
-            else -> loginError.MessageGeneric
+            else -> "" to ""
         }
-        val errorToast = Toast(
-            message = errorMessage,
-            title = loginError.Header,
+
+        val successToast = Toast(
+            title = title,
+            message = message,
             action = null,
         )
-        dialogQueueService.showToast(
-            errorToast,
+        dialogQueueService.showToast(successToast)
+    }
+
+    fun showErrorToast(action: AuthAction, error: HttpException?) {
+        val (title, message) = when (action) {
+            AuthAction.LOGIN -> {
+                val header = ToastStrings.Error.LoginError.Header
+                val message = when (error?.code()) {
+                    HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                        ToastStrings.Error.LoginError.MessageNoConn
+
+                    HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                        ToastStrings.Error.LoginError.MessageServError
+
+                    HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                        ToastStrings.Error.LoginError.MessageNotAuth
+
+                    else ->
+                        ToastStrings.Error.LoginError.MessageGeneric
+                }
+                header to message
+            }
+
+            AuthAction.RESET_PASSWORD -> ToastStrings.Error.ResetPasswordError.Header to
+                ToastStrings.Error.ResetPasswordError.Message
+
+            else -> "" to ""
+        }
+
+        val errorToast = Toast(
+            title = title,
+            message = message,
+            action = null,
         )
+        dialogQueueService.showToast(errorToast)
     }
 }

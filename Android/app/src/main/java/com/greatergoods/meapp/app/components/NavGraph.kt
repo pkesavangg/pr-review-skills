@@ -6,10 +6,10 @@ import androidx.navigation3.runtime.entry
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
-import com.greatergoods.meapp.features.entry.EntryScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.landing.LandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
+import com.greatergoods.meapp.features.manualEntry.EntryScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 import com.greatergoods.meapp.features.signup.SignupScreen
 

@@ -39,4 +39,12 @@ object SettingsScreenStrings {
     const val Edit = "EDIT"
 
     const val ProfileImage = "Profile Image"
+    const val LoggingOut = "Logging out..."
+
+    object LogoutDialog {
+        const val Title = "Log out"
+        const val Body = "Are you sure you want to log out?"
+        const val Confirm = "Log out"
+        const val Cancel = "Cancel"
+    }
 }

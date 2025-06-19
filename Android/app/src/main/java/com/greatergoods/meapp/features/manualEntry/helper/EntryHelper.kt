@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.entry.helper
+package com.greatergoods.meapp.features.manualEntry.helper
 
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.data.services.OperationType
