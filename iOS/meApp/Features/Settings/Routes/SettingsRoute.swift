@@ -11,11 +11,14 @@ import SwiftUI
 // MARK: - Settings Route
 enum SettingsRoute: Routable {
     case editProfile
+    case changePassword
     
     var body: some View {
         switch self {
         case .editProfile:
             EditProfileScreen()
+        case .changePassword:
+            ChangePasswordScreen()
         }
     }
 }
