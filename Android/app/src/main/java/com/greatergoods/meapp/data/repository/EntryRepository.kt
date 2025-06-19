@@ -193,7 +193,7 @@ class EntryRepository @Inject constructor(
      * @param month The month in YYYY-MM format
      * @return Flow of list of entries for the specified month
      */
-    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>> =
+    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>> =
         entryDao.getMonthDetail(accountId, month).map { views ->
             views.map { it.toEntry() }
         }

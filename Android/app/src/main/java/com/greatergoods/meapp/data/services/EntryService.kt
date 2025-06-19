@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
@@ -56,6 +58,15 @@ class EntryService @Inject constructor(
         }
     }
 
+    override suspend fun monthDetails(startDate: String): Flow<List<Entry>> {
+        val input = startDate
+        val formatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)
+        val date = YearMonth.parse(input, formatter)
+        val monthParam = date.format(DateTimeFormatter.ofPattern("yyyy-MM")) // "2024-03"
+
+        return entryRepository.getMonthDetail(accountId ?: "", monthParam)
+    }
+
     /**
      * Updates all entry-related data for the given account.
      * Fetches latest entry, last 7 and 30 days entries, and updates progress.
@@ -63,6 +74,7 @@ class EntryService @Inject constructor(
      */
     override suspend fun updateAccountId(accountId: String) {
         this.accountId = accountId
+        syncOperations()
     }
 
     /**

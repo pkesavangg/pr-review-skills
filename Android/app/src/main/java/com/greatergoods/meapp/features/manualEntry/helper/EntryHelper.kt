@@ -10,11 +10,19 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryFormControls
+import java.time.Instant
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object EntryHelper {
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        .withZone(ZoneId.systemDefault())
+
+    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm a")
+        .withZone(ZoneId.systemDefault())
+
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
     fun EntryFormControls.toScaleEntry(weightMode: String): ScaleEntry {
@@ -90,5 +98,15 @@ object EntryHelper {
             change = change?.div(10.0).rounded(),
             // entryCount is already Int? so no need to change
         )
+    }
+
+    fun ScaleEntry.getDate(): String {
+        val instant = Instant.parse(entry.entryTimestamp)
+        return dateFormatter.format(instant)
+    }
+
+    fun ScaleEntry.getTime(): String {
+        val instant = Instant.parse(entry.entryTimestamp)
+        return timeFormatter.format(instant)
     }
 }

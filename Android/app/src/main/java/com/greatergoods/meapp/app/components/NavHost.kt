@@ -14,6 +14,7 @@ import com.example.nav3integration.TopLevelBackStack
 import com.greatergoods.meapp.app.viewmodel.AppViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
+import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
 import com.greatergoods.meapp.features.home.HomeScreen
 import com.greatergoods.meapp.features.loading.LoadingScreen
 
@@ -47,6 +48,9 @@ fun NavHost(
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
                 entry<AppRoute.Home> { HomeScreen() }
                 authEntries()
+                entry<AppRoute.MonthDetails> { entry ->
+                    HistoryDetailScreen(entry.month)
+                }
             },
     )
 }
