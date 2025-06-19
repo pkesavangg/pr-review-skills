@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 // MARK: - Settings Store
 /// A store to manage user settings and account actions.
@@ -25,8 +26,35 @@ class SettingsStore: ObservableObject {
     private let commonLang = CommonStrings.self
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
+    private let legalURLs = AppConstants.LegalURLs.self
     
     let tag = "SettingsStore"
+    
+    // MARK: - In-App Browser State
+    @Published var showPrivacyBrowser: Bool = false
+    @Published var showTermsBrowser: Bool = false
+    @Published var showGreaterGoodsBrowser: Bool = false
+    @Published var browserURL: URL? = nil
+
+    /// Main browser presentation binding for the view
+    var isBrowserPresented: Binding<Bool> {
+        Binding(
+            get: { self.showPrivacyBrowser || self.showTermsBrowser || self.showGreaterGoodsBrowser },
+            set: { newValue in
+                if !newValue {
+                    self.showPrivacyBrowser = false
+                    self.showTermsBrowser = false
+                    self.showGreaterGoodsBrowser = false
+                    self.browserURL = nil
+                }
+            }
+        )
+    }
+
+    /// Browser URL used by the view
+    var presentingBrowserURL: URL {
+        browserURL ?? legalURLs.greaterGoodsWebsite
+    }
     
     init() {
         accountService.$activeAccount
@@ -94,5 +122,25 @@ class SettingsStore: ObservableObject {
             }
             notificationService.dismissLoader()
         }
+    }
+    
+    // MARK: - Support Link Handlers
+    func openPrivacy() {
+        browserURL = legalURLs.privacyPolicy
+        showPrivacyBrowser = true
+    }
+
+    func openTerms() {
+        browserURL = legalURLs.termsOfService
+        showTermsBrowser = true
+    }
+
+    func openHelp() {
+        // TODO: Need to handle this
+    }
+
+    func openGreaterGoods() {
+        browserURL = legalURLs.greaterGoodsWebsite
+        showGreaterGoodsBrowser = true
     }
 }
