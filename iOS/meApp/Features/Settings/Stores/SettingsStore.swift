@@ -426,6 +426,14 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(ToastModel(message: toastLang.csvExported))
             } catch {
                 logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet:
+                    break
+                default:
+                    notificationService.showToast(ToastModel(
+                        message: toastLang.csvExportError)
+                    )
+                }
             }
             notificationService.dismissLoader()
         }
