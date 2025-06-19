@@ -57,6 +57,7 @@ struct ToastStrings {
     static let errorUpdatingProfile = "Error updating profile"
     static let profileSaved = "Profile saved successfully."
     static let csvExported = ".CSV file sent. Please check your email."
+    static let csvExportError = "Error sending .CSV file. Please try again."
 }
 
 /// Constants for help modal strings used in the app
