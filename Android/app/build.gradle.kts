@@ -149,6 +149,9 @@ dependencies {
     // Vico charts
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
+
+    // foundation-pullrefresh
+    // implementation(libs.androidx.foundation.pullrefresh)
 }
 
 // Allow references to generated code

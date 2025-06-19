@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.entry.components
+package com.greatergoods.meapp.features.manualEntry.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -21,9 +21,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.entry.strings.EntryScreenStrings
-import com.greatergoods.meapp.features.entry.viewmodel.GeneralMetricsFormControls
-import com.greatergoods.meapp.features.entry.viewmodel.R4ScaleMetricsFormControls
+import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
+import com.greatergoods.meapp.features.manualEntry.viewmodel.GeneralMetricsFormControls
+import com.greatergoods.meapp.features.manualEntry.viewmodel.R4ScaleMetricsFormControls
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -43,16 +43,17 @@ fun ExpandableMetricsCard(
     subheading: String? = null,
     generalMetrics: GeneralMetricsFormControls,
     r4ScaleMetrics: R4ScaleMetricsFormControls? = null,
-    expandedInitially: Boolean = false
+    expandedInitially: Boolean = false,
 ) {
     var expanded by rememberSaveable { mutableStateOf(expandedInitially) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "ChevronRotation")
 
     Column {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
@@ -82,7 +83,6 @@ fun ExpandableMetricsCard(
         }
         val spacing = if (!expanded) MeTheme.spacing.x3l else MeTheme.spacing.xl
         Spacer(modifier = Modifier.height(spacing))
-
     }
 }
 
@@ -90,22 +90,24 @@ fun ExpandableMetricsCard(
 @Composable
 private fun ExpandableMetricsCardPreview() {
     MeAppTheme {
-        val general = GeneralMetricsFormControls(
-            bodyMassIndex = FormControl.create("", emptyList()),
-            bodyFat = FormControl.create("", emptyList()),
-            muscleMass = FormControl.create("", emptyList()),
-            bodyWater = FormControl.create("", emptyList()),
-        )
-        val r4 = R4ScaleMetricsFormControls(
-            heartRate = FormControl.create("", emptyList()),
-            boneMass = FormControl.create("", emptyList()),
-            visceralFat = FormControl.create("", emptyList()),
-            subcutaneousFat = FormControl.create("", emptyList()),
-            protein = FormControl.create("", emptyList()),
-            skeletalMuscles = FormControl.create("", emptyList()),
-            bmr = FormControl.create("", emptyList()),
-            metabolicAge = FormControl.create("", emptyList()),
-        )
+        val general =
+            GeneralMetricsFormControls(
+                bodyMassIndex = FormControl.create("", emptyList()),
+                bodyFat = FormControl.create("", emptyList()),
+                muscleMass = FormControl.create("", emptyList()),
+                bodyWater = FormControl.create("", emptyList()),
+            )
+        val r4 =
+            R4ScaleMetricsFormControls(
+                heartRate = FormControl.create("", emptyList()),
+                boneMass = FormControl.create("", emptyList()),
+                visceralFat = FormControl.create("", emptyList()),
+                subcutaneousFat = FormControl.create("", emptyList()),
+                protein = FormControl.create("", emptyList()),
+                skeletalMuscles = FormControl.create("", emptyList()),
+                bmr = FormControl.create("", emptyList()),
+                metabolicAge = FormControl.create("", emptyList()),
+            )
         ExpandableMetricsCard(
             title = EntryScreenStrings.METRICS_SECTION_TITLE,
             subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,

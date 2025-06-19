@@ -61,77 +61,33 @@ sealed class LoaderConfig(
 }
 
 object LoaderDefaults {
-    // Cached base configs (private, lazy to ensure one-time construction)
-    private val baseDotConfig by lazy {
-        LoaderConfig.Dot(
+
+    val baseDotConfig: LoaderConfig.Dot
+        @Composable get() = LoaderConfig.Dot(
             color = Color(0xFF2C2827),
             minRadius = 6f,
             maxRadius = 12f,
             durationMillis = 700,
         )
-    }
 
-    private val baseDashedConfig by lazy {
-        LoaderConfig.Dashed(
-            color = Color(0xFF302A27),
+    val baseDashedConfig: LoaderConfig.Dashed
+        @Composable get() = LoaderConfig.Dashed(
+            color = MeTheme.colorScheme.textHeading, // Replace with MeTheme.colorScheme.textHeading if needed
             size = 22.dp,
             strokeWidth = 4f,
             dashLength = 10f,
             gapLength = 8f,
             sweepAngle = 270f,
         )
-    }
 
-    private val baseCircularConfig by lazy {
-        LoaderConfig.Circular(
-            color = Color(0xFF6200EE),
+    val baseCircularConfig: LoaderConfig.Circular
+        @Composable get() = LoaderConfig.Circular(
+            color = Color(0xFF6200EE), // Or from theme
             strokeWidth = 2.dp,
             size = 22f,
         )
-    }
 
-    // Public functions to return a modified version of the base config
-    fun dotConfig(
-        color: Color = baseDotConfig.color,
-        minRadius: Float = baseDotConfig.minRadius,
-        maxRadius: Float = baseDotConfig.maxRadius,
-        durationMillis: Int = baseDotConfig.durationMillis,
-    ): LoaderConfig.Dot =
-        baseDotConfig.copy(
-            color = color,
-            minRadius = minRadius,
-            maxRadius = maxRadius,
-            durationMillis = durationMillis,
-        )
-
-    fun dashedConfig(
-        color: Color = baseDashedConfig.color,
-        size: Dp = baseDashedConfig.size,
-        strokeWidth: Float = baseDashedConfig.strokeWidth,
-        dashLength: Float = baseDashedConfig.dashLength,
-        gapLength: Float = baseDashedConfig.gapLength,
-        sweepAngle: Float = baseDashedConfig.sweepAngle,
-    ): LoaderConfig.Dashed =
-        baseDashedConfig.copy(
-            color = color,
-            size = size,
-            strokeWidth = strokeWidth,
-            dashLength = dashLength,
-            gapLength = gapLength,
-            sweepAngle = sweepAngle,
-        )
-
-    fun circularConfig(
-        color: Color = baseCircularConfig.color,
-        strokeWidth: Dp = baseCircularConfig.strokeWidth,
-        size: Float = baseCircularConfig.size,
-    ): LoaderConfig.Circular =
-        baseCircularConfig.copy(
-            color = color,
-            strokeWidth = strokeWidth,
-            size = size,
-        )
-
+    @Composable
     fun defaultFor(style: LoaderStyle): LoaderConfig =
         when (style) {
             LoaderStyle.CIRCULAR -> baseCircularConfig
@@ -139,6 +95,7 @@ object LoaderDefaults {
             LoaderStyle.DOT -> baseDotConfig
         }
 }
+
 
 /**
  * Displays a loader based on the given style and config. If config is not provided, uses LoaderDefaults.

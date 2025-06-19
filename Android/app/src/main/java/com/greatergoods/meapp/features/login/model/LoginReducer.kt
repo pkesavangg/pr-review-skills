@@ -36,6 +36,27 @@ data class LoginFormControls(
 }
 
 /**
+ * Controls for Reset Password form.
+ */
+data class ResetPasswordFormControls(
+    val email: FormControl<String>,
+) {
+    companion object {
+        fun create() = ResetPasswordFormControls(
+            email =
+                FormControl.create(
+                    initialValue = "",
+                    validators = listOf(
+                        FormValidations.required(),
+                        FormValidations.maxLength(100),
+                        FormValidations.email(),
+                    ),
+                ),
+        )
+    }
+}
+
+/**
  * State for Login screen, including form group and UI state.
  * @property form The form group containing login controls.
  * @property isLoading Whether the login process is ongoing.
@@ -53,7 +74,8 @@ data class LoginState(
 sealed class LoginIntent : IReducer.Intent {
     /** Trigger login submission. */
     object Submit : LoginIntent()
-
+    object OpenForgotPasswordModal : LoginIntent()
+    object OpenHelpModal : LoginIntent()
     data class OpenInAppBrowser(val url: String) : LoginIntent()
 
     /** Show an error message. */
@@ -87,6 +109,14 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
         when (intent) {
             is LoginIntent.Submit -> {
                 state.copy(isLoading = true, error = null)
+            }
+
+            is LoginIntent.OpenForgotPasswordModal -> {
+                state.copy(isLoading = false, error = null)
+            }
+
+            is LoginIntent.OpenHelpModal -> {
+                state.copy(isLoading = false, error = null)
             }
 
             is LoginIntent.Error -> {

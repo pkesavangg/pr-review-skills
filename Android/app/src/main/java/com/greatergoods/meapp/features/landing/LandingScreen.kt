@@ -55,7 +55,11 @@ fun LandingScreen() {
                 type = ButtonType.SecondaryFilled,
                 label = LandingString.SignUp,
                 size = ButtonSize.Large,
-                onClick = { /* TODO: Sign up action */ },
+                onClick = {
+                    backStack.addRoute(
+                        AppRoute.Auth.Signup,
+                    )
+                },
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
             AppButton(

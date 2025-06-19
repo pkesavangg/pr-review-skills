@@ -18,6 +18,7 @@ import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.util.Log
@@ -79,9 +80,8 @@ class AccountRepository @Inject constructor(
     /**
      * Requests password reset via API and returns true if successful.
      */
-    override suspend fun resetPasswordInAPI(email: String): Boolean {
-        val result = authAPI.requestPasswordReset(PasswordResetRequest(email))
-        return result["success"] as? Boolean ?: false
+    override suspend fun resetPasswordInAPI(email: String): Response<Unit> {
+        return authAPI.requestPasswordReset(PasswordResetRequest(email))
     }
 
     // DB Operations

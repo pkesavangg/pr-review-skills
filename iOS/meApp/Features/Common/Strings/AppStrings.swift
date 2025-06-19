@@ -19,7 +19,6 @@ struct CommonStrings {
     static let logIn = "Log in"
     static let complete = "Complete"
     static let edit = "Edit"
-    
     static let dash = "dash"
     static let entry = "entry"
     static let history = "history"
@@ -140,7 +139,7 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
-    
+
     struct ResetPasswordAlert {
         static let passwordResetTitle = "Password Reset"
         static let enterEmailMessage = "Enter your email below."
@@ -152,14 +151,14 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
-    
+
     struct LogoutAlert {
         static let title = "Log Out"
         static let message = "Are you sure you want to log out?"
         static let logoutButton = "Log Out"
         static let cancelButton = "Cancel"
     }
-    
+
     struct DeleteAccountAlert {
         static let title = "Delete Your Account"
         static let message = "Are you sure you want to delete your account? This action cannot be undone."
