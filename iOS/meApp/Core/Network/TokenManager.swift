@@ -9,7 +9,6 @@ import Foundation
 // - If the refresh ultimately fails or returns 401 (unauthorized), the user is logged out.
 // - Successful refresh updates the stored tokens and resumes all waiting requests.
 
-@MainActor
 final class TokenManager {
     static let shared = TokenManager()
     @Injector var accountService: AccountService
@@ -53,7 +52,7 @@ final class TokenManager {
                 case .statusCode(let code):
                     if code == HTTPStatusCode.unauthorized.rawValue {
                         // Unauthorized error, attempt to refresh token
-                        if accountId == accountService.activeAccount?.accountId {
+                        if await accountId == accountService.activeAccount?.accountId {
                             try await accountService.logOut(accountId: accountId)
                         }
                         throw error
@@ -67,7 +66,7 @@ final class TokenManager {
                 }
             }
             // If we reach here, it means we couldn't refresh the token
-            if accountId == accountService.activeAccount?.accountId {
+            if await accountId == accountService.activeAccount?.accountId {
                 try await accountService.logOut(accountId: accountId)
             }
             throw error

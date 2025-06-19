@@ -52,41 +52,42 @@ final class Entry {
         self.deviceType = deviceType
         self.isSynced = isSynced
     }
-
-    convenience init(from dto: BathScaleOperationDTO, isSynced: Bool = false) {
-        let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
-        self.init(
-            id: UUID(),
-            entryTimestamp: timestamp,
-            accountId: dto.accountId ?? "",
-            operationType: dto.operationType ?? "",
-            serverTimestamp: dto.serverTimestamp,
-            isSynced: isSynced
-        )
+    
+    init(from dto: BathScaleOperationDTO, isSynced: Bool = false) {
+            let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
+            self.id = UUID()
+            self.entryTimestamp = timestamp
+            self.accountId = dto.accountId ?? ""
+            self.operationType = dto.operationType ?? ""
+            self.serverTimestamp = dto.serverTimestamp
+            self.deviceType = DeviceType.scale.rawValue
+            self.isSynced = isSynced
+            self.scaleEntry = BathScaleEntry(from: dto)
+            self.scaleEntryMetric = BathScaleMetric(from: dto)
     }
 
     func toOperationDTO() -> BathScaleOperationDTO {
         return BathScaleOperationDTO(
             accountId: self.accountId,
-            bmr: nil,
-            bmi: nil,
-            bodyFat: nil,
-            boneMass: nil,
+            bmr: self.scaleEntryMetric?.bmr.map { Double($0) },
+            bmi: self.scaleEntry?.bmi.map { Double($0) },
+            bodyFat: self.scaleEntry?.bodyFat.map { Double($0) },
+            boneMass: self.scaleEntryMetric?.boneMass.map { Double($0) },
             entryTimestamp: self.entryTimestamp,
-            impedance: nil,
-            metabolicAge: nil,
-            muscleMass: nil,
+            impedance: self.scaleEntryMetric?.impedance.map { Double($0) },
+            metabolicAge: self.scaleEntryMetric?.metabolicAge.map { Double($0) },
+            muscleMass: self.scaleEntry?.muscleMass.map { Double($0) },
             operationType: self.operationType,
-            proteinPercent: nil,
-            pulse: nil,
+            proteinPercent: self.scaleEntryMetric?.proteinPercent.map { Double($0) },
+            pulse: self.scaleEntryMetric?.pulse.map { Double($0) },
             serverTimestamp: self.serverTimestamp,
-            skeletalMusclePercent: nil,
-            source: nil,
-            subcutaneousFatPercent: nil,
-            unit: nil,
-            visceralFatLevel: nil,
-            water: nil,
-            weight: nil
+            skeletalMusclePercent: self.scaleEntryMetric?.skeletalMusclePercent.map { Double($0) },
+            source: self.scaleEntry?.source,
+            subcutaneousFatPercent: self.scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) },
+            unit: self.scaleEntryMetric?.unit,
+            visceralFatLevel: self.scaleEntryMetric?.visceralFatLevel.map { Double($0) },
+            water: self.scaleEntry?.water.map { Double($0) },
+            weight: self.scaleEntry?.weight.map { Double($0) },
         )
     }
 }

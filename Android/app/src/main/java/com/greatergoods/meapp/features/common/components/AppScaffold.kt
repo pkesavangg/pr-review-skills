@@ -11,7 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.Red
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
@@ -21,8 +21,6 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
  * Handles window insets properly for status bar, navigation bar, and keyboard.
  *
  * @param title The title to display in the AppBar.
- * @param onLeftIconClick Callback for left icon click.
- * @param onRightIconClick Callback for right icon click (optional).
  * @param modifier Modifier for the Scaffold.
  * @param actions Optional composable for actions.
  * @param navigationIcon Optional composable for left icon.
@@ -32,8 +30,8 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
-    containerColor: Color = colorScheme.primaryBackground,
-    contentColor: Color = colorScheme.secondaryBackground,
+    containerColor: Color = colorScheme.secondaryBackground,
+    appBarColor: Color = colorScheme.primaryBackground,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
@@ -50,7 +48,7 @@ fun AppScaffold(
                     containerColor = containerColor,
                 )
         },
-        containerColor = containerColor,
+        containerColor = appBarColor,
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -58,6 +56,7 @@ fun AppScaffold(
                 .padding(top = innerPadding.calculateTopPadding())
                 .background(contentColor),
         ) {
+
             content(Modifier)
         }
     }
@@ -69,6 +68,9 @@ fun AppScaffoldPreview() {
     MeAppTheme {
         AppScaffold(
             title = "App Scaffold Title",
+            containerColor = MeTheme.colorScheme.secondaryBackground,
+            navigationIcon = { AppIconButton(AppIcons.Default.Close) {} },
+            actions = { AppIconButton(AppIcons.Outlined.Help) {} }
         ) { modifier ->
             Box(modifier = modifier) {
                 Text(

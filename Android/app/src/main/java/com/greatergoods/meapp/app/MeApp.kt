@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.app
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -36,15 +36,16 @@ fun MeApp() {
 
 
     MeAppTheme(themeMode = uiState.themeMode) {
-        Scaffold(modifier = Modifier.fillMaxSize()) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize(),
-            ) {
-                CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
-                    DialogHost()
-                    NavHost(topLevelBackStack, appViewModel)
-                }
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .imePadding(),
+            color = MeTheme.colorScheme.primaryBackground,
+        ) {
+            CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
+                DialogHost()
+                NavHost(topLevelBackStack, appViewModel)
             }
         }
     }

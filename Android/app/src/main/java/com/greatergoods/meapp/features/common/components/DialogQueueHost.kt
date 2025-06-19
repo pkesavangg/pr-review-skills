@@ -40,7 +40,6 @@ fun DialogQueueHost(
     val currentToast by dialogQueueViewModel.currentToast.collectAsState()
     val loader by dialogQueueViewModel.loader.collectAsState()
 
-
     currentToast?.let { dialog ->
         ToastHandler(hostState = snackBarHostState, toast = dialog) {
             dialogQueueViewModel.dismissToast()
@@ -50,7 +49,6 @@ fun DialogQueueHost(
     loader?.let { loader ->
         LoaderCard(loader = loader)
     }
-
 
     currentDialog?.let { dialog ->
         when (dialog) {
