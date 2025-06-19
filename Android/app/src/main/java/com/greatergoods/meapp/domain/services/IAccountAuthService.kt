@@ -27,7 +27,7 @@ interface IAccountAuthService {
     suspend fun updateTokens(tokens: Map<String, String>): Boolean
     suspend fun checkForLoggedInUser(): Boolean
 
-    suspend fun resetPassword(email: String): Boolean
+    suspend fun resetPassword(email: String)
 }
 
 /**

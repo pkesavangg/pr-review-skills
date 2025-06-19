@@ -6,16 +6,14 @@ import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
-import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import com.greatergoods.meapp.domain.model.api.user.Token
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
+import com.greatergoods.meapp.domain.model.api.user.Token
+import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
-import retrofit2.http.PATCH
-import retrofit2.http.DELETE
 
 interface IAuthAPI {
     companion object {
@@ -45,7 +43,7 @@ interface IAuthAPI {
     @POST(ACCOUNT + PASSWORD_RESET)
     suspend fun requestPasswordReset(
         @Body request: PasswordResetRequest,
-    ): Map<String, Any>
+    ): Response<Unit>
 
     @POST(ACCOUNT)
     suspend fun createAccount(
@@ -64,8 +62,4 @@ interface IAuthAPI {
 
     @DELETE(ACCOUNT)
     suspend fun deleteAccount(): Map<String, Any>
-
-    //TODO: FOR TESTING PURPOSE LATER IT WILL BE REMOVED.
-    @GET(ACCOUNT)
-    suspend fun getProfile(): ProfileUpdateRequest
 }

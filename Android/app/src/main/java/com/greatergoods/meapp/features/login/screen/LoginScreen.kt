@@ -35,14 +35,13 @@ import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
-import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
-import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.common.helper.form.FormValidations
-import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.features.login.viewmodel.LoginViewModel
 import com.greatergoods.meapp.resources.AppIcons
@@ -69,15 +68,6 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
     val interactionSource = remember { MutableInteractionSource() }
     val emailFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
-    val resetEmailControl = remember {
-        FormControl.create(
-            initialValue = "",
-            validators = listOf(
-                FormValidations.required(),
-                FormValidations.email(),
-            ),
-        )
-    }
 
     AppScaffold(
         title = null,
@@ -85,7 +75,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
             AppIconButton(AppIcons.Default.Close) { backStack.removeLast() }
         },
         actions = {
-            AppIconButton(AppIcons.Outlined.Help) { }
+            AppIconButton(AppIcons.Outlined.Help) { handleIntent(LoginIntent.OpenHelpModal) }
         },
         containerColor = colorScheme.secondaryBackground,
     ) { scaffoldModifier ->
@@ -154,25 +144,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
                         type = ButtonType.TextPrimary,
                         size = ButtonSize.Medium,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
-                        onClick = {
-                            dialogQueueViewModel.enqueueCustomDialog(
-                                contentKey = DialogType.PasswordReset,
-                                params = mapOf(
-                                    "emailControl" to resetEmailControl,
-                                    "isSubmitEnabled" to { resetEmailControl.error == null && resetEmailControl.value.isNotBlank() },
-                                    "onSubmit" to {
-                                        // handle password reset submit here
-                                        // e.g., call viewModel.resetPassword(resetEmailControl.value)
-                                    },
-                                    "onCancel" to {
-                                        // handle cancel if needed
-                                    },
-                                ),
-                                onDismiss = {},
-                                priority = 100,
-                                delayMillis = 0L,
-                            )
-                        },
+                        onClick = { handleIntent(LoginIntent.OpenForgotPasswordModal) },
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -218,6 +190,20 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
 @Composable
 fun LoginScreenPreview() {
     MeAppTheme {
-        LoginScreen()
+        val dummyLoginState = LoginState(
+            form = FormGroup(
+                controls = LoginFormControls(
+                    email = FormControl.create(""),
+                    password = FormControl.create(""),
+                ),
+            ),
+            isLoading = false,
+            error = null,
+        )
+
+        LoginContent(
+            state = dummyLoginState,
+            handleIntent = {},
+        )
     }
 }
