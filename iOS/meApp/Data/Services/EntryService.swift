@@ -63,7 +63,7 @@ final class EntryService: EntryServiceProtocol {
     // MARK: - Query
     func getAllEntries() async throws -> [Entry] {
         let accountId = try await getAccountId()
-        return try await localRepo.fetchEntries(forUserId: accountId)
+        return try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
     }
 
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
@@ -99,7 +99,7 @@ final class EntryService: EntryServiceProtocol {
     // MARK: - Month/History
     	func getMonthsAll() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId)
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
         // Group by YYYY-MM prefix
         let grouped = Dictionary(grouping: entries) { String($0.entryTimestamp.prefix(7)) }
 
@@ -124,7 +124,7 @@ final class EntryService: EntryServiceProtocol {
 
     func getMonthYear() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId)
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
         // Get last 12 months
         let calendar = Calendar.current
         let now = Date()
@@ -147,7 +147,7 @@ final class EntryService: EntryServiceProtocol {
     // MARK: - Progress/Stats
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId).sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create").sorted { $0.entryTimestamp < $1.entryTimestamp }
         guard let latest = entries.last else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "No entries found"])
         }
@@ -185,7 +185,7 @@ final class EntryService: EntryServiceProtocol {
 
     func getStreak() async throws -> Streak {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId)
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
         // Group by day (YYYY-MM-DD)
         let days = Set(entries.map { String($0.entryTimestamp.prefix(10)) })
         let sortedDays = days.sorted()
@@ -288,12 +288,12 @@ final class EntryService: EntryServiceProtocol {
                 let remoteServerTS = remoteOp.serverTimestamp ?? ""
                 if remoteServerTS > localServerTS {
                     // Update local with remote
-                    let updated = Entry(from: remoteOp, isSynced: true)
+                    let updated = Entry(from: remoteOp,accountId: accountId, isSynced: true)
                     try? await localRepo.updateEntry(updated)
                 }
             } else {
                 // Not found locally, insert
-                let newEntry = Entry(from: remoteOp, isSynced: true)
+              let newEntry = Entry(from: remoteOp, accountId: accountId, isSynced: true)
                 try? await localRepo.saveEntry(newEntry)
             }
         }

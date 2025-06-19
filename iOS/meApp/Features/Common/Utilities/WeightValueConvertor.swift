@@ -5,13 +5,15 @@ struct WeightValueConvertor {
     /// - Parameters:
     ///   - value: The weight value to convert
     ///   - showSymbol: Whether to show + symbol for positive values
+    ///   - weightUnit: The unit of the weight value
     ///   - weightless: Optional weightless settings to apply
     ///   - isMetric: Whether to use metric units (from AppStatus)
     /// - Returns: Formatted weight string with optional + symbol
     static func formatWeight(_ value: Double,
                            showSymbol: Bool = false,
-                           weightless: WeightlessSettings? = nil,
-                           isMetric: Bool = false) -> String {
+                           weightUnit: WeightUnit = .kg,
+                           weightless: WeightlessSettings? = nil
+    ) -> String {
 
         var weight: Double
 
@@ -21,11 +23,11 @@ struct WeightValueConvertor {
         // Apply weightless adjustment if needed
         if let weightless = weightless, weightless.isWeightlessOn {
           let weightlessValue = Int(weightless.weightlessWeight ?? 0)
-            weight = ConversionTools.convertStoredToDisplay(storedValue - weightlessValue, isMetric: isMetric)
+            weight = ConversionTools.convertStoredToDisplay(storedValue - weightlessValue, isMetric: weightUnit == .kg)
             // Force show symbol for weightless mode
             return formatWithSymbol(weight, showSymbol: true)
         } else {
-            weight = ConversionTools.convertStoredToDisplay(storedValue, isMetric: isMetric)
+            weight = ConversionTools.convertStoredToDisplay(storedValue, isMetric: weightUnit == .kg)
             return formatWithSymbol(weight, showSymbol: showSymbol)
         }
     }

@@ -12,6 +12,7 @@ import SwiftUI
 struct HistoryListScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var store = HistoryStore()
+    @Environment(\.weightUnit) private var weightUnit
     @State private var navPath = NavigationPath()
 
     var body: some View {
@@ -54,7 +55,7 @@ struct HistoryListScreen: View {
             List {
                 ForEach(store.months, id: \.id) { month in
                         ZStack {
-                          MonthSummaryItem(month: month, weightUnit: "kg")
+                          MonthSummaryItem(month: month, weightUnit: weightUnit)
                         }
                         .onTapGesture {
                             store.selectMonth(month)

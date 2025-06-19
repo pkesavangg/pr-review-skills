@@ -11,9 +11,10 @@ import SwiftUI
 /// Mirrors the visual spec: Month + year, entry count, average weight, weight change, chevron.
 struct MonthSummaryItem: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.weightlessSettings) private var weightlessSettings
 
     let month: HistoryMonth
-    let weightUnit: String
+    let weightUnit: WeightUnit
     /// Localized date formatter: "MMM yyyy"
     private var monthYearText: String {
         let formatter = DateFormatter()
@@ -25,14 +26,14 @@ struct MonthSummaryItem: View {
 
     private var avgWeightText: String {
         guard let w = month.weight else { return "--" }
-        let weight = WeightValueConvertor.formatWeight(w, showSymbol: false)
-        return String(format: "%@ %@", weight, weightUnit)
+        let weight = WeightValueConvertor.formatWeight(w, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
+        return String(format: "%@ %@", weight, weightUnit.rawValue)
     }
 
     private var changeText: String {
         guard let cStr = month.change, let c = Double(cStr) else { return "--" }
-        let change = WeightValueConvertor.formatWeight(c, showSymbol: true)
-        return String(format: "%@ %@", change, weightUnit)
+        let change = WeightValueConvertor.formatWeight(c, showSymbol: true, weightUnit: weightUnit)
+        return String(format: "%@ %@", change, weightUnit.rawValue)
     }
 
     var body: some View {
@@ -62,7 +63,7 @@ struct MonthSummaryItem: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, .spacingSM)
-            
+
             // Change
             VStack(alignment: .leading) {
                 Text(changeText)
@@ -107,7 +108,7 @@ struct MonthSummaryItem_Previews: PreviewProvider {
             min: nil,
             max: nil
         )
-      MonthSummaryItem(month: month, weightUnit: "kg")
+      MonthSummaryItem(month: month, weightUnit: WeightUnit.kg)
             .themeable()
             .environmentObject(Theme.shared)
             .previewLayout(.sizeThatFits)
