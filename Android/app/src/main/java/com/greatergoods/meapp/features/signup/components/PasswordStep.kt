@@ -82,7 +82,7 @@ fun PasswordStep(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                AppText(SignupStrings.passwordStepFooter, TextType.Body, spacing = MeTheme.spacing.xs)
+                AppText(SignupStrings.passwordStepFooter, TextType.Body, )
                 Spacer(Modifier.height(spacing.x2s))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
