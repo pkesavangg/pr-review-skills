@@ -91,7 +91,11 @@ struct SettingsScreen: View {
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.changePassword))
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.changePassword,
+                                                       onTap: {
+                                                           tabViewModel.showTabBar = false
+                                                           router.navigate(to: .changePassword)
+                                                       }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)

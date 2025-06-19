@@ -86,6 +86,7 @@ struct FormErrorMessages {
     static let maxValue99 = "value should be less than 99"
     static let maxValue = {(value: Int) in "value should be less than \(value)"}
     static let passwordResetFailed = "Failed to send password reset email."
+    static let newPasswordDifferent = "New password must be different from old password"
 }
 
 /// Constants for input field labels used in the app
@@ -95,6 +96,7 @@ struct InputFieldLabels {
     static let email = "email"
     static let password = "password"
     static let confirmPassword = "confirm password"
+    static let currentPassword = "current password"
     static let currentWeight = "current weight"
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
@@ -152,6 +154,12 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
     struct EditProfileExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
+    struct ChangePasswordExitAlert {
         static let title = "Confirm"
         static let message = "You have unsaved changes. Are you sure you want to exit?"
         static let exitButton = "Exit"

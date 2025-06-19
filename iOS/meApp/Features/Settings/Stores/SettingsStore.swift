@@ -22,6 +22,8 @@ class SettingsStore: ObservableObject {
     
     // Edit-Profile flow
     @Published var editProfileForm = EditProfileForm()
+    // Change-Password flow
+    @Published var changePasswordForm = ChangePasswordForm()
     
     var cancellables = Set<AnyCancellable>()
     
@@ -338,5 +340,65 @@ class SettingsStore: ObservableObject {
         
         // Re-populate with the latest account data so the screen isn't blank.
         populateEditFormIfNeeded()
+    }
+    
+    // MARK: - Change Password Helpers
+    
+    func handleChangePasswordExit(router: Router<SettingsRoute>) {
+        if !changePasswordForm.isDirty {
+            resetChangePasswordForm()
+            router.navigateBack()
+            return
+        }
+        
+        let alert = AlertModel(
+            title: AlertStrings.ChangePasswordExitAlert.title,
+            message: AlertStrings.ChangePasswordExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.ChangePasswordExitAlert.exitButton, type: .primary) { _ in
+                    self.resetChangePasswordForm()
+                    router.navigateBack()
+                },
+                AlertButtonModel(title: AlertStrings.ChangePasswordExitAlert.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Persists the password change via `AccountService`.
+    func savePassword(router: Router<SettingsRoute>) {
+        guard changePasswordForm.isValid else { return }
+        
+        Task {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
+            do {
+                try await accountService.updatePassword(
+                    oldPassword: changePasswordForm.currentPassword.value,
+                    newPassword: changePasswordForm.newPassword.value
+                )
+                notificationService.showToast(ToastModel(title: ToastStrings.success, message: "Password updated."))
+                resetChangePasswordForm()
+                router.navigateBack()
+                logger.log(level: .info, tag: tag, message: "Password updated successfully")
+            } catch {
+                var toastMessage: String = ToastStrings.somethingWentWrong
+                switch error {
+                case HTTPError.badRequest:
+                    toastMessage = "Incorrect current password."
+                case HTTPError.noInternet:
+                    toastMessage = ToastStrings.unableToConnect
+                default:
+                    break
+                }
+                notificationService.showToast(ToastModel(title: ToastStrings.loginError, message: toastMessage))
+                logger.log(level: .error, tag: tag, message: "Password update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    /// Resets the change-password form.
+    func resetChangePasswordForm() {
+        changePasswordForm = ChangePasswordForm()
     }
 }
