@@ -59,7 +59,6 @@ fun HomeNavHost(
         entryDecorators = listOf(
             rememberSceneSetupNavEntryDecorator(),
             rememberSavedStateNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator(),
         ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {

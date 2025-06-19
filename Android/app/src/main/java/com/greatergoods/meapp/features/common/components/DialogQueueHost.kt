@@ -9,6 +9,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 
@@ -30,9 +32,9 @@ import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 fun DialogQueueHost(
     dialogQueueViewModel: DialogQueueViewModel,
     customDialogContent: (
-    @Composable (
-        DialogModel.Custom,
-    ) -> Unit
+        @Composable (
+            DialogModel.Custom,
+        ) -> Unit
     )? = null,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -53,53 +55,35 @@ fun DialogQueueHost(
     currentDialog?.let { dialog ->
         when (dialog) {
             is DialogModel.Alert -> {
-                AlertDialog(
-                    onDismissRequest = {
-                        dialog.onDismiss?.let { it() }
-                        dialogQueueViewModel.dismissCurrent()
-                    },
-                    title = { Text(dialog.title) },
-                    text = { Text(dialog.message) },
-                    confirmButton = {
-                        Button(
-                            onClick = {
+                AppDialog(
+                    title = dialog.title,
+                    body = dialog.message,
+                    confirmAction =
+                        ActionButton(
+                            dialog.dismissText,
+                            action = {
                                 dialogQueueViewModel.dismissCurrent()
                             },
-                        ) {
-                            Text(dialog.dismissText)
-                        }
-                    },
+                        ),
+                    properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
                 )
             }
 
             is DialogModel.Confirm -> {
-                AlertDialog(
-                    onDismissRequest = {
-                        dialog.onDismiss?.let { it() }
-                        dialogQueueViewModel.dismissCurrent()
-                    },
-                    title = { Text(dialog.title) },
-                    text = { Text(dialog.message) },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                dialog.onConfirm?.invoke()
-                                dialogQueueViewModel.dismissCurrent()
-                            },
-                        ) {
-                            Text(dialog.confirmText)
-                        }
-                    },
-                    dismissButton = {
-                        Button(
-                            onClick = {
-                                dialog.onCancel?.invoke()
-                                dialogQueueViewModel.dismissCurrent()
-                            },
-                        ) {
-                            Text(dialog.cancelText)
-                        }
-                    },
+                AppDialog(
+                    title = dialog.title,
+                    body = dialog.message,
+                    confirmAction =
+                        ActionButton(dialog.confirmText) {
+                            dialog.onConfirm?.let { it() }
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                    dismissAction =
+                        ActionButton(dialog.cancelText) {
+                            dialog.onDismiss?.let { it() }
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                    properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
                 )
             }
 

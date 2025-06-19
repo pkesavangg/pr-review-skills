@@ -23,9 +23,9 @@ data class BodyScaleEntryEntity(
     @PrimaryKey
     val id: Long,
     val weight: Int,
-    val bodyFat: Int,
-    val muscleMass: Int,
-    val water: Int,
-    val bmi: Int,
-    val source: String,
+    val bodyFat: Int?,
+    val muscleMass: Int?,
+    val water: Int?,
+    val bmi: Int?,
+    val source: String?,
 )

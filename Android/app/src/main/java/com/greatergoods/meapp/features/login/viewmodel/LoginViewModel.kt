@@ -5,7 +5,9 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
@@ -44,7 +46,10 @@ constructor(
         super.handleIntent(intent)
         when (intent) {
             is LoginIntent.Submit -> onSubmit()
-            is LoginIntent.OpenInAppBrowser -> openUrl(intent.url)
+            is LoginIntent.OpenForgotPasswordModal -> openForgotPasswordModal()
+            is LoginIntent.OpenInAppBrowser -> openInAppBrowser(intent.url)
+            is LoginIntent.Success -> navigateToDashboard()
+            is LoginIntent.OpenHelpModal -> openHelpModal()
             else -> null
         }
     }
@@ -67,15 +72,10 @@ constructor(
             try {
                 val account = accountAuthService.login(email, password)
                 if (account != null) {
-                    navigationService.replaceStack(AppRoute.Init.Loading)
-                    AppLog.i("logIn", "Navigation to dashboard successful")
                     handleIntent(LoginIntent.Success)
-                } else {
-                    handleIntent(LoginIntent.Error(LoginStrings.Error.MessageNotAuth))
                 }
             } catch (e: Exception) {
-                AppLog.e("logIn", "Login failed", e.toString())
-                handleIntent(LoginIntent.Error(LoginStrings.Error.MessageGeneric))
+                AppLog.e("onSubmit", "Login failed", e.toString())
             } finally {
                 dialogQueueService.dismissLoader()
             }
@@ -83,10 +83,45 @@ constructor(
     }
 
     /**
+     * Opens the Forgot Password modal.
+     */
+    private fun openForgotPasswordModal() {
+        val loginEmail = state.value.form.controls.email.value
+        dialogQueueService.enqueue(
+            DialogModel.Custom(
+                contentKey = DialogType.PasswordReset,
+                params = mapOf(
+                    "email" to loginEmail
+                ),
+                onDismiss = {},
+            ),
+        )
+    }
+
+    /**
+     * Opens the Help modal.
+     */
+    private fun openHelpModal() {
+        dialogQueueService.enqueue(
+            DialogModel.Custom(
+                contentKey = DialogType.HelpPopup,
+                onDismiss = {},
+            ),
+        )
+    }
+
+    /**
      * Opens a URL using the injected CustomTabManager.
      * @param url The URL to open.
      */
-    fun openUrl(url: String) {
+    private fun openInAppBrowser(url: String) {
         customTabManager.openChromeTab(url)
+    }
+
+    private fun navigateToDashboard() {
+        viewModelScope.launch {
+            navigationService.replaceStack(AppRoute.Init.Loading)
+            AppLog.i("onSubmit", "Navigation to dashboard successful")
+        }
     }
 }

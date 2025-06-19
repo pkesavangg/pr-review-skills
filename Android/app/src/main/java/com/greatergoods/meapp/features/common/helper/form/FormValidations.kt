@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.helper.form
 
+import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import java.util.Calendar
 
 object ValidationType {
@@ -232,14 +233,24 @@ object FormValidations {
             }
         }
 
-    fun confirmPasswordValidator(passwordControl: FormControl<String>): Validator<String> =
-        { value ->
-            if (value != passwordControl.value) {
-                ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
-            } else {
-                null
-            }
+
+                /**
+     * This validator is specifically for confirm password field to check against password field
+     */
+    fun confirmPasswordMatch(
+        formGroup: () -> FormGroup<SignupFormControls>
+    ): Validator<String> = { confirmPasswordValue ->
+        val form = formGroup()
+        val passwordValue = form.controls.password.value
+
+        // Only show mismatch error if both fields have values and they don't match
+        if (confirmPasswordValue.isNotEmpty() && passwordValue.isNotEmpty() && confirmPasswordValue != passwordValue) {
+            ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
+        } else {
+            null
         }
+    }
+
 
     fun noWhitespace(): Validator<String> =
         { value ->

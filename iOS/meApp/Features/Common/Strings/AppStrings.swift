@@ -18,7 +18,7 @@ struct CommonStrings {
     static let skip = "Skip"
     static let logIn = "Log in"
     static let complete = "Complete"
-
+    static let edit = "Edit"
     static let dash = "dash"
     static let entry = "entry"
     static let history = "history"
@@ -26,6 +26,13 @@ struct CommonStrings {
     static let appSync = "appsync"
     static let optional = "optional"
     static let connectScale = "Connect Scale"
+    static let unitKgCm = "kg & cm"
+    static let unitLbsFeet = "lbs & feet"
+    static let on = "On"
+    static let off = "Off"
+    static let dark = "Dark"
+    static let light = "Light"
+    static let system = "System Settings"
 }
 
 /// Constants for entry strings used in the app
@@ -33,6 +40,7 @@ struct EntryStrings {
     static let noEntries = "No Entries"
     static let toStart = "To start, connect a scale or add a manual entry."
 }
+
 
 /// Constants for toast messages used in the app
 struct ToastStrings {
@@ -53,6 +61,20 @@ struct ToastStrings {
     static let entryAdded = "Entry added."
     static let errorSavingEntry = "Error saving new entry!"
     static let pleaseTryAgain = "Please try again."
+    static let errorUpdatingProfile = "Error updating profile"
+    static let profileSaved = "Profile saved successfully."
+    static let csvExported = ".CSV file sent. Please check your email."
+    static let passwordUpdated = "Password updated."
+    static let errorUpdatingPassword = "Error updating password."
+    static let restartAndTryAgain = "Restart the app and try again."
+    static let csvExportError = "Error sending .CSV file. Please try again."
+    static let unitSettingUpdated = "Unit settings updated."
+    static let notificationSettingUpdated = "Notification settings updated."
+    static let streakSettingUpdated = "Streak settings updated."
+    static let activitySettingUpdated = "Activity level updated."
+    static let genderUpdated = "Gender updated."
+    static let somethingWentWrongTitle = "Something went wrong!"
+    static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
 }
 
 /// Constants for help modal strings used in the app
@@ -74,6 +96,7 @@ struct FormErrorMessages {
     static let noWhiteSpace = "must not be left blank"
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "passwords do not match"
+    static let bothPasswordsMatch = "both passwords must match"
     static let valueShouldBeEqual = "value should not be equal to current weight"
     static let minWeightKg = "value should be greater than 0 kg"
     static let minWeightLb = "value should be greater than 0 lbs"
@@ -83,6 +106,7 @@ struct FormErrorMessages {
     static let maxValue99 = "value should be less than 99"
     static let maxValue = {(value: Int) in "value should be less than \(value)"}
     static let passwordResetFailed = "Failed to send password reset email."
+    static let newPasswordDifferent = "New password must be different from old password"
 }
 
 /// Constants for input field labels used in the app
@@ -92,6 +116,7 @@ struct InputFieldLabels {
     static let email = "email"
     static let password = "password"
     static let confirmPassword = "confirm password"
+    static let currentPassword = "current password"
     static let currentWeight = "current weight"
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
@@ -148,15 +173,36 @@ struct AlertStrings {
         static let deleteButton = "Delete"
         static let cancelButton = "Cancel"
     }
+    struct EditProfileExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
+    struct ChangePasswordExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
+    struct CsvExportAlert {
+        static let title = "Download Weight History"
+        static let message = "An email with your measurement history will be sent to the email address associated with this account."
+        static let sendButton = "Send"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
     static let creatingAccount = "Creating account..."
     static let savingEntry = "Saving entry..."
+    static let saving = "Saving..."
     static let loggingAccount = "Logging in..."
     static let loggingOut = "Logging out..."
     static let deletingAccount = "Deleting account..."
     static let sendingEmail = "Sending email..."
+    static let sendingCsv = "Sending .CSV File..."
+    static let loading = "Loading..."
 }
 
 struct URLStrings {
@@ -227,3 +273,4 @@ struct AppAssets {
     static let ageIcon = "metabolicAge"
     static let emptyStateIcon = "emptyStateIcon"
 }
+

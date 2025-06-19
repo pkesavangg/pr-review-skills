@@ -55,7 +55,7 @@ android {
 
         outputs.all {
             val outputImpl = this as BaseVariantOutputImpl
-            val appName = "MeApp"
+            val appName = "Weight gurus"
             val versionCode = this.versionCode
             val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
             outputImpl.outputFileName =
@@ -149,6 +149,9 @@ dependencies {
     // Vico charts
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
+
+    // foundation-pullrefresh
+    // implementation(libs.androidx.foundation.pullrefresh)
 }
 
 // Allow references to generated code

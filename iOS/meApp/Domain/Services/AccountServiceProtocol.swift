@@ -63,8 +63,9 @@ protocol AccountServiceProtocol {
 
     /// Updates the user's profile information.
     /// - Parameter profile: The updated Profile object.
+    /// - Parameter canSaveOffline: Whether the profile can be saved offline.
     /// - Returns: The updated Account object.
-    func updateProfile(_ profile: Profile) async throws -> Account
+    func updateProfile(_ profile: Profile, canSaveOffline: Bool) async throws -> Account
 
     /// Updates the user's body composition information.
     /// - Parameter bodyComp: The updated BodyComp object.

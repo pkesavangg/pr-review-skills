@@ -272,4 +272,10 @@ final class DateTimeTools {
         }
         return formatter.string(from: combined)
     }
+    
+    // MARK: - Timezone Offset
+    /// Returns the current user's timezone offset in minutes.
+    static func getUTCOffset() -> Int {
+        TimeZone.current.secondsFromGMT() / 60
+    }
 }

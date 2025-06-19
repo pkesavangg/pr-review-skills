@@ -57,7 +57,6 @@ struct SignupScreen: View {
                     signupStore.showHelpModal()
                 }
             )
-            .padding(.horizontal, .spacingSM)
             
             ProgressBarView(progress: signupStore.progressValue)
                 .padding(.top, .spacingMD)

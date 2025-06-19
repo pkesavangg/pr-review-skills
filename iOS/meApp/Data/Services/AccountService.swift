@@ -224,7 +224,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     /// Updates the profile of the active account with the provided profile data.
     @discardableResult
-    func updateProfile(_ profile: Profile) async throws -> Account {
+    func updateProfile(_ profile: Profile, canSaveOffline: Bool = false) async throws -> Account {
         guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
         }
@@ -236,14 +236,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await updatePublishedState()
             return localAccount
         } catch {
-            if HTTPError.isNetworkError(error) {
+            if canSaveOffline && HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
-            } else {
-                throw error
             }
+            throw error
         }
     }
     

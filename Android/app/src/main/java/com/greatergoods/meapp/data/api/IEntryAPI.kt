@@ -15,10 +15,10 @@ interface EntryApi {
     suspend fun getAllOperations(): OperationsResponse
 
     @GET("operation/r4")
-    suspend fun getOperations(@Query("start") lastUpdated: Long): OperationsResponse
+    suspend fun getOperations(@Query("start") lastUpdated: String): OperationsResponse
 }
 
 data class OperationsResponse(
     val operations: List<ScaleApiEntry>,
-    val timestamp: Long
+    val timestamp: String
 )
