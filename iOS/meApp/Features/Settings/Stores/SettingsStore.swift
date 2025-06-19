@@ -401,7 +401,7 @@ class SettingsStore: ObservableObject {
                 var toastMessage: String = ToastStrings.somethingWentWrong
                 let toastTitle: String = ToastStrings.errorUpdatingPassword
                 switch error {
-                case HTTPError.badRequest:
+                case HTTPError.badRequest, HTTPError.unauthorized:
                     toastMessage = toastLang.restartAndTryAgain
                 case HTTPError.noInternet:
                     break
@@ -413,6 +413,7 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(ToastModel(title: toastTitle, message: toastMessage))
                 logger.log(level: .error, tag: tag, message: "Password update failed:", data: error.localizedDescription)
             }
+            notificationService.dismissLoader()
         }
     }
     

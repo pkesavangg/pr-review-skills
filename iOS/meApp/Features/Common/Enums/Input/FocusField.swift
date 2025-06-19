@@ -13,7 +13,7 @@ enum FocusField: Hashable {
     case password
     case currentPassword
     case newPassword
-    case repeatNewPassword
+    case confirmNewPassword
     case confirmPassword
     case zipCode
     case weight

@@ -62,7 +62,7 @@ struct ChangePasswordScreen: View {
                         value: $settingsStore.changePasswordForm.newPassword.value,
                         focusedField: $focusedField
                     ) {
-                        focusedField = .repeatNewPassword
+                        focusedField = .confirmNewPassword
                     }
 
                     // Confirm new password
@@ -70,10 +70,10 @@ struct ChangePasswordScreen: View {
                         config: TextInputConfig(
                             label: labels.confirmPassword,
                             inputType: .password,
-                            errorMessage: settingsStore.changePasswordForm.getError(for: settingsStore.changePasswordForm.repeatPassword),
-                            focusField: .repeatNewPassword
+                            errorMessage: settingsStore.changePasswordForm.getError(for: settingsStore.changePasswordForm.confirmNewPassword),
+                            focusField: .confirmNewPassword
                         ),
-                        value: $settingsStore.changePasswordForm.repeatPassword.value,
+                        value: $settingsStore.changePasswordForm.confirmNewPassword.value,
                         focusedField: $focusedField
                     ) {
                         focusedField = nil

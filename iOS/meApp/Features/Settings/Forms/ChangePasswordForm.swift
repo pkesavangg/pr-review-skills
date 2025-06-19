@@ -18,7 +18,7 @@ class ChangePasswordForm: ObservableForm {
     // MARK: - Controls
     var currentPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var newPassword     = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
-    var repeatPassword  = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
+    var confirmNewPassword  = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
 
     // MARK: - Change publisher
     /// Emits whenever any of the underlying controls changes – convenient for Combine bindings.
@@ -26,7 +26,7 @@ class ChangePasswordForm: ObservableForm {
         Publishers.MergeMany([
             currentPassword.$value.map { _ in () }.eraseToAnyPublisher(),
             newPassword.$value.map { _ in () }.eraseToAnyPublisher(),
-            repeatPassword.$value.map { _ in () }.eraseToAnyPublisher(),
+            confirmNewPassword.$value.map { _ in () }.eraseToAnyPublisher(),
         ])
         .eraseToAnyPublisher()
     }
@@ -46,8 +46,8 @@ class ChangePasswordForm: ObservableForm {
         }
 
         // Repeat password must match new password
-        if !newPassword.errors[.required] && !repeatPassword.errors[.required] {
-            if newPassword.value != repeatPassword.value {
+        if !newPassword.errors[.required] && !confirmNewPassword.errors[.required] {
+            if newPassword.value != confirmNewPassword.value {
                 errors.update(
                     for: Validator<Any>(type: .passwordMatch) { _ in false },
                     value: false
@@ -75,9 +75,9 @@ class ChangePasswordForm: ObservableForm {
            formErrors[.passwordDifferent] {
             return FormErrorMessages.newPasswordDifferent
         }
-        if control === repeatPassword,
+        if control === confirmNewPassword,
            formErrors[.passwordMatch] {
-            return FormErrorMessages.passwordMatch
+            return FormErrorMessages.bothPasswordsMatch
         }
 
         return nil
