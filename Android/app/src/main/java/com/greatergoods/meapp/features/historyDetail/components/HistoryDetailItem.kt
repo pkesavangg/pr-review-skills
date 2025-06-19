@@ -82,14 +82,12 @@ fun HistoryDetailItem(
                     color = MeTheme.colorScheme.textBody,
                     textAlign = TextAlign.End,
                 )
-                item.entry.unit?.let {
                     Text(
-                        text = it,
+                        text = item.entry.unit ?: "lb",
                         style = MeTheme.typography.subHeading2,
                         color = MeTheme.colorScheme.textSubheading,
                         modifier = Modifier.padding(start = MeTheme.spacing.x2s),
                     )
-                }
             }
 
             // Chevron

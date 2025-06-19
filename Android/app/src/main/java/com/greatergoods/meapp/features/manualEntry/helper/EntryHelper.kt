@@ -17,10 +17,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object EntryHelper {
-    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM-dd")
         .withZone(ZoneId.systemDefault())
 
-    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm a")
+    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
         .withZone(ZoneId.systemDefault())
 
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
