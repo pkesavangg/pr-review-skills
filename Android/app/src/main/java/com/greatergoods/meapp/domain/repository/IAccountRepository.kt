@@ -58,4 +58,7 @@ interface IAccountRepository {
     fun getLoggedInAccountsFromDB(): Flow<List<Account>>
     suspend fun updateTokensInDB(tokens: Map<String, String>)
     suspend fun updateLastActiveTimeInDB(accountId: String)
+
+    suspend fun updateSyncTimeStamp(timeStamp: String)
+    suspend fun getSyncTimeStamp(): Flow<String>
 }

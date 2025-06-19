@@ -3,45 +3,58 @@ package com.greatergoods.meapp.features.history.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.history.components.HistoryItemModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HistoryViewModel
-    @Inject
-    constructor(
-        private val entryService: IEntryService,
-    ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
-            HistoryReducer(),
-        ) {
-        override fun provideInitialState(): HistoryState = HistoryState()
+@Inject
+constructor(
+    private val entryService: IEntryService,
+) : BaseIntentViewModel<HistoryState, HistoryIntent>(
+    HistoryReducer(),
+) {
+    override fun provideInitialState(): HistoryState = HistoryState()
 
-        init {
-            loadHistory()
-        }
-
-        fun loadHistory() {
-            viewModelScope.launch {
-                entryService.last30Days.collect { entries ->
-                    // if (entries != null) {
-                    //     handleIntent(HistoryIntent.SetHistoryItems(entries))
-                    // }
-                }
-                // TODO: Load history from repository/service
-                // For now, just set a sample list
-                val sampleItems =
-                    listOf(
-                        HistoryItemModel("Dec 2022", "5 Entries", "148.6 lbs", "-1.4 lbs"),
-                        HistoryItemModel("Nov 2022", "6 Entries", "150.0 lbs", "+0.2 lbs"),
-                        HistoryItemModel("Oct 2022", "4 Entries", "140.0 lbs", "+0.2 lbs"),
-                    )
-                handleIntent(HistoryIntent.SetHistoryItems(sampleItems))
+    override fun handleIntent(intent: HistoryIntent) {
+        super.handleIntent(intent)
+        when (intent) {
+            is HistoryIntent.Refresh -> {
+                resync()
             }
-        }
 
-        override fun handleIntent(intent: HistoryIntent) {
-            super.handleIntent(intent)
+            else -> null
         }
     }
+
+    init {
+        loadHistory()
+        viewModelScope.launch {
+            entryService.isUpdating.collect {
+                handleIntent(HistoryIntent.Loading(it))
+            }
+        }
+    }
+
+
+    private fun loadHistory() {
+        viewModelScope.launch {
+            handleIntent(HistoryIntent.Loading(true))
+            entryService.getMonthlyAverage().collect {
+                handleIntent(
+                    HistoryIntent.SetHistoryItems(
+                        items = it,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun resync() {
+        viewModelScope.launch {
+            entryService.syncOperations()
+        }
+    }
+
+}

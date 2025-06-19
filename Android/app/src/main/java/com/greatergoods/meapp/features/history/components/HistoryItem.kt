@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.resources.AppIcons
@@ -30,23 +31,13 @@ import com.greatergoods.meapp.theme.MeTheme
 import android.R.attr.contentDescription
 
 /**
- * Data class for a history month summary item (Figma node 7657-211183).
- */
-data class HistoryItemModel(
-    val month: String, // e.g. "Dec 2022"
-    val entries: String, // e.g. "5 Entries"
-    val average: String, // e.g. "148.6 lbs"
-    val change: String, // e.g. "-1.4 lbs"
-)
-
-/**
  * A single history month summary row, matching the Figma design.
  * @param item The history item data
  * @param onClick Callback when the item is clicked
  */
 @Composable
 fun HistoryItem(
-    item: HistoryItemModel,
+    item: HistoryMonth,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -67,12 +58,12 @@ fun HistoryItem(
             // Month & Entries
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.month,
+                    text = item.entryTimestamp.toString(),
                     style = MeTheme.typography.heading5,
                     color = MeTheme.colorScheme.textBody,
                 )
                 Text(
-                    text = item.entries,
+                    text = item.entryCount.toString().plus(" entries"),
                     style = MeTheme.typography.subHeading2,
                     color = MeTheme.colorScheme.textSubheading,
                     modifier = Modifier.padding(top = MeTheme.spacing.x2s),
@@ -82,7 +73,7 @@ fun HistoryItem(
             // Average
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = item.average,
+                    text = item.avgWeight.toString(),
                     style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                 )
@@ -97,7 +88,7 @@ fun HistoryItem(
             // Change
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = item.change,
+                    text = item.change.toString(),
                     style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                 )
@@ -132,11 +123,11 @@ fun HistoryItemPreview() {
     MeAppTheme {
         HistoryItem(
             item =
-                HistoryItemModel(
-                    month = "Dec 2022",
-                    entries = "5 Entries",
-                    average = "148.6 lbs",
-                    change = "-1.4 lbs",
+                HistoryMonth(
+                    entryTimestamp = "Dec 2022",
+                    entryCount = 3,
+                    avgWeight = 148.4,
+                    change = -1.4,
                 ),
             onClick = {},
         )

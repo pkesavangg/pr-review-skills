@@ -4,6 +4,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 
@@ -14,8 +15,8 @@ import com.greatergoods.meapp.theme.MeAppTheme
  */
 @Composable
 fun HistoryList(
-    items: List<HistoryItemModel>,
-    onItemClick: (HistoryItemModel) -> Unit,
+    items: List<HistoryMonth>,
+    onItemClick: (HistoryMonth) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
@@ -31,9 +32,24 @@ fun HistoryListPreview() {
     MeAppTheme {
         val sampleItems =
             listOf(
-                HistoryItemModel("Weight", "Morning Weigh-in", "Apr 20, 2024", "180 lbs"),
-                HistoryItemModel("Steps", "Afternoon Walk", "Apr 19, 2024", "10,000"),
-                HistoryItemModel("Sleep", "Last Night", "Apr 19, 2024", "7h 30m"),
+                HistoryMonth(
+                    entryTimestamp = "2023-10",
+                    avgWeight = 70.5,
+                    entryCount = 15,
+                    change = -1.2,
+                ),
+                HistoryMonth(
+                    entryTimestamp = "2023-09",
+                    avgWeight = 71.0,
+                    entryCount = 12,
+                    change = 0.5,
+                ),
+                HistoryMonth(
+                    entryTimestamp = "2023-08",
+                    avgWeight = 72.0,
+                    entryCount = 10,
+                    change = -0.8,
+                ),
             )
         HistoryList(items = sampleItems, onItemClick = {})
     }

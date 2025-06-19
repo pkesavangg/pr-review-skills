@@ -142,7 +142,7 @@ private fun AnimatedTextDots(dotCount: Int) {
 
     Row(
         verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         animatables.forEach { anim ->
             AnimatedDot(yOffset = -anim.value * travelDistance)
@@ -158,8 +158,8 @@ private fun AnimatedDot(yOffset: Float) {
     Text(
         text = ".",
         style = MeTheme.typography.subHeading1,
-        color = MeTheme.colorScheme.wgPrimary,
-        fontSize = 16.sp,
+        color = MeTheme.colorScheme.inverseAction,
+        fontSize = 18.sp,
         modifier =
             Modifier.graphicsLayer {
                 translationY = yOffset

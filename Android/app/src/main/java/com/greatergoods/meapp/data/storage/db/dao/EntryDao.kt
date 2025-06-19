@@ -10,6 +10,7 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BpmEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.BpmEntry
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -23,6 +24,7 @@ import java.util.Map.entry
  * Data Access Object (DAO) for the entry table.
  * Provides methods to interact with the entry data in the database.
  * Includes methods for basic CRUD operations and specialized queries for different types of entries.
+ * All datetime values are stored and handled in ISO 8601 format (e.g. "2025-06-19T06:30:00.000Z")
  */
 @Dao
 interface EntryDao {
@@ -78,11 +80,10 @@ interface EntryDao {
      */
     @Transaction
     suspend fun delete(entry: Entry) {
-        val timestamp = System.currentTimeMillis()
         val deleteEntry = entry.entry.copy(
             id = 0,
             operationType = "DELETE",
-            opTimestamp = timestamp,
+            opTimestamp = entry.entry.opTimestamp,
         )
         insertEntryEntity(deleteEntry)
     }
@@ -102,7 +103,7 @@ interface EntryDao {
      * @return The latest Entry with relations if found, null otherwise
      */
     @Transaction
-    @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY entryTimestamp DESC LIMIT 1")
+    @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
     fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry>?
 
     /**
@@ -116,10 +117,10 @@ interface EntryDao {
     suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
 
     /**
-     * Get the latest entry for a specific account with all related details.
+     * Get entries within a time range for a specific account.
      * @param accountId The account ID
-     * @param startTime The start timestamp
-     * @param endTime The end timestamp
+     * @param startTime The start time in ISO 8601 format
+     * @param endTime The end time in ISO 8601 format
      * @return A Flow of entries within the time range with relations
      */
     @Transaction
@@ -128,15 +129,15 @@ interface EntryDao {
         SELECT *
         FROM entry_view
         WHERE accountId = :accountId
-          AND entryTimestamp BETWEEN :startTime AND :endTime
+          AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
           AND entryTimestamp IN (
             SELECT MAX(entryTimestamp)
             FROM entry_view
             WHERE accountId = :accountId
-              AND entryTimestamp BETWEEN :startTime AND :endTime
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp/1000, 'unixepoch'))
+              AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp))
           )
-        ORDER BY entryTimestamp DESC
+        ORDER BY datetime(entryTimestamp) DESC
     """,
     )
     fun getEntriesByTimeRange(
@@ -321,7 +322,7 @@ interface EntryDao {
     suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
 
     /**
-     * Get entries for a specific month and year.
+     * Get entries for a specific month.
      * @param accountId The account ID
      * @param month The month in YYYY-MM format
      * @return Flow of list of entries for the specified month
@@ -331,8 +332,8 @@ interface EntryDao {
         """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-        AND strftime('%Y-%m', datetime(entryTimestamp/1000, 'unixepoch')) = :month
-        ORDER BY entryTimestamp DESC
+        AND strftime('%Y-%m', datetime(entryTimestamp)) = :month
+        ORDER BY datetime(entryTimestamp) DESC
     """,
     )
     fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
@@ -378,7 +379,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
           MAX(e.entryTimestamp) AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
@@ -394,7 +395,7 @@ interface EntryDao {
           AVG(bsem.visceralFatLevel) AS visceralFatLevel,
           AVG(bsem.boneMass) AS boneMass,
           AVG(bsem.impedance) AS impedance,
-          MAX(bsem.unit) AS unit
+          MAX(e.unit) AS unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
@@ -417,7 +418,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
           e.entryTimestamp,
           bse.weight,
           bse.bodyFat,
@@ -433,7 +434,7 @@ interface EntryDao {
           bsem.visceralFatLevel,
           bsem.boneMass,
           bsem.impedance,
-          bsem.unit
+          e.unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
@@ -442,7 +443,7 @@ interface EntryDao {
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m', datetime(entryTimestamp/1000, 'unixepoch'))
+            GROUP BY strftime('%Y-%m', datetime(entryTimestamp))
           )
         ORDER BY period DESC
     """,
@@ -460,7 +461,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m-%d', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS period,
           MAX(e.entryTimestamp) AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
@@ -476,7 +477,7 @@ interface EntryDao {
           AVG(bsem.visceralFatLevel) AS visceralFatLevel,
           AVG(bsem.boneMass) AS boneMass,
           AVG(bsem.impedance) AS impedance,
-          MAX(bsem.unit) AS unit
+          MAX(e.unit) AS unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
@@ -499,7 +500,7 @@ interface EntryDao {
     @Query(
         """
         SELECT
-          strftime('%Y-%m-%d', datetime(e.entryTimestamp/1000, 'unixepoch')) AS period,
+          strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS period,
           e.entryTimestamp,
           bse.weight,
           bse.bodyFat,
@@ -515,7 +516,7 @@ interface EntryDao {
           bsem.visceralFatLevel,
           bsem.boneMass,
           bsem.impedance,
-          bsem.unit
+          e.unit
         FROM entry AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
@@ -524,7 +525,7 @@ interface EntryDao {
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp/1000, 'unixepoch'))
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp))
           )
         ORDER BY period DESC
     """,
@@ -532,4 +533,47 @@ interface EntryDao {
     fun getDaywiseBodyScaleLatestWithJoin(
         accountId: String
     ): Flow<List<PeriodBodyScaleSummary>>
+
+    @Query(
+        """
+    WITH entries_with_period AS (
+        SELECT
+            e.entryTimestamp,
+            bse.weight,
+            strftime('%Y-%m', datetime(e.entryTimestamp)) AS period
+        FROM entry_view e
+        LEFT JOIN body_scale_entry bse ON e.id = bse.id
+        WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
+    ),
+    first_last AS (
+        SELECT
+            period,
+            MIN(entryTimestamp) AS firstTimestamp,
+            MAX(entryTimestamp) AS lastTimestamp
+        FROM entries_with_period
+        GROUP BY period
+    ),
+    joined AS (
+        SELECT
+            fl.period,
+            fl.firstTimestamp,
+            fl.lastTimestamp,
+            (SELECT weight FROM entries_with_period WHERE entryTimestamp = fl.firstTimestamp) AS firstWeight,
+            (SELECT weight FROM entries_with_period WHERE entryTimestamp = fl.lastTimestamp) AS lastWeight,
+            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
+            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
+        FROM first_last fl
+    )
+    SELECT
+        firstTimestamp AS entryTimestamp,
+        avgWeight,
+        entryCount,
+        lastWeight - firstWeight AS change
+    FROM joined
+    ORDER BY period DESC
+    """,
+    )
+    fun getMonthlyHistory(
+        accountId: String
+    ): Flow<List<HistoryMonth>>
 }

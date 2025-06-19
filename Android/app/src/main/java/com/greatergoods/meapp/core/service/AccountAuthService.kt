@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.config.HttpErrorConfig
-import com.greatergoods.meapp.core.network.TokenManager
+import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.AuthAction
@@ -36,7 +36,7 @@ class AccountAuthService
 constructor(
     private val accountRepository: IAccountRepository,
     private val connectivityObserver: IConnectivityObserver,
-    private val tokenManager: TokenManager,
+    private val tokenManager: ITokenManager,
     private val dialogQueueService: IDialogQueueService
 ) : IAccountAuthService {
     companion object {
@@ -101,6 +101,7 @@ constructor(
             tokenManager.setTokens(
                 Token(
                     accountId = savedAccount.id,
+                    isActive = true,
                     accessToken = loginResponse.accessToken,
                     refreshToken = loginResponse.refreshToken,
                     expiresAt = loginResponse.expiresAt,

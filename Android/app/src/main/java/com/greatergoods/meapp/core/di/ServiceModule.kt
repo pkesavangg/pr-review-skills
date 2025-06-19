@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.core.network.TokenManager
+import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountAuthService
 import com.greatergoods.meapp.core.service.AppEventService
@@ -46,7 +46,7 @@ object ServiceModule {
     fun provideAccountAuthService(
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
-        tokenManager: TokenManager,
+        tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService
     ): IAccountAuthService = AccountAuthService(
         accountRepository,
@@ -100,8 +100,8 @@ object ServiceModule {
     @Singleton
     fun provideEntryService(
         entryRepository: com.greatergoods.meapp.domain.repository.IEntryRepository,
-        accountDao: com.greatergoods.meapp.data.storage.db.dao.AccountDao,
-    ): IEntryService = EntryService(entryRepository, accountDao)
+        accountRepository: IAccountRepository
+    ): IEntryService = EntryService(entryRepository, accountRepository)
 
     @Provides
     @Singleton
