@@ -24,4 +24,14 @@ final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
         )
         return response
     }
+    
+    func exportCsv(useR4Endpoint: Bool) async throws -> ExportResponse {
+        let utcOffset = DateTimeTools.getUTCOffset()
+        let endPoint: Endpoint = useR4Endpoint ? .operationsR4CSV(utcOffset: utcOffset, download: false) : .operationsCSV(utcOffset: utcOffset, download: false)
+        let response: ExportResponse = try await httpClient.get(
+            endPoint,
+            needsAuth: true
+        )
+        return response
+    }
 }

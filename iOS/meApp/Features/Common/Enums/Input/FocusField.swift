@@ -11,6 +11,9 @@ enum FocusField: Hashable {
     case lastName
     case email
     case password
+    case currentPassword
+    case newPassword
+    case confirmNewPassword
     case confirmPassword
     case zipCode
     case weight

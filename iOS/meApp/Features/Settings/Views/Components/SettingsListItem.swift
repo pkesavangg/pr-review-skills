@@ -24,9 +24,8 @@ struct SettingsListItem: View {
                     valueText(value)
                 }
                 if config.canShowChevron {
-                    AppIconView(icon: AppAssets.chevronUp)
+                    AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 22, height: 22))
                         .foregroundColor(theme.statusIconPrimary)
-                        .rotationEffect(Angle(degrees: 90))
                 }
             }
         }
