@@ -1,13 +1,11 @@
 package com.greatergoods.meapp.features.history.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for the history feature, managing state and handling history intents.
@@ -18,9 +16,13 @@ import kotlinx.coroutines.launch
 class HistoryViewModel @Inject constructor(
     private val entryService: IEntryService
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
-    initialState = HistoryState(),
-    reducer = HistoryReducer()
+    reducer = HistoryReducer(),
 ) {
+
+    override fun provideInitialState(): HistoryState {
+        return HistoryState()
+    }
+
     init {
         handleIntent(HistoryIntent.LoadHistory)
         loadHistory()

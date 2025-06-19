@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,12 +17,14 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
@@ -72,7 +73,7 @@ object SegmentButtonDefaults {
      */
     fun minWidth(size: SegmentButtonSize): Dp =
         when (size) {
-            SegmentButtonSize.Small -> 80.dp
+            SegmentButtonSize.Small -> 0.dp
             SegmentButtonSize.Medium -> 120.dp
             SegmentButtonSize.Large -> 160.dp
             // TODO: Need to update after UX answered
@@ -91,8 +92,8 @@ object SegmentButtonDefaults {
     fun horizontalPadding(size: SegmentButtonSize): Dp =
         when (size) {
             SegmentButtonSize.Small -> MeTheme.spacing.sm
-            SegmentButtonSize.Medium -> MeTheme.spacing.md
-            SegmentButtonSize.Large -> MeTheme.spacing.lg
+            SegmentButtonSize.Medium -> MeTheme.spacing.sm
+            SegmentButtonSize.Large -> MeTheme.spacing.sm
         }
 
     /**
@@ -151,7 +152,7 @@ fun SegmentButtonGroup(
     val shape = RoundedCornerShape(SegmentButtonDefaults.cornerRadius())
     val density = LocalDensity.current
     val segmentButtonModifier = modifier.height(IntrinsicSize.Min).defaultMinSize(minWidth = minWidth)
-    val maxLines = 1
+    val maxLines = 2
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -178,10 +179,9 @@ fun SegmentButtonGroup(
 
     LazyRow(
         state = listState,
-        horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy),
+        horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy, Alignment.Start),
         modifier =
             Modifier
-                .fillMaxWidth()
                 .onSizeChanged { rowWidthPx = it.width },
     ) {
         itemsIndexed(data) { index, option ->
@@ -226,7 +226,7 @@ fun SegmentButtonGroup(
 fun SegmentButtonPreview() {
     MeAppTheme {
         Column(
-            modifier = Modifier.padding(MeTheme.spacing.md),
+            // modifier = Modifier.padding(MeTheme.spacing.md),
         ) {
             // --- Small size ---
             var selectedSmallIndex by remember { mutableStateOf(1) }

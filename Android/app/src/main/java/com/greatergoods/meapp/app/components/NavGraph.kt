@@ -24,7 +24,7 @@ fun EntryProviderBuilder<NavKey>.authEntries() {
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {
     entry<AppRoute.Main.Dashboard> { DashboardScreen() }
     entry<AppRoute.Main.History> { HistoryScreen() }
-    entry<AppRoute.Main.Entry> { EntryScreen {} } // Placeholder for EntryScreen
+    entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
     entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
     entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
 }
