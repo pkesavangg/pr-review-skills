@@ -55,7 +55,7 @@ android {
 
         outputs.all {
             val outputImpl = this as BaseVariantOutputImpl
-            val appName = "MeApp"
+            val appName = "Weight gurus"
             val versionCode = this.versionCode
             val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
             outputImpl.outputFileName =

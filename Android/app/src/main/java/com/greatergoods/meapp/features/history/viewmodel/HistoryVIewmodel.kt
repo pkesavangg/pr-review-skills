@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.history.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -18,13 +17,44 @@ constructor(
 ) {
     override fun provideInitialState(): HistoryState = HistoryState()
 
-    init {
-        handleIntent(HistoryIntent.LoadHistory)
-        viewModelScope.launch {
+    override fun handleIntent(intent: HistoryIntent) {
+        super.handleIntent(intent)
+        when (intent) {
+            is HistoryIntent.Refresh -> {
+                resync()
+            }
 
-            entryService.getMonthlyAverage().collect {
-                Log.i("CHECKING", "Monthly Average: $it")
+            else -> null
+        }
+    }
+
+    init {
+        loadHistory()
+        viewModelScope.launch {
+            entryService.isUpdating.collect {
+                handleIntent(HistoryIntent.Loading(it))
             }
         }
     }
+
+
+    private fun loadHistory() {
+        viewModelScope.launch {
+            handleIntent(HistoryIntent.Loading(true))
+            entryService.getMonthlyAverage().collect {
+                handleIntent(
+                    HistoryIntent.SetHistoryItems(
+                        items = it,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun resync() {
+        viewModelScope.launch {
+            entryService.syncOperations()
+        }
+    }
+
 }

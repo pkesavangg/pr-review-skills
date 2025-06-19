@@ -1,7 +1,6 @@
 // domain/service/EntryService.kt
 package com.greatergoods.meapp.data.services
 
-import android.util.Log
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
@@ -12,11 +11,13 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry.Companion.fr
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.entry.helper.EntryHelper.process
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -50,8 +51,9 @@ class EntryService @Inject constructor(
     private var initialWeight: Double? = null
 
     override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> {
-        Log.d("CHECKING", "Monthly history size: ${accountId}")
-        return entryRepository.getMonthlyAverage(accountId ?: "")
+        return entryRepository.getMonthlyAverage(accountId ?: "").map { flow ->
+            flow.map { it.process() }
+        }
     }
 
     /**
@@ -135,6 +137,7 @@ class EntryService @Inject constructor(
         if (accountId == null) return
 
         try {
+            _isUpdating.value = true
             // 1. Get existing unsynced entries
             val unSyncedEntries = entryRepository.getUnSynced(accountId!!).toMutableList()
 
@@ -231,6 +234,8 @@ class EntryService @Inject constructor(
             _lastUpdated.value = System.currentTimeMillis()
         } catch (e: Exception) {
             AppLog.e("EntryService", "Error in syncOperations", e.toString())
+        } finally {
+            _isUpdating.value = false
         }
     }
 

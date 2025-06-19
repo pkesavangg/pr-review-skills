@@ -5,10 +5,14 @@ import com.greatergoods.meapp.data.services.OperationType
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.entry.viewmodel.EntryFormControls
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 object EntryHelper {
     fun FormControl<String>.toIntSafe(default: Int = 0): Int {
@@ -62,6 +66,26 @@ object EntryHelper {
                 scaleEntry = scaleEntry,
                 scaleEntryMetric = metricEntity,
             ),
+        )
+    }
+
+    fun HistoryMonth.process(): HistoryMonth {
+        val monthYear = entryTimestamp?.let {
+            try {
+                val zonedDateTime = ZonedDateTime.parse(it)
+                DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH).format(zonedDateTime)
+            } catch (e: Exception) {
+                it // fallback to original string if parsing fails
+            }
+        }
+
+        fun Double?.rounded(): Double? = this?.let { String.format("%.2f", it).toDouble() }
+
+        return this.copy(
+            entryTimestamp = monthYear,
+            avgWeight = avgWeight?.div(10.0).rounded(),
+            change = change?.div(10.0).rounded()
+            // entryCount is already Int? so no need to change
         )
     }
 }
