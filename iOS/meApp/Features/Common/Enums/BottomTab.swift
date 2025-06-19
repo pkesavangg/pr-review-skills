@@ -49,7 +49,7 @@ enum BottomTab: String, CaseIterable {
         case .dash: DashboardView()
         case .entry: ManualEntryScreen()
         case .history: HistoryListScreen()
-        case .settings: SettingsView()
+        case .settings: SettingsScreen()
         case .appsync: AppSyncView()
         }
     }
