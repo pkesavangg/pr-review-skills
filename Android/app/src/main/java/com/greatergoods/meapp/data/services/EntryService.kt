@@ -11,7 +11,7 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry.Companion.fr
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.services.IEntryService
-import com.greatergoods.meapp.features.entry.helper.EntryHelper.process
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.process
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
