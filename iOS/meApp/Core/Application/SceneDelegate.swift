@@ -17,30 +17,36 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var appModal: PassThroughWindow?
     private var appState = AppState()
 
-    
+
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         if let windowScene = scene as? UIWindowScene {
             setupMainWindow(in: windowScene)
             appModalWindow(in: windowScene)
         }
     }
-    
+
     func setupMainWindow(in scene: UIWindowScene) {
         let window = UIWindow(windowScene: scene)
-        window.rootViewController = UIHostingController(rootView: ContentView()
+        let root = ContentView()
             .themeable()
+            .weightUnitable()
             .environmentObject(appState.themeManager)
-        )
+            .environmentObject(appState.accountService)
+
+        window.rootViewController = UIHostingController(rootView: root)
         self.window = window
         window.makeKeyAndVisible()
     }
-    
+
     func appModalWindow(in scene: UIWindowScene) {
         let appModalWindow = PassThroughWindow(windowScene: scene)
-        let appModalWindowController = UIHostingController(rootView: NotificationContainerView()
+        let modalRoot = NotificationContainerView()
             .themeable()
+            .weightUnitable()
             .environmentObject(appState.themeManager)
-        )
+            .environmentObject(appState.accountService)
+
+        let appModalWindowController = UIHostingController(rootView: modalRoot)
         appModalWindowController.view.backgroundColor = .clear
         appModalWindow.rootViewController = appModalWindowController
         appModalWindow.isHidden = false

@@ -65,8 +65,15 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Fetches all entries for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: An array of Entry objects for the user.
-    func fetchEntries(forUserId userId: String) async throws -> [Entry] {
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId })
+    func fetchEntries(forUserId userId: String, operationType: String? = nil) async throws -> [Entry] {
+        let descriptor: FetchDescriptor<Entry>
+        if let opType = operationType {
+            descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                $0.accountId == userId && $0.operationType == opType
+            })
+        } else {
+            descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId })
+        }
         return try context.fetch(descriptor)
     }
 
