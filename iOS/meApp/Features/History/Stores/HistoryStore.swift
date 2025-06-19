@@ -46,6 +46,19 @@ final class HistoryStore: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
+    // MARK: - Init ------------------------------------------------------
+
+    init() {
+        // Refresh only the affected month when a new entry is stored.
+        entryService.entrySaved
+            .sink { [weak self] entry in
+                guard let self = self else { return }
+                let monthKey = String(entry.entryTimestamp.prefix(7))
+                Task { await self.refreshMonth(monthKey) }
+            }
+            .store(in: &cancellables)
+    }
+
     // MARK: - Public API --------------------------------------------------
 
     /// Call onAppear of History list screen.
@@ -128,6 +141,27 @@ final class HistoryStore: ObservableObject {
 
     private func setLoading(_ value: Bool) async {
         await MainActor.run { self.isLoading = value }
+    }
+
+    // Update or insert a single month summary instead of recomputing all months.
+    private func refreshMonth(_ monthKey: String) async {
+        do {
+            if let summary = try await entryService.getMonthSummary(monthKey: monthKey) {
+                await MainActor.run {
+                    if let index = months.firstIndex(where: { $0.id == monthKey }) {
+                        months[index] = summary
+                    } else {
+                        months.append(summary)
+                        months.sort { $0.entryTimestamp > $1.entryTimestamp }
+                    }
+                }
+                // Ensure empty state flag stays correct
+                await MainActor.run { isEmptyState = months.isEmpty }
+            }
+        } catch {
+            // Fallback to full reload on error
+            Task { await loadMonthsInternal() }
+        }
     }
 }
 
