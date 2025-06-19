@@ -113,12 +113,28 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+    
+    struct LogoutAlert {
+        static let title = "Log Out"
+        static let message = "Are you sure you want to log out?"
+        static let logoutButton = "Log Out"
+        static let cancelButton = "Cancel"
+    }
+    
+    struct DeleteAccountAlert {
+        static let title = "Delete Your Account"
+        static let message = "Are you sure you want to delete your account? This action cannot be undone."
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
     static let creatingAccount = "Creating account..."
     static let savingEntry = "Saving entry..."
     static let loggingAccount = "Logging in..."
+    static let loggingOut = "Logging out..."
+    static let deletingAccount = "Deleting account..."
 }
 
 struct URLStrings {
