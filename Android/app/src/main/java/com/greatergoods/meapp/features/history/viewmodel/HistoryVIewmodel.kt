@@ -3,45 +3,45 @@ package com.greatergoods.meapp.features.history.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.history.components.HistoryItemModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for the history feature, managing state and handling history intents.
- *
- * @property entryService The entry service for fetching history entries.
- */
 @HiltViewModel
-class HistoryViewModel @Inject constructor(
-    private val entryService: IEntryService
-) : BaseIntentViewModel<HistoryState, HistoryIntent>(
-    reducer = HistoryReducer(),
-) {
+class HistoryViewModel
+    @Inject
+    constructor(
+        private val entryService: IEntryService,
+    ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
+            HistoryReducer(),
+        ) {
+        override fun provideInitialState(): HistoryState = HistoryState()
 
-    override fun provideInitialState(): HistoryState {
-        return HistoryState()
-    }
+        init {
+            loadHistory()
+        }
 
-    init {
-        handleIntent(HistoryIntent.LoadHistory)
-        loadHistory()
-    }
-
-    /**
-     * Loads history entries and updates the state accordingly.
-     */
-    private fun loadHistory() {
-        viewModelScope.launch {
-            try {
+        fun loadHistory() {
+            viewModelScope.launch {
                 entryService.last30Days.collect { entries ->
                     if (entries != null) {
-                        handleIntent(HistoryIntent.SetHistoryEntries(entries))
+                        handleIntent(HistoryIntent.SetHistoryItems(entries))
                     }
                 }
-            } catch (e: Exception) {
-                handleIntent(HistoryIntent.SetError(e.message ?: "Failed to load history"))
+                // TODO: Load history from repository/service
+                // For now, just set a sample list
+                val sampleItems =
+                    listOf(
+                        HistoryItemModel("Dec 2022", "5 Entries", "148.6 lbs", "-1.4 lbs"),
+                        HistoryItemModel("Nov 2022", "6 Entries", "150.0 lbs", "+0.2 lbs"),
+                        HistoryItemModel("Oct 2022", "4 Entries", "140.0 lbs", "+0.2 lbs"),
+                    )
+                handleIntent(HistoryIntent.SetHistoryItems(sampleItems))
             }
         }
+
+        override fun handleIntent(intent: HistoryIntent) {
+            super.handleIntent(intent)
+        }
     }
-}
