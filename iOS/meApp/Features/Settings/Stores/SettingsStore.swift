@@ -95,7 +95,6 @@ class SettingsStore: ObservableObject {
                 self?.populateEditFormIfNeeded()
                 self?.populateWeightlessFormIfNeeded()
                 self?.syncHeightPickers()
-                self?.populateGoalFormIfNeeded()
             }
             .store(in: &accountService.cancellables)
             self.populateWeightlessFormIfNeeded()
@@ -615,7 +614,10 @@ class SettingsStore: ObservableObject {
         guard let account = activeAccount else { return }
         let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
         let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
-        if currentOn == isOn && currentWeightStored == storedWeight { return }
+        if currentOn == isOn && currentWeightStored == storedWeight { 
+            dismiss()
+            return 
+        }
         
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
@@ -651,7 +653,7 @@ class SettingsStore: ObservableObject {
             ? ConversionTools.convertStoredToKg(Int(storedWeight))
             : ConversionTools.convertStoredToLbs(Int(storedWeight))
             
-            weightlessForm.weight.value = String(format: "%.1f", display)
+            weightlessForm.weight.value = account.weightlessSettings?.isWeightlessOn ?? false ? String(format: "%.1f", display) : ""
             weightlessForm.weight.markAsPristine()
         }
         let maxWeight = account.weightSettings?.weightUnit ?? .lb == .kg ? 450.0 : 999.0
