@@ -250,6 +250,7 @@ constructor(
             _isSignUpFlow.emit(true)
             savedAccount
         }  catch (e: Exception) {
+            Log.d(TAG, "Account creation failed $e")
             handleSignupError(e as HttpException)
             AppLog.e(TAG, "Account creation failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Account creation failed"))

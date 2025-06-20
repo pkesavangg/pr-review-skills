@@ -2,11 +2,12 @@ package com.greatergoods.meapp.features.signup.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
+import com.greatergoods.meapp.core.shared.utilities.DateTimeTools
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.components.HeightInput
-import com.greatergoods.meapp.features.common.helper.ConversionTools
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
@@ -42,6 +43,7 @@ class SignupViewModel
             when (intent) {
                 is SignupIntent.OpenURL -> openUrl(intent.url)
                 is SignupIntent.Next -> onNext()
+                is SignupIntent.Skip -> onSkip()
                 else -> {}
             }
         }
@@ -70,53 +72,6 @@ class SignupViewModel
         fun onSkip() {
             if (state.value.currentStep == SignupStep.GOAL) {
                 handleIntent(SignupIntent.Skip)
-            }
-        }
-
-        /**
-         * Triggers a state update to recompute validation status.
-         * This should be called when form values change to update the Next button state.
-         */
-        fun onFormChanged() {
-            // Validate relevant form controls for the current step
-            val controls = state.value.form.controls
-            when (state.value.currentStep) {
-                SignupStep.NAME -> {
-                    controls.firstName.validate()
-                    controls.lastName.validate()
-                }
-
-                SignupStep.BIRTHDAY -> {
-                    controls.birthday.validate()
-                }
-
-                SignupStep.GENDER -> {
-                    controls.sex.validate()
-                }
-
-                SignupStep.HEIGHT -> {
-                    // Height doesn't need validation
-                }
-
-                SignupStep.EMAIL -> {
-                    controls.email.validate()
-                }
-
-                SignupStep.GOAL -> {
-                    if (!state.value.goalSkipped) {
-                        controls.goalType.validate()
-                        controls.goalWeight.validate()
-                        if (controls.goalType.value != "maintain") {
-                            controls.currentWeight.validate()
-                        }
-                    }
-                }
-
-                SignupStep.PASSWORD -> {
-                    controls.password.validate()
-                    controls.confirmPassword.validate()
-                    controls.zipcode.validate()
-                }
             }
         }
 
@@ -177,7 +132,7 @@ class SignupViewModel
                                     .trim()
                                     .ifEmpty { " " },
                             "password" to controls.password.value,
-                            "dob" to controls.birthday.value,
+                            "dob" to DateTimeTools.formatDateForAPI(controls.birthday.value.getTimestamp()),
                             "height" to convertHeightInputToMm(controls.height.value),
                         )
 
