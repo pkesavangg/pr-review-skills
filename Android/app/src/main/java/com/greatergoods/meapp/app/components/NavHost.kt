@@ -1,5 +1,8 @@
 package com.greatergoods.meapp.app.components
 
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -26,18 +29,18 @@ fun NavHost(
     topLevelBackStack: TopLevelBackStack<NavKey>,
     appViewModel: AppViewModel,
 ) {
-
     NavigationObserver(
         appViewModel.navigationService.navigationIntent,
         topLevelBackStack,
     )
     NavDisplay(
         modifier = Modifier.navigationBarsPadding(),
-        entryDecorators = listOf(
-            rememberSceneSetupNavEntryDecorator(),
-            rememberSavedStateNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator(),
-        ),
+        entryDecorators =
+            listOf(
+                rememberSceneSetupNavEntryDecorator(),
+                rememberSavedStateNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+            ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
         onBack = {
             topLevelBackStack.removeLast(AppRoute.App)
@@ -48,18 +51,32 @@ fun NavHost(
                 entry<AppRoute.Home> { HomeScreen() }
                 authEntries()
             },
+        transitionSpec = {
+            // Slide in from right when navigating forward
+            slideInHorizontally(initialOffsetX = { it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { -it })
+        },
+        popTransitionSpec = {
+            // Slide in from left when navigating back
+            slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { it })
+        },
+        predictivePopTransitionSpec = {
+            // Slide in from left when navigating back
+            slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { it })
+        },
     )
 }
 
 @Composable
-fun HomeNavHost(
-    topLevelBackStack: TopLevelBackStack<NavKey>,
-) {
+fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
     NavDisplay(
-        entryDecorators = listOf(
-            rememberSceneSetupNavEntryDecorator(),
-            rememberSavedStateNavEntryDecorator(),
-        ),
+        entryDecorators =
+            listOf(
+                rememberSceneSetupNavEntryDecorator(),
+                rememberSavedStateNavEntryDecorator(),
+            ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {
             topLevelBackStack.removeLast(AppRoute.Home)
@@ -68,5 +85,20 @@ fun HomeNavHost(
             entryProvider {
                 topLevelEntries()
             },
+        transitionSpec = {
+            // Slide in from right when navigating forward
+            slideInHorizontally(initialOffsetX = { it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { -it })
+        },
+        popTransitionSpec = {
+            // Slide in from left when navigating back
+            slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { it })
+        },
+        predictivePopTransitionSpec = {
+            // Slide in from left when navigating back
+            slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { it })
+        },
     )
 }

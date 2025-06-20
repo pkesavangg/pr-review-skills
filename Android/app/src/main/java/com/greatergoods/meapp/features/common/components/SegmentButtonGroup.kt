@@ -210,7 +210,7 @@ fun <T> SegmentButtonGroup(
                             maxLines = maxLines,
                         )
                     },
-                    modifier = modifier.weight(1f),
+                    modifier = Modifier.weight(1f),
                 )
             }
         }

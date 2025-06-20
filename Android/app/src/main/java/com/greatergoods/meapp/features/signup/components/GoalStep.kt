@@ -37,39 +37,40 @@ fun GoalStep(
     currentWeightControl: FormControl<String>,
     goalWeightControl: FormControl<String>,
     useMetricControl: FormControl<Boolean>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val currentWeightFocusRequester = remember { FocusRequester() }
     val goalWeightFocusRequester = remember { FocusRequester() }
 
     // Goal type options
-    val goalTypeOptions = listOf(
-        SegmentButtonData(id = 0, label = SignupStrings.goalStepMaintain),
-        SegmentButtonData(id = 1, label = SignupStrings.goalStepLoseGain)
-    )
-
+    val goalTypeOptions =
+        listOf(
+            SegmentButtonData(id = 0, label = SignupStrings.goalStepMaintain),
+            SegmentButtonData(id = 1, label = SignupStrings.goalStepLoseGain),
+        )
 
     AppStyledCard(
-        cardAlignmentType = LocalCardAlignment.current
+        cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.goalStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
+            horizontalArrangement = Arrangement.SpaceAround,
         ) {
-                        SegmentButtonGroup(
+            SegmentButtonGroup(
                 data = goalTypeOptions,
-                selectedData = goalTypeOptions.find {
-                    if (goalTypeControl.value == "maintain") it.id == 0 else it.id == 1
-                } ?: goalTypeOptions[1],
+                selectedData =
+                    goalTypeOptions.find {
+                        if (goalTypeControl.value == "maintain") it.id == 0 else it.id == 1
+                    } ?: goalTypeOptions[1],
                 onSelected = { selectedOption ->
                     val value = if (selectedOption.id == 0) "maintain" else "losegain"
                     goalTypeControl.onValueChange(value)
                 },
                 size = SegmentButtonSize.Small,
                 type = SegmentButtonType.Single,
-                key = SegmentButtonData::label
+                key = SegmentButtonData::label,
             )
         }
         Spacer(modifier = Modifier.padding(vertical = MeTheme.spacing.sm))
@@ -78,11 +79,11 @@ fun GoalStep(
         AppInput(
             formControl = currentWeightControl,
             type = AppInputType.BODY_COMP_DECIMAL,
-            label =  "Current weight (lbs)",
+            label = "Current weight (lbs)",
             imeAction = ImeAction.Next,
             nextFocusRequester = goalWeightFocusRequester,
             modifier = Modifier.focusRequester(currentWeightFocusRequester),
-            enabled = goalTypeControl.value == "losegain"
+            enabled = goalTypeControl.value == "losegain",
         )
 
         AppInput(
@@ -90,12 +91,11 @@ fun GoalStep(
             type = AppInputType.BODY_COMP_DECIMAL,
             label = "Goal weight (lbs)", // Always lbs since we removed metric support
             imeAction = ImeAction.Done,
-            modifier = Modifier.focusRequester(goalWeightFocusRequester)
+            modifier = Modifier.focusRequester(goalWeightFocusRequester),
         )
 
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
         // Goal Type Selection using SegmentButtonGroup
-
     }
 }
 
