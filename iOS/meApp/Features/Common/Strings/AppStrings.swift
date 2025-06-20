@@ -25,6 +25,7 @@ struct CommonStrings {
     static let settings = "settings"
     static let appSync = "appsync"
     static let optional = "optional"
+    static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
     static let unitLbsFeet = "lbs & feet"
     static let on = "On"
@@ -35,6 +36,13 @@ struct CommonStrings {
     static let date = "Date"
     static let weight = "Weight"
 }
+
+/// Constants for entry strings used in the app
+struct EntryStrings {
+    static let noEntries = "No Entries"
+    static let toStart = "To start, connect a scale or add a manual entry."
+}
+
 
 /// Constants for toast messages used in the app
 struct ToastStrings {
@@ -146,7 +154,7 @@ struct AlertStrings {
         static let passwordResetTitle = "Password Reset"
         static let enterEmailMessage = "Enter your email below."
     }
-    
+
     struct ManualEntryExitAlert {
         static let title = "Your entry has not been saved!"
         static let message = "Are you sure you want to exit?"
@@ -211,6 +219,22 @@ struct LegalStrings {
     static let andText = "&"
 }
 
+struct MetricStrings {
+    static let bmi = "Body Mass Index"
+    static let bodyFat = "Body Fat"
+    static let muscleMass = "Muscle Mass"
+    static let bodyWater = "Body Water"
+    static let heartRate = "Heart Rate"
+    static let boneMass = "Bone Mass"
+    static let visceralFat = "Visceral Fat"
+    static let subcutaneousFat = "Subcutaneous Fat"
+    static let protein = "Protein"
+    static let skeletalMuscles = "Skeletal Muscles"
+    static let basalMetabolicRate = "Basal Metabolic Rate"
+    static let metabolicAge = "Metabolic Age"
+    static let impedance = "Impedance"
+}
+
 /// Constants for App Assets used in the app
 struct AppAssets {
     static let eyeOpen = "eyeOpen"
@@ -237,5 +261,18 @@ struct AppAssets {
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
     static let chevronRight = "chevronRight"
+    static let bmiIcon = "bmi"
+    static let bodyFatIcon = "bodyFat"
+    static let muscleIcon = "muscle"
+    static let waterIcon = "bodyWater"
+    static let heartIcon = "heartRate"
+    static let boneIcon = "boneMass"
+    static let visceralFatIcon = "visceralFat"
+    static let subcutaneousFatIcon = "subcutaneousFat"
+    static let proteinIcon = "protein"
+    static let skeletalMuscleIcon = "skeletalMuscle"
+    static let bmrIcon = "bmr"
+    static let ageIcon = "metabolicAge"
+    static let emptyStateIcon = "emptyStateIcon"
 }
 
