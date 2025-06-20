@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
@@ -25,13 +28,11 @@ import com.greatergoods.meapp.theme.MeTheme
  * Step for collecting user's email address
  */
 @Composable
-fun EmailStep(
-    emailControl: FormControl<String>,
-) {
+fun EmailStep(emailControl: FormControl<String>) {
     val emailFocusRequester = remember { FocusRequester() }
 
     AppStyledCard(
-        cardAlignmentType = LocalCardAlignment.current
+        cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.emailStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.emailStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
@@ -40,7 +41,7 @@ fun EmailStep(
             type = AppInputType.EMAIL,
             label = SignupStrings.emailLabel,
             imeAction = ImeAction.Done,
-            modifier = Modifier.focusRequester(emailFocusRequester)
+            modifier = Modifier.semantics { contentType = ContentType.NewUsername }.focusRequester(emailFocusRequester),
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }

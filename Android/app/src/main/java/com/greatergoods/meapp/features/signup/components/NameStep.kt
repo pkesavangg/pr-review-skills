@@ -49,7 +49,6 @@ fun NameStep(
             nextFocusRequester = lastNameFocusRequester,
             modifier =
                 Modifier
-                    .semantics { contentType = ContentType.Username }
                     .focusRequester(firstNameFocusRequester),
         )
         AppInput(
@@ -59,7 +58,6 @@ fun NameStep(
             imeAction = ImeAction.Done,
             modifier =
                 Modifier
-                    .semantics { contentType = ContentType.Password }
                     .focusRequester(lastNameFocusRequester),
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))

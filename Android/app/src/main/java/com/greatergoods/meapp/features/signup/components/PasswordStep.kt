@@ -12,8 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
@@ -41,14 +44,14 @@ fun PasswordStep(
     confirmPasswordControl: FormControl<String>,
     zipcodeControl: FormControl<String>,
     onUrlOpen: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val passwordFocusRequester = remember { FocusRequester() }
     val confirmPasswordFocusRequester = remember { FocusRequester() }
     val zipcodeFocusRequester = remember { FocusRequester() }
 
     AppStyledCard(
-        cardAlignmentType = LocalCardAlignment.current
+        cardAlignmentType = LocalCardAlignment.current,
     ) {
         Column {
             AppText(SignupStrings.passwordStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
@@ -59,7 +62,10 @@ fun PasswordStep(
                 label = SignupStrings.passwordLabel,
                 imeAction = ImeAction.Next,
                 nextFocusRequester = confirmPasswordFocusRequester,
-                modifier = Modifier.focusRequester(passwordFocusRequester)
+                modifier =
+                    Modifier
+                        .semantics { contentType = ContentType.NewPassword }
+                        .focusRequester(passwordFocusRequester),
             )
             AppInput(
                 formControl = confirmPasswordControl,
@@ -67,14 +73,14 @@ fun PasswordStep(
                 label = SignupStrings.confirmPasswordLabel,
                 imeAction = ImeAction.Next,
                 nextFocusRequester = zipcodeFocusRequester,
-                modifier = Modifier.focusRequester(confirmPasswordFocusRequester)
+                modifier = Modifier.focusRequester(confirmPasswordFocusRequester),
             )
             AppInput(
                 formControl = zipcodeControl,
                 type = AppInputType.TEXT,
                 label = SignupStrings.zipcodeLabel,
                 imeAction = ImeAction.Done,
-                modifier = Modifier.focusRequester(zipcodeFocusRequester)
+                modifier = Modifier.focusRequester(zipcodeFocusRequester),
             )
             Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
 
@@ -82,7 +88,7 @@ fun PasswordStep(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                AppText(SignupStrings.passwordStepFooter, TextType.Body, )
+                AppText(SignupStrings.passwordStepFooter, TextType.Body)
                 Spacer(Modifier.height(spacing.x2s))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
