@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.signup.model
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
@@ -126,12 +127,12 @@ data class SignupFormControls(
                     currentWeight =
                         FormControl.create(
                             "",
-                            listOf(FormValidations.required(), weightValidator("lbs")),
+                            listOf(FormValidations.required(), weightValidator(WeightUnit.LB)),
                         ),
                     goalWeight =
                         FormControl.create(
                             "",
-                            listOf(FormValidations.required(), weightValidator("lbs")),
+                            listOf(FormValidations.required(), weightValidator(WeightUnit.LB)),
                         ),
                 )
 

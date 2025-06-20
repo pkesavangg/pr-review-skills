@@ -51,9 +51,11 @@ enum class AppInputType {
     EMAIL,
     PASSWORD,
     NUMBER,
-    WEIGHT,
+    /**
+     * Input type used for body composition metrics (e.g., weight, body fat, muscle mass).
+     * Typically accepts decimal values with specific validation rules.
+     */
     BODY_COMP,
-    BODY_COMP_DECIMAL,
 }
 
 object AppInputDefaults {
@@ -61,7 +63,7 @@ object AppInputDefaults {
         when (type) {
             AppInputType.PASSWORD -> PasswordVisualTransformation()
 
-            AppInputType.WEIGHT, AppInputType.BODY_COMP_DECIMAL -> DecimalInputVisualTransformation(
+            AppInputType.BODY_COMP -> DecimalInputVisualTransformation(
                 decimalDigits = 1,
             )
 
@@ -72,7 +74,7 @@ object AppInputDefaults {
         when (type) {
             AppInputType.TEXT -> KeyboardType.Text
             AppInputType.EMAIL -> KeyboardType.Email
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL,
+            AppInputType.NUMBER, AppInputType.BODY_COMP,
                 -> KeyboardType.Number
 
             AppInputType.PASSWORD -> KeyboardType.Password
@@ -91,7 +93,7 @@ object AppInputDefaults {
         formControl: FormControl<*>?,
     ): T? =
         when (type) {
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL ->
+            AppInputType.NUMBER, AppInputType.BODY_COMP ->
                 when (formControl?.value) {
                     is Int -> value.toIntOrNull()
                     is Long -> value.toLongOrNull()
@@ -108,7 +110,7 @@ object AppInputDefaults {
         value: T?,
     ): String =
         when (type) {
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP -> value?.toString()
+            AppInputType.NUMBER, AppInputType.BODY_COMP -> value?.toString()
                 ?: ""
 
             else -> value?.toString() ?: ""
@@ -119,7 +121,7 @@ object AppInputDefaults {
         value: String,
     ): String =
         when (type) {
-            AppInputType.WEIGHT, AppInputType.BODY_COMP -> value.filter { it.isDigit() }
+            AppInputType.BODY_COMP -> value.filter { it.isDigit() }
             else -> value
         }
 }

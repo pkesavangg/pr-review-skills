@@ -78,7 +78,7 @@ fun GoalStep(
         // Weight Inputs
         AppInput(
             formControl = currentWeightControl,
-            type = AppInputType.BODY_COMP_DECIMAL,
+            type = AppInputType.BODY_COMP,
             label = "Current weight (lbs)",
             imeAction = ImeAction.Next,
             nextFocusRequester = goalWeightFocusRequester,
@@ -88,7 +88,7 @@ fun GoalStep(
 
         AppInput(
             formControl = goalWeightControl,
-            type = AppInputType.BODY_COMP_DECIMAL,
+            type = AppInputType.BODY_COMP,
             label = "Goal weight (lbs)", // Always lbs since we removed metric support
             imeAction = ImeAction.Done,
             modifier = Modifier.focusRequester(goalWeightFocusRequester),

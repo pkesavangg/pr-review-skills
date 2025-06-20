@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.helper.form
 
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import java.util.Calendar
 
@@ -154,11 +155,9 @@ object FormValidations {
             }
         }
 
-    fun weightValidator(unitType: String): Validator<String> =
+    fun weightValidator(unitType: WeightUnit = WeightUnit.LB): Validator<String> =
         { value ->
-            if (value.isBlank()) {
-                ValidationError(ValidationType.REQUIRED, ValidationMessages.INVALID_WEIGHT)
-            } else {
+            if (value.isNotBlank()) {
                 val decimalValue =
                     if (value.length > 1) {
                         value.dropLast(1) + "." + value.takeLast(1)
@@ -169,7 +168,7 @@ object FormValidations {
                 if (v == null) {
                     ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_WEIGHT)
                 } else {
-                    if (unitType == "kg") {
+                    if (unitType == WeightUnit.KG) {
                         when {
                             v <= AppValidatorConfig.WeightKg.MIN || v > AppValidatorConfig.WeightKg.MAX ->
                                 ValidationError(
@@ -191,6 +190,8 @@ object FormValidations {
                         }
                     }
                 }
+            } else {
+                null
             }
         }
 
@@ -200,9 +201,7 @@ object FormValidations {
         allowDecimal: Boolean = true,
     ): Validator<String> =
         { value ->
-            if (value.isBlank()) {
-                ValidationError(ValidationType.REQUIRED, ValidationMessages.REQUIRED)
-            } else {
+            if (value.isNotBlank()) {
                 val decimalValue =
                     if (allowDecimal) {
                         if (value.length > 1) value.dropLast(1) + "." + value.takeLast(1) else "0." + value
@@ -230,11 +229,12 @@ object FormValidations {
                         else -> null
                     }
                 }
+            } else {
+                null
             }
         }
 
-
-                /**
+    /**
      * This validator is specifically for confirm password field to check against password field
      */
     fun confirmPasswordMatch(

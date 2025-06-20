@@ -31,17 +31,17 @@ class AppValidatorConfig {
 
     object BMR {
         const val MIN = 800
-        const val MAX = 5000
+        const val MAX = 10000
     }
 
     object MetabolicAge {
         const val MIN = 12
-        const val MAX = 100
+        const val MAX = 150
     }
 
     object BodyComp {
         const val MIN = 0
-        const val MAX = 100
+        const val MAX = 99
     }
 
     object WeightKg {
