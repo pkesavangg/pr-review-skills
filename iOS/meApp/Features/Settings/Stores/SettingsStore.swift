@@ -78,18 +78,9 @@ class SettingsStore: ObservableObject {
     /// Controls the presentation of the metric picker sheet.
     @Published var showHeightCmPicker: Bool = false
 
-    /// Picker options for imperial units – feet and inches.
-    let heightInchesOptions: [[String]] = [
-        (2...7).map { "\($0)" },              // Feet
-        (0...11).map { "\($0)" }              // Inches
-    ]
-
-    /// Picker options for metric units – centimetres (000-299).
-    let heightCmOptions: [[String]] = [
-        (1...2).map { "\($0)" },              // Hundreds column (0-2)
-        (0...9).map { "\($0)" },              // Tens column
-        (0...9).map { "\($0)" }               // Ones column
-    ]
+    /// Shared picker options
+    let heightInchesOptions = ConversionTools.heightInchesOptions
+    let heightCmOptions     = ConversionTools.heightCmOptions
     
     init() {
         accountService.$activeAccount
@@ -724,20 +715,9 @@ class SettingsStore: ObservableObject {
         guard let storedString = activeAccount?.weightSettings?.height,
               let storedDouble = Double(storedString) else { return }
         let stored = Int(round(storedDouble))
-        updateHeightPickerValues(from: stored)
-    }
-
-    /// Updates both imperial and metric picker arrays from a stored tenths-of-inch height value.
-    /// - Parameter storedHeight: Height in tenths of inches (server format).
-    private func updateHeightPickerValues(from storedHeight: Int) {
-        // Imperial (feet/inches)
-        let feetInches = ConversionTools.convertStoredHeightToFeet(storedHeight)
-        selectedHeightInches = ["\(feetInches[0])", "\(feetInches[1])"]
-
-        // Metric (cm)
-        let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
-        let cmString = String(format: "%03d", cm) // pad to 3 digits, e.g. 178
-        selectedHeightCm = cmString.map { String($0) }
+        let selections = ConversionTools.pickerSelections(from: stored)
+        selectedHeightInches = selections.inches
+        selectedHeightCm     = selections.cm
     }
 
     /// Presents the correct picker sheet based on the user's current unit preference.
