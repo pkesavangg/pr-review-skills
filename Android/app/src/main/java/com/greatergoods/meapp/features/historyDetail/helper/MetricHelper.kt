@@ -83,7 +83,7 @@ object MetricHelper {
             metric?.let {
                 metric(
                     HistoryDetailScreenStrings.BmrLabel,
-                    it.bmr,
+                    it.bmr.toInt(),
                     HistoryDetailScreenStrings.KcalUnit,
                     AppIcons.Metrics.Bmr,
                 )
@@ -91,7 +91,7 @@ object MetricHelper {
             metric?.let {
                 metric(
                     HistoryDetailScreenStrings.MetabolicAgeLabel,
-                    it.metabolicAge,
+                    it.metabolicAge?.toInt(),
                     HistoryDetailScreenStrings.YearsUnit,
                     AppIcons.Metrics.MetabolicAge,
                 )
@@ -100,11 +100,10 @@ object MetricHelper {
     }
 
     fun metric(label: String, value: Number?, unit: String, icon: Int): Metric? {
-        val floatValue = value?.toFloat()
-        if (floatValue == null || floatValue == 0f) return null
+        if (value == null || value == 0 || value == 0.0) return null
         return Metric(
             label = label,
-            value = floatValue.toString(),
+            value = value.toString(),
             unit = unit,
             icon = icon,
         )
