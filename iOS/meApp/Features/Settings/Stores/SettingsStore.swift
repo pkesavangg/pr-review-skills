@@ -635,11 +635,9 @@ class SettingsStore: ObservableObject {
 
         // Remove old validator
         weightlessForm.weight.removeValidator(ofType: .maxValue)
-        weightlessForm.weight.removeValidator(ofType: .maxValue)
 
         // Add new validator
         let validator = Validator.maxValue(maxWeight)
-        weightlessForm.weight.addValidator(validator)
         weightlessForm.weight.addValidator(validator)
         weightlessForm.validate()
     }

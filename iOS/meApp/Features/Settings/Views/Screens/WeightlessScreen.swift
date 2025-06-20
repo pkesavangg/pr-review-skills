@@ -51,7 +51,7 @@ struct WeightlessScreen: View {
                     
                     // Toggle
                     HStack {
-                        CustomToggleView(isOn: $settingsStore.weightlessForm.isOn.value, text: "\(strings.modeLabel): \(settingsStore.weightlessForm.isOn.value ? CommonStrings.on : CommonStrings.off)")
+                        CustomToggleView(isOn: $settingsStore.weightlessForm.isOn.value, text: "\(strings.modeLabel): \(settingsStore.weightlessForm.isOn.value ? commonLang.on : commonLang.off)")
                     }
                     .padding(.vertical, .spacingSM)
                     
