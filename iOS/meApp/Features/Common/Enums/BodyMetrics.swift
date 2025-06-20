@@ -15,6 +15,12 @@ import Foundation
 /// - `unit`: The unit of measurement (e.g., "kg", "%", "bpm", etc.)
 enum BodyMetrics {
     static let config: [BodyMetric: MetricData] = [
+        .weight: MetricData(
+            unit: "",
+            label: MetricStrings.weight,
+            bodyCompositionRelated: true,
+            icon: AppAssets.bmiIcon
+        ),
         .bmi: MetricData(
             unit: "",
             label: MetricStrings.bmi,
