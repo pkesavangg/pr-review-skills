@@ -136,7 +136,7 @@ constructor(
             }
 
             // Always perform local logout
-            accountRepository.removeAccountInDB(accountId)
+            accountRepository.logOutInDb(accountId)
             tokenManager.clearTokens()
             AppLog.d(TAG, "Logout successful for account: $accountId")
             _authStateFlow.emit(AuthState.LoggedOut())
@@ -249,7 +249,7 @@ constructor(
             _authStateFlow.emit(AuthState.AccountAdded(savedAccount))
             _isSignUpFlow.emit(true)
             savedAccount
-        }  catch (e: Exception) {
+        } catch (e: Exception) {
             handleSignupError(e as HttpException)
             AppLog.e(TAG, "Account creation failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Account creation failed"))
@@ -491,7 +491,7 @@ constructor(
             HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
             else -> signupError.MessageGeneric
         }
-        val errorHeader = when(error.code()){
+        val errorHeader = when (error.code()) {
             HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
             else -> signupError.Header
         }

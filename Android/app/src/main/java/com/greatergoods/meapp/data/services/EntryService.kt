@@ -74,7 +74,7 @@ class EntryService @Inject constructor(
      */
     override suspend fun updateAccountId(accountId: String) {
         this.accountId = accountId
-        syncOperations()
+        this.syncOperations()
     }
 
     /**

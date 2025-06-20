@@ -123,13 +123,18 @@ constructor(
     }
 
     override fun getAccessToken(): String? {
-        val activeAccount = runBlocking {
+        val accessToken = runBlocking {
             userDataStore.currentAccountFlow.first()?.accessToken
         }
-        return activeAccount
+        return accessToken
     }
 
-    override fun getRefreshToken(): String? = _tokens.value?.refreshToken
+    override fun getRefreshToken(): String? {
+        val refreshToken = runBlocking {
+            userDataStore.currentAccountFlow.first()?.refreshToken
+        }
+        return refreshToken
+    }
 
     override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 

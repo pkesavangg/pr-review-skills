@@ -9,7 +9,6 @@ import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -65,18 +64,10 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    private fun initLoadingData(isInitLoad: String) {
+    private fun initLoadingData(accountId: String) {
         viewModelScope.launch {
             try {
-                entryService.updateAccountId(isInitLoad)
-                // Simulate data loading
-                delay(3000)
-
-                // TODO: Add your actual data loading logic here
-                // For example:
-                // - Load user preferences
-                // - Initialize services
-                // - Cache necessary data
+                entryService.updateAccountId(accountId)
                 navigationService.autoLogin()
             } catch (e: Exception) {
                 // TODO: Handle error state appropriately

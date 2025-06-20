@@ -30,6 +30,11 @@ interface IAccountRepository {
     suspend fun logoutInAPI(fcmToken: String?)
 
     /**
+     * Logs out in the database.
+     */
+    suspend fun logOutInDb(accountId: String)
+
+    /**
      * Gets account info via API and returns AccountResponse.
      */
     suspend fun getAccountInAPI(): AccountResponse

@@ -64,6 +64,13 @@ class AccountRepository @Inject constructor(
     }
 
     /**
+     * Logs out in the database by updating the account status.
+     */
+    override suspend fun logOutInDb(accountId: String) {
+        accountDao.logoutAccount(accountId)
+    }
+
+    /**
      * Gets account info via API and returns AccountResponse.
      */
     override suspend fun getAccountInAPI(): AccountResponse {
