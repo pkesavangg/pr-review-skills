@@ -616,25 +616,22 @@ class SettingsStore: ObservableObject {
     func populateWeightlessFormIfNeeded() {
         guard let account = activeAccount else { return }
         
-        // Avoid overriding any in-progress edits.
-        if !weightlessForm.isDirty {
-            if let isOn = account.weightlessSettings?.isWeightlessOn {
-                weightlessForm.isOn.value = isOn
-                weightlessForm.isOn.markAsPristine()
-            }
-            
-            if let storedWeight = account.weightlessSettings?.weightlessWeight {
-                // Convert stored tenths-of-lbs value to display unit.
-                let unit = account.weightSettings?.weightUnit ?? .lb
-                let display: Double = unit == .kg
-                ? ConversionTools.convertStoredToKg(Int(storedWeight))
-                : ConversionTools.convertStoredToLbs(Int(storedWeight))
-                
-                weightlessForm.weight.value = String(format: "%.1f", display)
-                weightlessForm.weight.markAsPristine()
-            }
-            weightlessForm.validate()
+        if let isOn = account.weightlessSettings?.isWeightlessOn {
+            weightlessForm.isOn.value = isOn
+            weightlessForm.isOn.markAsPristine()
         }
+        
+        if let storedWeight = account.weightlessSettings?.weightlessWeight {
+            // Convert stored tenths-of-lbs value to display unit.
+            let unit = account.weightSettings?.weightUnit ?? .lb
+            let display: Double = unit == .kg
+            ? ConversionTools.convertStoredToKg(Int(storedWeight))
+            : ConversionTools.convertStoredToLbs(Int(storedWeight))
+            
+            weightlessForm.weight.value = String(format: "%.1f", display)
+            weightlessForm.weight.markAsPristine()
+        }
+        weightlessForm.validate()
     }
     
     /// Handles the exit action from the Weightless screen. Shows an alert if there are unsaved changes.

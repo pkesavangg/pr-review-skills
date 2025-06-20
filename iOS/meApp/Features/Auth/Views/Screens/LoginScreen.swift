@@ -129,6 +129,7 @@ struct LoginScreen: View {
           }
           .padding(.horizontal, .spacingSM)
         }
+        .padding(.horizontal, .spacingSM)
       }
       .navigationBarBackButtonHidden(true)
       .inAppBrowser(
