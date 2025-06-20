@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.InputStream
 import java.io.OutputStream
+import javax.inject.Inject
 import android.content.Context
 
 /**
@@ -24,8 +25,8 @@ val Context.userDataStore: DataStore<UserPreferences> by dataStore(
  * DataStore for managing user accounts and preferences.
  * Provides flows and suspend functions for accessing and updating user data.
  */
-class UserDataStore(
-    context: Context,
+class UserDataStore @Inject constructor(
+    private val context: Context,
 ) : BaseProtoDataStore<UserPreferences>(
     dataStore = context.userDataStore,
 ) {
@@ -100,25 +101,47 @@ class UserDataStore(
      * @param accountId The account ID to update.
      * @param refreshToken The new refresh token.
      * @param accessToken The new access token.
+     * @param expiresAt The expiration timestamp for the access token.
+     * @param isActive Whether the account is active.
      */
     suspend fun updateAccountTokens(
         accountId: String,
         refreshToken: String,
         accessToken: String,
-        expiresAt: String
+        expiresAt: String,
+        isActive: Boolean = false
     ) {
         val current = getData()
+
+        // If the account does not exist, add it and return early
+        if (!current.accountsMap.containsKey(accountId)) {
+            addAccount(
+                accountId = accountId,
+                isActive = isActive,
+                refreshToken = refreshToken,
+                accessToken = accessToken,
+                expiresAt = expiresAt
+            )
+            return
+        }
+
+        // Otherwise, update the existing account
         val updated = current.toBuilder().apply {
-            val account = accountsMap[accountId]?.toBuilder()
-                ?.setRefreshToken(refreshToken)
-                ?.setAccessToken(accessToken)
-                ?.setExpiresAt(expiresAt)
-            if (account != null) {
-                putAccounts(accountId, account.build())
-            }
+            val existingAccount = current.accountsMap[accountId]!!
+
+            val updatedAccount = existingAccount.toBuilder()
+                .setRefreshToken(refreshToken)
+                .setAccessToken(accessToken)
+                .setExpiresAt(expiresAt)
+                .setIsActive(isActive)
+                .build()
+
+            putAccounts(accountId, updatedAccount)
         }.build()
+
         updateData { updated }
     }
+
 
     /**
      * Updates the sync timestamp for a specific account.

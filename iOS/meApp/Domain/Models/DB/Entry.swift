@@ -53,11 +53,11 @@ final class Entry {
         self.isSynced = isSynced
     }
     
-    init(from dto: BathScaleOperationDTO, isSynced: Bool = false) {
+    init(from dto: BathScaleOperationDTO, accountId: String, isSynced: Bool = false) {
             let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
             self.id = UUID()
             self.entryTimestamp = timestamp
-            self.accountId = dto.accountId ?? ""
+            self.accountId = accountId
             self.operationType = dto.operationType ?? ""
             self.serverTimestamp = dto.serverTimestamp
             self.deviceType = DeviceType.scale.rawValue

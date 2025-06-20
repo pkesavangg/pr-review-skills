@@ -4,6 +4,7 @@ import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.login.strings.LoginStrings
 
 /**
  * Controls for Login form.
@@ -19,7 +20,7 @@ data class LoginFormControls(
                     initialValue = "",
                     validators = listOf(
                         FormValidations.required(),
-                        FormValidations.maxLength(100),
+                        FormValidations.maxLength(100, LoginStrings.EmailLabel),
                         FormValidations.email(),
                     ),
                 ),
@@ -27,8 +28,8 @@ data class LoginFormControls(
                 FormControl.create(
                     initialValue = "",
                     validators = listOf(
-                        FormValidations.minLength(6),
-                        FormValidations.maxLength(50),
+                        FormValidations.minLength(6, LoginStrings.EmailLabel),
+                        FormValidations.maxLength(50, LoginStrings.EmailLabel),
                     ),
                 ),
         )
@@ -53,7 +54,8 @@ data class LoginState(
 sealed class LoginIntent : IReducer.Intent {
     /** Trigger login submission. */
     object Submit : LoginIntent()
-
+    object OpenForgotPasswordModal : LoginIntent()
+    object OpenHelpModal : LoginIntent()
     data class OpenInAppBrowser(val url: String) : LoginIntent()
 
     /** Show an error message. */
@@ -87,6 +89,14 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
         when (intent) {
             is LoginIntent.Submit -> {
                 state.copy(isLoading = true, error = null)
+            }
+
+            is LoginIntent.OpenForgotPasswordModal -> {
+                state.copy(isLoading = false, error = null)
+            }
+
+            is LoginIntent.OpenHelpModal -> {
+                state.copy(isLoading = false, error = null)
             }
 
             is LoginIntent.Error -> {

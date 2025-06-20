@@ -4,10 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.greatergoods.meapp.resources.AppIcons
@@ -18,13 +23,17 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 /**
  * AppScaffold composable that provides a top app bar using AppBar and a content slot.
  * Handles window insets properly for status bar, navigation bar, and keyboard.
+ * Supports optional pull-to-refresh if [onRefresh] is provided.
  *
  * @param title The title to display in the AppBar.
  * @param modifier Modifier for the Scaffold.
  * @param actions Optional composable for actions.
  * @param navigationIcon Optional composable for left icon.
+ * @param isRefreshing Whether pull-to-refresh is active.
+ * @param onRefresh Callback when pull-to-refresh is triggered.
  * @param content The main content below the AppBar.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
     title: String?,
@@ -33,29 +42,51 @@ fun AppScaffold(
     appBarColor: Color = colorScheme.primaryBackground,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
+    isRefreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize(),
         topBar = {
-            AppBar(
-                title = title,
-                navigationIcon = navigationIcon,
-                actions = actions,
-                containerColor = appBarColor,
-            )
+            if (title != null || navigationIcon != null || actions != null)
+                AppBar(
+                    title = title,
+                    navigationIcon = navigationIcon,
+                    actions = actions,
+                    containerColor = appBarColor,
+                )
         },
-        containerColor = appBarColor,
+        containerColor = appBarColor
     ) { innerPadding ->
         Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .background(containerColor),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding())
+                .background(containerColor),
         ) {
-
-            content(Modifier)
+            if (onRefresh != null) {
+                val pullRefreshState = rememberPullToRefreshState()
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = onRefresh,
+                    state = pullRefreshState,
+                    indicator = {
+                        Indicator(
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            isRefreshing = isRefreshing,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            state = pullRefreshState,
+                        )
+                    },
+                ) {
+                    content(Modifier)
+                }
+            } else {
+                content(Modifier)
+            }
         }
     }
 }
@@ -66,9 +97,11 @@ fun AppScaffoldPreview() {
     MeAppTheme {
         AppScaffold(
             title = "App Scaffold Title",
-            containerColor = MeTheme.colorScheme.secondaryBackground,
+            containerColor = colorScheme.secondaryBackground,
             navigationIcon = { AppIconButton(AppIcons.Default.Close) {} },
-            actions = { AppIconButton(AppIcons.Outlined.Help) {} }
+            actions = { AppIconButton(AppIcons.Outlined.Help) {} },
+            isRefreshing = false,
+            onRefresh = {},
         ) { modifier ->
             Box(modifier = modifier) {
                 Text(

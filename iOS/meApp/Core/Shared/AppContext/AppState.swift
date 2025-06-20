@@ -15,10 +15,13 @@ import Combine
 final class AppState: ObservableObject {
     /// Manages the app's visual theme.
     let themeManager = Theme.shared
-    
+
     /// Registers and manages core application services.
     let serviceRegistry = ServiceRegistry.shared
-    
+
+    /// Shared account service for authentication and settings (including weight unit).
+    let accountService = AccountService.shared
+
     /// Monitors network connectivity status.
     let networkMonitor = NetworkMonitor.shared
 }

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class EntryService: EntryServiceProtocol {
@@ -8,9 +9,13 @@ final class EntryService: EntryServiceProtocol {
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
     private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
     static let shared = EntryService(accountService: AccountService.shared)
-    
+    // MARK: - Publishers ------------------------------------------------
+
+    /// Emits each time a new entry is locally stored (create/delete/update).
+    let entrySaved = PassthroughSubject<Entry, Never>()
+
     let tag = "EntryService"
-    
+
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
     }
@@ -32,6 +37,8 @@ final class EntryService: EntryServiceProtocol {
         let entry = entry
         entry.isSynced = false
         try await localRepo.saveEntry(entry)
+        // Broadcast change
+        entrySaved.send(entry)
         await syncUnsyncedEntries()
     }
     
@@ -39,6 +46,7 @@ final class EntryService: EntryServiceProtocol {
         for entry in entries {
             entry.isSynced = false
             try await localRepo.saveEntry(entry)
+            entrySaved.send(entry)
         }
         await syncUnsyncedEntries()
     }
@@ -48,13 +56,14 @@ final class EntryService: EntryServiceProtocol {
         deletedEntry.operationType = "delete"
         deletedEntry.isSynced = false
         try await localRepo.saveEntry(deletedEntry)
+        entrySaved.send(deletedEntry)
         await syncUnsyncedEntries()
     }
     
     // MARK: - Query
     func getAllEntries() async throws -> [Entry] {
         let accountId = try await getAccountId()
-        return try await localRepo.fetchEntries(forUserId: accountId)
+        return try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
     }
     
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
@@ -88,56 +97,24 @@ final class EntryService: EntryServiceProtocol {
     }
     
     // MARK: - Month/History
-    func getMonthsAll() async throws -> [HistoryMonth] {
+    	func getMonthsAll() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId)
-        let grouped = Dictionary(grouping: entries) { entry in
-            String(entry.entryTimestamp.prefix(7))
-        }
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
+        // Group by YYYY-MM prefix
+        let grouped = Dictionary(grouping: entries) { String($0.entryTimestamp.prefix(7)) }
+
         var result: [HistoryMonth] = []
-        for (month, entries) in grouped {
-            // Calculate weights string
-            let weightPairs: [String] = entries.compactMap { e in
-                guard let w = e.scaleEntry?.weight else { return nil }
-                return "\(w)|\(e.entryTimestamp)"
-            }
-            let weights = weightPairs.joined(separator: ",")
-            // Calculate weight values
-            let weightValues: [Double] = entries.compactMap {
-                guard let w = $0.scaleEntry?.weight else { return nil }
-                return Double(w)
-            }
-            let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
-            let minWeight = weightValues.min()
-            let maxWeight = weightValues.max()
-            // Calculate change
-            let firstEntry = entries.min(by: { $0.entryTimestamp < $1.entryTimestamp })
-            let lastEntry = entries.max(by: { $0.entryTimestamp < $1.entryTimestamp })
-            let change: String? = {
-                guard let first = firstEntry?.scaleEntry?.weight,
-                      let last = lastEntry?.scaleEntry?.weight else { return nil }
-                return String(format: "%.1f", last - first)
-            }()
-            let historyMonth = HistoryMonth(
-                id: month,
-                weight: avgWeight,
-                entryTimestamp: month,
-                count: entries.count,
-                weights: weights,
-                change: change,
-                bodyFat: nil,
-                muscleMass: nil,
-                water: nil,
-                bmi: nil,
-                date: nil,
-                time: nil,
-                month: String(month.suffix(2)),
-                year: String(month.prefix(4)),
-                min: minWeight,
-                max: maxWeight
-            )
-            result.append(historyMonth)
+
+        let validMonthRegex = try! NSRegularExpression(pattern: "^\\d{4}-\\d{2}$")
+
+        for (monthKey, monthEntries) in grouped {
+            // Skip keys that are not in YYYY-MM format (e.g., malformed keys)
+            guard validMonthRegex.firstMatch(in: monthKey, range: NSRange(location: 0, length: monthKey.count)) != nil else { continue }
+
+            result.append(Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries))
         }
+
+        // Sort descending by month key
         return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
     
@@ -147,7 +124,7 @@ final class EntryService: EntryServiceProtocol {
     
     func getMonthYear() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId)
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
         // Get last 12 months
         let calendar = Calendar.current
         let now = Date()
@@ -161,45 +138,8 @@ final class EntryService: EntryServiceProtocol {
         }
         var result: [HistoryMonth] = []
         for month in months {
-            guard let entries = grouped[month], !entries.isEmpty else { continue }
-            let weights = entries.compactMap { e in
-                if let w = e.scaleEntry?.weight {
-                    return "\(w)|\(e.entryTimestamp)"
-                } else {
-                    return nil
-                }
-            }.joined(separator: ",")
-            let weightValues: [Double] = entries.compactMap {
-                guard let w = $0.scaleEntry?.weight else { return nil }
-                return Double(w)
-            }
-            let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
-            let minWeight = weightValues.min()
-            let maxWeight = weightValues.max()
-            let change: String? = {
-                guard let first = entries.min(by: { $0.entryTimestamp < $1.entryTimestamp })?.scaleEntry?.weight,
-                      let last = entries.max(by: { $0.entryTimestamp < $1.entryTimestamp })?.scaleEntry?.weight else { return nil }
-                return String(format: "%.1f", Double(last) - Double(first))
-            }()
-            let historyMonth = HistoryMonth(
-                id: month,
-                weight: avgWeight,
-                entryTimestamp: month,
-                count: entries.count,
-                weights: weights,
-                change: change,
-                bodyFat: nil,
-                muscleMass: nil,
-                water: nil,
-                bmi: nil,
-                date: nil,
-                time: nil,
-                month: String(month.suffix(2)),
-                year: String(month.prefix(4)),
-                min: minWeight,
-                max: maxWeight
-            )
-            result.append(historyMonth)
+            guard let monthEntries = grouped[month], !monthEntries.isEmpty else { continue }
+            result.append(Self.buildHistoryMonth(monthKey: month, monthEntries: monthEntries))
         }
         return result
     }
@@ -207,7 +147,7 @@ final class EntryService: EntryServiceProtocol {
     // MARK: - Progress/Stats
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId).sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create").sorted { $0.entryTimestamp < $1.entryTimestamp }
         guard let latest = entries.last else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "No entries found"])
         }
@@ -245,7 +185,7 @@ final class EntryService: EntryServiceProtocol {
     
     func getStreak() async throws -> Streak {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId)
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: "create")
         // Group by day (YYYY-MM-DD)
         let days = Set(entries.map { String($0.entryTimestamp.prefix(10)) })
         let sortedDays = days.sorted()
@@ -303,7 +243,13 @@ final class EntryService: EntryServiceProtocol {
             // If sync fails, leave as isSynced = false for retry
         }
     }
-    
+    /// Lightweight summary for a single month. Avoids computing all months when only one changes.
+    func getMonthSummary(monthKey: String) async throws -> HistoryMonth? {
+        let monthEntries = try await getEntries(forMonth: monthKey)
+        guard !monthEntries.isEmpty else { return nil }
+        return Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries)
+    }
+
     /// Internal: Sync only unsynced entries (used after local changes)
     private func syncUnsyncedEntries() async {
         let accountId: String
@@ -342,12 +288,12 @@ final class EntryService: EntryServiceProtocol {
                 let remoteServerTS = remoteOp.serverTimestamp ?? ""
                 if remoteServerTS > localServerTS {
                     // Update local with remote
-                    let updated = Entry(from: remoteOp, isSynced: true)
+                    let updated = Entry(from: remoteOp,accountId: accountId, isSynced: true)
                     try? await localRepo.updateEntry(updated)
                 }
             } else {
                 // Not found locally, insert
-                let newEntry = Entry(from: remoteOp, isSynced: true)
+              let newEntry = Entry(from: remoteOp, accountId: accountId, isSynced: true)
                 try? await localRepo.saveEntry(newEntry)
             }
         }
@@ -363,5 +309,50 @@ final class EntryService: EntryServiceProtocol {
         }
         let useR4Endpoint = account.dashboardSettings?.dashboardType == DashboardType.dashboard12.rawValue
         let _ = try? await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
+    }
+    
+    // MARK: - Helpers ---------------------------------------------------
+
+    private static func buildHistoryMonth(monthKey: String, monthEntries: [Entry]) -> HistoryMonth {
+        // Build the `weights` concatenated string  "<w>|<ts>,<w>|<ts>"  like the SQL query
+        let weightPairs = monthEntries.compactMap { e -> String? in
+            guard let w = e.scaleEntry?.weight else { return nil }
+            return "\(w)|\(e.entryTimestamp)"
+        }
+        let weightsConcat = weightPairs.joined(separator: ",")
+
+        // Numeric helpers
+        let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.map(Double.init)
+        let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
+        let minWeight = weightValues.min()
+        let maxWeight = weightValues.max()
+
+        // Change = last - first by timestamp order
+        let sortedByTime = monthEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let firstWeight = sortedByTime.first?.scaleEntry?.weight
+        let lastWeight  = sortedByTime.last?.scaleEntry?.weight
+        let change: String? = {
+            guard let f = firstWeight, let l = lastWeight else { return nil }
+            return String(format: "%.1f", Double(l - f))
+        }()
+
+        return HistoryMonth(
+            id: monthKey,
+            weight: avgWeight,
+            entryTimestamp: monthKey,
+            count: monthEntries.count,
+            weights: weightsConcat,
+            change: change,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            date: nil,
+            time: nil,
+            month: String(monthKey.suffix(2)),
+            year: String(monthKey.prefix(4)),
+            min: minWeight,
+            max: maxWeight
+        )
     }
 }

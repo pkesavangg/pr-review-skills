@@ -30,7 +30,6 @@ data class SignupData(
     val goalType: GoalType = GoalType.LOSE_GAIN,
     val currentWeight: Float? = null,
     val goalWeight: Float? = null,
-    val useMetric: Boolean = false,
     val email: String = "",
     val password: String = "",
     val confirmPassword: String = "",

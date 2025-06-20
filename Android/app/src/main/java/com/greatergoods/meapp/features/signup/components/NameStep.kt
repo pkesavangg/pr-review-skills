@@ -3,7 +3,14 @@ package com.greatergoods.meapp.features.signup.components
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.components.AppStyledCard
@@ -11,7 +18,8 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
-import com.greatergoods.meapp.features.signup.model.SignupData
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -21,40 +29,48 @@ import com.greatergoods.meapp.theme.MeTheme
  */
 @Composable
 fun NameStep(
-    signupData: SignupData,
-    onFirstNameChange: (String) -> Unit,
-    onLastNameChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    firstNameControl: FormControl<String>,
+    lastNameControl: FormControl<String>,
+    modifier: Modifier = Modifier,
 ) {
-        AppStyledCard(
-            cardAlignmentType = LocalCardAlignment.current
-        ) {
-                AppText(SignupStrings.nameStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-                AppText(SignupStrings.nameStepSubtitle, TextType.Subtitle,spacing = MeTheme.spacing.md)
-                AppInput<String>(
-                    formControl = null,
-                    type = AppInputType.TEXT,
-                    label = SignupStrings.firstNameLabel,
-                    onValueChange = { onFirstNameChange(it ?: "") }
-                )
-                AppInput<String>(
-                    formControl = null,
-                    type = AppInputType.TEXT,
-                    label = SignupStrings.lastNameLabel,
-                    onValueChange = { onLastNameChange(it ?: "") }
-                )
-            Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
-            }
+    val firstNameFocusRequester = remember { FocusRequester() }
+    val lastNameFocusRequester = remember { FocusRequester() }
+
+    AppStyledCard(
+        cardAlignmentType = LocalCardAlignment.current,
+    ) {
+        AppText(SignupStrings.nameStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+        AppText(SignupStrings.nameStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        AppInput(
+            formControl = firstNameControl,
+            type = AppInputType.TEXT,
+            label = SignupStrings.firstNameLabel,
+            imeAction = ImeAction.Next,
+            nextFocusRequester = lastNameFocusRequester,
+            modifier =
+                Modifier
+                    .focusRequester(firstNameFocusRequester),
+        )
+        AppInput(
+            formControl = lastNameControl,
+            type = AppInputType.TEXT,
+            label = SignupStrings.lastNameLabel,
+            imeAction = ImeAction.Done,
+            modifier =
+                Modifier
+                    .focusRequester(lastNameFocusRequester),
+        )
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }
+}
 
 @PreviewTheme
 @Composable
 fun NameStepPreview() {
     MeAppTheme {
         NameStep(
-            signupData = SignupData(),
-            onFirstNameChange = {},
-            onLastNameChange = {}
+            firstNameControl = FormControl.create("", listOf(FormValidations.required())),
+            lastNameControl = FormControl.create("", listOf(FormValidations.required())),
         )
     }
 }

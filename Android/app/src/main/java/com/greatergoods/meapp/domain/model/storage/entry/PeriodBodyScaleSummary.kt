@@ -2,7 +2,7 @@ package com.greatergoods.meapp.domain.model.storage.entry
 
 data class PeriodBodyScaleSummary(
     val period: String, // "YYYY-MM" for month, "YYYY-MM-DD" for day
-    val entryTimestamp: Long, // For average: latest timestamp in period; for latest: timestamp of the latest entry
+    val entryTimestamp: String, // For average: latest timestamp in period; for latest: timestamp of the latest entry
     val weight: Double,
     val bodyFat: Double?,
     val muscleMass: Double?,

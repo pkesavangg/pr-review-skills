@@ -32,6 +32,8 @@ fun MeApp() {
             AppRoute.Auth.Login,
             Pair(AppRoute.Home, AppRoute.Main.Dashboard),
         )
+
+
     MeAppTheme(themeMode = uiState.themeMode) {
         Surface(
             modifier =

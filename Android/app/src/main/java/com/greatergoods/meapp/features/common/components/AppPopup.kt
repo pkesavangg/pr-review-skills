@@ -145,7 +145,9 @@ fun AppPopup(
                 contentDescription = AppPopupStrings.LogoContentDescription,
                 modifier = Modifier.align(Alignment.TopEnd),
                 type = AppIconType.Default,
-            )
+            ){
+                onClose()
+            }
         }
     }
 }

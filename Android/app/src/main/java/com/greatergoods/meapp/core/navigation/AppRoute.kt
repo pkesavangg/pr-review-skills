@@ -57,6 +57,9 @@ sealed class AppRoute : NavKey {
         data object Login : Auth()
 
         @Serializable
+        data object Signup : Auth()
+
+        @Serializable
         data object UserList : Auth()
     }
 }

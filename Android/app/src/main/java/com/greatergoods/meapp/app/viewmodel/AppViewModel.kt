@@ -68,7 +68,7 @@ class AppViewModel @Inject constructor(
     private fun initLoadingData(isInitLoad: String) {
         viewModelScope.launch {
             try {
-                entryService.updateAllData(isInitLoad)
+                entryService.updateAccountId(isInitLoad)
                 // Simulate data loading
                 delay(3000)
 
