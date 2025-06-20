@@ -1,27 +1,14 @@
 //  ScaleMetricsView.swift
 //  meApp
 //
-//  Created by AI on 20/06/25.
+//  Created by Barath Chittibabu on 20/06/25.
 //
 //  A modal sheet that mirrors Ionic's MetricModalPage behaviour.
 //  Displays body composition metrics in a horizontally-swipable pager
 //  with a scrollable segment header. Each metric presents its current
 //  value, measurement date, a short educational blurb, and helpful
 //  resources.
-//
-//  Dependencies:
-//  • Theme – via `@Environment(\.appTheme)`
-//  • Common components – `NavbarHeaderView`, `AppIconView`, `fontOpenSans` util, spacing tokens.
-//  • Models – `Entry`, `BodyMetric`, `MetricData`, `BodyMetrics`, `BodyMetricsConvertor`.
-//
-//  Usage:
-//  ```swift
-//  ScaleMetricsView(entry: entry, selectedMetric: .bmi)
-//      .presentationDetents([.medium, .large])
-//  ```
-//
-//  NOTE: Content strings were converted from the original TypeScript
-//  `BODY_METRICS_CONTENT` definition (see src/app/models/Metrics.ts).
+
 //
 
 import SwiftUI
@@ -73,6 +60,7 @@ struct ScaleMetricsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     SegmentedButtonView(segments: metricOrder, selectedSegment: $selectedMetricState)
                         .padding(.horizontal, .spacingSM)
+                         .padding(.top, .spacingMD)
                 }
                 .onAppear {
                     proxy.scrollTo(selectedMetricState, anchor: .center)
