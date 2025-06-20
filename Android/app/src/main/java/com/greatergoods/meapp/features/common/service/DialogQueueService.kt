@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.service
 
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
+import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.model.Toast
@@ -19,11 +20,11 @@ import javax.inject.Inject
  * Exposes enqueue, dismiss, clear, and currentDialog as StateFlow for Compose integration.
  */
 class DialogQueueService
-    @Inject
-    constructor() : IDialogQueueService {
-        private val dialogQueue: PriorityQueue<DialogModel> = PriorityQueue()
-        private val _currentDialog = MutableStateFlow<DialogModel?>(null)
-        override val currentDialog: StateFlow<DialogModel?> = _currentDialog.asStateFlow()
+@Inject
+constructor() : IDialogQueueService {
+    private val dialogQueue: PriorityQueue<DialogModel> = PriorityQueue()
+    private val _currentDialog = MutableStateFlow<DialogModel?>(null)
+    override val currentDialog: StateFlow<DialogModel?> = _currentDialog.asStateFlow()
 
     private val _currentToast = MutableStateFlow<Toast?>(null)
     override val currentToast: StateFlow<Toast?> = _currentToast.asStateFlow()
@@ -32,28 +33,28 @@ class DialogQueueService
     override val loader: StateFlow<Loader?> = _loader.asStateFlow()
     private val scope = CoroutineScope(Dispatchers.Main)
 
-        /**
-         * Enqueue a dialog. If no dialog is showing, show immediately.
-         */
-        override fun enqueue(dialog: DialogModel) {
-            dialogQueue.add(dialog)
-            if (_currentDialog.value == null) {
-                _currentDialog.value = dialogQueue.peek()
-            }
+    /**
+     * Enqueue a dialog. If no dialog is showing, show immediately.
+     */
+    override fun enqueue(dialog: DialogModel) {
+        dialogQueue.add(dialog)
+        if (_currentDialog.value == null) {
+            _currentDialog.value = dialogQueue.peek()
         }
+    }
 
-        /**
-         * Show an toast.
-         */
-        override fun showToast(dialog: Toast) {
-            _currentToast.value = dialog
-        }
+    /**
+     * Show an toast.
+     */
+    override fun showToast(dialog: Toast) {
+        _currentToast.value = dialog
+    }
 
     /**
      * Show a loader.
      */
-    override fun showLoader(loader: Loader) {
-        _loader.value = loader
+    override fun showLoader(message: String, style: LoaderStyle) {
+        _loader.value = Loader(message, style)
     }
 
     /**
@@ -70,49 +71,53 @@ class DialogQueueService
         _currentToast.value = null
     }
 
-        /**
-         * Dismiss the current dialog and show the next one after delayMillis.
-         */
-        override fun dismissCurrent() {
-            val dismissed = _currentDialog.value
-            if (dialogQueue.isNotEmpty()) {
-                dialogQueue.remove(dismissed)
-                _currentDialog.value = null
-                showNext()
-            }
-        }
-
-        /**
-         * Clear all dialogs and reset state.
-         */
-        override fun clear() {
-            dialogQueue.clear()
+    /**
+     * Dismiss the current dialog and show the next one after delayMillis.
+     */
+    override fun dismissCurrent() {
+        val dismissed = _currentDialog.value
+        if (dialogQueue.isNotEmpty()) {
+            dialogQueue.remove(dismissed)
             _currentDialog.value = null
+            showNext()
         }
+    }
 
-        /**
-         * Get the current queue size (excluding current dialog)
-         */
-        override fun getQueueSize(): Int = dialogQueue.size
+    /**
+     * Clear all dialogs and reset state.
+     */
+    override fun clear() {
+        dialogQueue.clear()
+        _currentDialog.value = null
+    }
 
-        /**
-         * Get the next dialog in the queue without removing it
-         */
-        override fun peekNextDialog(): DialogModel? {
-            val current = _currentDialog.value
-            return dialogQueue.peek()?.takeUnless { it == current }
-        }
+    /**
+     * Get the current queue size (excluding current dialog)
+     */
+    override fun getQueueSize(): Int = dialogQueue.size
 
-        /**
-         * Show the next dialog in the queue, or null if empty.
-         */
-        private fun showNext() {
-            if (dialogQueue.isNotEmpty()) {
-                val next = dialogQueue.peek()
-                scope.launch {
-                    delay(next!!.delayMillis)
-                    _currentDialog.value = next
-                }
+    /**
+     * Get the next dialog in the queue without removing it
+     */
+    override fun peekNextDialog(): DialogModel? {
+        val current = _currentDialog.value
+        return dialogQueue.peek()?.takeUnless { it == current }
+    }
+
+    /**
+     * Show the next dialog in the queue, or null if empty.
+     */
+    private fun showNext() {
+        if (dialogQueue.isNotEmpty()) {
+            val next = dialogQueue.peek()
+            scope.launch {
+                delay(next!!.delayMillis)
+                _currentDialog.value = next
             }
         }
     }
+
+    override fun showDialog(dialog: DialogModel) {
+        this.enqueue(dialog.updatePriority(1))
+    }
+}

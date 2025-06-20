@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.core.network.interceptors
 
 import androidx.annotation.RequiresApi
+import com.greatergoods.meapp.core.config.HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -44,7 +45,7 @@ class NetworkInterceptor
                     .Builder()
                     .request(request)
                     .protocol(Protocol.HTTP_1_1)
-                    .code(599) // Custom code for no connectivity
+                    .code(NO_INTERNET_CONNECTION) // Custom code for no connectivity
                     .message("No Internet Connection")
                     .body(responseBody)
                     .build()

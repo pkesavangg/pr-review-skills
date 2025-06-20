@@ -22,14 +22,14 @@ import androidx.room.PrimaryKey
 data class BodyScaleEntryMetricEntity(
     @PrimaryKey
     val id: Long,
-    val bmr: Int,
-    val metabolicAge: Int,
-    val proteinPercent: Int,
-    val pulse: Int,
-    val skeletalMusclePercent: Int,
-    val subcutaneousFatPercent: Int,
-    val visceralFatLevel: Int,
-    val boneMass: Int,
-    val impedance: Int,
-    val unit: String,
+    val bmr: Int?,
+    val metabolicAge: Int?,
+    val proteinPercent: Int?,
+    val pulse: Int?,
+    val skeletalMusclePercent: Int?,
+    val subcutaneousFatPercent: Int?,
+    val visceralFatLevel: Int?,
+    val boneMass: Int?,
+    val impedance: Int?,
 )
+

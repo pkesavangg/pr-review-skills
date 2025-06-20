@@ -3,6 +3,8 @@ package com.greatergoods.meapp.features.login.model
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.login.strings.LoginStrings
 
 /**
  * Controls for Login form.
@@ -10,7 +12,29 @@ import com.greatergoods.meapp.features.common.helper.form.FormGroup
 data class LoginFormControls(
     val email: FormControl<String>,
     val password: FormControl<String>,
-)
+) {
+    companion object {
+        fun create() = LoginFormControls(
+            email =
+                FormControl.create(
+                    initialValue = "",
+                    validators = listOf(
+                        FormValidations.required(),
+                        FormValidations.maxLength(100, LoginStrings.EmailLabel),
+                        FormValidations.email(),
+                    ),
+                ),
+            password =
+                FormControl.create(
+                    initialValue = "",
+                    validators = listOf(
+                        FormValidations.minLength(6, LoginStrings.EmailLabel),
+                        FormValidations.maxLength(50, LoginStrings.EmailLabel),
+                    ),
+                ),
+        )
+    }
+}
 
 /**
  * State for Login screen, including form group and UI state.
@@ -30,6 +54,9 @@ data class LoginState(
 sealed class LoginIntent : IReducer.Intent {
     /** Trigger login submission. */
     object Submit : LoginIntent()
+    object OpenForgotPasswordModal : LoginIntent()
+    object OpenHelpModal : LoginIntent()
+    data class OpenInAppBrowser(val url: String) : LoginIntent()
 
     /** Show an error message. */
     data class Error(
@@ -64,6 +91,14 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
                 state.copy(isLoading = true, error = null)
             }
 
+            is LoginIntent.OpenForgotPasswordModal -> {
+                state.copy(isLoading = false, error = null)
+            }
+
+            is LoginIntent.OpenHelpModal -> {
+                state.copy(isLoading = false, error = null)
+            }
+
             is LoginIntent.Error -> {
                 state.copy(isLoading = false, error = intent.message)
             }
@@ -75,5 +110,7 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
             is LoginIntent.Success -> {
                 state.copy(isLoading = false, error = null)
             }
+
+            else -> state
         }
 }

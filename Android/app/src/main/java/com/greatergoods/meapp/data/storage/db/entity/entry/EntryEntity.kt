@@ -19,31 +19,38 @@ import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
             childColumns = ["accountId"],
         ),
     ],
-    indices = [Index("accountId")],
+    indices = [
+        Index("accountId"),
+        Index("entryTimestamp"),
+        Index(value = ["accountId", "entryTimestamp"], unique = true), // <- Enforce uniqueness here
+    ],
 )
 data class EntryEntity(
     @PrimaryKey(autoGenerate = true)
-    override val id: Long,
+    override val id: Long = 0L,
+
     override val accountId: String,
-    override val entryTimestamp: Long,
-    override val serverTimestamp: Long?,
-    override val opTimestamp: Long?,
+    override val entryTimestamp: String,
+    override val serverTimestamp: String? = null,
+    override val opTimestamp: String? = null,
     override val operationType: String,
     override val deviceType: String,
     override val deviceId: String,
     override val attempts: Int = 0,
-    override val isSynced: Boolean = false,
+    override val unit: String? = "lb",
+    override val isSynced: Boolean = false
 ) : BaseEntryEntity
 
 interface BaseEntryEntity {
     val id: Long
     val accountId: String
-    val entryTimestamp: Long
-    val serverTimestamp: Long?
-    val opTimestamp: Long?
+    val entryTimestamp: String
+    val serverTimestamp: String?
+    val opTimestamp: String?
     val operationType: String
     val deviceType: String
     val deviceId: String
     val attempts: Int
+    val unit: String?
     val isSynced: Boolean
 }

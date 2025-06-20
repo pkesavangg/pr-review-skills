@@ -18,7 +18,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.greatergoods.meapp.features.common.strings.AppHelpModalStrings
+import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.LocalAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import android.annotation.SuppressLint
@@ -37,6 +39,8 @@ fun AppHelpModal(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val themeMode = LocalAppTheme.current
+    val stampImage = if (themeMode == ThemeMode.LIGHT) AppIcons.Default.Stamp else AppIcons.Default.StampDark
     AppPopupModal {
         AppPopup(
             true,
@@ -45,7 +49,7 @@ fun AppHelpModal(
             onClose = {
                 onClose()
             },
-            imageType = AppPopupImageType.DefaultImage(AppIcons.Outlined.Help),
+            imageType = AppPopupImageType.DefaultImage(stampImage),
         ) {
             Spacer(Modifier.height(MeTheme.spacing.md))
             // Phone row

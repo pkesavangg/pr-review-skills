@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.landing
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,10 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
@@ -24,6 +24,8 @@ import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.landing.strings.LandingString
+import com.greatergoods.meapp.features.loading.string.LoadingString
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -43,45 +45,21 @@ fun LandingScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(
-                text = "weightgurus is now",
-                color = MeTheme.colorScheme.inverseAction,
-                style = MeTheme.typography.subHeading1,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-            Text(
-                text = "my everyday",
-                color = MeTheme.colorScheme.inverseAction,
-                style = MeTheme.typography.heading2,
-                fontWeight = FontWeight.W800,
-                fontSize = 50.sp,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "health",
-                color = MeTheme.colorScheme.meAppPrimary,
-                style = MeTheme.typography.heading2,
-                fontWeight = FontWeight.W800,
-                fontSize = 50.sp,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.md))
-            Text(
-                text = "LEARN MORE",
-                color = MeTheme.colorScheme.inverseAction,
-                style = MeTheme.typography.button1,
-                fontWeight = FontWeight.W700,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
+            Image(
+                painter = painterResource(id = AppIcons.Default.Banner),
+                contentDescription = LoadingString.LOADING,
+                colorFilter = ColorFilter.tint(MeTheme.colorScheme.inverseAction),
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.x6l))
             AppButton(
                 type = ButtonType.SecondaryFilled,
                 label = LandingString.SignUp,
                 size = ButtonSize.Large,
-                onClick = { /* TODO: Sign up action */ },
+                onClick = {
+                    backStack.addRoute(
+                        AppRoute.Auth.Signup,
+                    )
+                },
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
             AppButton(
@@ -100,18 +78,12 @@ fun LandingScreen() {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(bottom = 40.dp),
+                .padding(bottom = MeTheme.spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
         ) {
             Text(
-                text = "me.health by greater goods",
-                color = MeTheme.colorScheme.inverseAction,
-                style = MeTheme.typography.subHeading2,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "version 1.0.0",
+                text = LandingString.Version,
                 color = MeTheme.colorScheme.inverseAction,
                 style = MeTheme.typography.subHeading2,
                 textAlign = TextAlign.Center,

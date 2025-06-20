@@ -26,8 +26,7 @@ struct LoginScreen: View {
     var body: some View {
         ZStack {
             theme.backgroundSecondary.ignoresSafeArea()
-            VStack(alignment: .center) {
-
+            VStack {
                 NavbarHeaderView(
                     title: "",
                     leadingContent: { Image(AppAssets.xmark) },
@@ -36,46 +35,47 @@ struct LoginScreen: View {
                     onTrailingTap: { store.openHelp() }
                 )
                 .padding(.bottom, .spacingLG)
+                
+                VStack(alignment: .center) {
+                    VStack(alignment: .leading) {
+                        Text(lang.welcomeBack)
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
 
-                VStack(alignment: .leading) {
-                    Text(lang.welcomeBack)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
-
-                    // Email Input Field
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.email,
-                            inputType: .email,
-                            errorMessage: store.emailError,
-                            focusField: .email
-                        ),
-                        value: $store.loginForm.email.value,
-                        focusedField: focusBinding
-                    ) {
-                        store.setEmailTouched()
-                        focusedField = .password
-                    }
-                    // Password Input Field
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.password,
-                            placeholder: lang.passwordPlaceholder,
-                            inputType: store.showPassword ? .text : .password,
-                            submitLabel: .done,
-                            errorMessage: store.passwordError
-                        ),
-                        value: $store.loginForm.password.value,
-                        focusedField: focusBinding
-                    ) {
-                        store.setPasswordTouched()
-                        focusedField = nil
-                        if store.isFormValid {
-                            Task { await store.logIn() }
+                        // Email Input Field
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: labels.email,
+                                inputType: .email,
+                                errorMessage: store.emailError,
+                                focusField: .email
+                            ),
+                            value: $store.loginForm.email.value,
+                            focusedField: focusBinding
+                        ) {
+                            store.setEmailTouched()
+                            focusedField = .password
+                        }
+                        // Password Input Field
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: labels.password,
+                                placeholder: lang.passwordPlaceholder,
+                                inputType: store.showPassword ? .text : .password,
+                                submitLabel: .done,
+                                errorMessage: store.passwordError
+                            ),
+                            value: $store.loginForm.password.value,
+                            focusedField: focusBinding
+                        ) {
+                            store.setPasswordTouched()
+                            focusedField = nil
+                            if store.isFormValid {
+                                Task { await store.logIn() }
+                            }
                         }
                     }
-                }
-                .padding(.vertical, .spacingMD)
+                    .padding(.vertical, .spacingMD)
 
                 ButtonView(
                     text: commonLang.logIn,
@@ -89,9 +89,8 @@ struct LoginScreen: View {
                         if store.isFormValid {
                             Task { await store.logIn() }
                         }
-                    }
-                )
-                .padding(.bottom, .spacingSM)
+                    )
+                    .padding(.bottom, .spacingSM)
 
                 ButtonView(
                     text: lang.forgotPassword,
@@ -101,7 +100,7 @@ struct LoginScreen: View {
                     action: { store.showPasswordResetPrompt() }
                 )
 
-                Spacer()
+                    Spacer()
 
                 VStack(spacing: .spacingXS/2) {
                     Text(lang.byLoggingIn)
@@ -127,8 +126,8 @@ struct LoginScreen: View {
                         )
                     }
                 }
+                .padding(.horizontal, .spacingSM)
             }
-            .padding(.horizontal, .spacingSM)
         }
         .navigationBarBackButtonHidden(true)
         .inAppBrowser(

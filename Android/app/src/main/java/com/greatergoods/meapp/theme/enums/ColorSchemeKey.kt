@@ -33,9 +33,14 @@ enum class ColorSchemeKey {
     Danger,
     Streak,
     Utility,
+
+    // Icon
     IconPrimary,
+    IconPrimaryDisabled,
     IconSecondary,
-    IconDisabled,
+    IconSecondaryDisabled,
+
+    // Loading
     Loading,
     LoadingError,
 

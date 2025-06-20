@@ -3,8 +3,6 @@ package com.greatergoods.meapp.features.common.viewmodel
 import androidx.lifecycle.ViewModel
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.features.common.components.DialogType
-import com.greatergoods.meapp.features.common.components.LoaderConfig
-import com.greatergoods.meapp.features.common.components.LoaderDefaults
 import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -34,7 +32,7 @@ class DialogQueueViewModel @Inject constructor(
         title: String,
         message: String,
         dismissText: String,
-        onDismiss: () -> Unit,
+        onDismiss: (() -> Unit)?,
         priority: Int,
         delayMillis: Long
     ) {
@@ -60,7 +58,7 @@ class DialogQueueViewModel @Inject constructor(
         cancelText: String,
         onConfirm: (() -> Unit)?,
         onCancel: (() -> Unit)?,
-        onDismiss: () -> Unit,
+        onDismiss: (() -> Unit)?,
         priority: Int,
         delayMillis: Long
     ) {
@@ -85,7 +83,7 @@ class DialogQueueViewModel @Inject constructor(
     fun enqueueCustomDialog(
         contentKey: DialogType,
         params: Map<String, Any?>,
-        onDismiss: () -> Unit,
+        onDismiss: (() -> Unit)?,
         priority: Int,
         delayMillis: Long
     ) {
@@ -103,14 +101,10 @@ class DialogQueueViewModel @Inject constructor(
     fun showLoader(
         message: String,
         loaderStyle: LoaderStyle = LoaderStyle.DASHED,
-        loaderConfig: LoaderConfig = LoaderDefaults.defaultFor(loaderStyle)
     ) {
         dialogQueueService.showLoader(
-            Loader(
-                message = message,
-                style = loaderStyle,
-                config = loaderConfig,
-            ),
+            message = message,
+            style = loaderStyle,
         )
     }
 

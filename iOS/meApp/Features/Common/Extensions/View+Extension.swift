@@ -145,4 +145,10 @@ extension View {
     ) -> some View {
         modifier(BorderModifier(sides: sides, thickness: thickness, color: color))
     }
+    
+    /// Applies a modifier to set the row insets for settings views.
+    /// - Returns: A view with modified row insets suitable for settings.
+    func settingsRowInsets() -> some View {
+        self.modifier(SettingsRowInsetModifier())
+    }
 }

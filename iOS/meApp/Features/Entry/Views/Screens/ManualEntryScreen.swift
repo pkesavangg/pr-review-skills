@@ -16,6 +16,8 @@ struct ManualEntryScreen: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @State private var focusedField: FocusField?
+    // Keyboard observer to adjust bottom padding when the keyboard is visible
+    @StateObject private var keyboard = KeyboardResponder()
     
     let manualEntryLang = ManualEntryStrings.self
     let commonLang = CommonStrings.self
@@ -278,7 +280,6 @@ struct ManualEntryScreen: View {
                                         }
                                     }
                                 }
-                                
                             }
                             .padding(.top, .spacingSM)
                         }
@@ -292,6 +293,7 @@ struct ManualEntryScreen: View {
                         isDisabled: !entryStore.manualEntryForm.isValid,
                     ) {
                         Task {
+                            focusedField = nil
                             await entryStore.saveEntry()
                             performTabSwitchAndHideKeyboard()
                         }
@@ -299,6 +301,7 @@ struct ManualEntryScreen: View {
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
+                .padding(.bottom, keyboard.currentHeight)
                 .onAppear {
                     // Register a handler that decides whether the tab can be left.
                     registerDeactivation {
@@ -312,6 +315,7 @@ struct ManualEntryScreen: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary)
+        .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
     }
     
     private func performTabSwitchAndHideKeyboard() {

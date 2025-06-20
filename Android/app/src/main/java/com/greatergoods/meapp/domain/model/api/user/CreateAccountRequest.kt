@@ -1,13 +1,12 @@
 package com.greatergoods.meapp.domain.model.api.user
 
-import com.greatergoods.meapp.domain.model.common.Gender
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 
 data class CreateAccountRequest(
     val email: String, // Required, pattern, max length 100
     val firstName: String, // Required, no whitespace, max length 100
     val lastName: String, // Required, no whitespace, max length 100
-    val gender: Gender, // Required
+    val gender: String, // Required
     val zipcode: String, // Required, no whitespace, max length 20
     val password: String, // Required, min length 6, max length 50
     val dob: String, // Required, format: YYYY-MM-DD

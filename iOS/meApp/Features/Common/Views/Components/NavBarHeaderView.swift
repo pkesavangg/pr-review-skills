@@ -54,6 +54,8 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                 }
             }
         }
+        .padding(.spacingSM)
+        .background(theme.backgroundSecondary)
         .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
     }
 }
@@ -75,6 +77,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     NavbarHeaderView<_, EmptyView>(
         title: "Middle Title",
         leadingContent: { Image(systemName: "xmark") },
-        onLeadingTap: {}
+        onLeadingTap: {},
+        canShowBorder: true
     )
 }

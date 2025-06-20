@@ -36,7 +36,7 @@ protocol EntryRepositoryProtocol {
     /// Fetches all entries for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: An array of Entry objects for the user.
-    func fetchEntries(forUserId userId: String) async throws -> [Entry]
+    func fetchEntries(forUserId userId: String, operationType: String?) async throws -> [Entry]
 
     /// Fetches all entries for a specific user and timestamp.
     /// - Parameters:
@@ -92,5 +92,4 @@ protocol EntryRepositoryProtocol {
     ///   - newEntries: Entries to create.
     ///   - deleteOps: Entries to delete.
     func syncEntries(newEntries: [Entry]) async throws
-
 }

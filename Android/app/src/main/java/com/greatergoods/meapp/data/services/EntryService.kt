@@ -2,19 +2,22 @@
 package com.greatergoods.meapp.data.services
 
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
+import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.process
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -24,7 +27,7 @@ import javax.inject.Singleton
 @Singleton
 class EntryService @Inject constructor(
     private val entryRepository: IEntryRepository,
-    private val accountDao: AccountDao
+    private val accountRepository: IAccountRepository
 ) : IEntryService {
 
     private val _isUpdating = MutableStateFlow(false)
@@ -38,13 +41,6 @@ class EntryService @Inject constructor(
 
     private val _last30Days = MutableStateFlow<List<Entry>>(listOf())
     override val last30Days = _last30Days.asStateFlow()
-
-    private val _monthsLastYear = MutableStateFlow<List<HistoryMonth>?>(null)
-    override val monthsLastYear: StateFlow<List<HistoryMonth>?> = _monthsLastYear.asStateFlow()
-
-    private val _monthsAll = MutableStateFlow<List<HistoryMonth>?>(null)
-    override val monthsAll: StateFlow<List<HistoryMonth>?> = _monthsAll.asStateFlow()
-
     private val _progress = MutableStateFlow<Progress?>(null)
     override val progress: StateFlow<Progress?> = _progress.asStateFlow()
 
@@ -54,41 +50,19 @@ class EntryService @Inject constructor(
     private var accountId: String? = null
     private var initialWeight: Double? = null
 
+    override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> {
+        return entryRepository.getMonthlyAverage(accountId ?: "").map { flow ->
+            flow.map { it.process() }
+        }
+    }
+
     /**
      * Updates all entry-related data for the given account.
      * Fetches latest entry, last 7 and 30 days entries, and updates progress.
      * @param accountId The account ID to update data for.
      */
-    override suspend fun updateAllData(accountId: String) {
+    override suspend fun updateAccountId(accountId: String) {
         this.accountId = accountId
-        _isUpdating.value = true
-        try {
-            entryRepository.getLastNDaysEntries(accountId, 7)
-            val last30DaysFlow = entryRepository.getLastNDaysEntries(accountId, 30)
-            val monthsLastYearFlow = entryRepository.getMonthsLastYear(accountId)
-            val monthsAllFlow = entryRepository.getMonthsAll(accountId)
-
-            // last7DaysFlow.collect { entries ->
-            //     _last7Days.value = entries
-            // }
-            //
-            last30DaysFlow.collect { entries ->
-                _last30Days.value = entries
-            }
-
-            monthsLastYearFlow.collect { months ->
-                _monthsLastYear.value = months
-            }
-
-            monthsAllFlow.collect { months ->
-                _monthsAll.value = months
-            }
-            updateLatestEntry(accountId)
-
-            updateProgress(accountId)
-        } finally {
-            _isUpdating.value = false
-        }
     }
 
     /**
@@ -163,12 +137,13 @@ class EntryService @Inject constructor(
         if (accountId == null) return
 
         try {
+            _isUpdating.value = true
             // 1. Get existing unsynced entries
             val unSyncedEntries = entryRepository.getUnSynced(accountId!!).toMutableList()
 
             // 2. Add new operations to unsynced list
             newEntries.forEach { entry ->
-                unSyncedEntries.add(0, entry)
+                unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = accountId!!)))
             }
             deleteOps.forEach { entry ->
                 unSyncedEntries.add(0, entry)
@@ -222,9 +197,18 @@ class EntryService @Inject constructor(
 
             // 5. Get operations from API
             val operationCount = entryRepository.getOperationCount(accountId!!)
-            val operationsFromAPI = try {
-                entryRepository.getOperationsFromAPI(_lastUpdated.value)
-                    .map { fromScaleApiEntry(it, accountId = accountId ?: "") }
+            val operationsFromApi = mutableListOf<ScaleEntry>()
+            try {
+                val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
+                val response = entryRepository.getOperationsFromAPI(syncTimeStamp)
+                if (response == null) {
+                    AppLog.w("EntryService", "No operations received from API")
+                    return
+                }
+                val scaleEntries =
+                    response.operations.map { fromScaleApiEntry(it, accountId = accountId!!) }
+                operationsFromApi.addAll(scaleEntries)
+                accountRepository.updateSyncTimeStamp(response.timestamp)
             } catch (e: Exception) {
                 AppLog.e("EntryService", "Error getting operations from API", e.toString())
                 // If API fails, store successful operations as placeholders
@@ -236,14 +220,13 @@ class EntryService @Inject constructor(
                     userHasOperations = operationCount > 0,
                     arePlaceholders = true,
                 )
-                emptyList()
             }
 
             // 6. Execute operations from API
-            if (operationsFromAPI.isNotEmpty()) {
+            if (operationsFromApi.isNotEmpty()) {
                 EntryServiceHelper.executeOperations(
                     entryRepository,
-                    operationsFromAPI,
+                    operationsFromApi,
                 )
             }
 
@@ -251,6 +234,8 @@ class EntryService @Inject constructor(
             _lastUpdated.value = System.currentTimeMillis()
         } catch (e: Exception) {
             AppLog.e("EntryService", "Error in syncOperations", e.toString())
+        } finally {
+            _isUpdating.value = false
         }
     }
 
@@ -364,8 +349,10 @@ internal object EntryServiceHelper {
             // Sort operations by server timestamp
             val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
             // Separate create and delete operations
-            val createOperations = sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
-            val deleteOperations = sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
+            val createOperations =
+                sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
+            val deleteOperations =
+                sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
 
             // Handle create operations
             for (operation in createOperations) {
@@ -489,7 +476,8 @@ internal object EntryServiceHelper {
         // Get the oldest (last) scale entry in each period for comparison
         val initWeek = last7ScaleEntries.lastOrNull()
         val initMonth = last30ScaleEntries.lastOrNull()
-        val initYear = last30ScaleEntries.lastOrNull() // Placeholder: adjust if you have a year list
+        val initYear =
+            last30ScaleEntries.lastOrNull() // Placeholder: adjust if you have a year list
 
         // Calculate week, month, year, and total progress (all as Double)
         val week = if (latestEntry != null && initWeek != null) {
