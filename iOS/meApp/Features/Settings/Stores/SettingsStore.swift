@@ -631,6 +631,16 @@ class SettingsStore: ObservableObject {
             weightlessForm.weight.value = String(format: "%.1f", display)
             weightlessForm.weight.markAsPristine()
         }
+        let maxWeight = account.weightSettings?.weightUnit ?? .lb == .kg ? 450.0 : 999.0
+
+        // Remove old validator
+        weightlessForm.weight.removeValidator(ofType: .maxValue)
+        weightlessForm.weight.removeValidator(ofType: .maxValue)
+
+        // Add new validator
+        let validator = Validator.maxValue(maxWeight)
+        weightlessForm.weight.addValidator(validator)
+        weightlessForm.weight.addValidator(validator)
         weightlessForm.validate()
     }
     

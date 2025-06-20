@@ -13,7 +13,7 @@ final class WeightlessForm: ObservableForm {
     /// Whether weightless mode is enabled.
     var isOn = FormControl(false)
     /// Anchor weight in **display units** (String so we can validate numeric input easily).
-    var weight = FormControl("", validators: [.required, .minValue(), .maxValue(999.9)])
+    var weight = FormControl("", validators: [.required, .minValue()])
 
     // MARK: - Change publisher
     var formDidChange: AnyPublisher<Void, Never> {
