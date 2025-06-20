@@ -97,6 +97,14 @@ final class HistoryStore: ObservableObject {
         await loadEntries(for: month)
     }
 
+    func refreshAllEntries() async {
+        Task { [weak self] in
+            await entryService.syncAllEntriesWithRemote()
+            await self?.loadMonthsInternal()
+        }
+    }
+
+
     // MARK: - Internal helpers -------------------------------------------
 
     private func loadMonthsInternal() async {
