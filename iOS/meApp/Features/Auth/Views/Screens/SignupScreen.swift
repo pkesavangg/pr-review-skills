@@ -82,7 +82,7 @@ struct SignupScreen: View {
     private var footerButtons: some View {
         HStack {
             ButtonView(text: commonLang.back,
-                       type: .linkBlueInline,
+                       type: .inlineTextPrimary,
                        size: .small,
                        isDisabled: signupStore.currentStep == SignupStep.name,
                        action: {
@@ -95,7 +95,7 @@ struct SignupScreen: View {
             Spacer()
             
             if signupStore.currentStep == SignupStep.goal {
-                ButtonView(text: commonLang.skip, type: .linkBlueDefault, size: .small, isDisabled: false, action: {
+                ButtonView(text: commonLang.skip, type: .textPrimary, size: .small, isDisabled: false, action: {
                     withAnimation {
                         hideKeyboard()
                         signupStore.handleSkip()
@@ -105,7 +105,7 @@ struct SignupScreen: View {
             }
             
             ButtonView(text: signupStore.currentStep == SignupStep.password ? commonLang.complete : commonLang.next,
-                       type: .primary,
+                       type: .filledPrimary,
                        size: .small,
                        isDisabled: !signupStore.isNextEnabled,
                        action: {

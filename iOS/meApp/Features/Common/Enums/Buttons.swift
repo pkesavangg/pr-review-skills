@@ -8,32 +8,35 @@
 import Foundation
 
 public enum ButtonSize {
-    case regular
+    case large
     case small
 }
 
 public enum ButtonType: CaseIterable {
-    case primary
-    case secondary
-    case primaryInverse
-    case secondaryInverse
-    case linkBlueDefault
-    case linkBlueInline
-    case linkWhiteDefault
-    case linkWhiteInline
-    case smallTertiaryLink
+    case filledPrimary
+    case filledSecondary
+    case outlinedPrimary
+    case outlinedSecondary
+    case textPrimary
+    case textSecondary
+    case textTertiary
+    case inlineTextPrimary
+    case inlineTextSecondary
+    case inlineTextTertiary
 
     var label: String {
         switch self {
-        case .primary: return "Primary"
-        case .secondary: return "Secondary"
-        case .primaryInverse: return "Primary Inverse"
-        case .secondaryInverse: return "Secondary Inverse"
-        case .linkBlueDefault: return "Link Blue Default"
-        case .linkBlueInline: return "Link Blue Inline"
-        case .linkWhiteDefault: return "Link White Default"
-        case .linkWhiteInline: return "Link White Inline"
-        case .smallTertiaryLink: return "Small Tertiary Link"
+        case .filledPrimary: return "Filled Primary"
+        case .filledSecondary: return "Filled Secondary"
+        case .outlinedPrimary: return "Outlined Primary"
+        case .outlinedSecondary: return "Outlined Secondary"
+        case .textPrimary: return "Text Primary"
+        case .textSecondary: return "Text Secondary"
+        case .textTertiary: return "Text Tertiary"
+        case .inlineTextPrimary: return "Inline Text Primary"
+        case .inlineTextSecondary: return "Inline Text Secondary"
+        case .inlineTextTertiary: return "Inline Text Tertiary"
         }
     }
 }
+

@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.greatergoods.meapp.features.common.components.MainBottomNav
-import com.greatergoods.meapp.features.dashboard.helper.BOTTOM_NAV_ITEMS
+import com.greatergoods.meapp.features.dashboard.enum.BOTTOM_NAV_ITEMS
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -34,8 +34,7 @@ class MainBottomNavTest {
         var selectedIndex = -1
         var selectedLabel = ""
         composeTestRule.setContent {
-            MainBottomNav(
-            )
+            MainBottomNav()
         }
         composeTestRule.onNodeWithText(BOTTOM_NAV_ITEMS[1].label).performClick()
         assert(selectedIndex == 1)

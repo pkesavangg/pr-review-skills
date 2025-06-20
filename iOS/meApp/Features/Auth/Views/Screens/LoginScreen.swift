@@ -77,56 +77,53 @@ struct LoginScreen: View {
                     }
                     .padding(.vertical, .spacingMD)
 
-                    ButtonView(
-                        text: commonLang.logIn,
-                        type: .primary,
-                        size: .regular,
-                        isDisabled: !store.isFormValid || store.isFormSubmitting,
-                        action: {
-                            focusedField = nil
-                            hideKeyboard()
-                            store.loginForm.email.markAsDirty()
-                            store.loginForm.password.markAsDirty()
-                            if store.isFormValid {
-                                Task { await store.logIn() }
-                            }
+                ButtonView(
+                    text: commonLang.logIn,
+                    type: .filledPrimary,
+                    size: .large,
+                    isDisabled: !store.isFormValid || store.isFormSubmitting,
+                    action: {
+                        focusedField = nil
+                        store.loginForm.email.markAsDirty()
+                        store.loginForm.password.markAsDirty()
+                        if store.isFormValid {
+                            Task { await store.logIn() }
                         }
                     )
                     .padding(.bottom, .spacingSM)
 
-                    ButtonView(
-                        text: lang.forgotPassword,
-                        type: .linkBlueDefault,
-                        size: .small,
-                        isDisabled: false,
-                        action: { store.showPasswordResetPrompt() }
-                    )
+                ButtonView(
+                    text: lang.forgotPassword,
+                    type: .textPrimary,
+                    size: .small,
+                    isDisabled: false,
+                    action: { store.showPasswordResetPrompt() }
+                )
 
                     Spacer()
 
-                    VStack(spacing: .spacingXS/2) {
-                        Text(lang.byLoggingIn)
+                VStack(spacing: .spacingXS/2) {
+                    Text(lang.byLoggingIn)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.actionSecondary)
+                    HStack() {
+                        ButtonView(
+                            text: legalStrings.termsOfService,
+                            type: .textPrimary,
+                            size: .small,
+                            isDisabled: false,
+                            action: { store.openTerms() }
+                        )
+                        Text(legalStrings.andText)
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.actionSecondary)
-                        HStack(spacing: .spacingMD/2) {
-                            ButtonView(
-                                text: legalStrings.termsOfService,
-                                type: .linkBlueDefault,
-                                size: .small,
-                                isDisabled: false,
-                                action: { store.openTerms() }
-                            )
-                            Text(legalStrings.andText)
-                                .fontOpenSans(.subHeading2)
-                                .foregroundColor(theme.actionSecondary)
-                            ButtonView(
-                                text: legalStrings.privacyPolicy,
-                                type: .linkBlueDefault,
-                                size: .small,
-                                isDisabled: false,
-                                action: { store.openPrivacy() }
-                            )
-                        }
+                        ButtonView(
+                            text: legalStrings.privacyPolicy,
+                            type: .textPrimary,
+                            size: .small,
+                            isDisabled: false,
+                            action: { store.openPrivacy() }
+                        )
                     }
                 }
                 .padding(.horizontal, .spacingSM)
