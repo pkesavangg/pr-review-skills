@@ -25,12 +25,6 @@ final class WeightlessForm: ObservableForm {
 
     // MARK: - Validation
     override func validateForm() {
-        // weight is only required when toggle is On; clear errors when Off
-//        if !isOn.value {
-//           // weight.clearErrors()
-//        } else {
-//            weight.validate()
-//        }
         updateFormErrors(ValidationErrors<Any>())
     }
 
