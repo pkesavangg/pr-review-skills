@@ -111,8 +111,8 @@ struct EditProfileScreen: View {
                     HStack {
                         // Save Button
                         ButtonView(text: commonLang.save,
-                                   type: .primary,
-                                   size: .regular,
+                                   type: .filledPrimary,
+                                   size: .large,
                                    isDisabled: (!settingsStore.editProfileForm.isDirty || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid))) {
                             hideKeyboard()
                             settingsStore.saveProfile(router: router)

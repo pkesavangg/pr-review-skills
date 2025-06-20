@@ -12,9 +12,9 @@ import SwiftUI
 struct MonthSummaryItem: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.weightlessSettings) private var weightlessSettings
+    @Environment(\.weightUnit) private var weightUnit
 
     let month: HistoryMonth
-    let weightUnit: WeightUnit
     /// Localized date formatter: "MMM yyyy"
     private var monthYearText: String {
         let formatter = DateFormatter()
@@ -37,6 +37,7 @@ struct MonthSummaryItem: View {
     }
 
     var body: some View {
+      VStack(spacing: 0) {
         HStack() {
             // Month & entry count
             VStack(alignment: .leading) {
@@ -62,7 +63,7 @@ struct MonthSummaryItem: View {
                     .foregroundColor(theme.textSubheading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, .spacingSM)
+            .padding(.leading, .spacingMD)
 
             // Change
             VStack(alignment: .leading) {
@@ -75,7 +76,7 @@ struct MonthSummaryItem: View {
                     .foregroundColor(theme.textSubheading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, .spacingSM)
+            .padding(.leading, .spacingMD)
 
             // Chevron icon
            AppIconView(icon: AppAssets.chevronRight)
@@ -84,6 +85,10 @@ struct MonthSummaryItem: View {
         }
         .padding(.vertical, .spacingMD)
         .padding(.horizontal, .spacingSM)
+        Divider()
+            .foregroundColor(theme.actionPrimary)
+      }
+
     }
 }
 
@@ -108,7 +113,7 @@ struct MonthSummaryItem_Previews: PreviewProvider {
             min: nil,
             max: nil
         )
-      MonthSummaryItem(month: month, weightUnit: WeightUnit.kg)
+      MonthSummaryItem(month: month)
             .themeable()
             .environmentObject(Theme.shared)
             .previewLayout(.sizeThatFits)
