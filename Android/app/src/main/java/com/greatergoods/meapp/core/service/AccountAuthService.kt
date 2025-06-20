@@ -137,9 +137,9 @@ constructor(
             }
 
             // Always perform local logout
-            accountRepository.removeAccountInDB(accountId)
+            accountRepository.logoutInDb(accountId)
             tokenManager.clearTokens()
-            AppLog.d(TAG, "Logout successful for account: $accountId")
+            AppLog.d(TAG, "Logout successful")
             _authStateFlow.emit(AuthState.LoggedOut())
             _isLoginFlow.emit(false)
             true
@@ -218,6 +218,7 @@ constructor(
                     weightUnit =
                         request["weightUnit"] as? WeightUnit
                             ?: WeightUnit.LB,
+
                 )
             val response = accountRepository.signupInAPI(createRequest)
             val info = response.account
@@ -250,7 +251,7 @@ constructor(
             _authStateFlow.emit(AuthState.AccountAdded(savedAccount))
             _isSignUpFlow.emit(true)
             savedAccount
-        }  catch (e: Exception) {
+        } catch (e: Exception) {
             handleSignupError(e as HttpException)
             AppLog.e(TAG, "Account creation failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Account creation failed"))
@@ -492,7 +493,7 @@ constructor(
             HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
             else -> signupError.MessageGeneric
         }
-        val errorHeader = when(error.code()){
+        val errorHeader = when (error.code()) {
             HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
             else -> signupError.Header
         }

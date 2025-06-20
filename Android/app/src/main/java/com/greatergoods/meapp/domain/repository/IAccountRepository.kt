@@ -51,6 +51,7 @@ interface IAccountRepository {
 
     // DB Operations
     suspend fun addAccountInDB(account: Account): Account
+    suspend fun logoutInDb(accountId: String)
     suspend fun removeAccountInDB(accountId: String)
     suspend fun removeAllAccountsInDB()
     suspend fun getStoredActiveAccountFromDB(): Account?
