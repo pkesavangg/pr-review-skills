@@ -47,6 +47,7 @@ final class SignupStore: ObservableObject {
     init() {
         setupFormObservers()
         updateHeightPickerValues(from: Int(signupForm.height.value))
+        self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
     }
     
     let steps: [SignupStep] = [
