@@ -15,19 +15,21 @@ import com.greatergoods.meapp.theme.MeAppTheme
 /**
  * List of history detail items, using HistoryDetailItem for each row.
  * @param items List of history detail item models
- * @param onItemClick Callback when an item is clicked
+ * @param onItemClick Callback when an item's "More Details" is clicked
+ * @param onItemDelete Callback when an item's "Delete" is clicked
  */
 @Composable
 fun HistoryDetailList(
     items: List<ScaleEntry>,
     onItemClick: (ScaleEntry) -> Unit,
+    onItemDelete: (ScaleEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+
     LazyColumn(modifier = modifier) {
-        items(items) { item ->
+        items(items, key = { it.entry.id }) { item ->
             HistoryDetailItem(
                 item = item,
-                onClick = { onItemClick(item) },
             )
         }
     }
@@ -56,24 +58,24 @@ fun HistoryDetailListPreview() {
                     scale = ScaleEntryWithMetrics(
                         scaleEntry = BodyScaleEntryEntity(
                             id = 478,
-                            weight = 50.0,
-                            bodyFat = 0,
-                            muscleMass = 0,
-                            water = 0,
-                            bmi = 0,
+                            weight = 150.0,
+                            bodyFat = 15.2,
+                            muscleMass = 35.0,
+                            water = 55.0,
+                            bmi = 22.5,
                             source = "manual",
                         ),
                         scaleEntryMetric = BodyScaleEntryMetricEntity(
                             id = 478,
-                            bmr = 0,
-                            metabolicAge = 0,
-                            proteinPercent = 0,
-                            pulse = 0,
-                            skeletalMusclePercent = 0,
-                            subcutaneousFatPercent = 0,
-                            visceralFatLevel = 0,
-                            boneMass = 0,
-                            impedance = 0,
+                            bmr = 1800.0,
+                            metabolicAge = 28,
+                            proteinPercent = 18.0,
+                            pulse = 60,
+                            skeletalMusclePercent = 52.7,
+                            subcutaneousFatPercent = 10.3,
+                            visceralFatLevel = 8.0,
+                            boneMass = 4.4,
+                            impedance = 500,
                         ),
                     ),
                 ),
@@ -95,23 +97,23 @@ fun HistoryDetailListPreview() {
                         scaleEntry = BodyScaleEntryEntity(
                             id = 479,
                             weight = 70.0,
-                            bodyFat = 0,
-                            muscleMass = 0,
-                            water = 0,
-                            bmi = 0,
+                            bodyFat = 14.0,
+                            muscleMass = 33.0,
+                            water = 58.0,
+                            bmi = 21.5,
                             source = "manual",
                         ),
                         scaleEntryMetric = BodyScaleEntryMetricEntity(
                             id = 479,
-                            bmr = 0,
-                            metabolicAge = 0,
-                            proteinPercent = 0,
-                            pulse = 0,
-                            skeletalMusclePercent = 0,
-                            subcutaneousFatPercent = 0,
-                            visceralFatLevel = 0,
-                            boneMass = 0,
-                            impedance = 0,
+                            bmr = 1700.0,
+                            metabolicAge = 27,
+                            proteinPercent = 19.0,
+                            pulse = 65,
+                            skeletalMusclePercent = 50.1,
+                            subcutaneousFatPercent = 9.5,
+                            visceralFatLevel = 7.0,
+                            boneMass = 4.1,
+                            impedance = 510,
                         ),
                     ),
                 ),
@@ -119,6 +121,7 @@ fun HistoryDetailListPreview() {
         HistoryDetailList(
             sampleItems,
             onItemClick = {},
+            onItemDelete = {},
         )
     }
 }

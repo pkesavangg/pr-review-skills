@@ -23,6 +23,8 @@ object EntryHelper {
     private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
         .withZone(ZoneId.systemDefault())
 
+    fun FormControl<String>.toDoubleSafe(default: Double = 0.0): Double = this.value.toDoubleOrNull() ?: default
+
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
     fun EntryFormControls.toScaleEntry(weightMode: String): ScaleEntry {
@@ -45,11 +47,11 @@ object EntryHelper {
         val scaleEntry =
             BodyScaleEntryEntity(
                 id = 0L, // Will be set by DB
-                weight = weightDateTime.weight.value.toDouble(),
-                bodyFat = generalMetrics.bodyFat.toIntSafe(),
-                muscleMass = generalMetrics.muscleMass.toIntSafe(),
-                water = generalMetrics.bodyWater.toIntSafe(),
-                bmi = generalMetrics.bodyMassIndex.toIntSafe(),
+                weight = weightDateTime.weight.toDoubleSafe(),
+                bodyFat = generalMetrics.bodyFat.toDoubleSafe(),
+                muscleMass = generalMetrics.muscleMass.toDoubleSafe(),
+                water = generalMetrics.bodyWater.toDoubleSafe(),
+                bmi = generalMetrics.bodyMassIndex.toDoubleSafe(),
                 source = "manual", // or "bluetooth", "cloud", etc.
             )
 
@@ -57,14 +59,14 @@ object EntryHelper {
             r4ScaleMetrics?.let {
                 BodyScaleEntryMetricEntity(
                     id = 0L,
-                    bmr = it.bmr.toIntSafe(),
+                    bmr = it.bmr.toDoubleSafe(),
                     metabolicAge = it.metabolicAge.toIntSafe(),
-                    proteinPercent = it.protein.toIntSafe(),
+                    proteinPercent = it.protein.toDoubleSafe(),
                     pulse = it.heartRate.toIntSafe(),
-                    skeletalMusclePercent = it.skeletalMuscles.toIntSafe(),
-                    subcutaneousFatPercent = it.subcutaneousFat.toIntSafe(),
-                    visceralFatLevel = it.visceralFat.toIntSafe(),
-                    boneMass = it.boneMass.toIntSafe(),
+                    skeletalMusclePercent = it.skeletalMuscles.toDoubleSafe(),
+                    subcutaneousFatPercent = it.subcutaneousFat.toDoubleSafe(),
+                    visceralFatLevel = it.visceralFat.toDoubleSafe(),
+                    boneMass = it.boneMass.toDoubleSafe(),
                     impedance = 0, // You didn’t provide this in form controls – use 0 or calculate if needed
                 )
             }

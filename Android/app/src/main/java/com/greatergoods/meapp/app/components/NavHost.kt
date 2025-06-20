@@ -2,6 +2,7 @@ package com.greatergoods.meapp.app.components
 
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -17,6 +18,7 @@ import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
 import com.greatergoods.meapp.features.home.HomeScreen
 import com.greatergoods.meapp.features.loading.LoadingScreen
+import android.util.Log
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -32,6 +34,8 @@ fun NavHost(
         appViewModel.navigationService.navigationIntent,
         topLevelBackStack,
     )
+    val backStack = topLevelBackStack.topLevelStacks.collectAsState()
+    Log.i("CHECKING", "Top Level Back Stack: ${backStack.value}")
     NavDisplay(
         modifier = Modifier.navigationBarsPadding(),
         entryDecorators = listOf(
@@ -66,6 +70,7 @@ fun HomeNavHost(
         ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {
+            Log.i("CHECKING", "Top Level Back: ${topLevelBackStack.topLevelStacks.value}")
             topLevelBackStack.removeLast(AppRoute.Home)
         },
         entryProvider =
