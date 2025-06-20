@@ -1,9 +1,7 @@
 package com.greatergoods.meapp.features.common.components.chart
 
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -17,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
@@ -54,7 +53,6 @@ import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
-import android.util.Log
 
 private val LegendLabelKey = ExtraStore.Key<List<Double>>()
 
@@ -65,7 +63,6 @@ fun GraphView(
     segment: GraphSegment = GraphSegment.WEEK,
     placeHolder: String? = null,
     selectedData: List<GraphPoint>? = null,
-    labelContent: (@Composable () -> Unit)? = null,
     onSelected: (List<GraphPoint>) -> Unit,
 ) {
     if (graphLines.isEmpty() || graphLines.all { it.points.isEmpty() }) {
@@ -76,10 +73,12 @@ fun GraphView(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = placeHolder ?: "No data",
+                text = placeHolder ?: "You haven’t added \n any entries.",
                 modifier = Modifier.padding(16.dp),
                 color = MeTheme.colorScheme.textBody,
                 style = MeTheme.typography.heading5,
+                textAlign = TextAlign.Center,
+                minLines = 2,
             )
         }
         return
@@ -104,7 +103,6 @@ fun GraphView(
         }
 
     val xStep = GraphUtil.rememberXStep(segment)
-    Log.i("CHECKING", segment.toString())
 
     val scrollState =
         rememberVicoScrollState(
@@ -264,19 +262,14 @@ fun GraphView(
             getXStep = { xStep },
         )
 
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        labelContent?.invoke()
-        CartesianChartHost(
-            chart = chart,
-            modelProducer = modelProducer,
-            modifier =
-                Modifier
-                    .fillMaxSize(),
-            animationSpec = tween(1000),
-            scrollState = scrollState,
-        )
-    }
+
+
+    CartesianChartHost(
+        chart = chart,
+        modelProducer = modelProducer,
+        modifier =
+            Modifier.fillMaxSize(),
+        animationSpec = tween(1000),
+        scrollState = scrollState,
+    )
 }

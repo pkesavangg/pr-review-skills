@@ -6,6 +6,7 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -22,12 +23,16 @@ import javax.inject.Inject
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
+    private val entryService: IEntryService,
     private val accountAuthService: IAccountAuthService,
     private val logManager: LogManager
 ) : BaseIntentViewModel<AppState, AppIntent>(
-    initialState = AppState(),
     reducer = AppReducer(),
 ) {
+
+    override fun provideInitialState(): AppState {
+        return AppState()
+    }
 
     init {
         initLogic()
@@ -60,9 +65,10 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    private fun initLoadingData(isInitLoad: String?) {
+    private fun initLoadingData(isInitLoad: String) {
         viewModelScope.launch {
             try {
+                entryService.updateAccountId(isInitLoad)
                 // Simulate data loading
                 delay(3000)
 

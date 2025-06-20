@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.core.network.TokenManager
+import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
@@ -51,7 +51,7 @@ object RepositoryModule {
     fun provideAccountRepository(
         accountDao: AccountDao,
         userDataStore: UserDataStore,
-        tokenManager: TokenManager,
+        tokenManager: ITokenManager,
         authAPI: IAuthAPI,
         userAPI: IUserAPI,
     ): IAccountRepository =

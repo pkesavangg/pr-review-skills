@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -11,11 +12,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
 
 @Composable
 fun LoaderCard(loader: Loader) {
     Dialog(onDismissRequest = { }) {
-        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+        Card(colors = CardDefaults.cardColors(containerColor = colorScheme.inverseAction), shape = RoundedCornerShape(16.dp)) {
             AppLoader(
                 modifier =
                     Modifier

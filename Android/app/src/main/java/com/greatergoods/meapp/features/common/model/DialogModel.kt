@@ -1,9 +1,7 @@
 package com.greatergoods.meapp.features.common.model
 
-import com.greatergoods.meapp.features.common.components.LoaderConfig
-import com.greatergoods.meapp.features.common.components.LoaderDefaults
-import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.components.LoaderStyle
 
 /**
  * Represents a dialog request in the dialog queue system.
@@ -13,7 +11,7 @@ import com.greatergoods.meapp.features.common.components.DialogType
  * @property delayMillis Delay in milliseconds before showing the next dialog after dismissal.
  */
 sealed class DialogModel(
-    val priority: Int = 100,
+    val priority: Int = 1,
     val delayMillis: Long = 0L,
 ) : Comparable<DialogModel> {
     /**
@@ -29,8 +27,8 @@ sealed class DialogModel(
         val title: String,
         val message: String,
         val dismissText: String = "OK",
-        val onDismiss: () -> Unit,
-        val alertPriority: Int = 100,
+        val onDismiss: (() -> Unit)?,
+        val alertPriority: Int = 1,
         val alertDelayMillis: Long = 0L,
     ) : DialogModel(priority = alertPriority, delayMillis = alertDelayMillis)
 
@@ -53,8 +51,8 @@ sealed class DialogModel(
         val cancelText: String = "No",
         val onConfirm: (() -> Unit)? = null,
         val onCancel: (() -> Unit)? = null,
-        val onDismiss: () -> Unit,
-        val confirmPriority: Int = 100,
+        val onDismiss: (() -> Unit)? = null,
+        val confirmPriority: Int = 1,
         val confirmDelayMillis: Long = 0L,
     ) : DialogModel(priority = confirmPriority, delayMillis = confirmDelayMillis)
 
@@ -69,13 +67,21 @@ sealed class DialogModel(
     data class Custom(
         val contentKey: DialogType,
         val params: Map<String, Any?> = emptyMap(),
-        val onDismiss: () -> Unit,
+        val onDismiss: (() -> Unit)?,
         val onConfirm: ((Any) -> Unit)? = null,
-        val customPriority: Int = 100,
+        val customPriority: Int = 1,
         val customDelayMillis: Long = 0L,
     ) : DialogModel(priority = customPriority, delayMillis = customDelayMillis)
 
     override fun compareTo(other: DialogModel): Int = this.priority.compareTo(other.priority)
+
+    fun updatePriority(priority: Int): DialogModel {
+        return when (this) {
+            is Alert -> this.copy(alertPriority = priority)
+            is Confirm -> this.copy(confirmPriority = priority)
+            is Custom -> this.copy(customPriority = priority)
+        }
+    }
 }
 
 data class Toast(
@@ -87,5 +93,4 @@ data class Toast(
 data class Loader(
     val message: String,
     val style: LoaderStyle = LoaderStyle.CIRCULAR,
-    val config: LoaderConfig = LoaderDefaults.defaultFor(style),
 )

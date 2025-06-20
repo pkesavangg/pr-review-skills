@@ -7,9 +7,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
 typealias AsyncValidator<T> = suspend (T) -> ValidationError?
+typealias OnValueChangeCallback<T> = (oldValue: T, newValue: T) -> Unit
 
 data class ValidationError(
     val type: String,
@@ -29,6 +31,7 @@ class FormControl<T> private constructor(
 ) {
     private val _value = mutableStateOf(initialValue)
     val value: T get() = _value.value
+    private var _initialValue = initialValue
 
     private val _error = mutableStateOf<ValidationError?>(null)
     val error: ValidationError? get() = _error.value
@@ -50,12 +53,24 @@ class FormControl<T> private constructor(
     private val _validators = mutableStateOf(validators)
     private val _asyncValidators = mutableStateOf<List<AsyncValidatorWrapper<T>>>(emptyList())
 
+    private var onValueChangeCallback: OnValueChangeCallback<T>? = null
+
+    /**
+     * Sets a callback to be notified when the value changes
+     * @param callback The callback function that receives both old and new values
+     */
+    fun onValueChangeListener(callback: OnValueChangeCallback<T>) {
+        onValueChangeCallback = callback
+    }
+
     /**
      * Updates the value and triggers validation
      */
     fun onValueChange(newValue: T) {
+        val oldValue = _value.value
         _value.value = newValue
         _dirty.value = true
+        onValueChangeCallback?.invoke(oldValue, newValue)
         validate()
     }
 
@@ -167,6 +182,21 @@ class FormControl<T> private constructor(
         return true
     }
 
+    /**
+     * Resets the control to its initial state
+     * @param newInitialValue Optional new initial value to set
+     */
+    fun reset(newInitialValue: T? = null) {
+        val valueToReset = newInitialValue ?: _initialValue
+        _initialValue = valueToReset
+        _value.value = valueToReset
+        _error.value = null
+        _touched.value = false
+        _dirty.value = false
+        _pending.value = false
+        validationJob?.cancel()
+    }
+
     companion object {
         /**
          * Creates a new FormControl instance
@@ -210,6 +240,22 @@ class FormGroup<T : Any>(
         get() = controls.toList().all { it.isValueValid() } && groupError == null
 
     /**
+     * Returns a map of all form control values where the key is the field name
+     * and the value is the current value of that form control
+     */
+    fun getValues(): Map<String, Any?> =
+        controls.javaClass.declaredFields
+            .mapNotNull { field ->
+                field.isAccessible = true
+                val control = field.get(controls) as? FormControl<*>
+                if (control != null) {
+                    field.name to control.value
+                } else {
+                    null
+                }
+            }.toMap()
+
+    /**
      * Validates all controls in the group and runs group-level validation
      */
     fun validate(): Boolean {
@@ -217,6 +263,7 @@ class FormGroup<T : Any>(
 
         for (validator in groupValidators) {
             val err = validator(controls)
+            Log.d("hello", "Group validator: $err")
             if (err != null) {
                 _groupError.value = err
                 return false
@@ -231,6 +278,21 @@ class FormGroup<T : Any>(
      */
     fun forceShowAllErrors() {
         controls.toList().forEach { it.forceShowError() }
+    }
+
+    /**
+     * Resets all controls in the group to their initial state
+     * @param newValues Optional map of field names to new initial values
+     */
+    fun resetForm() {
+        controls.javaClass.declaredFields.forEach { field ->
+            field.isAccessible = true
+            val control = field.get(controls)
+            if (control is FormControl<*>) {
+                control.reset()
+            }
+        }
+        _groupError.value = null
     }
 }
 

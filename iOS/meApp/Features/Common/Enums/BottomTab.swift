@@ -12,7 +12,7 @@ import SwiftUI
 /// Each tab has a label, icon, filled icon, and a corresponding view.
 enum BottomTab: String, CaseIterable {
     case dash, entry, history, settings, appsync
-    
+
     var label: String {
         switch self {
         case .dash: return CommonStrings.dash
@@ -22,7 +22,7 @@ enum BottomTab: String, CaseIterable {
         case .appsync: return CommonStrings.appSync
         }
     }
-    
+
     var icon: String {
         switch self {
         case .dash: return AppAssets.dash
@@ -32,7 +32,7 @@ enum BottomTab: String, CaseIterable {
         case .appsync: return AppAssets.appSync
         }
     }
-    
+
     var filledIcon: String {
         switch self {
         case .dash: return AppAssets.dashFill
@@ -42,14 +42,14 @@ enum BottomTab: String, CaseIterable {
         case .appsync: return AppAssets.appSync
         }
     }
-    
+
     @ViewBuilder
     var view: some View {
         switch self {
         case .dash: DashboardView()
         case .entry: ManualEntryScreen()
-        case .history: HistoryView()
-        case .settings: SettingsView()
+        case .history: HistoryListScreen()
+        case .settings: SettingsScreen()
         case .appsync: AppSyncView()
         }
     }
@@ -57,8 +57,7 @@ enum BottomTab: String, CaseIterable {
 
 // TODO: Test Views need to replace with actual views
 struct DashboardView: View {
-    @EnvironmentObject private var viewModel: BottomTabBarViewModel
-    
+    @Environment(\.appTheme) private var theme
     var body: some View {
         NavigationStack {
 //            List(1..<100) { item in
@@ -90,65 +89,6 @@ struct DetailScreen: View {
             Text("Detail for Item \(item)")
                 .font(.largeTitle)
                 .navigationTitle("Item \(item)")
-        }
-        
-    }
-}
-
-struct HistoryView: View {
-    var body: some View {
-        Text("History View")
-            .font(.largeTitle)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white)
-    }
-}
-
-//TODO: Temporary view and viewmodel for settings it will be replaced with actual implementation later
-class SettingsViewModel: ObservableObject {
-    @Injector var accountService: AccountService
-    
-    func logout() {
-        Task {
-            do {
-                try await accountService.logOut()
-            } catch  {
-                print("Logout failed: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    func deleteAccount() {
-        Task {
-            do {
-                try await accountService.deleteAccount()
-            } catch  {
-                print("Delete account failed: \(error.localizedDescription)")
-            }
-        }
-    }
-}
-
-struct SettingsView: View {
-    @StateObject var viewModel: SettingsViewModel = .init()
-    var body: some View {
-        VStack {
-            
-            List {
-                Button {
-                    viewModel.logout()
-                } label: {
-                    Text("Logout")
-                        .foregroundColor(.red)
-                }
-                
-                Button {
-                    viewModel.deleteAccount()
-                } label: {
-                    Text("Delete Account")
-                        .foregroundColor(.red)
-                }
-            }
         }
 
     }

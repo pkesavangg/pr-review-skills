@@ -59,3 +59,28 @@ extension BathScaleOperationDTO: Identifiable {
         )
     }    
 }
+
+extension BathScaleOperationDTO {
+    func toAPIRequest() -> BathScaleOperationRequest {
+        return BathScaleOperationRequest(
+            userId: self.accountId, // Mapping accountId -> userId
+            bmr: self.bmr,
+            bmi: self.bmi,
+            bodyFat: self.bodyFat,
+            boneMass: self.boneMass,
+            entryTimestamp: self.entryTimestamp,
+            metabolicAge: self.metabolicAge,
+            muscleMass: self.muscleMass,
+            operationType: self.operationType,
+            proteinPercent: self.proteinPercent,
+            pulse: self.pulse,
+            skeletalMusclePercent: self.skeletalMusclePercent,
+            source: self.source,
+            subcutaneousFatPercent: self.subcutaneousFatPercent,
+            unit: self.unit,
+            visceralFatLevel: self.visceralFatLevel,
+            water: self.water,
+            weight: self.weight
+        )
+    }
+}

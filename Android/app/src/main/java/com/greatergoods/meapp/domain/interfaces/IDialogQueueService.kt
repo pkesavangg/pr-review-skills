@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.domain.interfaces
 
+import com.greatergoods.meapp.features.common.components.LoaderStyle
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Loader
 import com.greatergoods.meapp.features.common.model.Toast
@@ -14,7 +15,15 @@ interface IDialogQueueService {
     val loader: StateFlow<Loader?>
     fun enqueue(dialog: DialogModel)
     fun showToast(dialog: Toast)
-    fun showLoader(loader: Loader)
+    fun showLoader(
+        message: String,
+        style: LoaderStyle = LoaderStyle.DASHED,
+    )
+
+    fun showDialog(
+        dialog: DialogModel,
+    )
+
     fun dismissLoader()
     fun dismissToast()
     fun dismissCurrent()

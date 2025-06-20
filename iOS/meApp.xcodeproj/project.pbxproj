@@ -44,7 +44,6 @@
 				Features/Entry/Enums/.gitkeep,
 				Features/Entry/Models/.gitkeep,
 				Features/Entry/Views/Components/.gitkeep,
-				Features/Settings/.gitkeep,
 				Resources/Info.plist,
 				Tests/.gitkeep,
 			);

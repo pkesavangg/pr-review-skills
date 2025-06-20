@@ -18,6 +18,7 @@ interface EntryInfo<T : BaseEntryEntity> {
         val entryEntity = EntryEntity(
             id = entry.id,
             accountId = entry.accountId,
+            unit = entry.unit,
             operationType = entry.operationType,
             entryTimestamp = entry.entryTimestamp,
             opTimestamp = entry.opTimestamp,

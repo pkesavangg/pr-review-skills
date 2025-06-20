@@ -6,11 +6,12 @@ import androidx.navigation3.runtime.entry
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
-import com.greatergoods.meapp.features.entry.EntryScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.landing.LandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
+import com.greatergoods.meapp.features.manualEntry.EntryScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
+import com.greatergoods.meapp.features.signup.SignupScreen
 
 /**
  * Registers the entries for the authentication screens.
@@ -19,12 +20,13 @@ import com.greatergoods.meapp.features.settings.SettingsScreen
 fun EntryProviderBuilder<NavKey>.authEntries() {
     entry<AppRoute.Auth.Landing> { LandingScreen() }
     entry<AppRoute.Auth.Login> { LoginScreen() }
+    entry<AppRoute.Auth.Signup> { SignupScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {
     entry<AppRoute.Main.Dashboard> { DashboardScreen() }
     entry<AppRoute.Main.History> { HistoryScreen() }
-    entry<AppRoute.Main.Entry> { EntryScreen {} } // Placeholder for EntryScreen
+    entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
     entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
     entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
 }

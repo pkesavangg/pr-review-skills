@@ -23,7 +23,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "5.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,7 +55,7 @@ android {
 
         outputs.all {
             val outputImpl = this as BaseVariantOutputImpl
-            val appName = "MeApp"
+            val appName = "Weight gurus"
             val versionCode = this.versionCode
             val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
             outputImpl.outputFileName =
@@ -83,6 +83,8 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.ui.test.junit4.android)
     implementation(libs.material)
+    implementation(libs.androidx.foundation.layout)
+    implementation(libs.androidx.runtime.saveable)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -147,6 +149,9 @@ dependencies {
     // Vico charts
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
+
+    // foundation-pullrefresh
+    // implementation(libs.androidx.foundation.pullrefresh)
 }
 
 // Allow references to generated code

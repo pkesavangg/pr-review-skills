@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -14,8 +15,6 @@ import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
-import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
@@ -30,7 +29,7 @@ object GraphUtil {
             points = this.map { entry ->
                 GraphPoint(
                     x = Label(
-                        value = entry.entryTimestamp,
+                        value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
                         label = entry.period,
                     ),
                     y = Label(value = entry.weight, label = "${entry.weight} kg"),
@@ -59,12 +58,11 @@ object GraphUtil {
                 }
 
                 value?.let {
-                    val xValue = scaleEntry.entry.entryTimestamp
-                    val dateStr = Instant.ofEpochMilli(xValue)
-                        .atZone(ZoneId.of("America/Los_Angeles"))
-                        .format(dateFormatter)
                     GraphPoint(
-                        x = Label(value = xValue, label = dateStr),
+                        x = Label(
+                            value = DateTimeConverter.isoToTimestamp(scaleEntry.entry.entryTimestamp),
+                            label = scaleEntry.entry.entryTimestamp,
+                        ),
                         y = Label(value = it, label = "$it"),
                     )
                 }

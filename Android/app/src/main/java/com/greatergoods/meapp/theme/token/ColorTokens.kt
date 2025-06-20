@@ -46,8 +46,9 @@ internal object LightColorToken {
 
     // Icon
     val iconPrimary = ColorPalette.Blue900 // #1565C0
+    val iconPrimaryDisabled = ColorPalette.Blue200 // #B8D6F4
     val iconSecondary = ColorPalette.Neutral600 // #7B726E
-    val iconDisabled = ColorPalette.Neutral400 // #D0CCCA
+    val iconSecondaryDisabled = ColorPalette.Neutral400 // #D0CCCA
 
     // Loading
     val loading = ColorPalette.Blue200 // #B8D6F4
@@ -59,7 +60,7 @@ internal object LightColorToken {
 
     // Brand
     val meAppPrimary = ColorPalette.Teal100 // #65CEC8
-    val wgPrimary = ColorPalette.Blue900 // #1565C0
+    val wgPrimary = ColorPalette.Teal100 // #1565C0
 }
 
 /**
@@ -98,8 +99,9 @@ internal object DarkColorToken {
 
     // Icon
     val iconPrimary = ColorPalette.Blue400 // #2B8AEB
+    val iconPrimaryDisabled = ColorPalette.Blue950 // 40% of #2B8AEB
     val iconSecondary = ColorPalette.Neutral750 // #92989F
-    val iconDisabled = ColorPalette.Neutral800 // #565F68
+    val iconSecondaryDisabled = ColorPalette.Neutral800 // #565F68
 
     // Loading
     val loading = ColorPalette.Blue950 // 40% of #2B8AEB
@@ -111,5 +113,5 @@ internal object DarkColorToken {
 
     // Brand
     val meAppPrimary = ColorPalette.Teal200 // #00B3A6
-    val wgPrimary = ColorPalette.Blue900 // #1565C0
+    val wgPrimary = ColorPalette.Teal200 // #1565C0
 }

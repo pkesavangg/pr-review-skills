@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.domain.repository
 
+import com.greatergoods.meapp.data.api.OperationsResponse
 import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
@@ -149,7 +150,7 @@ interface IEntryRepository {
      * @param lastUpdated The timestamp to get operations since
      * @return List of EntryEntity objects from the API
      */
-    suspend fun getOperationsFromAPI(lastUpdated: Long?): List<ScaleApiEntry>
+    suspend fun getOperationsFromAPI(syncTimeStamp: String): OperationsResponse?
 
     /**
      * Gets entries for a specific month and year.
@@ -160,18 +161,11 @@ interface IEntryRepository {
     fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>>
 
     /**
-     * Gets monthly aggregated data for the last year.
-     * @param accountId The account ID
-     * @return Flow of list of monthly aggregated data
-     */
-    fun getMonthsLastYear(accountId: String): Flow<List<HistoryMonth>>
-
-    /**
      * Gets all monthly aggregated data.
      * @param accountId The account ID
      * @return Flow of list of all monthly aggregated data
      */
-    fun getMonthsAll(accountId: String): Flow<List<HistoryMonth>>
+    fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>>
 
     /**
      * Gets the operation count for an account.

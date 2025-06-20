@@ -1,20 +1,29 @@
 package com.greatergoods.meapp.features.signup
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation3.runtime.NavKey
+import com.example.nav3integration.TopLevelBackStack
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppLinearProgressIndicator
@@ -25,6 +34,8 @@ import com.greatergoods.meapp.features.common.components.CardAlignmentType
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
+import com.greatergoods.meapp.features.common.helper.form.FormControl
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.signup.components.BirthdayStep
 import com.greatergoods.meapp.features.signup.components.EmailStep
 import com.greatergoods.meapp.features.signup.components.GenderStep
@@ -32,165 +43,118 @@ import com.greatergoods.meapp.features.signup.components.GoalStep
 import com.greatergoods.meapp.features.signup.components.HeightStep
 import com.greatergoods.meapp.features.signup.components.NameStep
 import com.greatergoods.meapp.features.signup.components.PasswordStep
-import com.greatergoods.meapp.features.signup.model.SignupData
+import com.greatergoods.meapp.features.signup.components.SignupPager
+import com.greatergoods.meapp.features.signup.model.SignupFormControls
+import com.greatergoods.meapp.features.signup.model.SignupIntent
+import com.greatergoods.meapp.features.signup.model.SignupState
 import com.greatergoods.meapp.features.signup.model.SignupStep
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
+import com.greatergoods.meapp.features.signup.viewmodel.SignupViewModel
 import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.delay
 
 /**
  * Main signup screen with horizontal pager navigation
  */
 @Composable
-fun SignupScreen(
-    viewModel: SignupViewModel = hiltViewModel()
+fun SignupScreen(viewModel: SignupViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsState()
+    val backStack = LocalNavBackStack.current
+
+    SignupScreenContent(state, viewModel::handleIntent) {
+        backStack.removeLast()
+    }
+}
+
+@Composable
+fun SignupScreenContent(
+    state: SignupState,
+    handleIntent: (SignupIntent) -> Unit,
+    onBack: () -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val pagerState = rememberPagerState { uiState.steps.size }
-
-    LaunchedEffect(uiState.currentStep) {
-        if (pagerState.currentPage != uiState.currentStepIndex) {
-            pagerState.animateScrollToPage(uiState.currentStepIndex)
-        }
-    }
-
-    LaunchedEffect(pagerState.currentPage) {
-        val newStep = uiState.steps[pagerState.currentPage]
-        if (newStep != uiState.currentStep) {
-            viewModel.onStepChanged(newStep)
-        }
-    }
-
     val windowSize = LocalWindowInfo.current.containerSize
-    val isTablet = with(LocalDensity.current) {
-        windowSize.width.toDp() > 600.dp
-    }
+    val isTablet =
+        with(LocalDensity.current) {
+            windowSize.width.toDp() > 600.dp
+        }
     val cardAlignment = if (isTablet) CardAlignmentType.TopCenter else CardAlignmentType.TopStart
+    val pagerState = rememberPagerState { state.steps.size }
+
+    // Track if we're currently animating to prevent conflicts
+    val isAnimating = remember { mutableStateOf(false) }
+
+    // Sync ViewModel state to Pager state (when ViewModel changes, update pager)
+    LaunchedEffect(state.currentStep) {
+        if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
+            isAnimating.value = true
+            try {
+                pagerState.animateScrollToPage(state.currentStepIndex)
+            } finally {
+                // Add small delay to prevent rapid transitions
+                delay(100)
+                isAnimating.value = false
+            }
+        }
+    }
+
+    // Sync Pager state to ViewModel state (when user swipes, update ViewModel)
+    LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+        // Only update ViewModel when pager stops scrolling and we're not programmatically animating
+        if (!pagerState.isScrollInProgress && !isAnimating.value) {
+            val newStep = state.steps[pagerState.currentPage]
+            if (newStep != state.currentStep) {
+                handleIntent(SignupIntent.GoToStep(newStep))
+            }
+        }
+    }
 
     AppScaffold(
         title = "",
         containerColor = MeTheme.colorScheme.secondaryBackground,
-        navigationIcon = { AppIconButton(AppIcons.Default.Close) {} },
-        actions = { AppIconButton(AppIcons.Outlined.Help) {} }
+        appBarColor = MeTheme.colorScheme.secondaryBackground,
+        navigationIcon = { AppIconButton(AppIcons.Default.Close) { onBack() } },
+        actions = { AppIconButton(AppIcons.Outlined.Help) {} },
     ) {
-        Column(modifier = Modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
             AppLinearProgressIndicator(
-                progress = uiState.progress,
-                modifier = Modifier
-                    .padding(
-                        bottom = 24.dp,
-                        top = 16.dp,
-                        start = MeTheme.spacing.sm,
-                        end = MeTheme.spacing.sm
-                    )
-                    .height(8.dp)
+                progress = state.progress,
+                modifier =
+                    Modifier
+                        .padding(
+                            bottom = MeTheme.spacing.md,
+                            top = MeTheme.spacing.sm,
+                            start = MeTheme.spacing.sm,
+                            end = MeTheme.spacing.sm,
+                        ).height(MeTheme.spacing.xs),
             )
             CompositionLocalProvider(LocalCardAlignment provides cardAlignment) {
                 SignupPager(
                     pagerState = pagerState,
-                    uiState = uiState,
-                    onDataChange = viewModel::onDataChange,
-                    onNext = viewModel::onNext,
-                    onBack = viewModel::onBack,
+                    state = state,
+                    onNext = { handleIntent(SignupIntent.Next) },
+                    onBack = { handleIntent(SignupIntent.Back) },
+                    onSkip = { handleIntent(SignupIntent.Skip) },
+                    onUrlOpen = { handleIntent(SignupIntent.OpenURL(it)) },
                 )
             }
         }
     }
 }
 
-@Composable
-private fun SignupPager(
-    pagerState: PagerState,
-    uiState: SignupUiState,
-    onDataChange: (SignupData) -> Unit,
-    onNext: () -> Unit,
-    onBack: () -> Unit,
-) {
-    HorizontalPagerWithBottomNavigation(
-        steps = uiState.steps,
-        containerColor = MeTheme.colorScheme.secondaryBackground,
-        pagerState = pagerState,
-        leadingContent = {
-            AppButton(
-                type = ButtonType.TextPrimary,
-                label = SignupStrings.backButton,
-                size = ButtonSize.Small,
-                enabled = !uiState.isFirstStep,
-                onClick = onBack
-            )
-        },
-        middleContent = {
-            if (uiState.showSkipButton) {
-                AppButton(
-                    type = ButtonType.TextTertiary,
-                    label = SignupStrings.skipButton,
-                    size = ButtonSize.Small,
-                    onClick = onNext
-                )
-            }
-        },
-        trailingContent = {
-            AppButton(
-                type = ButtonType.PrimaryFilled,
-                label = if (uiState.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
-                size = ButtonSize.Small,
-                enabled = !uiState.isLoading,
-                onClick = onNext
-            )
-        },
-        pageContent = { step ->
-            val signupData = uiState.signupData
-            when (step) {
-                SignupStep.NAME -> NameStep(
-                    signupData = signupData,
-                    onFirstNameChange = { onDataChange(signupData.copy(firstName = it)) },
-                    onLastNameChange = { onDataChange(signupData.copy(lastName = it)) }
-                )
-
-                SignupStep.BIRTHDAY -> BirthdayStep(
-                    signupData = signupData,
-                    onBirthdayChange = { onDataChange(signupData.copy(birthday = it)) }
-                )
-
-                SignupStep.GENDER -> GenderStep(
-                    signupData = signupData,
-                    onGenderChange = { onDataChange(signupData.copy(gender = it)) }
-                )
-
-                SignupStep.HEIGHT -> HeightStep(
-                    signupData = signupData,
-                    onHeightChange = { onDataChange(signupData.copy(height = it)) }
-                )
-
-                SignupStep.GOAL -> GoalStep(
-                    signupData = signupData,
-                    onGoalTypeChange = { onDataChange(signupData.copy(goalType = it)) },
-                    onCurrentWeightChange = { onDataChange(signupData.copy(currentWeight = it)) },
-                    onGoalWeightChange = { onDataChange(signupData.copy(goalWeight = it)) },
-                )
-
-                SignupStep.EMAIL -> EmailStep(
-                    signupData = signupData,
-                    onEmailChange = { onDataChange(signupData.copy(email = it)) }
-                )
-
-                SignupStep.PASSWORD -> PasswordStep(
-                    signupData = signupData,
-                    onPasswordChange = { onDataChange(signupData.copy(password = it)) },
-                    onConfirmPasswordChange = { onDataChange(signupData.copy(confirmPassword = it)) },
-                    onZipcodeChange = { onDataChange(signupData.copy(zipcode = it)) }
-                )
-            }
-        }
-    )
-}
 
 @PreviewTheme
 @Composable
 fun PreviewSignupScreen() {
-    SignupScreen()
+    MeAppTheme {
+        SignupScreenContent(
+            SignupState(
+                form = FormGroup(SignupFormControls.create()),
+            ),
+            {}
+        ) {}
+    }
 }
-
-
-
-

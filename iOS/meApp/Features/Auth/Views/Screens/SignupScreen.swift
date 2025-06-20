@@ -51,13 +51,12 @@ struct SignupScreen: View {
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 onLeadingTap: {
-                    signupStore.showExitAlert(router: router)
+                    signupStore.handleExit(router: router)
                 },
                 onTrailingTap: {
                     signupStore.showHelpModal()
                 }
             )
-            .padding(.horizontal, .spacingSM)
             
             ProgressBarView(progress: signupStore.progressValue)
                 .padding(.top, .spacingMD)
@@ -72,6 +71,9 @@ struct SignupScreen: View {
             footerButtons
                 .padding(.spacingSM)
             
+        }
+        .onAppear {
+            signupStore.onSignupSuccess = { router.navigateBack() }
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
