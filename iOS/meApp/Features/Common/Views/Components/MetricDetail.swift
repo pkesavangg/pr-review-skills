@@ -133,7 +133,7 @@ struct MetricDetailView: View {
                                     presentingBrowserURL = url
                                     isBrowserPresented = true
                                   }
-                                 }
+                                }
                             )
                         }
                     }
@@ -143,7 +143,7 @@ struct MetricDetailView: View {
             .padding(.horizontal, .spacingSM)
         }
         .inAppBrowser(
-          url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl),
+          url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl)!,
           isPresented: $isBrowserPresented
       )
     }
