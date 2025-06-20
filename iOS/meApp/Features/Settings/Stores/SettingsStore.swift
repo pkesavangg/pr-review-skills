@@ -27,6 +27,8 @@ class SettingsStore: ObservableObject {
     @Published var changePasswordForm = ChangePasswordForm()
     // Weightless-mode form
     @Published var weightlessForm = WeightlessForm()
+    // Goal-setting form
+    @Published var goalForm = GoalForm()
     
     var cancellables = Set<AnyCancellable>()
     
@@ -47,6 +49,10 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Weightless Page State
     @Published var showWeightLessPage: Bool = false
+    // MARK: - Goal Page State
+    @Published var showGoalPage: Bool = false
+    @Published var selectedSegment: GoalTypeSegment = .loseGain
+
     
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
@@ -89,8 +95,10 @@ class SettingsStore: ObservableObject {
                 self?.populateEditFormIfNeeded()
                 self?.populateWeightlessFormIfNeeded()
                 self?.syncHeightPickers()
+                self?.populateGoalFormIfNeeded()
             }
             .store(in: &accountService.cancellables)
+            self.populateWeightlessFormIfNeeded()
     }
     
     func handleLogout() {
@@ -770,5 +778,138 @@ class SettingsStore: ObservableObject {
             }
             notificationService.dismissLoader()
         }
+    }
+
+    // MARK: - Goal Form Helpers
+    /// Populates the Goal settings form with existing account goal values *once* (when the form is pristine).
+    func populateGoalFormIfNeeded() {
+        guard let account = activeAccount else { return }
+
+        // Skip if user has already started editing.
+        guard !goalForm.isDirty else { return }
+
+        // Goal type
+        if let gType = account.goalSettings?.goalType {
+            goalForm.goalType.value = gType == .maintain ? GoalType.maintain.rawValue : GoalTypeSegment.losegainValue
+            goalForm.goalType.markAsPristine()
+        }
+        Task {
+            do {
+                let latestEntry = try await entryService.getLatestEntry()
+                if let latestWeight = latestEntry?.scaleEntry?.weight {
+                    let unit = account.weightSettings?.weightUnit ?? .lb
+                    let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(latestWeight)) : ConversionTools.convertStoredToLbs(Int(latestWeight))
+                    goalForm.currentWeight.value = String(format: "%.1f", display)
+                    goalForm.currentWeight.markAsPristine()
+                }
+
+                if let goalW = account.goalSettings?.goalWeight {
+                    let unit = account.weightSettings?.weightUnit ?? .lb
+                    let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
+                    goalForm.goalWeight.value = String(format: "%.1f", display)
+                    goalForm.goalWeight.markAsPristine()
+                }
+
+                // Update max-value validator according to unit.
+                updateGoalWeightValidators()
+
+                goalForm.validate()
+            } catch {
+                
+            }
+        }
+
+    }
+
+    /// Updates the max-weight validator whenever the preferred unit changes.
+    private func updateGoalWeightValidators() {
+        let isMetric = (activeAccount?.weightSettings?.weightUnit ?? .lb) == .kg
+        let maxWeight = isMetric ? 450.0 : 999.0
+
+        [goalForm.currentWeight, goalForm.goalWeight].forEach { ctrl in
+            ctrl.removeValidator(ofType: .maxValue)
+            let validator = Validator.maxValue(maxWeight)
+            ctrl.addValidator(validator)
+        }
+    }
+
+    /// Handles dismissal of the Goal sheet, showing an alert if there are unsaved changes.
+    func handleGoalExit(dismiss: DismissAction) {
+        if !goalForm.isDirty {
+            resetGoalForm()
+            dismiss()
+            return
+        }
+
+        let alert = AlertModel(
+            title: alertLang.WeightLessExitAlert.title, // Re-use generic exit alert strings
+            message: alertLang.WeightLessExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
+                    self.resetGoalForm()
+                    dismiss()
+                },
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    /// Validates the form and persists the goal via `AccountService`.
+    func saveGoal(dismiss: DismissAction) {
+        goalForm.validate()
+
+        guard goalForm.isDirty, goalForm.isValid else { return }
+
+        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let isMetric = unit == .kg
+
+        let convert = { (valString: String) -> Int in
+            let val = Double(valString) ?? 0.0
+            return ConversionTools.convertDisplayToStored(val, isMetric: isMetric)
+        }
+
+        // Build Goal payload
+        let goalTypeValue = goalForm.goalType.value
+        let currentDisplay = goalForm.currentWeight.value
+        let targetDisplay  = goalForm.goalWeight.value
+
+        let goalStored    = convert(targetDisplay)
+        let initialStored: Int = {
+            if goalTypeValue == GoalType.maintain.rawValue {
+                return goalStored
+            } else {
+                return convert(currentDisplay)
+            }
+        }()
+
+        let goalPayload: Goal
+        if goalTypeValue == GoalType.maintain.rawValue {
+            goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: goalStored, goalType: .maintain)
+        } else {
+            let derivedType: GoalType = goalStored > initialStored ? .gain : .lose
+            goalPayload = Goal(type: derivedType, goalWeight: goalStored, initialWeight: initialStored, goalType: derivedType)
+        }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.saving))
+            do {
+                _ = try await accountService.createGoal(goalPayload)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                logger.log(level: .info, tag: tag, message: "Goal updated successfully")
+                resetGoalForm()
+                dismiss()
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.somethingWentWrong))
+                logger.log(level: .error, tag: tag, message: "Goal update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+
+    /// Resets to pristine state and re-sync with account.
+    private func resetGoalForm() {
+        goalForm = GoalForm()
+        populateGoalFormIfNeeded()
     }
 }

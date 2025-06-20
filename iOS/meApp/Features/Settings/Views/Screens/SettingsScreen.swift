@@ -153,6 +153,11 @@ struct SettingsScreen: View {
                 settingsStore.updateHeight(fromMetric: true, values: newValues)
             }
         )
+        .sheet(isPresented: $settingsStore.showGoalPage, content: {
+            GoalSettingScreen()
+                .environmentObject(settingsStore)
+                .interactiveDismissDisabled()
+        })
     }
     
     private func profileHeader() -> some View {
@@ -208,7 +213,11 @@ struct SettingsScreen: View {
     
     private func profileSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.profileSettings)) {
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.goalSetting))
+            SettingsListItem(config: SettingsItemConfig(
+                title: settingsLang.goalSetting,
+                onTap: {
+                    settingsStore.showGoalPage = true
+                }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.biologicalSex,
