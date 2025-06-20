@@ -36,7 +36,7 @@ fun HistoryEmptyState(onRetry: () -> Unit) {
         )
         AppButton(
             label = HistoryScreenStrings.ConnectScale,
-            onClick = onRetry,
+            onClick = { },
         )
     }
 }
