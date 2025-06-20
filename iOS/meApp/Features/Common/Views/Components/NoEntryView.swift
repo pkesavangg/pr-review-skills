@@ -47,8 +47,8 @@ struct NoEntryView: View {
             // Connect scale button
             ButtonView(
               text: buttonTitle,
-              type: .primary,
-              size: .regular,
+              type: .filledPrimary,
+              size: .large,
               isDisabled: false,
               action: onButtonTap
               )
