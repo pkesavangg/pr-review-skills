@@ -55,7 +55,7 @@ fun PasswordStep(
     ) {
         Column {
             AppText(SignupStrings.passwordStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-            AppText(SignupStrings.passwordStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+            AppText(SignupStrings.passwordStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
             AppInput(
                 formControl = passwordControl,
                 type = AppInputType.PASSWORD,

@@ -53,7 +53,7 @@ fun GoalStep(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.goalStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround,

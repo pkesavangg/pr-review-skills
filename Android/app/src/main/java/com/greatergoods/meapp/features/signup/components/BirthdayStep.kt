@@ -27,7 +27,7 @@ fun BirthdayStep(birthdayControl: FormControl<DateTimeValue>) {
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.birthdayStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         DateTimeInput(
             formControl = birthdayControl,
             mode = DateTimeInputMode.Date,

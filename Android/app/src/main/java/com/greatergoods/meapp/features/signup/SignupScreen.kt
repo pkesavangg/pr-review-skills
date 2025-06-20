@@ -42,7 +42,6 @@ import kotlinx.coroutines.delay
 fun SignupScreen(viewModel: SignupViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val backStack = LocalNavBackStack.current
-
     SignupScreenContent(state, viewModel::handleIntent) {
         backStack.removeLast()
     }
@@ -61,10 +60,8 @@ fun SignupScreenContent(
         }
     val cardAlignment = if (isTablet) CardAlignmentType.TopCenter else CardAlignmentType.TopStart
     val pagerState = rememberPagerState { state.steps.size }
-
     // Track if we're currently animating to prevent conflicts
     val isAnimating = remember { mutableStateOf(false) }
-
     // Sync ViewModel state to Pager state (when ViewModel changes, update pager)
     LaunchedEffect(state.currentStep) {
         if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
@@ -79,23 +76,18 @@ fun SignupScreenContent(
         }
     }
 
-    // Sync Pager state to ViewModel state (when user swipes, update ViewModel)
-    // LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
-    //     // Only update ViewModel when pager stops scrolling and we're not programmatically animating
-    //     if (!pagerState.isScrollInProgress && !isAnimating.value) {
-    //         val newStep = state.steps[pagerState.currentPage]
-    //         if (newStep != state.currentStep) {
-    //             handleIntent(SignupIntent.GoToStep(newStep))
-    //         }
-    //     }
-    // }
-
     AppScaffold(
         title = "",
         containerColor = MeTheme.colorScheme.secondaryBackground,
         appBarColor = MeTheme.colorScheme.secondaryBackground,
-        navigationIcon = { AppIconButton(AppIcons.Default.Close) { onBack() } },
-        actions = { AppIconButton(AppIcons.Outlined.Help) {} },
+        navigationIcon = { AppIconButton(AppIcons.Default.Close) {
+            if (state.form.isDirty) {
+                handleIntent(SignupIntent.OnRequestBack)
+            } else {
+                onBack()
+            }
+        } },
+        actions = { AppIconButton(AppIcons.Outlined.Help) { handleIntent.invoke(SignupIntent.OpenHelpModal) } },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
