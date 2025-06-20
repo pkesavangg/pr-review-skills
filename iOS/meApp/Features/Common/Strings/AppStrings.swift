@@ -33,6 +33,7 @@ struct CommonStrings {
     static let dark = "Dark"
     static let light = "Light"
     static let system = "System Settings"
+    static let byGreaterGoods = "By Greater Goods"
 }
 
 /// Constants for entry strings used in the app
@@ -242,6 +243,8 @@ struct AppAssets {
     static let xmark = "xmark"
     static let meLogoDark = "meLogoDark"
     static let meLogoLight = "meLogoLight"
+    static let wgLogoDark = "wgLogoDark"
+    static let wgLogoLight = "wgLogoLight"
     static let stamp = "stamp"
     static let stampDark = "stampDark"
     static let phone = "phone"
