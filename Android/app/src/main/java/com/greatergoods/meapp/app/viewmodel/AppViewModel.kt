@@ -10,6 +10,7 @@ import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -73,7 +74,8 @@ class AppViewModel @Inject constructor(
     private fun initLoadingData(accountId: String) {
         viewModelScope.launch {
             try {
-                entryService.updateAccountId(isInitLoad)
+                delay(1000)
+                entryService.updateAccountId(accountId)
                 deviceInfoService.updateDeviceInfo()
                 navigationService.autoLogin()
             } catch (e: Exception) {
