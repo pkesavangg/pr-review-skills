@@ -141,7 +141,7 @@ struct MetricDetailView: View {
             .padding(.horizontal, .spacingSM)
         }
         .inAppBrowser(
-          url: presentingBrowserURL ?? URL(filePath: URLStrings.baseUrl),
+          url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl),
           isPresented: $isBrowserPresented
       )
     }
