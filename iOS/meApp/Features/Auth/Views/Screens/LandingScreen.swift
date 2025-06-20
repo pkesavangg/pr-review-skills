@@ -21,41 +21,41 @@ struct LandingScreen: View {
               theme.actionPrimary
                   .ignoresSafeArea()
 
-              VStack(alignment: .center) {
-                  
-                  Spacer()
-                      .frame(minHeight: .spacing6XL)
-                  
-                  Text(lang.weightGurusNow)
-                      .fontOpenSans(.subHeading1)
-                      .foregroundColor(theme.backgroundPrimary)
-                      .padding(.top, .spacing6XL)
-                  
-                  VStack(alignment: .center){
-                      Text(lang.myEveryday)
-                           .fontOpenSans(.heading2)
-                           .foregroundColor(theme.backgroundPrimary)
-                      Text(lang.health)
-                           .fontOpenSans(.heading2)
-                           .foregroundColor(theme.brandMeAppPrimary)
-                  }
-                  .padding(.top, .spacingSM)
-                  .padding(.horizontal,.spacingLG)
-                  
-                  ButtonView(text: lang.learnMore, type: .linkWhiteDefault, size: .regular, isDisabled: false, action: {})
-                      .padding(.top, .spacingXS)
-                      .padding(.bottom,.spacing2XL)
-                  
-                  VStack(alignment: .center, spacing: .spacingSM){
-                      ButtonView(text: lang.signUp, type: .secondary, size: .regular, isDisabled: false, action: {router.navigate(to: .signup)})
-                      ButtonView(text: commonLang.logIn, type: .secondaryInverse, size: .regular, isDisabled: false, action: {
-                          router.navigate(to: .login)
-                      })
-                  }
-                  .padding(.bottom, .spacing6XL)
-                                              
-                  Spacer()
-                      .frame(minHeight: .spacing6XL)
+          VStack(alignment: .center) {
+              
+              Spacer()
+                  .frame(minHeight: .spacing6XL)
+              
+              Text(lang.weightGurusNow)
+                  .fontOpenSans(.subHeading1)
+                  .foregroundColor(theme.backgroundPrimary)
+                  .padding(.top, .spacing6XL)
+              
+              VStack(alignment: .center){
+                  Text(lang.myEveryday)
+                       .fontOpenSans(.heading2)
+                       .foregroundColor(theme.backgroundPrimary)
+                  Text(lang.health)
+                       .fontOpenSans(.heading2)
+                       .foregroundColor(theme.brandMeAppPrimary)
+              }
+              .padding(.top, .spacingSM)
+              .padding(.horizontal,.spacingLG)
+              
+              ButtonView(text: lang.learnMore, type: .textSecondary, size: .large, isDisabled: false, action: {})
+                  .padding(.top, .spacingXS)
+                  .padding(.bottom,.spacing2XL)
+              
+              VStack(alignment: .center, spacing: .spacingSM){
+                  ButtonView(text: lang.signUp, type: .filledSecondary, size: .large, isDisabled: false, action: {router.navigate(to: .signup)})
+                  ButtonView(text: commonLang.logIn, type: .outlinedSecondary, size: .large, isDisabled: false, action: {
+                      router.navigate(to: .login)
+                  })
+              }
+              .padding(.bottom, .spacing6XL)
+                                          
+              Spacer()
+                  .frame(minHeight: .spacing6XL)
 
                   VersionAndCopyrightView()
               }
