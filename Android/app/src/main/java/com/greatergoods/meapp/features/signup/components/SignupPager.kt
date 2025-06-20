@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
@@ -27,6 +28,7 @@ fun SignupPager(
     onSkip: () -> Unit,
     onUrlOpen: (String) -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
     HorizontalPagerWithBottomNavigation(
         steps = state.steps,
         containerColor = MeTheme.colorScheme.secondaryBackground,
@@ -51,15 +53,18 @@ fun SignupPager(
                 )
             }
         },
-        trailingContent = {
-            AppButton(
-                type = ButtonType.PrimaryFilled,
-                label = if (state.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
-                size = ButtonSize.Small,
-                enabled = state.isCurrentStepValid,
-                onClick = onNext,
-            )
-        },
+                    trailingContent = {
+                AppButton(
+                    type = ButtonType.PrimaryFilled,
+                    label = if (state.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
+                    size = ButtonSize.Small,
+                    enabled = state.isCurrentStepValid,
+                    onClick = {
+                        focusManager.clearFocus()
+                        onNext()
+                    },
+                )
+            },
         pageContent =
             {
                 Crossfade(targetState = state.currentStep) { step ->
@@ -76,6 +81,10 @@ fun SignupPager(
                                 NameStep(
                                     firstNameControl = formControls.firstName,
                                     lastNameControl = formControls.lastName,
+                                    onNext = {
+                                        focusManager.clearFocus()
+                                        onNext()
+                                    },
                                 )
 
                             SignupStep.BIRTHDAY ->
@@ -99,11 +108,19 @@ fun SignupPager(
                                     currentWeightControl = formControls.currentWeight,
                                     goalWeightControl = formControls.goalWeight,
                                     useMetricControl = FormControl.create(false, emptyList()), // Always false for lbs
+                                    onNext = {
+                                        focusManager.clearFocus()
+                                        onNext()
+                                    },
                                 )
 
                             SignupStep.EMAIL ->
                                 EmailStep(
                                     emailControl = formControls.email,
+                                    onNext = {
+                                        focusManager.clearFocus()
+                                        onNext()
+                                    },
                                 )
 
                             SignupStep.PASSWORD ->
@@ -112,6 +129,10 @@ fun SignupPager(
                                     confirmPasswordControl = formControls.confirmPassword,
                                     zipcodeControl = formControls.zipcode,
                                     onUrlOpen = onUrlOpen,
+                                    onSubmit = {
+                                        focusManager.clearFocus()
+                                        onNext()
+                                    },
                                 )
                         }
                     }

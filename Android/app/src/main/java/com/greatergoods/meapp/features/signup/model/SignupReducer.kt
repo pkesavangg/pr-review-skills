@@ -265,9 +265,6 @@ sealed class SignupIntent : IReducer.Intent {
     /** Skip the current step (only available for goal step). */
     object Skip : SignupIntent()
 
-    /** Trigger signup submission. */
-    object Submit : SignupIntent()
-
     /** Show an error message. */
     data class Error(
         val message: String,
@@ -331,10 +328,6 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
 
             is SignupIntent.OpenHelpModal -> {
                 state.copy(isLoading = false, error = null)
-            }
-
-            is SignupIntent.Submit -> {
-                state.copy(isLoading = true, error = null)
             }
 
             is SignupIntent.Error -> {

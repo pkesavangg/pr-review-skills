@@ -44,6 +44,7 @@ fun PasswordStep(
     confirmPasswordControl: FormControl<String>,
     zipcodeControl: FormControl<String>,
     onUrlOpen: (String) -> Unit,
+    onSubmit: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val passwordFocusRequester = remember { FocusRequester() }
@@ -80,6 +81,7 @@ fun PasswordStep(
                 type = AppInputType.TEXT,
                 label = SignupStrings.zipcodeLabel,
                 imeAction = ImeAction.Done,
+                onImeAction = onSubmit,
                 modifier = Modifier.focusRequester(zipcodeFocusRequester),
             )
             Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
@@ -126,6 +128,7 @@ fun PasswordStepPreview() {
             confirmPasswordControl = FormControl.create("", listOf(FormValidations.required())),
             zipcodeControl = FormControl.create("", listOf(FormValidations.required())),
             onUrlOpen = { /* Preview only */ },
+            onSubmit = {},
         )
     }
 }

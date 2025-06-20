@@ -37,6 +37,7 @@ fun GoalStep(
     currentWeightControl: FormControl<String>,
     goalWeightControl: FormControl<String>,
     useMetricControl: FormControl<Boolean>,
+    onNext: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val currentWeightFocusRequester = remember { FocusRequester() }
@@ -91,6 +92,7 @@ fun GoalStep(
             type = AppInputType.BODY_COMP,
             label = "Goal weight (lbs)", // Always lbs since we removed metric support
             imeAction = ImeAction.Done,
+            onImeAction = onNext,
             modifier = Modifier.focusRequester(goalWeightFocusRequester),
         )
 
@@ -108,6 +110,7 @@ fun GoalStepPreview() {
             currentWeightControl = FormControl.create("", listOf(FormValidations.required())),
             goalWeightControl = FormControl.create("", listOf(FormValidations.required())),
             useMetricControl = FormControl.create(false, emptyList()),
+            onNext = {},
         )
     }
 }

@@ -41,17 +41,15 @@ constructor(
             form = FormGroup(SignupFormControls.create()),
         )
 
-    override fun handleIntent(intent: SignupIntent) {
-        when (intent) {
-            is SignupIntent.OpenHelpModal -> openHelpModal()
-            is SignupIntent.OpenURL -> openUrl(intent.url)
-            is SignupIntent.Next -> onNext()
-            is SignupIntent.OnRequestBack -> onRequestBack()
-            is SignupIntent.Skip -> onSkip()
-            is SignupIntent.Submit -> onSubmit()
-            else -> {}
-        }
-        super.handleIntent(intent)
+        override fun handleIntent(intent: SignupIntent) {
+            when (intent) {
+                is SignupIntent.OpenHelpModal -> openHelpModal()
+                is SignupIntent.OpenURL -> openUrl(intent.url)
+                is SignupIntent.Next -> onNext()
+                is SignupIntent.OnRequestBack -> onRequestBack()
+                else -> {}
+            }
+            super.handleIntent(intent)
     }
 
     /**
@@ -60,18 +58,9 @@ constructor(
     fun onNext() {
         if (state.value.isLastStep) {
             AppLog.d("SignupViewModel", "Submitting signup form")
-            handleIntent(SignupIntent.Submit)
+           onSubmit()
         } else {
             AppLog.d("SignupViewModel", "After Next intent - new currentStep: ${state.value.currentStep}")
-        }
-    }
-
-    /**
-     * Handles skipping the current step (only available for goal step).
-     */
-    fun onSkip() {
-        if (state.value.currentStep == SignupStep.GOAL) {
-            handleIntent(SignupIntent.Skip)
         }
     }
 

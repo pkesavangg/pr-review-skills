@@ -28,6 +28,7 @@ import com.greatergoods.meapp.theme.MeTheme
 fun NameStep(
     firstNameControl: FormControl<String>,
     lastNameControl: FormControl<String>,
+    onNext: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val firstNameFocusRequester = remember { FocusRequester() }
@@ -53,6 +54,7 @@ fun NameStep(
             type = AppInputType.TEXT,
             label = SignupStrings.lastNameLabel,
             imeAction = ImeAction.Done,
+            onImeAction = onNext,
             modifier =
                 Modifier
                     .focusRequester(lastNameFocusRequester),
@@ -68,6 +70,7 @@ fun NameStepPreview() {
         NameStep(
             firstNameControl = FormControl.create("", listOf(FormValidations.required())),
             lastNameControl = FormControl.create("", listOf(FormValidations.required())),
+            onNext = {},
         )
     }
 }

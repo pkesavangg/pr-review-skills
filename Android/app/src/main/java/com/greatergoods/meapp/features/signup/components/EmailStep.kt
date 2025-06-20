@@ -28,7 +28,10 @@ import com.greatergoods.meapp.theme.MeTheme
  * Step for collecting user's email address
  */
 @Composable
-fun EmailStep(emailControl: FormControl<String>) {
+fun EmailStep(
+    emailControl: FormControl<String>,
+    onNext: () -> Unit = {},
+) {
     val emailFocusRequester = remember { FocusRequester() }
 
     AppStyledCard(
@@ -41,6 +44,7 @@ fun EmailStep(emailControl: FormControl<String>) {
             type = AppInputType.EMAIL,
             label = SignupStrings.emailLabel,
             imeAction = ImeAction.Done,
+            onImeAction = onNext,
             modifier = Modifier.semantics { contentType = ContentType.NewUsername }.focusRequester(emailFocusRequester),
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
@@ -53,6 +57,7 @@ fun EmailStepPreview() {
     MeAppTheme {
         EmailStep(
             emailControl = FormControl.create("", listOf(FormValidations.required(), FormValidations.email())),
+            onNext = {},
         )
     }
 }
