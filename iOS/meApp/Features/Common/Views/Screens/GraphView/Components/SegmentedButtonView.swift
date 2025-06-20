@@ -12,7 +12,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     @Environment(\.appTheme) private var theme
     /// Stores the width of each segment (indexed by its position in the `segments` array).
     @State private var segmentWidths: [Int: CGFloat] = [:]
-    
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(Array(segments.enumerated()), id: \.element) { index, segment in
@@ -40,6 +40,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                         )
                 }
                 .zIndex(1)
+                .id(segment)
             }
         }
         .background(
@@ -55,7 +56,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         )
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }
-    
+
     /// Calculates the x-offset required to place the highlight behind the selected segment.
     private func calculateOffset() -> CGFloat {
         guard

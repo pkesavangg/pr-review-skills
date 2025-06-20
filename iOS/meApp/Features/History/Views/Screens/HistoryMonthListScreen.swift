@@ -13,6 +13,8 @@ struct HistoryMonthListScreen: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
     @StateObject private var historyStore = HistoryStore()
+    @State private var selectedEntry: Entry?
+    @State private var selectedMetric: BodyMetric?
 
     let month: HistoryMonth
 
@@ -42,6 +44,9 @@ struct HistoryMonthListScreen: View {
         .onAppear {
             historyStore.selectMonth(month)
         }
+        .sheet(item: $selectedEntry) { entry in
+            ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
+        }
     }
 
     @ViewBuilder
@@ -68,8 +73,9 @@ struct HistoryMonthListScreen: View {
                               onDelete: {
                                   historyStore.deleteEntry(entry)
                               },
-                              onMetricTap: { metric in
-                                  historyStore.selectMetric(metric)
+                              onMetricTap: { entry, metric in
+                                  selectedEntry = entry
+                                  selectedMetric = metric
                               }
                           )
                       }

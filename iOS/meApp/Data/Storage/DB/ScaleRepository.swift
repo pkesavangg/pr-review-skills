@@ -132,7 +132,10 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Updates the R4 scale preference for a scale.
     /// - Parameter preference: The new R4ScalePreferenceDTO to set.
     func patchScalePreference(_ preference: R4ScalePreferenceDTO) async throws {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == preference.scaleId })
+        guard let scaleId = preference.scaleId else {
+            throw NSError(domain: "ScaleRepository", code: 400, userInfo: [NSLocalizedDescriptionKey: "scaleId is required to patch scale preference"]) 
+        }
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
             device.r4ScalePreference = R4ScalePreference(from: preference)
             device.isSynced = false

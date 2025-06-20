@@ -43,4 +43,15 @@ struct MetricData {
     }
 }
 
+struct MetricDetailContent {
+    let header: String
+    let messages: [String]
+    let resources: [MetricResource]
+}
+
+struct MetricResource: Hashable {
+    let title: String
+    let link: String
+}
+
 

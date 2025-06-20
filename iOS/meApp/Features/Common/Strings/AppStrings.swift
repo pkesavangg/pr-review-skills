@@ -34,6 +34,9 @@ struct CommonStrings {
     static let light = "Light"
     static let system = "System Settings"
     static let byGreaterGoods = "By Greater Goods"
+    static let date = "Date"
+    static let weight = "Weight"
+    static let resources = "Resources"
 }
 
 /// Constants for entry strings used in the app
@@ -67,6 +70,7 @@ struct ToastStrings {
     static let csvExported = ".CSV file sent. Please check your email."
     static let passwordUpdated = "Password updated."
     static let errorUpdatingPassword = "Error updating password."
+    static let errorUpdatingWeightless = "Error updating Weightless Settings."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
     static let unitSettingUpdated = "Unit settings updated."
@@ -74,8 +78,11 @@ struct ToastStrings {
     static let streakSettingUpdated = "Streak settings updated."
     static let activitySettingUpdated = "Activity level updated."
     static let genderUpdated = "Gender updated."
+    static let weightlessUpdated = "Weightless updated."
     static let somethingWentWrongTitle = "Something went wrong!"
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
+    static let heightUpdated = "Your height has been updated."
+    static let errorUpdatingHeight = "Error updating height."
 }
 
 /// Constants for help modal strings used in the app
@@ -124,6 +131,9 @@ struct InputFieldLabels {
     static let zipCode = "zipcode"
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
+    }
+    static let weightLessLabel: (Bool) -> String = { isKg in
+        return isKg ? "weightless weight (kg)" : "weightless weight (lbs)"
     }
     static let date = "Date"
     static let bmi = "bmi"
@@ -192,6 +202,13 @@ struct AlertStrings {
         static let sendButton = "Send"
         static let cancelButton = "Cancel"
     }
+    
+    struct WeightLessExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
 }
 
 struct LoaderStrings {
@@ -218,21 +235,7 @@ struct LegalStrings {
     static let andText = "&"
 }
 
-struct MetricStrings {
-    static let bmi = "Body Mass Index"
-    static let bodyFat = "Body Fat"
-    static let muscleMass = "Muscle Mass"
-    static let bodyWater = "Body Water"
-    static let heartRate = "Heart Rate"
-    static let boneMass = "Bone Mass"
-    static let visceralFat = "Visceral Fat"
-    static let subcutaneousFat = "Subcutaneous Fat"
-    static let protein = "Protein"
-    static let skeletalMuscles = "Skeletal Muscles"
-    static let basalMetabolicRate = "Basal Metabolic Rate"
-    static let metabolicAge = "Metabolic Age"
-    static let impedance = "Impedance"
-}
+
 
 /// Constants for App Assets used in the app
 struct AppAssets {
