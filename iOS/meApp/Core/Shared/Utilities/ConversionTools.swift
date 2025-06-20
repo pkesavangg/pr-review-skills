@@ -116,4 +116,29 @@ final class ConversionTools {
         let divisor = pow(10.0, Double(places))
         return (value * divisor).rounded() / divisor
     }
+    
+    // MARK: - Height Picker Helpers (shared)
+    /// Picker column options for imperial height selection (feet & inches).
+    static let heightInchesOptions: [[String]] = [
+        (2...7).map { "\($0)" },  // Feet
+        (0...11).map { "\($0)" }  // Inches
+    ]
+
+    /// Picker column options for metric height selection (centimetres 100-299).
+    static let heightCmOptions: [[String]] = [
+        (1...2).map { "\($0)" },  // Hundreds
+        (0...9).map { "\($0)" },  // Tens
+        (0...9).map { "\($0)" }   // Ones
+    ]
+
+    /// Returns picker default selections (feet/in & cm arrays) given stored tenths-inch height.
+    static func pickerSelections(from storedHeight: Int) -> (inches: [String], cm: [String]) {
+        let feetInches = convertStoredHeightToFeet(storedHeight)
+        let inchesSel = ["\(feetInches[0])", "\(feetInches[1])"]
+
+        let cm = convertStoredHeightToCm(storedHeight)
+        let cmString = String(format: "%03d", cm)
+        let cmSel = cmString.map { String($0) }
+        return (inchesSel, cmSel)
+    }
 }
