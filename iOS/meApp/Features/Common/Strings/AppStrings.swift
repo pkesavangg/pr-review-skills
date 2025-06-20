@@ -66,6 +66,7 @@ struct ToastStrings {
     static let csvExported = ".CSV file sent. Please check your email."
     static let passwordUpdated = "Password updated."
     static let errorUpdatingPassword = "Error updating password."
+    static let errorUpdatingWeightless = "Error updating Weightless Settings."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
     static let unitSettingUpdated = "Unit settings updated."
@@ -73,7 +74,7 @@ struct ToastStrings {
     static let streakSettingUpdated = "Streak settings updated."
     static let activitySettingUpdated = "Activity level updated."
     static let genderUpdated = "Gender updated."
-    static let weightlessUpdated = "Weightless settings updated."
+    static let weightlessUpdated = "Weightless updated."
     static let somethingWentWrongTitle = "Something went wrong!"
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
 }

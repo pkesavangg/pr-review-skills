@@ -603,8 +603,7 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
                 dismiss() // Dismiss the view after successful save
             } catch {
-                print("Weightless update failed: \(error.localizedDescription)")
-                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
                 logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
