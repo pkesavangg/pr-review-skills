@@ -68,12 +68,36 @@ class SettingsStore: ObservableObject {
         browserURL ?? legalURLs.greaterGoodsWebsite
     }
     
+    // MARK: - Height Picker State
+    /// Selected height components when the user prefers imperial units (feet & inches).
+    @Published var selectedHeightInches: [String] = ["5", "10"]
+    /// Selected height components when the user prefers metric units (centimetres).
+    @Published var selectedHeightCm: [String] = ["1", "7", "8"]
+    /// Controls the presentation of the imperial picker sheet.
+    @Published var showHeightInchesPicker: Bool = false
+    /// Controls the presentation of the metric picker sheet.
+    @Published var showHeightCmPicker: Bool = false
+
+    /// Picker options for imperial units – feet and inches.
+    let heightInchesOptions: [[String]] = [
+        (2...7).map { "\($0)" },              // Feet
+        (0...11).map { "\($0)" }              // Inches
+    ]
+
+    /// Picker options for metric units – centimetres (000-299).
+    let heightCmOptions: [[String]] = [
+        (1...2).map { "\($0)" },              // Hundreds column (0-2)
+        (0...9).map { "\($0)" },              // Tens column
+        (0...9).map { "\($0)" }               // Ones column
+    ]
+    
     init() {
         accountService.$activeAccount
             .sink { [weak self] account in
                 self?.activeAccount = account
                 self?.populateEditFormIfNeeded()
                 self?.populateWeightlessFormIfNeeded()
+                self?.syncHeightPickers()
             }
             .store(in: &accountService.cancellables)
     }
@@ -692,5 +716,79 @@ class SettingsStore: ObservableObject {
     func resetWeightlessForm() {
         weightlessForm = WeightlessForm()
         populateWeightlessFormIfNeeded()
+    }
+
+    // MARK: - Height Helpers
+    /// Syncs the picker selections with the currently stored height.
+    private func syncHeightPickers() {
+        guard let storedString = activeAccount?.weightSettings?.height,
+              let storedDouble = Double(storedString) else { return }
+        let stored = Int(round(storedDouble))
+        updateHeightPickerValues(from: stored)
+    }
+
+    /// Updates both imperial and metric picker arrays from a stored tenths-of-inch height value.
+    /// - Parameter storedHeight: Height in tenths of inches (server format).
+    private func updateHeightPickerValues(from storedHeight: Int) {
+        // Imperial (feet/inches)
+        let feetInches = ConversionTools.convertStoredHeightToFeet(storedHeight)
+        selectedHeightInches = ["\(feetInches[0])", "\(feetInches[1])"]
+
+        // Metric (cm)
+        let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
+        let cmString = String(format: "%03d", cm) // pad to 3 digits, e.g. 178
+        selectedHeightCm = cmString.map { String($0) }
+    }
+
+    /// Presents the correct picker sheet based on the user's current unit preference.
+    func showHeightPicker() {
+        if activeAccount?.weightSettings?.weightUnit == .kg {
+            showHeightCmPicker = true
+        } else {
+            showHeightInchesPicker = true
+        }
+    }
+
+    /// Converts the chosen picker values to stored format and persists via `updateBodyComp`.
+    /// - Parameters:
+    ///   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
+    ///   - values: Picker column values chosen by the user.
+    func updateHeight(fromMetric: Bool, values: [String]) {
+        let storedHeight: Int
+        if fromMetric {
+            let cm = Int(values.joined()) ?? 178
+            storedHeight = ConversionTools.convertCmToStoredHeight(cm)
+        } else {
+            let feet = Int(values[0]) ?? 5
+            let inches = Int(values[1]) ?? 10
+            let totalInches = (feet * 12) + inches
+            storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
+        }
+
+        // Persist change only if it differs
+        guard let account = activeAccount,
+              let currentStoredStr = account.weightSettings?.height,
+              let currentStoredDouble = Double(currentStoredStr) else { return }
+
+        let currentStored = Int(round(currentStoredDouble))
+        guard currentStored != storedHeight else { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            let bodyComp = BodyComp(
+                weightUnit: account.weightSettings?.weightUnit ?? .lb,
+                height: Double(storedHeight),
+                activityLevel: account.weightSettings?.activityLevel ?? .normal
+            )
+            do {
+                _ = try await accountService.updateBodyComp(bodyComp)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.heightUpdated))
+                logger.log(level: .info, tag: tag, message: "Height updated to stored value: \(storedHeight)")
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
+                logger.log(level: .error, tag: tag, message: "Height update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
     }
 }

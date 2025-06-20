@@ -77,6 +77,8 @@ struct ToastStrings {
     static let weightlessUpdated = "Weightless updated."
     static let somethingWentWrongTitle = "Something went wrong!"
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
+    static let heightUpdated = "Your height has been updated."
+    static let errorUpdatingHeight = "Error updating height."
 }
 
 /// Constants for help modal strings used in the app
