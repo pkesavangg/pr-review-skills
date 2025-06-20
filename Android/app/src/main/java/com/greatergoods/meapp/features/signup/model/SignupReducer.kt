@@ -116,7 +116,7 @@ data class SignupFormControls(
                         ),
                     height =
                         FormControl.create(
-                            HeightInput.Cm(170), // Default height 170 cm
+                            HeightInput.FtIn(5, 1), // Default height 170 cm
                             emptyList(),
                         ),
                     goalType =

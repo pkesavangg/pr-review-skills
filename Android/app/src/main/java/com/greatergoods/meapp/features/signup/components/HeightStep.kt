@@ -43,7 +43,7 @@ fun HeightStepPreview() {
     MeAppTheme {
         HeightStep(
             heightControl = FormControl.create(
-                HeightInput.Cm(170),
+                HeightInput.FtIn(7, 1),
                 emptyList(),
             ),
         )
