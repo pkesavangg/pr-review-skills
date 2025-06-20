@@ -50,7 +50,7 @@ struct FlatButtonStyle: ViewModifier {
             .background(backgroundColor)
             .cornerRadius(.radiusPill)
             .contentShape(Rectangle())
-            .frame(minWidth: buttonSize == .small ? 75 : 160, maxWidth: .infinity, minHeight: buttonSize == .small ? 30 : 40)
+            .frame(minWidth: buttonSize == .small ? 75 : 160, minHeight: buttonSize == .small ? 30 : 40)
     }
 }
 
