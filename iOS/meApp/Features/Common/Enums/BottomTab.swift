@@ -73,7 +73,7 @@ struct DashboardView: View {
 //                }
 //            }
             WeightTrendView()
-            .onAppear { viewModel.showTabBar = true }
+           // .onAppear { viewModel.showTabBar = true }
         }
     }
 }
