@@ -9,14 +9,14 @@ import SwiftUI
 
 struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     @Environment(\.appTheme) var theme
-    
+
     var title: String?
     var leadingContent: (() -> Leading)?
     var trailingContent: (() -> Trailing)?
     var onLeadingTap: (() -> Void)?
     var onTrailingTap: (() -> Void)?
     var canShowBorder = false
-    
+
     var body: some View {
         ZStack {
             // Center Title
@@ -29,7 +29,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            
+
             HStack {
                 // Leading Content
                 if let leadingContent = leadingContent {
@@ -40,9 +40,9 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                             .foregroundColor(theme.actionPrimary)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 // Trailing Content
                 if let trailingContent = trailingContent {
                     Button(action: {
@@ -55,7 +55,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
             }
         }
         .padding(.spacingSM)
-        .background(theme.backgroundSecondary)
+        .background(theme.backgroundPrimary)
         .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
     }
 }

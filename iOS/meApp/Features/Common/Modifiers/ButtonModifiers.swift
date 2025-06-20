@@ -19,35 +19,38 @@ struct BasicButtonStyle: ViewModifier {
 struct BorderedButtonStyle: ViewModifier {
     var backgroundColor: Color
     var borderColor: Color
-    var cornerRadius: CGFloat
     var buttonSize: ButtonSize
     func body(content: Content) -> some View{
         content
-            .padding(buttonSize == .small ? 5 : 10)
-            .padding(.horizontal, buttonSize == .small ? 11 : 22)
+            .fontWeight(.bold)
+            .padding(.vertical, buttonSize == .small ? .spacingXS/2 : .spacingXS)
+            .padding(.horizontal, buttonSize == .small ? .spacingMD : .spacing2XL)
             .foregroundColor(borderColor)
             .background(backgroundColor)
             .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: .radiusPill)
                     .stroke(borderColor, lineWidth: 2)
             )
-            .cornerRadius(cornerRadius)
+            .cornerRadius(.radiusPill)
+            .contentShape(Rectangle())
+            .frame(minWidth: buttonSize == .small ? 75 : 160, minHeight: buttonSize == .small ? 30 : 40)
     }
 }
 
 struct FlatButtonStyle: ViewModifier {
+    var foregroundColor: Color
     var backgroundColor: Color
-    var cornerRadius: CGFloat
     var buttonSize: ButtonSize
-    @Environment(\.appTheme) var theme
+    
     func body(content: Content) -> some View {
         content
-            .padding(buttonSize == .small ? 5 : 10)
-            .padding(.horizontal, buttonSize == .small ? 11 : 22)
-            .foregroundColor(theme.textInverse)
+            .padding(.vertical, buttonSize == .small ? .spacingXS/2 : .spacingXS)
+            .padding(.horizontal, buttonSize == .small ? .spacingMD : .spacing2XL)
+            .foregroundColor(foregroundColor)
             .background(backgroundColor)
-            .fontWeight(.bold)
-            .cornerRadius(cornerRadius)
+            .cornerRadius(.radiusPill)
+            .contentShape(Rectangle())
+            .frame(minWidth: buttonSize == .small ? 75 : 160, minHeight: buttonSize == .small ? 30 : 40)
     }
 }
 
@@ -58,50 +61,47 @@ struct CustomButtonStyle: ViewModifier {
     
     func body(content: Content) -> some View {
         switch type {
-            // FLAT BUTTONS
-        case .primary:
+        case .filledPrimary:
             content
                 .flatButtonStyle(
+                    foregroundColor: theme.textInverse,
                     backgroundColor: theme.actionPrimary,
-                    cornerRadius: .radiusPill,
                     buttonSize: buttonSize
                 )
-                .foregroundColor(theme.textInverse)
-        case .primaryInverse:
+            
+        case .filledSecondary:
             content
                 .flatButtonStyle(
+                    foregroundColor: theme.actionPrimary,
                     backgroundColor: theme.textInverse,
-                    cornerRadius: .radiusPill,
                     buttonSize: buttonSize
                 )
-                .foregroundColor(theme.actionPrimary)
-            // STROKED BUTTONS
-        case .secondary:
+        case .outlinedPrimary:
             content
                 .borderedButtonStyle(
                     backgroundColor: theme.textInverse,
                     borderColor: theme.actionPrimary,
-                    cornerRadius: .radiusPill,
                     buttonSize: buttonSize
                 )
-                .foregroundColor(theme.actionPrimary)
-        case .secondaryInverse:
+            
+        case .outlinedSecondary:
             content
                 .borderedButtonStyle(
                     backgroundColor: theme.actionPrimary,
                     borderColor: theme.textInverse,
-                    cornerRadius: .radiusPill,
                     buttonSize: buttonSize
                 )
-                .foregroundColor(theme.textInverse)
-            // BASIC BUTTONS
-        case .linkBlueDefault, .linkBlueInline:
-            content.basicButtonStyle(foregroundColor: theme.actionPrimary)
-        case .linkWhiteDefault, .linkWhiteInline:
-            content.basicButtonStyle(foregroundColor: theme.textInverse)
-        case .smallTertiaryLink:
-            content.basicButtonStyle(foregroundColor: theme.actionTertiary)
+        case .textPrimary, .inlineTextPrimary:
+            content
+                .basicButtonStyle(foregroundColor: theme.actionPrimary)
+            
+        case .textSecondary, .inlineTextSecondary:
+            content
+                .basicButtonStyle(foregroundColor: theme.textInverse)
+            
+        case .textTertiary, .inlineTextTertiary:
+            content
+                .basicButtonStyle(foregroundColor: theme.actionTertiary)
         }
     }
 }
-

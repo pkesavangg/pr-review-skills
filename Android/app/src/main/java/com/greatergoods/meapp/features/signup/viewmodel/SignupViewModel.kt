@@ -2,12 +2,15 @@ package com.greatergoods.meapp.features.signup.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
+import com.greatergoods.meapp.core.shared.utilities.DateTimeTools
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
-import com.greatergoods.meapp.features.common.helper.ConversionTools
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import com.greatergoods.meapp.features.signup.model.SignupIntent
@@ -32,6 +35,7 @@ class SignupViewModel
     ) : BaseIntentViewModel<SignupState, SignupIntent>(
             reducer = SignupReducer(),
         ) {
+
         override fun provideInitialState(): SignupState =
             SignupState(
                 form = FormGroup(SignupFormControls.create()),
@@ -40,8 +44,12 @@ class SignupViewModel
         override fun handleIntent(intent: SignupIntent) {
             super.handleIntent(intent)
             when (intent) {
+                is SignupIntent.OpenHelpModal -> openHelpModal()
                 is SignupIntent.OpenURL -> openUrl(intent.url)
                 is SignupIntent.Next -> onNext()
+                is SignupIntent.OnRequestBack -> onRequestBack()
+                is SignupIntent.Skip -> onSkip()
+                is SignupIntent.Submit -> onSubmit()
                 else -> {}
             }
         }
@@ -50,16 +58,10 @@ class SignupViewModel
          * Handles moving to the next step or submitting if on the last step.
          */
         fun onNext() {
-            AppLog.d(
-                "SignupViewModel",
-                "onNext called - currentStep: ${state.value.currentStep}, isLastStep: ${state.value.isLastStep}, isValid: ${state.value.isCurrentStepValid}",
-            )
-
             if (state.value.isLastStep) {
                 AppLog.d("SignupViewModel", "Submitting signup form")
-                onSubmit()
+                handleIntent(SignupIntent.Submit)
             } else {
-                AppLog.d("SignupViewModel", "Moving to next step from ${state.value.currentStep}")
                 AppLog.d("SignupViewModel", "After Next intent - new currentStep: ${state.value.currentStep}")
             }
         }
@@ -70,53 +72,6 @@ class SignupViewModel
         fun onSkip() {
             if (state.value.currentStep == SignupStep.GOAL) {
                 handleIntent(SignupIntent.Skip)
-            }
-        }
-
-        /**
-         * Triggers a state update to recompute validation status.
-         * This should be called when form values change to update the Next button state.
-         */
-        fun onFormChanged() {
-            // Validate relevant form controls for the current step
-            val controls = state.value.form.controls
-            when (state.value.currentStep) {
-                SignupStep.NAME -> {
-                    controls.firstName.validate()
-                    controls.lastName.validate()
-                }
-
-                SignupStep.BIRTHDAY -> {
-                    controls.birthday.validate()
-                }
-
-                SignupStep.GENDER -> {
-                    controls.sex.validate()
-                }
-
-                SignupStep.HEIGHT -> {
-                    // Height doesn't need validation
-                }
-
-                SignupStep.EMAIL -> {
-                    controls.email.validate()
-                }
-
-                SignupStep.GOAL -> {
-                    if (!state.value.goalSkipped) {
-                        controls.goalType.validate()
-                        controls.goalWeight.validate()
-                        if (controls.goalType.value != "maintain") {
-                            controls.currentWeight.validate()
-                        }
-                    }
-                }
-
-                SignupStep.PASSWORD -> {
-                    controls.password.validate()
-                    controls.confirmPassword.validate()
-                    controls.zipcode.validate()
-                }
             }
         }
 
@@ -177,7 +132,7 @@ class SignupViewModel
                                     .trim()
                                     .ifEmpty { " " },
                             "password" to controls.password.value,
-                            "dob" to controls.birthday.value,
+                            "dob" to DateTimeTools.formatDateForAPI(controls.birthday.value.getTimestamp()),
                             "height" to convertHeightInputToMm(controls.height.value),
                         )
 
@@ -188,7 +143,6 @@ class SignupViewModel
                         val goalWeight = controls.goalWeight.value.toDoubleOrNull() ?: 0.0
                         // Always use imperial (lbs) for signup
                         val isMetric = false
-
                         // Use ConversionTools to convert display weights to stored format
                         val convertedCurrentWeight =
                             ConversionTools.convertDisplayToStored(
@@ -200,7 +154,6 @@ class SignupViewModel
                                 display = goalWeight,
                                 isMetric = isMetric,
                             )
-
                         goalData =
                             if (goalType == "maintain") {
                                 // For maintain: both goalWeight and initialWeight are the same
@@ -232,23 +185,6 @@ class SignupViewModel
                     val account = accountAuthService.addAccount(signupRequest)
                     if (account != null) {
                         AppLog.i("SignupViewModel", "Account created successfully")
-                        // TODO: Handle HealthConnect popup (from wgApp4-1)
-                        // this.healthConnectService.shouldShowPopup = false;
-                        // If goals weren't skipped, update goal and body composition (similar to wgApp4-1 flow)
-                        if (!state.value.goalSkipped && goalData != null) {
-                            try {
-                                // TODO: Update goal using goal service
-                                // await this.goalSrvc.updateGoal(newGoal, false);
-                                AppLog.i("SignupViewModel", "Goal data prepared using ConversionTools: $goalData")
-                                AppLog.i("SignupViewModel", "Weight unit set to: lb (always imperial)")
-                            } catch (goalException: Exception) {
-                                AppLog.w(
-                                    "SignupViewModel",
-                                    "Goal/bodycomp update failed but continuing",
-                                    goalException.toString(),
-                                )
-                            }
-                        }
                         navigationService.replaceStack(AppRoute.Init.Loading)
                         AppLog.i("SignupViewModel", "Navigation to loading screen successful after signup")
                         handleIntent(SignupIntent.Success)
@@ -263,6 +199,52 @@ class SignupViewModel
                 }
             }
         }
+
+    /**
+     * Opens the Help modal.
+     */
+    private fun openHelpModal() {
+        dialogQueueService.enqueue(
+            DialogModel.Custom(
+                contentKey = DialogType.HelpPopup,
+                onDismiss = {},
+            ),
+        )
+    }
+
+
+     private fun onRequestBack(){
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title = "Confirm",
+                message = "Are you sure you want to leave?",
+                confirmText = "EXIT",
+                cancelText = "RETURN",
+                onConfirm = {
+                    navigateBack()
+                    dialogQueueService.dismissCurrent()
+                },
+                onCancel = {
+                    dialogQueueService.dismissCurrent()
+                }
+            )
+        )
+    }
+
+    /**
+     * Handles navigation back/exit from signup screen.
+     * Call this when user wants to exit the signup flow.
+     */
+    fun navigateBack() {
+        viewModelScope.launch {
+            try {
+                navigationService.navigateBack(topLevel = null)
+                AppLog.d("SignupViewModel", "Successfully navigated back from signup")
+            } catch (e: Exception) {
+                AppLog.e("SignupViewModel", "Failed to navigate back from signup", e.toString())
+            }
+        }
+    }
 
         /**
          * Opens a URL using the injected CustomTabManager.

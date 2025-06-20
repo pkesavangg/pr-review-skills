@@ -9,6 +9,7 @@ import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
@@ -136,9 +137,9 @@ constructor(
             }
 
             // Always perform local logout
-            accountRepository.logOutInDb(accountId)
+            accountRepository.logoutInDb(accountId)
             tokenManager.clearTokens()
-            AppLog.d(TAG, "Logout successful for account: $accountId")
+            AppLog.d(TAG, "Logout successful")
             _authStateFlow.emit(AuthState.LoggedOut())
             _isLoginFlow.emit(false)
             true
@@ -215,8 +216,9 @@ constructor(
                     dob = request["dob"] as String,
                     height = request["height"] as? Int ?: 1700,
                     weightUnit =
-                        request["weightUnit"] as? com.greatergoods.meapp.domain.model.common.WeightUnit
-                            ?: com.greatergoods.meapp.domain.model.common.WeightUnit.KG,
+                        request["weightUnit"] as? WeightUnit
+                            ?: WeightUnit.LB,
+
                 )
             val response = accountRepository.signupInAPI(createRequest)
             val info = response.account

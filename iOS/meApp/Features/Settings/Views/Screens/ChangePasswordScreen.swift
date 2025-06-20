@@ -82,8 +82,8 @@ struct ChangePasswordScreen: View {
                     // Save Button
                     HStack {
                         ButtonView(text: commonLang.save,
-                                   type: .primary,
-                                   size: .regular,
+                                   type: .filledPrimary,
+                                   size: .large,
                                    isDisabled: (!settingsStore.changePasswordForm.isDirty || (settingsStore.changePasswordForm.isDirty && settingsStore.changePasswordForm.isInvalid))) {
                             hideKeyboard()
                             settingsStore.savePassword(router: router)

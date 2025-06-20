@@ -1,10 +1,15 @@
 package com.greatergoods.meapp.features.forgotPasswordDialog.screen
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.AppInput
@@ -15,6 +20,7 @@ import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.features.forgotPasswordDialog.model.ForgotPasswordDialogIntent
 import com.greatergoods.meapp.features.forgotPasswordDialog.strings.ForgotPasswordDialogStrings
 import com.greatergoods.meapp.features.forgotPasswordDialog.viewmodel.ForgotPasswordDialogViewModel
+import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
@@ -31,7 +37,9 @@ fun PasswordResetModal(
 ) {
     val viewModel: ForgotPasswordDialogViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
-
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val interactionSource = remember { MutableInteractionSource() }
     // Set email when the modal is first shown
     LaunchedEffect(Unit) {
         viewModel.setInitialEmail(email)
@@ -47,16 +55,20 @@ fun PasswordResetModal(
         ),
         secondaryAction = ActionButton(
             text = ForgotPasswordDialogStrings.CancelButton,
-            action = { 
+            action = {
                 viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
                 onDismiss()
             },
         ),
-        onDismiss = { 
+        onDismiss = {
             viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
             onDismiss()
         },
-        modifier = modifier,
+        modifier = modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = { focusManager.clearFocus() }
+        ),
     ) {
         AppInput(
             formControl = state.form.controls.email,
@@ -64,7 +76,10 @@ fun PasswordResetModal(
             type = AppInputType.EMAIL,
             imeAction = ImeAction.Done,
             showOutline = true,
-            onImeAction = { viewModel.handleIntent(ForgotPasswordDialogIntent.Submit) },
+            onImeAction = {
+                viewModel.handleIntent(ForgotPasswordDialogIntent.Submit)
+                focusManager.clearFocus()
+                keyboardController?.hide() },
             modifier = Modifier,
         )
     }

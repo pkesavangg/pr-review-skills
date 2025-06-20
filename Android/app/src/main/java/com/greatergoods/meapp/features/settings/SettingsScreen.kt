@@ -169,19 +169,19 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.SwitchAccounts,
-                            type = SettingsItemType.Action(),
+                            type = SettingsItemType.None,
                             onClick = { },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.LogOut,
-                            type = SettingsItemType.Action(),
+                            type = SettingsItemType.None,
                             onClick = {
                                 handleIntent(SettingsIntent.Logout)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.DeleteAccount,
-                            type = SettingsItemType.Action(),
+                            type = SettingsItemType.None,
                             color = SettingColorType.Danger,
                             onClick = { },
                         ),

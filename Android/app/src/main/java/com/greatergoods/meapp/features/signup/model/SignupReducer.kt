@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.signup.model
 
-import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.HeightInput
@@ -116,7 +115,7 @@ data class SignupFormControls(
                         ),
                     height =
                         FormControl.create(
-                            HeightInput.Cm(170), // Default height 170 cm
+                            HeightInput.FtIn(5, 1), // Default height 170 cm
                             emptyList(),
                         ),
                     goalType =
@@ -254,17 +253,16 @@ sealed class SignupIntent : IReducer.Intent {
     /** Move to the previous step. */
     object Back : SignupIntent()
 
+    object OnRequestBack : SignupIntent()
+
+    object OpenHelpModal: SignupIntent()
+
     data class OpenURL(
         val url: String,
     ) : SignupIntent()
 
     /** Skip the current step (only available for goal step). */
     object Skip : SignupIntent()
-
-    /** Move to a specific step. */
-    data class GoToStep(
-        val step: SignupStep,
-    ) : SignupIntent()
 
     /** Trigger signup submission. */
     object Submit : SignupIntent()
@@ -304,10 +302,6 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
                 } else {
                     val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
                     val newStep = state.steps[nextIndex]
-                    AppLog.d(
-                        "SignupReducer",
-                        "Next intent: moving from ${state.currentStep} (index ${state.currentStepIndex}) to $newStep (index $nextIndex)",
-                    )
                     state.copy(currentStep = newStep, error = null)
                 }
             }
@@ -330,8 +324,12 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
                 }
             }
 
-            is SignupIntent.GoToStep -> {
-                state.copy(currentStep = intent.step, error = null)
+            is SignupIntent.OnRequestBack -> {
+                state.copy(isLoading = false, error = null)
+            }
+
+            is SignupIntent.OpenHelpModal -> {
+                state.copy(isLoading = false, error = null)
             }
 
             is SignupIntent.Submit -> {

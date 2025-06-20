@@ -42,7 +42,7 @@ final class LoginStore: ObservableObject {
     let inputFieldLabels = InputFieldLabels.self
     let urlStrings = URLStrings.self
     let logTag = "LoginStore"
-    
+
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
         Binding(
@@ -115,7 +115,7 @@ final class LoginStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    // MARK: - Helper for email trimming 
+    // MARK: - Helper for email trimming
     private func trimmedEmail(_ email: String) -> String {
         email.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -225,7 +225,7 @@ final class LoginStore: ObservableObject {
     func toggleShowPassword() {
         showPassword.toggle()
     }
-    
+
     // MARK: - Navigation
     func openPrivacy() {
         browserURL = URLHelper.getURL(for: .privacyPolicy)
@@ -236,7 +236,7 @@ final class LoginStore: ObservableObject {
         browserURL = URLHelper.getURL(for: .termsOfService)
         showTermsBrowser = true
     }
-    
+
     func openHelp() {
         notificationService.showModal(ModalData(
             presentedView: AnyView(HelpModalView(){

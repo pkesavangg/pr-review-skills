@@ -20,6 +20,7 @@ struct PickerView<T: Hashable>: View {
     public var updateValues: (([T]) -> Void)?
     public var onCancel: (() -> Void)?
     
+    let commonLang = CommonStrings.self
     init(
         selectedValues: [T],
         options: [[T]],
@@ -42,18 +43,25 @@ struct PickerView<T: Hashable>: View {
             // Header with Cancel and Select buttons
             // TODO: Need to use the custom button style here
             HStack {
-                Button("Cancel") {
+                ButtonView(
+                    text: commonLang.cancel,
+                    type: .inlineTextTertiary,
+                    size: .small,
+                    isDisabled: false
+                ) {
                     onCancel?()
                 }
-                .foregroundColor(theme.actionPrimary)
                 
                 Spacer()
                 
-                Button("Select") {
+                ButtonView(
+                    text: commonLang.save,
+                    type: .inlineTextPrimary,
+                    size: .small,
+                    isDisabled: false
+                ) {
                     updateValues?(tempSelectedValues)
                 }
-                .foregroundColor(theme.actionPrimary)
-                .fontWeight(.semibold)
             }
             .padding(.horizontal)
             .padding(.bottom, 40)

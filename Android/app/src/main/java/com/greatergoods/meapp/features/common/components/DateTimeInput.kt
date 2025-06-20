@@ -133,20 +133,26 @@ sealed class DateTimeValue {
     fun getTimestamp(): Long =
         when (this) {
             is Date -> millis
-            is Time -> Calendar.getInstance().apply {
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-                set(Calendar.HOUR_OF_DAY, hour)
-                set(Calendar.MINUTE, minute)
-            }.timeInMillis
+            is Time ->
+                Calendar
+                    .getInstance()
+                    .apply {
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                        set(Calendar.HOUR_OF_DAY, hour)
+                        set(Calendar.MINUTE, minute)
+                    }.timeInMillis
 
-            is DateTime -> Calendar.getInstance().apply {
-                timeInMillis = millis
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-                set(Calendar.HOUR_OF_DAY, hour)
-                set(Calendar.MINUTE, minute)
-            }.timeInMillis
+            is DateTime ->
+                Calendar
+                    .getInstance()
+                    .apply {
+                        timeInMillis = millis
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                        set(Calendar.HOUR_OF_DAY, hour)
+                        set(Calendar.MINUTE, minute)
+                    }.timeInMillis
         }
 }
 
@@ -185,6 +191,7 @@ object DateTimeInputDefaults {
             yearContentColor = colorScheme.textBody,
             currentYearContentColor = colorScheme.textBody,
             selectedYearContentColor = colorScheme.textBody,
+            selectedYearContainerColor = colorScheme.primaryAction,
             headlineContentColor = colorScheme.textBody,
             dateTextFieldColors =
                 TextFieldDefaults.colors(
@@ -455,19 +462,26 @@ fun DateTimeInputPreview() {
     }
 }
 
-fun DateTimeValue?.asMillis(): Long? = when (this) {
-    is DateTimeValue.Date -> this.millis
-    is DateTimeValue.DateTime -> this.millis
-    else -> null
-}
+fun DateTimeValue?.asMillis(): Long? =
+    when (this) {
+        is DateTimeValue.Date -> this.millis
+        is DateTimeValue.DateTime -> this.millis
+        else -> null
+    }
 
-fun DateTimeValue?.asTime(): DateTimeValue.Time? = when (this) {
-    is DateTimeValue.Time -> this
-    is DateTimeValue.DateTime -> DateTimeValue.Time(this.hour, this.minute)
-    else -> null
-}
+fun DateTimeValue?.asTime(): DateTimeValue.Time? =
+    when (this) {
+        is DateTimeValue.Time -> this
+        is DateTimeValue.DateTime -> DateTimeValue.Time(this.hour, this.minute)
+        else -> null
+    }
 
-fun clampTime(hour: Int, minute: Int, min: DateTimeValue.Time?, max: DateTimeValue.Time?): Pair<Int, Int> {
+fun clampTime(
+    hour: Int,
+    minute: Int,
+    min: DateTimeValue.Time?,
+    max: DateTimeValue.Time?,
+): Pair<Int, Int> {
     var h = hour
     var m = minute
     min?.let {
@@ -484,4 +498,3 @@ fun clampTime(hour: Int, minute: Int, min: DateTimeValue.Time?, max: DateTimeVal
     }
     return h to m
 }
-

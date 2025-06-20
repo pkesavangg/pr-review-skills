@@ -6,12 +6,14 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -24,10 +26,14 @@ class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
     private val entryService: IEntryService,
     private val accountAuthService: IAccountAuthService,
-    private val logManager: LogManager
+    private val logManager: LogManager,
+    private val deviceInfoService: IDeviceInfoService
 ) : BaseIntentViewModel<AppState, AppIntent>(
     reducer = AppReducer(),
 ) {
+    companion object {
+        private const val TAG = "AppLoaderView"
+    }
 
     override fun provideInitialState(): AppState {
         return AppState()
@@ -67,10 +73,11 @@ class AppViewModel @Inject constructor(
     private fun initLoadingData(accountId: String) {
         viewModelScope.launch {
             try {
-                entryService.updateAccountId(accountId)
+                entryService.updateAccountId(isInitLoad)
+                deviceInfoService.updateDeviceInfo()
                 navigationService.autoLogin()
             } catch (e: Exception) {
-                // TODO: Handle error state appropriately
+                Log.d(TAG, e.toString())
             }
         }
     }

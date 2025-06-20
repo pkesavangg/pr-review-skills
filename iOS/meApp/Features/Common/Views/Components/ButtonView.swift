@@ -18,8 +18,9 @@ struct ButtonView: View {
     var body: some View {
         Button(action: action) {
             Text(text.uppercased())
-                .fontOpenSans(size == .regular ? .button1 : .button2)
-                .modifier(CustomButtonStyle(type: type, buttonSize: size))               
+                .fontOpenSans(size == .large ? .button1 : .button2)
+                .fontWeight(.bold)
+                .modifier(CustomButtonStyle(type: type, buttonSize: size))
         }
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)
@@ -33,61 +34,66 @@ struct TestingCommonButtonsView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
-                //Primary buttons
-                ButtonView(text: "button", type: .primary, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .primary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .primary, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .primary, size: .small, isDisabled: true, action: {})
+                //Filled Primary buttons
+                ButtonView(text: "connect button", type: .filledPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: true, action: {})
                 
-                //Primary inverse  buttons
-                ButtonView(text: "button", type: .primaryInverse, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .primaryInverse, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .primaryInverse, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .primaryInverse, size: .small, isDisabled: true, action: {})
+                // Filled Secondary  buttons
+                ButtonView(text: "button", type: .filledSecondary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .filledSecondary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .filledSecondary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .filledSecondary, size: .small, isDisabled: true, action: {})
+
+                // outlined Primary buttons
+                ButtonView(text: "button", type: .outlinedPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .outlinedPrimary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .outlinedPrimary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .outlinedPrimary, size: .small, isDisabled: true, action: {})
                 
-                // secondary buttons
-                ButtonView(text: "button", type: .secondary, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .secondary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .secondary, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .secondary, size: .small, isDisabled: true, action: {})
+                // outlinedSecondary buttons
+                ButtonView(text: "button", type: .outlinedSecondary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .outlinedSecondary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .outlinedSecondary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .outlinedSecondary, size: .small, isDisabled: true, action: {})
                 
-                // secondary inverse button
-                ButtonView(text: "button", type: .secondaryInverse, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .secondaryInverse, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .secondaryInverse, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .secondaryInverse, size: .small, isDisabled: true, action: {})
+                // textPrimary buttons
+                ButtonView(text: "button", type: .textPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .textPrimary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .textPrimary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .textPrimary, size: .small, isDisabled: true, action: {})
+                                
+                // textSecondary buttons
+                ButtonView(text: "button", type: .textSecondary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .textSecondary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .textSecondary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .textSecondary, size: .small, isDisabled: true, action: {})
                 
-                // tertiary Buttons
-                ButtonView(text: "Button", type: .smallTertiaryLink, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "Button", type: .smallTertiaryLink, size: .small, isDisabled: true, action: {})
+                // textTertiary buttons
+                ButtonView(text: "button", type: .textTertiary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .textTertiary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .textTertiary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .textTertiary, size: .small, isDisabled: true, action: {})
                 
-                // Links
-                //link blue default
-                ButtonView(text: "button", type: .linkBlueDefault, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkBlueDefault, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkBlueDefault, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .linkBlueDefault, size: .small, isDisabled: true, action: {})
+                // inlineTextPrimary buttons
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .small, isDisabled: true, action: {})
                 
-                //Link blue inline
-                ButtonView(text: "button", type: .linkBlueInline, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkBlueInline, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkBlueInline, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .linkBlueInline, size: .small, isDisabled: true, action: {})
-                
-                
-                //link White Default
-                ButtonView(text: "button", type: .linkWhiteDefault, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkWhiteDefault, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkWhiteDefault, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .linkWhiteDefault, size: .small, isDisabled: true, action: {})
-                
-                //Link White inline
-                ButtonView(text: "button", type: .linkWhiteInline, size: .regular, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkWhiteInline, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .linkWhiteInline, size: .regular, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .linkWhiteInline, size: .small, isDisabled: true, action: {})
-                
-            }
+                // inlineTextSecondary buttons
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .small, isDisabled: true, action: {})
+                                
+                // inlineTextTertiary buttons
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .small, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .large, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .small, isDisabled: true, action: {})
+             }
             .padding()
         }
     }

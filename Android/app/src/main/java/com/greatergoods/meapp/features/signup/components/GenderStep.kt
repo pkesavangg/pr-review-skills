@@ -35,7 +35,7 @@ fun GenderStep(
         AppText(
             SignupStrings.genderStepSubtitle,
             TextType.Subtitle,
-            spacing = MeTheme.spacing.md
+            spacing = MeTheme.spacing.lg
         )
 
         Row(
