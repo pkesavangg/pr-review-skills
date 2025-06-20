@@ -239,6 +239,8 @@ class FormGroup<T : Any>(
     val isValid: Boolean
         get() = controls.toList().all { it.isValueValid() } && groupError == null
 
+    val isDirty: Boolean
+    get() = controls.toList().any { it.dirty }
     /**
      * Returns a map of all form control values where the key is the field name
      * and the value is the current value of that form control

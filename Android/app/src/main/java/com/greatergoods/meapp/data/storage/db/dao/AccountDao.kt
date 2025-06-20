@@ -58,7 +58,7 @@ interface AccountDao {
     @Query("UPDATE account SET isActiveAccount = 0 WHERE accountId != :accountId")
     suspend fun deactivateOtherAccounts(accountId: String)
 
-    @Query("UPDATE account SET isLoggedIn = 0 , isActiveAccount = 0 WHERE accountId = :accountId")
+    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0 WHERE accountId = :accountId")
     suspend fun logoutAccount(accountId: String)
 
     @Query("UPDATE account SET isLoggedIn = 0")

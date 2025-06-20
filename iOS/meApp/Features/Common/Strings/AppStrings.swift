@@ -25,6 +25,7 @@ struct CommonStrings {
     static let settings = "settings"
     static let appSync = "appsync"
     static let optional = "optional"
+    static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
     static let unitLbsFeet = "lbs & feet"
     static let on = "On"
@@ -32,7 +33,18 @@ struct CommonStrings {
     static let dark = "Dark"
     static let light = "Light"
     static let system = "System Settings"
+    static let byGreaterGoods = "By Greater Goods"
+    static let date = "Date"
+    static let weight = "Weight"
+    static let resources = "Resources"
 }
+
+/// Constants for entry strings used in the app
+struct EntryStrings {
+    static let noEntries = "No Entries"
+    static let toStart = "To start, connect a scale or add a manual entry."
+}
+
 
 /// Constants for toast messages used in the app
 struct ToastStrings {
@@ -58,6 +70,7 @@ struct ToastStrings {
     static let csvExported = ".CSV file sent. Please check your email."
     static let passwordUpdated = "Password updated."
     static let errorUpdatingPassword = "Error updating password."
+    static let errorUpdatingWeightless = "Error updating Weightless Settings."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
     static let unitSettingUpdated = "Unit settings updated."
@@ -65,8 +78,11 @@ struct ToastStrings {
     static let streakSettingUpdated = "Streak settings updated."
     static let activitySettingUpdated = "Activity level updated."
     static let genderUpdated = "Gender updated."
+    static let weightlessUpdated = "Weightless updated."
     static let somethingWentWrongTitle = "Something went wrong!"
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
+    static let heightUpdated = "Your height has been updated."
+    static let errorUpdatingHeight = "Error updating height."
 }
 
 /// Constants for help modal strings used in the app
@@ -116,6 +132,9 @@ struct InputFieldLabels {
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
     }
+    static let weightLessLabel: (Bool) -> String = { isKg in
+        return isKg ? "weightless weight (kg)" : "weightless weight (lbs)"
+    }
     static let date = "Date"
     static let bmi = "bmi"
     static let bodyFat = "body fat %"
@@ -144,7 +163,7 @@ struct AlertStrings {
         static let passwordResetTitle = "Password Reset"
         static let enterEmailMessage = "Enter your email below."
     }
-    
+
     struct ManualEntryExitAlert {
         static let title = "Your entry has not been saved!"
         static let message = "Are you sure you want to exit?"
@@ -183,6 +202,13 @@ struct AlertStrings {
         static let sendButton = "Send"
         static let cancelButton = "Cancel"
     }
+    
+    struct WeightLessExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
 }
 
 struct LoaderStrings {
@@ -209,6 +235,8 @@ struct LegalStrings {
     static let andText = "&"
 }
 
+
+
 /// Constants for App Assets used in the app
 struct AppAssets {
     static let eyeOpen = "eyeOpen"
@@ -218,6 +246,8 @@ struct AppAssets {
     static let xmark = "xmark"
     static let meLogoDark = "meLogoDark"
     static let meLogoLight = "meLogoLight"
+    static let wgLogoDark = "wgLogoDark"
+    static let wgLogoLight = "wgLogoLight"
     static let stamp = "stamp"
     static let stampDark = "stampDark"
     static let phone = "phone"
@@ -235,5 +265,18 @@ struct AppAssets {
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
     static let chevronRight = "chevronRight"
+    static let bmiIcon = "bmi"
+    static let bodyFatIcon = "bodyFat"
+    static let muscleIcon = "muscle"
+    static let waterIcon = "bodyWater"
+    static let heartIcon = "heartRate"
+    static let boneIcon = "boneMass"
+    static let visceralFatIcon = "visceralFat"
+    static let subcutaneousFatIcon = "subcutaneousFat"
+    static let proteinIcon = "protein"
+    static let skeletalMuscleIcon = "skeletalMuscle"
+    static let bmrIcon = "bmr"
+    static let ageIcon = "metabolicAge"
+    static let emptyStateIcon = "emptyStateIcon"
 }
 

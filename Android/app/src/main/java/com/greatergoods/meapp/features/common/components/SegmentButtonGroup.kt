@@ -4,8 +4,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateBounds
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -36,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.reflect.KProperty1
 
@@ -104,7 +104,7 @@ object SegmentButtonDefaults {
     @Composable
     fun horizontalPadding(size: SegmentButtonSize): Dp =
         when (size) {
-            SegmentButtonSize.Small -> MeTheme.spacing.xs
+            SegmentButtonSize.Small -> 0.dp
             SegmentButtonSize.Medium -> MeTheme.spacing.sm
             SegmentButtonSize.Large -> MeTheme.spacing.sm
         }
@@ -115,7 +115,7 @@ object SegmentButtonDefaults {
     @Composable
     fun textStyle(size: SegmentButtonSize): TextStyle =
         when (size) {
-            SegmentButtonSize.Small -> MeTheme.typography.button1
+            SegmentButtonSize.Small -> MeTheme.typography.link1
             SegmentButtonSize.Medium -> MeTheme.typography.button1
             SegmentButtonSize.Large -> MeTheme.typography.button1
         }
@@ -168,7 +168,7 @@ fun <T> SegmentButtonGroup(
     val textStyle = SegmentButtonDefaults.textStyle(size)
     val shape = RoundedCornerShape(SegmentButtonDefaults.cornerRadius())
     val density = LocalDensity.current
-    val segmentButtonModifier = modifier.height(IntrinsicSize.Min)
+    // val segmentButtonModifier = modifier.height(IntrinsicSize.Min)
     val maxLines = 1
 
     val listState = rememberLazyListState()
@@ -195,30 +195,27 @@ fun <T> SegmentButtonGroup(
     }
 
     if (type == SegmentButtonType.Single) {
-        LookaheadScope {
-            // Single row layout - all buttons in one non-scrollable row
-            SingleChoiceSegmentedButtonRow(
-                modifier = modifier.animateBounds(this@LookaheadScope),
-                space = 0.dp,
-            ) {
-                data.forEachIndexed { index, option ->
-                    SegmentedButton(
-                        shape = shape,
-                        onClick = { onSelected(option) },
-                        colors = colors,
-                        icon = {},
-                        selected = option == selectedData,
-                        label = {
-                            Text(
-                                text = key.get(option),
-                                style = textStyle,
-                                modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
-                                maxLines = maxLines,
-                            )
-                        },
-                        modifier = segmentButtonModifier,
-                    )
-                }
+        // Single row layout - all buttons in one non-scrollable row
+        SingleChoiceSegmentedButtonRow(
+            modifier = modifier.fillMaxWidth(),
+        ) {
+            data.forEachIndexed { index, option ->
+                SegmentedButton(
+                    shape = shape,
+                    onClick = { onSelected(option) },
+                    colors = colors,
+                    icon = {},
+                    selected = option == selectedData,
+                    label = {
+                        Text(
+                            text = key.get(option).uppercase(Locale.getDefault()),
+                            style = textStyle,
+                            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                            maxLines = maxLines,
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     } else {
@@ -251,21 +248,22 @@ fun <T> SegmentButtonGroup(
                         selected = option == selectedData,
                         label = {
                             Text(
-                                text = key.get(option),
+                                text = key.get(option).uppercase(Locale.getDefault()),
                                 style = textStyle,
                                 modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
                                 maxLines = maxLines,
                             )
                         },
-                        modifier = segmentButtonModifier
-                            .onSizeChanged {
-                                // This calculates the width of the current segment button.
-                                // You might want to take the max width of all items if they vary.
-                                // For simplicity, we'll just set it for the first one encountered or update if a larger one is found.
-                                if (it.width > calculatedItemWidthPx) {
-                                    calculatedItemWidthPx = it.width
-                                }
-                            },
+                        modifier =
+                            modifier
+                                .onSizeChanged {
+                                    // This calculates the width of the current segment button.
+                                    // You might want to take the max width of all items if they vary.
+                                    // For simplicity, we'll just set it for the first one encountered or update if a larger one is found.
+                                    if (it.width > calculatedItemWidthPx) {
+                                        calculatedItemWidthPx = it.width
+                                    }
+                                },
                     )
                 }
             }
@@ -284,21 +282,22 @@ fun SegmentButtonPreview() {
             modifier = Modifier.padding(MeTheme.spacing.md),
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),
         ) {
-
-            val sampleSmallData = listOf("Day", "Week", "Month").mapIndexed { index, label ->
-                SegmentButtonData(id = index, label = label)
-            }
-            val sampleMediumData = listOf(
-                "Overview",
-                "Details",
-                "Settings",
-                "Profile",
-                "Weight",
-                "Height",
-                "Activity",
-            ).mapIndexed { index, label ->
-                SegmentButtonData(id = index, label = label)
-            }
+            val sampleSmallData =
+                listOf("Day", "Week", "Month").mapIndexed { index, label ->
+                    SegmentButtonData(id = index, label = label)
+                }
+            val sampleMediumData =
+                listOf(
+                    "Overview",
+                    "Details",
+                    "Settings",
+                    "Profile",
+                    "Weight",
+                    "Height",
+                    "Activity",
+                ).mapIndexed { index, label ->
+                    SegmentButtonData(id = index, label = label)
+                }
             val sampleLargeData =
                 listOf(
                     "Day",
@@ -321,7 +320,7 @@ fun SegmentButtonPreview() {
             // --- Single Type - Small size ---
             SegmentButtonGroup(
                 data =
-                    sampleSmallData,
+                sampleSmallData,
                 key = SegmentButtonData::label,
                 selectedData = selectedSmallData,
                 onSelected = { selectedSmallData = it },
@@ -331,7 +330,7 @@ fun SegmentButtonPreview() {
             // --- Scrollable Type - Medium size ---
             SegmentButtonGroup(
                 data =
-                    sampleMediumData,
+                sampleMediumData,
                 key = SegmentButtonData::label,
                 selectedData = selectedMediumData,
                 onSelected = { selectedMediumData = it },
@@ -341,7 +340,7 @@ fun SegmentButtonPreview() {
             // --- Single Type - Large size ---
             SegmentButtonGroup(
                 data =
-                    sampleLargeData,
+                sampleLargeData,
                 key = SegmentButtonData::label,
                 selectedData = selectedLargeData,
                 onSelected = { selectedLargeData = it },

@@ -5,11 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
@@ -40,7 +37,7 @@ fun NameStep(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.nameStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.nameStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        AppText(SignupStrings.nameStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         AppInput(
             formControl = firstNameControl,
             type = AppInputType.TEXT,
@@ -49,7 +46,6 @@ fun NameStep(
             nextFocusRequester = lastNameFocusRequester,
             modifier =
                 Modifier
-                    .semantics { contentType = ContentType.Username }
                     .focusRequester(firstNameFocusRequester),
         )
         AppInput(
@@ -59,7 +55,6 @@ fun NameStep(
             imeAction = ImeAction.Done,
             modifier =
                 Modifier
-                    .semantics { contentType = ContentType.Password }
                     .focusRequester(lastNameFocusRequester),
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))

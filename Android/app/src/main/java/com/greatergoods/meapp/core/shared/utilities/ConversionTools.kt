@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.common.helper
+package com.greatergoods.meapp.core.shared.utilities
 
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import kotlin.math.floor

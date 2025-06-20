@@ -13,11 +13,11 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector var feedService: FeedService
     @Published var selectedTab: BottomTab = .dash
     @Published var showSettingsBadge: Bool = false
-    @Published var showAppSync: Bool = true
+    @Published var showAppSync: Bool = false
     @Published var showTabBar: Bool = true
     
     init() {
-        self.showSettingsBadge = true // feedService.getUnreadFeedCount() > 0
+        self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
         // TODO: Update the app sync display based on the app sync scale defined in the paired scale list
     }
     

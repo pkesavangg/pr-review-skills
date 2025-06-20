@@ -10,6 +10,7 @@ import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.services.EntryService
+import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
@@ -17,7 +18,7 @@ import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.services.IAccountAuthService
-import com.greatergoods.meapp.domain.services.IDeviceService
+import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
@@ -107,9 +108,9 @@ object ServiceModule {
     @Singleton
     fun provideDeviceInfoService(
         @ApplicationContext context: Context,
-        deviceRepository: IDeviceInfoRepository,
-        notificationService: NotificationService,
-    ): IDeviceService = DeviceInfoService(context, deviceRepository, notificationService)
+        deviceInfoRepository: IDeviceInfoRepository,
+        fcmDataStore: FcmDataStore,
+    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, fcmDataStore)
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.

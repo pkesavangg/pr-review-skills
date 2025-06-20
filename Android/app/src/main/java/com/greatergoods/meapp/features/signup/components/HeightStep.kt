@@ -28,7 +28,7 @@ fun HeightStep(
         cardAlignmentType = LocalCardAlignment.current
     ) {
         AppText(SignupStrings.heightStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.heightStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        AppText(SignupStrings.heightStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         AppHeightInput(
             formControl = heightControl,
             label = SignupStrings.heightLabel,
@@ -43,7 +43,7 @@ fun HeightStepPreview() {
     MeAppTheme {
         HeightStep(
             heightControl = FormControl.create(
-                HeightInput.Cm(170),
+                HeightInput.FtIn(7, 1),
                 emptyList(),
             ),
         )

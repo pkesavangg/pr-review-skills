@@ -3,9 +3,9 @@ package com.greatergoods.meapp.domain.services
 import com.greatergoods.meapp.domain.model.common.DeviceInfo
 
 /**
- * Interface for device service operations, including device info and FCM token management.
+ * Service interface for device information operations including FCM token management and device info updates.
  */
-interface IDeviceService {
+interface IDeviceInfoService {
     /**
      * Returns a DeviceInfo object with local device and app information.
      * @return DeviceInfo with app and device details.
@@ -13,13 +13,14 @@ interface IDeviceService {
     fun getDeviceInfo(): DeviceInfo
 
     /**
-     * Updates the device info by sending the latest device and FCM token information to the API.
+     * Updates device information on the server with current device details and FCM token.
+     * This method fetches device details and sends them to the server.
      */
     suspend fun updateDeviceInfo()
 
     /**
-     * Gets the FCM token for this device.
-     * @return The FCM token as a String.
+     * Gets the current FCM token.
+     * @return The current FCM token string.
      */
     suspend fun getFcmToken(): String
 }

@@ -34,8 +34,7 @@ class MainBottomNavTest {
         var selectedIndex = -1
         var selectedLabel = ""
         composeTestRule.setContent {
-            MainBottomNav(
-            )
+            MainBottomNav()
         }
         composeTestRule.onNodeWithText(BOTTOM_NAV_ITEMS[1].label).performClick()
         assert(selectedIndex == 1)

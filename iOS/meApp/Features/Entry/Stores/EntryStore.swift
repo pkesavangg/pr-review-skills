@@ -128,7 +128,7 @@ final class EntryStore: ObservableObject {
                 let entry = Entry(
                     entryTimestamp: entryTimestamp,
                     accountId: accountId,
-                    operationType: EntrySource.manual.rawValue,
+                    operationType: OperationType.create.rawValue,
                     deviceType: DeviceType.scale.rawValue,
                     isSynced: false
                 )

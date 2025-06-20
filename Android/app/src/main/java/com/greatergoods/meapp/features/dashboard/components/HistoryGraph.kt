@@ -38,6 +38,7 @@ fun HistoryGraph(state: DashboardState) {
             Modifier
                 .background(MeTheme.colorScheme.primaryBackground),
     ) {
+        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
         Text(
             text =
                 buildAnnotatedString {
@@ -87,6 +88,7 @@ fun HistoryGraph(state: DashboardState) {
                         }
                     }
             },
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 

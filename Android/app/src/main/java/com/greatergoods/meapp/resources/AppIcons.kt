@@ -17,6 +17,7 @@ object AppIcons {
         val Settings = R.drawable.ic_settings
         val Placeholder = R.drawable.me_placeholder
         val Stamp = R.drawable.gg_stamp
+        val StampDark = R.drawable.gg_stamp_dark
         val RightCaret = R.drawable.ic_right_caret
         val ChevronDown = R.drawable.ic_chevron_down
         val Bmi = R.drawable.me_placeholder

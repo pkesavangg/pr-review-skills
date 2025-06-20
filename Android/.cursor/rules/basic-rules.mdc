@@ -1,0 +1,275 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# MeApp Android - Cursor Rules & Best Practices
+
+## Overview
+
+This file contains comprehensive coding standards and best practices for the MeApp Android project. These rules ensure consistency, quality, and maintainability across the codebase.
+
+## Table of Contents
+
+- [Architecture Standards](mdc:meApp/#architecture-standards)
+- [Code Style & Documentation](mdc:meApp/#code-style--documentation)
+- [API Best Practices](mdc:meApp/#api-best-practices)
+- [Data Layer Standards](mdc:meApp/#data-layer-standards)
+- [Service Layer Standards](mdc:meApp/#service-layer-standards)
+- [Repository Pattern](mdc:meApp/#repository-pattern)
+- [Logging Standards](mdc:meApp/#logging-standards)
+- [Testing Guidelines](mdc:meApp/#testing-guidelines)
+- [Performance Considerations](mdc:meApp/#performance-considerations)
+
+---
+
+## Architecture Standards
+
+### 1. Clean Architecture
+- Follow Clean Architecture principles with clear separation of concerns
+- Use dependency injection (Hilt) for all dependencies
+- Maintain unidirectional data flow
+- Keep business logic in domain layer, implementation in data layer
+
+### 2. Package Structure
+```
+com.greatergoods.meapp/
+├── app/                    # Application layer
+├── core/                   # Core utilities, DI, navigation
+├── data/                   # Data layer (API, storage, repositories)
+├── domain/                 # Domain layer (models, interfaces, services)
+└── features/               # Feature modules
+```
+
+### 3. Dependency Injection
+- Use Hilt for dependency injection
+- Provide all dependencies via constructor injection
+- Use `@Singleton` for services and repositories
+- Use `@ApplicationContext` for context dependencies
+
+---
+
+## Code Style & Documentation
+
+### 1. Kotlin Conventions
+- Follow official Kotlin coding conventions
+- Use meaningful variable and function names
+- Prefer `val` over `var` when possible
+- Use expression bodies for simple functions
+
+### 2. Documentation (KDoc)
+- Document all public classes, functions, and properties
+- Use `@property` for constructor parameters
+- Use `@param` for function parameters
+- Use `@return` for return values
+- Include examples for complex functions
+
+### 3. Naming Conventions
+- Use PascalCase for classes, objects, and interfaces
+- Use camelCase for variables, functions, and properties
+- Use UPPER_SNAKE_CASE for constants
+- Prefix interfaces with 'I' (e.g., `IAccountRepository`)
+
+---
+
+## API Best Practices
+
+### 1. Retrofit Interfaces
+- Define all API interfaces in `data/api/`
+- Use Retrofit annotations (`@GET`, `@POST`, `@PATCH`, `@DELETE`)
+- All methods must be `suspend` and return appropriate model types
+- Use companion object constants for endpoint paths
+
+### 2. API Documentation
+- Document all endpoints with KDoc
+- Include parameter descriptions
+- Document response types and error cases
+
+### 3. Error Handling
+- Use sealed classes for API responses
+- Handle network errors gracefully
+- Provide meaningful error messages
+
+---
+
+## Data Layer Standards
+
+### 1. DataStore (Proto)
+- Use Proto DataStore for structured, type-safe storage
+- Define DataStore classes in `data/storage/datastore/`
+- Implement serializers for all Proto types
+- Use extension properties on Context for DataStore instances
+
+### 2. Room Database
+- Define entities in `data/storage/db/entity/`
+- Define DAOs in `data/storage/db/dao/`
+- Use `@Entity`, `@PrimaryKey`, `@ForeignKey` annotations
+- Document all entities and DAO methods
+
+### 3. Repository Pattern
+- Define interfaces in `domain/repository/`
+- Implement in `data/repository/`
+- Use constructor injection for dependencies
+- Provide via Dagger Hilt modules
+
+---
+
+## Service Layer Standards
+
+### 1. Service Interfaces
+- Define in `domain/services/` or `domain/interfaces/`
+- Keep interfaces pure Kotlin (no Android dependencies)
+- Use `suspend` or `Flow<T>` for async operations
+- Document all methods with KDoc
+
+### 2. Service Implementation
+- Implement in `core/service/` or `features/common/service/`
+- Use `@Singleton` and `@Inject` annotations
+- Inject dependencies via constructor
+- Handle errors and provide meaningful logging
+
+### 3. Service Documentation
+- Document purpose, parameters, and return values
+- Include usage examples for complex services
+- Document error handling strategies
+
+---
+
+## Repository Pattern
+
+### 1. Interface Definition
+- Define in `domain/repository/`
+- Pure Kotlin interfaces (no Android dependencies)
+- Use `suspend` or `Flow<T>` for async operations
+- Document all methods with KDoc
+
+### 2. Implementation
+- Implement in `data/repository/`
+- Use `@Singleton` and `@Inject` annotations
+- Inject DAOs, DataStores, APIs via constructor
+- Override all interface methods
+
+### 3. Dependency Injection
+- Provide via Dagger Hilt modules in `core/di/RepositoryModule.kt`
+- Use `@Provides` or `@Binds` for binding
+- Provide as singletons
+
+---
+
+## Logging Standards
+
+### 1. AppLog Usage
+- Use `AppLog` for all production logs
+- Use appropriate log levels:
+  - `AppLog.i` - General information
+  - `AppLog.d` - Debug information
+  - `AppLog.w` - Warnings
+  - `AppLog.e` - Errors
+  - `AppLog.v` - Verbose (development only)
+  - `AppLog.a` - Assertions
+
+### 2. Log Structure
+- Use descriptive tags (class or feature name)
+- Include contextual information
+- Structure messages for easy searching
+- Avoid logging sensitive data
+
+### 3. Exception Logging
+- Always log exceptions with stack traces
+- Include relevant context
+- Use `AppLog.e` for all exceptions
+
+---
+
+## Testing Guidelines
+
+### 1. Unit Testing
+- Test all business logic
+- Use mocks for dependencies
+- Test edge cases and error scenarios
+- Maintain high test coverage
+
+### 2. UI Testing
+- Test critical user flows
+- Use Compose testing utilities
+- Test accessibility features
+- Mock network calls
+
+### 3. Integration Testing
+- Test repository implementations
+- Test service integrations
+- Test database operations
+- Use test databases
+
+---
+
+## Performance Considerations
+
+### 1. Memory Management
+- Avoid memory leaks in ViewModels
+- Use weak references when appropriate
+- Dispose of resources properly
+- Monitor memory usage
+
+### 2. Network Optimization
+- Use efficient API calls
+- Implement proper caching
+- Handle offline scenarios
+- Optimize image loading
+
+### 3. UI Performance
+- Use lazy loading for lists
+- Minimize recompositions in Compose
+- Use efficient data structures
+- Profile performance regularly
+
+---
+
+## Code Review Checklist
+
+### Before Submitting Code
+- [ ] Follows architecture standards
+- [ ] Includes proper documentation
+- [ ] Handles errors appropriately
+- [ ] Includes unit tests
+- [ ] Follows naming conventions
+- [ ] Uses dependency injection
+- [ ] Includes proper logging
+- [ ] No hardcoded values
+- [ ] Follows security best practices
+
+### During Code Review
+- [ ] Check for architectural violations
+- [ ] Verify error handling
+- [ ] Review documentation quality
+- [ ] Check test coverage
+- [ ] Verify performance impact
+- [ ] Review security implications
+
+---
+
+## Best Practices Summary
+
+1. **Always use dependency injection** for all dependencies
+2. **Document everything** with KDoc
+3. **Handle errors gracefully** with proper logging
+4. **Follow naming conventions** consistently
+5. **Write unit tests** for all business logic
+6. **Use appropriate log levels** and avoid sensitive data
+7. **Keep interfaces pure** and implementations focused
+8. **Monitor performance** and optimize when needed
+9. **Follow security best practices** for data handling
+10. **Maintain clean architecture** with clear separation of concerns
+
+---
+
+## Getting Help
+
+- Review existing code for examples
+- Check the `.cursor/rules/` directory for specific guidelines
+- Ask team members for clarification
+- Refer to official Android and Kotlin documentation
+
+---
+
+*This document should be updated as the codebase evolves and new patterns emerge.*

@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.common.helper
+package com.greatergoods.meapp.core.shared.utilities
 
 import java.time.Instant
 import java.time.LocalDate
@@ -333,4 +333,18 @@ object DateTimeTools {
         val offset = ZoneId.systemDefault().rules.getOffset(Instant.now())
         return offset.totalSeconds / 60
     }
+
+    /**
+     * Formats a timestamp (milliseconds) to YYYY-MM-DD format for API requests.
+     * Similar to moment(timestamp).format('Y-MM-DD')
+     */
+    fun formatDateForAPI(timestampMillis: Long): String =
+        try {
+            val date = Instant.ofEpochMilli(timestampMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+            date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        } catch (e: Exception) {
+            ""
+        }
 }

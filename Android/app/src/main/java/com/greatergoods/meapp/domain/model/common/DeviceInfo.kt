@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.domain.model.common
 
 data class DeviceInfo(
-    val appVersion: String,
+    val appVersion: String?,
     val deviceManufacturer: String,
     val deviceOSName: String,
     val deviceOSVersion: String,
