@@ -132,6 +132,27 @@ struct SettingsScreen: View {
             Button(CommonStrings.off) { settingsStore.updateStreakStatus(false) }
             Button(CommonStrings.cancel, role: .cancel) {}
         }
+        // Height picker sheets
+        .pickerSheet(
+            isPresented: $settingsStore.showHeightInchesPicker,
+            selectedValues: settingsStore.selectedHeightInches,
+            options: settingsStore.heightInchesOptions,
+            displayValue: { $0 },
+            pickerType: .heightInches,
+            onUpdate: { newValues in
+                settingsStore.updateHeight(fromMetric: false, values: newValues)
+            }
+        )
+        .pickerSheet(
+            isPresented: $settingsStore.showHeightCmPicker,
+            selectedValues: settingsStore.selectedHeightCm,
+            options: settingsStore.heightCmOptions,
+            displayValue: { $0 },
+            pickerType: .heightCm,
+            onUpdate: { newValues in
+                settingsStore.updateHeight(fromMetric: true, values: newValues)
+            }
+        )
     }
     
     private func profileHeader() -> some View {
@@ -199,7 +220,9 @@ struct SettingsScreen: View {
                 value: settingsStore.activityLevelText,
                 onTap: { showingActivityDialog = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText))
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText, onTap: {
+                settingsStore.showHeightPicker()
+            }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.unitType,

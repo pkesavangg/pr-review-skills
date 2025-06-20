@@ -38,16 +38,8 @@ final class SignupStore: ObservableObject {
     
     var onSignupSuccess: (() -> Void)?
     
-    let heightInchesOptions: [[String]] = [
-        (2...7).map { "\($0)" },
-        (0...11).map { "\($0)" }
-    ]
-    
-    let heightCmOptions: [[String]] = [
-        (1...2).map { "\($0)" },
-        (0...9).map { "\($0)" },
-        (0...9).map { "\($0)" }
-    ]
+    let heightInchesOptions = ConversionTools.heightInchesOptions
+    let heightCmOptions     = ConversionTools.heightCmOptions
     
     private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
@@ -55,6 +47,7 @@ final class SignupStore: ObservableObject {
     init() {
         setupFormObservers()
         updateHeightPickerValues(from: Int(signupForm.height.value))
+        self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
     }
     
     let steps: [SignupStep] = [
@@ -74,13 +67,9 @@ final class SignupStore: ObservableObject {
     // MARK: - Height Management
     
     func updateHeightPickerValues(from storedHeight: Int) {
-        // Update both picker values based on the stored height
-        let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-        selectedHeightInches = ["\(feet[0])", "\(feet[1])"]
-        
-        let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
-        let cmString = String(format: "%03d", cm)
-        selectedHeightCm = cmString.map { String($0) }
+        let selections = ConversionTools.pickerSelections(from: storedHeight)
+        selectedHeightInches = selections.inches
+        selectedHeightCm     = selections.cm
     }
     
     func getFormattedHeight() -> String {
