@@ -26,7 +26,7 @@ struct WeightlessScreen: View {
                 trailingContent: {
                     ButtonView(
                         text: commonLang.save,
-                        type: .linkBlueDefault,
+                        type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
                         isDisabled: (!settingsStore.weightlessForm.isDirty || (settingsStore.weightlessForm.isDirty && settingsStore.weightlessForm.isInvalid)),
