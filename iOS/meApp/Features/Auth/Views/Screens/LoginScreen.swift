@@ -12,23 +12,23 @@ struct LoginScreen: View {
     @Environment(\.appTheme) var theme
     @StateObject private var store = LoginStore()
     @FocusState private var focusedField: FocusField?
-    
+
     let labels = InputFieldLabels.self
     let commonLang = CommonStrings.self
     let lang = LoginScreenStrings.self
     let legalStrings = LegalStrings.self
-    
+
     private var focusBinding: Binding<FocusField?> {
         Binding(
             get: { focusedField },
             set: { focusedField = $0 }
         )
     }
-    
+
     var body: some View {
         ZStack {
             theme.backgroundSecondary.ignoresSafeArea()
-            
+
             VStack {
                 NavbarHeaderView(
                     title: "",
@@ -38,13 +38,13 @@ struct LoginScreen: View {
                     onTrailingTap: { store.openHelp() }
                 )
                 .padding(.bottom, .spacingLG)
-                
+
                 VStack(alignment: .center) {
                     VStack(alignment: .leading) {
                         Text(lang.welcomeBack)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
-                        
+
                         // Email Input Field
                         AppInputField(
                             config: TextInputConfig(
@@ -81,7 +81,7 @@ struct LoginScreen: View {
                     }
                     .padding(.vertical, .spacingMD)
                     .padding(.horizontal, .spacingSM)
-                    
+
                     ButtonView(
                         text: commonLang.logIn,
                         type: .filledPrimary,
@@ -97,7 +97,7 @@ struct LoginScreen: View {
                         }
                     )
                     .padding(.bottom, .spacingSM)
-                    
+
                     ButtonView(
                         text: lang.forgotPassword,
                         type: .textPrimary,
@@ -106,9 +106,9 @@ struct LoginScreen: View {
                         action: { store.showPasswordResetPrompt() }
                     )
                 }
-                
+
                 Spacer()
-                
+
                 VStack(spacing: .spacingXS / 2) {
                     Text(lang.byLoggingIn)
                         .fontOpenSans(.subHeading2)
