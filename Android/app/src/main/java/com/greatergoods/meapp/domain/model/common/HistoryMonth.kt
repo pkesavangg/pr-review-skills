@@ -9,4 +9,5 @@ data class HistoryMonth(
     val avgWeight: Double? = null,
     val entryCount: Int? = null,
     val change: Double? = null,
+    val unit: String? = null,
 )
