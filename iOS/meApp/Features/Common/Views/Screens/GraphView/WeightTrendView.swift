@@ -156,9 +156,9 @@ func sampleOperations(for segment: String) -> [BathScaleOperationDTO] {
         }
 
     case "TOTAL":
-        // 15 entries over 3 years, every 2-3 months
+        // 13 entries over 3 years, every 3 months
         let monthsAgo = stride(from: -36, through: 0, by: 3).map { $0 }
-        let weights: [Double] = [182.8, 185.0, 179.4, 183.3,180.1, 178.9, 181.7, 179.2, 180.5, 177.4, 179.6, 178.2, 177.3, 176.9]
+        let weights: [Double] = [182.8, 185.0, 179.4, 183.3, 180.1, 178.9, 181.7, 179.2, 180.5, 177.4, 179.6, 178.2, 177.3]
         operations = zip(monthsAgo, weights).map { (monthOffset, weight) in
             createOperation(date: dateByAdding(months: monthOffset, day: 10), weight: weight)
         }

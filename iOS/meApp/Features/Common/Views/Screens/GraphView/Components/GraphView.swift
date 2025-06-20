@@ -12,6 +12,8 @@ struct GraphView: View {
     @ObservedObject var graphStore: GraphStore
     @Environment(\.appTheme) private var theme
     
+    let yAxisContainerWidth: CGFloat = 30 // Width for Y-axis container
+    
     var body: some View {
         HStack(spacing: 0) {
             // The swipable chart pages
@@ -42,7 +44,13 @@ struct GraphView: View {
                         .foregroundStyle(.clear)
                 }
             }
-            .chartYScale(domain: 175...190)
+            .chartYScale(domain: {
+                let ticks = graphStore.yAxisTicksWithGoal()
+                guard let minTick = ticks.min(), let maxTick = ticks.max() else {
+                    return 175...190 
+                }
+                return Int(minTick)...Int(maxTick)
+            }())
             .chartXAxis(.hidden)
             .chartYAxis {
                 AxisMarks(values: graphStore.yAxisTicksWithGoal()) { value in
@@ -64,7 +72,7 @@ struct GraphView: View {
                     }
                 }
             }
-            .frame(width: 30)
+            .frame(width: yAxisContainerWidth)
             .padding(.top, 0)
             .padding(.bottom, 30)
         }

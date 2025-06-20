@@ -102,14 +102,12 @@ final class GraphStore: ObservableObject {
         let isoFormatter = ISO8601DateFormatter()
 
         if let first = padded.first, let firstDate = first.date,
-           firstDate > domain.lowerBound,
-           operations.contains(where: { ($0.date ?? .distantPast) < domain.lowerBound }) {
+           firstDate > domain.lowerBound {
             padded.insert(first.copy(with: isoFormatter.string(from: domain.lowerBound)), at: 0)
         }
 
         if let last = padded.last, let lastDate = last.date,
-           lastDate < domain.upperBound,
-           operations.contains(where: { ($0.date ?? .distantFuture) > domain.upperBound }) {
+           lastDate < domain.upperBound {
             padded.append(last.copy(with: isoFormatter.string(from: domain.upperBound)))
         }
 
