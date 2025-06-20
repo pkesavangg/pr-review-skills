@@ -18,7 +18,7 @@ struct HistoryEntryItem: View {
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
-    let onMetricTap: (BodyMetric) -> Void
+    let onMetricTap: (Entry, BodyMetric) -> Void
 
     // MARK: - Computed Properties
 
@@ -132,7 +132,7 @@ struct HistoryEntryItem: View {
                                 metric: BodyMetrics.config[item.metric]!,
                                 value: item.value,
                                 isAlternate: index % 2 == 1,
-                                onTap: { onMetricTap(item.metric) }
+                                onTap: { onMetricTap(entry, item.metric) }
                             )
                         }
                     }
@@ -196,7 +196,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
                 isExpanded: false,
                 onTap: {},
                 onDelete: {},
-                onMetricTap: { _ in }
+                onMetricTap: { _, _ in }
             )
 
             HistoryEntryItem(
@@ -204,7 +204,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
                 isExpanded: true,
                 onTap: {},
                 onDelete: {},
-                onMetricTap: { _ in }
+                onMetricTap: { _, _ in }
             )
         }
         .padding()
