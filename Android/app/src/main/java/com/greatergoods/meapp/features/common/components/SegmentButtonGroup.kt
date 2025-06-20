@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateBounds
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -25,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -51,11 +54,10 @@ enum class SegmentButtonSize {
 enum class SegmentButtonType {
     /** Single row layout without scrolling - uses SingleChoiceSegmentedButtonRow */
     Single,
+
     /** Multi-item scrollable layout - uses LazyRow for horizontal scrolling */
     Scrollable,
 }
-
-
 
 /*
 * Segment button data
@@ -102,7 +104,7 @@ object SegmentButtonDefaults {
     @Composable
     fun horizontalPadding(size: SegmentButtonSize): Dp =
         when (size) {
-            SegmentButtonSize.Small -> MeTheme.spacing.sm
+            SegmentButtonSize.Small -> MeTheme.spacing.xs
             SegmentButtonSize.Medium -> MeTheme.spacing.sm
             SegmentButtonSize.Large -> MeTheme.spacing.sm
         }
@@ -147,6 +149,7 @@ object SegmentButtonDefaults {
  * @param size Size variant of the segment button
  * @param type Type of layout - Single (non-scrollable) or Scrollable (with LazyRow)
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun <T> SegmentButtonGroup(
     modifier: Modifier = Modifier,
@@ -157,7 +160,7 @@ fun <T> SegmentButtonGroup(
     type: SegmentButtonType = SegmentButtonType.Single,
     onSelected: (T) -> Unit,
 ) {
-    val minWidth = SegmentButtonDefaults.minWidth(size)
+    SegmentButtonDefaults.minWidth(size)
     val horizontalPadding = SegmentButtonDefaults.horizontalPadding(size)
     val verticalPadding = 0.dp
     val horizontalSpacedBy = SegmentButtonDefaults.segmentSpacing
@@ -192,27 +195,30 @@ fun <T> SegmentButtonGroup(
     }
 
     if (type == SegmentButtonType.Single) {
-        // Single row layout - all buttons in one non-scrollable row
-        SingleChoiceSegmentedButtonRow(
-            modifier = modifier,
-        ) {
-            data.forEachIndexed { index, option ->
-                SegmentedButton(
-                    shape = shape,
-                    onClick = { onSelected(option) },
-                    colors = colors,
-                    icon = {},
-                    selected = option == selectedData,
-                    label = {
-                        Text(
-                            text = key.get(option),
-                            style = textStyle,
-                            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
-                            maxLines = maxLines,
-                        )
-                    },
-                    modifier = segmentButtonModifier,
-                )
+        LookaheadScope {
+            // Single row layout - all buttons in one non-scrollable row
+            SingleChoiceSegmentedButtonRow(
+                modifier = modifier.animateBounds(this@LookaheadScope),
+                space = 0.dp,
+            ) {
+                data.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        shape = shape,
+                        onClick = { onSelected(option) },
+                        colors = colors,
+                        icon = {},
+                        selected = option == selectedData,
+                        label = {
+                            Text(
+                                text = key.get(option),
+                                style = textStyle,
+                                modifier = Modifier.padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                                maxLines = maxLines,
+                            )
+                        },
+                        modifier = segmentButtonModifier,
+                    )
+                }
             }
         }
     } else {
@@ -313,7 +319,6 @@ fun SegmentButtonPreview() {
             var selectedMediumData by remember { mutableStateOf(sampleMediumData[0]) }
             var selectedLargeData by remember { mutableStateOf(sampleLargeData[0]) }
             // --- Single Type - Small size ---
-            var selectedSmallIndex by remember { mutableStateOf(1) }
             SegmentButtonGroup(
                 data =
                     sampleSmallData,
@@ -324,7 +329,6 @@ fun SegmentButtonPreview() {
             )
 
             // --- Scrollable Type - Medium size ---
-            var selectedMediumIndex by remember { mutableStateOf(0) }
             SegmentButtonGroup(
                 data =
                     sampleMediumData,
@@ -335,7 +339,6 @@ fun SegmentButtonPreview() {
             )
 
             // --- Single Type - Large size ---
-            var selectedLargeIndex by remember { mutableStateOf(2) }
             SegmentButtonGroup(
                 data =
                     sampleLargeData,
@@ -346,7 +349,6 @@ fun SegmentButtonPreview() {
             )
 
             // --- Scrollable Type - Many items ---
-            var selectedScrollableIndex by remember { mutableStateOf(3) }
             SegmentButtonGroup(
                 data = sampleLargeData,
                 key = SegmentButtonData::label,
