@@ -129,8 +129,10 @@ struct MetricDetailView: View {
                                 size: .small,
                                 isDisabled: false,
                                 action: {
-                                    presentingBrowserURL = URL(string: res.link)!
+                                  if let url = URL(string: res.link) {
+                                    presentingBrowserURL = url
                                     isBrowserPresented = true
+                                  }
                                  }
                             )
                         }
