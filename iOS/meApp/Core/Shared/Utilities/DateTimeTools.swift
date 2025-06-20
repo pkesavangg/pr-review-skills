@@ -14,7 +14,7 @@ final class DateTimeTools {
     private static let formatterLock = NSLock()
     
     /// Returns a cached DateFormatter with the specified format and en_US_POSIX locale.
-    private static func formatter(_ format: String) -> DateFormatter {
+    static func formatter(_ format: String) -> DateFormatter {
         formatterLock.lock()
         defer { formatterLock.unlock() }
         if let cached = formatterCache[format] {

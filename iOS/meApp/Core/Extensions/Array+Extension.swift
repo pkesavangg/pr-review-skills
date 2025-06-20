@@ -17,3 +17,10 @@ extension Array {
         self = Array(self[..<Swift.min(index + 1, self.count)])
     }
 }
+
+// Safe subscript for arrays
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}

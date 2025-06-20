@@ -59,22 +59,10 @@ enum BottomTab: String, CaseIterable {
 struct DashboardView: View {
     @Environment(\.appTheme) private var theme
     var body: some View {
-        NavigationStack {
-//            List(1..<100) { item in
-//                NavigationLink {
-//                    DetailScreen(item: item)
-//                        .onAppear { viewModel.showTabBar = false }
-//                } label: {
-//                    Text("Item \(item)")
-//                        .font(.headline)
-//                        .padding()
-//                        .background(Color.blue.opacity(0.1))
-//                        .cornerRadius(8)
-//                }
-//            }
-            WeightTrendView()
-           // .onAppear { viewModel.showTabBar = true }
-        }
+        
+        WeightTrendView()
+          
+        Spacer()
     }
 }
 

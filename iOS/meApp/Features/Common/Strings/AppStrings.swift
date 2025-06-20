@@ -32,6 +32,8 @@ struct CommonStrings {
     static let dark = "Dark"
     static let light = "Light"
     static let system = "System Settings"
+    static let date = "Date"
+    static let weight = "Weight"
 }
 
 /// Constants for toast messages used in the app

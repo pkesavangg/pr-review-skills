@@ -144,8 +144,8 @@ struct SettingsScreen: View {
             
             ButtonView(
                 text: CommonStrings.edit,
-                type: .primary,
-                size: .regular,
+                type: .filledPrimary,
+                size: .large,
                 isDisabled: false,
                 action: {
                     tabViewModel.showTabBar = false

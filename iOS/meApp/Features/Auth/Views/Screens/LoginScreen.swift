@@ -56,6 +56,7 @@ struct LoginScreen: View {
                             store.setEmailTouched()
                             focusedField = .password
                         }
+                        
                         // Password Input Field
                         AppInputField(
                             config: TextInputConfig(
@@ -76,37 +77,40 @@ struct LoginScreen: View {
                         }
                     }
                     .padding(.vertical, .spacingMD)
+                    .padding(.horizontal, .spacingSM)
 
-                ButtonView(
-                    text: commonLang.logIn,
-                    type: .filledPrimary,
-                    size: .large,
-                    isDisabled: !store.isFormValid || store.isFormSubmitting,
-                    action: {
-                        focusedField = nil
-                        store.loginForm.email.markAsDirty()
-                        store.loginForm.password.markAsDirty()
-                        if store.isFormValid {
-                            Task { await store.logIn() }
+                    ButtonView(
+                        text: commonLang.logIn,
+                        type: .filledPrimary,
+                        size: .large,
+                        isDisabled: !store.isFormValid || store.isFormSubmitting,
+                        action: {
+                            focusedField = nil
+                            store.loginForm.email.markAsDirty()
+                            store.loginForm.password.markAsDirty()
+                            if store.isFormValid {
+                                Task { await store.logIn() }
+                            }
                         }
                     )
                     .padding(.bottom, .spacingSM)
 
-                ButtonView(
-                    text: lang.forgotPassword,
-                    type: .textPrimary,
-                    size: .small,
-                    isDisabled: false,
-                    action: { store.showPasswordResetPrompt() }
-                )
+                    ButtonView(
+                        text: lang.forgotPassword,
+                        type: .textPrimary,
+                        size: .small,
+                        isDisabled: false,
+                        action: { store.showPasswordResetPrompt() }
+                    )
+                }
 
-                    Spacer()
+                Spacer()
 
                 VStack(spacing: .spacingXS/2) {
                     Text(lang.byLoggingIn)
                         .fontOpenSans(.subHeading2)
                         .foregroundColor(theme.actionSecondary)
-                    HStack() {
+                    HStack {
                         ButtonView(
                             text: legalStrings.termsOfService,
                             type: .textPrimary,
