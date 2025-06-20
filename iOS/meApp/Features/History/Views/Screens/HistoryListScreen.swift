@@ -12,8 +12,7 @@ import SwiftUI
 struct HistoryListScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var store = HistoryStore()
-    @Environment(\.weightUnit) private var weightUnit
-    @State private var navPath = NavigationPath()
+    @State private var selectedMonth: HistoryMonth?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,76 +30,40 @@ struct HistoryListScreen: View {
         .onAppear {
             store.loadMonths()
         }
+        .sheet(item: $selectedMonth) { month in
+            HistoryMonthListScreen(month: month)
+        }
         .environmentObject(Theme.shared)
     }
 
     @ViewBuilder
     private var content: some View {
-        if store.isLoading {
-            // TODO: Add a loading state
-            ProgressView()
-                .progressViewStyle(.circular)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let message = store.errorMessage {
-
-            ErrorStateView(message: message) {
-                store.loadMonths()
-            }
-            .padding()
-        } else if store.isEmptyState {
-            // TODO: Add an empty state
-            EmptyStateView(text: HistoryListStrings.emptyState)
-                .padding()
+       if store.isEmptyState {
+            NoEntryView(
+              onButtonTap: {
+                // TODO: Navigate to Add Scale Screen
+              }
+            )
         } else {
-            List {
+          ScrollView {
+            LazyVStack(spacing: 0) {
                 ForEach(store.months, id: \.id) { month in
-                        ZStack {
-                          MonthSummaryItem(month: month, weightUnit: weightUnit)
-                        }
-                        .onTapGesture {
-                            store.selectMonth(month)
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
-                        .background(theme.backgroundSecondary)
+                    ZStack {
+                        MonthSummaryItem(month: month)
+                            .contentShape(Rectangle())
+                    }
+                    .onTapGesture {
+                        store.selectMonth(month)
+                        selectedMonth = month
+                    }
+                    .background(theme.backgroundSecondary)
                 }
             }
-            .listStyle(PlainListStyle())
-            .scrollContentBackground(.hidden)
-            .background(theme.backgroundSecondary)
+          }
+          .refreshable {
+              await store.refreshSelectedMonth()
+          }
         }
-    }
-}
-
-// MARK: - Helper Views --------------------------------------------------
-
-private struct ErrorStateView: View {
-    let message: String
-    let retry: () -> Void
-    var body: some View {
-        VStack(spacing: .spacingSM) {
-            Text(message)
-                .multilineTextAlignment(.center)
-            Button(HistoryListStrings.retry) {
-                retry()
-            }
-            .buttonStyle(.borderedProminent)
-        }
-    }
-}
-
-private struct EmptyStateView: View {
-    let text: String
-    var body: some View {
-        VStack(spacing: .spacingSM) {
-            Image(systemName: "tray")
-                .font(.system(size: 40))
-                .foregroundColor(.gray)
-            Text(text)
-                .fontOpenSans(.body2)
-                .foregroundColor(.gray)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

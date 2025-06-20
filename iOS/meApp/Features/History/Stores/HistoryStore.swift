@@ -17,14 +17,6 @@ final class HistoryStore: ObservableObject {
     @Injector private var entryService: EntryService
     @Injector private var notificationService: NotificationHelperService
 
-    // MARK: - Navigation
-    enum Screen {
-        case summary                // History/Total
-        case monthDetail(HistoryMonth)
-        case metricInfo(BodyMetric)
-    }
-
-    @Published private(set) var currentScreen: Screen = .summary
 
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -71,7 +63,6 @@ final class HistoryStore: ObservableObject {
     /// User tapped a month row.
     func selectMonth(_ month: HistoryMonth) {
         selectedMonth = month
-        currentScreen = .monthDetail(month)
         Task { [weak self] in
             await self?.loadEntries(for: month)
         }
@@ -85,29 +76,25 @@ final class HistoryStore: ObservableObject {
         } else {
             expandedEntries.insert(id)
         }
-
     }
 
     /// User tapped a metric inside an expanded entry.
     func selectMetric(_ metric: BodyMetric) {
         selectedMetric = metric
-        currentScreen = .metricInfo(metric)
     }
 
-    /// Navigate back one level. Use when the back button is pressed.
-    func pop() {
-        switch currentScreen {
-        case .metricInfo(_):
-            currentScreen = .monthDetail(selectedMonth!)
-        case .monthDetail(_):
-            currentScreen = .summary
-            // Reset month–specific state
-            selectedMonth = nil
-            entries = []
-            expandedEntries.removeAll()
-        case .summary:
-            break
+    func deleteEntry(_ entry: Entry) {
+        Task { [weak self] in
+            await self?.deleteEntryInternal(entry)
         }
+    }
+
+    // MARK: - Manual Refresh -------------------------------------------------
+
+    /// Refresh the entries for the month that is currently selected (used by pull-to-refresh UI)
+    func refreshSelectedMonth() async {
+        guard let month = selectedMonth else { return }
+        await loadEntries(for: month)
     }
 
     // MARK: - Internal helpers -------------------------------------------
@@ -161,6 +148,14 @@ final class HistoryStore: ObservableObject {
         } catch {
             // Fallback to full reload on error
             Task { await loadMonthsInternal() }
+        }
+    }
+
+    private func deleteEntryInternal(_ entry: Entry) async {
+        do {
+            try await entryService.deleteEntry(entry)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }
