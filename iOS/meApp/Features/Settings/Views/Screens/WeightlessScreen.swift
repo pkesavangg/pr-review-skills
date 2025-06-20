@@ -29,7 +29,7 @@ struct WeightlessScreen: View {
                         type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
-                        isDisabled: (!settingsStore.weightlessForm.isDirty || (settingsStore.weightlessForm.isDirty && settingsStore.weightlessForm.isInvalid)),
+                        isDisabled: (!settingsStore.weightlessForm.isDirty || (settingsStore.weightlessForm.isDirty && (settingsStore.weightlessForm.isOn.value ? settingsStore.weightlessForm.isInvalid : false))),
                     ) {
                         settingsStore.saveWeightless(dismiss: dismiss)
                         withAnimation { hideKeyboard() }
@@ -60,7 +60,7 @@ struct WeightlessScreen: View {
                         config: TextInputConfig(
                             label: inputLabels.weightLessLabel(weightUnit == .kg),
                             inputType: .metric,
-                            errorMessage: settingsStore.weightlessForm.getWeightError(unit: weightUnit),
+                            errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight,  unit: weightUnit),
                             isDisabled: !settingsStore.weightlessForm.isOn.value,
                             maxLength: 4,
                             maxValue: 999.9
