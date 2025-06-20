@@ -66,6 +66,7 @@ struct ToastStrings {
     static let csvExported = ".CSV file sent. Please check your email."
     static let passwordUpdated = "Password updated."
     static let errorUpdatingPassword = "Error updating password."
+    static let errorUpdatingWeightless = "Error updating Weightless Settings."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
     static let unitSettingUpdated = "Unit settings updated."
@@ -73,8 +74,11 @@ struct ToastStrings {
     static let streakSettingUpdated = "Streak settings updated."
     static let activitySettingUpdated = "Activity level updated."
     static let genderUpdated = "Gender updated."
+    static let weightlessUpdated = "Weightless updated."
     static let somethingWentWrongTitle = "Something went wrong!"
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
+    static let heightUpdated = "Your height has been updated."
+    static let errorUpdatingHeight = "Error updating height."
 }
 
 /// Constants for help modal strings used in the app
@@ -123,6 +127,9 @@ struct InputFieldLabels {
     static let zipCode = "zipcode"
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
+    }
+    static let weightLessLabel: (Bool) -> String = { isKg in
+        return isKg ? "weightless weight (kg)" : "weightless weight (lbs)"
     }
     static let date = "Date"
     static let bmi = "bmi"
@@ -190,6 +197,13 @@ struct AlertStrings {
         static let message = "An email with your measurement history will be sent to the email address associated with this account."
         static let sendButton = "Send"
         static let cancelButton = "Cancel"
+    }
+    
+    struct WeightLessExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
     }
 }
 
