@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct VersionAndCopyrightView: View {
+struct VersionView: View {
     @Environment(\.appTheme) var theme
     let lang = LoadingScreenStrings.self
     private var appVersion: String {
@@ -15,11 +15,8 @@ struct VersionAndCopyrightView: View {
     }
     
     var body: some View {
-        VStack(spacing: .spacingXS) {
-            Text(lang.copyright)
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.backgroundPrimary)
-            Text("\(lang.versionPrefix) \(appVersion)")
+        VStack() {
+            Text("\(lang.versionPrefix.lowercased()) \(appVersion)")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.backgroundPrimary)
         }
