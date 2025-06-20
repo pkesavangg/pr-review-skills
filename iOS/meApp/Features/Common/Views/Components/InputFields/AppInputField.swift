@@ -138,7 +138,7 @@ struct AppInputField: View {
                         .foregroundColor(theme.actionPrimary)
                 }
             } else {
-                if config.isDisabled {
+                if config.isDisabled && !value.isEmpty {
                     disabledIcon
                 } else if config.inputType != .password && !value.isEmpty {
                     clearButton
