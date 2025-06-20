@@ -117,6 +117,9 @@ struct InputFieldLabels {
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
     }
+    static let weightLessLabel: (Bool) -> String = { isKg in
+        return isKg ? "weightless weight (kg)" : "weightless weight (lbs)"
+    }
     static let date = "Date"
     static let bmi = "bmi"
     static let bodyFat = "body fat %"
@@ -183,6 +186,13 @@ struct AlertStrings {
         static let message = "An email with your measurement history will be sent to the email address associated with this account."
         static let sendButton = "Send"
         static let cancelButton = "Cancel"
+    }
+    
+    struct WeightLessExitAlert {
+        static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
     }
 }
 

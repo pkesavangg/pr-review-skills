@@ -44,7 +44,7 @@ class SettingsStore: ObservableObject {
     @Published var showTermsBrowser: Bool = false
     @Published var showGreaterGoodsBrowser: Bool = false
     @Published var browserURL: URL? = nil
-
+    
     // MARK: - Weightless Page State
     @Published var showWeightLessPage: Bool = false
     
@@ -217,7 +217,7 @@ class SettingsStore: ObservableObject {
     }
     
     var weightlessText: String {
-        (activeAccount?.weightlessSettings?.isWeightlessOn ?? false) ? commonLang.on : commonLang.off
+        (activeAccount?.weightlessSettings?.isWeightlessOn ?? false) ? "\(commonLang.on) - \(weightlessForm.weight.value) \(activeAccount?.weightSettings?.weightUnit?.rawValue ?? WeightUnit.lb.rawValue)" : commonLang.off
     }
     
     var notificationsOnText: String {
@@ -457,14 +457,14 @@ class SettingsStore: ObservableObject {
         guard let account = activeAccount else { return }
         // Skip if no change
         guard account.weightSettings?.weightUnit != unit else { return }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 let bodyComp = BodyComp(
-                   weightUnit: unit,
-                     height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
-                   activityLevel: account.weightSettings?.activityLevel ?? .normal)
+                    weightUnit: unit,
+                    height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+                    activityLevel: account.weightSettings?.activityLevel ?? .normal)
                 _ = try await accountService.updateBodyComp(bodyComp)
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
                 logger.log(level: .info, tag: tag, message: "Weight unit updated to \(unit.rawValue)")
@@ -480,7 +480,7 @@ class SettingsStore: ObservableObject {
     func updateActivityLevel(_ level: ActivityLevel) {
         guard let account = activeAccount else { return }
         guard account.weightSettings?.activityLevel != level else { return }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -499,7 +499,7 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-
+    
     // MARK: - Notification Preference Helpers
     func updateNotificationPreference(_ preference: NotificationPreference) {
         guard let account = activeAccount else { return }
@@ -512,12 +512,12 @@ class SettingsStore: ObservableObject {
             }
         }()
         guard currentPref != preference else { return }
-
+        
         let notifications = Notifications(
             shouldSendEntryNotifications: preference != .disable,
             shouldSendWeightInEntryNotifications: preference == .enableWithWeight
         )
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -531,12 +531,12 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-
+    
     // MARK: - Streak Helpers
     func updateStreakStatus(_ isOn: Bool) {
         guard let account = activeAccount else { return }
         guard account.streaksSettings?.isStreakOn != isOn else { return }
-
+        
         let timestamp = DateTimeTools.getCurrentDatetimeIsoString()
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
@@ -551,12 +551,12 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-
+    
     // MARK: - Gender Helpers
     func updateGender(_ sex: Sex) {
         guard let account = activeAccount else { return }
         guard account.gender != sex else { return }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -581,19 +581,19 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-
+    
     // MARK: - Weightless Helpers
     /// Persists weightless mode changes.
     /// - Parameters:
     ///   - isOn: Whether weightless mode is enabled.
     ///   - storedWeight: Anchor weight in *stored units* (tenths-of-lbs).
     ///   - onSuccess: optional completion handler after successful save.
-    func updateWeightlessMode(isOn: Bool, storedWeight: Int, onSuccess: (() -> Void)? = nil) {
+    func updateWeightlessMode(isOn: Bool, storedWeight: Int, dismiss: DismissAction) {
         guard let account = activeAccount else { return }
         let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
         let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
         if currentOn == isOn && currentWeightStored == storedWeight { return }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -601,79 +601,78 @@ class SettingsStore: ObservableObject {
                 _ = try await accountService.updateWeightless(isWeightlessOn: isOn, weightlessTimestamp: timestamp, weightlessWeight: Double(storedWeight))
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
-                onSuccess?()
+                dismiss() // Dismiss the view after successful save
             } catch {
+                print("Weightless update failed: \(error.localizedDescription)")
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
                 logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
         }
     }
-
+    
     // MARK: - Weightless Form Helpers
-
+    
     /// Populates the Weightless settings form with the current account values (only once, when pristine).
     func populateWeightlessFormIfNeeded() {
         guard let account = activeAccount else { return }
-
+        
         // Avoid overriding any in-progress edits.
         if !weightlessForm.isDirty {
             if let isOn = account.weightlessSettings?.isWeightlessOn {
                 weightlessForm.isOn.value = isOn
                 weightlessForm.isOn.markAsPristine()
             }
-
+            
             if let storedWeight = account.weightlessSettings?.weightlessWeight {
                 // Convert stored tenths-of-lbs value to display unit.
                 let unit = account.weightSettings?.weightUnit ?? .lb
                 let display: Double = unit == .kg
-                    ? ConversionTools.convertStoredToKg(Int(storedWeight))
-                    : ConversionTools.convertStoredToLbs(Int(storedWeight))
-
-                weightlessForm.weight.value = String(format: "%.2f", display)
+                ? ConversionTools.convertStoredToKg(Int(storedWeight))
+                : ConversionTools.convertStoredToLbs(Int(storedWeight))
+                
+                weightlessForm.weight.value = String(format: "%.1f", display)
                 weightlessForm.weight.markAsPristine()
             }
-            print("Weightless form populated with initial values: \(weightlessForm.isOn.value), \(weightlessForm.weight.value)")
             weightlessForm.validate()
         }
     }
-
+    
     /// Handles the exit action from the Weightless screen. Shows an alert if there are unsaved changes.
-    func handleWeightlessExit(router: Router<SettingsRoute>) {
+    func handleWeightlessExit(dismiss: DismissAction) {
         if !weightlessForm.isDirty {
             resetWeightlessForm()
-            router.navigateBack()
+            dismiss()
             return
         }
-
+        
         let alert = AlertModel(
-            title: WeightlessStrings.ExitAlert.title,
-            message: WeightlessStrings.ExitAlert.message,
+            title: alertLang.WeightLessExitAlert.title,
+            message: alertLang.WeightLessExitAlert.message,
             buttons: [
-                AlertButtonModel(title: WeightlessStrings.ExitAlert.exitButton, type: .primary) { _ in
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
                     self.resetWeightlessForm()
-                    router.navigateBack()
+                    dismiss()
                 },
-                AlertButtonModel(title: WeightlessStrings.ExitAlert.returnButton, type: .secondary) { _ in }
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
             ]
         )
         notificationService.showAlert(alert)
     }
-
+    
     /// Validates and saves Weightless settings to the server.
-    func saveWeightless(router: Router<SettingsRoute>) {
+    func saveWeightless(dismiss: DismissAction)  {
         // Run validation first.
         weightlessForm.validate()
-
+        
         // No changes – simply dismiss.
         guard weightlessForm.isDirty else {
-            router.navigateBack();
             return
         }
-
+        
         // If toggle is on, ensure the weight field is valid.
         if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
-
+        
         // Convert display value to stored tenths-of-lbs (server format).
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let storedWeight: Int = {
@@ -682,13 +681,9 @@ class SettingsStore: ObservableObject {
             }
             return 0
         }()
-
-        updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight) { [weak self] in
-            self?.resetWeightlessForm()
-            router.navigateBack()
-        }
+        updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight, dismiss: dismiss)
     }
-
+    
     /// Resets the Weightless form to a pristine state.
     func resetWeightlessForm() {
         weightlessForm = WeightlessForm()

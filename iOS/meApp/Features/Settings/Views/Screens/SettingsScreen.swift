@@ -88,7 +88,9 @@ struct SettingsScreen: View {
         .sheet(isPresented: $settingsStore.showWeightLessPage, content: {
             WeightlessScreen()
                 .environmentObject(settingsStore)
+                .interactiveDismissDisabled()
         })
+        
         // Gender dialog
         .confirmationDialog(
             settingsLang.biologicalSex,

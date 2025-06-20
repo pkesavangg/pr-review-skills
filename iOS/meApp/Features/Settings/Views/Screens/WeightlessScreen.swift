@@ -7,21 +7,15 @@ import Combine
 struct WeightlessScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var settingsStore: SettingsStore
-    @EnvironmentObject private var router: Router<SettingsRoute>
-    
-    // Use the shared form from SettingsStore
-    private var form: WeightlessForm { settingsStore.weightlessForm }
+    @Environment(\.dismiss) private var dismiss
     
     private let strings = WeightlessStrings.self
     private let toast = ToastStrings.self
     private let commonLang = CommonStrings.self
+    private let inputLabels = InputFieldLabels.self
     // Local helpers
     private var weightUnit: WeightUnit {
         settingsStore.activeAccount?.weightSettings?.weightUnit ?? .lb
-    }
-    
-    private var weightPlaceholder: String {
-        weightUnit == .kg ? strings.weightPlaceholderKg : strings.weightPlaceholderLbs
     }
     
     var body: some View {
@@ -35,17 +29,16 @@ struct WeightlessScreen: View {
                         type: .linkBlueDefault,
                         size: .small,
                         // Disable when no changes or invalid.
-                        isDisabled: (!form.isDirty || (form.isDirty && form.isInvalid))
+                        isDisabled: (!settingsStore.weightlessForm.isDirty || (settingsStore.weightlessForm.isDirty && settingsStore.weightlessForm.isInvalid)),
                     ) {
+                        settingsStore.saveWeightless(dismiss: dismiss)
                         withAnimation { hideKeyboard() }
                     }
                 },
-                onLeadingTap: { settingsStore.handleWeightlessExit(router: router) },
-                onTrailingTap: { settingsStore.saveWeightless(router: router) },
+                onLeadingTap: { settingsStore.handleWeightlessExit(dismiss: dismiss) },
+                onTrailingTap: {},
                 canShowBorder: true
             )
-            
-            
             
             ScrollView {
                 VStack(alignment: .leading, spacing: .spacingXS) {
@@ -65,7 +58,7 @@ struct WeightlessScreen: View {
                     // Weight input field
                     MetricInputField(
                         config: TextInputConfig(
-                            label: weightPlaceholder,
+                            label: inputLabels.weightLessLabel(weightUnit == .kg),
                             inputType: .metric,
                             errorMessage: settingsStore.weightlessForm.getWeightError(unit: weightUnit),
                             isDisabled: !settingsStore.weightlessForm.isOn.value,
