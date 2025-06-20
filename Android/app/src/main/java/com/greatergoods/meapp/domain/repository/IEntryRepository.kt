@@ -158,7 +158,7 @@ interface IEntryRepository {
      * @param month The month in YYYY-MM format
      * @return Flow of list of entries for the specified month
      */
-    fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>>
+    fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>>
 
     /**
      * Gets all monthly aggregated data.

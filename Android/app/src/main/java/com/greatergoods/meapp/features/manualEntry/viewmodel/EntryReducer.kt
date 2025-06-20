@@ -6,6 +6,7 @@ import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import kotlinx.coroutines.CoroutineScope
+import java.util.Calendar
 
 /**
  * Form controls for weight and date/time (always present)
@@ -47,7 +48,12 @@ data class EntryFormControls(
     val generalMetrics: GeneralMetricsFormControls,
     val r4ScaleMetrics: R4ScaleMetricsFormControls? = null,
 ) {
+
     companion object {
+        val calendar = Calendar.getInstance()
+        val currentTimeMillis = calendar.timeInMillis
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
         fun create(
             scope: CoroutineScope,
             includeR4ScaleMetrics: Boolean = false,
@@ -62,7 +68,7 @@ data class EntryFormControls(
                             ),
                         dateTime =
                             FormControl.create(
-                                initialValue = DateTimeValue.DateTime(System.currentTimeMillis(), 12, 0),
+                                initialValue = DateTimeValue.DateTime(currentTimeMillis, hour, minute),
                                 validators = emptyList(),
                             ),
                     ),

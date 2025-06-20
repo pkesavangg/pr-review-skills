@@ -3,14 +3,14 @@ package com.greatergoods.meapp.core.network.interceptors
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.config.NetworkConfig
 import com.greatergoods.meapp.core.network.ITokenManager
-import okhttp3.Authenticator
-import okhttp3.Route
-import okhttp3.Response
-import okhttp3.Request
-import kotlinx.coroutines.runBlocking
-import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
-import javax.inject.Inject
 import com.greatergoods.meapp.data.api.RefreshTokenAPI
+import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
+import kotlinx.coroutines.runBlocking
+import okhttp3.Authenticator
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.Route
+import javax.inject.Inject
 
 class TokenAuthenticator @Inject constructor(
     private val tokenManager: ITokenManager,
@@ -35,12 +35,14 @@ class TokenAuthenticator @Inject constructor(
                 if (newTokenResponse.accessToken.isNullOrEmpty()) {
                     return@runBlocking null
                 }
-                tokenManager.setTokens(com.greatergoods.meapp.domain.model.api.user.Token(
-                    accountId = "", // Set appropriately if available
-                    accessToken = newTokenResponse.accessToken,
-                    refreshToken = newTokenResponse.refreshToken,
-                    expiresAt = newTokenResponse.expiresAt
-                ))
+                tokenManager.setTokens(
+                    com.greatergoods.meapp.domain.model.api.user.Token(
+                        accountId = "", // Set appropriately if available
+                        accessToken = newTokenResponse.accessToken,
+                        refreshToken = newTokenResponse.refreshToken,
+                        expiresAt = newTokenResponse.expiresAt,
+                    ),
+                )
                 return@runBlocking response.request.newBuilder()
                     .header(AppConfig.AUTHORIZATION_HEADER, "Bearer ${newTokenResponse.accessToken}")
                     .build()

@@ -10,11 +10,21 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryFormControls
+import java.time.Instant
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object EntryHelper {
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM-dd")
+        .withZone(ZoneId.systemDefault())
+
+    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+        .withZone(ZoneId.systemDefault())
+
+    fun FormControl<String>.toDoubleSafe(default: Double = 0.0): Double = this.value.toDoubleOrNull() ?: default
+
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
     fun EntryFormControls.toScaleEntry(weightMode: String): ScaleEntry {
@@ -37,11 +47,11 @@ object EntryHelper {
         val scaleEntry =
             BodyScaleEntryEntity(
                 id = 0L, // Will be set by DB
-                weight = weightDateTime.weight.toIntSafe(),
-                bodyFat = generalMetrics.bodyFat.toIntSafe(),
-                muscleMass = generalMetrics.muscleMass.toIntSafe(),
-                water = generalMetrics.bodyWater.toIntSafe(),
-                bmi = generalMetrics.bodyMassIndex.toIntSafe(),
+                weight = weightDateTime.weight.toDoubleSafe(),
+                bodyFat = generalMetrics.bodyFat.toDoubleSafe(),
+                muscleMass = generalMetrics.muscleMass.toDoubleSafe(),
+                water = generalMetrics.bodyWater.toDoubleSafe(),
+                bmi = generalMetrics.bodyMassIndex.toDoubleSafe(),
                 source = "manual", // or "bluetooth", "cloud", etc.
             )
 
@@ -49,14 +59,14 @@ object EntryHelper {
             r4ScaleMetrics?.let {
                 BodyScaleEntryMetricEntity(
                     id = 0L,
-                    bmr = it.bmr.toIntSafe(),
+                    bmr = it.bmr.toDoubleSafe(),
                     metabolicAge = it.metabolicAge.toIntSafe(),
-                    proteinPercent = it.protein.toIntSafe(),
+                    proteinPercent = it.protein.toDoubleSafe(),
                     pulse = it.heartRate.toIntSafe(),
-                    skeletalMusclePercent = it.skeletalMuscles.toIntSafe(),
-                    subcutaneousFatPercent = it.subcutaneousFat.toIntSafe(),
-                    visceralFatLevel = it.visceralFat.toIntSafe(),
-                    boneMass = it.boneMass.toIntSafe(),
+                    skeletalMusclePercent = it.skeletalMuscles.toDoubleSafe(),
+                    subcutaneousFatPercent = it.subcutaneousFat.toDoubleSafe(),
+                    visceralFatLevel = it.visceralFat.toDoubleSafe(),
+                    boneMass = it.boneMass.toDoubleSafe(),
                     impedance = 0, // You didn’t provide this in form controls – use 0 or calculate if needed
                 )
             }
@@ -86,9 +96,19 @@ object EntryHelper {
 
         return this.copy(
             entryTimestamp = monthYear,
-            avgWeight = avgWeight?.div(10.0).rounded(),
-            change = change?.div(10.0).rounded(),
+            avgWeight = avgWeight.rounded(),
+            change = change.rounded(),
             // entryCount is already Int? so no need to change
         )
+    }
+
+    fun ScaleEntry.getDate(): String {
+        val instant = Instant.parse(entry.entryTimestamp)
+        return dateFormatter.format(instant)
+    }
+
+    fun ScaleEntry.getTime(): String {
+        val instant = Instant.parse(entry.entryTimestamp)
+        return timeFormatter.format(instant)
     }
 }

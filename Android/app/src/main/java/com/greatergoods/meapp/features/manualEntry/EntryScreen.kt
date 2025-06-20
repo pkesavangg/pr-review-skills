@@ -37,6 +37,7 @@ import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryState
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import java.util.Calendar
 
 @Composable
 fun EntryScreen() {
@@ -68,6 +69,12 @@ private fun EntryScreenContent(
     val keyBoardController = LocalSoftwareKeyboardController.current
     val controls = state.form.controls
     val scrollState = rememberScrollState()
+    val calendar = Calendar.getInstance()
+    val maxValue = DateTimeValue.DateTime(
+        millis = calendar.timeInMillis,
+        hour = calendar.get(Calendar.HOUR_OF_DAY),
+        minute = calendar.get(Calendar.MINUTE)
+    )
     AppScaffold(EntryScreenStrings.Title) {
         Column(
             modifier =
@@ -87,7 +94,7 @@ private fun EntryScreenContent(
                 formControl = controls.weightDateTime.dateTime,
                 mode = DateTimeInputMode.DateTime,
                 label = EntryScreenStrings.DATE_LABEL,
-                maxValue = DateTimeValue.Date(System.currentTimeMillis()),
+                maxValue = maxValue,
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
             // Metrics section as a single expandable card
