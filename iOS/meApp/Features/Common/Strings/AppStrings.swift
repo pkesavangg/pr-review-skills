@@ -278,5 +278,6 @@ struct AppAssets {
     static let bmrIcon = "bmr"
     static let ageIcon = "metabolicAge"
     static let emptyStateIcon = "emptyStateIcon"
+    static let wifi = "wifi"
 }
 
