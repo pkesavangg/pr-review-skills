@@ -33,6 +33,7 @@ struct CommonStrings {
     static let dark = "Dark"
     static let light = "Light"
     static let system = "System Settings"
+    static let resources = "Resources"
 }
 
 /// Constants for entry strings used in the app
@@ -217,21 +218,7 @@ struct LegalStrings {
     static let andText = "&"
 }
 
-struct MetricStrings {
-    static let bmi = "Body Mass Index"
-    static let bodyFat = "Body Fat"
-    static let muscleMass = "Muscle Mass"
-    static let bodyWater = "Body Water"
-    static let heartRate = "Heart Rate"
-    static let boneMass = "Bone Mass"
-    static let visceralFat = "Visceral Fat"
-    static let subcutaneousFat = "Subcutaneous Fat"
-    static let protein = "Protein"
-    static let skeletalMuscles = "Skeletal Muscles"
-    static let basalMetabolicRate = "Basal Metabolic Rate"
-    static let metabolicAge = "Metabolic Age"
-    static let impedance = "Impedance"
-}
+
 
 /// Constants for App Assets used in the app
 struct AppAssets {

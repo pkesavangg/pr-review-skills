@@ -1,6 +1,7 @@
 import Foundation
 
 enum BodyMetric: String, Codable, Equatable {
+    case weight = "weight"
     case bmi = "bmi"
     case bodyFat = "bodyFat"
     case muscleMass = "muscleMass"
@@ -13,4 +14,8 @@ enum BodyMetric: String, Codable, Equatable {
     case skeletalMusclePercent = "skeletalMusclePercent"
     case bmr = "bmr"
     case metabolicAge = "metabolicAge"
+}
+
+extension BodyMetric: CaseIterable, Identifiable, Hashable {
+    public var id: String { rawValue }
 }
