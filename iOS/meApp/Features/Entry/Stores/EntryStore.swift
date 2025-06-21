@@ -191,7 +191,7 @@ final class EntryStore: ObservableObject {
             guard let weightDouble = Double(self.manualEntryForm.weight.value), weightDouble > 0 else { return }
 
             let heightString = self.accountService.activeAccount?.weightSettings?.height ?? "0"
-            let storedHeight = ConversionTools.convertStoredHeightToCm(Int(heightString) ?? 0)
+            let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
             // Convert weight -> stored (tenths of lbs) depending on unit
             let storedWeight: Double = {
                 switch self.weightUnit {

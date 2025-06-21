@@ -1,6 +1,12 @@
 package com.greatergoods.meapp.data.storage.db.dao
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import com.greatergoods.meapp.data.storage.db.entity.account.Account
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.DashboardSettingsEntity
@@ -52,7 +58,7 @@ interface AccountDao {
     @Query("UPDATE account SET isActiveAccount = 0 WHERE accountId != :accountId")
     suspend fun deactivateOtherAccounts(accountId: String)
 
-    @Query("UPDATE account SET isLoggedIn = 0 WHERE accountId = :accountId")
+    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0 WHERE accountId = :accountId")
     suspend fun logoutAccount(accountId: String)
 
     @Query("UPDATE account SET isLoggedIn = 0")

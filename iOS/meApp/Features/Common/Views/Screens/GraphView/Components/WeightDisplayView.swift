@@ -14,7 +14,7 @@ struct WeightDisplayView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            HStack(alignment: .bottom, spacing: 4) {
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(weightText)
                     .fontWeight(.heavy)
                     .fontOpenSans(.heading1)
@@ -22,13 +22,12 @@ struct WeightDisplayView: View {
                 Text(unitText)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
-                    .alignmentGuide(.bottom) { d in d[.bottom] + 20 }
             }
             .padding(.leading, 14)
             .padding(.trailing, geometry.size.width * 0.4)
             .padding(.bottom, 16)
         }
-        .frame(height: 75) 
+        .frame(height: 55)
     }
 }
 

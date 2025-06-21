@@ -118,6 +118,6 @@ constructor(
      * Resets the form to its initial state, clearing all values and errors.
      */
     private fun resetForm() {
-        state.value.form.controls.email.reset()
+        state.value.form.resetForm()
     }
 }

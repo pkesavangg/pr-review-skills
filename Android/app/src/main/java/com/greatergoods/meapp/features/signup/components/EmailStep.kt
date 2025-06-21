@@ -35,7 +35,7 @@ fun EmailStep(emailControl: FormControl<String>) {
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.emailStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.emailStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.md)
+        AppText(SignupStrings.emailStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         AppInput(
             formControl = emailControl,
             type = AppInputType.EMAIL,

@@ -5,9 +5,13 @@ import com.google.firebase.messaging.RemoteMessage
 import com.greatergoods.meapp.MainActivity
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.NotificationChannel
+import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.notification.NotificationService
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.PendingIntent
 import android.content.Context
@@ -18,6 +22,11 @@ import android.content.Intent
  */
 @AndroidEntryPoint
 class PushNotificationService : FirebaseMessagingService() {
+
+    companion object {
+        private const val TAG = "PushNotificationService"
+    }
+
     @Inject
     @ApplicationContext
     lateinit var context: Context
@@ -25,13 +34,44 @@ class PushNotificationService : FirebaseMessagingService() {
     @Inject
     lateinit var notificationService: NotificationService
 
+    @Inject
+    lateinit var deviceInfoService: IDeviceInfoService
+
     /**
      * Called when a new FCM token is generated. Override to handle token updates.
      * @param token The new FCM token.
      */
     override fun onNewToken(token: String) {
-        AppLog.i("PushNotificationService", "New FCM token: $token")
-        // Send token to server if needed
+        AppLog.i(TAG, "New FCM token: $token")
+
+        // Update the token and device info
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                updateFcmToken(token)
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to update FCM token", e.toString())
+            }
+        }
+    }
+
+    /**
+     * Updates the FCM token and device info on server.
+     * @param newToken The new FCM token to update.
+     */
+    private suspend fun updateFcmToken(newToken: String) {
+        try {
+            // Get current token from device info service
+            val currentToken = deviceInfoService.getFcmToken()
+            
+            if (currentToken != newToken) {
+                AppLog.d(TAG, "FCM token updated: $newToken")
+                
+                // Update device info on server with new token
+                deviceInfoService.updateDeviceInfo()
+            }
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to check/update FCM token", e.toString())
+        }
     }
 
     /**

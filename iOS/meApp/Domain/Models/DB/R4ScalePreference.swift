@@ -30,7 +30,7 @@ final class R4ScalePreference {
     var updatedAt: String? // Last update timestamp
 
     init(from dto: R4ScalePreferenceDTO) {
-        self.id = dto.scaleId
+        self.id = dto.scaleId ?? UUID().uuidString
         self.displayName = dto.displayName
         self.displayMetrics = dto.displayMetrics
         self.shouldFactoryReset = dto.shouldFactoryReset
@@ -38,7 +38,7 @@ final class R4ScalePreference {
         self.shouldMeasurePulse = dto.shouldMeasurePulse
         self.timeFormat = dto.timeFormat
         self.tzOffset = dto.tzOffset
-        self.wifiFotaScheduleTime = dto.wifiFotaScheduleTime
+        self.wifiFotaScheduleTime = dto.wifiFotaScheduleTime ?? 0 
         self.updatedAt = dto.updatedAt
     }
 

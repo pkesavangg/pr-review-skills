@@ -3,6 +3,7 @@ package com.greatergoods.meapp.data.repository
 import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.domain.model.common.DeviceInfo
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +20,6 @@ class DeviceInfoRepository @Inject constructor(
      * @param deviceInfo The device info to update.
      * @return The updated DeviceInfo from the API.
      */
-    override suspend fun updateDeviceInfo(deviceInfo: DeviceInfo): DeviceInfo =
+    override suspend fun updateDeviceInfo(deviceInfo: DeviceInfo): Response<Unit> =
         deviceApi.updateDeviceInfo(deviceInfo)
 }
