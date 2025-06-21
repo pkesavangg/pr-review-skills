@@ -67,6 +67,8 @@ struct ToastStrings {
     static let pleaseTryAgain = "Please try again."
     static let errorUpdatingProfile = "Error updating profile"
     static let profileSaved = "Profile saved successfully."
+    static let goalSaved = "Goal Saved."
+    static let errorSettingGoal = "Error setting new goal!"
     static let csvExported = ".CSV file sent. Please check your email."
     static let passwordUpdated = "Password updated."
     static let errorUpdatingPassword = "Error updating password."
@@ -205,6 +207,13 @@ struct AlertStrings {
     
     struct WeightLessExitAlert {
         static let title = "Confirm"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
+    
+    struct GoalExitAlert {
+        static let title = "Are you sure you want to leave?"
         static let message = "You have unsaved changes. Are you sure you want to exit?"
         static let exitButton = "Exit"
         static let returnButton = "Return"

@@ -295,8 +295,8 @@ class SettingsStore: ObservableObject {
     func handleEditProfileExit(router: Router<SettingsRoute>) {
         // If the form is not dirty, simply navigate back else show an alert
         if !editProfileForm.isDirty {
-            resetEditProfileForm() // Reset form to pristine state
             router.navigateBack()
+            resetEditProfileForm() // Reset form to pristine state
             return
         }
         let alert = AlertModel(
@@ -399,8 +399,8 @@ class SettingsStore: ObservableObject {
     
     func handleChangePasswordExit(router: Router<SettingsRoute>) {
         if !changePasswordForm.isDirty {
-            resetChangePasswordForm()
             router.navigateBack()
+            resetChangePasswordForm()
             return
         }
         
@@ -678,8 +678,8 @@ class SettingsStore: ObservableObject {
     /// Handles the exit action from the Weightless screen. Shows an alert if there are unsaved changes.
     func handleWeightlessExit(dismiss: DismissAction) {
         if !weightlessForm.isDirty {
-            resetWeightlessForm()
             dismiss()
+            resetWeightlessForm()
             return
         }
         
@@ -847,20 +847,20 @@ class SettingsStore: ObservableObject {
     /// Handles dismissal of the Goal sheet, showing an alert if there are unsaved changes.
     func handleGoalExit(dismiss: DismissAction) {
         if !goalForm.isDirty {
-            resetGoalForm()
             dismiss()
+            resetGoalForm()
             return
         }
 
         let alert = AlertModel(
-            title: alertLang.WeightLessExitAlert.title, // Re-use generic exit alert strings
-            message: alertLang.WeightLessExitAlert.message,
+            title: alertLang.GoalExitAlert.title,
+            message: alertLang.GoalExitAlert.message,
             buttons: [
-                AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
+                AlertButtonModel(title: alertLang.GoalExitAlert.exitButton, type: .primary) { _ in
                     self.resetGoalForm()
                     dismiss()
                 },
-                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
+                AlertButtonModel(title: alertLang.GoalExitAlert.returnButton, type: .secondary) { _ in }
             ]
         )
         notificationService.showAlert(alert)
@@ -906,12 +906,12 @@ class SettingsStore: ObservableObject {
             notificationService.showLoader(LoaderModel(text: loaderLang.saving))
             do {
                 _ = try await accountService.createGoal(goalPayload)
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
                 logger.log(level: .info, tag: tag, message: "Goal updated successfully")
                 resetGoalForm()
                 dismiss()
             } catch {
-                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.somethingWentWrong))
+                notificationService.showToast(ToastModel(title: toastLang.errorSettingGoal, message: toastLang.pleaseTryAgain))
                 logger.log(level: .error, tag: tag, message: "Goal update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()

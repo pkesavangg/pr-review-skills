@@ -53,7 +53,6 @@ struct GoalSettingScreen: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                         .padding(.bottom, .spacingMD)
-                    Text(settingsStore.goalForm.goalType.value)
                         
                     SegmentedButtonView(
                         segments: GoalTypeSegment.allCases,
@@ -137,7 +136,6 @@ struct GoalSettingScreen: View {
                         }
                     }
                 }
-//                .fontOpenSans(.body3)
                 .foregroundColor(theme.textBody)
             }
         }
