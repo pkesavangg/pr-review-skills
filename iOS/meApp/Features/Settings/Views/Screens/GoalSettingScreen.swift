@@ -32,7 +32,7 @@ struct GoalSettingScreen: View {
                         text: commonLang.save,
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: (!settingsStore.goalForm.isDirty || (settingsStore.goalForm.isDirty && settingsStore.goalForm.isInvalid))
+                        isDisabled: !settingsStore.isGoalFormValid,
                     ) {
                         hideKeyboard()
                         settingsStore.saveGoal(dismiss: dismiss)

@@ -52,7 +52,7 @@ class SettingsStore: ObservableObject {
     // MARK: - Goal Page State
     @Published var showGoalPage: Bool = false
     @Published var selectedSegment: GoalTypeSegment = .loseGain
-
+    @Published var latestWeight: Int = 0
     
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
@@ -264,6 +264,14 @@ class SettingsStore: ObservableObject {
         case .system:
             return commonLang.system
         }
+    }
+    
+    var isGoalFormValid: Bool {
+        !(!goalForm.isDirty || (goalForm.isDirty && goalForm.goalType.value == GoalTypeSegment.losegainValue ? goalForm.isInvalid : goalForm.goalWeight.isInvalid))
+    }
+    
+    var isWeightLessFormValid: Bool {
+        !(!weightlessForm.isDirty || (weightlessForm.isDirty && (weightlessForm.isOn.value ? weightlessForm.isInvalid : false)))
     }
     
     // MARK: - Handle export
@@ -695,7 +703,7 @@ class SettingsStore: ObservableObject {
         weightlessForm.validate()
         
         // No changes – simply dismiss.
-        guard weightlessForm.isDirty else {
+        guard weightlessForm.isDirty, isWeightLessFormValid else {
             return
         }
         
@@ -799,6 +807,7 @@ class SettingsStore: ObservableObject {
             do {
                 let latestEntry = try await entryService.getLatestEntry()
                 if let latestWeight = latestEntry?.scaleEntry?.weight {
+                    self.latestWeight = latestWeight
                     let unit = account.weightSettings?.weightUnit ?? .lb
                     let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(latestWeight)) : ConversionTools.convertStoredToLbs(Int(latestWeight))
                     goalForm.currentWeight.value = String(format: "%.1f", display)
@@ -861,7 +870,7 @@ class SettingsStore: ObservableObject {
     func saveGoal(dismiss: DismissAction) {
         goalForm.validate()
 
-        guard goalForm.isDirty, goalForm.isValid else { return }
+        guard goalForm.isDirty, isGoalFormValid else { return }
 
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let isMetric = unit == .kg
@@ -887,7 +896,7 @@ class SettingsStore: ObservableObject {
 
         let goalPayload: Goal
         if goalTypeValue == GoalType.maintain.rawValue {
-            goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: goalStored, goalType: .maintain)
+            goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: self.latestWeight, goalType: .maintain)
         } else {
             let derivedType: GoalType = goalStored > initialStored ? .gain : .lose
             goalPayload = Goal(type: derivedType, goalWeight: goalStored, initialWeight: initialStored, goalType: derivedType)

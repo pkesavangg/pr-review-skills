@@ -29,7 +29,7 @@ struct WeightlessScreen: View {
                         type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
-                        isDisabled: (!settingsStore.weightlessForm.isDirty || (settingsStore.weightlessForm.isDirty && (settingsStore.weightlessForm.isOn.value ? settingsStore.weightlessForm.isInvalid : false))),
+                        isDisabled: !settingsStore.isWeightLessFormValid,
                     ) {
                         settingsStore.saveWeightless(dismiss: dismiss)
                         withAnimation { hideKeyboard() }
