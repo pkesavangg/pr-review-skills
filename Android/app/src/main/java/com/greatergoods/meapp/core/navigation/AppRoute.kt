@@ -50,6 +50,15 @@ sealed class AppRoute : NavKey {
     ) : AppRoute()
 
     /**
+     * Profile-related navigation routes.
+     */
+    @Serializable
+    sealed class Profile : AppRoute() {
+        @Serializable
+        data object Edit : Profile()
+    }
+
+    /**
      * Authentication-related navigation routes.
      */
     @Serializable

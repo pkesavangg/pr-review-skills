@@ -55,6 +55,7 @@ fun NavHost(
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
                 entry<AppRoute.Home> { HomeScreen() }
                 authEntries()
+                profileEntries()
                 entry<AppRoute.MonthDetails> { entry ->
                     HistoryDetailScreen(entry.month)
                 }

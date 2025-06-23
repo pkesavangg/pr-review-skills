@@ -10,6 +10,7 @@ import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.landing.LandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.manualEntry.EntryScreen
+import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 import com.greatergoods.meapp.features.signup.SignupScreen
 
@@ -29,4 +30,8 @@ fun EntryProviderBuilder<NavKey>.topLevelEntries() {
     entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
     entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
     entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
+}
+
+fun EntryProviderBuilder<NavKey>.profileEntries() {
+    entry<AppRoute.Profile.Edit> { ProfileScreen() }
 }
