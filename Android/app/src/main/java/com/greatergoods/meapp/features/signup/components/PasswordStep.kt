@@ -27,7 +27,6 @@ import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
-import com.greatergoods.meapp.features.login.strings.LoginStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -100,17 +99,17 @@ fun PasswordStep(
                         text = SignupStrings.TermsOfService,
                         textType = TextType.Link,
                         onClick = {
-                            onUrlOpen(LoginStrings.TermsOfServiceUrl)
+                            onUrlOpen(SignupStrings.TermsOfServiceUrl)
                         },
                     )
                     Spacer(Modifier.padding(start = spacing.sm))
-                    Text(LoginStrings.And, style = typography.body4, color = colorScheme.textBody)
+                    Text(SignupStrings.And, style = typography.body4, color = colorScheme.textBody)
                     Spacer(Modifier.padding(end = spacing.sm))
                     AppText(
-                        text = LoginStrings.PrivacyPolicy,
+                        text = SignupStrings.PrivacyPolicy,
                         textType = TextType.Link,
                         onClick = {
-                            onUrlOpen(LoginStrings.PrivacyPolicyUrl)
+                            onUrlOpen(SignupStrings.PrivacyPolicyUrl)
                         },
                     )
                 }

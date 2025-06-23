@@ -33,6 +33,15 @@ object SignupStrings {
     const val goalStepLoseGain = "Lose/Gain"
     const val goalStepCurrentWeight = "current weight (lbs)"
     const val goalStepGoalWeight = "goal weight (lbs)"
+    const val goalStepUseMetric = "Use Metric"
+
+    // Goal step dynamic weight labels
+    const val goalStepCurrentWeightDynamic = "Current weight (%s)"
+    const val goalStepGoalWeightDynamic = "Goal weight (%s)"
+
+    // Weight units
+    const val weightUnitKg = "kg"
+    const val weightUnitLbs = "lbs"
 
     // HeightStep strings
     const val heightStepTitle = "How tall are you?"
@@ -61,12 +70,17 @@ object SignupStrings {
     // SignupScreen buttons
     const val backButton = "BACK"
     const val skipButton = "SKIP"
-    const val createAccountButton = "CREATE ACCOUNT"
     const val nextButton = "NEXT"
     const val completeButton = "Complete"
 
     // Loader message
     const val LoaderMessage = "Creating your account..."
+
+    // Exit confirmation dialog
+    const val ExitConfirmTitle = "Confirm"
+    const val ExitConfirmMessage = "Are you sure you want to leave?"
+    const val ExitConfirmButton = "EXIT"
+    const val ExitCancelButton = "RETURN"
 
     object Error {
         const val Header = "Signup Error"

@@ -27,6 +27,7 @@ fun SignupPager(
     onBack: () -> Unit,
     onSkip: () -> Unit,
     onUrlOpen: (String) -> Unit,
+    onMetricToggle: (Boolean) -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     HorizontalPagerWithBottomNavigation(
@@ -107,7 +108,8 @@ fun SignupPager(
                                     goalTypeControl = formControls.goalType,
                                     currentWeightControl = formControls.currentWeight,
                                     goalWeightControl = formControls.goalWeight,
-                                    useMetricControl = FormControl.create(false, emptyList()), // Always false for lbs
+                                    useMetricControl = formControls.useMetric,
+                                    onMetricToggle = onMetricToggle,
                                     onNext = {
                                         focusManager.clearFocus()
                                         onNext()

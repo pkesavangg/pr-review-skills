@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.core.shared.utilities
 
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.features.common.components.HeightInput
 import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.round
@@ -42,6 +43,22 @@ object ConversionTools {
             "${feetInches.first}' ${feetInches.second}\""
         }
     }
+
+    fun convertHeightInputToStored(heightInput: HeightInput): Int =
+        when (heightInput) {
+            is HeightInput.Cm -> {
+                // Convert cm to stored height format, then to mm
+                ConversionTools.convertCmToStoredHeight(heightInput.value)
+            }
+
+            is HeightInput.FtIn -> {
+                // Convert feet/inches to stored height format, then to mm
+                ConversionTools.convertFeetInchesToStoredHeight(
+                    feet = heightInput.feet,
+                    inches = heightInput.inches,
+                )
+            }
+        }
 
     // ========== Weight Conversions ==========
 

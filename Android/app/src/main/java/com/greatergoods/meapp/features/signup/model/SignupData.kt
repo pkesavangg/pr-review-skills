@@ -8,21 +8,49 @@ import java.time.ZoneId.systemDefault
 
 /**
  * Represents gender selection in signup
+ *
+ * @property value The string value used for API communication and storage
  */
-enum class Gender {
-    MALE,
-    FEMALE,
+enum class Gender(val value: String) {
+    /** Male gender option */
+    MALE("male"),
+    /** Female gender option */
+    FEMALE("female")
 }
 
 /**
  * Represents goal type for weight management
+ *
+ * @property value The string value used for API communication and storage
  */
-enum class GoalType {
-    MAINTAIN,
-    LOSE_GAIN,
+enum class GoalType(val value: String) {
+    /** Maintain current weight */
+    MAINTAIN("maintain"),
+    /** Lose or gain weight */
+    LOSE_GAIN("losegain"),
+    LOSE("lose"),
+    GAIN("gain")
 }
 
 /**
+ * Step definitions for the signup process
+ */
+enum class SignupStep {
+    NAME,
+    BIRTHDAY,
+    GENDER,
+    HEIGHT,
+    GOAL,
+    EMAIL,
+    PASSWORD,
+}
+
+enum class Metrics(val value: String){
+    LBS("lbs"),
+    KG("kg")
+}
+
+/**Add commentMore actions
  * Data class representing all signup information
  */
 @Serializable
@@ -46,17 +74,5 @@ data class SignupData(
     val password: String = "",
     val confirmPassword: String = "",
     val zipcode: String = "",
+    val unitMetric: String = "lb"
 )
-
-/**
- * Step definitions for the signup process
- */
-enum class SignupStep {
-    NAME,
-    BIRTHDAY,
-    GENDER,
-    HEIGHT,
-    GOAL,
-    EMAIL,
-    PASSWORD,
-}

@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.features.signup.components
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -53,13 +51,12 @@ fun NameStep(
             formControl = lastNameControl,
             type = AppInputType.TEXT,
             label = SignupStrings.lastNameLabel,
-            imeAction = ImeAction.Done,
+            imeAction = ImeAction.Next,
             onImeAction = onNext,
             modifier =
                 Modifier
                     .focusRequester(lastNameFocusRequester),
         )
-        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }
 }
 

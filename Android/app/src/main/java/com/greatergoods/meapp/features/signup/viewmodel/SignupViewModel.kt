@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.DateTimeTools
-import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.components.DialogType
@@ -28,40 +27,41 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SignupViewModel
-    @Inject
-    constructor(
-        private val accountAuthService: IAccountAuthService,
-        private val customTabManager: ICustomTabManager,
-    ) : BaseIntentViewModel<SignupState, SignupIntent>(
-            reducer = SignupReducer(),
-        ) {
-        override fun provideInitialState(): SignupState =
-            SignupState(
-                form = FormGroup(SignupFormControls.create()),
-            )
+@Inject
+constructor(
+    private val accountAuthService: IAccountAuthService,
+) : BaseIntentViewModel<SignupState, SignupIntent>(
+    reducer = SignupReducer(),
+) {
+    private val TAG = "SignupViewModel"
+
+    override fun provideInitialState(): SignupState =
+        SignupState(
+            form = FormGroup(SignupFormControls.create()),
+        )
 
         override fun handleIntent(intent: SignupIntent) {
             when (intent) {
                 is SignupIntent.OpenHelpModal -> openHelpModal()
-                is SignupIntent.OpenURL -> openUrl(intent.url)
+                is SignupIntent.OpenURL -> openInAppBrowser(intent.url)
                 is SignupIntent.Next -> onNext()
                 is SignupIntent.OnRequestBack -> onRequestBack()
                 else -> {}
             }
             super.handleIntent(intent)
-        }
+    }
 
-        /**
-         * Handles moving to the next step or submitting if on the last step.
-         */
-        private fun onNext() {
-            if (state.value.isLastStep) {
-                AppLog.d("SignupViewModel", "Submitting signup form")
-                onSubmit()
-            } else {
-                AppLog.d("SignupViewModel", "After Next intent - new currentStep: ${state.value.currentStep}")
-            }
+    /**
+     * Handles moving to the next step or submitting if on the last step.
+     */
+    fun onNext() {
+        if (state.value.isLastStep) {
+            AppLog.d(TAG, "Submitting signup form")
+            onSubmit()
+        } else {
+            AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
         }
+    }
 
         /**
          * Handles the signup form submission. Validates the form, shows loading, and attempts signup.
@@ -116,9 +116,10 @@ class SignupViewModel
                                 signupData.zipcode
                                     .trim(),
                             "password" to signupData.password,
-                            "dob" to DateTimeTools.formatDateForAPI(signupData.birthday.getTimestamp()),
-                            "height" to convertHeightInputToMm(signupData.height),
-                        )
+                            "dob" to DateTimeTools.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
+                            "height" to ConversionTools.convertHeightInputToStored(controls.height.value),
+
+                            )
 
                     var goalData: Map<String, Any>? = null
                     if (!stateValue.goalSkipped) {

@@ -39,31 +39,6 @@ object DateTimeTools {
         }
 
     /**
-     * Gets formatted day as "Sept 4th"
-     */
-    fun getFormattedDay(dateString: String): String =
-        try {
-            val date =
-                if (dateString.contains('T')) {
-                    LocalDateTime.parse(dateString).toLocalDate()
-                } else {
-                    LocalDate.parse(dateString)
-                }
-            val day = date.dayOfMonth
-            val suffix =
-                when {
-                    day in 11..13 -> "th"
-                    day % 10 == 1 -> "st"
-                    day % 10 == 2 -> "nd"
-                    day % 10 == 3 -> "rd"
-                    else -> "th"
-                }
-            "${date.format(DateTimeFormatter.ofPattern("MMM", Locale.getDefault()))} $day$suffix"
-        } catch (e: Exception) {
-            "Invalid Date"
-        }
-
-    /**
      * Gets formatted day with time as "Aug 22, 4:38pm"
      */
     fun getFormattedDayWithTime(dateString: String): String =
@@ -338,7 +313,7 @@ object DateTimeTools {
      * Formats a timestamp (milliseconds) to YYYY-MM-DD format for API requests.
      * Similar to moment(timestamp).format('Y-MM-DD')
      */
-    fun formatDateForAPI(timestampMillis: Long): String =
+    fun getDateFormatFromMilliseconds(timestampMillis: Long): String =
         try {
             val date =
                 Instant
@@ -348,5 +323,24 @@ object DateTimeTools {
             date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         } catch (e: Exception) {
             ""
+        }
+
+
+    /**
+     * Converts a date string to epoch milliseconds with custom time zone.
+     *
+     * @param dateString Date string in format "yyyy-MM-dd"
+     * @param zoneId Time zone ID (defaults to system default)
+     * @return Epoch milliseconds at start of day in specified timezone
+     */
+    fun getEpochMillisFromDateString(dateString: String, zoneId: ZoneId = ZoneId.systemDefault()): Long =
+        try {
+            LocalDate
+                .parse(dateString)
+                .atStartOfDay(zoneId)
+                .toInstant()
+                .toEpochMilli()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
         }
 }
