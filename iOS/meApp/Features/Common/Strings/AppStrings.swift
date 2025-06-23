@@ -274,6 +274,7 @@ struct AppAssets {
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
     static let chevronRight = "chevronRight"
+    static let chevronLeft = "chevronLeft"
     static let chevronUpDown = "chevronUpDown"
     static let bmiIcon = "bmi"
     static let bodyFatIcon = "bodyFat"

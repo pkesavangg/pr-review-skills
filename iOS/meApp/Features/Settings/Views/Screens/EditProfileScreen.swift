@@ -29,7 +29,7 @@ struct EditProfileScreen: View {
             // MARK: Header
             NavbarHeaderView(
                 title: screenLang.title,
-                leadingContent: { Image(AppAssets.xmark) },
+                leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { settingsStore.handleEditProfileExit(router: router) },
                 onTrailingTap: {},

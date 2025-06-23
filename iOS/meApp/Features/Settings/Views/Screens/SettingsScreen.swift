@@ -85,11 +85,6 @@ struct SettingsScreen: View {
             }
             Button(CommonStrings.cancel, role: .cancel) {}
         }
-        .sheet(isPresented: $settingsStore.showWeightLessPage, content: {
-            WeightlessScreen()
-                .environmentObject(settingsStore)
-                .interactiveDismissDisabled()
-        })
         
         // Gender dialog
         .confirmationDialog(
@@ -144,11 +139,6 @@ struct SettingsScreen: View {
                 settingsStore.updateHeight(fromMetric: true, values: newValues)
             }
         )
-        .sheet(isPresented: $settingsStore.showGoalPage, content: {
-            GoalSettingScreen()
-                .environmentObject(settingsStore)
-                .interactiveDismissDisabled()
-        })
     }
     
     private func profileHeader() -> some View {
@@ -201,7 +191,8 @@ struct SettingsScreen: View {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.goalSetting,
                 onTap: {
-                    settingsStore.showGoalPage = true
+                    tabViewModel.showTabBar = false
+                    router.navigate(to: .goal)
                 }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
@@ -232,7 +223,8 @@ struct SettingsScreen: View {
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText,
                 onTap: {
-                    settingsStore.showWeightLessPage = true
+                    tabViewModel.showTabBar = false
+                    router.navigate(to: .weightless)
                 }))
                 .settingsRowInsets()
         }

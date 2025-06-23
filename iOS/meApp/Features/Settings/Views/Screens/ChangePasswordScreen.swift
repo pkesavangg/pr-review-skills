@@ -28,7 +28,7 @@ struct ChangePasswordScreen: View {
             // Header
             NavbarHeaderView(
                 title: screenLang.title,
-                leadingContent: { Image(AppAssets.xmark) },
+                leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { settingsStore.handleChangePasswordExit(router: router) },
                 onTrailingTap: {},

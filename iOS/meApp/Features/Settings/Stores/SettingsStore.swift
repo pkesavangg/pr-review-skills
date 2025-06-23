@@ -17,6 +17,8 @@ class SettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
+    @Injector var feedService: FeedService
+    
     var theme = Theme.shared
     
     @Published var activeAccount: Account?
@@ -115,7 +117,7 @@ class SettingsStore: ObservableObject {
         streaksEnabled = account.streaksSettings?.isStreakOn ?? true
         
         // TODO: Sync hasUnreadMessages from message service
-        // hasUnreadMessages = messageService.hasUnreadMessages()
+        hasUnreadMessages = feedService.getUnreadFeedCount() > 0
     }
     
     func handleLogout() {
@@ -242,7 +244,7 @@ class SettingsStore: ObservableObject {
             return "\(cm) cm"
         case .lb: // Imperial preference – show feet & inches
             let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            return "\(feet[0])’\(feet[1])"  // → 5′8
+            return "\(feet[0])' \(feet[1])"  // → 5'8
         case .none:
             return ""
         }
@@ -638,21 +640,58 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    // MARK: - Weightless Helpers
-    /// Persists weightless mode changes.
-    /// - Parameters:
-    ///   - isOn: Whether weightless mode is enabled.
-    ///   - storedWeight: Anchor weight in *stored units* (tenths-of-lbs).
-    ///   - onSuccess: optional completion handler after successful save.
-    func updateWeightlessMode(isOn: Bool, storedWeight: Int, dismiss: DismissAction) {
+    // MARK: - Weightless Helpers (Navigation Variant)
+    /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
+    func handleWeightlessExit(router: Router<SettingsRoute>) {
+        if !weightlessForm.isDirty {
+            router.navigateBack()
+            resetWeightlessForm()
+            return
+        }
+        let alert = AlertModel(
+            title: alertLang.WeightLessExitAlert.title,
+            message: alertLang.WeightLessExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
+                    self.resetWeightlessForm()
+                    router.navigateBack()
+                },
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Saves Weightless settings when presented via navigation push (not sheet).
+    func saveWeightless(router: Router<SettingsRoute>) {
+        // Run validation first.
+        weightlessForm.validate()
+        
+        guard weightlessForm.isDirty, isWeightLessFormValid else { return }
+        if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
+        
+        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let storedWeight: Int = {
+            if let val = Double(weightlessForm.weight.value) {
+                return ConversionTools.convertDisplayToStored(val, isMetric: unit == .kg)
+            }
+            return 0
+        }()
+        
+        self.updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight) {
+            router.navigateBack()
+        }
+    }
+    
+    /// Helper that handles the networking for updating weightless and executes `onSuccess` on completion.
+    private func updateWeightlessMode(isOn: Bool, storedWeight: Int, onSuccess: @escaping () -> Void) {
         guard let account = activeAccount else { return }
         let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
         let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
         if currentOn == isOn && currentWeightStored == storedWeight {
-            dismiss()
+            onSuccess()
             return
         }
-        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -660,7 +699,7 @@ class SettingsStore: ObservableObject {
                 _ = try await accountService.updateWeightless(isWeightlessOn: isOn, weightlessTimestamp: timestamp, weightlessWeight: Double(storedWeight))
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
-                dismiss() // Dismiss the view after successful save
+                onSuccess()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
                 logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
@@ -699,52 +738,6 @@ class SettingsStore: ObservableObject {
         let validator = Validator.maxValue(maxWeight)
         weightlessForm.weight.addValidator(validator)
         weightlessForm.validate()
-    }
-    
-    /// Handles the exit action from the Weightless screen. Shows an alert if there are unsaved changes.
-    func handleWeightlessExit(dismiss: DismissAction) {
-        if !weightlessForm.isDirty {
-            dismiss()
-            resetWeightlessForm()
-            return
-        }
-        
-        let alert = AlertModel(
-            title: alertLang.WeightLessExitAlert.title,
-            message: alertLang.WeightLessExitAlert.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
-                    self.resetWeightlessForm()
-                    dismiss()
-                },
-                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-    
-    /// Validates and saves Weightless settings to the server.
-    func saveWeightless(dismiss: DismissAction)  {
-        // Run validation first.
-        weightlessForm.validate()
-        
-        // No changes – simply dismiss.
-        guard weightlessForm.isDirty, isWeightLessFormValid else {
-            return
-        }
-        
-        // If toggle is on, ensure the weight field is valid.
-        if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
-        
-        // Convert display value to stored tenths-of-lbs (server format).
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
-        let storedWeight: Int = {
-            if let val = Double(weightlessForm.weight.value) {
-                return ConversionTools.convertDisplayToStored(val, isMetric: unit == .kg)
-            }
-            return 0
-        }()
-        updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight, dismiss: dismiss)
     }
     
     /// Resets the Weightless form to a pristine state.
@@ -867,21 +860,20 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Handles dismissal of the Goal sheet, showing an alert if there are unsaved changes.
-    func handleGoalExit(dismiss: DismissAction) {
+    /// Variant of `handleGoalExit` for navigation push presentation.
+    func handleGoalExit(router: Router<SettingsRoute>) {
         if !goalForm.isDirty {
-            dismiss()
+            router.navigateBack()
             resetGoalForm()
             return
         }
-        
         let alert = AlertModel(
             title: alertLang.GoalExitAlert.title,
             message: alertLang.GoalExitAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.GoalExitAlert.exitButton, type: .primary) { _ in
                     self.resetGoalForm()
-                    dismiss()
+                    router.navigateBack()
                 },
                 AlertButtonModel(title: alertLang.GoalExitAlert.returnButton, type: .secondary) { _ in }
             ]
@@ -889,25 +881,20 @@ class SettingsStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    /// Validates the form and persists the goal via `AccountService`.
-    func saveGoal(dismiss: DismissAction) {
+    /// Saves Goal when presented via navigation push.
+    func saveGoal(router: Router<SettingsRoute>) {
         goalForm.validate()
-        
         guard goalForm.isDirty, isGoalFormValid else { return }
         
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let isMetric = unit == .kg
-        
         let convert = { (valString: String) -> Int in
             let val = Double(valString) ?? 0.0
             return ConversionTools.convertDisplayToStored(val, isMetric: isMetric)
         }
-        
-        // Build Goal payload
         let goalTypeValue = goalForm.goalType.value
         let currentDisplay = goalForm.currentWeight.value
         let targetDisplay  = goalForm.goalWeight.value
-        
         let goalStored    = convert(targetDisplay)
         let initialStored: Int = {
             if goalTypeValue == GoalType.maintain.rawValue {
@@ -916,7 +903,6 @@ class SettingsStore: ObservableObject {
                 return convert(currentDisplay)
             }
         }()
-        
         let goalPayload: Goal
         if goalTypeValue == GoalType.maintain.rawValue {
             goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: self.latestWeight, goalType: .maintain)
@@ -924,7 +910,6 @@ class SettingsStore: ObservableObject {
             let derivedType: GoalType = goalStored > initialStored ? .gain : .lose
             goalPayload = Goal(type: derivedType, goalWeight: goalStored, initialWeight: initialStored, goalType: derivedType)
         }
-        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.saving))
             do {
@@ -932,7 +917,7 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
                 logger.log(level: .info, tag: tag, message: "Goal updated successfully")
                 resetGoalForm()
-                dismiss()
+                router.navigateBack()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorSettingGoal, message: toastLang.pleaseTryAgain))
                 logger.log(level: .error, tag: tag, message: "Goal update failed:", data: error.localizedDescription)
