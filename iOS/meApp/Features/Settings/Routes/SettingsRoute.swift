@@ -10,8 +10,7 @@ import SwiftUI
 
 // MARK: - Settings Route
 enum SettingsRoute: Routable {
-    case editProfile
-    case changePassword
+    case editProfile, changePassword, weightless, goal, appPermissions, help
     
     var body: some View {
         switch self {
@@ -19,6 +18,14 @@ enum SettingsRoute: Routable {
             EditProfileScreen()
         case .changePassword:
             ChangePasswordScreen()
+        case .weightless:
+            WeightlessScreen()
+        case  .goal:
+            GoalSettingScreen()
+        case  .appPermissions:
+            EmptyView()
+        case  .help:
+            EmptyView()
         }
     }
 }

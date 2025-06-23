@@ -15,19 +15,51 @@ struct SettingsListItem: View {
     
     var body: some View {
         Button {
-            config.onTap?()
+            if config.toggleBinding == nil {
+                config.onTap?()
+            }
         } label: {
-            HStack {
+            HStack(spacing: 12) {
+                // Conditional dot indicator
+                if config.showDot {
+                    Circle()
+                        .fill(config.dotColor ?? theme.textError)
+                        .frame(width: 9, height: 9)
+                }
+                
                 actionLabelText(config.title, isDestructive: config.isDestructive)
                 Spacer()
-                if let value = config.value {
+                
+                // Toggle or value display
+                if let toggleBinding = config.toggleBinding {
+                    CustomToggleView(isOn: toggleBinding)
+                        .onChange(of: toggleBinding.wrappedValue) { _, newValue in
+                            config.onTap?()
+                        }
+                } else if let value = config.value {
                     valueText(value)
                 }
-                if config.canShowChevron {
-                    AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 22, height: 22))
-                        .foregroundColor(theme.statusIconPrimary)
-                }
+                
+                // Chevron based on type
+                chevronView()
             }
+        }
+        .disabled(config.toggleBinding != nil && config.onTap == nil)
+    }
+    
+    @ViewBuilder
+    private func chevronView() -> some View {
+        switch config.chevronType {
+        case .right:
+            AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 22, height: 22))
+                .foregroundColor(theme.statusIconPrimary)
+            
+        case .upDown:
+            AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 10, height: 16))
+                .foregroundColor(theme.statusIconSecondary)
+                .padding(.trailing, 6)
+        case .none:
+            EmptyView()
         }
     }
     
@@ -45,38 +77,51 @@ struct SettingsListItem: View {
 }
 
 #Preview {
+    @Previewable
+    @State var toggleState = true
     List {
         Section("Preview") {
             SettingsListItem(config: SettingsItemConfig(
                 title: "Default Row",
                 onTap: { print("Tapped Default Row") }
             ))
-
+            
             SettingsListItem(config: SettingsItemConfig(
                 title: "Row with Value",
                 value: "Enabled",
                 onTap: { print("Tapped Value Row") }
             ))
-
+            
+            SettingsListItem(config: SettingsItemConfig(
+                title: "Row with Up/Down Chevron",
+                chevronType: .upDown,
+                onTap: { print("Tapped Up/Down Row") }
+            ))
+            
             SettingsListItem(config: SettingsItemConfig(
                 title: "Row without Chevron",
-                canShowChevron: false,
+                chevronType: .none,
                 onTap: { print("Tapped No Chevron Row") }
             ))
-
+            
+            SettingsListItem(config: SettingsItemConfig(
+                title: "Row with Dot",
+                showDot: true,
+                onTap: { print("Tapped Dot Row") }
+            ))
+            
+            
+            SettingsListItem(config: SettingsItemConfig(
+                title: "Toggle Row",
+                chevronType: .none, toggleBinding: $toggleState,
+                onTap: { print("Toggle tapped") }
+            ))
+            
             SettingsListItem(config: SettingsItemConfig(
                 title: "Destructive Row",
-                isDestructive: true,
+                chevronType: .none, isDestructive: true,
                 onTap: { print("Tapped Destructive Row") }
             ))
-
-            SettingsListItem(config: SettingsItemConfig(
-                title: "Destructive + Value + Chevron",
-                value: "Danger",
-                isDestructive: true,
-                onTap: { print("Tapped Complex Row") }
-            ))
-            .settingsRowInsets() // Apply custom insets
         }
     }
     .listStyle(.insetGrouped)

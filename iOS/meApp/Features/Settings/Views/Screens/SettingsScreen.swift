@@ -21,7 +21,7 @@ struct SettingsScreen: View {
     @State private var showingGenderDialog: Bool = false
     @State private var showingActivityDialog: Bool = false
     @State private var showingNotificationDialog: Bool = false
-    @State private var showingStreakDialog: Bool = false
+
     
     let settingsLang = SettingsStrings.self
     let commonLang = CommonStrings.self
@@ -122,16 +122,7 @@ struct SettingsScreen: View {
             }
             Button(CommonStrings.cancel, role: .cancel) {}
         }
-        // Streak dialog
-        .confirmationDialog(
-            settingsLang.streaks,
-            isPresented: $showingStreakDialog,
-            titleVisibility: .visible
-        ) {
-            Button(CommonStrings.on) { settingsStore.updateStreakStatus(true) }
-            Button(CommonStrings.off) { settingsStore.updateStreakStatus(false) }
-            Button(CommonStrings.cancel, role: .cancel) {}
-        }
+
         // Height picker sheets
         .pickerSheet(
             isPresented: $settingsStore.showHeightInchesPicker,
@@ -164,27 +155,15 @@ struct SettingsScreen: View {
         VStack(spacing: .spacingXS) {
             InitialIconView(
                 character: settingsStore.profileInitial,
-                size: 41,
+                size: 36,
                 style: .fill
             )
             Text(settingsStore.profileName)
-                .fontOpenSans(.heading4)
+                .fontOpenSans(.heading3)
                 .foregroundColor(theme.textHeading)
             Text(settingsStore.profileEmail)
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
-            
-            ButtonView(
-                text: CommonStrings.edit,
-                type: .filledPrimary,
-                size: .large,
-                isDisabled: false,
-                action: {
-                    tabViewModel.showTabBar = false
-                    router.navigate(to: .editProfile)
-                }
-            )
-            .padding(.top, .spacingSM)
         }
         .frame(maxWidth: .infinity)
         .listRowBackground(Color.clear)
@@ -196,7 +175,7 @@ struct SettingsScreen: View {
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.integrations))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData, onTap: {
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
                 settingsStore.handleExport()
             }))
                 .settingsRowInsets()
@@ -204,6 +183,12 @@ struct SettingsScreen: View {
                                                        onTap: {
                                                            tabViewModel.showTabBar = false
                                                            router.navigate(to: .changePassword)
+                                                       }))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.userProfile,
+                                                       onTap: {
+                                                           tabViewModel.showTabBar = false
+                                                           router.navigate(to: .editProfile)
                                                        }))
                 .settingsRowInsets()
         }
@@ -222,20 +207,23 @@ struct SettingsScreen: View {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
+                chevronType: .upDown,
                 onTap: { showingGenderDialog = true }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
+                chevronType: .upDown,
                 onTap: { showingActivityDialog = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText, onTap: {
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText, chevronType: .upDown, onTap: {
                 settingsStore.showHeightPicker()
             }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.unitType,
                 value: settingsStore.unitTypeText,
+                chevronType: .upDown,
                 onTap: {
                     showingUnitDialog = true
                 }))
@@ -257,20 +245,25 @@ struct SettingsScreen: View {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.notifications,
                 value: settingsStore.notificationsOnText,
+                chevronType: .upDown,
                 onTap: { showingNotificationDialog = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.messages))
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.messages, showDot: settingsStore.hasUnreadMessages))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.streaks,
-                value: settingsStore.streaksOnText,
-                onTap: { showingStreakDialog = true }))
-                .settingsRowInsets()
+                chevronType: .none, 
+                toggleBinding: $settingsStore.streaksEnabled,
+                onTap: { 
+                    settingsStore.updateStreakStatus(settingsStore.streaksEnabled)
+                }))
+                .settingsRowInsets(top: 0, bottom: 0)
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.appPermissions))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
+                chevronType: .upDown,
                 onTap: {
                     showingAppearanceDialog = true
                 }))
@@ -324,7 +317,7 @@ struct SettingsScreen: View {
         Section {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.logOut,
-                canShowChevron: false,
+                chevronType: .none,
                 onTap: {
                     settingsStore.handleLogout()
                 }
@@ -332,8 +325,8 @@ struct SettingsScreen: View {
             .settingsRowInsets()
             
             SettingsListItem(config: SettingsItemConfig(
-                title: settingsLang.deleteAccount,
-                canShowChevron: false,
+                title: settingsLang.deleteAccount.uppercased(),
+                chevronType: .none,
                 isDestructive: true,
                 onTap: {
                     settingsStore.handleDeleteAccount()

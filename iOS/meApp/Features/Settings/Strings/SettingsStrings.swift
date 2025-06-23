@@ -17,6 +17,7 @@ struct SettingsStrings {
     static let integrations = "Integrations"
     static let exportData = "Export Data"
     static let changePassword = "Change Password"
+    static let userProfile = "User Profile"
 
     // Profile Settings
     static let profileSettings = "Profile Settings"
