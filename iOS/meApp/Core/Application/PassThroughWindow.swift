@@ -25,7 +25,7 @@ class PassThroughWindow: UIWindow {
         }
 
         if notificationHelperService.isToastVisible {
-            let toastArea = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height * 0.3)
+            let toastArea = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height * 0.25)
             if toastArea.contains(point) {
                 return hitView
             } else {
