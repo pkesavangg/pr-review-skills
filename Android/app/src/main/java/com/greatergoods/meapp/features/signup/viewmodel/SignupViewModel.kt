@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.DialogType
@@ -11,6 +12,7 @@ import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.signup.model.GoalType
 import com.greatergoods.meapp.features.signup.model.SignupData
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import com.greatergoods.meapp.features.signup.model.SignupIntent
@@ -111,13 +113,13 @@ constructor(
                             "firstName" to signupData.firstName.trim(),
                             "lastName" to
                                 signupData.lastName.trim(),
-                            "gender" to signupData.gender,
+                            "gender" to signupData.sex,
                             "zipcode" to
                                 signupData.zipcode
                                     .trim(),
                             "password" to signupData.password,
-                            "dob" to DateTimeTools.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
-                            "height" to ConversionTools.convertHeightInputToStored(controls.height.value),
+                            "dob" to DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
+                            "height" to HeightInput.convertHeightInputToStored(controls.height.value),
 
                             )
 
@@ -126,8 +128,7 @@ constructor(
                         val goalType = signupData.goalType
                         val currentWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0
                         val goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0
-                        // Always use imperial (lbs) for signup
-                        val isMetric = false
+                        val isMetric = signupData.unitMetric
                         // Use ConversionTools to convert display weights to stored format
                         val convertedCurrentWeight =
                             ConversionTools.convertDisplayToStored(
@@ -140,10 +141,10 @@ constructor(
                                 isMetric = isMetric,
                             )
                         goalData =
-                            if (goalType == "maintain") {
+                            if (goalType == GoalType.MAINTAIN.value) {
                                 // For maintain: both goalWeight and initialWeight are the same
                                 mapOf(
-                                    "type" to "maintain",
+                                    "type" to GoalType.MAINTAIN.value,
                                     "goalWeight" to convertedGoalWeight,
                                     "initialWeight" to convertedGoalWeight,
                                 )
@@ -153,9 +154,9 @@ constructor(
                                     if (convertedGoalWeight >
                                         convertedCurrentWeight
                                     ) {
-                                        "gain"
+                                        GoalType.GAIN.value
                                     } else {
-                                        "lose"
+                                        GoalType.LOSE.value
                                     }
                                 mapOf(
                                     "type" to determinedGoalType,
@@ -165,7 +166,7 @@ constructor(
                             }
 
                         // Add weight unit to account data for body composition update (always lbs)
-                        signupRequest["weightUnit"] = "lb"
+                        signupRequest["weightUnit"] = if (isMetric) WeightUnit.KG else WeightUnit.LB
                     }
                     val account = accountAuthService.addAccount(signupRequest)
                     if (account != null) {

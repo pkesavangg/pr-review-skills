@@ -65,14 +65,14 @@ data class SignupData(
                 .toInstant()
                 .toEpochMilli(),
         ),
-    val gender: String = "",
+    val sex: String = "",
     val height: HeightInput = HeightInput.FtIn(5, 10),
-    val goalType: String = "",
+    val goalType: String = GoalType.LOSE_GAIN.value,
     val currentWeight: String = "",
     val goalWeight: String = "",
     val email: String = "",
     val password: String = "",
     val confirmPassword: String = "",
     val zipcode: String = "",
-    val unitMetric: String = "lb"
+    val unitMetric: Boolean = false
 )
