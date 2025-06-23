@@ -27,6 +27,7 @@ import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.signup.model.GoalType
+import com.greatergoods.meapp.features.signup.model.Metrics
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -48,7 +49,7 @@ fun GoalStep(
     val goalWeightFocusRequester = remember { FocusRequester() }
 
     val isMetric = useMetricControl.value
-    val weightUnit = if (isMetric) SignupStrings.weightUnitKg else SignupStrings.weightUnitLbs
+    val weightUnit = if (isMetric) Metrics.KG.value else Metrics.LBS.value
 
     // Goal type options
     val goalTypeOptions =
@@ -98,7 +99,7 @@ fun GoalStep(
             formControl = goalWeightControl,
             type = AppInputType.BODY_COMP,
             label = SignupStrings.goalStepGoalWeightDynamic.format(weightUnit),
-            imeAction = ImeAction.Done,
+            imeAction = ImeAction.Next,
             onImeAction = onNext,
             modifier = Modifier.focusRequester(goalWeightFocusRequester),
         )
