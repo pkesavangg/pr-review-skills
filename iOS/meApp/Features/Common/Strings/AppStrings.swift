@@ -279,5 +279,7 @@ struct AppAssets {
     static let ageIcon = "metabolicAge"
     static let emptyStateIcon = "emptyStateIcon"
     static let wifi = "wifi"
+    static let filledCloseCircle = "filledCloseCircle"
+    static let filledTickCircle = "filledTickCircle"
 }
 
