@@ -14,23 +14,33 @@ struct EditProfileScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var settingsStore: SettingsStore
     @EnvironmentObject var router: Router<SettingsRoute>
-
+    
     @State private var focusedField: FocusField? = nil
     @State private var showDatePicker = false
-
+    
     private let labels = InputFieldLabels.self
     private let commonLang = CommonStrings.self
     private let screenLang = EditProfileStrings.self
-
+    
     private let maxDate = DateTimeTools.minAllowedBirthdayDate()
-
+    
     var body: some View {
         VStack(spacing: 0) {
             // MARK: Header
             NavbarHeaderView(
                 title: screenLang.title,
                 leadingContent: { Image(AppAssets.chevronLeft) },
-                trailingContent: { EmptyView() },
+                trailingContent: {
+                    ButtonView(
+                        text: commonLang.save,
+                        type: .inlineTextPrimary,
+                        size: .small,
+                        // Disable when no changes or invalid.
+                        isDisabled: (!settingsStore.editProfileForm.isDirty || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid)),
+                    ) {
+                        hideKeyboard()
+                        settingsStore.saveProfile(router: router)
+                    } },
                 onLeadingTap: { settingsStore.handleEditProfileExit(router: router) },
                 onTrailingTap: {},
                 canShowBorder: true
@@ -51,7 +61,7 @@ struct EditProfileScreen: View {
                     ) {
                         focusedField = .lastName
                     }
-
+                    
                     // Last Name
                     AppInputField(
                         config: TextInputConfig(
@@ -65,7 +75,7 @@ struct EditProfileScreen: View {
                     ) {
                         focusedField = .email
                     }
-
+                    
                     // Email
                     AppInputField(
                         config: TextInputConfig(
@@ -79,7 +89,7 @@ struct EditProfileScreen: View {
                     ) {
                         focusedField = .zipCode
                     }
-
+                    
                     // Zip Code
                     AppInputField(
                         config: TextInputConfig(
@@ -93,34 +103,21 @@ struct EditProfileScreen: View {
                     ) {
                         focusedField = nil
                     }
-
+                    
                     // Birthday date selector
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         Text(labels.date.uppercased())
                             .fontOpenSans(.body3)
                             .foregroundColor(theme.textBody)
-
+                        
                         DateLabelView(date: settingsStore.editProfileForm.birthday.value) {
                             withAnimation { showDatePicker.toggle() }
                         }
-
+                        
                         DatePickerView(isPresented: $showDatePicker,
                                        date: $settingsStore.editProfileForm.birthday.value,
                                        endDate: maxDate)
                     }
-                    HStack {
-                        // Save Button
-                        ButtonView(text: commonLang.save,
-                                   type: .filledPrimary,
-                                   size: .large,
-                                   isDisabled: (!settingsStore.editProfileForm.isDirty || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid))) {
-                            hideKeyboard()
-                            settingsStore.saveProfile(router: router)
-                        }
-                        .padding(.top, .spacingXL)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-
                 }
                 .padding(.vertical, .spacingLG)
                 .padding(.bottom, .spacingXL)

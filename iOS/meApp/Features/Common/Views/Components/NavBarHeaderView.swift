@@ -45,12 +45,8 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
 
                 // Trailing Content
                 if let trailingContent = trailingContent {
-                    Button(action: {
-                        onTrailingTap?()
-                    }) {
-                        trailingContent()
-                            .foregroundColor(theme.actionPrimary)
-                    }
+                    trailingContent()
+                        .foregroundColor(theme.actionPrimary)
                 }
             }
         }
