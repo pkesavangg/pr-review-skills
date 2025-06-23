@@ -45,106 +45,108 @@ interface ITokenManager {
 
 @Singleton
 class TokenManager
-@Inject
-constructor(
-    private val userDataStore: UserDataStore,
-) : ITokenManager {
-    companion object {
-        private const val TAG = "TokenManager"
-    }
-
-    private val _tokens = MutableStateFlow<Token?>(null)
-    override val tokens: StateFlow<Token?> = _tokens
-
-    private val _otherUserToken = MutableStateFlow<Token?>(null)
-    override val otherUserToken: StateFlow<Token?> = _otherUserToken
-
-    private val _tokenRefreshed = MutableStateFlow(false)
-    override val tokenRefreshed: StateFlow<Boolean> = _tokenRefreshed
-
-    private val _logoutUser = MutableStateFlow(false)
-    override val logoutUser: StateFlow<Boolean> = _logoutUser
-
-    override var isOtherUserTokenRefreshed = false
-        private set
-
-    override suspend fun setTokens(token: Token) {
-        AppLog.d(TAG, "Setting tokens")
-        userDataStore.updateAccountTokens(
-            accountId = token.accountId,
-            isActive = token.isActive,
-            refreshToken = token.refreshToken ?: "",
-            accessToken = token.accessToken ?: "",
-            expiresAt = token.expiresAt ?: "",
-        )
-        _tokens.value = token
-    }
-
-    override fun setOtherUserToken(token: Token?) {
-        AppLog.d(TAG, "Setting other user token")
-        _otherUserToken.value = token
-    }
-
-    override fun clearTokens() {
-        AppLog.d(TAG, "Clearing tokens")
-        _tokens.value = null
-        _otherUserToken.value = null
-        isOtherUserTokenRefreshed = false
-    }
-
-    override fun setTokenRefreshed(refreshed: Boolean) {
-        AppLog.d(TAG, "Setting token refreshed: $refreshed")
-        _tokenRefreshed.value = refreshed
-    }
-
-    override fun setLogoutUser(logout: Boolean) {
-        AppLog.d(TAG, "Setting logout user: $logout")
-        _logoutUser.value = logout
-    }
-
-    override suspend fun refreshToken(): Boolean {
-        AppLog.d(TAG, "Refreshing token")
-        // This method should be implemented in the repository or a service, not here.
-        // Always return false for now to avoid DI cycles.
-        return false
-    }
-
-    override fun isTokenExpired(): Boolean {
-        val token = _tokens.value ?: return true
-        return token.expiresAt?.let { expiresAt ->
-            try {
-                val expirationDate = Date(expiresAt.toLong())
-                expirationDate.before(Date())
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error checking token expiration", e.toString())
-                true
-            }
-        } ?: true
-    }
-
-    override fun getAccessToken(): String? {
-        val accessToken = runBlocking {
-            userDataStore.currentAccountFlow.first()?.accessToken
+    @Inject
+    constructor(
+        private val userDataStore: UserDataStore,
+    ) : ITokenManager {
+        companion object {
+            private const val TAG = "TokenManager"
         }
-        return accessToken
-    }
 
-    override fun getRefreshToken(): String? {
-        val refreshToken = runBlocking {
-            userDataStore.currentAccountFlow.first()?.refreshToken
+        private val _tokens = MutableStateFlow<Token?>(null)
+        override val tokens: StateFlow<Token?> = _tokens
+
+        private val _otherUserToken = MutableStateFlow<Token?>(null)
+        override val otherUserToken: StateFlow<Token?> = _otherUserToken
+
+        private val _tokenRefreshed = MutableStateFlow(false)
+        override val tokenRefreshed: StateFlow<Boolean> = _tokenRefreshed
+
+        private val _logoutUser = MutableStateFlow(false)
+        override val logoutUser: StateFlow<Boolean> = _logoutUser
+
+        override var isOtherUserTokenRefreshed = false
+            private set
+
+        override suspend fun setTokens(token: Token) {
+            AppLog.d(TAG, "Setting tokens")
+            userDataStore.updateAccountTokens(
+                accountId = token.accountId,
+                isActive = token.isActive,
+                refreshToken = token.refreshToken ?: "",
+                accessToken = token.accessToken ?: "",
+                expiresAt = token.expiresAt ?: "",
+            )
+            _tokens.value = token
         }
-        return refreshToken
-    }
 
-    override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
+        override fun setOtherUserToken(token: Token?) {
+            AppLog.d(TAG, "Setting other user token")
+            _otherUserToken.value = token
+        }
 
-    override suspend fun getAccessToken(accountId: String): String? {
-        val userPrefs = userDataStore.getData()
-        return userPrefs.accounts[accountId]?.accessToken
-    }
+        override fun clearTokens() {
+            AppLog.d(TAG, "Clearing tokens")
+            _tokens.value = null
+            _otherUserToken.value = null
+            isOtherUserTokenRefreshed = false
+        }
 
-    override suspend fun getRefreshToken(accountId: String): String? {
-        val userPrefs = userDataStore.getData()
-        return userPrefs.accounts[accountId]?.refreshToken
+        override fun setTokenRefreshed(refreshed: Boolean) {
+            AppLog.d(TAG, "Setting token refreshed: $refreshed")
+            _tokenRefreshed.value = refreshed
+        }
+
+        override fun setLogoutUser(logout: Boolean) {
+            AppLog.d(TAG, "Setting logout user: $logout")
+            _logoutUser.value = logout
+        }
+
+        override suspend fun refreshToken(): Boolean {
+            AppLog.d(TAG, "Refreshing token")
+            // This method should be implemented in the repository or a service, not here.
+            // Always return false for now to avoid DI cycles.
+            return false
+        }
+
+        override fun isTokenExpired(): Boolean {
+            val token = _tokens.value ?: return true
+            return token.expiresAt?.let { expiresAt ->
+                try {
+                    val expirationDate = Date(expiresAt.toLong())
+                    expirationDate.before(Date())
+                } catch (e: Exception) {
+                    AppLog.e(TAG, "Error checking token expiration", e.toString())
+                    true
+                }
+            } ?: true
+        }
+
+        override fun getAccessToken(): String? {
+            val accessToken =
+                runBlocking {
+                    userDataStore.currentAccountFlow.first()?.accessToken
+                }
+            return accessToken
+        }
+
+        override fun getRefreshToken(): String? {
+            val refreshToken =
+                runBlocking {
+                    userDataStore.currentAccountFlow.first()?.refreshToken
+                }
+            return refreshToken
+        }
+
+        override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
+
+        override suspend fun getAccessToken(accountId: String): String? {
+            val userPrefs = userDataStore.getData()
+            return userPrefs.accounts[accountId]?.accessToken
+        }
+
+        override suspend fun getRefreshToken(accountId: String): String? {
+            val userPrefs = userDataStore.getData()
+            return userPrefs.accounts[accountId]?.refreshToken
+        }
     }
-}

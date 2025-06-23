@@ -76,17 +76,23 @@ fun SignupScreenContent(
         }
     }
 
+    val handleBack = {
+        if (state.form.isDirty) {
+            handleIntent(SignupIntent.OnRequestBack)
+        } else {
+            onBack()
+        }
+    }
+
     AppScaffold(
         title = "",
         containerColor = MeTheme.colorScheme.secondaryBackground,
         appBarColor = MeTheme.colorScheme.secondaryBackground,
-        navigationIcon = { AppIconButton(AppIcons.Default.Close) {
-            if (state.form.isDirty) {
-                handleIntent(SignupIntent.OnRequestBack)
-            } else {
-                onBack()
+        navigationIcon = {
+            AppIconButton(AppIcons.Default.Close) {
+                handleBack()
             }
-        } },
+        },
         actions = { AppIconButton(AppIcons.Outlined.Help) { handleIntent.invoke(SignupIntent.OpenHelpModal) } },
     ) {
         Column(
@@ -117,7 +123,6 @@ fun SignupScreenContent(
     }
 }
 
-
 @PreviewTheme
 @Composable
 fun PreviewSignupScreen() {
@@ -126,7 +131,7 @@ fun PreviewSignupScreen() {
             SignupState(
                 form = FormGroup(SignupFormControls.create()),
             ),
-            {}
+            {},
         ) {}
     }
 }

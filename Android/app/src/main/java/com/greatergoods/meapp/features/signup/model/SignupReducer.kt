@@ -160,7 +160,6 @@ data class SignupFormControls(
  * @property isLoading Whether the signup process is ongoing.
  * @property error Error message to display, if any.
  * @property goalSkipped Whether the goal step was skipped.
- * @property isNavigating Whether we're currently navigating between steps.
  */
 data class SignupState(
     val form: FormGroup<SignupFormControls>,
@@ -256,7 +255,7 @@ sealed class SignupIntent : IReducer.Intent {
 
     object OnRequestBack : SignupIntent()
 
-    object OpenHelpModal: SignupIntent()
+    object OpenHelpModal : SignupIntent()
 
     data class OpenURL(
         val url: String,

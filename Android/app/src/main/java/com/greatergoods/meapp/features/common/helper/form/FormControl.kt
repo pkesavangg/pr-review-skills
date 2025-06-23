@@ -7,6 +7,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
@@ -229,6 +230,7 @@ class FormGroup<T : Any>(
     val controls: T,
     private val groupValidators: List<(T) -> String?> = emptyList(),
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
     private val _groupError = mutableStateOf<String?>(null)
     val groupError: String? get() = _groupError.value
 

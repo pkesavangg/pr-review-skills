@@ -31,7 +31,7 @@ fun BirthdayStep(birthdayControl: FormControl<DateTimeValue>) {
         DateTimeInput(
             formControl = birthdayControl,
             mode = DateTimeInputMode.Date,
-            maxValue = DateTimeValue.Date(DateTimeTools.getMinBirthdayOffsetForDatePicker()), // 120 years ago (oldest)
+            maxValue = DateTimeValue.Date(DateTimeTools.getMinBirthdayOffsetForDatePicker()),
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }

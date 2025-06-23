@@ -55,11 +55,6 @@ fun DialogHost() {
                     },
                 )
             }
-
-            else -> {
-                // Default dialog handling
-                // This can be a placeholder or a default dialog implementation
-            }
         }
     }
 }

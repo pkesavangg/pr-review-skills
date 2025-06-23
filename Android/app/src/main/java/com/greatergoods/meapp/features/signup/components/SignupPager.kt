@@ -53,18 +53,18 @@ fun SignupPager(
                 )
             }
         },
-                    trailingContent = {
-                AppButton(
-                    type = ButtonType.PrimaryFilled,
-                    label = if (state.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
-                    size = ButtonSize.Small,
-                    enabled = state.isCurrentStepValid,
-                    onClick = {
-                        focusManager.clearFocus()
-                        onNext()
-                    },
-                )
-            },
+        trailingContent = {
+            AppButton(
+                type = ButtonType.PrimaryFilled,
+                label = if (state.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
+                size = ButtonSize.Small,
+                enabled = state.isCurrentStepValid,
+                onClick = {
+                    focusManager.clearFocus()
+                    onNext()
+                },
+            )
+        },
         pageContent =
             {
                 Crossfade(targetState = state.currentStep) { step ->

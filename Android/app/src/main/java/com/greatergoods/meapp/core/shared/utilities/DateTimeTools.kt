@@ -340,9 +340,11 @@ object DateTimeTools {
      */
     fun formatDateForAPI(timestampMillis: Long): String =
         try {
-            val date = Instant.ofEpochMilli(timestampMillis)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
+            val date =
+                Instant
+                    .ofEpochMilli(timestampMillis)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
             date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         } catch (e: Exception) {
             ""
