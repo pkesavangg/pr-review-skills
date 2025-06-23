@@ -82,7 +82,7 @@ struct PickerView<T: Hashable>: View {
                 }
                 
             }
-            .padding(.horizontal)
+            .padding()
             .padding(.bottom, .spacingLG)
             
             // Picker Section
@@ -115,7 +115,7 @@ struct PickerView<T: Hashable>: View {
                     }
                 }
             }
-            .frame(height: 200)
+            .frame(height: 180)
         }
         .onAppear {
             tempSelectedValues = selectedValues
@@ -152,7 +152,7 @@ struct PickerView<T: Hashable>: View {
         case .heightInches, .heightCm:
             return 80
         default:
-            return 120 // wider for text like "Female"
+            return nil // flexible width to avoid text truncation
         }
     }
 }

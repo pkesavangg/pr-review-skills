@@ -16,11 +16,11 @@ struct SettingsScreen: View {
     @StateObject var settingsStore = SettingsStore()
     @StateObject private var router = Router<SettingsRoute>()
     // Dialog state controls
-    @State private var showingAppearanceDialog: Bool = false
-    @State private var showingUnitDialog: Bool = false
-    @State private var showingActivityDialog: Bool = false
-    @State private var showingNotificationDialog: Bool = false
+    @State private var showAppearancePicker: Bool = false
+    @State private var showNotificationPicker: Bool = false
     @State private var showGenderPicker: Bool = false
+    @State private var showUnitPicker: Bool = false
+    @State private var showActivityPicker: Bool = false
 
     
     let settingsLang = SettingsStrings.self
@@ -58,55 +58,32 @@ struct SettingsScreen: View {
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
-        // Appearance selection dialog
-        .confirmationDialog(
-            settingsLang.appearance,
-            isPresented: $showingAppearanceDialog,
-            titleVisibility: .visible
-        ) {
-            ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                Button(mode.rawValue) {
+        // Appearance picker
+        .pickerSheet(
+            isPresented: $showAppearancePicker,
+            selectedValues: [Theme.shared.appearanceMode],
+            options: [AppearanceMode.allCases],
+            displayValue: { $0.rawValue },
+            title: settingsLang.appearance,
+            onUpdate: { vals in
+                if let mode = vals.first {
                     Theme.shared.appearanceMode = mode
                 }
             }
-            Button(CommonStrings.cancel, role: .cancel) {}
-        }
-        // Unit selection dialog
-        .confirmationDialog(
-            settingsLang.unitType,
-            isPresented: $showingUnitDialog,
-            titleVisibility: .visible
-        ) {
-            Button(CommonStrings.unitLbsFeet) {
-                settingsStore.updateWeightUnit(.lb)
+        )
+        // Notifications picker
+        .pickerSheet(
+            isPresented: $showNotificationPicker,
+            selectedValues: [settingsStore.notificationPreference],
+            options: [NotificationPreference.allCases],
+            displayValue: { $0.title },
+            title: settingsLang.notifications,
+            onUpdate: { vals in
+                if let pref = vals.first {
+                    settingsStore.updateNotificationPreference(pref)
+                }
             }
-            Button(CommonStrings.unitKgCm) {
-                settingsStore.updateWeightUnit(.kg)
-            }
-            Button(CommonStrings.cancel, role: .cancel) {}
-        }
-        
-        // Activity level dialog
-        .confirmationDialog(
-            settingsLang.activityLevel,
-            isPresented: $showingActivityDialog,
-            titleVisibility: .visible
-        ) {
-            Button(ActivityLevel.normal.rawValue.capitalized) { settingsStore.updateActivityLevel(.normal) }
-            Button(ActivityLevel.athlete.rawValue.capitalized) { settingsStore.updateActivityLevel(.athlete) }
-            Button(CommonStrings.cancel, role: .cancel) {}
-        }
-        // Notifications dialog
-        .confirmationDialog(
-            settingsLang.notifications,
-            isPresented: $showingNotificationDialog,
-            titleVisibility: .visible
-        ) {
-            ForEach(NotificationPreference.allCases, id: \.self) { pref in
-                Button(pref.title) { settingsStore.updateNotificationPreference(pref) }
-            }
-            Button(CommonStrings.cancel, role: .cancel) {}
-        }
+        )
 
         // Height picker sheets
         .pickerSheet(
@@ -115,6 +92,7 @@ struct SettingsScreen: View {
             options: settingsStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
+            title: settingsLang.height,
             onUpdate: { newValues in
                 settingsStore.updateHeight(fromMetric: false, values: newValues)
             }
@@ -125,6 +103,7 @@ struct SettingsScreen: View {
             options: settingsStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
+            title: settingsLang.height,
             onUpdate: { newValues in
                 settingsStore.updateHeight(fromMetric: true, values: newValues)
             }
@@ -138,6 +117,34 @@ struct SettingsScreen: View {
             onUpdate: { vals in
                 if let sex = vals.first {
                     settingsStore.updateGender(sex)
+                }
+            }
+        )
+        // Unit picker
+        .pickerSheet(
+            isPresented: $showUnitPicker,
+            selectedValues: [settingsStore.activeAccount?.weightSettings?.weightUnit ?? .lb],
+            options: [[WeightUnit.lb, .kg]],
+            displayValue: { unit in
+                unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs
+            },
+            title: settingsLang.unitType,
+            onUpdate: { vals in
+                if let unit = vals.first {
+                    settingsStore.updateWeightUnit(unit)
+                }
+            }
+        )
+        // Activity level picker
+        .pickerSheet(
+            isPresented: $showActivityPicker,
+            selectedValues: [settingsStore.activeAccount?.weightSettings?.activityLevel ?? .normal],
+            options: [[ActivityLevel.normal, ActivityLevel.athlete]],
+            displayValue: { $0.rawValue.capitalized },
+            title: settingsLang.activityLevel,
+            onUpdate: { vals in
+                if let level = vals.first {
+                    settingsStore.updateActivityLevel(level)
                 }
             }
         )
@@ -207,7 +214,7 @@ struct SettingsScreen: View {
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown,
-                onTap: { showingActivityDialog = true }))
+                onTap: { showActivityPicker = true }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText, chevronType: .upDown, onTap: {
                 settingsStore.showHeightPicker()
@@ -218,7 +225,7 @@ struct SettingsScreen: View {
                 value: settingsStore.unitTypeText,
                 chevronType: .upDown,
                 onTap: {
-                    showingUnitDialog = true
+                    showUnitPicker = true
                 }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
@@ -240,7 +247,7 @@ struct SettingsScreen: View {
                 title: settingsLang.notifications,
                 value: settingsStore.notificationsOnText,
                 chevronType: .upDown,
-                onTap: { showingNotificationDialog = true }))
+                onTap: { showNotificationPicker = true }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.messages, showDot: settingsStore.hasUnreadMessages))
                 .settingsRowInsets()
@@ -252,15 +259,13 @@ struct SettingsScreen: View {
                     settingsStore.updateStreakStatus(settingsStore.streaksEnabled)
                 }))
                 .settingsRowInsets(top: 0, bottom: 0)
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.appPermissions))
-                .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown,
-                onTap: {
-                    showingAppearanceDialog = true
-                }))
+                onTap: { showAppearancePicker = true }))
+                .settingsRowInsets()
+            SettingsListItem(config: SettingsItemConfig(title: settingsLang.appPermissions))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)

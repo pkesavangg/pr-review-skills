@@ -107,6 +107,15 @@ class SettingsStore: ObservableObject {
             }
             .store(in: &accountService.cancellables)
         self.populateWeightlessFormIfNeeded()
+        
+        // Listen to theme appearance changes so SettingsScreen refreshes immediately
+        Theme.shared.$appearanceMode
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                // Broadcast a manual change so any computed properties that depend on Theme refresh
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
     
     /// Syncs local settings states with account data
@@ -930,5 +939,14 @@ class SettingsStore: ObservableObject {
     private func resetGoalForm() {
         goalForm = GoalForm()
         populateGoalFormIfNeeded()
+    }
+    
+    /// Current notification preference derived from account settings.
+    var notificationPreference: NotificationPreference {
+        let settings = activeAccount?.notificationSettings
+        if settings?.shouldSendEntryNotifications == true {
+            return settings?.shouldSendWeightInEntryNotifications == true ? .enableWithWeight : .enable
+        }
+        return .disable
     }
 }

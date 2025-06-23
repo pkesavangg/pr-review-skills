@@ -35,7 +35,7 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
                     },
                     onCancel: showCancel ? { isPresented = false } : nil
                 )
-                .presentationDetents([.height(300)])
+                .presentationDetents([.height(280)])
                 .presentationDragIndicator(.hidden)
                 .modifier(InteractiveDismissModifier(disabled: !allowTapOutside))
             }

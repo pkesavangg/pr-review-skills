@@ -28,6 +28,7 @@ struct CommonStrings {
     static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
     static let unitLbsFeet = "lbs & ft"
+    static let pickerLbs = "lbs & feet"
     static let on = "On"
     static let off = "Off"
     static let dark = "Dark"
