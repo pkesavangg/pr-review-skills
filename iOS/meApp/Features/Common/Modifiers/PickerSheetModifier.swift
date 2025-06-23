@@ -46,10 +46,7 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
 private struct InteractiveDismissModifier: ViewModifier {
     let disabled: Bool
     func body(content: Content) -> some View {
-        if disabled {
-            return AnyView(content.interactiveDismissDisabled())
-        } else {
-            return AnyView(content)
-        }
+        content
+            .interactiveDismissDisabled(disabled)
     }
 }
