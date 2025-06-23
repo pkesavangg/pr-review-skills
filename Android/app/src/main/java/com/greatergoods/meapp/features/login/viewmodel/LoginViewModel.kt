@@ -73,6 +73,7 @@ constructor(
                     handleIntent(LoginIntent.Success)
                 }
             } catch (e: Exception) {
+                handleIntent(LoginIntent.Error(e.toString()))
                 AppLog.e("onSubmit", "Login failed", e.toString())
             } finally {
                 dialogQueueService.dismissLoader()
@@ -89,7 +90,7 @@ constructor(
             DialogModel.Custom(
                 contentKey = DialogType.PasswordReset,
                 params = mapOf(
-                    "email" to loginEmail
+                    "email" to loginEmail,
                 ),
                 onDismiss = {},
             ),

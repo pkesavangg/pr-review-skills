@@ -1,7 +1,11 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -16,28 +20,43 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
- * A circular profile image that displays the first letter of the provided text.
+ * A circular profile avatar that displays the first letter of the provided text and supports active/inactive states.
  *
- * @param text The text from which to extract the first letter
- * @param modifier Modifier for styling
- * @param size Size of the circular profile image in dp
- * @param backgroundColor Background color of the circle
- * @param textColor Color of the letter
+ * @param text The text from which to extract the first letter.
+ * @param modifier Modifier for styling.
+ * @param size Size of the circular profile image in dp.
+ * @param isActive Whether the user is active, which determines the avatar's style.
+ * @param enabled Disable the avatar.
  */
 @Composable
 fun AppProfileAvatar(
     text: String,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
-    backgroundColor: Color = MeTheme.colorScheme.primaryAction,
-    textColor: Color = MeTheme.colorScheme.inverseAction,
+    isActive: Boolean = true,
+    enabled: Boolean = true,
 ) {
+    val backgroundColor = when {
+        isActive -> MeTheme.colorScheme.iconPrimary
+        else -> Color.Transparent
+    }
+    val textColor = when {
+        !enabled -> MeTheme.colorScheme.iconPrimaryDisabled
+        isActive -> Color.White
+        else -> MeTheme.colorScheme.primaryAction
+    }
+    val borderModifier =  when {
+        !isActive && enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
+        !isActive && !enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimaryDisabled, CircleShape)
+        else ->Modifier
+    }
+
     Box(
-        modifier =
-            modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(backgroundColor),
+        modifier = modifier
+            .size(size)
+            .then(borderModifier)
+            .clip(CircleShape)
+            .background(backgroundColor),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -53,7 +72,13 @@ fun AppProfileAvatar(
 fun AppProfileImagePreview() {
     MeAppTheme {
         AppScaffold("") {
-            AppProfileAvatar(text = "Kevin")
+            Column {
+                AppProfileAvatar(text = "Kevin", isActive = true, enabled = true)
+                Spacer(Modifier.height(8.dp))
+                AppProfileAvatar(text = "Kevin", isActive = false, enabled = true)
+                Spacer(Modifier.height(8.dp))
+                AppProfileAvatar(text = "Kevin", isActive = false, enabled = false)
+            }
         }
     }
 }
