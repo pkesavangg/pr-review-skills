@@ -25,6 +25,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.typography
+import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -33,10 +34,12 @@ import java.util.Locale
  * Represents the value for DateTimeInput.
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
+@Serializable
 sealed class DateTimeValue {
     /**
      * Represents a date value in milliseconds since epoch.
      */
+    @Serializable
     data class Date(
         val millis: Long,
     ) : DateTimeValue()
@@ -44,6 +47,7 @@ sealed class DateTimeValue {
     /**
      * Represents a time value as hour and minute.
      */
+    @Serializable
     data class Time(
         val hour: Int,
         val minute: Int,
@@ -52,6 +56,7 @@ sealed class DateTimeValue {
     /**
      * Represents a combined date and time value.
      */
+    @Serializable
     data class DateTime(
         val millis: Long,
         val hour: Int,

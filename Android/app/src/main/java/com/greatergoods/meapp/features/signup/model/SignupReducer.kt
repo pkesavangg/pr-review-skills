@@ -41,12 +41,13 @@ data class SignupFormControls(
          * Creates a new instance of SignupFormControls with default values and validations.
          */
         fun create(): SignupFormControls {
+            val signupData = SignupData()
             // Create the SignupFormControls first
             val controls =
                 SignupFormControls(
                     firstName =
                         FormControl.create(
-                            "",
+                            signupData.firstName,
                             listOf(
                                 FormValidations.required(),
                                 FormValidations.noWhitespace(),
@@ -55,7 +56,7 @@ data class SignupFormControls(
                         ),
                     lastName =
                         FormControl.create(
-                            "",
+                            signupData.lastName,
                             listOf(
                                 FormValidations.required(),
                                 FormValidations.noWhitespace(),
@@ -64,7 +65,7 @@ data class SignupFormControls(
                         ),
                     email =
                         FormControl.create(
-                            "",
+                            signupData.email,
                             listOf(
                                 FormValidations.required(),
                                 FormValidations.email(),
@@ -73,7 +74,7 @@ data class SignupFormControls(
                         ),
                     password =
                         FormControl.create(
-                            "",
+                            signupData.password,
                             listOf(
                                 FormValidations.required(),
                                 FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH),
@@ -82,7 +83,7 @@ data class SignupFormControls(
                         ),
                     confirmPassword =
                         FormControl.create(
-                            "",
+                            signupData.confirmPassword,
                             listOf(
                                 FormValidations.required(),
                                 FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH),
@@ -91,7 +92,7 @@ data class SignupFormControls(
                         ),
                     zipcode =
                         FormControl.create(
-                            "",
+                            signupData.zipcode,
                             listOf(
                                 FormValidations.required(),
                                 FormValidations.noWhitespace(),
@@ -111,27 +112,27 @@ data class SignupFormControls(
                         ),
                     sex =
                         FormControl.create(
-                            "",
+                            signupData.gender,
                             listOf(FormValidations.required()),
                         ),
                     height =
                         FormControl.create(
-                            HeightInput.FtIn(5, 1), // Default height 170 cm
+                            signupData.height, // Default height 170 cm
                             emptyList(),
                         ),
                     goalType =
                         FormControl.create(
-                            "losegain",
+                            signupData.goalType,
                             listOf(FormValidations.required()),
                         ),
                     currentWeight =
                         FormControl.create(
-                            "",
+                            signupData.currentWeight,
                             listOf(FormValidations.required(), weightValidator(WeightUnit.LB)),
                         ),
                     goalWeight =
                         FormControl.create(
-                            "",
+                            signupData.goalWeight,
                             listOf(FormValidations.required(), weightValidator(WeightUnit.LB)),
                         ),
                 )

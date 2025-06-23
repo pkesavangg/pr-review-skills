@@ -12,6 +12,7 @@ import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.signup.model.SignupData
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import com.greatergoods.meapp.features.signup.model.SignupIntent
 import com.greatergoods.meapp.features.signup.model.SignupReducer
@@ -53,7 +54,7 @@ class SignupViewModel
         /**
          * Handles moving to the next step or submitting if on the last step.
          */
-        fun onNext() {
+        private fun onNext() {
             if (state.value.isLastStep) {
                 AppLog.d("SignupViewModel", "Submitting signup form")
                 onSubmit()
@@ -66,16 +67,16 @@ class SignupViewModel
          * Handles the signup form submission. Validates the form, shows loading, and attempts signup.
          * On success, navigates to the loading screen. On failure, shows an error message.
          */
-        fun onSubmit() {
+        private fun onSubmit() {
             dialogQueueService.showLoader(
                 message = SignupStrings.LoaderMessage,
             )
-
+            val stateValue = state.value
             // Validate form fields based on whether goal was skipped
+            val controls = stateValue.form.controls
             val isFormValid =
-                if (state.value.goalSkipped) {
+                if (stateValue.goalSkipped) {
                     // When goal is skipped, validate all fields except goal-related ones
-                    val controls = state.value.form.controls
                     val basicFieldsValid =
                         listOf(
                             controls.firstName.validate(),
@@ -92,7 +93,7 @@ class SignupViewModel
                     basicFieldsValid
                 } else {
                     // When goal is not skipped, validate all fields
-                    state.value.form.validate()
+                    stateValue.form.validate()
                 }
 
             if (!isFormValid) {
@@ -100,34 +101,30 @@ class SignupViewModel
                 dialogQueueService.dismissLoader()
                 return
             }
-
+            val signupData: SignupData = stateValue.form.getValuesAsType()
             viewModelScope.launch {
                 try {
-                    val controls = state.value.form.controls
                     // Create the basic account request (similar to newAccount in wgApp4-1)
                     val signupRequest =
                         mutableMapOf<String, Any>(
-                            "email" to controls.email.value.trim(),
-                            "firstName" to controls.firstName.value.trim(),
+                            "email" to signupData.email.trim(),
+                            "firstName" to signupData.firstName.trim(),
                             "lastName" to
-                                controls.lastName.value
-                                    .trim()
-                                    .ifEmpty { " " },
-                            "gender" to controls.sex.value,
+                                signupData.lastName.trim(),
+                            "gender" to signupData.gender,
                             "zipcode" to
-                                controls.zipcode.value
-                                    .trim()
-                                    .ifEmpty { " " },
-                            "password" to controls.password.value,
-                            "dob" to DateTimeTools.formatDateForAPI(controls.birthday.value.getTimestamp()),
-                            "height" to convertHeightInputToMm(controls.height.value),
+                                signupData.zipcode
+                                    .trim(),
+                            "password" to signupData.password,
+                            "dob" to DateTimeTools.formatDateForAPI(signupData.birthday.getTimestamp()),
+                            "height" to convertHeightInputToMm(signupData.height),
                         )
 
                     var goalData: Map<String, Any>? = null
-                    if (!state.value.goalSkipped) {
-                        val goalType = controls.goalType.value
-                        val currentWeight = controls.currentWeight.value.toDoubleOrNull() ?: 0.0
-                        val goalWeight = controls.goalWeight.value.toDoubleOrNull() ?: 0.0
+                    if (!stateValue.goalSkipped) {
+                        val goalType = signupData.goalType
+                        val currentWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0
+                        val goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0
                         // Always use imperial (lbs) for signup
                         val isMetric = false
                         // Use ConversionTools to convert display weights to stored format
@@ -221,7 +218,7 @@ class SignupViewModel
          * Handles navigation back/exit from signup screen.
          * Call this when user wants to exit the signup flow.
          */
-        fun navigateBack() {
+        private fun navigateBack() {
             viewModelScope.launch {
                 try {
                     navigationService.navigateBack(topLevel = null)
@@ -236,7 +233,7 @@ class SignupViewModel
          * Opens a URL using the injected CustomTabManager.
          * @param url The URL to open.
          */
-        fun openUrl(url: String) {
+        private fun openUrl(url: String) {
             customTabManager.openChromeTab(url)
         }
 

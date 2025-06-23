@@ -237,20 +237,21 @@ object FormValidations {
     /**
      * This validator is specifically for confirm password field to check against password field
      */
-    fun confirmPasswordMatch(
-        formGroup: () -> FormGroup<SignupFormControls>
-    ): Validator<String> = { confirmPasswordValue ->
-        val form = formGroup()
-        val passwordValue = form.controls.password.value
+    fun confirmPasswordMatch(formGroup: () -> FormGroup<SignupFormControls>): Validator<String> =
+        { confirmPasswordValue ->
+            val form = formGroup()
+            val passwordValue = form.controls.password.value
 
-        // Only show mismatch error if both fields have values and they don't match
-        if (confirmPasswordValue.isNotEmpty() && passwordValue.isNotEmpty() && confirmPasswordValue != passwordValue) {
-            ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
-        } else {
-            null
+            // Only show mismatch error if both fields have values and they don't match
+            if (confirmPasswordValue.isNotEmpty() &&
+                passwordValue.isNotEmpty() &&
+                confirmPasswordValue != passwordValue
+            ) {
+                ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
+            } else {
+                null
+            }
         }
-    }
-
 
     fun noWhitespace(): Validator<String> =
         { value ->

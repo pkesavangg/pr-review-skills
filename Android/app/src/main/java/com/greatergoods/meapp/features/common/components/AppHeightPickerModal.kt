@@ -14,12 +14,16 @@ import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
+import kotlinx.serialization.Serializable
 
+@Serializable
 sealed class HeightInput {
+    @Serializable
     data class Cm(
         val value: Int,
     ) : HeightInput()
 
+    @Serializable
     data class FtIn(
         val feet: Int,
         val inches: Int,
