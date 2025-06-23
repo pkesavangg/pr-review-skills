@@ -17,7 +17,7 @@ class ScaleStore: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
 
-    private let scaleService = ScaleService.shared
+   @Injector var scaleService: ScaleService
     private var cancellables = Set<AnyCancellable>()
 
     init() {
