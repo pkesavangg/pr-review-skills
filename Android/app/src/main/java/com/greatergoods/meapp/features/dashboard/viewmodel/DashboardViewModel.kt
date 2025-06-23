@@ -34,12 +34,12 @@ class DashboardViewModel @Inject constructor(
      */
     private fun loadEntries() {
         viewModelScope.launch {
-            entryService.getDaywiseBodyScaleLatestWithJoin("1").collect { dayWise ->
+            entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
                 handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
             }
         }
         viewModelScope.launch {
-            entryService.getMonthlyBodyScaleAveragesWithJoin("1").collect { monthWise ->
+            entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
                 handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
             }
         }
