@@ -14,20 +14,27 @@ import SwiftUI
 /// based on whether a modal is currently being presented.
 class PassThroughWindow: UIWindow {
     @Injector var notificationHelperService: NotificationHelperService
+    
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        // Get view from superclass.
+        // Get view from superclass
         guard let hitView = super.hitTest(point, with: event) else { return nil }
-        // If the returned view is the `UIHostingController`'s view, ignore.
         
-        // If the root view controller's view is the hit view, check if a overlay is active.
-        if rootViewController?.view == hitView {
-            if notificationHelperService.isOverlayActive {
+        // Modal overlays (alerts, loaders, modals) - block everything
+        if notificationHelperService.isOverlayActive {
+            return hitView
+        }
+
+        if notificationHelperService.isToastVisible {
+            let toastArea = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height * 0.3)
+            if toastArea.contains(point) {
                 return hitView
             } else {
                 return nil
             }
-        } else {
-            return hitView
         }
+        
+        // No overlays: pass through unless we hit actual UI
+        let shouldCapture = hitView != rootViewController?.view
+        return shouldCapture ? hitView : nil
     }
 }
