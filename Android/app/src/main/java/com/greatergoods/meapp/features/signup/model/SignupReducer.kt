@@ -1,9 +1,8 @@
 package com.greatergoods.meapp.features.signup.model
 
-import com.greatergoods.meapp.core.shared.utilities.DateTimeTools
+import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.common.WeightUnit
-import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
 import com.greatergoods.meapp.features.common.helper.form.FormControl
@@ -113,7 +112,7 @@ data class SignupFormControls(
                     birthday =
                         FormControl.create(
                             DateTimeValue.Date(
-                                DateTimeTools.getEpochMillisFromDateString(AppValidatorConfig.DateOfBirth.DEFAULT_VALUE),
+                                DateTimeValue.getEpochMillisFromDateString(AppValidatorConfig.DateOfBirth.DEFAULT_VALUE),
                             ),
                             listOf(),
                         ),

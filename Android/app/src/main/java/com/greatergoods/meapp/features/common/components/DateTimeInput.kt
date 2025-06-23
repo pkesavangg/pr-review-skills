@@ -27,6 +27,10 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.typography
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 
@@ -159,6 +163,41 @@ sealed class DateTimeValue {
                         set(Calendar.MINUTE, minute)
                     }.timeInMillis
         }
+
+    companion object {
+        /**
+         * Converts a date string to epoch milliseconds.
+         * @param dateString The date string in YYYY-MM-DD format
+         * @param zoneId The time zone to use (defaults to system default)
+         * @return The epoch milliseconds, or current time if parsing fails
+         */
+        fun getEpochMillisFromDateString(dateString: String, zoneId: ZoneId = ZoneId.systemDefault()): Long =
+            try {
+                LocalDate
+                    .parse(dateString)
+                    .atStartOfDay(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+            } catch (e: Exception) {
+                System.currentTimeMillis()
+            }
+
+        /**
+         * Formats a timestamp (milliseconds) to YYYY-MM-DD format for API requests.
+         * Similar to moment(timestamp).format('Y-MM-DD')
+         * @param timestampMillis The timestamp in milliseconds
+         * @return The formatted date string in YYYY-MM-DD format
+         */
+        fun getDateFormatFromMilliseconds(timestampMillis: Long): String =
+            try {
+                val date = Instant.ofEpochMilli(timestampMillis)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+                date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            } catch (e: Exception) {
+                ""
+            }
+    }
 }
 
 /**
