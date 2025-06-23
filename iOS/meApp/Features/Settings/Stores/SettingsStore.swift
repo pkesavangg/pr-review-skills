@@ -83,7 +83,7 @@ class SettingsStore: ObservableObject {
     @Published var showHeightInchesPicker: Bool = false
     /// Controls the presentation of the metric picker sheet.
     @Published var showHeightCmPicker: Bool = false
-
+    
     /// Shared picker options
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
@@ -97,7 +97,7 @@ class SettingsStore: ObservableObject {
                 self?.syncHeightPickers()
             }
             .store(in: &accountService.cancellables)
-            self.populateWeightlessFormIfNeeded()
+        self.populateWeightlessFormIfNeeded()
     }
     
     func handleLogout() {
@@ -267,7 +267,13 @@ class SettingsStore: ObservableObject {
     }
     
     var isGoalFormValid: Bool {
-        !(!goalForm.isDirty || (goalForm.isDirty && goalForm.goalType.value == GoalTypeSegment.losegainValue ? goalForm.isInvalid : goalForm.goalWeight.isInvalid))
+        guard goalForm.isDirty else { return false }
+        
+        if goalForm.goalType.value == GoalTypeSegment.losegainValue {
+            return !goalForm.isInvalid
+        } else {
+            return !goalForm.goalWeight.isInvalid
+        }
     }
     
     var isWeightLessFormValid: Bool {
@@ -622,9 +628,9 @@ class SettingsStore: ObservableObject {
         guard let account = activeAccount else { return }
         let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
         let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
-        if currentOn == isOn && currentWeightStored == storedWeight { 
+        if currentOn == isOn && currentWeightStored == storedWeight {
             dismiss()
-            return 
+            return
         }
         
         Task {
@@ -665,10 +671,10 @@ class SettingsStore: ObservableObject {
             weightlessForm.weight.markAsPristine()
         }
         let maxWeight = account.weightSettings?.weightUnit ?? .lb == .kg ? 450.0 : 999.0
-
+        
         // Remove old validator
         weightlessForm.weight.removeValidator(ofType: .maxValue)
-
+        
         // Add new validator
         let validator = Validator.maxValue(maxWeight)
         weightlessForm.weight.addValidator(validator)
@@ -726,7 +732,7 @@ class SettingsStore: ObservableObject {
         weightlessForm = WeightlessForm()
         populateWeightlessFormIfNeeded()
     }
-
+    
     // MARK: - Height Helpers
     /// Syncs the picker selections with the currently stored height.
     private func syncHeightPickers() {
@@ -737,7 +743,7 @@ class SettingsStore: ObservableObject {
         selectedHeightInches = selections.inches
         selectedHeightCm     = selections.cm
     }
-
+    
     /// Presents the correct picker sheet based on the user's current unit preference.
     func showHeightPicker() {
         if activeAccount?.weightSettings?.weightUnit == .kg {
@@ -746,7 +752,7 @@ class SettingsStore: ObservableObject {
             showHeightInchesPicker = true
         }
     }
-
+    
     /// Converts the chosen picker values to stored format and persists via `updateBodyComp`.
     /// - Parameters:
     ///   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
@@ -762,15 +768,15 @@ class SettingsStore: ObservableObject {
             let totalInches = (feet * 12) + inches
             storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
         }
-
+        
         // Persist change only if it differs
         guard let account = activeAccount,
               let currentStoredStr = account.weightSettings?.height,
               let currentStoredDouble = Double(currentStoredStr) else { return }
-
+        
         let currentStored = Int(round(currentStoredDouble))
         guard currentStored != storedHeight else { return }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             let bodyComp = BodyComp(
@@ -789,15 +795,15 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-
+    
     // MARK: - Goal Form Helpers
     /// Populates the Goal settings form with existing account goal values *once* (when the form is pristine).
     func populateGoalFormIfNeeded() {
         guard let account = activeAccount else { return }
-
+        
         // Skip if user has already started editing.
         guard !goalForm.isDirty else { return }
-
+        
         // Goal type
         if let gType = account.goalSettings?.goalType {
             goalForm.goalType.value = gType == .maintain ? GoalType.maintain.rawValue : GoalTypeSegment.losegainValue
@@ -813,34 +819,34 @@ class SettingsStore: ObservableObject {
                     goalForm.currentWeight.value = String(format: "%.1f", display)
                     goalForm.currentWeight.markAsPristine()
                 }
-
+                
                 if let goalW = account.goalSettings?.goalWeight {
                     let unit = account.weightSettings?.weightUnit ?? .lb
                     let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
                     goalForm.goalWeight.value = String(format: "%.1f", display)
                     goalForm.goalWeight.markAsPristine()
                 }
-
+                
                 // Update max-value validator according to unit.
                 updateGoalWeightValidators()
                 goalForm.validate()
             } catch {}
         }
-
+        
     }
-
+    
     /// Updates the max-weight validator whenever the preferred unit changes.
     private func updateGoalWeightValidators() {
         let isMetric = (activeAccount?.weightSettings?.weightUnit ?? .lb) == .kg
         let maxWeight = isMetric ? 450.0 : 999.0
-
+        
         [goalForm.currentWeight, goalForm.goalWeight].forEach { ctrl in
             ctrl.removeValidator(ofType: .maxValue)
             let validator = Validator.maxValue(maxWeight)
             ctrl.addValidator(validator)
         }
     }
-
+    
     /// Handles dismissal of the Goal sheet, showing an alert if there are unsaved changes.
     func handleGoalExit(dismiss: DismissAction) {
         if !goalForm.isDirty {
@@ -848,7 +854,7 @@ class SettingsStore: ObservableObject {
             resetGoalForm()
             return
         }
-
+        
         let alert = AlertModel(
             title: alertLang.GoalExitAlert.title,
             message: alertLang.GoalExitAlert.message,
@@ -862,26 +868,26 @@ class SettingsStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     /// Validates the form and persists the goal via `AccountService`.
     func saveGoal(dismiss: DismissAction) {
         goalForm.validate()
-
+        
         guard goalForm.isDirty, isGoalFormValid else { return }
-
+        
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let isMetric = unit == .kg
-
+        
         let convert = { (valString: String) -> Int in
             let val = Double(valString) ?? 0.0
             return ConversionTools.convertDisplayToStored(val, isMetric: isMetric)
         }
-
+        
         // Build Goal payload
         let goalTypeValue = goalForm.goalType.value
         let currentDisplay = goalForm.currentWeight.value
         let targetDisplay  = goalForm.goalWeight.value
-
+        
         let goalStored    = convert(targetDisplay)
         let initialStored: Int = {
             if goalTypeValue == GoalType.maintain.rawValue {
@@ -890,7 +896,7 @@ class SettingsStore: ObservableObject {
                 return convert(currentDisplay)
             }
         }()
-
+        
         let goalPayload: Goal
         if goalTypeValue == GoalType.maintain.rawValue {
             goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: self.latestWeight, goalType: .maintain)
@@ -898,7 +904,7 @@ class SettingsStore: ObservableObject {
             let derivedType: GoalType = goalStored > initialStored ? .gain : .lose
             goalPayload = Goal(type: derivedType, goalWeight: goalStored, initialWeight: initialStored, goalType: derivedType)
         }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.saving))
             do {
@@ -914,7 +920,7 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-
+    
     /// Resets to pristine state and re-sync with account.
     private func resetGoalForm() {
         goalForm = GoalForm()

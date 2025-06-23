@@ -118,7 +118,7 @@ class SignupForm: ObservableForm {
             return FormErrorMessages.passwordMatch
         }
         if (goalType.value == GoalTypeSegment.losegainValue && control === goalWeight) && formErrors[.weightEqual] {
-            return FormErrorMessages.valueShouldBeEqual
+            return FormErrorMessages.valueShouldNotBeEqual
         }
 
         return nil
