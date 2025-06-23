@@ -12,6 +12,7 @@ import SwiftUI
 enum SettingsRoute: Routable {
     case editProfile
     case changePassword
+    case addAndEditScales
     
     var body: some View {
         switch self {
@@ -19,6 +20,8 @@ enum SettingsRoute: Routable {
             EditProfileScreen()
         case .changePassword:
             ChangePasswordScreen()
+        case .addAndEditScales:
+            MyScalesScreen()
         }
     }
 }

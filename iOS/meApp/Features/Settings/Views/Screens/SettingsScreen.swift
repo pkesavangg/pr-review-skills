@@ -187,7 +187,10 @@ struct SettingsScreen: View {
     
     private func accountSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.accountSettings)) {
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.addEditScales))
+            SettingsListItem(
+                config: SettingsItemConfig(
+                title: settingsLang.addEditScales,
+                onTap: {router.navigate(to:.addAndEditScales)}))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.integrations))
                 .settingsRowInsets()
