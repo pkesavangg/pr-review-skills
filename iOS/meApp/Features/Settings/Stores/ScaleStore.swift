@@ -31,15 +31,11 @@ class ScaleStore: ObservableObject {
 
         do {
             let devices = try await scaleService.getDevices()
-            await MainActor.run {
-                self.scales = devices
-            }
+            self.scales = devices
             return devices
         } catch {
-            await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.scales = []
-            }
+            self.errorMessage = error.localizedDescription
+            self.scales = []
             return []
         }
     }
