@@ -54,7 +54,7 @@ struct SetupLoaderView: View {
             }
         }
         .onAppear {
-            viewModel.startAnimation(when: connectionState)
+            viewModel.startAnimation()
         }
     }
 }
