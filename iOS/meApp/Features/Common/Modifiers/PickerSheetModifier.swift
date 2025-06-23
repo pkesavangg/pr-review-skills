@@ -15,6 +15,9 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
     let displayValue: (T) -> String
     let pickerType: PickerType
     let onUpdate: ([T]) -> Void
+    var title: String? = nil
+    var showCancel: Bool = false
+    var allowTapOutside: Bool = true
     
     func body(content: Content) -> some View {
         content
@@ -24,17 +27,29 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
                     options: options,
                     displayValue: displayValue,
                     pickerType: pickerType,
+                    title: title,
+                    showCancel: showCancel,
                     updateValues: { newValues in
                         onUpdate(newValues)
                         isPresented = false
                     },
-                    onCancel: {
-                        isPresented = false
-                    }
+                    onCancel: showCancel ? { isPresented = false } : nil
                 )
                 .presentationDetents([.height(300)])
                 .presentationDragIndicator(.hidden)
-                .interactiveDismissDisabled()
+                .modifier(InteractiveDismissModifier(disabled: !allowTapOutside))
             }
+    }
+}
+
+// Helper modifier
+private struct InteractiveDismissModifier: ViewModifier {
+    let disabled: Bool
+    func body(content: Content) -> some View {
+        if disabled {
+            return AnyView(content.interactiveDismissDisabled())
+        } else {
+            return AnyView(content)
+        }
     }
 }

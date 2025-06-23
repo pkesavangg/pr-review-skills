@@ -18,9 +18,9 @@ struct SettingsScreen: View {
     // Dialog state controls
     @State private var showingAppearanceDialog: Bool = false
     @State private var showingUnitDialog: Bool = false
-    @State private var showingGenderDialog: Bool = false
     @State private var showingActivityDialog: Bool = false
     @State private var showingNotificationDialog: Bool = false
+    @State private var showGenderPicker: Bool = false
 
     
     let settingsLang = SettingsStrings.self
@@ -86,16 +86,6 @@ struct SettingsScreen: View {
             Button(CommonStrings.cancel, role: .cancel) {}
         }
         
-        // Gender dialog
-        .confirmationDialog(
-            settingsLang.biologicalSex,
-            isPresented: $showingGenderDialog,
-            titleVisibility: .visible
-        ) {
-            Button(Sex.male.rawValue.capitalized) { settingsStore.updateGender(.male) }
-            Button(Sex.female.rawValue.capitalized) { settingsStore.updateGender(.female) }
-            Button(CommonStrings.cancel, role: .cancel) {}
-        }
         // Activity level dialog
         .confirmationDialog(
             settingsLang.activityLevel,
@@ -137,6 +127,18 @@ struct SettingsScreen: View {
             pickerType: .heightCm,
             onUpdate: { newValues in
                 settingsStore.updateHeight(fromMetric: true, values: newValues)
+            }
+        )
+        .pickerSheet(
+            isPresented: $showGenderPicker,
+            selectedValues: [settingsStore.activeAccount?.gender ?? .male],
+            options: [Sex.allCases],
+            displayValue: { $0.rawValue.capitalized },
+            title: settingsLang.biologicalSex,
+            onUpdate: { vals in
+                if let sex = vals.first {
+                    settingsStore.updateGender(sex)
+                }
             }
         )
     }
@@ -199,7 +201,7 @@ struct SettingsScreen: View {
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
                 chevronType: .upDown,
-                onTap: { showingGenderDialog = true }))
+                onTap: { showGenderPicker = true }))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.activityLevel,
