@@ -13,6 +13,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SettingsSection
@@ -40,6 +42,7 @@ fun SettingsScreenContent(
     state: SettingsState,
     handleIntent: (SettingsIntent) -> Unit,
 ) {
+    val backStack = LocalNavBackStack.current
     AppScaffold(title = SettingsScreenStrings.Title) {
         Column(
             modifier =
@@ -48,7 +51,9 @@ fun SettingsScreenContent(
                     .verticalScroll(rememberScrollState())
                     .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
         ) {
-            UserProfileSection(state.account) {}
+            UserProfileSection(state.account) {
+                backStack.addRoute(AppRoute.Profile.Edit)
+            }
             Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
             // Account Settings Section
             SettingsSection(
@@ -72,6 +77,10 @@ fun SettingsScreenContent(
                             title = SettingsScreenStrings.ChangePassword,
                             onClick = { },
                         ),
+                        SettingsItem(
+                            title = SettingsScreenStrings.UserProfile,
+                            onClick = {backStack.addRoute(AppRoute.Profile.Edit) },
+                        ),
                     ),
             )
             // Profile Settings Section
@@ -87,7 +96,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.BiologicalSex,
                             type = SettingsItemType.Dropdown("Female"),
-                            onClick = { },
+                            onClick = {
+                                backStack.addRoute(AppRoute.Profile.Edit)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ActivityLevel,

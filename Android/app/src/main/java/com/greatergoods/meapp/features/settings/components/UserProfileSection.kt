@@ -9,11 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.domain.model.Account
-import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppProfileAvatar
-import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.settings.strings.SettingsScreenStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -43,12 +40,7 @@ fun UserProfileSection(
             style = MeTheme.typography.body2,
             color = MeTheme.colorScheme.textBody,
         )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-        AppButton(
-            SettingsScreenStrings.Edit,
-            size = ButtonSize.Small,
-            onClick = { onEditProfileClick() },
-        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
     }
 }
 
