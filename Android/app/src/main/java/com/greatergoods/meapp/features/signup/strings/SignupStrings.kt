@@ -31,17 +31,11 @@ object SignupStrings {
         "This can be a helpful feature to utilize on your journey. Goals can always be changed in the app settings."
     const val goalStepMaintain = "Maintain"
     const val goalStepLoseGain = "Lose/Gain"
-    const val goalStepCurrentWeight = "current weight (lbs)"
-    const val goalStepGoalWeight = "goal weight (lbs)"
     const val goalStepUseMetric = "Use Metric"
 
     // Goal step dynamic weight labels
     const val goalStepCurrentWeightDynamic = "Current weight (%s)"
     const val goalStepGoalWeightDynamic = "Goal weight (%s)"
-
-    // Weight units
-    const val weightUnitKg = "kg"
-    const val weightUnitLbs = "lbs"
 
     // HeightStep strings
     const val heightStepTitle = "How tall are you?"
