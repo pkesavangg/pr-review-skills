@@ -51,7 +51,7 @@ final class GoalForm: ObservableForm {
     // MARK: - Error helpers
     /// Maps validator errors to human-readable strings (leverages `FormErrorMessages`).
     func getError<T>(for control: FormControl<T>, isMetric: Bool) -> String? {
-        guard control.isDirty else { return nil }
+        guard isDirty else { return nil }
         // Skip current-weight error when maintain mode is selected.
         if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
             return nil
@@ -65,7 +65,7 @@ final class GoalForm: ObservableForm {
             return isMetric ? FormErrorMessages.maxWeightKg : FormErrorMessages.maxWeightLb
         }
         if (goalType.value == GoalTypeSegment.losegainValue && control === goalWeight) && formErrors[.weightEqual] {
-            return FormErrorMessages.valueShouldBeEqual
+            return FormErrorMessages.valueShouldNotBeEqual
         }
         
         return nil
