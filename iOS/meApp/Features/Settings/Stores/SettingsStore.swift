@@ -823,11 +823,8 @@ class SettingsStore: ObservableObject {
 
                 // Update max-value validator according to unit.
                 updateGoalWeightValidators()
-
                 goalForm.validate()
-            } catch {
-                
-            }
+            } catch {}
         }
 
     }
