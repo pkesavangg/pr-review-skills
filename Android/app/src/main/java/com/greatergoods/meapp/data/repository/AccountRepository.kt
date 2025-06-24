@@ -7,12 +7,14 @@ import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
 import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
+import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
@@ -81,9 +83,10 @@ class AccountRepository @Inject constructor(
     /**
      * Updates password via API and returns true if successful.
      */
-    override suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Boolean {
-        val result = authAPI.updatePassword(mapOf("oldPassword" to oldPassword, "newPassword" to newPassword))
-        return result["success"] as? Boolean ?: false
+    override suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): ChangePasswordResponse {
+        val request = ChangePasswordRequest(oldPassword, newPassword)
+        val response = userAPI.changePassword(request)
+        return response
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
@@ -43,7 +44,7 @@ interface IAccountRepository {
     /**
      * Updates password via API and returns true if successful.
      */
-    suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): Boolean
+    suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): ChangePasswordResponse
 
     /**
      * Requests password reset via API and returns true if successful.

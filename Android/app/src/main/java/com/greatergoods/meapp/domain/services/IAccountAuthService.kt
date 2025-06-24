@@ -29,6 +29,7 @@ interface IAccountAuthService {
 
     suspend fun resetPassword(email: String)
     suspend fun updateProfile(profileData: Map<String, Any>): Account?
+    suspend fun changePassword(currentPassword: String, newPassword: String): Boolean
 }
 
 /**

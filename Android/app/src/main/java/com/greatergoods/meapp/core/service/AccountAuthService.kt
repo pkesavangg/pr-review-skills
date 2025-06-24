@@ -486,6 +486,29 @@ constructor(
             null
         }
     }
+    override suspend fun changePassword(currentPassword: String, newPassword: String): Boolean {
+        return try {
+            getCurrentAccount() ?: return false
+            val response = accountRepository.updatePasswordInAPI(currentPassword, newPassword)
+            tokenManager.setTokens(
+                Token(
+                    accountId = activeAccountFlow.first()?.id ?: "",
+                    accessToken = response.accessToken,
+                    refreshToken = response.refreshToken,
+                    expiresAt = response.expiresAt,
+                ),
+            )
+            AppLog.d(TAG, "Password changed successfully")
+            showSuccessToast(AuthAction.CHANGE_PASSWORD)
+            // Password change typically invalidates existing tokens, but we'll keep using current session
+            // unless the API specifically returns new tokens
+            true
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Password change failed", e.toString())
+            showErrorToast(AuthAction.CHANGE_PASSWORD, e as? HttpException)
+            false
+        }
+    }
 
     /**
      * Checks if network is available using the connectivity observer
@@ -498,6 +521,8 @@ constructor(
 
             AuthAction.UPDATE_PROFILE -> ToastStrings.Success.UpdateProfileSuccess.Header to
                 ToastStrings.Success.UpdateProfileSuccess.Message
+            AuthAction.CHANGE_PASSWORD -> ToastStrings.Success.ChangePasswordSuccess.Header to
+                ToastStrings.Success.ChangePasswordSuccess.Message
 
             else -> "" to ""
         }
@@ -550,6 +575,21 @@ constructor(
                 }
                 header to message
             }
+            AuthAction.CHANGE_PASSWORD -> ToastStrings.Error.ChangePasswordError.Header
+                val message = when (error?.code()) {
+                    HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                        ToastStrings.Error.UpdateProfileError.MessageNoConn
+
+                    HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                        ToastStrings.Error.UpdateProfileError.MessageServError
+
+                    HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                        ToastStrings.Error.UpdateProfileError.MessageNotAuth
+
+                    else ->
+                        ToastStrings.Error.UpdateProfileError.MessageGeneric
+                }
+                header to message
 
             else -> "" to ""
         }
