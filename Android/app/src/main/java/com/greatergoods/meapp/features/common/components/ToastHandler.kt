@@ -131,4 +131,5 @@ enum class DragAnchors {
     Center,
     Left,
     Right,
+    End
 }
