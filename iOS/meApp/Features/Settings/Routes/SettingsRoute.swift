@@ -31,7 +31,7 @@ enum SettingsRoute: Routable {
         case .appPermissions:
             EmptyView() // TODO: Implement AppPermissionsScreen
         case .help:
-            EmptyView() // TODO: Implement HelpScreen
+            HelpScreen()
         }
     }
 }

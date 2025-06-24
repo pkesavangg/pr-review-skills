@@ -279,7 +279,7 @@ struct SettingsScreen: View {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.helpAndCustomerService,
                 onTap: {
-                    settingsStore.openHelp()
+                    router.navigate(to: .help)
                 }
             ))
             .settingsRowInsets()

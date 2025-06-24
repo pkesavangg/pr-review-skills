@@ -38,6 +38,10 @@ struct CommonStrings {
     static let date = "Date"
     static let weight = "Weight"
     static let resources = "Resources"
+    static let appVersion = "App Version"
+    static let yes = "Yes"
+    static let no = "No"
+    static let iOS = "iOS"
 }
 
 /// Constants for entry strings used in the app
@@ -272,6 +276,9 @@ struct AppAssets {
     static let history = "history"
     static let historyFill = "historyFill"
     static let appSync = "appSync"
+    static let bluetooth = "bluetooth"
+    static let wifi = "wifi"
+    static let btWifi = "btWifi"
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
     static let chevronRight = "chevronRight"

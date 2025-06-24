@@ -200,10 +200,6 @@ class SettingsStore: ObservableObject {
         showTermsBrowser = true
     }
     
-    func openHelp() {
-        // TODO: Need to handle this
-    }
-    
     func openGreaterGoods() {
         browserURL = legalURLs.greaterGoodsWebsite
         showGreaterGoodsBrowser = true
