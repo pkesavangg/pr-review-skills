@@ -10,29 +10,32 @@ import SwiftUI
 /// Shows an initial icon, name, e-mail and an optional selection indicator.
 struct UserListItemView: View {
     @Environment(\.appTheme) private var theme
-
+    
     let user: UserItemInfo
     var iconSize: CGFloat = 32
     var onTap: ((String, Bool) -> Void)
     var onDelete: ((String) -> Void)? = nil // optional deletion trigger
-
+    
     var body: some View {
         Button {
             onTap(user.accountID, user.isExpired)
         } label: {
             rowContent
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if !user.isSelected, !user.isExpired, let onDelete = onDelete {
-                Button(role: .cancel) {
-                    onDelete(user.accountID)
-                } label: {
-                    AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
-                        .foregroundColor(theme.backgroundPrimary)
-                }
-                .tint(theme.textError) // Set the background of the swipe action
-            }
-        }
+        .swipeableActions(buttons:
+                            user.isSelected || user.isExpired || onDelete == nil ? [] : [
+                                SwipeButton(
+                                    tint: theme.textError,
+                                    action: { onDelete?(user.accountID) },
+                                    label: {
+                                        AnyView(
+                                            AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
+                                                .foregroundColor(theme.backgroundPrimary)
+                                        )
+                                    }
+                                )
+                            ]
+        )
     }
     
     private var rowContent: some View {
@@ -50,7 +53,7 @@ struct UserListItemView: View {
                     )
                 }
                 .opacity(user.isExpired ? 0.4 : 1)
-
+            
             VStack(alignment: .leading, spacing: 0) {
                 Text(user.name)
                     .fontOpenSans(.body2)
@@ -60,7 +63,7 @@ struct UserListItemView: View {
                     .foregroundColor(theme.textSubheading)
             }
             .opacity(user.isExpired ? 0.4 : 1)
-
+            
             Spacer()
             if user.isExpired {
                 ButtonView(text: CommonStrings.logIn, type: .inlineTextPrimary, size: .large, isDisabled: false) {
@@ -86,10 +89,10 @@ struct AccountListView: View {
         .init(accountID: "123",name: "William", email: "william@gmail.com", isSelected: true, isExpired: false, canShowSelection: true),
         .init(accountID: "xyz",name: "Jacob", email: "jacob@gmail.com", isSelected: false, isExpired: true, canShowSelection: true)
     ]
-
+    
     @State private var showDeleteAlert = false
     @State private var userToDelete: UserItemInfo?
-
+    
     var body: some View {
         List {
             ForEach(accounts) { account in

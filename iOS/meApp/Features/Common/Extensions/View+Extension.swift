@@ -174,4 +174,16 @@ extension View {
             )
         )
     }
+    
+    /// Applies a swipeable modifier to the view with customizable button width and buttons.
+    /// - Parameters:
+    ///  - buttonWidth: The width of each swipeable button (default is 72).
+    ///  - buttons: An array of `SwipeButton` configurations for the swipeable actions.
+    ///  - Returns: A view with swipeable actions applied.
+    func swipeableActions(
+        buttonWidth: CGFloat = 72,
+        buttons: [SwipeButton]
+    ) -> some View {
+        self.modifier(SwipeableModifier(swipeButtons: buttons, buttonWidth: buttonWidth))
+    }
 }
