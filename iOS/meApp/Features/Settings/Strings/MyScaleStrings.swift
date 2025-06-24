@@ -7,4 +7,7 @@
 
 struct MyScaleStrings{
     static let addEditScales = "Add & Edit Scales"
+    static let connected = "Connected"
+    static let notConnected = "Not Connected"
+    static let setupIncomplete = "Setup Incomplete"
 }

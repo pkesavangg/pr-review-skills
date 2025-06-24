@@ -10,6 +10,7 @@ import SwiftUI
 struct MyScalesScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
+    @StateObject var scaleStore = ScaleStore()
     let lang = MyScaleStrings.self
     
     var body: some View {
