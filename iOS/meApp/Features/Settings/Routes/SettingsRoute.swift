@@ -29,7 +29,7 @@ enum SettingsRoute: Routable {
         case .messages:
             EmptyView() // TODO: Implement MessagesScreen
         case .appPermissions:
-            EmptyView() // TODO: Implement AppPermissionsScreen
+            AppPermissionsScreen()
         case .help:
             HelpScreen()
         }

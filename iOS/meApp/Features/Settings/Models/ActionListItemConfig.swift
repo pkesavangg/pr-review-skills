@@ -17,5 +17,8 @@ struct ActionListItemConfig {
     var toggleBinding: Binding<Bool>? = nil
     var showDot: Bool = false
     var dotColor: Color? = nil
+    /// Optional leading icon shown before the title (e.g., status indicator).
+    /// If provided, `showDot` will be ignored.
+    var leadingIcon: AnyView? = nil
     var onTap: (() -> Void)? = nil
 }

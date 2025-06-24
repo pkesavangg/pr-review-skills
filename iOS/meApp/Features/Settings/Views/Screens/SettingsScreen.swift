@@ -265,7 +265,10 @@ struct SettingsScreen: View {
                 chevronType: .upDown,
                 onTap: { showAppearancePicker = true }))
                 .settingsRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
+                tabViewModel.showTabBar = false
+                router.navigate(to: .appPermissions)
+            }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -279,6 +282,7 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.helpAndCustomerService,
                 onTap: {
+                    tabViewModel.showTabBar = false
                     router.navigate(to: .help)
                 }
             ))

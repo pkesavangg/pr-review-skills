@@ -12,7 +12,8 @@ struct HelpScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     
     private let lang = HelpScreenStrings.self
-    
+    private let commonLang = CommonStrings.self
+    private var appVersion: String { "\(AppInfo.appVersion)" }
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -31,9 +32,11 @@ struct HelpScreen: View {
                     talkToTeamSection()
                         .padding(.horizontal, .spacingSM)
                     digitalManualSection()
+                    Text("\(commonLang.appVersion) \(appVersion)")
+                        .foregroundColor(theme.textBody)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .padding(.vertical, .spacingLG)
-                .padding(.bottom, .spacingXL)
+                .padding(.top, .spacingLG)
             }
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())

@@ -88,13 +88,17 @@ struct ChangePasswordScreen: View {
                     ) {
                         focusedField = nil
                     }
+                }               
+                
+                ButtonView(text: screenLang.forgotPassword, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                    settingsStore.showForgotPasswordAlert()
                 }
-                .padding(.vertical, .spacingLG)
-                .padding(.bottom, .spacingXL)
             }
             .scrollDismissesKeyboard(.interactively)
             .padding(.horizontal, .spacingSM)
             .navigationBarHidden(true)
+            .padding(.vertical, .spacingLG)
+            .padding(.bottom, .spacingXL)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
     }
