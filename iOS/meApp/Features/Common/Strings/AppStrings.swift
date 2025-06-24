@@ -66,6 +66,9 @@ struct ToastStrings {
     static let passwordResetSuccessMessage = { (email: String) in
         "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 10 minutes."
     }
+    static let forgotPassword = { (email: String) in
+        "Password reset link sent to \(email)."
+    }
     static let success = "Success!"
     static let entryAdded = "Entry added."
     static let errorSavingEntry = "Error saving new entry!"
@@ -136,6 +139,7 @@ struct InputFieldLabels {
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
     static let zipCode = "zipcode"
+    static let birthday = "birthday"
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
     }
@@ -144,15 +148,15 @@ struct InputFieldLabels {
     }
     static let date = "Date"
     static let bmi = "bmi"
-    static let bodyFat = "body fat %"
-    static let muscleMass = "muscle mass %"
-    static let bodyWater = "body water %"
+    static let bodyFat = "body fat (%)"
+    static let muscleMass = "muscle mass (%)"
+    static let bodyWater = "body water (%)"
     static let heartRate = "heart rate (bpm)"
-    static let boneMass = "bone mass %"
+    static let boneMass = "bone mass (%)"
     static let visceralFat = "visceral fat (Lv.)"
-    static let subcutaneousFat = "subcutaneous fat %"
-    static let protein = "protein %"
-    static let skeletalMuscles = "skeletal muscles %"
+    static let subcutaneousFat = "subcutaneous fat (%)"
+    static let protein = "protein (%)"
+    static let skeletalMuscles = "skeletal muscles (%)"
     static let basalMetabolicRate = "basal metabolic rate (kcal)"
     static let metabolicAge = "metabolic age (yrs)"
 }
@@ -222,6 +226,15 @@ struct AlertStrings {
         static let message = "You have unsaved changes. Are you sure you want to exit?"
         static let exitButton = "Exit"
         static let returnButton = "Return"
+    }
+    
+    struct ForgotPasswordAlert {
+        static let title = "Forgot your Password?"
+        static let message: (String) -> String = { email in
+            return "Send a password reset link to \(email)"
+        }
+        static let send = "send"
+        static let cancel = "Cancel"
     }
 }
 
@@ -297,5 +310,6 @@ struct AppAssets {
     static let bmrIcon = "bmr"
     static let ageIcon = "metabolicAge"
     static let emptyStateIcon = "emptyStateIcon"
+    static let checkMarkCircle = "checkMarkCircle"
 }
 

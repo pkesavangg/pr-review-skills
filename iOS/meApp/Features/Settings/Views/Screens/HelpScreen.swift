@@ -1,9 +1,7 @@
 //  HelpScreen.swift
 //  meApp
 //
-//  Created by MeAuto on 24/06/25.
-//
-//  Mirrors EditProfile / ChangePassword structure but shows support information and the Scale manual picker.
+//  Created by Kesavan Panchabakesan on 24/06/25.
 
 import SwiftUI
 
@@ -14,7 +12,8 @@ struct HelpScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     
     private let lang = HelpScreenStrings.self
-    
+    private let commonLang = CommonStrings.self
+    private var appVersion: String { "\(AppInfo.appVersion)" }
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -33,9 +32,11 @@ struct HelpScreen: View {
                     talkToTeamSection()
                         .padding(.horizontal, .spacingSM)
                     digitalManualSection()
+                    Text("\(commonLang.appVersion) \(appVersion)")
+                        .foregroundColor(theme.textBody)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .padding(.vertical, .spacingLG)
-                .padding(.bottom, .spacingXL)
+                .padding(.top, .spacingLG)
             }
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
@@ -47,9 +48,8 @@ struct HelpScreen: View {
         // Debug menu sheet uses store's flag
         .sheet(isPresented: $helpStore.showDebugMenu,
                onDismiss: { helpStore.dismissDebugMenu() }) {
-            // TODO: Need to uncomment after created a DebugScreen
-            // DebugMenuScreen()
-            //  .environmentObject(helpStore)
+            TroubleShootingView()
+                .environmentObject(helpStore)
         }
     }
     
@@ -83,11 +83,10 @@ struct HelpScreen: View {
             }
             .padding(.horizontal, .spacingSM)
             // Scale list with segmented filter
-            // TODO: Uncomment when scales are available
-            // ScaleListSegmentedView() { scale in
-            //     helpStore.openProductManual(sku: scale.sku)
-            // }
-            // .padding(.top, .spacingSM)
+            ScaleManualListView() { scale in
+                helpStore.openProductManual(sku: scale.sku)
+            }
+            .padding(.top, .spacingSM)
         }
     }
 }

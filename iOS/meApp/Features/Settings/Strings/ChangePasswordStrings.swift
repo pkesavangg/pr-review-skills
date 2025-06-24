@@ -11,4 +11,5 @@ import Foundation
 struct ChangePasswordStrings {
     /// Navigation bar title.
     static let title = "Change Password"
-} 
+    static let forgotPassword = "Forgot Password?"
+}

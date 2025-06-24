@@ -9,6 +9,6 @@ import Foundation
 
 /// Static strings used exclusively within the Edit-Profile screen.
 struct EditProfileStrings {
-    /// Navigation bar title – "My Profile" in designs.
-    static let title = "My Profile"
-} 
+    /// Navigation bar title – "User Profile" in designs.
+    static let title = "User Profile"
+}
