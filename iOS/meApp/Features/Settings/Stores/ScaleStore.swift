@@ -37,6 +37,7 @@ class ScaleStore: ObservableObject {
     
     func resetForm() {
         addScaleForm = AddScaleForm()
+        cancellables.removeAll()
         wireForm()
     }
     

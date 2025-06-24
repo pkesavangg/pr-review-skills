@@ -11,16 +11,14 @@ import Combine
 class AddScaleForm: ObservableObject {
     @Published var modelNumber = "" {
         didSet {
-            // Only numeric, max 4 chars
             let filtered = modelNumber.filter { $0.isNumber }
+            guard filtered.count > 4 || filtered != modelNumber else { return }
             if filtered.count > 4 {
                 modelNumber = String(filtered.prefix(4))
-            } else if filtered != modelNumber {
+            } else {
                 modelNumber = filtered
             }
-            if !isDirty {
-                isDirty = true
-            }
+            isDirty = true
         }
     }
     @Published var isDirty = false
@@ -53,8 +51,6 @@ class AddScaleForm: ObservableObject {
         if truncated != modelNumber {
             modelNumber = truncated
         }
-        if !isDirty {
-            isDirty = true
-        }
+        isDirty = true
     }
 }
