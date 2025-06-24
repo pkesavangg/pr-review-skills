@@ -32,7 +32,7 @@ class AddScaleForm: ObservableObject {
         switch field {
         case .modelNumber:
             if modelNumber.isEmpty || modelNumber.count < 4 {
-                return "Model Number Invalid"
+                return FormErrorMessages.modelNumberInvalid
             }
         default:
             break
