@@ -37,6 +37,7 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
                 )
                 .presentationDetents([.height(280)])
                 .presentationDragIndicator(.hidden)
+                .presentationCornerRadius(.radiusSM)
                 .modifier(InteractiveDismissModifier(disabled: !allowTapOutside))
             }
     }

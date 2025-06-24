@@ -53,11 +53,9 @@ struct ActionListItemView: View {
         case .right:
             AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconPrimary)
-            
         case .upDown:
-            AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 10, height: 16))
+            AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconSecondary)
-                .padding(.trailing, 6)
         case .none:
             EmptyView()
         }
