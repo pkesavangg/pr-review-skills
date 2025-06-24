@@ -159,14 +159,14 @@ extension View {
     ///   - leading: Leading inset (default is .spacingSM).
     ///   - trailing: Trailing inset (default is .spacingSM).
     /// - Returns: A view with modified row insets suitable for settings.
-    func settingsRowInsets(
+    func listRowInsets(
         top: CGFloat = 11,
         bottom: CGFloat = 11,
         leading: CGFloat = .spacingSM,
         trailing: CGFloat = .spacingSM
     ) -> some View {
         self.modifier(
-            SettingsRowInsetModifier(
+            ListRowInsetModifier(
                 top: top,
                 bottom: bottom,
                 leading: leading,

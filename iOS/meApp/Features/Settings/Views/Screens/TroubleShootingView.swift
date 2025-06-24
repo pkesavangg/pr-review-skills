@@ -78,13 +78,13 @@ struct TroubleShootingView: View {
     private func appTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.appTroubleshooting)) {
             ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, onTap: { helpStore.sendWeightGurusLog() }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, onTap: { helpStore.resyncEntries() }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, onTap: { helpStore.clearAllLocalData() }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: lang.showAppRateModal, onTap: { helpStore.showAppRateModal() }))
-                .settingsRowInsets()
+                .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -93,7 +93,7 @@ struct TroubleShootingView: View {
     private func scaleTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.scaleTroubleshooting)) {
             ActionListItemView(config: ActionListItemConfig(title: lang.sendScaleLog, chevronType: .right, onTap: { helpStore.sendScaleLog() }))
-                .settingsRowInsets()
+                .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)

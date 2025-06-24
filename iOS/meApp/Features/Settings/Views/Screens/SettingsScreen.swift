@@ -171,25 +171,25 @@ struct SettingsScreen: View {
     private func accountSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.accountSettings)) {
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
                 settingsStore.handleExport()
             }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword,
                                                        onTap: {
                                                            tabViewModel.showTabBar = false
                                                            router.navigate(to: .changePassword)
                                                        }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.userProfile,
                                                        onTap: {
                                                            tabViewModel.showTabBar = false
                                                            router.navigate(to: .editProfile)
                                                        }))
-                .settingsRowInsets()
+                .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -203,23 +203,23 @@ struct SettingsScreen: View {
                     tabViewModel.showTabBar = false
                     router.navigate(to: .goal)
                 }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
                 chevronType: .upDown,
                 onTap: { showGenderPicker = true }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown,
                 onTap: { showActivityPicker = true }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.height, value: settingsStore.heightText, chevronType: .upDown, onTap: {
                 settingsStore.showHeightPicker()
             }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.unitType,
                 value: settingsStore.unitTypeText,
@@ -227,7 +227,7 @@ struct SettingsScreen: View {
                 onTap: {
                     showUnitPicker = true
                 }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText,
@@ -235,7 +235,7 @@ struct SettingsScreen: View {
                     tabViewModel.showTabBar = false
                     router.navigate(to: .weightless)
                 }))
-                .settingsRowInsets()
+                .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -248,9 +248,9 @@ struct SettingsScreen: View {
                 value: settingsStore.notificationsOnText,
                 chevronType: .upDown,
                 onTap: { showNotificationPicker = true }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.messages, showDot: settingsStore.hasUnreadMessages))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.streaks,
                 chevronType: .none, 
@@ -258,18 +258,18 @@ struct SettingsScreen: View {
                 onTap: { 
                     settingsStore.updateStreakStatus(settingsStore.streaksEnabled)
                 }))
-                .settingsRowInsets(top: 0, bottom: 0)
+                .listRowInsets(top: 0, bottom: 0)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown,
                 onTap: { showAppearancePicker = true }))
-                .settingsRowInsets()
+                .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
                 tabViewModel.showTabBar = false
                 router.navigate(to: .appPermissions)
             }))
-                .settingsRowInsets()
+                .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -286,7 +286,7 @@ struct SettingsScreen: View {
                     router.navigate(to: .help)
                 }
             ))
-            .settingsRowInsets()
+            .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.privacyPolicy,
@@ -294,7 +294,7 @@ struct SettingsScreen: View {
                     settingsStore.openPrivacy()
                 }
             ))
-            .settingsRowInsets()
+            .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.termsOfService,
@@ -302,7 +302,7 @@ struct SettingsScreen: View {
                     settingsStore.openTerms()
                 }
             ))
-            .settingsRowInsets()
+            .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.greaterGoodsWebsite,
@@ -310,7 +310,7 @@ struct SettingsScreen: View {
                     settingsStore.openGreaterGoods()
                 }
             ))
-            .settingsRowInsets()
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -325,7 +325,7 @@ struct SettingsScreen: View {
                     settingsStore.handleLogout()
                 }
             ))
-            .settingsRowInsets()
+            .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.deleteAccount.uppercased(),
@@ -335,7 +335,7 @@ struct SettingsScreen: View {
                     settingsStore.handleDeleteAccount()
                 }
             ))
-            .settingsRowInsets()
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)

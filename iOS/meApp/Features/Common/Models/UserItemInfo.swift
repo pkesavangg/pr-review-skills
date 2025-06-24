@@ -10,8 +10,11 @@ import SwiftUI
 /// Immutable data model representing a single account row in the account-switching list.
 /// `Identifiable` & `Hashable` so it can be used directly in `ForEach` & stored in collections.
 struct UserItemInfo: Identifiable, Hashable {
-    /// Unique identifier for diffing in lists.
-    let id: UUID = .init()
+    /// Unique identifier for the account.
+    var id = UUID()
+    
+    /// account id for the user
+    var accountID: String
 
     /// Display name of the account holder.
     let name: String
@@ -23,7 +26,7 @@ struct UserItemInfo: Identifiable, Hashable {
     var isSelected: Bool = false
 
     /// `true` when the row should appear disabled & not react to taps.
-    var isDisabled: Bool = false
+    var isExpired: Bool = false
 
     /// If `false`, the right-hand side selection indicator (circle / checkmark) is hidden.
     var canShowSelection: Bool = true

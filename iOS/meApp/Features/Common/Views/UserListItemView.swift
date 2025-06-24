@@ -10,57 +10,65 @@ import SwiftUI
 /// Shows an initial icon, name, e-mail and an optional selection indicator.
 struct UserListItemView: View {
     @Environment(\.appTheme) private var theme
-    
-    let item: UserItemInfo
+
+    let user: UserItemInfo
     var iconSize: CGFloat = 32
-    var onTap: ((Bool) -> Void)
-    
-    // MARK: - Body
+    var onTap: ((String, Bool) -> Void)
+    var onDelete: ((String) -> Void)? = nil // optional deletion trigger
+
     var body: some View {
         Button {
-            onTap(item.isDisabled)
+            onTap(user.accountID, user.isExpired)
         } label: {
             rowContent
         }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if !user.isSelected, !user.isExpired, let onDelete = onDelete {
+                Button(role: .cancel) {
+                    onDelete(user.accountID)
+                } label: {
+                    AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
+                        .foregroundColor(theme.backgroundPrimary)
+                }
+                .tint(theme.textError) // Set the background of the swipe action to black
+            }
+        }
     }
     
-    // MARK: - Row Content
     private var rowContent: some View {
         HStack(spacing: .spacingSM) {
             Color.clear
                 .frame(width: iconSize, height: iconSize)
                 .background {
-                    let firstInitial = item.name.first?.uppercased() ?? ""
+                    let firstInitial = user.name.first?.uppercased() ?? ""
                     InitialIconView(
                         character: firstInitial,
                         textColor: theme.backgroundPrimary,
                         backgroundColor: theme.statusIconPrimary,
                         size: iconSize,
-                        style: item.isSelected ? .fill : .outline
+                        style: user.isSelected ? .fill : .outline
                     )
                 }
-                .opacity(item.isDisabled ? 0.4 : 1) // TODO: Need UX for the disabled state
-            
+                .opacity(user.isExpired ? 0.4 : 1)
+
             VStack(alignment: .leading, spacing: 0) {
-                Text(item.name)
+                Text(user.name)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
-                Text(item.email)
+                Text(user.email)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
             }
-            .opacity(item.isDisabled ? 0.4 : 1) // TODO: Need UX for the disabled state
-            
+            .opacity(user.isExpired ? 0.4 : 1)
+
             Spacer()
-            if item.isDisabled {
+            if user.isExpired {
                 ButtonView(text: CommonStrings.logIn, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                    onTap(true)
+                    onTap(user.accountID, user.isExpired)
                 }
-            } else {
-                if item.canShowSelection && !item.isDisabled {
-                    AppIconView(icon: item.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline, size: IconSize(width: 24, height: 24))
-                        .foregroundColor(theme.statusIconPrimary)
-                }
+            } else if user.canShowSelection {
+                AppIconView(icon: user.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline, size: IconSize(width: 24, height: 24))
+                    .foregroundColor(theme.statusIconPrimary)
             }
         }
         .padding(.spacingSM)
@@ -69,36 +77,52 @@ struct UserListItemView: View {
     }
 }
 
+
+// Testing Purpose View
 struct AccountListView: View {
     @Environment(\.appTheme) private var theme
+    @State private var accounts: [UserItemInfo] = [
+        .init(accountID: "abc", name: "Kristin", email: "kristin@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
+        .init(accountID: "123",name: "William", email: "william@gmail.com", isSelected: true, isExpired: false, canShowSelection: true),
+        .init(accountID: "xyz",name: "Jacob", email: "jacob@gmail.com", isSelected: false, isExpired: true, canShowSelection: true)
+    ]
+
+    @State private var showDeleteAlert = false
+    @State private var userToDelete: UserItemInfo?
+
     var body: some View {
         List {
-            UserListItemView(
-                item: .init(name: "Kristin", email: "kristin@gmail.com", isSelected: false, isDisabled: false, canShowSelection: true)
-            ) { isFromLogin in
-                print("Kristin tapped", isFromLogin)
+            ForEach(accounts) { account in
+                UserListItemView(
+                    user: account,
+                    onTap: { _, isFromLogin in
+                        print("\(account.name) tapped", isFromLogin)
+                    },
+                    onDelete: { _ in
+                        userToDelete = account
+                        showDeleteAlert = true
+                    }
+                )
+                .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
             }
-            .settingsRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
-            UserListItemView(
-                item: .init(name: "William", email: "william@gmail.com", isSelected: true, isDisabled: false, canShowSelection: true)
-            ){ isFromLogin in
-                print("william@gmail.com", isFromLogin)
-            }
-            .settingsRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
-            UserListItemView(
-                item: .init(name: "Jacob", email: "jacob@gmail.com", isSelected: false, isDisabled: true, canShowSelection: true)
-            ) { isFromLogin in
-                print("Kristin tapped", isFromLogin)
-            }
-            .settingsRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
         }
         .listStyle(.insetGrouped)
+        .alert("Delete Account", isPresented: $showDeleteAlert, presenting: userToDelete) { item in
+            Button("Delete", role: .destructive) {
+                if let index = accounts.firstIndex(where: { $0.id == item.id }) {
+                    accounts.remove(at: index)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { item in
+            Text("Are you sure you want to delete the account for \(item.email)?")
+        }
     }
 }
+
 
 // MARK: - Preview
 #Preview {
     AccountListView()
-        .themeable()
         .environmentObject(Theme.shared)
 }

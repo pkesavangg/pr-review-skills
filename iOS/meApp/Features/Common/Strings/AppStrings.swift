@@ -169,26 +169,26 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
-
+    
     struct ResetPasswordAlert {
         static let passwordResetTitle = "Password Reset"
         static let enterEmailMessage = "Enter your email below."
     }
-
+    
     struct ManualEntryExitAlert {
         static let title = "Your entry has not been saved!"
         static let message = "Are you sure you want to exit?"
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
-
+    
     struct LogoutAlert {
         static let title = "Log Out"
         static let message = "Are you sure you want to log out?"
         static let logoutButton = "Log Out"
         static let cancelButton = "Cancel"
     }
-
+    
     struct DeleteAccountAlert {
         static let title = "Delete Your Account"
         static let message = "Are you sure you want to delete your account? This action cannot be undone."
@@ -313,5 +313,6 @@ struct AppAssets {
     static let circleOutline = "circleOutline"
     static let circleCheckFilled = "circleCheckFilled"
     static let wifi = "wifi"
+    static let trash = "trash"
 }
 
