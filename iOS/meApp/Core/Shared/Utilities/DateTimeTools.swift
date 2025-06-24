@@ -278,4 +278,24 @@ final class DateTimeTools {
     static func getUTCOffset() -> Int {
         TimeZone.current.secondsFromGMT() / 60
     }
+
+    // MARK: - Debug/Display Helpers
+    /// Returns the current day and time formatted like "Jun 23, 9:20pm".
+    /// Uses user's current locale but forces US_POSIX for predictable AM/PM replacement.
+    static func getCurrentDayTimeShort() -> String {
+        let date = Date()
+        let df = formatter("MMM d, h:mma")
+        var str = df.string(from: date)
+        // Lower-case AM/PM only (keep month capitalised)
+        str = str.replacingOccurrences(of: "AM", with: "am").replacingOccurrences(of: "PM", with: "pm")
+        return str
+    }
+
+    /// Returns the current timezone string like "330 min\nAsia/Calcutta" (offset first, then identifier).
+    /// - Parameter newlineSeparator: When true (default) places a line break between offset and identifier.
+    static func getTimezoneOffsetString(newlineSeparator: Bool = true) -> String {
+        let minutes = TimeZone.current.secondsFromGMT() / 60
+        let separator = newlineSeparator ? "\n" : " "
+        return "\(minutes) min\(separator)\(TimeZone.current.identifier)"
+    }
 }

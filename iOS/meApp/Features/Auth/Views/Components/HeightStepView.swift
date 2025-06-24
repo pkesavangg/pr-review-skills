@@ -47,6 +47,7 @@ struct HeightStepView: View {
                 options: signupStore.heightInchesOptions,
                 displayValue: { $0 },
                 pickerType: .heightInches,
+                title: heightStepLang.pickerHeader,
                 onUpdate: { newValues in
                     signupStore.updateFormHeight(fromMetric: false, values: newValues)
                 }
@@ -57,6 +58,7 @@ struct HeightStepView: View {
                 options: signupStore.heightCmOptions,
                 displayValue: { $0 },
                 pickerType: .heightCm,
+                title: heightStepLang.pickerHeader,
                 onUpdate: { newValues in
                     signupStore.updateFormHeight(fromMetric: true, values: newValues)
                 }

@@ -9,14 +9,19 @@ import SwiftUI
 // MARK: - Settings Row Inset Modifier
 /// A view modifier that applies custom insets to a settings row.
 struct SettingsRowInsetModifier: ViewModifier {
+    let top: CGFloat
+    let bottom: CGFloat
+    let leading: CGFloat
+    let trailing: CGFloat
+
     func body(content: Content) -> some View {
         content
             .listRowInsets(
                 EdgeInsets(
-                    top: 11,
-                    leading: .spacingSM,
-                    bottom: 11,
-                    trailing: .spacingSM
+                    top: top,
+                    leading: leading,
+                    bottom: bottom,
+                    trailing: trailing
                 )
             )
     }
