@@ -30,11 +30,12 @@ import com.greatergoods.meapp.theme.MeTheme
 @Composable
 fun AppUserList(
     accounts: List<Account>,
+    modifier: Modifier = Modifier,
+    showAccountActivity: Boolean = false,
     onDeleteRequest: (Account) -> Unit,
     onAccountSelect: (Account) -> Unit,
     onLoginRequest: (Account) -> Unit,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(vertical = MeTheme.spacing.md),
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     val draggableListState = rememberAppDraggableListState()
 
@@ -76,6 +77,7 @@ fun AppUserList(
                     onLoginRequest = { onLoginRequest(item) },
                     avatarAlpha = 1f - progress,
                     shape = shape,
+                    showAccountActivity = showAccountActivity
                 )
                 if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
                     HorizontalDivider(

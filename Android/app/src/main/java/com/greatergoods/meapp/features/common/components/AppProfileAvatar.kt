@@ -41,14 +41,14 @@ fun AppProfileAvatar(
         else -> Color.Transparent
     }
     val textColor = when {
-        !enabled -> MeTheme.colorScheme.iconPrimaryDisabled
-        isActive -> Color.White
+        !enabled -> MeTheme.colorScheme.primaryActionDisabled
+        isActive -> MeTheme.colorScheme.inverseAction
         else -> MeTheme.colorScheme.primaryAction
     }
-    val borderModifier =  when {
+    val borderModifier = when {
         !isActive && enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
         !isActive && !enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimaryDisabled, CircleShape)
-        else ->Modifier
+        else -> Modifier
     }
 
     Box(

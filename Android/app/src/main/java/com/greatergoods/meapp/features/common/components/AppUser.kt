@@ -45,6 +45,7 @@ fun AppUser(
     modifier: Modifier = Modifier,
     avatarAlpha: Float = 1f,
     shape: Shape = RectangleShape,
+    showAccountActivity: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -71,16 +72,16 @@ fun AppUser(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "${account.firstName} ${account.lastName}",
-                style = typography.body1.copy(
+                style = typography.body2.copy(
                     color = colorScheme.textHeading,
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.height(spacing.x2s))
+            Spacer(modifier = Modifier.height(spacing.x3s))
             Text(
                 text = account.email,
-                style = typography.body2.copy(
+                style = typography.subHeading2.copy(
                     color = colorScheme.textSubheading,
                 ),
                 maxLines = 1,
@@ -88,23 +89,24 @@ fun AppUser(
             )
         }
 
-        if (account.isLoggedIn) {
-            AppIcon(
-                id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-                contentDescription = "Select account",
-                onClick = onAccountSelect,
-                type = AppIconType.Primary,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        if (!account.isLoggedIn) {
-            AppButton(
-                label = AppUserStrings.LogInButton,
-                onClick = onLoginRequest,
-                type = ButtonType.TextPrimary,
-                size = ButtonSize.Small,
-                textTransform = TextTransform.NONE
-            )
+        if (showAccountActivity) {
+            if (account.isLoggedIn) {
+                AppIcon(
+                    id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
+                    contentDescription = "Select account",
+                    onClick = onAccountSelect,
+                    type = AppIconType.Primary,
+                    modifier = Modifier.size(24.dp),
+                )
+            } else {
+                AppButton(
+                    label = AppUserStrings.LogInButton,
+                    onClick = onLoginRequest,
+                    type = ButtonType.TextPrimary,
+                    size = ButtonSize.Small,
+                    textTransform = TextTransform.NONE
+                )
+            }
         }
     }
 }
