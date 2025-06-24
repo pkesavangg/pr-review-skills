@@ -11,7 +11,8 @@ import SwiftUI
 struct ScaleManualListRowView: View {
     let scale: ScaleItemInfo
     @Environment(\.appTheme) private var theme
-
+    let rowHeight: CGFloat = 139
+    
     var body: some View {
         HStack(spacing: .spacingSM) {
             // Image placeholder
@@ -50,7 +51,7 @@ struct ScaleManualListRowView: View {
         }
         .padding(.vertical, .spacingSM)
         .padding(.horizontal, .spacingSM)
-        .frame(height: 139)
+        .frame(height: rowHeight)
         .border(sides: [.bottom], thickness: 0.5)
     }
 
