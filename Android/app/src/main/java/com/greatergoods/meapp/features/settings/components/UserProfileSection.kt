@@ -56,6 +56,7 @@ fun UserProfileSectionPreview() {
                 dob = "1990-01-01",
                 email = "john.mckinley@examplepetstore.com",
                 gender = "m",
+                zipcode = "12345"
             ),
         ) { }
     }

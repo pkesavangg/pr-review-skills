@@ -22,7 +22,6 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppInput
@@ -57,10 +56,9 @@ import java.time.ZoneId
 fun ProfileScreen() {
     val viewModel: ProfileViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
-    val backStack = LocalNavBackStack.current
 
     ProfileContent(state, viewModel::handleIntent) {
-        backStack.removeLast()
+        viewModel.handleIntent(ProfileIntent.OnRequestBack)
     }
 }
 
@@ -82,7 +80,9 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
             AppIconButton(AppIcons.Default.Close) { onBack() }
         },
         actions = {
-            AppButton(ProfileStrings.SaveButton, type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {}
+            AppButton(ProfileStrings.SaveButton, enabled = state.form.isValid && state.form.isDirty, type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {
+                handleIntent.invoke(ProfileIntent.Submit)
+            }
         },
         borderColor = colorScheme.utility,
         containerColor = colorScheme.secondaryBackground,

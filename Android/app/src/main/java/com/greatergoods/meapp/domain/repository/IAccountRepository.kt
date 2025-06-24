@@ -4,6 +4,7 @@ import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import kotlinx.coroutines.flow.Flow
 import retrofit2.Response
@@ -50,12 +51,18 @@ interface IAccountRepository {
     suspend fun resetPasswordInAPI(email: String): Response<Unit>
 
     /**
+     * Updates profile via API and returns AccountResponse
+     */
+    suspend fun updateProfileInAPI(profileData: ProfileUpdateRequest): AccountResponse
+
+    /**
      * Refreshes the token via API and returns a Token.
      */
     suspend fun refreshTokenInAPI(refreshToken: String): Token
 
     // DB Operations
     suspend fun addAccountInDB(account: Account): Account
+    suspend fun updateAccountInDB(account: Account): Account
     suspend fun logoutInDb(accountId: String)
     suspend fun removeAccountInDB(accountId: String)
     suspend fun removeAllAccountsInDB()

@@ -11,7 +11,7 @@ object ProfileStrings {
     const val ZipcodeLabel = "ZIPCODE"
     const val BirthdayLabel = "BIRTHDAY"
     const val SaveButton = "SAVE"
-    const val LoaderMessage = "Updating profile..."
+    const val LoaderMessage = "Saving..."
 
     object Error {
         const val Header = "Profile Update Error"
@@ -23,5 +23,12 @@ object ProfileStrings {
     object Success {
         const val Header = "Profile Updated"
         const val Message = "Your profile has been updated successfully."
+    }
+
+    object ExitDialog {
+        const val Title = "Confirm"
+        const val Message = "You have unsaved changes. Are you sure you want to exit?"
+        const val ConfirmText = "EXIT"
+        const val CancelText = "RETURN"
     }
 }

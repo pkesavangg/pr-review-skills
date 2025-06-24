@@ -9,6 +9,12 @@ object ToastStrings {
                 "An email with a link to reset your password has been sent to $email." +
                     " The link will be valid for the next 10 minutes."
         }
+
+        object UpdateProfileSuccess {
+            const val Header = "Success!"
+            const val Message = "Your profile saved successfully"
+
+        }
     }
 
     object Error {
@@ -26,6 +32,16 @@ object ToastStrings {
             const val Header = "Password Reset Error"
             const val Message = "Something went wrong. Please try again. " +
                 "If the problem continues, contact customer service."
+        }
+
+        object UpdateProfileError {
+            const val Header = "Profile Update Error"
+            const val MessageGeneric = "Something went wrong. Please try again. " +
+                "If the problem continues, contact customer service."
+            const val MessageNotAuth = "Your session has expired. Please log in again."
+            const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
+            const val MessageServError = "Unable to reach the Greater Goods servers. The issue is probably on our end. " +
+                "Try again later, but if the problem continues, contact customer service."
         }
     }
 }

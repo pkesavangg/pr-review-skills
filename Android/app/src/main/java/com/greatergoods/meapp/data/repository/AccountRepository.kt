@@ -6,6 +6,7 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
@@ -13,6 +14,7 @@ import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
@@ -52,7 +54,7 @@ class AccountRepository @Inject constructor(
      * Signs up via API and returns LoginResponse.
      */
     override suspend fun signupInAPI(request: CreateAccountRequest): LoginResponse {
-        return userAPI.createAccount(request)
+        return authAPI.createAccount(request)
     }
 
     /**
@@ -91,6 +93,13 @@ class AccountRepository @Inject constructor(
         return authAPI.requestPasswordReset(PasswordResetRequest(email))
     }
 
+    /**
+     * Updates profile via API and returns AccountResponse.
+     */
+    override suspend fun updateProfileInAPI(profileData: ProfileUpdateRequest): AccountResponse {
+        return userAPI.updateProfile(profileData)
+    }
+
     // DB Operations
     /**
      * Adds an account to the database and returns the domain model.
@@ -98,6 +107,15 @@ class AccountRepository @Inject constructor(
     override suspend fun addAccountInDB(account: com.greatergoods.meapp.domain.model.Account): com.greatergoods.meapp.domain.model.Account {
         val accountEntity = AccountEntityMapper.toEntity(account)
         accountDao.insertAccount(accountEntity)
+        return account
+    }
+
+    /**
+     * Updates an account in the database and returns the updated domain model.
+     */
+    override suspend fun updateAccountInDB(account: Account): Account {
+        val accountEntity = AccountEntityMapper.toEntity(account)
+        accountDao.updateAccount(accountEntity)
         return account
     }
 
@@ -185,7 +203,7 @@ class AccountRepository @Inject constructor(
 
     private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): com.greatergoods.meapp.domain.model.Account {
         val entity = this.account
-        return com.greatergoods.meapp.domain.model.Account(
+        return Account(
             id = entity.id,
             firstName = entity.firstName,
             lastName = entity.lastName,
@@ -199,7 +217,7 @@ class AccountRepository @Inject constructor(
             isExpired = entity.isExpired,
             isSynced = entity.isSynced,
             lastActiveTime = entity.lastActiveTime,
-            zipcode = entity.zipcode,
+            zipcode = entity.zipcode ?: "",
         )
     }
 

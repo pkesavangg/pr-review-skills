@@ -34,6 +34,7 @@ class AppViewModel @Inject constructor(
 ) {
     companion object {
         private const val TAG = "AppLoaderView"
+        private var currentAccountId : String? = null
     }
 
     override fun provideInitialState(): AppState {
@@ -55,17 +56,20 @@ class AppViewModel @Inject constructor(
     private fun initLogic() {
         viewModelScope.launch {
             accountAuthService.activeAccountFlow.collectLatest { account ->
-                if (account != null) {
-                    initLoadingData(account.id)
-                } else {
-                    navigationService.replaceStack(
-                        route =
-                            if (accountAuthService.checkForLoggedInUser()) {
-                                AppRoute.Auth.UserList
-                            } else {
-                                AppRoute.Auth.Landing
-                            },
-                    )
+                if(account?.id != currentAccountId) {
+                    currentAccountId = account?.id
+                    if (account != null) {
+                        initLoadingData(account.id)
+                    } else {
+                        navigationService.replaceStack(
+                            route =
+                                if (accountAuthService.checkForLoggedInUser()) {
+                                    AppRoute.Auth.UserList
+                                } else {
+                                    AppRoute.Auth.Landing
+                                },
+                        )
+                    }
                 }
             }
         }

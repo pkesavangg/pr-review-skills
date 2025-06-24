@@ -197,6 +197,30 @@ sealed class DateTimeValue {
             } catch (e: Exception) {
                 ""
             }
+
+        /**
+         * Converts an ISO 8601 date-time string to epoch milliseconds.
+         * @param isoString The date-time string in "YYYY-MM-DDTHH:mm:ss.SSSZ" format.
+         * @return The epoch milliseconds, or current time if parsing fails.
+         */
+        fun getEpochMillisFromIsoString(isoString: String): Long =
+            try {
+                Instant.parse(isoString).toEpochMilli()
+            } catch (e: Exception) {
+                System.currentTimeMillis()
+            }
+
+        /**
+         * Formats a timestamp (milliseconds) to an ISO 8601 date-time string for API requests.
+         * @param timestampMillis The timestamp in milliseconds.
+         * @return The formatted date string in "YYYY-MM-DDTHH:mm:ss.SSSZ" format.
+         */
+        fun getIsoFormatFromMilliseconds(timestampMillis: Long): String =
+            try {
+                Instant.ofEpochMilli(timestampMillis).toString()
+            } catch (e: Exception) {
+                ""
+            }
     }
 }
 

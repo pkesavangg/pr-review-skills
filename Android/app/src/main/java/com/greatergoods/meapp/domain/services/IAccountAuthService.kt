@@ -28,6 +28,7 @@ interface IAccountAuthService {
     suspend fun checkForLoggedInUser(): Boolean
 
     suspend fun resetPassword(email: String)
+    suspend fun updateProfile(profileData: Map<String, Any>): Account?
 }
 
 /**
@@ -40,6 +41,7 @@ sealed class AuthState {
     data class AccountRemoved(val accountId: String) : AuthState()
     data class AccountSwitched(val account: Account) : AuthState()
     data class SessionRefreshed(val account: Account) : AuthState()
+    data class ProfileUpdated(val account: Account) : AuthState()
     object TokensUpdated : AuthState()
     data class Error(val message: String) : AuthState()
 }

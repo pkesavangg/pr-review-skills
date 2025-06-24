@@ -7,12 +7,15 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
@@ -427,6 +430,63 @@ constructor(
         }
     }
 
+        /**
+     * Updates the user's profile information.
+     * @param profileData Map containing the profile data to update
+     * @return The updated account or null if update fails
+     */
+    override suspend fun updateProfile(profileData: Map<String, Any>): Account? {
+        return try {
+            // Get current account from flow (reactive approach like Angular observables)
+            val currentAccount = activeAccountFlow.first()
+            if (currentAccount == null) {
+                _authStateFlow.emit(AuthState.Error("No active account found"))
+                return null
+            }
+
+            val profileUpdateRequest = ProfileUpdateRequest(
+                id = currentAccount.id,
+                firstName = profileData["firstName"] as String,
+                lastName = profileData["lastName"] as String,
+                email = profileData["email"] as String,
+                zipcode = profileData["zipcode"] as String,
+                gender = currentAccount.gender,
+                dob = DateTimeValue.getDateFormatFromMilliseconds(profileData["birthday"] as Long)
+            )
+
+            // Call API to update profile
+            val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
+            val updatedAccountInfo: AccountInfo = response.account
+            val updatedAccount = currentAccount.copy(
+                firstName = updatedAccountInfo.firstName,
+                lastName = updatedAccountInfo.lastName,
+                dob = updatedAccountInfo.dob,
+                gender = updatedAccountInfo.gender,
+                zipcode = updatedAccountInfo.zipcode,
+                // Update other fields if they exist in AccountInfo
+                email = updatedAccountInfo.email,
+                // Keep existing values for fields not in AccountInfo
+                isActiveAccount = currentAccount.isActiveAccount,
+                isLoggedIn = currentAccount.isLoggedIn,
+                isExpired = currentAccount.isExpired,
+                isSynced = true, // Mark as synced since we just updated via API
+                lastActiveTime = currentAccount.lastActiveTime,
+                expiresAt = currentAccount.expiresAt,
+                fcmToken = currentAccount.fcmToken
+            )
+            val savedAccount = accountRepository.updateAccountInDB(updatedAccount)
+            AppLog.d(TAG, "Profile updated successfully for account: ${savedAccount.id}")
+            _authStateFlow.emit(AuthState.ProfileUpdated(savedAccount))
+            showSuccessToast(AuthAction.UPDATE_PROFILE)
+            savedAccount
+        } catch (e: HttpException) {
+            showErrorToast(AuthAction.UPDATE_PROFILE, e)
+            AppLog.e(TAG, "Profile update failed", e.toString())
+            _authStateFlow.emit(AuthState.Error(e.message ?: "Profile update failed"))
+            null
+        }
+    }
+
     /**
      * Checks if network is available using the connectivity observer
      */
@@ -435,6 +495,9 @@ constructor(
         val (title, message) = when (action) {
             AuthAction.RESET_PASSWORD -> ToastStrings.Success.ResetPasswordSuccess.Header to
                 ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
+
+            AuthAction.UPDATE_PROFILE -> ToastStrings.Success.UpdateProfileSuccess.Header to
+                ToastStrings.Success.UpdateProfileSuccess.Message
 
             else -> "" to ""
         }
@@ -469,6 +532,24 @@ constructor(
 
             AuthAction.RESET_PASSWORD -> ToastStrings.Error.ResetPasswordError.Header to
                 ToastStrings.Error.ResetPasswordError.Message
+
+            AuthAction.UPDATE_PROFILE -> {
+                val header = ToastStrings.Error.UpdateProfileError.Header
+                val message = when (error?.code()) {
+                    HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                        ToastStrings.Error.UpdateProfileError.MessageNoConn
+
+                    HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                        ToastStrings.Error.UpdateProfileError.MessageServError
+
+                    HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                        ToastStrings.Error.UpdateProfileError.MessageNotAuth
+
+                    else ->
+                        ToastStrings.Error.UpdateProfileError.MessageGeneric
+                }
+                header to message
+            }
 
             else -> "" to ""
         }

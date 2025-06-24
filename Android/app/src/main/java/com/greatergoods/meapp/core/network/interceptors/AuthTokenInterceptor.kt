@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
+
 // This interceptor adds an Authorization header to every outgoing HTTP request
 class AuthTokenInterceptor @Inject constructor(
     private val tokenManager: ITokenManager
@@ -26,10 +27,6 @@ class AuthTokenInterceptor @Inject constructor(
         // Get the current access token
         val accessToken = runBlocking(Dispatchers.IO) {
             tokenManager.getAccessToken()
-        }
-
-        if (accessToken.isNullOrEmpty()) {
-            return chain.proceed(request)
         }
 
         // Build a new request with the Authorization header

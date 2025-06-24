@@ -48,7 +48,7 @@ interface IAuthAPI {
     @POST(ACCOUNT)
     suspend fun createAccount(
         @Body request: CreateAccountRequest
-    ): Map<String, Any>
+    ): LoginResponse
 
     @GET(ACCOUNT)
     suspend fun getAccount(
