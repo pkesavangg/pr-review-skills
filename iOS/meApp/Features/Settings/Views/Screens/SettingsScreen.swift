@@ -282,6 +282,7 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.helpAndCustomerService,
                 onTap: {
+                    tabViewModel.showTabBar = false
                     router.navigate(to: .help)
                 }
             ))
