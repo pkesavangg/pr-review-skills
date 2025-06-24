@@ -115,6 +115,7 @@ struct FormErrorMessages {
     static let maxValue = {(value: Int) in "value should be less than \(value)"}
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
+    static let modelNumberInvalid = "Model Number Invalid"
 }
 
 /// Constants for input field labels used in the app
