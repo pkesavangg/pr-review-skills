@@ -13,6 +13,7 @@ import SwiftData
 @MainActor
 final class ScaleService: ScaleServiceProtocol {
     static let shared = ScaleService()
+    private let tag = "ScaleService"
     
     @MainActor
     private lazy var remoteRepo: ScaleAPIRepository = {
@@ -60,7 +61,7 @@ final class ScaleService: ScaleServiceProtocol {
         do {
             accountId = try await getAccountId()
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to get account ID for sync: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
             return
         }
         
@@ -69,135 +70,87 @@ final class ScaleService: ScaleServiceProtocol {
         do {
             unsynced = try await localRepository.getUnsyncedDevices()
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to fetch unsynced devices: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to fetch unsynced devices: \(error.localizedDescription)")
             return
         }
         
-        // Process each unsynced device
-            for device in unsynced {
-                let dto = device.toDTO()
+        for device in unsynced {
+            let dto = device.toDTO()
+            do {
+                let properties: [String: Any] = [
+                    "nickname": dto.nickname as Any, "name": dto.name as Any, "type": dto.type as Any, "isDeleted": dto.isDeleted as Any,
+                    "isConnected": dto.isConnected as Any, "isWifiConfigured": dto.isWifiConfigured as Any, "mac": dto.mac as Any, "sku": dto.sku as Any,
+                    "broadcastId": dto.broadcastId as Any, "broadcastIdString": dto.broadcastIdString as Any, "userNumber": dto.userNumber as Any,
+                    "createdAt": dto.createdAt as Any, "scaleToken": dto.scaleToken as Any
+                ]
+                _ = try await remoteRepo.editScale(device.id, properties: properties)
+                device.isSynced = true
+                try await localRepository.updateDevice(device)
+            } catch {
                 do {
-                    let properties: [String: Any] = [
-                        "nickname": dto.nickname as Any,
-                        "name": dto.name as Any,
-                        "type": dto.type as Any,
-                        "isDeleted": dto.isDeleted as Any,
-                        "isConnected": dto.isConnected as Any,
-                        "isWifiConfigured": dto.isWifiConfigured as Any,
-                        "mac": dto.mac as Any,
-                        "sku": dto.sku as Any,
-                        "broadcastId": dto.broadcastId as Any,
-                        "broadcastIdString": dto.broadcastIdString as Any,
-                        "userNumber": dto.userNumber as Any,
-                        "createdAt": dto.createdAt as Any,
-                        "scaleToken": dto.scaleToken as Any
-                    ]
-                        _ = try await remoteRepo.editScale(device.id, properties: properties)
-                        device.isSynced = true
-                        try await localRepository.updateDevice(device)
-                logger.log(level: .info, tag: "ScaleService", message: "Successfully synced device: \(device.id)")
-                    } catch {
-                // If update fails, try to create it
-                do {
-                        _ = try await remoteRepo.createScale(dto)
-                        device.isSynced = true
-                        try await localRepository.updateDevice(device)
-                    logger.log(level: .info, tag: "ScaleService", message: "Successfully created device on remote: \(device.id)")
+                    _ = try await remoteRepo.createScale(dto)
+                    device.isSynced = true
+                    try await localRepository.updateDevice(device)
                 } catch {
-                    logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device \(device.id) to API: \(error.localizedDescription)")
-                }
+                    logger.log(level: .error, tag: tag, message: "Failed to sync device \(device.id) to API: \(error.localizedDescription)")
                 }
             }
-            
-        // Also sync remote devices to local
+        }
         do {
             let remoteScales = try await remoteRepo.listScales()
             await mergeRemoteScales(remoteScales, accountId: accountId)
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to fetch remote scales: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to fetch remote scales: \(error.localizedDescription)")
         }
-        
         let now = ISO8601DateFormatter().string(from: Date())
         try? await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: now)
     }
     
-    /// Syncs only unsynced devices (used after local changes).
     private func syncUnsyncedDevices() async {
         let accountId: String
         do {
             accountId = try await getAccountId()
-        } catch {
-            return
-        }
-        
+        } catch { return }
         let now = ISO8601DateFormatter().string(from: Date())
         try? await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: now)
     }
     
-    /// Merges remote scales into local DB, resolving conflicts (latest wins by createdAt).
     private func mergeRemoteScales(_ remoteScales: [ScaleDTO], accountId: String) async {
         do {
             let scaleDTOs = try await localRepository.listScales()
             let existingDevices = scaleDTOs.map { Device(from: $0) }
-        
-        for remoteDTO in remoteScales {
-            guard let deviceId = remoteDTO.id else { continue }
-            
-            // Try to find existing device by ID first
-            if let managedDevice = try? await localRepository.getDevice(deviceId) {
-                updateDeviceWithRemoteData(managedDevice, remoteDTO: remoteDTO)
+            for remoteDTO in remoteScales {
+                guard let deviceId = remoteDTO.id else { continue }
+                if let managedDevice = try? await localRepository.getDevice(deviceId) {
+                    updateDeviceWithRemoteData(managedDevice, remoteDTO: remoteDTO)
                     managedDevice.isSynced = true
-                try? await localRepository.updateDevice(managedDevice)
-                    logger.log(level: .info, tag: "ScaleService", message: "Updated existing device by ID: \(deviceId)")
-            } else {
-                    // Check for duplicates by other identifiers to prevent creating duplicates
-                let duplicateDevice = existingDevices.first { device in
-                        // Check by broadcastId (most reliable)
-                        if let deviceBroadcastId = device.broadcastIdString,
-                           let remoteBroadcastId = remoteDTO.broadcastIdString,
-                           deviceBroadcastId == remoteBroadcastId {
-                            return true
-                        }
-                        
-                        // Check by mac address
-                        if let deviceMac = device.mac,
-                           let remoteMac = remoteDTO.mac,
-                           deviceMac == remoteMac {
-                            return true
-                        }
-                        
-                        // Check by sku (least reliable but fallback)
-                        if let deviceSku = device.sku,
-                           let remoteSku = remoteDTO.sku,
-                           deviceSku == remoteSku {
-                            return true
-                        }
-                        
-                        return false
-                }
-                
-                if let duplicateDevice = duplicateDevice {
-                        // Update the existing device with the remote ID and data
-                    duplicateDevice.id = deviceId
-                    updateDeviceWithRemoteData(duplicateDevice, remoteDTO: remoteDTO)
-                        duplicateDevice.isSynced = true
-                    try? await localRepository.updateDevice(duplicateDevice)
-                        logger.log(level: .info, tag: "ScaleService", message: "Merged duplicate device with remote ID: \(deviceId)")
+                    try? await localRepository.updateDevice(managedDevice)
                 } else {
-                        // This is truly a new device from remote, create it
-                    let newDevice = Device(from: remoteDTO)
-                    newDevice.isSynced = true
+                    let duplicateDevice = existingDevices.first { device in
+                        if let deviceBroadcastId = device.broadcastIdString, let remoteBroadcastId = remoteDTO.broadcastIdString, deviceBroadcastId == remoteBroadcastId { return true }
+                        if let deviceMac = device.mac, let remoteMac = remoteDTO.mac, deviceMac == remoteMac { return true }
+                        if let deviceSku = device.sku, let remoteSku = remoteDTO.sku, deviceSku == remoteSku { return true }
+                        return false
+                    }
+                    if let duplicateDevice = duplicateDevice {
+                        duplicateDevice.id = deviceId
+                        updateDeviceWithRemoteData(duplicateDevice, remoteDTO: remoteDTO)
+                        duplicateDevice.isSynced = true
+                        try? await localRepository.updateDevice(duplicateDevice)
+                    } else {
+                        let newDevice = Device(from: remoteDTO)
+                        newDevice.isSynced = true
                         do {
                             _ = try await localRepository.createScale(newDevice.toDTO())
-                            logger.log(level: .info, tag: "ScaleService", message: "Created new device from remote: \(deviceId)")
+                            
                         } catch {
-                            logger.log(level: .error, tag: "ScaleService", message: "Failed to create new device from remote: \(error.localizedDescription)")
+                            logger.log(level: .error, tag: tag, message: "Failed to create new device from remote: \(error.localizedDescription)")
                         }
                     }
                 }
             }
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to fetch existing devices: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to fetch existing devices: \(error.localizedDescription)")
         }
     }
     
@@ -219,7 +172,7 @@ final class ScaleService: ScaleServiceProtocol {
         device.isSynced = true
     }
     
-    // MARK: - ScaleServiceProtocol Implementation
+    // MARK: - DeviceServiceProtocol Implementation
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {
         let metaDataDTO = metaData.toDTO()
         guard let _ = try? await localRepository.getDevice(deviceId) else {
@@ -233,7 +186,7 @@ final class ScaleService: ScaleServiceProtocol {
                 try await localRepository.updateDevice(device)
             }
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync scale meta to API")
+            logger.log(level: .error, tag: tag, message: "Failed to sync scale meta to API")
             throw ScaleError.apiSyncFailed(error)
         }
     }
@@ -248,7 +201,7 @@ final class ScaleService: ScaleServiceProtocol {
                 try await localRepository.updateDevice(device)
             }
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync scale preference to API: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to sync scale preference to API: \(error.localizedDescription)")
             throw error
         }
     }
@@ -258,12 +211,8 @@ final class ScaleService: ScaleServiceProtocol {
         let localDevices = try await localRepository.listScales()
         do {
             let apiDevices = try await remoteRepo.listScales()
-            
-            // Instead of creating new entries, update existing ones and only create truly new devices
             for dto in apiDevices {
-                if let deviceId = dto.id,
-                   let existingDevice = try? await localRepository.getDevice(deviceId) {
-                    // Update existing device by ID
+                if let deviceId = dto.id, let existingDevice = try? await localRepository.getDevice(deviceId) {
                     existingDevice.nickname = dto.nickname
                     existingDevice.deviceName = dto.name
                     existingDevice.deviceType = dto.type
@@ -281,37 +230,14 @@ final class ScaleService: ScaleServiceProtocol {
                     existingDevice.isSynced = true
                     try? await localRepository.updateDevice(existingDevice)
                 } else {
-                    // Check if this device already exists locally by other identifiers
                     let existingDevice = localDevices.first { localDevice in
-                        // Check by broadcastId (most reliable)
-                        if let localBroadcastId = localDevice.broadcastIdString,
-                           let remoteBroadcastId = dto.broadcastIdString,
-                           localBroadcastId == remoteBroadcastId {
-                            return true
-                        }
-                        
-                        // Check by mac address
-                        if let localMac = localDevice.mac,
-                           let remoteMac = dto.mac,
-                           localMac == remoteMac {
-                            return true
-                        }
-                        
-                        // Check by sku (least reliable but fallback)
-                        if let localSku = localDevice.sku,
-                           let remoteSku = dto.sku,
-                           localSku == remoteSku {
-                            return true
-                        }
-                        
+                        if let localBroadcastId = localDevice.broadcastIdString, let remoteBroadcastId = dto.broadcastIdString, localBroadcastId == remoteBroadcastId { return true }
+                        if let localMac = localDevice.mac, let remoteMac = dto.mac, localMac == remoteMac { return true }
+                        if let localSku = localDevice.sku, let remoteSku = dto.sku, localSku == remoteSku { return true }
                         return false
                     }
-                    
                     if let existingDevice = existingDevice {
-                        // Get the actual Device object to update
-                        if let deviceId = existingDevice.id,
-                           let deviceToUpdate = try? await localRepository.getDevice(deviceId) {
-                            // Update the existing device with the remote ID and data
+                        if let deviceId = existingDevice.id, let deviceToUpdate = try? await localRepository.getDevice(deviceId) {
                             deviceToUpdate.id = dto.id ?? deviceToUpdate.id
                             deviceToUpdate.nickname = dto.nickname
                             deviceToUpdate.deviceName = dto.name
@@ -331,83 +257,80 @@ final class ScaleService: ScaleServiceProtocol {
                             try? await localRepository.updateDevice(deviceToUpdate)
                         }
                     } else {
-                        // Only create if it doesn't exist locally by any identifier
-                    _ = try? await localRepository.createScale(dto)
+                        _ = try? await localRepository.createScale(dto)
                     }
                 }
             }
             return apiDevices.map { Device(from: $0) }
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to fetch from API, using local data: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to fetch from API, using local data: \(error.localizedDescription)")
             return localDevices.map { Device(from: $0) }
         }
     }
     
     nonisolated func getConnectedDevices() async -> [String: Any] {
         return await MainActor.run {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isConnected == true })
-        do {
-            let connectedDevices = try localRepository.context.fetch(descriptor)
-            var connectedDevicesDict: [String: Any] = [:]
-            for device in connectedDevices {
-                if let broadcastId = device.broadcastId {
-                    connectedDevicesDict[broadcastId] = [
-                        "id": device.id,
-                        "name": device.deviceName ?? "",
-                        "nickname": device.nickname ?? "",
-                        "type": device.deviceType ?? "",
-                        "isWifiConfigured": device.isWifiConfigured ?? false,
-                        "wifiMac": device.wifiMac ?? ""
-                    ]
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isConnected == true })
+            do {
+                let connectedDevices = try localRepository.context.fetch(descriptor)
+                var connectedDevicesDict: [String: Any] = [:]
+                for device in connectedDevices {
+                    if let broadcastId = device.broadcastId {
+                        connectedDevicesDict[broadcastId] = [
+                            "id": device.id,
+                            "name": device.deviceName ?? "",
+                            "nickname": device.nickname ?? "",
+                            "type": device.deviceType ?? "",
+                            "isWifiConfigured": device.isWifiConfigured ?? false,
+                            "wifiMac": device.wifiMac ?? ""
+                        ]
+                    }
                 }
-            }
-            return connectedDevicesDict
-        } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to fetch connected devices: \(error.localizedDescription)")
-            return [:]
+                return connectedDevicesDict
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to fetch connected devices: \(error.localizedDescription)")
+                return [:]
             }
         }
     }
     
     nonisolated func updateConnectedDevices(device: Any, isConnected: Bool) async {
         await MainActor.run {
-        guard let deviceDict = device as? [String: Any],
-              let deviceId = deviceDict["id"] as? String else {
-            logger.log(level: .error, tag: "ScaleService", message: "Invalid device data format")
-            return
-        }
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
-        do {
-            if let device = try localRepository.context.fetch(descriptor).first {
-                device.isConnected = isConnected
-                device.isSynced = false
-                try localRepository.context.save()
-                logger.log(level: .info, tag: "ScaleService", message: "Updated connection status for device \(deviceId) to \(isConnected)")
-                Task { await syncUnsyncedDevices() }
-            } else {
-                logger.log(level: .error, tag: "ScaleService", message: "Device not found: \(deviceId)")
+            guard let deviceDict = device as? [String: Any],
+                  let deviceId = deviceDict["id"] as? String else {
+                logger.log(level: .error, tag: tag, message: "Invalid device data format")
+                return
             }
-        } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to update device connection status: \(error.localizedDescription)")
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
+            do {
+                if let device = try localRepository.context.fetch(descriptor).first {
+                    device.isConnected = isConnected
+                    device.isSynced = false
+                    try localRepository.context.save()
+                    Task { await syncUnsyncedDevices() }
+                } else {
+                    logger.log(level: .error, tag: tag, message: "Device not found: \(deviceId)")
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to update device connection status: \(error.localizedDescription)")
             }
         }
     }
     
     nonisolated func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
         await MainActor.run {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastId == broadcastId })
-        do {
-            if let device = try localRepository.context.fetch(descriptor).first {
-                device.isWifiConfigured = isConfigured
-                device.isSynced = false
-                try localRepository.context.save()
-                logger.log(level: .info, tag: "ScaleService", message: "Updated WiFi configuration status for device \(broadcastId) to \(isConfigured)")
-                Task { await syncUnsyncedDevices() }
-            } else {
-                logger.log(level: .error, tag: "ScaleService", message: "Device not found with broadcast ID: \(broadcastId)")
-            }
-        } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to update device WiFi configuration status: \(error.localizedDescription)")
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastId == broadcastId })
+            do {
+                if let device = try localRepository.context.fetch(descriptor).first {
+                    device.isWifiConfigured = isConfigured
+                    device.isSynced = false
+                    try localRepository.context.save()
+                    Task { await syncUnsyncedDevices() }
+                } else {
+                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId)")
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to update device WiFi configuration status: \(error.localizedDescription)")
             }
         }
     }
@@ -416,139 +339,56 @@ final class ScaleService: ScaleServiceProtocol {
         do {
             let apiScales = try await remoteRepo.listScales()
             let localScales = try await localRepository.listScales()
-            
-            // Sync API scales to local, avoiding duplicates
             for dto in apiScales {
-                // Check if device already exists locally by ID
-                if let deviceId = dto.id,
-                   let _ = try? await localRepository.getDevice(deviceId) {
-                    // Device already exists, skip creation
-                    continue
-                }
-                
-                // Check if device exists by other identifiers
+                if let deviceId = dto.id, let _ = try? await localRepository.getDevice(deviceId) { continue }
                 let existingDevice = localScales.first { localDevice in
-                    // Check by broadcastId (most reliable)
-                    if let localBroadcastId = localDevice.broadcastIdString,
-                       let remoteBroadcastId = dto.broadcastIdString,
-                       localBroadcastId == remoteBroadcastId {
-                        return true
-                    }
-                    
-                    // Check by mac address
-                    if let localMac = localDevice.mac,
-                       let remoteMac = dto.mac,
-                       localMac == remoteMac {
-                        return true
-                    }
-                    
-                    // Check by sku (least reliable but fallback)
-                    if let localSku = localDevice.sku,
-                       let remoteSku = dto.sku,
-                       localSku == remoteSku {
-                        return true
-                    }
-                    
+                    if let localBroadcastId = localDevice.broadcastIdString, let remoteBroadcastId = dto.broadcastIdString, localBroadcastId == remoteBroadcastId { return true }
+                    if let localMac = localDevice.mac, let remoteMac = dto.mac, localMac == remoteMac { return true }
+                    if let localSku = localDevice.sku, let remoteSku = dto.sku, localSku == remoteSku { return true }
                     return false
                 }
-                
                 if existingDevice == nil {
-                    // Only create if it doesn't exist locally
-                do {
-                    _ = try await localRepository.createScale(dto)
-                } catch {
-                    logger.log(level: .error, tag: "ScaleService", message: "Failed to create scale from API: \(error.localizedDescription)")
-                    throw ScaleError.apiSyncFailed(error)
+                    do { _ = try await localRepository.createScale(dto) }
+                    catch {
+                        logger.log(level: .error, tag: tag, message: "Failed to create scale from API: \(error.localizedDescription)")
+                        throw ScaleError.apiSyncFailed(error)
+                    }
                 }
             }
-            }
-            
-            // Handle temp device if provided
             if let tempDevice = tempDevice {
                 let dto = tempDevice.toDTO()
-                
-                // Check if temp device already exists locally
                 let existingDevice = localScales.first { localDevice in
-                    // Check by broadcastId (most reliable)
-                    if let localBroadcastId = localDevice.broadcastIdString,
-                       let tempBroadcastId = dto.broadcastIdString,
-                       localBroadcastId == tempBroadcastId {
-                        return true
-                    }
-                    
-                    // Check by mac address
-                    if let localMac = localDevice.mac,
-                       let tempMac = dto.mac,
-                       localMac == tempMac {
-                        return true
-                    }
-                    
-                    // Check by sku (least reliable but fallback)
-                    if let localSku = localDevice.sku,
-                       let tempSku = dto.sku,
-                       localSku == tempSku {
-                        return true
-                    }
-                    
+                    if let localBroadcastId = localDevice.broadcastIdString, let tempBroadcastId = dto.broadcastIdString, localBroadcastId == tempBroadcastId { return true }
+                    if let localMac = localDevice.mac, let tempMac = dto.mac, localMac == tempMac { return true }
+                    if let localSku = localDevice.sku, let tempSku = dto.sku, localSku == tempSku { return true }
                     return false
                 }
-                
                 if existingDevice == nil {
-                do {
-                    _ = try await localRepository.createScale(dto)
-                } catch {
-                    logger.log(level: .error, tag: "ScaleService", message: "Failed to create temp device: \(error.localizedDescription)")
-                    throw ScaleError.apiSyncFailed(error)
+                    do { _ = try await localRepository.createScale(dto) }
+                    catch {
+                        logger.log(level: .error, tag: tag, message: "Failed to create temp device: \(error.localizedDescription)")
+                        throw ScaleError.apiSyncFailed(error)
+                    }
                 }
             }
-            }
-            
             await syncUnsyncedDevices()
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync devices: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to sync devices: \(error.localizedDescription)")
             throw ScaleError.apiSyncFailed(error)
         }
     }
     
     func createDevice(_ device: Device) async throws -> Device {
         let dto = device.toDTO()
-        
-        // Check if device already exists locally by identifiers
         let existingDevices = try await localRepository.listScales()
         let existingDevice = existingDevices.first { localDevice in
-            // Check by broadcastId (most reliable)
-            if let localBroadcastId = localDevice.broadcastIdString,
-               let newBroadcastId = dto.broadcastIdString,
-               localBroadcastId == newBroadcastId {
-                return true
-            }
-            
-            // Check by mac address
-            if let localMac = localDevice.mac,
-               let newMac = dto.mac,
-               localMac == newMac {
-                return true
-            }
-            
-            // Check by sku (least reliable but fallback)
-            if let localSku = localDevice.sku,
-               let newSku = dto.sku,
-               localSku == newSku {
-                return true
-            }
-            
+            if let localBroadcastId = localDevice.broadcastIdString, let newBroadcastId = dto.broadcastIdString, localBroadcastId == newBroadcastId { return true }
+            if let localMac = localDevice.mac, let newMac = dto.mac, localMac == newMac { return true }
+            if let localSku = localDevice.sku, let newSku = dto.sku, localSku == newSku { return true }
             return false
         }
-        
-        if let existingDevice = existingDevice {
-            // Device already exists, return the existing one
-            logger.log(level: .info, tag: "ScaleService", message: "Device already exists locally: \(existingDevice.id ?? "unknown")")
-            return Device(from: existingDevice)
-        }
-        
-        // Create new device locally
+        if let existingDevice = existingDevice { return Device(from: existingDevice) }
         _ = try await localRepository.createScale(dto)
-        
         do {
             let apiDTO = try await remoteRepo.createScale(dto)
             if let localDevice = try await localRepository.getDevice(device.id) {
@@ -557,7 +397,7 @@ final class ScaleService: ScaleServiceProtocol {
             }
             return Device(from: apiDTO)
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync new device to API")
+            logger.log(level: .error, tag: tag, message: "Failed to sync new device to API")
             throw ScaleError.apiSyncFailed(error)
         }
     }
@@ -575,7 +415,7 @@ final class ScaleService: ScaleServiceProtocol {
             }
             return Device(from: apiDTO)
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device edit to API")
+            logger.log(level: .error, tag: tag, message: "Failed to sync device edit to API")
             throw ScaleError.apiSyncFailed(error)
         }
     }
@@ -588,7 +428,7 @@ final class ScaleService: ScaleServiceProtocol {
         do {
             try await remoteRepo.deleteScale(deviceId)
         } catch {
-            logger.log(level: .error, tag: "ScaleService", message: "Failed to sync device deletion to API")
+            logger.log(level: .error, tag: tag, message: "Failed to sync device deletion to API")
             throw ScaleError.apiSyncFailed(error)
         }
     }
