@@ -51,8 +51,9 @@ struct HelpScreen: View {
         // Debug menu sheet uses store's flag
         .sheet(isPresented: $helpStore.showDebugMenu,
                onDismiss: { helpStore.dismissDebugMenu() }) {
-            DebugMenuScreen()
-                .environmentObject(helpStore)
+            // TODO: Need to uncomment after created a DebugScreen
+            // DebugMenuScreen()
+            //  .environmentObject(helpStore)
         }
     }
     
