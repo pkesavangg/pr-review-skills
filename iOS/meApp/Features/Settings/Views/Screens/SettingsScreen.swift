@@ -165,7 +165,7 @@ struct SettingsScreen: View {
                 .foregroundColor(theme.textBody)
         }
         .frame(maxWidth: .infinity)
-        .listRowBackground(Color.red)
+        .listRowBackground(Color.clear)
     }
     
     private func accountSettingsSection() -> some View {
@@ -335,6 +335,17 @@ struct SettingsScreen: View {
                 }
             ))
             .listRowInsets()
+            
+            if settingsStore.canShowLogOutAllItems {
+                ActionListItemView(config: ActionListItemConfig(
+                    title: settingsLang.logOutAllAccount,
+                    chevronType: .none,
+                    onTap: {
+                        settingsStore.handleLogoutForAllAccounts()
+                    }
+                ))
+                .listRowInsets()
+            }
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.deleteAccount.uppercased(),

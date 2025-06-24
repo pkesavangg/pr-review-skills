@@ -431,7 +431,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     /// Deletes all accounts locally, logging out each account first.
-    func deleteAllAccountsLocally() async throws {
+    func logOutAllAccounts() async throws {
         do {
             let allAccounts = try await localRepo.fetchAllAccounts()
             for account in allAccounts {

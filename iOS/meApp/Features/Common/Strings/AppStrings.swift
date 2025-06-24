@@ -189,6 +189,13 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
     
+    struct LogoutAllAccountAlert {
+        static let title = "Log Out All Accounts"
+        static let message = "Are you sure you want to log out of all accounts?"
+        static let logoutButton = "Log Out All"
+        static let cancelButton = "Cancel"
+    }
+    
     struct DeleteAccountAlert {
         static let title = "Delete Your Account"
         static let message = "Are you sure you want to delete your account? This action cannot be undone."

@@ -144,7 +144,7 @@ protocol AccountServiceProtocol {
     func clearOfflineData(for account: Account) async throws
 
     /// Deletes all accounts stored locally on the device.
-    func deleteAllAccountsLocally() async throws
+    func logOutAllAccounts() async throws
     
     /// Syncs all unsynced accounts with the backend.
     /// - Note: This should be called on app launch to ensure all local changes are synchronized.

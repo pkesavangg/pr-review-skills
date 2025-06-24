@@ -82,6 +82,10 @@ class SettingsStore: ObservableObject {
         browserURL ?? legalURLs.greaterGoodsWebsite
     }
     
+    var canShowLogOutAllItems: Bool {
+        return accountService.allAccounts.count > 1
+    }
+    
     // MARK: - Height Picker State
     /// Selected height components when the user prefers imperial units (feet & inches).
     @Published var selectedHeightInches: [String] = ["5", "10"]
@@ -146,6 +150,23 @@ class SettingsStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    func handleLogoutForAllAccounts() {
+        let logoutAlert = alertLang.LogoutAllAccountAlert
+        let alert = AlertModel(
+            title: logoutAlert.title,
+            message: logoutAlert.message,
+            buttons: [
+                AlertButtonModel(title: logoutAlert.logoutButton, type: .primary) { _ in
+                    self.logout()
+                },
+                AlertButtonModel(title: logoutAlert.cancelButton, type: .secondary) { _ in
+                    
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
     func handleDeleteAccount() {
         let deleteAccountAlert = alertLang.DeleteAccountAlert
         let alert = AlertModel(
@@ -171,6 +192,18 @@ class SettingsStore: ObservableObject {
                 try await accountService.logOut()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Logout failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    private func logoutAllAccounts() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut ))
+            do {
+                try await accountService.logOutAllAccounts()
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Logout all failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
         }
