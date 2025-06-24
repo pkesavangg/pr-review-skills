@@ -92,7 +92,6 @@ object EntryHelper {
                 }
             }
 
-        fun Double?.rounded(): Double? = this?.let { String.format("%.2f", it).toDouble() }
 
         return this.copy(
             entryTimestamp = monthYear,
@@ -101,6 +100,8 @@ object EntryHelper {
             // entryCount is already Int? so no need to change
         )
     }
+
+    fun Double?.rounded(): Double? = this?.let { String.format("%.2f", it).toDouble() }
 
     fun ScaleEntry.getDate(): String {
         val instant = Instant.parse(entry.entryTimestamp)

@@ -15,7 +15,8 @@ import javax.inject.Inject
  * @property entryService The entry service for fetching and updating entries.
  */
 @HiltViewModel
-class DashboardViewModel @Inject constructor(
+class
+DashboardViewModel @Inject constructor(
     private val entryService: IEntryService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
     reducer = DashboardReducer(),

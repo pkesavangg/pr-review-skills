@@ -204,7 +204,6 @@ class EntryRepository @Inject constructor(
      * @return Flow of list of all monthly aggregated data
      */
     override fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> {
-        Log.d("CHECKING", "Monthly history size: ${accountId}")
         return entryDao.getMonthlyHistory(accountId)
     }
 

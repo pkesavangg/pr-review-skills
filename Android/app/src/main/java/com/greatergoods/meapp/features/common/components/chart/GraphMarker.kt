@@ -5,21 +5,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberDefaultCartesianMarker
-import com.patrykandpatrick.vico.compose.common.component.fixed
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.compose.common.insets
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.core.common.component.ShapeComponent
-import com.patrykandpatrick.vico.core.common.component.TextComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 
 class LayeredMarker(
     val marker: CartesianMarker,
-    val decorations: List<Decoration>
+    val decorations: List<Decoration>,
 ) : CartesianMarker {
     override fun drawOverLayers(context: CartesianDrawingContext, targets: List<CartesianMarker.Target>) {
         marker.drawOverLayers(context, targets)
@@ -27,11 +24,7 @@ class LayeredMarker(
     }
 
     override fun drawUnderLayers(context: CartesianDrawingContext, targets: List<CartesianMarker.Target>) {
-
         marker.drawUnderLayers(context, targets)
-        decorations.forEach { decoration ->
-            decoration.drawUnderLayers(context)
-        }
     }
 }
 
@@ -44,11 +37,9 @@ internal fun rememberDefaultMarker(
     val label =
         rememberTextComponent(
             color = markerColor,
-            padding = insets(10.dp),
-            minWidth = TextComponent.MinWidth.fixed(40.dp),
         )
     val guideline = rememberAxisLineComponent(
-        fill = fill(Color(0xFFD0CCCA)), // light gray for grid lines
+        fill = fill(Color(0xFF2C2827)),
         thickness = 1.dp,
     )
 
@@ -69,15 +60,3 @@ internal fun rememberDefaultMarker(
     )
 }
 
-@Composable
-fun rememberMarker(
-    valueFormatter: DefaultCartesianMarker.ValueFormatter =
-        DefaultCartesianMarker.ValueFormatter.default(),
-    decorations: List<Decoration>,
-): CartesianMarker {
-    val defaultMarker = rememberDefaultMarker(valueFormatter = valueFormatter)
-    return LayeredMarker(
-        defaultMarker,
-        decorations,
-    )
-}

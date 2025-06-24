@@ -47,7 +47,7 @@ fun DashboardScreen() {
 private fun DashboardScreenContent(state: DashboardState, handleIntent: (DashboardIntent) -> Unit) {
     AppScaffold(title = null) {
         Column {
-            HistoryGraph(state)
+            HistoryGraph(state ,)
         }
     }
 }
