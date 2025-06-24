@@ -86,7 +86,31 @@ struct MyScalesScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
                 
-                
+                if !scaleStore.scales.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        
+                        Text(lang.myScales)
+                            .fontOpenSans(.heading4)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.leading)
+                            .padding(.horizontal, .spacingSM)
+                        
+                        ForEach(scaleStore.scales, id: \.id) { scale in
+                            ScaleItemView(
+                                scaleIcon: Image(AppAssets.meLogoDark),
+                                modelNumber: scale.sku ?? "----",
+                                scaleName: scale.deviceName ?? lang.unknownScale,
+                                status: .connected,
+                                onTap: {
+                                    // TODO: Add Action
+                                }
+                            )
+                            .padding(.horizontal, .spacingSM)
+                            
+                            Divider()
+                        }
+                    }
+                }
             }
         }
         .onDisappear {
