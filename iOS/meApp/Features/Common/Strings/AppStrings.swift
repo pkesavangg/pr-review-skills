@@ -311,5 +311,7 @@ struct AppAssets {
     static let ageIcon = "metabolicAge"
     static let emptyStateIcon = "emptyStateIcon"
     static let checkMarkCircle = "checkMarkCircle"
+    static let circleOutline = "circleOutline"
+    static let circleCheckFilled = "circleCheckFilled"
 }
 
