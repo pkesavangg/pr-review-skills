@@ -24,7 +24,6 @@ class AuthTokenInterceptor @Inject constructor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-
         // Skip token for public endpoints
         if (NetworkConfig.isPublicEndpoint(request.url.encodedPath)) {
             AppLog.d(TAG, "Skipping token for public endpoint: ${request.url.encodedPath}")
