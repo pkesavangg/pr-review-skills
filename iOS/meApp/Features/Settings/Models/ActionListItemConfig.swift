@@ -1,5 +1,5 @@
 //
-//  SettingsItemConfig.swift
+//  ActionListItemConfig.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 18/06/25.
@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-// MARK: - Settings Item Configuration
+// MARK: - Action Item Configuration
 /// Configuration for a settings item in the settings list.
-struct SettingsItemConfig {
+struct ActionListItemConfig {
     let title: String
     var value: String? = nil
     var chevronType: ChevronType = .right

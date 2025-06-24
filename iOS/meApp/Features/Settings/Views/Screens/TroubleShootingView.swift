@@ -64,12 +64,12 @@ struct TroubleShootingView: View {
 
     private func appInformationSection() -> some View {
         Section(header: sectionHeader(title: lang.appInformation)) {
-            SettingsListItem(config: SettingsItemConfig(title: commonLang.appVersion, value: appVersion, chevronType: .none))
-            SettingsListItem(config: SettingsItemConfig(title: lang.nativeModules, value: commonLang.yes, chevronType: .none))
-            SettingsListItem(config: SettingsItemConfig(title: lang.componentVersion, value: commonLang.iOS, chevronType: .none))
-            SettingsListItem(config: SettingsItemConfig(title: lang.api, value: API.baseURL.slice(from: 7, to: 16), chevronType: .none))
-            SettingsListItem(config: SettingsItemConfig(title: lang.time, value: currentTime, chevronType: .none))
-            SettingsListItem(config: SettingsItemConfig(title: lang.timezone, value: timezoneString, chevronType: .none))
+            ActionListItemView(config: ActionListItemConfig(title: commonLang.appVersion, value: appVersion, chevronType: .none))
+            ActionListItemView(config: ActionListItemConfig(title: lang.nativeModules, value: commonLang.yes, chevronType: .none))
+            ActionListItemView(config: ActionListItemConfig(title: lang.componentVersion, value: commonLang.iOS, chevronType: .none))
+            ActionListItemView(config: ActionListItemConfig(title: lang.api, value: API.baseURL.slice(from: 7, to: 16), chevronType: .none))
+            ActionListItemView(config: ActionListItemConfig(title: lang.time, value: currentTime, chevronType: .none))
+            ActionListItemView(config: ActionListItemConfig(title: lang.timezone, value: timezoneString, chevronType: .none))
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -77,13 +77,13 @@ struct TroubleShootingView: View {
 
     private func appTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.appTroubleshooting)) {
-            SettingsListItem(config: SettingsItemConfig(title: lang.sendWeightGurusLog, onTap: { helpStore.sendWeightGurusLog() }))
+            ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, onTap: { helpStore.sendWeightGurusLog() }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: lang.resyncEntries, onTap: { helpStore.resyncEntries() }))
+            ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, onTap: { helpStore.resyncEntries() }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: lang.clearAllLocalData, onTap: { helpStore.clearAllLocalData() }))
+            ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, onTap: { helpStore.clearAllLocalData() }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: lang.showAppRateModal, onTap: { helpStore.showAppRateModal() }))
+            ActionListItemView(config: ActionListItemConfig(title: lang.showAppRateModal, onTap: { helpStore.showAppRateModal() }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -92,7 +92,7 @@ struct TroubleShootingView: View {
 
     private func scaleTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.scaleTroubleshooting)) {
-            SettingsListItem(config: SettingsItemConfig(title: lang.sendScaleLog, chevronType: .right, onTap: { helpStore.sendScaleLog() }))
+            ActionListItemView(config: ActionListItemConfig(title: lang.sendScaleLog, chevronType: .right, onTap: { helpStore.sendScaleLog() }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
