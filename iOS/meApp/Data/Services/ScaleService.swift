@@ -54,6 +54,14 @@ final class ScaleService: ScaleServiceProtocol {
         return String(describing: account.id)
     }
     
+    // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)
+    private func isDuplicateDevice(device: Device, remoteDTO: ScaleDTO) -> Bool {
+        if let deviceBroadcastId = device.broadcastIdString, let remoteBroadcastId = remoteDTO.broadcastIdString, deviceBroadcastId == remoteBroadcastId { return true }
+        if let deviceMac = device.mac, let remoteMac = remoteDTO.mac, deviceMac == remoteMac { return true }
+        if let deviceSku = device.sku, let remoteSku = remoteDTO.sku, deviceSku == remoteSku { return true }
+        return false
+    }
+    
     // MARK: - Sync Logic
     /// Syncs all unsynced scales with the remote backend. Call this on app start or after network recovery.
     public func syncAllScalesWithRemote() async {
@@ -127,10 +135,7 @@ final class ScaleService: ScaleServiceProtocol {
                     try? await localRepository.updateDevice(managedDevice)
                 } else {
                     let duplicateDevice = existingDevices.first { device in
-                        if let deviceBroadcastId = device.broadcastIdString, let remoteBroadcastId = remoteDTO.broadcastIdString, deviceBroadcastId == remoteBroadcastId { return true }
-                        if let deviceMac = device.mac, let remoteMac = remoteDTO.mac, deviceMac == remoteMac { return true }
-                        if let deviceSku = device.sku, let remoteSku = remoteDTO.sku, deviceSku == remoteSku { return true }
-                        return false
+                        isDuplicateDevice(device: device, remoteDTO: remoteDTO)
                     }
                     if let duplicateDevice = duplicateDevice {
                         duplicateDevice.id = deviceId
@@ -142,7 +147,6 @@ final class ScaleService: ScaleServiceProtocol {
                         newDevice.isSynced = true
                         do {
                             _ = try await localRepository.createScale(newDevice.toDTO())
-                            
                         } catch {
                             logger.log(level: .error, tag: tag, message: "Failed to create new device from remote: \(error.localizedDescription)")
                         }
@@ -338,18 +342,18 @@ final class ScaleService: ScaleServiceProtocol {
     func syncDevices(tempDevice: Device?) async throws {
         do {
             let apiScales = try await remoteRepo.listScales()
-            let localScales = try await localRepository.listScales()
+            var localScales = try await localRepository.listScales()
             for dto in apiScales {
                 if let deviceId = dto.id, let _ = try? await localRepository.getDevice(deviceId) { continue }
                 let existingDevice = localScales.first { localDevice in
-                    if let localBroadcastId = localDevice.broadcastIdString, let remoteBroadcastId = dto.broadcastIdString, localBroadcastId == remoteBroadcastId { return true }
-                    if let localMac = localDevice.mac, let remoteMac = dto.mac, localMac == remoteMac { return true }
-                    if let localSku = localDevice.sku, let remoteSku = dto.sku, localSku == remoteSku { return true }
-                    return false
+                    isDuplicateDevice(device: Device(from: localDevice), remoteDTO: dto)
                 }
                 if existingDevice == nil {
-                    do { _ = try await localRepository.createScale(dto) }
-                    catch {
+                    do {
+                        _ = try await localRepository.createScale(dto)
+                        // Update localScales to include the new device for deduplication
+                        localScales.append(dto)
+                    } catch {
                         logger.log(level: .error, tag: tag, message: "Failed to create scale from API: \(error.localizedDescription)")
                         throw ScaleError.apiSyncFailed(error)
                     }
@@ -358,14 +362,13 @@ final class ScaleService: ScaleServiceProtocol {
             if let tempDevice = tempDevice {
                 let dto = tempDevice.toDTO()
                 let existingDevice = localScales.first { localDevice in
-                    if let localBroadcastId = localDevice.broadcastIdString, let tempBroadcastId = dto.broadcastIdString, localBroadcastId == tempBroadcastId { return true }
-                    if let localMac = localDevice.mac, let tempMac = dto.mac, localMac == tempMac { return true }
-                    if let localSku = localDevice.sku, let tempSku = dto.sku, localSku == tempSku { return true }
-                    return false
+                    isDuplicateDevice(device: Device(from: localDevice), remoteDTO: dto)
                 }
                 if existingDevice == nil {
-                    do { _ = try await localRepository.createScale(dto) }
-                    catch {
+                    do {
+                        _ = try await localRepository.createScale(dto)
+                        localScales.append(dto)
+                    } catch {
                         logger.log(level: .error, tag: tag, message: "Failed to create temp device: \(error.localizedDescription)")
                         throw ScaleError.apiSyncFailed(error)
                     }
