@@ -101,6 +101,9 @@ extension View {
         options: [[T]],
         displayValue: @escaping (T) -> String,
         pickerType: PickerType = .default,
+        allowTapOutside: Bool = true,
+        title: String? = nil,
+        showCancel: Bool = false,
         onUpdate: @escaping ([T]) -> Void
     ) -> some View {
         modifier(
@@ -110,7 +113,10 @@ extension View {
                 options: options,
                 displayValue: displayValue,
                 pickerType: pickerType,
-                onUpdate: onUpdate
+                onUpdate: onUpdate,
+                title: title,
+                showCancel: showCancel,
+                allowTapOutside: allowTapOutside
             )
         )
     }

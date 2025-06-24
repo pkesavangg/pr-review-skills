@@ -107,6 +107,15 @@ class SettingsStore: ObservableObject {
             }
             .store(in: &accountService.cancellables)
         self.populateWeightlessFormIfNeeded()
+        
+        // Listen to theme appearance changes so SettingsScreen refreshes immediately
+        Theme.shared.$appearanceMode
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                // Broadcast a manual change so any computed properties that depend on Theme refresh
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
     
     /// Syncs local settings states with account data
@@ -189,10 +198,6 @@ class SettingsStore: ObservableObject {
     func openTerms() {
         browserURL = legalURLs.termsOfService
         showTermsBrowser = true
-    }
-    
-    func openHelp() {
-        // TODO: Need to handle this
     }
     
     func openGreaterGoods() {
@@ -930,5 +935,55 @@ class SettingsStore: ObservableObject {
     private func resetGoalForm() {
         goalForm = GoalForm()
         populateGoalFormIfNeeded()
+    }
+    
+    /// Current notification preference derived from account settings.
+    var notificationPreference: NotificationPreference {
+        let settings = activeAccount?.notificationSettings
+        if settings?.shouldSendEntryNotifications == true {
+            return settings?.shouldSendWeightInEntryNotifications == true ? .enableWithWeight : .enable
+        }
+        return .disable
+    }
+    
+    // MARK: - Forgot Password Helpers
+    
+    func showForgotPasswordAlert() {
+        let email = activeAccount?.email ?? ""
+        let alert = AlertModel(
+            title: alertLang.ForgotPasswordAlert.title,
+            message: alertLang.ForgotPasswordAlert.message(email),
+            buttons: [
+                AlertButtonModel(title: alertLang.ForgotPasswordAlert.send, type: .primary) { _ in
+                    self.sendForgotPasswordEmail()
+                },
+                AlertButtonModel(title: alertLang.ForgotPasswordAlert.cancel, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    func sendForgotPasswordEmail() {
+        guard let email = activeAccount?.email else { return }
+
+        let trimmedEmail = removeWhiteSpace(email)
+        guard !trimmedEmail.isEmpty else { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                try await accountService.requestPasswordReset(email: trimmedEmail)
+                notificationService.showToast(
+                    ToastModel(
+                        title: toastLang.success,
+                        message: toastLang.forgotPassword(trimmedEmail)
+                    )
+                )
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Error: \(error)")
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
+            }
+            notificationService.dismissLoader()
+        }
     }
 }

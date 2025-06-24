@@ -106,7 +106,7 @@ struct EditProfileScreen: View {
                     
                     // Birthday date selector
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(labels.date.uppercased())
+                        Text(labels.birthday)
                             .fontOpenSans(.body3)
                             .foregroundColor(theme.textBody)
                         
