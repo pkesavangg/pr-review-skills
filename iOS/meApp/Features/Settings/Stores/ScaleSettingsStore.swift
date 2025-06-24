@@ -61,7 +61,7 @@ class ScaleSettingsStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            if let device = try? await scaleService.getDevices().first(where: { $0.id == scale.id }) {
+            if let device = try await scaleService.getDevices().first(where: { $0.id == scale.id }) {
                 self.deviceInfo = device.metaData
                 self.macAddress = device.mac
                 self.firmwareVersion = device.metaData?.firmwareRevision
@@ -87,9 +87,13 @@ class ScaleSettingsStore: ObservableObject {
         showDeleteConfirm = true
     }
 
+    private func initializeNicknameInput() {
+        nicknameInput = scale?.nickname ?? ""
+    }
+
     func changeNickname() {
         showNicknameAlert = true
-        nicknameInput = scale?.nickname ?? ""
+        initializeNicknameInput()
     }
 
     func saveNickname() async {
@@ -252,9 +256,8 @@ class ScaleSettingsStore: ObservableObject {
         showFirmwareUpdateConfirm = true
     }
     func openNicknameAlert() {
-        // TODO: Show nickname edit alert
         showNicknameAlert = true
-        nicknameInput = scale?.nickname ?? ""
+        initializeNicknameInput()
     }
 }
 
