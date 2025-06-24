@@ -46,14 +46,12 @@ class ScaleSettingsStore: ObservableObject {
     // MARK: - Dependencies
     @Injector var scaleService: ScaleService
     @Injector var notificationService: NotificationHelperService
-    // Add other dependencies as needed
 
     // MARK: - Actions (Migrated from Angular)
     func loadScale(_ scale: Device) async {
         self.scale = scale
         self.isBluetoothScale = scale.deviceType == "bluetooth"
         self.isDeviceConnected = scale.isConnected ?? false
-        // Load additional info as needed
         await getDeviceInfo()
         await getConnectedWifiSSID()
     }
@@ -77,7 +75,6 @@ class ScaleSettingsStore: ObservableObject {
         guard let scale = scale else { return }
         isLoading = true
         defer { isLoading = false }
-        // Use wifiMac from Device as SSID equivalent (since DeviceMetaData has no wifiSSID)
         self.connectedWifiSSID = scale.wifiMac
     }
 
@@ -192,7 +189,6 @@ class ScaleSettingsStore: ObservableObject {
         defer { isLoading = false }
         do {
             // TODO: Integrate with BluetoothService for factory reset
-            // Simulate success
             notificationService.showToast(ToastModel(title: "Factory Reset", message: "Scale reset to factory settings"))
         } catch {
             errorMessage = error.localizedDescription
@@ -205,7 +201,6 @@ class ScaleSettingsStore: ObservableObject {
         defer { isLoading = false }
         do {
             // TODO: Integrate with BluetoothService for firmware update
-            // Simulate success
             notificationService.showToast(ToastModel(title: "Firmware Update", message: "Firmware update started"))
         } catch {
             errorMessage = error.localizedDescription
