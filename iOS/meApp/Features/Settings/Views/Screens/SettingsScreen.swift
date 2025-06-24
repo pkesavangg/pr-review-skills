@@ -170,21 +170,21 @@ struct SettingsScreen: View {
     
     private func accountSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.accountSettings)) {
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.addEditScales))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.integrations))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
                 settingsStore.handleExport()
             }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.changePassword,
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword,
                                                        onTap: {
                                                            tabViewModel.showTabBar = false
                                                            router.navigate(to: .changePassword)
                                                        }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.userProfile,
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.userProfile,
                                                        onTap: {
                                                            tabViewModel.showTabBar = false
                                                            router.navigate(to: .editProfile)
@@ -197,30 +197,30 @@ struct SettingsScreen: View {
     
     private func profileSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.profileSettings)) {
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.goalSetting,
                 onTap: {
                     tabViewModel.showTabBar = false
                     router.navigate(to: .goal)
                 }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
                 chevronType: .upDown,
                 onTap: { showGenderPicker = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown,
                 onTap: { showActivityPicker = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.height, value: settingsStore.heightText, chevronType: .upDown, onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.height, value: settingsStore.heightText, chevronType: .upDown, onTap: {
                 settingsStore.showHeightPicker()
             }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.unitType,
                 value: settingsStore.unitTypeText,
                 chevronType: .upDown,
@@ -228,7 +228,7 @@ struct SettingsScreen: View {
                     showUnitPicker = true
                 }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText,
                 onTap: {
@@ -243,15 +243,15 @@ struct SettingsScreen: View {
     
     private func appSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.appSettings)) {
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.notifications,
                 value: settingsStore.notificationsOnText,
                 chevronType: .upDown,
                 onTap: { showNotificationPicker = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.messages, showDot: settingsStore.hasUnreadMessages))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.messages, showDot: settingsStore.hasUnreadMessages))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.streaks,
                 chevronType: .none, 
                 toggleBinding: $settingsStore.streaksEnabled,
@@ -259,13 +259,16 @@ struct SettingsScreen: View {
                     settingsStore.updateStreakStatus(settingsStore.streaksEnabled)
                 }))
                 .settingsRowInsets(top: 0, bottom: 0)
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown,
                 onTap: { showAppearancePicker = true }))
                 .settingsRowInsets()
-            SettingsListItem(config: SettingsItemConfig(title: settingsLang.appPermissions))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
+                tabViewModel.showTabBar = false
+                router.navigate(to: .appPermissions)
+            }))
                 .settingsRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -276,15 +279,16 @@ struct SettingsScreen: View {
         Section(header:
                 sectionHeader(title: settingsLang.supportSettings)
         ) {
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.helpAndCustomerService,
                 onTap: {
-                    settingsStore.openHelp()
+                    tabViewModel.showTabBar = false
+                    router.navigate(to: .help)
                 }
             ))
             .settingsRowInsets()
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.privacyPolicy,
                 onTap: {
                     settingsStore.openPrivacy()
@@ -292,7 +296,7 @@ struct SettingsScreen: View {
             ))
             .settingsRowInsets()
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.termsOfService,
                 onTap: {
                     settingsStore.openTerms()
@@ -300,7 +304,7 @@ struct SettingsScreen: View {
             ))
             .settingsRowInsets()
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.greaterGoodsWebsite,
                 onTap: {
                     settingsStore.openGreaterGoods()
@@ -314,7 +318,7 @@ struct SettingsScreen: View {
     
     private func accountActionSection() -> some View {
         Section {
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.logOut,
                 chevronType: .none,
                 onTap: {
@@ -323,7 +327,7 @@ struct SettingsScreen: View {
             ))
             .settingsRowInsets()
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.deleteAccount.uppercased(),
                 chevronType: .none,
                 isDestructive: true,

@@ -15,6 +15,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     var trailingContent: (() -> Trailing)?
     var onLeadingTap: (() -> Void)?
     var onTrailingTap: (() -> Void)?
+    var onTitleTap: (() -> Void)?
     var canShowBorder = false
 
     var body: some View {
@@ -28,6 +29,9 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .onTapGesture {
+                        onTitleTap?()
+                    }
             }
 
             HStack {

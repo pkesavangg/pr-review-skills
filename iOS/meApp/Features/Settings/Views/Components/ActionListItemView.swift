@@ -1,5 +1,5 @@
 //
-//  SettingsListItem.swift
+//  ActionListItemView.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 18/06/25.
@@ -7,11 +7,11 @@
 
 import SwiftUI
 
-// MARK: - Settings List Item
-/// A reusable list item for settings screens, supporting actions and value display.
-struct SettingsListItem: View {
+// MARK: - Action List Item
+/// A reusable list item for settings screens, troubleshooting views, and other views supporting actions and value display.
+struct ActionListItemView: View {
     @Environment(\.appTheme) private var theme
-    let config: SettingsItemConfig
+    let config: ActionListItemConfig
     
     var body: some View {
         Button {
@@ -25,6 +25,8 @@ struct SettingsListItem: View {
                     Circle()
                         .fill(config.dotColor ?? theme.textError)
                         .frame(width: 9, height: 9)
+                } else if let leadingIcon = config.leadingIcon {
+                    leadingIcon
                 }
                 
                 actionLabelText(config.title, isDestructive: config.isDestructive)
@@ -53,11 +55,9 @@ struct SettingsListItem: View {
         case .right:
             AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconPrimary)
-            
         case .upDown:
-            AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 10, height: 16))
+            AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconSecondary)
-                .padding(.trailing, 6)
         case .none:
             EmptyView()
         }
@@ -81,43 +81,43 @@ struct SettingsListItem: View {
     @State var toggleState = true
     List {
         Section("Preview") {
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: "Default Row",
                 onTap: { print("Tapped Default Row") }
             ))
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Value",
                 value: "Enabled",
                 onTap: { print("Tapped Value Row") }
             ))
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Up/Down Chevron",
                 chevronType: .upDown,
                 onTap: { print("Tapped Up/Down Row") }
             ))
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: "Row without Chevron",
                 chevronType: .none,
                 onTap: { print("Tapped No Chevron Row") }
             ))
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Dot",
                 showDot: true,
                 onTap: { print("Tapped Dot Row") }
             ))
             
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: "Toggle Row",
                 chevronType: .none, toggleBinding: $toggleState,
                 onTap: { print("Toggle tapped") }
             ))
             
-            SettingsListItem(config: SettingsItemConfig(
+            ActionListItemView(config: ActionListItemConfig(
                 title: "Destructive Row",
                 chevronType: .none, isDestructive: true,
                 onTap: { print("Tapped Destructive Row") }

@@ -200,10 +200,6 @@ class SettingsStore: ObservableObject {
         showTermsBrowser = true
     }
     
-    func openHelp() {
-        // TODO: Need to handle this
-    }
-    
     func openGreaterGoods() {
         browserURL = legalURLs.greaterGoodsWebsite
         showGreaterGoodsBrowser = true
@@ -948,5 +944,46 @@ class SettingsStore: ObservableObject {
             return settings?.shouldSendWeightInEntryNotifications == true ? .enableWithWeight : .enable
         }
         return .disable
+    }
+    
+    // MARK: - Forgot Password Helpers
+    
+    func showForgotPasswordAlert() {
+        let email = activeAccount?.email ?? ""
+        let alert = AlertModel(
+            title: alertLang.ForgotPasswordAlert.title,
+            message: alertLang.ForgotPasswordAlert.message(email),
+            buttons: [
+                AlertButtonModel(title: alertLang.ForgotPasswordAlert.send, type: .primary) { _ in
+                    self.sendForgotPasswordEmail()
+                },
+                AlertButtonModel(title: alertLang.ForgotPasswordAlert.cancel, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    func sendForgotPasswordEmail() {
+        guard let email = activeAccount?.email else { return }
+
+        let trimmedEmail = removeWhiteSpace(email)
+        guard !trimmedEmail.isEmpty else { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                try await accountService.requestPasswordReset(email: trimmedEmail)
+                notificationService.showToast(
+                    ToastModel(
+                        title: toastLang.success,
+                        message: toastLang.forgotPassword(trimmedEmail)
+                    )
+                )
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Error: \(error)")
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
+            }
+            notificationService.dismissLoader()
+        }
     }
 }
