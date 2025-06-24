@@ -28,6 +28,6 @@ struct CallButtonView: View {
 }
 
 #Preview(body: {
-    EmailButtonView()
+    CallButtonView()
 })
 

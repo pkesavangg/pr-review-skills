@@ -12,10 +12,6 @@ struct HelpScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject var helpStore = HelpStore()
     @EnvironmentObject var router: Router<SettingsRoute>
-    @State private var showDebugMenu: Bool = false
-    // Counter to track rapid taps on the nav-bar header
-    @State private var headerTapCounter: Int = 0
-    @State private var firstTapTime: Date? = nil
     
     private let lang = HelpScreenStrings.self
     
