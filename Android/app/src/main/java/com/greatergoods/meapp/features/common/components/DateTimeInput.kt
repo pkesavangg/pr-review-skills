@@ -25,7 +25,12 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.typography
+import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 
@@ -33,10 +38,12 @@ import java.util.Locale
  * Represents the value for DateTimeInput.
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
+@Serializable
 sealed class DateTimeValue {
     /**
      * Represents a date value in milliseconds since epoch.
      */
+    @Serializable
     data class Date(
         val millis: Long,
     ) : DateTimeValue()
@@ -44,6 +51,7 @@ sealed class DateTimeValue {
     /**
      * Represents a time value as hour and minute.
      */
+    @Serializable
     data class Time(
         val hour: Int,
         val minute: Int,
@@ -52,6 +60,7 @@ sealed class DateTimeValue {
     /**
      * Represents a combined date and time value.
      */
+    @Serializable
     data class DateTime(
         val millis: Long,
         val hour: Int,
@@ -154,6 +163,41 @@ sealed class DateTimeValue {
                         set(Calendar.MINUTE, minute)
                     }.timeInMillis
         }
+
+    companion object {
+        /**
+         * Converts a date string to epoch milliseconds.
+         * @param dateString The date string in YYYY-MM-DD format
+         * @param zoneId The time zone to use (defaults to system default)
+         * @return The epoch milliseconds, or current time if parsing fails
+         */
+        fun getEpochMillisFromDateString(dateString: String, zoneId: ZoneId = ZoneId.systemDefault()): Long =
+            try {
+                LocalDate
+                    .parse(dateString)
+                    .atStartOfDay(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+            } catch (e: Exception) {
+                System.currentTimeMillis()
+            }
+
+        /**
+         * Formats a timestamp (milliseconds) to YYYY-MM-DD format for API requests.
+         * Similar to moment(timestamp).format('Y-MM-DD')
+         * @param timestampMillis The timestamp in milliseconds
+         * @return The formatted date string in YYYY-MM-DD format
+         */
+        fun getDateFormatFromMilliseconds(timestampMillis: Long): String =
+            try {
+                val date = Instant.ofEpochMilli(timestampMillis)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+                date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            } catch (e: Exception) {
+                ""
+            }
+    }
 }
 
 /**
@@ -225,12 +269,17 @@ object DateTimeInputDefaults {
     /**
      * Returns the default value for a given DateTimeInputMode.
      */
-    fun defaultValueForMode(mode: DateTimeInputMode): DateTimeValue =
-        when (mode) {
-            DateTimeInputMode.Date -> DateTimeValue.Date(System.currentTimeMillis())
-            DateTimeInputMode.Time -> DateTimeValue.Time(12, 0)
-            DateTimeInputMode.DateTime -> DateTimeValue.DateTime(System.currentTimeMillis(), 12, 0)
+    fun defaultValueForMode(mode: DateTimeInputMode): DateTimeValue {
+        val calendar = Calendar.getInstance()
+        val currentTimeMillis = calendar.timeInMillis
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        return when (mode) {
+            DateTimeInputMode.Date -> DateTimeValue.Date(currentTimeMillis)
+            DateTimeInputMode.Time -> DateTimeValue.Time(hour, minute)
+            DateTimeInputMode.DateTime -> DateTimeValue.DateTime(currentTimeMillis, hour, minute)
         }
+    }
 }
 
 /**
@@ -270,7 +319,7 @@ fun DateTimeInput(
     val currentValue = formControl?.value ?: value
     // Local state for the input value
     var localState by remember { mutableStateOf(currentValue ?: DateTimeInputDefaults.defaultValueForMode(mode)) }
-    // Keep localState in sync with external value
+    // Keep localState in sync with external valuex
     if (currentValue != null && currentValue != localState) {
         localState = currentValue
     }

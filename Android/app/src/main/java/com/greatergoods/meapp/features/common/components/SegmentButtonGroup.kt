@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateBounds
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -146,6 +149,7 @@ object SegmentButtonDefaults {
  * @param size Size variant of the segment button
  * @param type Type of layout - Single (non-scrollable) or Scrollable (with LazyRow)
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun <T> SegmentButtonGroup(
     modifier: Modifier = Modifier,
@@ -156,7 +160,7 @@ fun <T> SegmentButtonGroup(
     type: SegmentButtonType = SegmentButtonType.Single,
     onSelected: (T) -> Unit,
 ) {
-    val minWidth = SegmentButtonDefaults.minWidth(size)
+    SegmentButtonDefaults.minWidth(size)
     val horizontalPadding = SegmentButtonDefaults.horizontalPadding(size)
     val verticalPadding = 0.dp
     val horizontalSpacedBy = SegmentButtonDefaults.segmentSpacing
@@ -314,7 +318,6 @@ fun SegmentButtonPreview() {
             var selectedMediumData by remember { mutableStateOf(sampleMediumData[0]) }
             var selectedLargeData by remember { mutableStateOf(sampleLargeData[0]) }
             // --- Single Type - Small size ---
-            var selectedSmallIndex by remember { mutableStateOf(1) }
             SegmentButtonGroup(
                 data =
                 sampleSmallData,
@@ -325,7 +328,6 @@ fun SegmentButtonPreview() {
             )
 
             // --- Scrollable Type - Medium size ---
-            var selectedMediumIndex by remember { mutableStateOf(0) }
             SegmentButtonGroup(
                 data =
                 sampleMediumData,
@@ -336,7 +338,6 @@ fun SegmentButtonPreview() {
             )
 
             // --- Single Type - Large size ---
-            var selectedLargeIndex by remember { mutableStateOf(2) }
             SegmentButtonGroup(
                 data =
                 sampleLargeData,
@@ -347,7 +348,6 @@ fun SegmentButtonPreview() {
             )
 
             // --- Scrollable Type - Many items ---
-            var selectedScrollableIndex by remember { mutableStateOf(3) }
             SegmentButtonGroup(
                 data = sampleLargeData,
                 key = SegmentButtonData::label,

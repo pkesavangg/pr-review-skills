@@ -40,7 +40,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.material)
+    implementation(libs.androidx.material.icons.extended)
 
     implementation(libs.androidx.connect.client)
     implementation(libs.androidx.work.runtime.ktx)

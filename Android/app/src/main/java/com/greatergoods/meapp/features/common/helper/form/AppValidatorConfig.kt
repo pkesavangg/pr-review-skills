@@ -25,23 +25,24 @@ class AppValidatorConfig {
     }
 
     object DateOfBirth {
+        const val DEFAULT_VALUE = "2000-01-01"
         const val MIN_LENGTH = 10
         const val MAX_LENGTH = 10
     }
 
     object BMR {
         const val MIN = 800
-        const val MAX = 5000
+        const val MAX = 10000
     }
 
     object MetabolicAge {
         const val MIN = 12
-        const val MAX = 100
+        const val MAX = 150
     }
 
     object BodyComp {
         const val MIN = 0
-        const val MAX = 100
+        const val MAX = 99
     }
 
     object WeightKg {

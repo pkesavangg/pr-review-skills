@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.greatergoods.meapp.core.service.IAppEventService
-import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -14,5 +14,16 @@ open class BaseViewModel @Inject constructor() : ViewModel() {
 
     @Inject
     lateinit var dialogQueueService: IDialogQueueService
+
+    @Inject
+    lateinit var customTabManager: ICustomTabManager
+
+    /**
+     * Opens a URL using the injected CustomTabManager.
+     * @param url The URL to open.
+     */
+    fun openInAppBrowser(url: String) {
+        customTabManager.openChromeTab(url)
+    }
 
 }

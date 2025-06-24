@@ -2,11 +2,19 @@ package com.greatergoods.meapp.features.common.helper.form
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
+import com.greatergoods.meapp.features.common.components.DateTimeValue
+import com.greatergoods.meapp.features.common.components.HeightInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
@@ -229,8 +237,40 @@ class FormGroup<T : Any>(
     val controls: T,
     private val groupValidators: List<(T) -> String?> = emptyList(),
 ) {
+    val json = Json { ignoreUnknownKeys = true }
     private val _groupError = mutableStateOf<String?>(null)
     val groupError: String? get() = _groupError.value
+
+    /**
+     * Serializes the form's values into a custom data type `R`.
+     *
+     * This method collects all values from the form controls, constructs a JSON object,
+     * and then deserializes it into the specified type `R`. The target type `R` must
+     * be annotated with `@Serializable`.
+     *
+     * Note: This works best with primitive types (String, Number, Boolean) and Enums.
+     * For complex objects as form control values, ensure their `toString()` representation
+     * is compatible with the expected JSON value.
+     *
+     * @param R The target `@Serializable` data class, which must be `reified`.
+     * @return An instance of `R` populated with the form's values.
+     */
+    inline fun <reified R : Any> getValuesAsType(): R {
+        val valueMap = getValues()
+        val jsonObjectMap =
+            valueMap.mapValues { (_, value) ->
+                when (value) {
+                    null -> JsonNull
+                    is String -> JsonPrimitive(value)
+                    is Number -> JsonPrimitive(value)
+                    is Boolean -> JsonPrimitive(value)
+                    is DateTimeValue -> json.encodeToJsonElement(value)
+                    is HeightInput -> json.encodeToJsonElement(value)
+                    else -> JsonPrimitive(value.toString()) // Fallback for other types like enums
+                }
+            }
+        return json.decodeFromJsonElement(JsonObject(jsonObjectMap))
+    }
 
     /**
      * Returns true if all controls and group-level validation are currently valid.
@@ -240,7 +280,11 @@ class FormGroup<T : Any>(
         get() = controls.toList().all { it.isValueValid() } && groupError == null
 
     val isDirty: Boolean
-    get() = controls.toList().any { it.dirty }
+        get() = controls.toList().any { it.dirty }
+
+    val isTouched: Boolean
+        get() = controls.toList().any { it.touched }
+
     /**
      * Returns a map of all form control values where the key is the field name
      * and the value is the current value of that form control
