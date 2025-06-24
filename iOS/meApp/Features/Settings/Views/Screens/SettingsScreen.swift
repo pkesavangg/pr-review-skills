@@ -165,7 +165,7 @@ struct SettingsScreen: View {
                 .foregroundColor(theme.textBody)
         }
         .frame(maxWidth: .infinity)
-        .listRowBackground(Color.clear)
+        .listRowBackground(Color.red)
     }
     
     private func accountSettingsSection() -> some View {
@@ -318,6 +318,15 @@ struct SettingsScreen: View {
     
     private func accountActionSection() -> some View {
         Section {
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.switchAccounts,
+                onTap: {
+                    tabViewModel.showTabBar = false
+                    router.navigate(to: .myAccounts)
+                }
+            ))
+            .listRowInsets()
+
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.logOut,
                 chevronType: .none,

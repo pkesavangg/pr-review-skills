@@ -30,7 +30,7 @@ struct UserListItemView: View {
                     AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.backgroundPrimary)
                 }
-                .tint(theme.textError) // Set the background of the swipe action to black
+                .tint(theme.textError) // Set the background of the swipe action
             }
         }
     }

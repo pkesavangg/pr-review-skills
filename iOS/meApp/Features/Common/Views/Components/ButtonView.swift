@@ -34,8 +34,11 @@ struct TestingCommonButtonsView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
+                ButtonView(text: "Log Into Existing Account", type: .outlinedPrimary, size: .large, isDisabled: false) {
+                    // TODO: Implement login flow
+                }
                 //Filled Primary buttons
-                ButtonView(text: "connect button", type: .filledPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "connect button sadasdasdsa", type: .filledPrimary, size: .large, isDisabled: false, action: {})
                 ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: false, action: {})
                 ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: true, action: {})
                 ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: true, action: {})
