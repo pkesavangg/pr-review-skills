@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.settings.strings
 
+// TODO: MyAccountsScreenStrings will be implemented in a new file in this folder, following the PascalCase object pattern for static text.
+
 object SettingsScreenStrings {
     const val Title = "Settings"
 

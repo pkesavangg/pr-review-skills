@@ -49,6 +49,12 @@ sealed class AppRoute : NavKey {
         val month: String,
     ) : AppRoute()
 
+    @Serializable
+    sealed class SettingsRoute : AppRoute() {
+        @Serializable
+        data object MyAccounts : SettingsRoute()
+    }
+
     /**
      * Authentication-related navigation routes.
      */

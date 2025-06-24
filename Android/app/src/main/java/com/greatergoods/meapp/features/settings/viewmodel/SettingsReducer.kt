@@ -3,6 +3,8 @@ package com.greatergoods.meapp.features.settings.viewmodel
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 
+// TODO: MyAccountsReducer and related state/intent may be implemented for MyAccountsScreen if needed, following the same pattern.
+
 /**
  * UI state for the settings feature, holding loading state and errors.
  *
@@ -30,6 +32,8 @@ sealed interface SettingsIntent : IReducer.Intent {
     object ClearError : SettingsIntent
 
     object Logout : SettingsIntent
+
+    object SwitchAccount : SettingsIntent
 
     data class updateAccount(
         val account: Account?,
