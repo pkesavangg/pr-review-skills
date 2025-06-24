@@ -285,5 +285,6 @@ struct AppAssets {
     static let filledTickCircle = "filledTickCircle"
     static let bluetooth = "bluetooth"
     static let exclamationMark = "exclamationMark"
+    static let scale0412 = "0412"
 }
 

@@ -102,7 +102,8 @@ struct MyScalesScreen: View {
                                 scaleName: scale.deviceName ?? lang.unknownScale,
                                 status: .connected,
                                 onTap: {
-                                    // TODO: Add Action
+                                    let name = scale.deviceName ?? lang.unknownScale
+                                    router.navigate(to: .scaleSettings(scaleName: name))
                                 }
                             )
                             .padding(.horizontal, .spacingSM)
