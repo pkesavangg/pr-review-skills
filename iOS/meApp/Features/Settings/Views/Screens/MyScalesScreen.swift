@@ -53,6 +53,7 @@ struct MyScalesScreen: View {
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
+                            onCustomIconTap: { scaleStore.openHelp() },
                             maxLength: 4,
                             allowWholeNumbers: true
                         ),
@@ -127,4 +128,46 @@ struct MyScalesScreen: View {
 
 #Preview {
     MyScalesScreen()
+}
+
+import SwiftUI
+
+// MARK: ModelNumberHelpModalView
+/// A view that displays a simple help modal for model number help (placeholder)
+struct ModelNumberHelpModalView: View {
+    let onClose: () -> Void
+    @Environment(\.appTheme) private var theme
+    @EnvironmentObject var themeManager: Theme
+
+    var body: some View {
+        GeometryReader { geometry in
+            VStack {
+                VStack(alignment: .leading){
+                    Text("Check the back of your scale for a sticker with your four-digit model number.")
+                        .fontOpenSans(.body2)
+                        
+                    Text("For example, if you have a 0375 Bluetooth Scale, your sticker will show the URL")
+                        .fontOpenSans(.body2)
+                    Text("greatergoods.com/0375.")
+                        .fontOpenSans(.body2)
+                }
+                .padding(.horizontal,.spacingXS)
+                .padding(.vertical, .spacingLG)
+            }
+            .padding(.horizontal, .spacingXS)
+            .padding(.vertical, .spacingXS)
+            .background(theme.backgroundSecondary)
+            .cornerRadius(.radiusXL)
+            .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 5)
+            .frame(width: geometry.size.width * 0.85)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+        }
+        .background(.clear)
+    }
+}
+
+// MARK: - Preview
+#Preview {
+    ModelNumberHelpModalView(onClose: {})
+        .environmentObject(Theme.shared)
 }
