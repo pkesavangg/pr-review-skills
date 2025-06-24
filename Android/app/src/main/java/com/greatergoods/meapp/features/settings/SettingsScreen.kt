@@ -75,7 +75,9 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ChangePassword,
-                            onClick = { },
+                            onClick = {
+                                backStack.addRoute(AppRoute.AccountSettings.ChangePassword)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UserProfile,

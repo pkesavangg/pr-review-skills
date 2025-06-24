@@ -38,6 +38,7 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 fun AppBar(
     modifier: Modifier = Modifier,
     title: String? = null,
+    borderColor: Color = Color.Transparent,
     containerColor: Color = colorScheme.primaryBackground,
     borderColor: Color = Color.Transparent,
     navigationIcon: (@Composable (() -> Unit))? = null,

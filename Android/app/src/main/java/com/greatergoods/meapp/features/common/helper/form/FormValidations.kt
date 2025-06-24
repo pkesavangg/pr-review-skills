@@ -29,7 +29,7 @@ object ValidationMessages {
     const val FUTURE_TIME = "date must not be in the future"
     const val SKU = "model number invalid"
     const val REQUIRED = "must not leave blank"
-    const val PASSWORD_MISMATCH = "passwords mismatch"
+    const val PASSWORD_MISMATCH = "both passwords must match"
     const val NO_WHITESPACE = "must not leave blank"
     const val INVALID_WEIGHT = "invalid weight"
     const val KG_RANGE = "weight must be between 0kg and 450 kg"
@@ -52,7 +52,7 @@ object FormValidations {
     ): Validator<String> =
         { value ->
             if (value.length < length) {
-                ValidationError(ValidationType.MIN_LENGTH, "$fieldName must be at least $length characters long")
+                ValidationError(ValidationType.MIN_LENGTH, "Password must be $length characters long")
             } else {
                 null
             }
