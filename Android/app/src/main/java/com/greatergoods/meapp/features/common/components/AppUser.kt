@@ -96,7 +96,8 @@ fun AppUser(
                 type = AppIconType.Primary,
                 modifier = Modifier.size(24.dp),
             )
-        } else {
+        }
+        if (!account.isLoggedIn) {
             AppButton(
                 label = AppUserStrings.LogInButton,
                 onClick = onLoginRequest,
