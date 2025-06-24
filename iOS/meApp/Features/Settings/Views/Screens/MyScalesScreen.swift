@@ -115,7 +115,6 @@ struct MyScalesScreen: View {
                     }
                 }
             }
-            //.padding(.horizontal, .spacingSM)
         }
         .onDisappear {
             scaleStore.resetForm()
