@@ -7,7 +7,7 @@ import Combine
 struct WeightlessScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var settingsStore: SettingsStore
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var router: Router<SettingsRoute>
     
     private let strings = WeightlessStrings.self
     private let toast = ToastStrings.self
@@ -22,20 +22,20 @@ struct WeightlessScreen: View {
         VStack(spacing: 0) {
             NavbarHeaderView(
                 title: strings.title,
-                leadingContent: { Image(AppAssets.xmark) },
+                leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: {
                     ButtonView(
                         text: commonLang.save,
                         type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
-                        isDisabled: (!settingsStore.weightlessForm.isDirty || (settingsStore.weightlessForm.isDirty && settingsStore.weightlessForm.isInvalid)),
+                        isDisabled: !settingsStore.isWeightLessFormValid,
                     ) {
-                        settingsStore.saveWeightless(dismiss: dismiss)
+                        settingsStore.saveWeightless(router: router)
                         withAnimation { hideKeyboard() }
                     }
                 },
-                onLeadingTap: { settingsStore.handleWeightlessExit(dismiss: dismiss) },
+                onLeadingTap: { settingsStore.handleWeightlessExit(router: router) },
                 onTrailingTap: {},
                 canShowBorder: true
             )
@@ -60,7 +60,7 @@ struct WeightlessScreen: View {
                         config: TextInputConfig(
                             label: inputLabels.weightLessLabel(weightUnit == .kg),
                             inputType: .metric,
-                            errorMessage: settingsStore.weightlessForm.getWeightError(unit: weightUnit),
+                            errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight,  unit: weightUnit),
                             isDisabled: !settingsStore.weightlessForm.isOn.value,
                             maxLength: 4,
                             maxValue: 999.9

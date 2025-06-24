@@ -46,6 +46,7 @@ final class SignupStore: ObservableObject {
     
     init() {
         setupFormObservers()
+        self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
         updateHeightPickerValues(from: Int(signupForm.height.value))
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
     }
@@ -305,7 +306,6 @@ final class SignupStore: ObservableObject {
     
     private func updateWeightValidators(isMetric: Bool) {
         let maxWeight = isMetric ? 450.0 : 999.0
-
         // Remove old validator
         signupForm.currentWeight.removeValidator(ofType: .maxValue)
         signupForm.goalWeight.removeValidator(ofType: .maxValue)

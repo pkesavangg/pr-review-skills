@@ -14,6 +14,7 @@ struct ToastModel: Equatable {
     var onClick: () -> Void = {}
     var duration: Double = 3
     var onDismiss: (() -> Void)? = nil
+    var onActiveCountChanged: ((Int) -> Void)? = nil
     
     static func == (lhs: ToastModel, rhs: ToastModel) -> Bool {
         lhs.title == rhs.title &&

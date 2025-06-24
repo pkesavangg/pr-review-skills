@@ -47,15 +47,17 @@ struct SignupScreen: View {
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: {
-                    AppIconView(icon: AppAssets.helpCircle)
-                        .foregroundColor(theme.statusIconPrimary)
+                    Button {
+                        signupStore.showHelpModal()
+                    } label: {
+                        AppIconView(icon: AppAssets.helpCircle)
+                            .foregroundColor(theme.statusIconPrimary)
+                    }
                 },
                 onLeadingTap: {
                     signupStore.handleExit(router: router)
                 },
-                onTrailingTap: {
-                    signupStore.showHelpModal()
-                }
+                onTrailingTap: {}
             )
             
             ProgressBarView(progress: signupStore.progressValue)

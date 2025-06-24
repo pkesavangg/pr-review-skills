@@ -101,6 +101,9 @@ extension View {
         options: [[T]],
         displayValue: @escaping (T) -> String,
         pickerType: PickerType = .default,
+        allowTapOutside: Bool = true,
+        title: String? = nil,
+        showCancel: Bool = false,
         onUpdate: @escaping ([T]) -> Void
     ) -> some View {
         modifier(
@@ -110,7 +113,10 @@ extension View {
                 options: options,
                 displayValue: displayValue,
                 pickerType: pickerType,
-                onUpdate: onUpdate
+                onUpdate: onUpdate,
+                title: title,
+                showCancel: showCancel,
+                allowTapOutside: allowTapOutside
             )
         )
     }
@@ -147,8 +153,25 @@ extension View {
     }
     
     /// Applies a modifier to set the row insets for settings views.
+    /// - Parameters:
+    ///   - top: Top inset (default is 11).
+    ///   - bottom: Bottom inset (default is 11).
+    ///   - leading: Leading inset (default is .spacingSM).
+    ///   - trailing: Trailing inset (default is .spacingSM).
     /// - Returns: A view with modified row insets suitable for settings.
-    func settingsRowInsets() -> some View {
-        self.modifier(SettingsRowInsetModifier())
+    func settingsRowInsets(
+        top: CGFloat = 11,
+        bottom: CGFloat = 11,
+        leading: CGFloat = .spacingSM,
+        trailing: CGFloat = .spacingSM
+    ) -> some View {
+        self.modifier(
+            SettingsRowInsetModifier(
+                top: top,
+                bottom: bottom,
+                leading: leading,
+                trailing: trailing
+            )
+        )
     }
 }

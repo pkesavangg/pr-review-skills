@@ -29,9 +29,13 @@ final class WeightlessForm: ObservableForm {
     }
 
     /// Returns a human-readable error for the weight field (if any).
-    func getWeightError(unit: WeightUnit) -> String? {
+    func getWeightError<T>(for control: FormControl<T>, unit: WeightUnit) -> String? {
         guard weight.isDirty else { return nil }
-
+        // Skip current-weight error when maintain mode is selected.
+        if control === weight && isOn.value == false {
+            return nil
+        }
+        
         if weight.errors[.required] { return FormErrorMessages.required }
         if weight.errors[.minValue] {
             return unit == .kg ? FormErrorMessages.minWeightKg : FormErrorMessages.minWeightLb

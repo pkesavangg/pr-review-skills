@@ -33,9 +33,15 @@ struct LoginScreen: View {
                 NavbarHeaderView(
                     title: "",
                     leadingContent: { Image(AppAssets.xmark) },
-                    trailingContent: { Image(AppAssets.helpCircle) },
+                    trailingContent: {
+                        Button {
+                            store.openHelp()
+                        } label: {
+                            Image(AppAssets.helpCircle)
+                        }
+                    },
                     onLeadingTap: { router.navigateBack() },
-                    onTrailingTap: { store.openHelp() }
+                    onTrailingTap: {  }
                 )
                 .padding(.bottom, .spacingLG)
 
