@@ -11,15 +11,6 @@ struct MyScalesScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject var scaleStore = ScaleStore()
-    @FocusState private var focusedField: FocusField?
-
-    private var focusBinding: Binding<FocusField?> {
-        Binding(
-            get: { focusedField },
-            set: { focusedField = $0 }
-        )
-    }
-    
     let lang = MyScaleStrings.self
 
     var body: some View {
