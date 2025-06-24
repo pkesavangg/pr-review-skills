@@ -29,6 +29,7 @@ struct SignupStrings {
     struct HeightStep {
         static let title = "How tall are you?"
         static let subtitle = "Height is another factor that helps us provide you with the most accurate metrics."
+        static let pickerHeader = "Height"
     }
     
     struct GoalStep {

@@ -8,7 +8,7 @@ import Combine
 struct GoalSettingScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var settingsStore: SettingsStore
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var router: Router<SettingsRoute>
 
     @State private var focusedField: FocusField? = nil
 
@@ -26,7 +26,7 @@ struct GoalSettingScreen: View {
             // Header
             NavbarHeaderView(
                 title: strings.title,
-                leadingContent: { Image(AppAssets.xmark) },
+                leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: {
                     ButtonView(
                         text: commonLang.save,
@@ -35,10 +35,10 @@ struct GoalSettingScreen: View {
                         isDisabled: !settingsStore.isGoalFormValid,
                     ) {
                         hideKeyboard()
-                        settingsStore.saveGoal(dismiss: dismiss)
+                        settingsStore.saveGoal(router: router)
                     }
                 },
-                onLeadingTap: { settingsStore.handleGoalExit(dismiss: dismiss) },
+                onLeadingTap: { settingsStore.handleGoalExit(router: router) },
                 onTrailingTap: {},
                 canShowBorder: true
             )
@@ -151,4 +151,5 @@ struct GoalSettingScreen: View {
 #Preview {
     GoalSettingScreen()
         .environmentObject(SettingsStore())
+        .environmentObject(Router<SettingsRoute>())
 } 

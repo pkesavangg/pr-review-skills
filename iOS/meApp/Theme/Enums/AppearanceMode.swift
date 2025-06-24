@@ -12,7 +12,7 @@ import SwiftUI
 enum AppearanceMode: String, CaseIterable {
     case light = "Light"
     case dark = "Dark"
-    case system = "System"
+    case system = "System Settings"
     
     var colorScheme: ColorScheme? {
         switch self {
