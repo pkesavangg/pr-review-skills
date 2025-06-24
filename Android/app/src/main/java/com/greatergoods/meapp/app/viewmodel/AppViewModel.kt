@@ -71,18 +71,11 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    private fun initLoadingData(isInitLoad: String) {
+    private fun initLoadingData(accountId: String) {
         viewModelScope.launch {
             try {
-                entryService.updateAccountId(isInitLoad)
-                // Simulate data loading
-                delay(3000)
-
-                // TODO: Add your actual data loading logic here
-                // For example:
-                // - Load user preferences
-                // - Initialize services
-                // - Cache necessary data
+                delay(1000)
+                entryService.updateAccountId(accountId)
                 deviceInfoService.updateDeviceInfo()
                 navigationService.autoLogin()
             } catch (e: Exception) {

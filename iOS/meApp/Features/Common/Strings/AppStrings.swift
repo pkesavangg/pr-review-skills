@@ -290,7 +290,6 @@ struct AppAssets {
     static let historyFill = "historyFill"
     static let appSync = "appSync"
     static let bluetooth = "bluetooth"
-    static let wifi = "wifi"
     static let btWifi = "btWifi"
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
@@ -313,5 +312,6 @@ struct AppAssets {
     static let checkMarkCircle = "checkMarkCircle"
     static let circleOutline = "circleOutline"
     static let circleCheckFilled = "circleCheckFilled"
+    static let wifi = "wifi"
 }
 

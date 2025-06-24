@@ -51,9 +51,12 @@ enum class AppInputType {
     EMAIL,
     PASSWORD,
     NUMBER,
-    WEIGHT,
+
+    /**
+     * Input type used for body composition metrics (e.g., weight, body fat, muscle mass).
+     * Typically accepts decimal values with specific validation rules.
+     */
     BODY_COMP,
-    BODY_COMP_DECIMAL,
 }
 
 object AppInputDefaults {
@@ -61,9 +64,10 @@ object AppInputDefaults {
         when (type) {
             AppInputType.PASSWORD -> PasswordVisualTransformation()
 
-            AppInputType.WEIGHT, AppInputType.BODY_COMP_DECIMAL -> DecimalInputVisualTransformation(
-                decimalDigits = 1,
-            )
+            AppInputType.BODY_COMP ->
+                DecimalInputVisualTransformation(
+                    decimalDigits = 1,
+                )
 
             else -> VisualTransformation.None // Default case for other AppInputTypes
         }
@@ -72,11 +76,10 @@ object AppInputDefaults {
         when (type) {
             AppInputType.TEXT -> KeyboardType.Text
             AppInputType.EMAIL -> KeyboardType.Email
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL,
-                -> KeyboardType.Number
+            AppInputType.NUMBER, AppInputType.BODY_COMP,
+            -> KeyboardType.Number
 
             AppInputType.PASSWORD -> KeyboardType.Password
-            else -> KeyboardType.Unspecified
         }
 
     fun imeAction(type: AppInputType): ImeAction =
@@ -91,7 +94,7 @@ object AppInputDefaults {
         formControl: FormControl<*>?,
     ): T? =
         when (type) {
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP, AppInputType.BODY_COMP_DECIMAL ->
+            AppInputType.NUMBER, AppInputType.BODY_COMP ->
                 when (formControl?.value) {
                     is Int -> value.toIntOrNull()
                     is Long -> value.toLongOrNull()
@@ -108,8 +111,9 @@ object AppInputDefaults {
         value: T?,
     ): String =
         when (type) {
-            AppInputType.NUMBER, AppInputType.WEIGHT, AppInputType.BODY_COMP -> value?.toString()
-                ?: ""
+            AppInputType.NUMBER, AppInputType.BODY_COMP ->
+                value?.toString()
+                    ?: ""
 
             else -> value?.toString() ?: ""
         }
@@ -119,7 +123,7 @@ object AppInputDefaults {
         value: String,
     ): String =
         when (type) {
-            AppInputType.WEIGHT, AppInputType.BODY_COMP -> value.filter { it.isDigit() }
+            AppInputType.BODY_COMP -> value.filter { it.isDigit() }
             else -> value
         }
 }
@@ -129,6 +133,7 @@ object AppInputDefaults {
  */
 class InputFocusManager {
     private val focusRequesters = mutableListOf<FocusRequester>()
+
     fun register(requester: FocusRequester): Int {
         focusRequesters.add(requester)
         return focusRequesters.lastIndex
@@ -319,27 +324,31 @@ fun <T> InputFieldBase(
     TextField(
         value = inputValue,
         onValueChange = onInputChange,
-        modifier = modifier
-            .height(56.dp)
-            .fillMaxWidth()
-            .focusRequester(focusRequester)
-            .onFocusChanged { focusState ->
-                if (!focusState.isFocused && isFocused) {
-                    currentOnBlur?.invoke()
-                    formControl?.onBlur() // handle touched on blur
-                    isFocused = false
-                } else if (focusState.isFocused && !isFocused) {
-                    currentOnFocus?.invoke()
-                    isFocused = true
-                }
-            }
-            .then(
-                if (showOutline) Modifier.border(
-                    width = 1.dp,
-                    color = if (isError) colorScheme.textError else colorScheme.utility,
-                    shape = RoundedCornerShape(size = borderRadius.sm),
-                ) else Modifier,
-            ),
+        modifier =
+            modifier
+                .height(56.dp)
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused && isFocused) {
+                        currentOnBlur?.invoke()
+                        formControl?.onBlur() // handle touched on blur
+                        isFocused = false
+                    } else if (focusState.isFocused && !isFocused) {
+                        currentOnFocus?.invoke()
+                        isFocused = true
+                    }
+                }.then(
+                    if (showOutline) {
+                        Modifier.border(
+                            width = 1.dp,
+                            color = if (isError) colorScheme.textError else colorScheme.utility,
+                            shape = RoundedCornerShape(size = borderRadius.sm),
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
         label = {
             label?.let {
                 Text(
@@ -388,7 +397,6 @@ fun <T> InputFieldBase(
         readOnly = readOnly,
         visualTransformation = inputTransformation,
         isError = isError,
-
         shape = RoundedCornerShape(borderRadius.sm),
         colors =
             TextFieldDefaults.colors(
@@ -414,22 +422,25 @@ fun <T> InputFieldBase(
     Box(modifier = Modifier.padding(top = spacing.xs, start = spacing.sm)) {
         val errorMessage = formControl?.error?.message.orEmpty()
         when {
-            isError -> Text(
-                text = errorMessage.lowercase(),
-                color = colorScheme.textError,
-                style = typography.body3,
-            )
+            isError ->
+                Text(
+                    text = errorMessage.lowercase(),
+                    color = colorScheme.textError,
+                    style = typography.body3,
+                )
 
-            supportingText != null -> Text(
-                text = supportingText,
-                color = colorScheme.textSubheading,
-                style = typography.body3,
-            )
+            supportingText != null ->
+                Text(
+                    text = supportingText,
+                    color = colorScheme.textSubheading,
+                    style = typography.body3,
+                )
 
-            else -> Text(
-                text = AppInputStrings.EmptySpace,
-                style = typography.body3,
-            )
+            else ->
+                Text(
+                    text = AppInputStrings.EmptySpace,
+                    style = typography.body3,
+                )
         }
     }
     Spacer(Modifier.height(spacing.xs))
@@ -457,4 +468,3 @@ fun AppInputPreview() {
         }
     }
 }
-

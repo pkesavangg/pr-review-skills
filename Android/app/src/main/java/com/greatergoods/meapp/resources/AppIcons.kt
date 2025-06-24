@@ -20,6 +20,17 @@ object AppIcons {
         val StampDark = R.drawable.gg_stamp_dark
         val RightCaret = R.drawable.ic_right_caret
         val ChevronDown = R.drawable.ic_chevron_down
+        val Bmi = R.drawable.me_placeholder
+        val BodyFat = R.drawable.me_placeholder
+        val Muscle = R.drawable.me_placeholder
+        val Water = R.drawable.me_placeholder
+        val Heart = R.drawable.me_placeholder
+        val Bone = R.drawable.me_placeholder
+        val VisceralFat = R.drawable.me_placeholder
+        val SubcutaneousFat = R.drawable.me_placeholder
+        val Protein = R.drawable.me_placeholder
+        val Bmr = R.drawable.me_placeholder
+        val MetabolicAge = R.drawable.me_placeholder
     }
 
     object Outlined {
@@ -35,5 +46,20 @@ object AppIcons {
         val Close = R.drawable.ic_popup_close
         val CloseDark = R.drawable.ic_popup_close_dark
         val CaretDown = R.drawable.ic_filled_caret_down
+    }
+
+    object Metrics {
+        val BodyFat = R.drawable.ic_body_fat
+        val MuscleMass = R.drawable.ic_muscle_mass
+        val Water = R.drawable.ic_water
+        val Bmi = R.drawable.ic_bmi
+        val Bmr = R.drawable.ic_bmr
+        val MetabolicAge = R.drawable.ic_metabolic_age
+        val Protein = R.drawable.ic_protein
+        val Pulse = R.drawable.ic_pulse
+        val SkeletalMusclePercent = R.drawable.ic_skeletal_muscle
+        val SubcutaneousFat = R.drawable.ic_subcutaneous_fat
+        val VisceralFat = R.drawable.ic_visceral_fat
+        val BoneMass = R.drawable.ic_bone_mass
     }
 }

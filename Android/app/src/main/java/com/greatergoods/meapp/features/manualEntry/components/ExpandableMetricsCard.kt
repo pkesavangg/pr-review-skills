@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import com.greatergoods.meapp.domain.model.common.DashboardType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
 import com.greatergoods.meapp.features.manualEntry.viewmodel.GeneralMetricsFormControls
@@ -27,6 +29,7 @@ import com.greatergoods.meapp.features.manualEntry.viewmodel.R4ScaleMetricsFormC
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import androidx.compose.ui.focus.FocusRequester
 
 /**
  * Expandable card for metrics section, with animated expand/collapse, title, and optional subheading.
@@ -36,6 +39,8 @@ import com.greatergoods.meapp.theme.MeTheme
  * @param generalMetrics The form controls for general metrics.
  * @param r4ScaleMetrics The form controls for R4/scale metrics (optional).
  * @param expandedInitially Whether the card is expanded by default.
+ * @param onImeAction Optional callback for when the last input's IME action is triggered.
+ * @param dashboardType The dashboard type to determine the focus flow.
  */
 @Composable
 fun ExpandableMetricsCard(
@@ -44,9 +49,13 @@ fun ExpandableMetricsCard(
     generalMetrics: GeneralMetricsFormControls,
     r4ScaleMetrics: R4ScaleMetricsFormControls? = null,
     expandedInitially: Boolean = false,
+    onImeAction: (() -> Unit)? = null,
+    dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS,
 ) {
     var expanded by rememberSaveable { mutableStateOf(expandedInitially) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "ChevronRotation")
+    // Create focus requester for heart rate (first field of R4ScaleMetricsSection)
+    val heartRateFocusRequester = remember { FocusRequester() }
 
     Column {
         Row(
@@ -75,9 +84,18 @@ fun ExpandableMetricsCard(
         }
         AnimatedVisibility(visible = expanded) {
             Column {
-                GeneralMetricsSection(generalMetrics)
+                GeneralMetricsSection(
+                    generalMetrics, 
+                    dashboardType,
+                    nextFocusRequester = if (dashboardType != DashboardType.DASHBOARD_4_METRICS && r4ScaleMetrics != null) heartRateFocusRequester else null,
+                    onImeAction = if (dashboardType == DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
+                )
                 r4ScaleMetrics?.let { r4Controls ->
-                    R4ScaleMetricsSection(r4Controls)
+                    R4ScaleMetricsSection(
+                        r4Controls, 
+                        onImeAction = if (dashboardType != DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
+                        heartRateFocusRequester = if (dashboardType != DashboardType.DASHBOARD_4_METRICS) heartRateFocusRequester else null,
+                    )
                 }
             }
         }

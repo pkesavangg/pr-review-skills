@@ -17,6 +17,8 @@ interface IEntryService {
     val lastUpdated: StateFlow<Long?>
     suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>>
 
+    suspend fun monthDetails(startDate: String): Flow<List<Entry>>
+
     suspend fun updateAccountId(accountId: String)
     suspend fun addEntry(entry: Entry)
     suspend fun addEntry(entries: List<Entry>)
