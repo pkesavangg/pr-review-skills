@@ -66,6 +66,9 @@ struct ToastStrings {
     static let passwordResetSuccessMessage = { (email: String) in
         "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 10 minutes."
     }
+    static let forgotPassword = { (email: String) in
+        "Password reset link sent to \(email)."
+    }
     static let success = "Success!"
     static let entryAdded = "Entry added."
     static let errorSavingEntry = "Error saving new entry!"
@@ -136,6 +139,7 @@ struct InputFieldLabels {
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
     static let zipCode = "zipcode"
+    static let birthday = "birthday"
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
     }
@@ -223,6 +227,15 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+    
+    struct ForgotPasswordAlert {
+        static let title = "Forgot your Password?"
+        static let message: (String) -> String = { email in
+            return "Send a password reset link to \(email)"
+        }
+        static let send = "send"
+        static let cancel = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -297,5 +310,6 @@ struct AppAssets {
     static let bmrIcon = "bmr"
     static let ageIcon = "metabolicAge"
     static let emptyStateIcon = "emptyStateIcon"
+    static let checkMarkCircle = "checkMarkCircle"
 }
 

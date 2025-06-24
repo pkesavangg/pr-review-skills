@@ -25,6 +25,8 @@ struct ActionListItemView: View {
                     Circle()
                         .fill(config.dotColor ?? theme.textError)
                         .frame(width: 9, height: 9)
+                } else if let leadingIcon = config.leadingIcon {
+                    leadingIcon
                 }
                 
                 actionLabelText(config.title, isDestructive: config.isDestructive)
