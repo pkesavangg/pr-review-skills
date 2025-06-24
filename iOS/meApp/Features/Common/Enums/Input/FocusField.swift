@@ -32,5 +32,4 @@ enum FocusField: Hashable {
     case bmr
     case metabolicAge
     case none
-    case modelNumber
 }

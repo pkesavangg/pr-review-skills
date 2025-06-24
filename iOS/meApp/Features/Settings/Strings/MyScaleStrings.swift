@@ -12,8 +12,4 @@ struct MyScaleStrings{
     static let setupIncomplete = "Setup Incomplete"
     static let addAScale = "Add a Scale"
     static let enterModelNumber = "Enter the 4-digit model number found on the back of your scale."
-    static let modelNumber = "Model Number"
-    static let cantFindModelNumber = "Can't find your model number?"
-    static let myScales = "My Scales"
-    static let unknownScale = "Unknown Scale"
 }

@@ -45,86 +45,10 @@ struct MyScalesScreen: View {
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingLG)
-
-                VStack(alignment: .center, spacing: 0){
-                    MetricInputField(
-                        config: TextInputConfig(
-                            label: lang.modelNumber,
-                            inputType: .metric,
-                            errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
-                            focusField: .modelNumber,
-                            customIcon: AppAssets.helpCircle,
-                            maxLength: 4,
-                            allowWholeNumbers: true
-                        ),
-                        value: Binding(
-                            get: { scaleStore.addScaleForm.modelNumber },
-                            set: { scaleStore.addScaleForm.setModelNumber($0) }
-                        ),
-                        focusedField: focusBinding
-                    )
-                    .padding(.bottom, .spacingMD)
-
-                    ButtonView(
-                        text: CommonStrings.submit,
-                        type: .filledPrimary,
-                        size: .large,
-                        isDisabled: !scaleStore.addScaleForm.isValid,
-                        action: {
-                            // TODO: ADD action
-                        }
-                    )
-                    .padding(.bottom, .spacingSM)
-
-
-                    ButtonView(
-                        text: lang.cantFindModelNumber,
-                        type: .textPrimary,
-                        size: .large,
-                        isDisabled: false,
-                        action: {
-                            // TODO: ADD action
-                        }
-                    )
-                }
-                .padding(.horizontal, .spacingSM)
-                .padding(.vertical, .spacingLG)
-
-                if !scaleStore.scales.isEmpty {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(lang.myScales)
-                            .fontOpenSans(.heading4)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.leading)
-                            .padding(.horizontal, .spacingSM)
-
-                        ForEach(scaleStore.scales, id: \.id) { scale in
-                            ScaleItemView(
-                                scaleIcon: Image(AppAssets.meLogoDark),
-                                modelNumber: scale.sku ?? "----",
-                                scaleName: scale.deviceName ?? lang.unknownScale,
-                                status: .connected,
-                                onTap: {
-                                    // TODO: Add Action
-                                }
-                            )
-                            .padding(.horizontal, .spacingSM)
-                            
-                            Divider()
-                        }
-                    }
-                }
             }
-        }
-        .onDisappear {
-            scaleStore.resetForm()
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .onTapGesture {
-            focusedField = nil
-            hideKeyboard()
-        }
     }
 }
 
