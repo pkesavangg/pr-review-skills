@@ -14,8 +14,8 @@ enum NotificationPreference: CaseIterable {
     
     var title: String {
         switch self {
-        case .enable: return "Enable notifications"
-        case .enableWithWeight: return "Enable notifications & include weight"
+        case .enable: return "Enable Notifications without Weight"
+        case .enableWithWeight: return "Enable Notifications w/ Weight"
         case .disable: return "Disable Notifications"
         }
     }

@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.features.manualEntry
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +15,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
@@ -30,6 +35,7 @@ import com.greatergoods.meapp.features.common.components.DateTimeInputMode
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.manualEntry.components.ExpandableMetricsCard
 import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryIntent
@@ -37,6 +43,10 @@ import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryState
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import java.util.Calendar
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.greatergoods.meapp.domain.model.common.DashboardType
 
 @Composable
 fun EntryScreen() {
@@ -45,15 +55,15 @@ fun EntryScreen() {
     val backStack = LocalNavBackStack.current
     EntryScreenContent(state, viewModel::handleIntent)
 
-    if (state.form.controls.weightDateTime.weight.dirty) {
+    if (state.form.isTouched && state.form.isDirty) {
         BackHandler {
             viewModel.dialogQueueService.enqueue(
                 DialogModel.Confirm(
-                    title = "Alert",
-                    message = "Are you sure you want to discard changes?",
+                    title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                    message = AppPopupStrings.UnsavedChanges.Message,
                     onConfirm = {
                         backStack.removeLast(AppRoute.Home)
-                    },
+                        state.form.resetForm() },
                 ),
             )
         }
@@ -65,29 +75,51 @@ private fun EntryScreenContent(
     state: EntryState,
     handleIntent: (EntryIntent) -> Unit,
 ) {
-    val keyBoardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val controls = state.form.controls
     val scrollState = rememberScrollState()
+    val calendar = Calendar.getInstance()
+    val maxValue = DateTimeValue.DateTime(
+        millis = calendar.timeInMillis,
+        hour = calendar.get(Calendar.HOUR_OF_DAY),
+        minute = calendar.get(Calendar.MINUTE)
+    )
+    val interactionSource = remember { MutableInteractionSource() }
+    val weightFocusRequester = remember { FocusRequester() }
+
     AppScaffold(EntryScreenStrings.Title) {
         Column(
             modifier =
                 Modifier
                     .verticalScroll(scrollState)
                     .padding(horizontal = MeTheme.spacing.sm)
-                    .padding(top = MeTheme.spacing.md),
+                    .padding(top = MeTheme.spacing.md)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { focusManager.clearFocus() },
+                    ),
             verticalArrangement = Arrangement.Top,
         ) {
             AppInput(
                 formControl = controls.weightDateTime.weight,
-                label = EntryScreenStrings.WEIGHT_LABEL.plus(state.weightMode),
-                type = AppInputType.NUMBER,
-                modifier = Modifier.fillMaxWidth(),
+                label = EntryScreenStrings.WEIGHT_LABEL,
+                type = AppInputType.BODY_COMP,
+                imeAction = ImeAction.Next,
+                onImeAction = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(weightFocusRequester),
             )
             DateTimeInput(
                 formControl = controls.weightDateTime.dateTime,
                 mode = DateTimeInputMode.DateTime,
                 label = EntryScreenStrings.DATE_LABEL,
-                maxValue = DateTimeValue.Date(System.currentTimeMillis()),
+                maxValue = maxValue,
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
             // Metrics section as a single expandable card
@@ -96,15 +128,20 @@ private fun EntryScreenContent(
                 subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
                 generalMetrics = controls.generalMetrics,
                 r4ScaleMetrics = controls.r4ScaleMetrics,
+                onImeAction = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                },
+                dashboardType = DashboardType.DASHBOARD_12_METRICS,
             )
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 AppButton(
-                    enabled = controls.weightDateTime.weight.validate(),
+                    enabled = state.form.isValid && !state.isLoading,
                     label = EntryScreenStrings.SaveButton,
                     size = ButtonSize.Large,
                     type = ButtonType.PrimaryFilled,
                     onClick = {
-                        keyBoardController?.hide()
+                        keyboardController?.hide()
                         handleIntent(EntryIntent.Save)
                     },
                 )

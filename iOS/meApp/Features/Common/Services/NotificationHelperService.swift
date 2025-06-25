@@ -14,15 +14,18 @@ class NotificationHelperService: ObservableObject {
     @Published var loaderData: LoaderModel? = nil
     @Published var modalViewData: [ModalData] = []
     @Published var isOverlayActive: Bool = false
-
+    
+    /// property to track if any toasts are active in the modifier
+    @Published private var hasActiveToasts: Bool = false
+    
     var isAlertVisible: Bool {
         alertData != nil
     }
-
+    
     var isToastVisible: Bool {
-        toastData != nil
+        hasActiveToasts
     }
-
+    
     var isLoaderVisible: Bool {
         loaderData != nil
     }
@@ -30,7 +33,7 @@ class NotificationHelperService: ObservableObject {
     var isModalVisible: Bool {
         modalViewData.count > 0
     }
-
+    
     func showAlert(_ alert: AlertModel) {
         let wrappedButtons = alert.buttons.map { button in
             AlertButtonModel(
@@ -54,44 +57,54 @@ class NotificationHelperService: ObservableObject {
             self.isOverlayActive = true
         }
     }
-
+    
     func dismissAlert() {
         DispatchQueue.main.async {
             self.alertData = nil
-            self.isOverlayActive = false
+            self.updateOverlayState()
         }
     }
-
+    
     func showToast(_ data: ToastModel) {
         var toast = data
         toast.onDismiss = { [weak self] in
             self?.dismissToast()
         }
+        /// Set up the active count change handler to update hasActiveToasts
+        toast.onActiveCountChanged = { [weak self] count in
+            DispatchQueue.main.async {
+                self?.hasActiveToasts = count > 0
+            }
+        }
+        
         DispatchQueue.main.async {
             self.toastData = toast
+            self.hasActiveToasts = true
         }
     }
-
+    
     func dismissToast() {
         DispatchQueue.main.async {
             self.toastData = nil
+            // Don't immediately set hasActiveToasts to false - let ToastModifier manage this
+            self.updateOverlayState()
         }
     }
-
+    
     func showLoader(_ loader: LoaderModel) {
         DispatchQueue.main.async {
             self.loaderData = loader
             self.isOverlayActive = true
         }
     }
-
+    
     func dismissLoader() {
         DispatchQueue.main.async {
             self.loaderData = nil
-            self.isOverlayActive = false
+            self.updateOverlayState()
         }
     }
-
+    
     func dismissAllNotifications() {
         DispatchQueue.main.async {
             self.alertData = nil
@@ -117,13 +130,13 @@ class NotificationHelperService: ObservableObject {
         }
     }
     
-
+    
     func dismissModal() {
         DispatchQueue.main.async {
             if !self.modalViewData.isEmpty {
                 self.modalViewData.removeLast()
             }
-            self.isOverlayActive = self.modalViewData.count > 0
+            self.updateOverlayState()
         }
     }
     
@@ -132,6 +145,12 @@ class NotificationHelperService: ObservableObject {
             self.modalViewData = []
             self.isOverlayActive = false
         }
+    }
+    
+    /// Updates overlay state based on active notifications
+    /// Note: Toasts don't block the main window, so they're excluded from overlay state
+    private func updateOverlayState() {
+        isOverlayActive = isAlertVisible || isLoaderVisible || isModalVisible
     }
 }
 

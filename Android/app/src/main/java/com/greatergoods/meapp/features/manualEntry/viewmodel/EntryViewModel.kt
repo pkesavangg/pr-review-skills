@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.manualEntry.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.Toast
@@ -19,55 +20,56 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class EntryViewModel
-    @Inject
-    constructor(
-        private val entryService: IEntryService,
-    ) : BaseIntentViewModel<EntryState, EntryIntent>(
-            reducer = EntryReducer(),
-        ) {
-        override fun provideInitialState(): EntryState =
-            EntryState(
-                form =
-                    FormGroup(
-                        EntryFormControls.create(viewModelScope, true),
-                    ),
-            )
+@Inject
+constructor(
+    private val entryService: IEntryService,
+) : BaseIntentViewModel<EntryState, EntryIntent>(
+    reducer = EntryReducer(),
+) {
+    override fun provideInitialState(): EntryState =
+        EntryState(
+            form =
+                FormGroup(
+                    EntryFormControls.create(viewModelScope, true, WeightUnit.LB),
+                ),
+        )
 
-        override fun handleIntent(intent: EntryIntent) {
-            super.handleIntent(intent)
-            when (intent) {
-                is EntryIntent.Save -> {
-                    saveEntry()
-                }
-            }
-        }
-
-        private fun saveEntry() {
-            dialogQueueService.showLoader(
-                message = "saving entry...",
-            )
-            viewModelScope.launch {
-                val scaleEntry =
-                    _state.value.form.controls
-                        .toScaleEntry(_state.value.weightMode)
-                try {
-                    entryService.syncOperations(newEntries = listOf(scaleEntry))
-                    dialogQueueService.showToast(
-                        Toast(
-                            message = "entry saved successfully!",
-                        ),
-                    )
-                    navigationService.navigateBack(AppRoute.Home)
-                } catch (e: Exception) {
-                    AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
-                    dialogQueueService.showToast(
-                        Toast(
-                            message = "Failed to save entry: ${e.message}",
-                        ),
-                    )
-                } finally {
-                    dialogQueueService.dismissLoader()
-                }
+    override fun handleIntent(intent: EntryIntent) {
+        super.handleIntent(intent)
+        when (intent) {
+            is EntryIntent.Save -> {
+                saveEntry()
             }
         }
     }
+
+    private fun saveEntry() {
+        dialogQueueService.showLoader(
+            message = "saving entry...",
+        )
+        viewModelScope.launch {
+            val scaleEntry =
+                _state.value.form.controls
+                    .toScaleEntry(_state.value.weightMode.value)
+            try {
+                entryService.syncOperations(newEntries = listOf(scaleEntry))
+                dialogQueueService.showToast(
+                    Toast(
+                        message = "entry saved successfully!",
+                    ),
+                )
+                _state.value.form.resetForm()
+                navigationService.navigateBack(AppRoute.Home)
+            } catch (e: Exception) {
+                AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
+                dialogQueueService.showToast(
+                    Toast(
+                        message = "Failed to save entry: ${e.message}",
+                    ),
+                )
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+}

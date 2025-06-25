@@ -73,7 +73,7 @@ fun HistoryItem(
             // Average
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = item.avgWeight.toString(),
+                    text = item.avgWeight.toString().plus(item.unit ?: " lbs"),
                     style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                 )
@@ -88,7 +88,7 @@ fun HistoryItem(
             // Change
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = item.change.toString(),
+                    text = item.change.toString().plus(item.unit ?: " lbs"),
                     style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                 )

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -15,6 +16,7 @@ import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
+import com.greatergoods.meapp.features.common.components.AppToggle
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonData
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
@@ -24,23 +26,30 @@ import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.signup.model.GoalType
+import com.greatergoods.meapp.features.signup.model.Metrics
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
-// //**
-// * Step for collecting user's weight goals
-// */
+/**
+ * Step for collecting user's weight goals with metric/imperial toggle
+ */
 @Composable
 fun GoalStep(
     goalTypeControl: FormControl<String>,
     currentWeightControl: FormControl<String>,
     goalWeightControl: FormControl<String>,
     useMetricControl: FormControl<Boolean>,
+    onMetricToggle: (Boolean) -> Unit = {},
+    onNext: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val currentWeightFocusRequester = remember { FocusRequester() }
     val goalWeightFocusRequester = remember { FocusRequester() }
+
+    val isMetric = useMetricControl.value
+    val weightUnit = if (isMetric) Metrics.KG.value else Metrics.LBS.value
 
     // Goal type options
     val goalTypeOptions =
@@ -62,10 +71,10 @@ fun GoalStep(
                 data = goalTypeOptions,
                 selectedData =
                     goalTypeOptions.find {
-                        if (goalTypeControl.value == "maintain") it.id == 0 else it.id == 1
+                        if (goalTypeControl.value == GoalType.MAINTAIN.value) it.id == 0 else it.id == 1
                     } ?: goalTypeOptions[1],
                 onSelected = { selectedOption ->
-                    val value = if (selectedOption.id == 0) "maintain" else "losegain"
+                    val value = if (selectedOption.id == 0) GoalType.MAINTAIN.value else GoalType.LOSE_GAIN.value
                     goalTypeControl.onValueChange(value)
                 },
                 size = SegmentButtonSize.Small,
@@ -75,27 +84,44 @@ fun GoalStep(
         }
         Spacer(modifier = Modifier.padding(vertical = MeTheme.spacing.sm))
 
-        // Weight Inputs
+        // Weight Inputs with dynamic labels
         AppInput(
             formControl = currentWeightControl,
-            type = AppInputType.BODY_COMP_DECIMAL,
-            label = "Current weight (lbs)",
+            type = AppInputType.BODY_COMP,
+            label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
             imeAction = ImeAction.Next,
             nextFocusRequester = goalWeightFocusRequester,
             modifier = Modifier.focusRequester(currentWeightFocusRequester),
-            enabled = goalTypeControl.value == "losegain",
+            enabled = goalTypeControl.value == GoalType.LOSE_GAIN.value,
         )
 
         AppInput(
             formControl = goalWeightControl,
-            type = AppInputType.BODY_COMP_DECIMAL,
-            label = "Goal weight (lbs)", // Always lbs since we removed metric support
-            imeAction = ImeAction.Done,
+            type = AppInputType.BODY_COMP,
+            label = SignupStrings.goalStepGoalWeightDynamic.format(weightUnit),
+            imeAction = ImeAction.Next,
+            onImeAction = onNext,
             modifier = Modifier.focusRequester(goalWeightFocusRequester),
         )
-
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
-        // Goal Type Selection using SegmentButtonGroup
+        // Metric Toggle Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AppText(
+                text = SignupStrings.goalStepUseMetric,
+                textType = TextType.Body,
+            )
+            AppToggle(
+                checked = isMetric,
+                onCheckedChange = { newValue ->
+                    useMetricControl.onValueChange(newValue)
+                    onMetricToggle(newValue)
+                }
+            )
+        }
     }
 }
 
@@ -108,6 +134,8 @@ fun GoalStepPreview() {
             currentWeightControl = FormControl.create("", listOf(FormValidations.required())),
             goalWeightControl = FormControl.create("", listOf(FormValidations.required())),
             useMetricControl = FormControl.create(false, emptyList()),
+            onMetricToggle = {},
+            onNext = {},
         )
     }
 }

@@ -2,7 +2,6 @@ package com.greatergoods.meapp.features.login.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.common.components.DialogType
@@ -28,7 +27,6 @@ class LoginViewModel
 @Inject
 constructor(
     private val accountAuthService: IAccountAuthService,
-    private val customTabManager: ICustomTabManager,
 ) : BaseIntentViewModel<LoginState, LoginIntent>(
     reducer = LoginReducer(),
 ) {
@@ -75,6 +73,7 @@ constructor(
                     handleIntent(LoginIntent.Success)
                 }
             } catch (e: Exception) {
+                handleIntent(LoginIntent.Error(e.toString()))
                 AppLog.e("onSubmit", "Login failed", e.toString())
             } finally {
                 dialogQueueService.dismissLoader()
@@ -91,7 +90,7 @@ constructor(
             DialogModel.Custom(
                 contentKey = DialogType.PasswordReset,
                 params = mapOf(
-                    "email" to loginEmail
+                    "email" to loginEmail,
                 ),
                 onDismiss = {},
             ),
@@ -108,14 +107,6 @@ constructor(
                 onDismiss = {},
             ),
         )
-    }
-
-    /**
-     * Opens a URL using the injected CustomTabManager.
-     * @param url The URL to open.
-     */
-    private fun openInAppBrowser(url: String) {
-        customTabManager.openChromeTab(url)
     }
 
     private fun navigateToDashboard() {

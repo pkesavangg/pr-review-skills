@@ -14,12 +14,16 @@ import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
+import kotlinx.serialization.Serializable
 
+@Serializable
 sealed class HeightInput {
+    @Serializable
     data class Cm(
         val value: Int,
     ) : HeightInput()
 
+    @Serializable
     data class FtIn(
         val feet: Int,
         val inches: Int,
@@ -31,6 +35,51 @@ sealed class HeightInput {
             is Cm -> "$value cm"
             is FtIn -> "$feet' $inches\""
         }
+
+    companion object {
+        /**
+         * Converts HeightInput to stored height format (tenths of inches).
+         * @param heightInput The height input to convert
+         * @return Height in stored format
+         */
+        fun convertHeightInputToStored(heightInput: HeightInput): Int =
+            when (heightInput) {
+                is Cm -> {
+                    // Convert cm to stored height format
+                    convertCmToStoredHeight(heightInput.value)
+                }
+                is FtIn -> {
+                    // Convert feet/inches to stored height format
+                    convertFeetInchesToStoredHeight(
+                        feet = heightInput.feet,
+                        inches = heightInput.inches,
+                    )
+                }
+            }
+
+        /**
+         * Converts centimeters to stored height format.
+         * @param cm Height in centimeters
+         * @return Height in stored format
+         */
+        private fun convertCmToStoredHeight(cm: Int): Int {
+            val CM_TO_INCH_FACTOR = 0.254
+            return kotlin.math.round(cm / CM_TO_INCH_FACTOR).toInt()
+        }
+
+        /**
+         * Converts feet and inches to stored height format.
+         * @param feet Height in feet
+         * @param inches Additional inches
+         * @return Height in stored format
+         */
+        private fun convertFeetInchesToStoredHeight(feet: Int, inches: Int): Int {
+            val INCHES_PER_FOOT = 12
+            val STORED_HEIGHT_TO_INCHES_FACTOR = 10
+            val totalInches = (feet * INCHES_PER_FOOT) + inches
+            return (totalInches * STORED_HEIGHT_TO_INCHES_FACTOR).toInt()
+        }
+    }
 }
 
 /**

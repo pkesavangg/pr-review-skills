@@ -5,9 +5,9 @@ enum class Gender {
     FEMALE
 }
 
-enum class WeightUnit {
-    KG,
-    LB
+enum class WeightUnit(val value: String) {
+    KG("kg"),
+    LB("lb")
 }
 
 enum class ActivityLevel {
@@ -18,4 +18,4 @@ enum class ActivityLevel {
 enum class DashboardType(val value: String) {
     DASHBOARD_4_METRICS("dashboard_4_metrics"),
     DASHBOARD_12_METRICS("dashboard_12_metrics")
-} 
+}

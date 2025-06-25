@@ -49,9 +49,10 @@ fun LoadingScreen() {
                 .background(MeTheme.colorScheme.primaryAction),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Image(
@@ -130,7 +131,7 @@ private fun AnimatedTextDots(dotCount: Int) {
                             keyframes {
                                 durationMillis = 1000
                                 0.0f at 0
-                                1.0f at 250 with FastOutSlowInEasing
+                                1.0f at 250 using FastOutSlowInEasing
                                 0.0f at 500
                                 0.0f at 1000
                             },
