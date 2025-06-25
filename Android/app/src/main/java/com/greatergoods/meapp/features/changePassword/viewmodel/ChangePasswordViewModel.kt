@@ -44,7 +44,9 @@ constructor(
         when (intent) {
             is ChangePasswordIntent.Submit -> onSubmit()
             is ChangePasswordIntent.Success -> onSuccess()
+            is ChangePasswordIntent.OpenForgotPasswordModal -> openForgotPasswordModal()
             is ChangePasswordIntent.OpenHelpModal -> openHelpModal()
+            is ChangePasswordIntent.OnRequestBack -> onRequestBack()
             else -> null
         }
     }
@@ -97,6 +99,71 @@ constructor(
         }
     }
 
+         /**
+      * Opens the Forgot Password modal.
+      */
+      private fun openForgotPasswordModal() {
+          viewModelScope.launch {
+              // Get current user's email - in change password screen, we get it from auth service
+              val currentAccount = accountAuthService.getCurrentAccount()
+              val currentUserEmail = currentAccount?.email ?: ""
+
+              dialogQueueService.enqueue(
+                  DialogModel.Confirm(
+                      title = "Forgot your Password?",
+                      message = "Send a password reset link to $currentUserEmail",
+                      confirmText = "SEND",
+                      cancelText = "CANCEL",
+                      onConfirm = {
+                          resetPasswordForCurrentUser(currentUserEmail)
+                          dialogQueueService.dismissCurrent()
+                      },
+                      onCancel = {
+                          dialogQueueService.dismissCurrent()
+                      }
+                  ),
+              )
+          }
+      }
+
+    /**
+     * Resets password for the current user using the same logic as ForgotPasswordDialogViewModel.
+     * @param email The email to send password reset to.
+     */
+    private fun resetPasswordForCurrentUser(email: String) {
+        dialogQueueService.showLoader(
+            message = ChangePasswordStrings.LoaderMessage,
+        )
+        viewModelScope.launch {
+            try {
+                accountAuthService.resetPassword(email)
+                AppLog.i("resetPasswordForCurrentUser", "Password reset requested for email: $email")
+
+                // Show success toast
+                dialogQueueService.showToast(
+                    Toast(
+                        title = "Email Sent!",
+                        message = "Password reset instructions have been sent to your email address.",
+                        action = null,
+                    ),
+                )
+            } catch (e: Exception) {
+                AppLog.e("resetPasswordForCurrentUser", "Reset Password failed", e.toString())
+
+                // Show error toast
+                dialogQueueService.showToast(
+                    Toast(
+                        title = "Error",
+                        message = "Failed to send password reset email. Please try again.",
+                        action = null,
+                    ),
+                )
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
     /**
      * Opens the Help modal.
      */
@@ -107,5 +174,51 @@ constructor(
                 onDismiss = {},
             ),
         )
+    }
+
+    /**
+     * Handles request to navigate back from change password screen.
+     * Shows confirmation dialog if form has unsaved changes.
+     */
+    private fun onRequestBack() {
+        val form = state.value.form
+        val hasChanges = form.isDirty
+
+        if (hasChanges) {
+            // Show confirmation dialog if there are unsaved changes
+            dialogQueueService.enqueue(
+                DialogModel.Confirm(
+                    title = "Confirm",
+                    message = "Are you sure you want to leave?",
+                    confirmText = "EXIT",
+                    cancelText = "RETURN",
+                    onConfirm = {
+                        navigateBack()
+                        dialogQueueService.dismissCurrent()
+                    },
+                    onCancel = {
+                        dialogQueueService.dismissCurrent()
+                    },
+                ),
+            )
+        } else {
+            // No changes, navigate back directly
+            navigateBack()
+        }
+    }
+
+    /**
+     * Handles navigation back from change password screen.
+     * Call this when user wants to exit the change password flow.
+     */
+    private fun navigateBack() {
+        viewModelScope.launch {
+            try {
+                navigationService.navigateBack()
+                AppLog.d("ChangePasswordViewModel", "Successfully navigated back from change password")
+            } catch (e: Exception) {
+                AppLog.e("ChangePasswordViewModel", "Failed to navigate back from change password", e.toString())
+            }
+        }
     }
 }

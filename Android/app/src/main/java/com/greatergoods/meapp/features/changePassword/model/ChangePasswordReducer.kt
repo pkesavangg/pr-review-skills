@@ -138,8 +138,14 @@ sealed class ChangePasswordIntent : IReducer.Intent {
     /** Trigger change password submission. */
     object Submit : ChangePasswordIntent()
 
+    /** Open forgot password modal. */
+    object OpenForgotPasswordModal : ChangePasswordIntent()
+
     /** Open help modal. */
     object OpenHelpModal : ChangePasswordIntent()
+
+    /** Request to go back with confirmation if form has changes. */
+    object OnRequestBack : ChangePasswordIntent()
 
     /** Show an error message. */
     data class Error(
@@ -165,11 +171,19 @@ class ChangePasswordReducer : IReducer<ChangePasswordState, ChangePasswordIntent
         intent: ChangePasswordIntent,
     ): ChangePasswordState =
         when (intent) {
-            is ChangePasswordIntent.Submit -> {
+                        is ChangePasswordIntent.Submit -> {
                 state.copy(isLoading = true, error = null)
             }
 
+            is ChangePasswordIntent.OpenForgotPasswordModal -> {
+                state.copy(isLoading = false, error = null)
+            }
+
             is ChangePasswordIntent.OpenHelpModal -> {
+                state.copy(isLoading = false, error = null)
+            }
+
+            is ChangePasswordIntent.OnRequestBack -> {
                 state.copy(isLoading = false, error = null)
             }
 

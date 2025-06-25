@@ -74,7 +74,7 @@ private fun ChangePasswordContent(
     AppScaffold(
         title = ChangePasswordStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { onBack() }
+            AppIconButton(AppIcons.Default.Close) { handleIntent.invoke(ChangePasswordIntent.OnRequestBack) }
         },
         actions = {
             AppButton(ChangePasswordStrings.SaveButton,
@@ -150,8 +150,7 @@ private fun ChangePasswordContent(
                         enabled = !state.isLoading,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         onClick = {
-                            keyboardController?.hide()
-                            handleIntent(ChangePasswordIntent.Submit)
+                            handleIntent(ChangePasswordIntent.OpenForgotPasswordModal)
                         },
                     )
                 }
