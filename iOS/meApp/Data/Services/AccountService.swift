@@ -99,15 +99,27 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.noActiveAccount
         }
         
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
+        }
+        
         do {
             // Get the FCM token from local repo using the accountId
             let account = try await localRepo.fetchAccount(byId: accountId)
             try await apiRepo.logOut(fcmToken: activeAccount?.fcmToken, accountId: account?.accountId)
         } catch {
-            // Continue with local logout even if API call fails
+            // Ignore errors during logout
         }
-        // Logout the account locally (happens regardless of API success/failure)
-        try await deleteAccountLocally(accountId: accountId)
+        
+        do {
+            // Logout the account locally (happens regardless of API success/failure)
+            localAccount.isLoggedIn = false
+            localAccount.isActiveAccount = false
+            try await localRepo.saveAccount(localAccount)
+            
+        } catch {
+            // Ignore errors during logout
+        }
         try await updatePublishedState()
     }
     
