@@ -9,9 +9,11 @@ import SwiftUI
 
 struct LoginScreen: View {
     @EnvironmentObject var router: Router<AuthRoute>
+    @Environment(\.dismiss) var dismiss
     @Environment(\.appTheme) var theme
     @StateObject private var store = LoginStore()
     @FocusState private var focusedField: FocusField?
+    var isFromAccountSwitching: Bool = false
 
     let labels = InputFieldLabels.self
     let commonLang = CommonStrings.self
@@ -31,7 +33,7 @@ struct LoginScreen: View {
 
             VStack {
                 NavbarHeaderView(
-                    title: "",
+                    title: isFromAccountSwitching ? commonLang.logIn.capitalized : "",
                     leadingContent: { Image(AppAssets.xmark) },
                     trailingContent: {
                         Button {
@@ -40,7 +42,13 @@ struct LoginScreen: View {
                             Image(AppAssets.helpCircle)
                         }
                     },
-                    onLeadingTap: { router.navigateBack() },
+                    onLeadingTap: {
+                        if isFromAccountSwitching {
+                            store.handleExit()
+                        } else {
+                            router.navigateBack()
+                        }
+                    },
                     onTrailingTap: {  }
                 )
                 .padding(.bottom, .spacingLG)
@@ -150,7 +158,12 @@ struct LoginScreen: View {
         .presentLoader(loaderData: store.loaderData)
         .presentAlert(alertData: $store.alertData)
         .onAppear {
-            store.onLoginSuccess = { router.navigateBack() }
+            store.isFromAccountSwitching = isFromAccountSwitching
+            if isFromAccountSwitching {
+                store.dismissAction = dismiss
+            } else {
+                store.onLoginSuccess = { router.navigateBack() }
+            }
         }
     }
 }

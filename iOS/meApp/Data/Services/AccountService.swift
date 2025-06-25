@@ -134,8 +134,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw HTTPError.noInternet
         }
         do {
-            let _ = try await refreshAccount(accountId: account.accountId)
-            try await setActiveAccount(account)
+            let responseAccount = try await refreshAccount(accountId: account.accountId)
+            try await setActiveAccount(responseAccount)
         } catch {
             throw error
         }

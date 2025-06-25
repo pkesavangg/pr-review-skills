@@ -17,6 +17,7 @@ struct CommonStrings {
     static let save = "Save"
     static let skip = "Skip"
     static let logIn = "Log in"
+    static let signUp = "Sign up"
     static let complete = "Complete"
     static let edit = "Edit"
     static let dash = "dash"
@@ -93,6 +94,9 @@ struct ToastStrings {
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
     static let heightUpdated = "Your height has been updated."
     static let errorUpdatingHeight = "Error updating height."
+    static let switchingAccount = { (name: String) in
+        "Switched to \(name)."
+    }
 }
 
 /// Constants for help modal strings used in the app
@@ -166,8 +170,8 @@ struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let goBackButton = "Go back"
+        static let exitButton = "Yes, exit"
     }
     
     struct ResetPasswordAlert {
@@ -192,7 +196,7 @@ struct AlertStrings {
     struct LogoutAllAccountAlert {
         static let title = "Log Out All Accounts"
         static let message = "Are you sure you want to log out of all accounts?"
-        static let logoutButton = "Log Out All"
+        static let logoutButton = "Log Out"
         static let cancelButton = "Cancel"
     }
     
@@ -242,6 +246,30 @@ struct AlertStrings {
         }
         static let send = "send"
         static let cancel = "Cancel"
+    }
+    
+    struct MaxUsersAlert {
+        static let title = "Maximum Users Reached"
+        static let message = "Please swipe left to remove any unused accounts before attempting to add a new one."
+        static let okButton = "OK"
+    }
+    
+    struct LoginExitAlert {
+        static let title = "Confirm"
+        static let message = "Are you sure you want to leave?"
+        static let goBackButton = "Go Back"
+        static let yesExitButton = "Yes, Exit"
+    }
+    
+    struct DeleteUserAlert {
+        static let title: (String) -> String = { name in
+            return "Remove \(name)?"
+        }
+        static let message: (String) -> String = { name in
+            return "Are you sure you want to remove \(name) from this device?"
+        }
+        static let removeButton = "Remove"
+        static let cancelButton = "Cancel"
     }
 }
 

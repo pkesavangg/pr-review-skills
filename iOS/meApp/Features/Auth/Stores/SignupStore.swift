@@ -35,8 +35,11 @@ final class SignupStore: ObservableObject {
     @Published var selectedHeightCm: [String] = ["1", "7", "8"]  // Default 178cm
     @Published var showHeightInchesPicker = false
     @Published var showHeightCmPicker = false
+
+    @Published var isFromAccountSwitching: Bool = false
     
     var onSignupSuccess: (() -> Void)?
+    var dismissAction: DismissAction?
     
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
@@ -153,10 +156,14 @@ final class SignupStore: ObservableObject {
         signupForm.getError(for: control)
     }
     
-    func handleExit(router: Router<AuthRoute>) {
-        // If the form is not dirty, simply navigate back else show an alert
+    func handleExit(router: Router<AuthRoute>? = nil) {
+        // If the form is not dirty, dismiss the signup screen
         if !signupForm.isDirty {
-            router.navigateBack()
+            if isFromAccountSwitching {
+                dismissAction?()
+            } else {
+                router?.navigateBack()
+            }
             return
         }
         let alert = AlertModel(
@@ -164,9 +171,14 @@ final class SignupStore: ObservableObject {
             message: alertLang.SignupExitAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.SignupExitAlert.exitButton, type: .primary) { _ in
-                    router.navigateBack()
+                    if self.isFromAccountSwitching {
+                        self.dismissAction?()
+                    } else {
+                        router?.navigateBack()
+                        self.resetForm()
+                    }
                 },
-                AlertButtonModel(title: alertLang.SignupExitAlert.returnButton, type: .secondary) { _ in
+                AlertButtonModel(title: alertLang.SignupExitAlert.goBackButton, type: .secondary) { _ in
                 }
             ]
         )
@@ -199,7 +211,11 @@ final class SignupStore: ObservableObject {
             if let goal = goal {
                 let _ = try await accountService.createGoal(goal)
             }
-            onSignupSuccess?()
+            if isFromAccountSwitching {
+                dismissAction?()
+            } else {
+                onSignupSuccess?()
+            }
             resetForm()
         } catch {
             handleSignupError(error)

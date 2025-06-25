@@ -32,6 +32,9 @@ final class LoginStore: ObservableObject {
     @Published var showTermsBrowser: Bool = false
     @Published var showHelpBrowser: Bool = false
     @Published var browserURL: URL? = nil
+    
+    // MARK: - Account Management State
+    @Published var isFromAccountSwitching: Bool = false
 
     // MARK: - Common Strings/Labels as variables
     let lang = LoaderStrings.self
@@ -73,6 +76,7 @@ final class LoginStore: ObservableObject {
 
     // Navigation
     var onLoginSuccess: (() -> Void)?
+    var dismissAction: DismissAction?
     var onNavigateBack: (() -> Void)?
     var onOpenPrivacy: (() -> Void)?
     var onOpenTerms: (() -> Void)?
@@ -137,11 +141,16 @@ final class LoginStore: ObservableObject {
         }
 
         do {
-            try await accountService.logIn(
+            let _ = try await accountService.logIn(
                 email: loginForm.email.value,
                 password: loginForm.password.value
             )
-            onLoginSuccess?()
+            // If the login is from account switching, dismiss the login screen
+            if isFromAccountSwitching {
+                dismissAction?()
+            } else {
+                onLoginSuccess?()
+            }
         } catch {
             logger.log(level: .error, tag: logTag, message: "Login Error: \(error)")
             handleLoginError(error)
@@ -243,5 +252,24 @@ final class LoginStore: ObservableObject {
                 self.notificationService.dismissModal()
             })
         ))
+    }
+    
+    func handleExit() {
+        if !loginForm.isDirty {
+            self.dismissAction?()
+            return
+        }
+        let loginExitAlert = alertLang.LoginExitAlert
+        let alert = AlertModel(
+            title: loginExitAlert.title,
+            message: loginExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: loginExitAlert.yesExitButton, type: .primary) { _ in
+                    self.dismissAction?()
+                },
+                AlertButtonModel(title: loginExitAlert.goBackButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 }
