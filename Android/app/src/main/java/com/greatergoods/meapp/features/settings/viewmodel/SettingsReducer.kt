@@ -34,6 +34,12 @@ sealed interface SettingsIntent : IReducer.Intent {
     data class updateAccount(
         val account: Account?,
     ) : SettingsIntent
+
+    // URL Opening Intents
+    object OpenPrivacyPolicy : SettingsIntent
+    object OpenTermsOfService : SettingsIntent
+    object OpenGreaterGoodsWebsite : SettingsIntent
+
     // Add more intents as needed for updating settings
 }
 

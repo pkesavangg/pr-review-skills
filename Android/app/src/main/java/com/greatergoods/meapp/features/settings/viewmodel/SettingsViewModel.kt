@@ -34,17 +34,17 @@ class SettingsViewModel
         override fun provideInitialState(): SettingsState = SettingsState()
         private val TAG = "SettingsViewModel"
 
-        init {
-            getUserProfile()
-        }
+    init {
+        getUserProfile()
+    }
 
-        fun getUserProfile() {
-            viewModelScope.launch {
-                authService.activeAccountFlow.collect {
-                    handleIntent(SettingsIntent.updateAccount(it))
-                }
+    fun getUserProfile() {
+        viewModelScope.launch {
+            authService.activeAccountFlow.collect {
+                handleIntent(SettingsIntent.updateAccount(it))
             }
         }
+    }
 
         override fun handleIntent(intent: SettingsIntent) {
             super.handleIntent(intent)
@@ -63,7 +63,6 @@ class SettingsViewModel
 
                 else -> {}
             }
-        }
 
         fun onEditProfileClick() {
             AppLog.d("TAG", "Edit profile clicked")
@@ -101,6 +100,7 @@ class SettingsViewModel
                 ),
             )
         }
+    }
 
         /**
          * Performs the actual export operation with loading and error handling.
@@ -176,103 +176,123 @@ class SettingsViewModel
             // TODO: Navigate to goal setting screen
         }
 
-        fun onBiologicalSexClick() {
-            AppLog.d("SettingsViewModel", "Biological sex clicked")
-            // TODO: Show biological sex dialog
-        }
+    fun onIntegrationsClick() {
+        AppLog.d("SettingsViewModel", "Integrations clicked")
+        // TODO: Navigate to integrations screen
+    }
 
-        fun onActivityLevelClick() {
-            AppLog.d("SettingsViewModel", "Activity level clicked")
-            // TODO: Show activity level dialog
-        }
+    fun onExportDataClick() {
+        AppLog.d("SettingsViewModel", "Export data clicked")
+        // TODO: Show export data dialog
+    }
 
-        fun onHeightClick() {
-            AppLog.d("SettingsViewModel", "Height clicked")
-            // TODO: Show height dialog
-        }
+    fun onChangePasswordClick() {
+        AppLog.d("SettingsViewModel", "Change password clicked")
+        // TODO: Navigate to change password screen
+    }
 
-        fun onUnitTypeClick() {
-            AppLog.d("SettingsViewModel", "Unit type clicked")
-            // TODO: Show unit type dialog
-        }
+    fun onGoalSettingClick() {
+        AppLog.d("SettingsViewModel", "Goal setting clicked")
+        // TODO: Navigate to goal setting screen
+    }
 
-        fun onWeightlessClick() {
-            AppLog.d("SettingsViewModel", "Weightless clicked")
-            // TODO: Toggle weightless mode
-        }
+    fun onBiologicalSexClick() {
+        AppLog.d("SettingsViewModel", "Biological sex clicked")
+        // TODO: Show biological sex dialog
+    }
 
-        fun onNotificationsClick() {
-            AppLog.d("SettingsViewModel", "Notifications clicked")
-            // TODO: Navigate to notifications settings
-        }
+    fun onActivityLevelClick() {
+        AppLog.d("SettingsViewModel", "Activity level clicked")
+        // TODO: Show activity level dialog
+    }
 
-        fun onMessagesClick() {
-            AppLog.d("SettingsViewModel", "Messages clicked")
-            // TODO: Navigate to messages settings
-        }
+    fun onHeightClick() {
+        AppLog.d("SettingsViewModel", "Height clicked")
+        // TODO: Show height dialog
+    }
 
-        fun onAppPermissionsClick() {
-            AppLog.d("SettingsViewModel", "App permissions clicked")
-            // TODO: Navigate to app permissions screen
-        }
+    fun onUnitTypeClick() {
+        AppLog.d("SettingsViewModel", "Unit type clicked")
+        // TODO: Show unit type dialog
+    }
 
-        fun onHelpClick() {
-            AppLog.d("SettingsViewModel", "Help clicked")
-            // TODO: Navigate to help screen
-        }
+    fun onWeightlessClick() {
+        AppLog.d("SettingsViewModel", "Weightless clicked")
+        // TODO: Toggle weightless mode
+    }
 
-        fun onPrivacyPolicyClick() {
-            AppLog.d("SettingsViewModel", "Privacy policy clicked")
-            // TODO: Open privacy policy in browser
-        }
+    fun onNotificationsClick() {
+        AppLog.d("SettingsViewModel", "Notifications clicked")
+        // TODO: Navigate to notifications settings
+    }
 
-        fun onTermsOfServiceClick() {
-            AppLog.d("SettingsViewModel", "Terms of service clicked")
-            // TODO: Open terms of service in browser
-        }
+    fun onMessagesClick() {
+        AppLog.d("SettingsViewModel", "Messages clicked")
+        // TODO: Navigate to messages settings
+    }
 
-        fun onGreaterGoodsClick() {
-            AppLog.d("SettingsViewModel", "GreaterGoods.com clicked")
-            // TODO: Open GreaterGoods.com in browser
-        }
+    fun onAppPermissionsClick() {
+        AppLog.d("SettingsViewModel", "App permissions clicked")
+        // TODO: Navigate to app permissions screen
+    }
+
+    fun onHelpClick() {
+        AppLog.d("SettingsViewModel", "Help clicked")
+        // TODO: Navigate to help screen
+    }
+
+    fun onPrivacyPolicyClick() {
+        AppLog.d("SettingsViewModel", "Privacy policy clicked")
+        // TODO: Open privacy policy in browser
+    }
+
+    fun onTermsOfServiceClick() {
+        AppLog.d("SettingsViewModel", "Terms of service clicked")
+        // TODO: Open terms of service in browser
+    }
+
+    fun onGreaterGoodsClick() {
+        AppLog.d("SettingsViewModel", "GreaterGoods.com clicked")
+        // TODO: Open GreaterGoods.com in browser
+    }
 
     /*
      * Show a confirmation dialog before logging out.
      */
-        private fun onLogOutClick() {
-            val logoutModalString = SettingsScreenStrings.LogoutDialog
-            dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    logoutModalString.Title,
-                    logoutModalString.Body,
-                    logoutModalString.Confirm,
-                    logoutModalString.Cancel,
-                    onDismiss = {},
-                    onConfirm = {
-                        logout()
-                    },
-                ),
-            )
-        }
+    private fun onLogOutClick() {
+        val logoutModalString = SettingsScreenStrings.LogoutDialog
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                logoutModalString.Title,
+                logoutModalString.Body,
+                logoutModalString.Confirm,
+                logoutModalString.Cancel,
+                onDismiss = {},
+                onConfirm = {
+                    logout()
+                },
+            ),
+        )
+    }
 
-        private fun logout() {
-            dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
-            viewModelScope.launch {
-                try {
-                    val account = state.value.account
-                    if (account != null) {
-                        authService.logout(account.id)
-                    }
-                } catch (e: Exception) {
-                    AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
-                } finally {
-                    dialogQueueService.dismissLoader()
+    private fun logout() {
+        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
+        viewModelScope.launch {
+            try {
+                val account = state.value.account
+                if (account != null) {
+                    authService.logout(account.id)
                 }
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
             }
         }
-
-        fun onDeleteAccountClick() {
-            AppLog.d("SettingsViewModel", "Delete account clicked")
-            // TODO: Show delete account confirmation dialog
-        }
     }
+
+    fun onDeleteAccountClick() {
+        AppLog.d("SettingsViewModel", "Delete account clicked")
+        // TODO: Show delete account confirmation dialog
+    }
+}
