@@ -157,7 +157,7 @@ class SettingsStore: ObservableObject {
             message: logoutAlert.message,
             buttons: [
                 AlertButtonModel(title: logoutAlert.logoutButton, type: .primary) { _ in
-                    self.logout()
+                    self.logoutAllAccounts()
                 },
                 AlertButtonModel(title: logoutAlert.cancelButton, type: .secondary) { _ in
                     

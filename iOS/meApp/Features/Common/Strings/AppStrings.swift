@@ -349,5 +349,8 @@ struct AppAssets {
     static let circleCheckFilled = "circleCheckFilled"
     static let wifi = "wifi"
     static let trash = "trash"
+    static let filledCloseCircle = "filledCloseCircle"
+    static let filledTickCircle = "filledTickCircle"
+    static let exclamationMark = "exclamationMark"
 }
 
