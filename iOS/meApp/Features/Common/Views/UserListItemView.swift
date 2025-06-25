@@ -25,7 +25,7 @@ struct UserListItemView: View {
             }
             .swipeableActions(
                 buttons:
-                                user.isSelected || user.isExpired || onDelete == nil ? [] : [
+                    !user.canShowSelection || user.isSelected || user.isExpired || onDelete == nil ? [] : [
                                     SwipeButton(
                                         tint: theme.textError,
                                         action: { onDelete?(user.accountID) },

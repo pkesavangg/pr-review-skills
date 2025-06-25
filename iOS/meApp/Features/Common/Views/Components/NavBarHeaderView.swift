@@ -17,7 +17,8 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     var onTrailingTap: (() -> Void)?
     var onTitleTap: (() -> Void)?
     var canShowBorder = false
-
+    var canShowPresentationIndicator = false
+    
     var body: some View {
         ZStack {
             // Center Title
@@ -54,9 +55,22 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                 }
             }
         }
-        .padding(.spacingSM)
+        .padding(.horizontal, .spacingSM)
+        .frame(height: 56)
         .background(theme.backgroundPrimary)
         .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
+        .overlay {
+            if canShowPresentationIndicator {
+                VStack(spacing: 0) {
+                    Capsule()
+                        .fill(.black) // TODO: Need to update after UX design provides the correct color
+                        .frame(width: 36, height: 5)
+                        .padding(.top, 6) // TODO: Need to update after UX design provides the correct padding
+                    
+                    Spacer()
+                }
+            }
+        }
     }
 }
 
@@ -72,7 +86,8 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     NavbarHeaderView<EmptyView, EmptyView>(title: "Middle Title")
     NavbarHeaderView<EmptyView, _>(
         title: "Middle Title",
-        trailingContent: { Image(systemName: "xmark") }
+        trailingContent: { Image(systemName: "xmark") },
+        canShowPresentationIndicator: true
     )
     NavbarHeaderView<_, EmptyView>(
         title: "Middle Title",

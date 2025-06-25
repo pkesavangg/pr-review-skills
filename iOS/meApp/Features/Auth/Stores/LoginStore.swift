@@ -124,6 +124,21 @@ final class LoginStore: ObservableObject {
         email.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    // MARK: - Prefill Logic
+    /// Prefills the e-mail field when a value is supplied from navigation.
+    /// - Parameter email: The e-mail address to prefill.
+    /// If `nil` or empty, the call is ignored.
+    func prefillEmailIfNeeded(_ email: String?) {
+        guard let email, !email.isEmpty else { return }
+
+        // Update without marking the control as dirty, then reset to pristine.
+        loginForm.email.silentlyUpdateValue(email)
+        loginForm.email.markAsPristine()
+
+        // Notify observers of the change so UI updates immediately.
+        objectWillChange.send()
+    }
+
     // MARK: - Login Logic
     func logIn() async {
         loginForm.email.markAsDirty()

@@ -1,0 +1,59 @@
+import Foundation
+import Combine
+import SwiftUI
+
+//  LandingStore.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 27/06/25.
+//
+
+/// Store backing `LandingScreen`. Provides the current list of logged-in accounts and handles account switching.
+@MainActor
+final class LandingStore: ObservableObject {
+    // MARK: Dependencies
+    @Injector private var accountService: AccountService
+    @Injector private var notificationService: NotificationHelperService
+    @Injector private var logger: LoggerService
+
+    // MARK: Published State
+    @Published var accounts: [Account] = []
+    
+    let loadingLang = LoaderStrings.self
+
+    // MARK: Private
+    private var cancellables: Set<AnyCancellable> = []
+    private let tag = "LandingStore"
+
+    // MARK: Init
+    init() {
+        // Keep the local list in-sync with `AccountService`.
+        accountService.$allAccounts
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] all in
+                self?.accounts = all.filter { $0.isLoggedIn == true }
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: Intent(s)
+    /// Attempts to make the supplied account active.
+    func switchAccount(to accountID: String) {
+        guard let account = accounts.first(where: { $0.accountId == accountID }) else {
+            logger.log(level: .error, tag: tag, message: "Account with ID \(accountID) not found")
+            return
+        }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loadingLang.loading))
+            defer {
+                notificationService.dismissLoader()
+            }
+            do {
+                try await accountService.switchAccount(to: account)
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to switch account", data: error.localizedDescription)
+            }
+        }
+    }
+} 

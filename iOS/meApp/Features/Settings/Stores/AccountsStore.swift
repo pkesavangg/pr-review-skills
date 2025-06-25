@@ -43,7 +43,7 @@ class AccountsStore: ObservableObject {
         
         accountService.$allAccounts
             .sink { [weak self] allAccounts in
-                self?.accounts = allAccounts
+                self?.accounts = allAccounts.filter { $0.isLoggedIn == true }
             }
             .store(in: &accountService.cancellables)
     }

@@ -59,7 +59,8 @@ struct SignupScreen: View {
                 onLeadingTap: {
                     signupStore.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
-                onTrailingTap: {}
+                onTrailingTap: {},
+                canShowPresentationIndicator: isFromAccountSwitching
             )
             
             ProgressBarView(progress: signupStore.progressValue)

@@ -27,7 +27,8 @@ struct TroubleShootingView: View {
                 title: lang.debugMenuTitle,
                 leadingContent: { Image(AppAssets.xmark) },
                 onLeadingTap: { dismiss() },
-                canShowBorder: true
+                canShowBorder: true,
+                canShowPresentationIndicator: true
             )
 
             ZStack {
