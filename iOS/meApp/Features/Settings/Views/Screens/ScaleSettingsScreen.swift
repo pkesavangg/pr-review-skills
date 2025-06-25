@@ -33,11 +33,22 @@ struct ScaleSettingsScreen: View {
                     scaleStatusBannerSection()
                 }
                 
+                settingsSection()
+                
+                if scaleType == .bluetoothR4 {
+                    connectionSection()
+                }
+                
+                supportSection()
                 deleteScaleSection()
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
         }
+        .inAppBrowser(
+            url: scaleStore.presentingBrowserURL,
+            isPresented: scaleStore.isBrowserPresented
+        )
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
     }
@@ -72,6 +83,122 @@ struct ScaleSettingsScreen: View {
                         }
                     }
                 )
+            )
+            .settingsRowInsets()
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func settingsSection() -> some View {
+        Section(header:
+                    SectionHeader(title: lang.settingsSectionHeader)
+        ) {
+            // Show these setting rows only if scaleType == .bluetoothR4
+            if scaleType == .bluetoothR4 {
+                SettingsListItem(
+                    config: SettingsItemConfig(
+                        title: lang.mode,
+                        value: scaleStore.modeValue
+                    )
+                )
+                .settingsRowInsets()
+                
+                SettingsListItem(
+                    config: SettingsItemConfig(
+                        title: lang.displayMetrics,
+                        value: scaleStore.displayMetricsValue
+                    )
+                )
+                .settingsRowInsets()
+                
+                SettingsListItem(
+                    config: SettingsItemConfig(
+                        title: lang.users,
+                        value: scaleStore.usersValue
+                    )
+                )
+                .settingsRowInsets()
+            }
+            
+            SettingsListItem(
+                config: SettingsItemConfig(
+                    title: lang.scaleName,
+                    value: scaleStore.scaleNameValue
+                )
+            )
+            .settingsRowInsets()
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func connectionSection() -> some View {
+        Section(header:
+                    SectionHeader(title: lang.connectionSectionHeader)
+        ) {
+            SettingsListItem(
+                config: SettingsItemConfig(
+                    title: lang.bluetooth,
+                    value: scaleStore.bluetoothValue
+                )
+            )
+            .settingsRowInsets()
+            
+            SettingsListItem(
+                config: SettingsItemConfig(
+                    title: lang.wifi,
+                    value: scaleStore.wifiValue
+                )
+            )
+            .settingsRowInsets()
+            
+            SettingsListItem(
+                config: SettingsItemConfig(
+                    title: lang.wifiMacAddress,
+                    value: scaleStore.wifiMacAddressValue
+                )
+            )
+            .settingsRowInsets()
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func supportSection() -> some View {
+        Section(header:
+                    SectionHeader(title: lang.supportSectionHeader)
+        ) {
+            SettingsListItem(
+                config: SettingsItemConfig(
+                    title: lang.scaleType,
+                    value: scaleStore.scaleTypeValue
+                )
+            )
+            .settingsRowInsets()
+            
+            SettingsListItem(
+                config: SettingsItemConfig(
+                    title: lang.sku.uppercased(),
+                    value: scaleStore.skuValue,
+                    canShowChevron: false
+                )
+            )
+            .settingsRowInsets()
+            
+            SettingsListItem(
+                config: SettingsItemConfig(
+                    title: lang.datePaired,
+                    value: scaleStore.datePairedValue,
+                    canShowChevron: false
+                )
+            )
+            .settingsRowInsets()
+            
+            SettingsListItem(
+                config: SettingsItemConfig(title: lang.productGuide, onTap: {
+                    scaleStore.openProductGuide(for: scaleStore.skuValue)
+                })
             )
             .settingsRowInsets()
         }

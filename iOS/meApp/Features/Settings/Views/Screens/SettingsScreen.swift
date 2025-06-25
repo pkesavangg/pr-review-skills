@@ -186,7 +186,7 @@ struct SettingsScreen: View {
     }
     
     private func accountSettingsSection() -> some View {
-        Section(header: sectionHeader(title: settingsLang.accountSettings)) {
+        Section(header: SectionHeader(title: settingsLang.accountSettings)) {
             SettingsListItem(
                 config: SettingsItemConfig(
                 title: settingsLang.addEditScales,
@@ -210,7 +210,7 @@ struct SettingsScreen: View {
     }
     
     private func profileSettingsSection() -> some View {
-        Section(header: sectionHeader(title: settingsLang.profileSettings)) {
+        Section(header: SectionHeader(title: settingsLang.profileSettings)) {
             SettingsListItem(config: SettingsItemConfig(title: settingsLang.goalSetting))
                 .settingsRowInsets()
             SettingsListItem(config: SettingsItemConfig(
@@ -247,7 +247,7 @@ struct SettingsScreen: View {
     }
     
     private func appSettingsSection() -> some View {
-        Section(header: sectionHeader(title: settingsLang.appSettings)) {
+        Section(header: SectionHeader(title: settingsLang.appSettings)) {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.notifications,
                 value: settingsStore.notificationsOnText,
@@ -276,7 +276,7 @@ struct SettingsScreen: View {
     
     private func supportSection() -> some View {
         Section(header:
-                sectionHeader(title: settingsLang.supportSettings)
+                SectionHeader(title: settingsLang.supportSettings)
         ) {
             SettingsListItem(config: SettingsItemConfig(
                 title: settingsLang.helpAndCustomerService,
@@ -337,15 +337,6 @@ struct SettingsScreen: View {
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
-    }
-    
-    private func sectionHeader(title: String) -> some View {
-        Text(title)
-            .fontOpenSans(.heading4)
-            .foregroundColor(theme.textHeading)
-            .textCase(.none)
-            .padding(.bottom, .spacingXS)
-            .padding(.leading, -16)
     }
 }
 

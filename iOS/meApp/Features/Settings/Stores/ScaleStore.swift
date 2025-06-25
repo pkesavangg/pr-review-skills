@@ -30,35 +30,68 @@ class ScaleStore: ObservableObject {
     @Published var showErrorToast: ToastModel? = nil
     @Published var showNicknameAlert: Bool = false
     @Published var nicknameInput: String = ""
+    
+    // In-App Browser State
+    @Published var showTermsBrowser: Bool = false
+    @Published var browserURL: URL? = nil
 
-    // Dependencies
+    // Settings/detail values for UI (replace with computed or fetched values later)
+    @Published var modeValue: String = "Weight Only" // TODO: Replace with actual mode value
+    @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
+    @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
+    @Published var scaleNameValue: String = "AccuCheck Verve..." // TODO: Replace with actual scale name
+    @Published var bluetoothValue: String = "Connected" // TODO: Replace with actual BT status
+    @Published var wifiValue: String = "greatergoods1" // TODO: Replace with actual Wi-Fi SSID
+    @Published var wifiMacAddressValue: String = "" // TODO: Replace with actual Wi-Fi MAC address
+    @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi" // TODO: Replace with actual scale type
+    @Published var skuValue: String = "0412" // TODO: Replace with actual SKU
+    @Published var datePairedValue: String = "June 2, 2025" // TODO: Replace with actual date paired
+
+    private var cancellables = Set<AnyCancellable>()
+    private let legalURLs = AppConstants.LegalURLs.self
+
+    // MARK: - In-App Browser Presentation Binding
+    var isBrowserPresented: Binding<Bool> {
+        Binding(
+            get: { self.showTermsBrowser },
+            set: { newValue in
+                if !newValue {
+                    self.showTermsBrowser = false
+                    self.browserURL = nil
+                }
+            }
+        )
+    }
+    var presentingBrowserURL: URL {
+        browserURL ?? legalURLs.greaterGoodsWebsite
+    }
+
+    // MARK: - Initialization
     @Injector var scaleService: ScaleService
     @Injector var notificationService: NotificationHelperService
-
     let alertLang = AlertStrings.self
-    private var cancellables = Set<AnyCancellable>()
-
+    
     init() {
         wireForm()
         fetchScales()
     }
-
+    
     private func wireForm() {
         addScaleForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }
-
+    
     func resetForm() {
         addScaleForm = AddScaleForm()
         cancellables.removeAll()
         wireForm()
     }
-
+    
     func getError() -> String? {
         addScaleForm.getError(for: .modelNumber)
     }
-
+    
     // MARK: - List & CRUD
     func fetchScales() {
         isLoading = true
@@ -79,7 +112,7 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     // MARK: - Scale Detail Actions
     func loadScale(_ scale: Device) async {
         self.scale = scale
@@ -88,7 +121,7 @@ class ScaleStore: ObservableObject {
         await getDeviceInfo()
         await getConnectedWifiSSID()
     }
-
+    
     func getDeviceInfo() async {
         guard let scale = scale else { return }
         isLoading = true
@@ -107,16 +140,16 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     func getConnectedWifiSSID() async {
         connectedWifiSSID = scale?.wifiMac
     }
-
+    
     func changeNickname() {
         showNicknameAlert = true
         nicknameInput = scale?.nickname ?? ""
     }
-
+    
     func saveNickname() async {
         guard let scale = scale else { return }
         isLoading = true
@@ -131,7 +164,7 @@ class ScaleStore: ObservableObject {
         }
         showNicknameAlert = false
     }
-
+    
     func deleteScale(scaleId: String, onSuccess: @escaping () -> Void) async {
         isLoading = true
         defer { isLoading = false }
@@ -151,7 +184,7 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     func handleScaleDelete(scaleId: String, onSuccess: @escaping () -> Void) {
         let alert = AlertModel(
             title: alertLang.DeleteScaleAlert.title,
@@ -166,5 +199,15 @@ class ScaleStore: ObservableObject {
             ]
         )
         notificationService.showAlert(alert)
+    }
+    
+    // MARK: - Product Guide URL helper & Browser Presentation
+    func productGuideURL(for sku: String) -> URL {
+        guard !sku.isEmpty else { return legalURLs.notFound }
+        return URL(string: legalURLs.serviceBase + sku) ?? legalURLs.notFound
+    }
+    func openProductGuide(for sku: String) {
+        browserURL = productGuideURL(for: sku)
+        showTermsBrowser = true
     }
 }
