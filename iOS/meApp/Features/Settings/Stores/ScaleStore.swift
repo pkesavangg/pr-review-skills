@@ -66,12 +66,12 @@ class ScaleStore: ObservableObject {
         Task {
             do {
                 let devices = try await scaleService.getDevices()
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.scales = devices
                     self.isLoading = false
                 }
             } catch {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.scales = []
                     self.isLoading = false
@@ -95,12 +95,16 @@ class ScaleStore: ObservableObject {
         defer { isLoading = false }
         do {
             if let device = try await scaleService.getDevices().first(where: { $0.id == scale.id }) {
-                self.deviceInfo = device.metaData
-                self.macAddress = device.mac
-                self.firmwareVersion = device.metaData?.firmwareRevision
+                await MainActor.run {
+                    self.deviceInfo = device.metaData
+                    self.macAddress = device.mac
+                    self.firmwareVersion = device.metaData?.firmwareRevision
+                }
             }
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -133,14 +137,18 @@ class ScaleStore: ObservableObject {
         defer { isLoading = false }
         do {
             try await scaleService.deleteDevice(scaleId, showToast: true)
-            notificationService.showToast(ToastModel(title: "Deleted", message: "Scale deleted"))
-            if self.scale?.id == scaleId {
-                self.scale = nil
+            await MainActor.run {
+                notificationService.showToast(ToastModel(title: "Deleted", message: "Scale deleted"))
+                if self.scale?.id == scaleId {
+                    self.scale = nil
+                }
+                fetchScales()
+                onSuccess()
             }
-            fetchScales()
-            onSuccess()
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
