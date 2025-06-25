@@ -27,6 +27,7 @@ class AccountsStore: ObservableObject {
     
     @Published var activeAccount: Account?
     @Published var accounts: [Account] = []
+    @Published var userItems: [UserItemInfo] = []
     
     @Published var canShowLoginScreen = false
     @Published var canShowAccountSignupScreen = false
@@ -41,9 +42,29 @@ class AccountsStore: ObservableObject {
             }
             .store(in: &accountService.cancellables)
         
+        // Watch allAccounts and update both `accounts` and `userItems`
         accountService.$allAccounts
             .sink { [weak self] allAccounts in
-                self?.accounts = allAccounts.filter { $0.isLoggedIn == true }
+                guard let self = self else { return }
+
+                self.accounts = allAccounts.filter { $0.isLoggedIn == true }
+                
+                let sorted = self.accounts.sorted {
+                    let lhs = DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast
+                    let rhs = DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast
+                    return lhs > rhs
+                }
+
+                self.userItems = sorted.map {
+                    UserItemInfo(
+                        accountID: $0.accountId,
+                        name: $0.firstName?.isEmpty == false ? $0.firstName! : $0.email,
+                        email: $0.email,
+                        isSelected: $0.isActiveAccount ?? false,
+                        isExpired: $0.isExpired ?? false,
+                        canShowSelection: true
+                    )
+                }
             }
             .store(in: &accountService.cancellables)
     }
@@ -90,6 +111,14 @@ class AccountsStore: ObservableObject {
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(account.firstName ?? "")))
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch active account", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet:
+                    notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+                    break
+                default:
+                    notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
+                    break
+                }
             }
             notificationService.dismissLoader()
         }
