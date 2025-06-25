@@ -18,7 +18,7 @@ enum SettingsRoute: Routable {
             EmptyView() // TODO: Implement IntegrationsScreen
         case .changePassword:
             ChangePasswordScreen()
-        case .addAndEditScales:
+        case .addEditScales:
             MyScalesScreen()
         case .editProfile:
             EditProfileScreen()

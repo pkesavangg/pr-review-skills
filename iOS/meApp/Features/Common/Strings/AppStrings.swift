@@ -313,7 +313,6 @@ struct AppAssets {
     static let wifi = "wifi"
     static let filledCloseCircle = "filledCloseCircle"
     static let filledTickCircle = "filledTickCircle"
-    static let bluetooth = "bluetooth"
     static let exclamationMark = "exclamationMark"
 }
 
