@@ -33,7 +33,7 @@ class AppViewModel @Inject constructor(
 ) {
     companion object {
         private const val TAG = "AppLoaderView"
-        private var currentAccountId : String? = null
+        private var currentAccountId: String? = null
     }
 
     override fun provideInitialState(): AppState {
@@ -41,7 +41,6 @@ class AppViewModel @Inject constructor(
     }
 
     init {
-        initLogic()
         viewModelScope.launch {
             try {
                 logManager.cleanupOldLogs(5)
@@ -50,33 +49,26 @@ class AppViewModel @Inject constructor(
                 AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
             }
         }
-
-        // Auto-navigate to landing if no active account (restores old behavior)
-        viewModelScope.launch {
-            accountAuthService.activeAccountFlow.collect { account ->
-                if (account == null) {
-                    AppLog.d(TAG, "No active account detected, navigating to landing")
-                    navigationService.replaceStack(AppRoute.Auth.Landing)
-                }
-            }
-        }
+        initLogic()
     }
 
     private fun initLogic() {
         viewModelScope.launch {
-            val isLoginStatusChecked = checkLoginStatus()
-            if (isLoginStatusChecked) {
-                val currentAccount = accountAuthService.getCurrentAccount()
-                val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
-                    !it.isActiveAccount
+            try {
+                accountAuthService.activeAccountFlow.collect { account ->
+                    val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
+                        !it.isActiveAccount
+                    }
+                    val isLoginStatusChecked = checkLoginStatus()
+                    if (isLoginStatusChecked && account != null) {
+                        initLoadingData(account.id)
+                    } else {
+                        routeToLandingOrApp(loggedInAccounts.isNotEmpty())
+                    }
                 }
-                if (currentAccount != null) {
-                    initLoadingData(currentAccount.id)
-                } else {
-                    routeToLandingOrApp(loggedInAccounts.isNotEmpty())
-                }
-            } else {
+            } catch (e: Exception) {
                 routeToLandingOrApp()
+                AppLog.e(TAG, "Load data failed", e.toString())
             }
         }
     }

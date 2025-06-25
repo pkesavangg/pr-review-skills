@@ -8,15 +8,15 @@ import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
 import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
-import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
@@ -113,7 +113,7 @@ class AccountRepository @Inject constructor(
     /**
      * Adds an account to the database and returns the domain model.
      */
-    override suspend fun addAccountInDB(account: com.greatergoods.meapp.domain.model.Account): com.greatergoods.meapp.domain.model.Account {
+    override suspend fun addAccountInDB(account: Account): Account {
         val accountEntity = AccountEntityMapper.toEntity(account)
         accountDao.insertAccount(accountEntity)
         return account
@@ -156,7 +156,7 @@ class AccountRepository @Inject constructor(
     /**
      * Gets the stored active account from the database.
      */
-    override suspend fun getStoredActiveAccountFromDB(): com.greatergoods.meapp.domain.model.Account? {
+    override suspend fun getStoredActiveAccountFromDB(): Account? {
         return accountDao.getActiveAccount().firstOrNull()?.toDomainAccount()
     }
 
@@ -170,7 +170,7 @@ class AccountRepository @Inject constructor(
     /**
      * Gets all logged-in accounts from the database as a Flow.
      */
-    override fun getLoggedInAccountsFromDB(): Flow<List<com.greatergoods.meapp.domain.model.Account>> {
+    override fun getLoggedInAccountsFromDB(): Flow<List<Account>> {
         return accountDao.getAllLoggedInAccounts().map { accounts ->
             accounts.map { it.toDomainAccount() }
         }
@@ -215,7 +215,7 @@ class AccountRepository @Inject constructor(
         TODO() // Implement this if you have a method in AccountDao, otherwise leave as a stub
     }
 
-    private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): com.greatergoods.meapp.domain.model.Account {
+    private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): Account {
         val entity = this.account
         return Account(
             id = entity.id,
@@ -248,7 +248,7 @@ class AccountRepository @Inject constructor(
     override suspend fun updateAccountFromAPI(
         accountId: String,
         accountInfo: AccountInfo
-    ): com.greatergoods.meapp.domain.model.Account {
+    ): Account {
         // Get current account from database
         val currentAccount = accountDao.getAccount(accountId).first()
         currentAccount?.account
