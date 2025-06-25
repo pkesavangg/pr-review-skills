@@ -88,7 +88,7 @@ class AccountsStore: ObservableObject {
             do {
                 try await accountService.switchAccount(to: account)
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountId)")
-                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.switchingAccount(account.firstName ?? "")))
+                notificationService.showToast(ToastModel(message: toastLang.switchingAccount(account.firstName ?? "")))
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch active account", data: error.localizedDescription)
             }
