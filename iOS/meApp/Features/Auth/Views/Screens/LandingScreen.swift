@@ -24,7 +24,7 @@ struct LandingScreen: View {
                     landingStore.userItems.count > 0 ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()
-                if !(landingStore.userItems.count > 0) {
+                if landingStore.userItems.isEmpty {
                     VStack(alignment: .center) {
                         Spacer()
                             .frame(minHeight: .spacing6XL)

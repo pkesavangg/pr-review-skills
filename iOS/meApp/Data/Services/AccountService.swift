@@ -104,9 +104,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
         
         do {
-            // Get the FCM token from local repo using the accountId
-            let account = try await localRepo.fetchAccount(byId: accountId)
-            try await apiRepo.logOut(fcmToken: activeAccount?.fcmToken, accountId: account?.accountId)
+            // Pass the fcm token and accountId to the API for logout
+            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
         } catch {
             // Ignore errors during logout
         }

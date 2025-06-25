@@ -119,10 +119,8 @@ class AccountsStore: ObservableObject {
                 switch error {
                 case HTTPError.noInternet:
                     notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
-                    break
                 default:
                     notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
-                    break
                 }
             }
             notificationService.dismissLoader()
