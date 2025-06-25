@@ -20,6 +20,7 @@ class SettingsStore: ObservableObject {
     @Injector var feedService: FeedService
     
     var theme = Theme.shared
+    let kvStore = KvStorageService.shared
     
     @Published var activeAccount: Account?
     
@@ -40,6 +41,8 @@ class SettingsStore: ObservableObject {
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
     private let legalURLs = AppConstants.LegalURLs.self
+    
+    private let hasSeenAddMultipleAccountsModalKey = "hasSeenAddMultipleAccountsModal"
     
     let tag = "SettingsStore"
     
@@ -1017,6 +1020,44 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
             }
             notificationService.dismissLoader()
+        }
+    }
+    
+    // MARK: - Multiple Accounts Educational Modal
+    /// Presents the *Add Multiple Accounts* educational modal if the user has only one account and has not seen the modal before.
+    func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>) {
+        // Ensure we have exactly one account logged in
+        guard accountService.allAccounts.count == 1 else { return }
+
+        // Check persistent flag – bail if user has already seen the modal
+        let flagKey = hasSeenAddMultipleAccountsModalKey
+        let hasSeen = (kvStore.getValue(forKey: flagKey) as? Bool) ?? false
+        guard !hasSeen else { return }
+
+        // We need an initial to render inside the icon cluster
+        guard let initialChar = activeAccount?.firstName?.first else { return }
+        let initial = String(initialChar)
+
+        // Set the flag immediately to avoid repeated triggers
+        kvStore.setValue(true, forKey: flagKey)
+
+        // Delay presentation by 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            let modalView = AddMultipleAccountsModalView(
+                initial: initial,
+                onClose: {
+                    self.notificationService.dismissModal()
+                },
+                onAddAccount: {
+                    self.notificationService.dismissModal()
+                    router.navigate(to: .myAccounts)
+                }
+            )
+
+            // Present the modal – disable tap-to-dismiss backdrop to force explicit action
+            self.notificationService.showModal(
+                ModalData(presentedView: AnyView(modalView), backdropDismiss: false)
+            )
         }
     }
 }

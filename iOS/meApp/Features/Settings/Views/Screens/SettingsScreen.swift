@@ -54,6 +54,16 @@ struct SettingsScreen: View {
             }
             .onAppear {
                 tabViewModel.showTabBar = true
+                // Ensure this is the actively selected tab before evaluating modal presentation
+                if tabViewModel.selectedTab == .settings {
+                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                }
+            }
+            // Re-evaluate modal presentation whenever the selected tab changes.
+            .onChange(of: tabViewModel.selectedTab) {
+                if tabViewModel.selectedTab == .settings {
+                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                }
             }
         }
         .environmentObject(router)
