@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.features.signup.components
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -43,11 +41,10 @@ fun EmailStep(
             formControl = emailControl,
             type = AppInputType.EMAIL,
             label = SignupStrings.emailLabel,
-            imeAction = ImeAction.Done,
+            imeAction = ImeAction.Next,
             onImeAction = onNext,
             modifier = Modifier.semantics { contentType = ContentType.NewUsername }.focusRequester(emailFocusRequester),
         )
-        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }
 }
 

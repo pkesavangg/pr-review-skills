@@ -22,12 +22,30 @@ interface IAccountAuthService {
     suspend fun removeAccount(accountId: String): Boolean
     suspend fun switchAccount(account: Account): Boolean
     suspend fun getCurrentAccount(): Account?
+    suspend fun getLoggedInAccounts(): List<Account>
     suspend fun isSessionValid(): Boolean
     suspend fun refreshSession(): Boolean
     suspend fun updateTokens(tokens: Map<String, String>): Boolean
     suspend fun checkForLoggedInUser(): Boolean
 
     suspend fun resetPassword(email: String)
+    suspend fun updateProfile(profileData: Map<String, Any>): Account?
+    suspend fun changePassword(currentPassword: String, newPassword: String): Boolean
+
+    /**
+     * Checks login status for the active account by calling getAccount API.
+     * Updates the account data in DB with the response and refreshes tokens if needed.
+     * @return true if account is still valid, false if expired
+     */
+    suspend fun checkLoginStatusForActiveAccount(): Boolean
+
+    /**
+     * Checks login status for all logged-in accounts (non-active) by calling getAccount API.
+     * Updates account data in DB with responses and refreshes tokens if needed.
+     * For expired accounts, marks them as expired and clears tokens.
+     * @return true if all accounts are valid, false if any account is expired
+     */
+    suspend fun checkLoginStatusForLoggedInAccounts(): Boolean
 }
 
 /**
@@ -40,6 +58,7 @@ sealed class AuthState {
     data class AccountRemoved(val accountId: String) : AuthState()
     data class AccountSwitched(val account: Account) : AuthState()
     data class SessionRefreshed(val account: Account) : AuthState()
+    data class ProfileUpdated(val account: Account) : AuthState()
     object TokensUpdated : AuthState()
     data class Error(val message: String) : AuthState()
 }

@@ -6,15 +6,21 @@ import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
+import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 
+/**
+ * API interface for authentication and account management.
+ * Supports token-based authentication for different accounts using X-Account-ID header.
+ */
 interface IAuthAPI {
     companion object {
         private const val ACCOUNT = "account/"
@@ -23,6 +29,7 @@ interface IAuthAPI {
         private const val PASSWORD_RESET = "password-reset/request"
         private const val REFRESH_TOKEN = "refresh-token"
         private const val PASSWORD_UPDATE = "password"
+        private const val ACCOUNT_ID_HEADER = "X-Account-ID"
     }
 
     @POST(ACCOUNT + LOGIN)
@@ -36,8 +43,9 @@ interface IAuthAPI {
     ): RefreshTokenResponse
 
     @POST(ACCOUNT + LOGOUT)
-    suspend fun logout(
+    suspend fun logoutWithToken(
         @Body request: LogoutRequest,
+        @Header(ACCOUNT_ID_HEADER) accountId: String
     )
 
     @POST(ACCOUNT + PASSWORD_RESET)
@@ -48,12 +56,12 @@ interface IAuthAPI {
     @POST(ACCOUNT)
     suspend fun createAccount(
         @Body request: CreateAccountRequest
-    ): Map<String, Any>
+    ): LoginResponse
 
     @GET(ACCOUNT)
-    suspend fun getAccount(
-        @Body request: Token
-    ): Map<String, Any>
+    suspend fun getAccountWithToken(
+        @Header(ACCOUNT_ID_HEADER) accountId: String
+    ): AccountInfo
 
     @PUT(ACCOUNT + PASSWORD_UPDATE)
     suspend fun updatePassword(

@@ -17,6 +17,8 @@ struct PickerView<T: Hashable>: View {
     public let options: [[T]]
     public let displayValue: (T) -> String
     public let pickerType: PickerType
+    public let title: String?
+    public let showCancel: Bool
     public var updateValues: (([T]) -> Void)?
     public var onCancel: (() -> Void)?
     
@@ -26,6 +28,8 @@ struct PickerView<T: Hashable>: View {
         options: [[T]],
         displayValue: @escaping (T) -> String,
         pickerType: PickerType = .default,
+        title: String? = nil,
+        showCancel: Bool = false,
         updateValues: (([T]) -> Void)? = nil,
         onCancel: (() -> Void)? = nil
     ) {
@@ -33,6 +37,8 @@ struct PickerView<T: Hashable>: View {
         self.options = options
         self.displayValue = displayValue
         self.pickerType = pickerType
+        self.title = title
+        self.showCancel = showCancel
         self.updateValues = updateValues
         self.onCancel = onCancel
         self._tempSelectedValues = State(initialValue: selectedValues)
@@ -42,34 +48,47 @@ struct PickerView<T: Hashable>: View {
         VStack(spacing: 0) {
             // Header with Cancel and Select buttons
             // TODO: Need to use the custom button style here
-            HStack {
-                ButtonView(
-                    text: commonLang.cancel,
-                    type: .inlineTextTertiary,
-                    size: .small,
-                    isDisabled: false
-                ) {
-                    onCancel?()
+            ZStack {
+                if let title = title {
+                    Text(title)
+                        .fontOpenSans(.heading5)
+                        .foregroundColor(theme.textHeading)
+                        .lineLimit(1)
+                        .accessibilityAddTraits(.isHeader)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
                 
-                Spacer()
-                
-                ButtonView(
-                    text: commonLang.save,
-                    type: .inlineTextPrimary,
-                    size: .small,
-                    isDisabled: false
-                ) {
-                    updateValues?(tempSelectedValues)
+                HStack {
+                    if showCancel, onCancel != nil {
+                        ButtonView(
+                            text: commonLang.cancel,
+                            type: .inlineTextTertiary,
+                            size: .small,
+                            isDisabled: false
+                        ) {
+                            onCancel?()
+                        }
+                    }
+                    Spacer()
+                    
+                    ButtonView(
+                        text: commonLang.save,
+                        type: .inlineTextPrimary,
+                        size: .small,
+                        isDisabled: false
+                    ) {
+                        updateValues?(tempSelectedValues)
+                    }
                 }
+                
             }
-            .padding(.horizontal)
-            .padding(.bottom, 40)
+            .padding()
+            .padding(.bottom, .spacingLG)
             
             // Picker Section
             ZStack {
                 //Selection background
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: .radiusSM)
                     .fill(theme.backgroundSecondary)
                     .frame(height: 35)
                     .allowsHitTesting(false)
@@ -92,11 +111,11 @@ struct PickerView<T: Hashable>: View {
                                     .offset(x: pickerType == .heightInches ? -15 : 0 )
                             }
                         }
-                        .frame(width: 80, alignment: .leading)
+                        .frame(width: columnWidth(), alignment: .leading)
                     }
                 }
             }
-            .frame(height: 200)
+            .frame(height: 180)
         }
         .onAppear {
             tempSelectedValues = selectedValues
@@ -125,6 +144,15 @@ struct PickerView<T: Hashable>: View {
                     .foregroundColor(theme.textHeading.opacity(isSelected ? 1 : 0.6))
                     .tag(value)
             }
+        }
+    }
+    
+    private func columnWidth() -> CGFloat? {
+        switch pickerType {
+        case .heightInches, .heightCm:
+            return 80
+        default:
+            return nil // flexible width to avoid text truncation
         }
     }
 }

@@ -17,6 +17,6 @@ data class Account(
     val isExpired: Boolean = false,
     val isSynced: Boolean = false,
     val lastActiveTime: String? = null,
-    val zipcode: String? = null,
+    val zipcode: String,
     // Add other settings as needed, or use separate domain models
-) 
+)

@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.signup
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -117,7 +118,9 @@ fun SignupScreenContent(
                     onBack = { handleIntent(SignupIntent.Back) },
                     onSkip = { handleIntent(SignupIntent.Skip) },
                     onUrlOpen = { handleIntent(SignupIntent.OpenURL(it)) },
+                    onMetricToggle = { handleIntent(SignupIntent.ToggleMetric(it)) },
                 )
+                Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
             }
         }
     }

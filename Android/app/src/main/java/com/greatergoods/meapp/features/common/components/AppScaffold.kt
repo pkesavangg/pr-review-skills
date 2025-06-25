@@ -38,6 +38,7 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
+    borderColor: Color = Color.Transparent,
     containerColor: Color = colorScheme.secondaryBackground,
     appBarColor: Color = colorScheme.primaryBackground,
     actions: (@Composable () -> Unit)? = null,
@@ -55,6 +56,7 @@ fun AppScaffold(
                     title = title,
                     navigationIcon = navigationIcon,
                     actions = actions,
+                    borderColor = borderColor,
                     containerColor = appBarColor,
                 )
         },

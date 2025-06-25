@@ -59,8 +59,8 @@ fun EntryScreen() {
         BackHandler {
             viewModel.dialogQueueService.enqueue(
                 DialogModel.Confirm(
-                    title = AppPopupStrings.UnsavedChanges.manualEntryTitle,
-                    message = AppPopupStrings.UnsavedChanges.message,
+                    title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                    message = AppPopupStrings.UnsavedChanges.Message,
                     onConfirm = {
                         backStack.removeLast(AppRoute.Home)
                         state.form.resetForm() },

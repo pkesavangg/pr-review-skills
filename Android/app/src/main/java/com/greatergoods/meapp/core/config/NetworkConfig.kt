@@ -3,7 +3,7 @@ package com.greatergoods.meapp.core.config
 object NetworkConfig {
     val PUBLIC_ENDPOINTS = setOf(
         "account/login",
-        "account/signup",
+        "account/",
         "refresh-token",
         "account/forgot-password",
     )

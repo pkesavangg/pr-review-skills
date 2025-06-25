@@ -2,9 +2,7 @@ package com.greatergoods.meapp.features.signup.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.components.AppStyledCard
@@ -45,14 +43,13 @@ fun GenderStep(
             CircularSelectButton(
                 text = SignupStrings.genderMale,
                 isSelected = genderControl.value.equals(Gender.MALE.name, ignoreCase = true),
-            ) { genderControl.onValueChange("male") }
+            ){ genderControl.onValueChange(Gender.MALE.value) }
 
             CircularSelectButton(
                 text = SignupStrings.genderFemale,
                 isSelected = genderControl.value.equals(Gender.FEMALE.name, ignoreCase = true),
-            ) { genderControl.onValueChange("female") }
+            ){ genderControl.onValueChange(Gender.FEMALE.value) }
         }
-        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }
 }
 

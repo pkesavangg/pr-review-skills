@@ -1,9 +1,6 @@
 package com.greatergoods.meapp.features.signup.components
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.core.shared.utilities.DateTimeTools
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
@@ -33,7 +30,6 @@ fun BirthdayStep(birthdayControl: FormControl<DateTimeValue>) {
             mode = DateTimeInputMode.Date,
             maxValue = DateTimeValue.Date(DateTimeTools.getMinBirthdayOffsetForDatePicker()),
         )
-        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
     }
 }
 

@@ -25,6 +25,7 @@ class AppValidatorConfig {
     }
 
     object DateOfBirth {
+        const val DEFAULT_VALUE = "2000-01-01"
         const val MIN_LENGTH = 10
         const val MAX_LENGTH = 10
     }

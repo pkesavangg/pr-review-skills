@@ -67,4 +67,18 @@ sealed class AppRoute : NavKey {
         @Serializable
         data object UserList : Auth()
     }
+
+    /**
+     * Profile-related navigation routes.
+     */
+    @Serializable
+    sealed class AccountSettings : AppRoute() {
+        @Serializable
+        data object ChangePassword : AccountSettings()
+
+        @Serializable
+        data object Profile : AccountSettings()
+    }
 }
+
+

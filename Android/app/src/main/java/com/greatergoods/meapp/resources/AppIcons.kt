@@ -5,6 +5,7 @@ import com.greatergoods.meapp.R
 object AppIcons {
     object Default {
         val Close = R.drawable.ic_close
+        val Delete = R.drawable.ic_delete
         val EyeOpened = R.drawable.ic_eye_open
         val EyeClosed = R.drawable.ic_eye_close
         val Banner = R.drawable.weight_gurus_banner
@@ -20,17 +21,6 @@ object AppIcons {
         val StampDark = R.drawable.gg_stamp_dark
         val RightCaret = R.drawable.ic_right_caret
         val ChevronDown = R.drawable.ic_chevron_down
-        val Bmi = R.drawable.me_placeholder
-        val BodyFat = R.drawable.me_placeholder
-        val Muscle = R.drawable.me_placeholder
-        val Water = R.drawable.me_placeholder
-        val Heart = R.drawable.me_placeholder
-        val Bone = R.drawable.me_placeholder
-        val VisceralFat = R.drawable.me_placeholder
-        val SubcutaneousFat = R.drawable.me_placeholder
-        val Protein = R.drawable.me_placeholder
-        val Bmr = R.drawable.me_placeholder
-        val MetabolicAge = R.drawable.me_placeholder
     }
 
     object Outlined {
@@ -46,6 +36,11 @@ object AppIcons {
         val Close = R.drawable.ic_popup_close
         val CloseDark = R.drawable.ic_popup_close_dark
         val CaretDown = R.drawable.ic_filled_caret_down
+    }
+
+    object Selection {
+        val CircleUnselected = R.drawable.ic_circle_outline
+        val CircleSelected = R.drawable.ic_check_circle_filled
     }
 
     object Metrics {

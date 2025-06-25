@@ -2,8 +2,8 @@ package com.greatergoods.meapp.data.storage.db.entity.account
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 import androidx.room.Index
+import androidx.room.PrimaryKey
 
 /**
  * Entity class representing the account table in the database.
@@ -33,5 +33,5 @@ data class AccountEntity(
     val isExpired: Boolean = false,
     val isSynced: Boolean = false,
     val lastActiveTime: String? = null,
-    val zipcode: String? = null
+    val zipcode: String
 )

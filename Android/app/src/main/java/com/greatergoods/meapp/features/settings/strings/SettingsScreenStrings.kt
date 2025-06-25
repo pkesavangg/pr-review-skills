@@ -9,6 +9,7 @@ object SettingsScreenStrings {
     const val Integrations = "Integrations"
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
+    const val UserProfile = "User Profile"
 
     // Profile Settings
     const val ProfileSettings = "Profile Settings"
