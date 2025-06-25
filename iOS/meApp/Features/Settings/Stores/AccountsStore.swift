@@ -44,7 +44,6 @@ class AccountsStore: ObservableObject {
         accountService.$allAccounts
             .sink { [weak self] allAccounts in
                 self?.accounts = allAccounts
-                print("Accounts updated: \(allAccounts) accounts", allAccounts.count)
             }
             .store(in: &accountService.cancellables)
     }
@@ -96,7 +95,7 @@ class AccountsStore: ObservableObject {
         }
     }
     
-    func handleDeleteOperation(user: UserItemInfo) {
+    func userRemoveHandler(user: UserItemInfo) {
         let alertLang = alertStrings.DeleteUserAlert
         let alert = AlertModel(
             title: alertLang.title(user.name),
@@ -112,7 +111,7 @@ class AccountsStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    func removeUser(user: UserItemInfo) {
+    private func removeUser(user: UserItemInfo) {
         guard let account = accounts.first(where: { $0.accountId == user.accountID }) else {
             logger.log(level: .error, tag: tag, message: "Account with ID \(user.accountID) does not exist")
             return

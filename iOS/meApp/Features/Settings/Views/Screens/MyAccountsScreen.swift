@@ -84,7 +84,7 @@ struct MyAccountsScreen: View {
                             }
                         },
                         onDelete: { _ in
-                            accountsStore.removeUser(user: account)
+                            accountsStore.userRemoveHandler(user: account)
                         }
                     )
                     .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
