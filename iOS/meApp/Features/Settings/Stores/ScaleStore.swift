@@ -34,7 +34,7 @@ class ScaleStore: ObservableObject {
     // In-App Browser State
     @Published var showTermsBrowser: Bool = false
     @Published var browserURL: URL? = nil
-
+    
     // Settings/detail values for UI (replace with computed or fetched values later)
     @Published var modeValue: String = "Weight Only" // TODO: Replace with actual mode value
     @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
@@ -46,10 +46,10 @@ class ScaleStore: ObservableObject {
     @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi" // TODO: Replace with actual scale type
     @Published var skuValue: String = "0412" // TODO: Replace with actual SKU
     @Published var datePairedValue: String = "June 2, 2025" // TODO: Replace with actual date paired
-
+    
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self
-
+    
     // MARK: - In-App Browser Presentation Binding
     var isBrowserPresented: Binding<Bool> {
         Binding(
@@ -65,7 +65,7 @@ class ScaleStore: ObservableObject {
     var presentingBrowserURL: URL {
         browserURL ?? legalURLs.greaterGoodsWebsite
     }
-
+    
     // MARK: - Initialization
     @Injector var scaleService: ScaleService
     @Injector var notificationService: NotificationHelperService
@@ -201,10 +201,35 @@ class ScaleStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    func modeTapped() {
+        // TODO: Implement modeTapped action
+    }
+    func displayMetricsTapped() {
+        // TODO: Implement displayMetricsTapped action
+    }
+    func usersTapped() {
+        // TODO: Implement usersTapped action
+    }
+    func scaleNameTapped() {
+        // TODO: Implement scaleNameTapped action
+    }
+    func bluetoothTapped() {
+        // TODO: Implement bluetoothTapped action
+    }
+    func wifiTapped() {
+        // TODO: Implement wifiTapped action
+    }
+    func wifiMacAddressTapped() {
+        // TODO: Implement wifiMacAddressTapped action
+    }
+    func scaleTypeTapped() {
+        // TODO: Implement scaleTypeTapped action
+    }
+    
     // MARK: - Product Guide URL helper & Browser Presentation
     func productGuideURL(for sku: String) -> URL {
         guard !sku.isEmpty else { return legalURLs.notFound }
-        return URL(string: legalURLs.serviceBase + sku) ?? legalURLs.notFound
+        return (AppConstants.LegalURLs.serviceBase.appendingPathComponent(sku)) // Use type-safe base
     }
     func openProductGuide(for sku: String) {
         browserURL = productGuideURL(for: sku)

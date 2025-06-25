@@ -60,16 +60,14 @@ struct ScaleSettingsScreen: View {
             .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
     }
-    
     private func scaleStatusBannerSection() -> some View {
         Section {
             ScaleStatusBanner(type: .weightOnly {})
-                .settingsRowInsets()
         }
+        .settingsRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
-    
     private func deleteScaleSection() -> some View {
         Section {
             SettingsListItem(
@@ -84,99 +82,85 @@ struct ScaleSettingsScreen: View {
                     }
                 )
             )
-            .settingsRowInsets()
         }
+        .settingsRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
-    
     private func settingsSection() -> some View {
-        Section(header:
-                    SectionHeader(title: lang.settingsSectionHeader)
-        ) {
-            // Show these setting rows only if scaleType == .bluetoothR4
+        Section(header: SectionHeader(title: lang.settingsSectionHeader)) {
             if scaleType == .bluetoothR4 {
                 SettingsListItem(
                     config: SettingsItemConfig(
                         title: lang.mode,
-                        value: scaleStore.modeValue
+                        value: scaleStore.modeValue,
+                        onTap: { scaleStore.modeTapped() }
                     )
                 )
-                .settingsRowInsets()
-                
                 SettingsListItem(
                     config: SettingsItemConfig(
                         title: lang.displayMetrics,
-                        value: scaleStore.displayMetricsValue
+                        value: scaleStore.displayMetricsValue,
+                        onTap: { scaleStore.displayMetricsTapped() }
                     )
                 )
-                .settingsRowInsets()
-                
                 SettingsListItem(
                     config: SettingsItemConfig(
                         title: lang.users,
-                        value: scaleStore.usersValue
+                        value: scaleStore.usersValue,
+                        onTap: { scaleStore.usersTapped() }
                     )
                 )
-                .settingsRowInsets()
             }
-            
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.scaleName,
-                    value: scaleStore.scaleNameValue
+                    value: scaleStore.scaleNameValue,
+                    onTap: { scaleStore.scaleNameTapped() }
                 )
             )
-            .settingsRowInsets()
         }
+        .settingsRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
-    
     private func connectionSection() -> some View {
-        Section(header:
-                    SectionHeader(title: lang.connectionSectionHeader)
-        ) {
+        Section(header: SectionHeader(title: lang.connectionSectionHeader)) {
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.bluetooth,
-                    value: scaleStore.bluetoothValue
+                    value: scaleStore.bluetoothValue,
+                    onTap: { scaleStore.bluetoothTapped() }
                 )
             )
-            .settingsRowInsets()
-            
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.wifi,
-                    value: scaleStore.wifiValue
+                    value: scaleStore.wifiValue,
+                    onTap: { scaleStore.wifiTapped() }
                 )
             )
-            .settingsRowInsets()
-            
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.wifiMacAddress,
-                    value: scaleStore.wifiMacAddressValue
+                    value: scaleStore.wifiMacAddressValue,
+                    onTap: { scaleStore.wifiMacAddressTapped() }
                 )
             )
-            .settingsRowInsets()
         }
+        .settingsRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
-    
     private func supportSection() -> some View {
-        Section(header:
-                    SectionHeader(title: lang.supportSectionHeader)
-        ) {
+        Section(header: SectionHeader(title: lang.supportSectionHeader)) {
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.scaleType,
-                    value: scaleStore.scaleTypeValue
+                    value: scaleStore.scaleTypeValue,
+                    onTap: { scaleStore.scaleTypeTapped() }
                 )
             )
-            .settingsRowInsets()
-            
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.sku.uppercased(),
@@ -184,8 +168,6 @@ struct ScaleSettingsScreen: View {
                     canShowChevron: false
                 )
             )
-            .settingsRowInsets()
-            
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.datePaired,
@@ -193,15 +175,14 @@ struct ScaleSettingsScreen: View {
                     canShowChevron: false
                 )
             )
-            .settingsRowInsets()
-            
             SettingsListItem(
-                config: SettingsItemConfig(title: lang.productGuide, onTap: {
-                    scaleStore.openProductGuide(for: scaleStore.skuValue)
-                })
+                config: SettingsItemConfig(
+                    title: lang.productGuide,
+                    onTap: { scaleStore.openProductGuide(for: scaleStore.skuValue) }
+                )
             )
-            .settingsRowInsets()
         }
+        .settingsRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
