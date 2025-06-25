@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.login.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
@@ -39,6 +41,8 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
@@ -57,7 +61,25 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 fun LoginScreen() {
     val viewmodel: LoginViewModel = hiltViewModel()
     val state by viewmodel.state.collectAsState()
+    val backStack = LocalNavBackStack.current
     LoginContent(state, viewmodel::handleIntent)
+
+    if (state.form.isDirty || state.form.isTouched) {
+        BackHandler {
+            viewmodel.dialogQueueService.enqueue(
+                DialogModel.Confirm(
+                    title = AppPopupStrings.UnsavedChanges.Title,
+                    message = AppPopupStrings.UnsavedChanges.Message,
+                    confirmText = AppPopupStrings.UnsavedChanges.Exit,
+                    cancelText = AppPopupStrings.UnsavedChanges.Return,
+                    onConfirm = {
+                        backStack.removeLast(AppRoute.Auth.Landing)
+                        state.form.resetForm()
+                    },
+                ),
+            )
+        }
+    }
 }
 
 @Composable
@@ -78,7 +100,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
             AppIconButton(AppIcons.Outlined.Help) { handleIntent(LoginIntent.OpenHelpModal) }
         },
         containerColor = colorScheme.secondaryBackground,
-        appBarColor = colorScheme.secondaryBackground
+        appBarColor = colorScheme.secondaryBackground,
     ) { scaffoldModifier ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
