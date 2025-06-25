@@ -60,6 +60,11 @@ constructor(
             accounts.find { it.isActiveAccount }
         }
 
+    override val activeAccountIdFlow: Flow<String?>
+        get() = accountRepository.getLoggedInAccountsFromDB().map { accounts ->
+            accounts.find { it.isActiveAccount }?.id
+        }
+
     // All logged in accounts flow - sorted by lastActiveTime
     override val loggedInAccountsFlow: Flow<List<Account>> = accountRepository.getLoggedInAccountsFromDB()
 
@@ -433,7 +438,7 @@ constructor(
         }
     }
 
-        /**
+    /**
      * Updates the user's profile information.
      * @param profileData Map containing the profile data to update
      * @return The updated account or null if update fails
@@ -454,7 +459,7 @@ constructor(
                 email = profileData["email"] as String,
                 zipcode = profileData["zipcode"] as String,
                 gender = currentAccount.gender,
-                dob = DateTimeValue.getDateFormatFromMilliseconds(profileData["birthday"] as Long)
+                dob = DateTimeValue.getDateFormatFromMilliseconds(profileData["birthday"] as Long),
             )
 
             // Call API to update profile
@@ -475,7 +480,7 @@ constructor(
                 isSynced = true, // Mark as synced since we just updated via API
                 lastActiveTime = currentAccount.lastActiveTime,
                 expiresAt = currentAccount.expiresAt,
-                fcmToken = currentAccount.fcmToken
+                fcmToken = currentAccount.fcmToken,
             )
             val savedAccount = accountRepository.updateAccountInDB(updatedAccount)
             AppLog.d(TAG, "Profile updated successfully for account: ${savedAccount.id}")
@@ -489,6 +494,7 @@ constructor(
             null
         }
     }
+
     override suspend fun changePassword(currentPassword: String, newPassword: String): Boolean {
         return try {
             getCurrentAccount() ?: return false
@@ -524,6 +530,7 @@ constructor(
 
             AuthAction.UPDATE_PROFILE -> ToastStrings.Success.UpdateProfileSuccess.Header to
                 ToastStrings.Success.UpdateProfileSuccess.Message
+
             AuthAction.CHANGE_PASSWORD -> ToastStrings.Success.ChangePasswordSuccess.Header to
                 ToastStrings.Success.ChangePasswordSuccess.Message
 
@@ -578,6 +585,7 @@ constructor(
                 }
                 header to message
             }
+
             AuthAction.CHANGE_PASSWORD -> {
                 val header = ToastStrings.Error.ChangePasswordError.Header
                 val message = when (error?.code()) {
@@ -595,6 +603,7 @@ constructor(
                 }
                 header to message
             }
+
             else -> "" to ""
         }
 
@@ -655,21 +664,6 @@ constructor(
 
             // Update account data with API response
             accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
-
-            // Update tokens in TokenManager for active account
-            val currentTokens = userDataStore.getData().accounts[activeAccount.id]
-            if (currentTokens != null) {
-                tokenManager.setTokens(
-                    Token(
-                        accountId = activeAccount.id,
-                        isActive = true,
-                        accessToken = currentTokens.accessToken,
-                        refreshToken = currentTokens.refreshToken,
-                        expiresAt = currentTokens.expiresAt,
-                    ),
-                )
-            }
-
             AppLog.d(TAG, "Active account login status check successful")
             true
         } catch (e: Exception) {
@@ -702,10 +696,10 @@ constructor(
             for (account in loggedInAccounts) {
                 try {
                     AppLog.d(TAG, "Checking login status for account: ${account.id}")
-                    val accountInfo = accountRepository.getAccountInAPI(account.id)
+                    accountRepository.getAccountInAPI(account.id)
 
                     // Update account data with API response
-                    accountRepository.updateAccountFromAPI(account.id, accountInfo)
+                    // accountRepository.updateAccountFromAPI(account.id, accountInfo)
 
                     // Update tokens in TokenManager for this account
                     val currentTokens = userDataStore.getData().accounts[account.id]

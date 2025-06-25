@@ -69,37 +69,38 @@ fun HistoryGraph(state: DashboardState) {
     ) {
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-
-        Text(
-            text =
-                buildAnnotatedString {
-                    append(labelData.ifBlank { "No data" })
-                    if(labelData.isNotBlank()) {
-                        withStyle(
-                            style =
-                                SpanStyle(
-                                    fontSize = MeTheme.typography.subHeading2.fontSize,
-                                    color = MeTheme.colorScheme.textSubheading,
-                                ),
-                        ) {
-                            append(" lbs")
-                        }
-                    }
-                },
-            modifier = Modifier.padding(
-                horizontal = MeTheme.spacing.sm,
-            ),
-            style = MeTheme.typography.heading1,
-            color = MeTheme.colorScheme.textBody,
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-        subText?.let {
+        Column(modifier = Modifier.fillMaxHeight(0.15f)) {
             Text(
-                text = it,
-                modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
-                style = MeTheme.typography.body2,
-                color = MeTheme.colorScheme.textSubheading,
+                text =
+                    buildAnnotatedString {
+                        append(labelData.ifBlank { "No data" })
+                        if (labelData.isNotBlank()) {
+                            withStyle(
+                                style =
+                                    SpanStyle(
+                                        fontSize = MeTheme.typography.subHeading2.fontSize,
+                                        color = MeTheme.colorScheme.textSubheading,
+                                    ),
+                            ) {
+                                append(" lbs")
+                            }
+                        }
+                    },
+                modifier = Modifier.padding(
+                    horizontal = MeTheme.spacing.sm,
+                ),
+                style = MeTheme.typography.heading1,
+                color = MeTheme.colorScheme.textBody,
             )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+            subText?.let {
+                Text(
+                    text = it,
+                    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+                    style = MeTheme.typography.body2,
+                    color = MeTheme.colorScheme.textSubheading,
+                )
+            }
         }
         GraphView(
             modifier =
@@ -129,9 +130,6 @@ fun HistoryGraph(state: DashboardState) {
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
-    }
-
-    LaunchedEffect(graphLines) {
     }
 }
 

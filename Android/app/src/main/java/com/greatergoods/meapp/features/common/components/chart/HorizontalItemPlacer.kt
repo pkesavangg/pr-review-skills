@@ -13,7 +13,6 @@ import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 internal fun horizontalItemPlacer(
     isEnabled: Boolean,
     segment: GraphSegment,
-    onScroll: (String?) -> Unit,
     onDestinationUpdate: (Long, Long) -> Unit,
 ): HorizontalAxis.ItemPlacer {
     val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()

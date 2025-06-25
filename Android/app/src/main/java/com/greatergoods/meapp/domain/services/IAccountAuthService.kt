@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharedFlow
 interface IAccountAuthService {
     val authStateFlow: SharedFlow<AuthState>
     val activeAccountFlow: Flow<Account?>
+    val activeAccountIdFlow: Flow<String?>
     val loggedInAccountsFlow: Flow<List<Account>>
     val isSignUpFlow: SharedFlow<Boolean>
     val isLoginFlow: SharedFlow<Boolean>

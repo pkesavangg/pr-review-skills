@@ -2,7 +2,6 @@ package com.greatergoods.meapp.features.common.components.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
@@ -21,28 +20,25 @@ internal fun markerListener(
     point: Point?,
     xLabels: List<Label>,
     onSelected: (List<GraphPoint>) -> Unit,
-    segment: GraphSegment,
     selectedData: List<GraphPoint>,
     setMarkerIndex: (Int?) -> Unit,
     onDestinationUpdate: (Long?) -> Unit,
-): CartesianMarkerVisibilityListener = remember(point, segment) {
+): CartesianMarkerVisibilityListener = remember(point) {
     object : CartesianMarkerVisibilityListener {
         override fun onShown(
             marker: CartesianMarker,
             targets: List<CartesianMarker.Target>,
         ) {
-            if (segment != GraphSegment.TOTAL) {
-                val targetCanvasX = targets.first().canvasX
-                val targetCanvasY = (targets.first() as LineCartesianLayerMarkerTarget).points.first().canvasY
-                val dx = abs(targetCanvasX - (point?.x ?: 0.0f))
-                val dy = abs(targetCanvasY - (point?.y ?: 0.0f))
-                val isInRange = dx <= 50.0f || dy <= 50.0f
-                if (!isInRange) {
-                    onSelected(listOf())
-                    onDestinationUpdate(null)
-                    setMarkerIndex(null)
-                    return
-                }
+            val targetCanvasX = targets.first().canvasX
+            val targetCanvasY = (targets.first() as LineCartesianLayerMarkerTarget).points.first().canvasY
+            val dx = abs(targetCanvasX - (point?.x ?: 0.0f))
+            val dy = abs(targetCanvasY - (point?.y ?: 0.0f))
+            val isInRange = dx <= 50.0f || dy <= 50.0f
+            if (!isInRange) {
+                onSelected(listOf())
+                onDestinationUpdate(null)
+                setMarkerIndex(null)
+                return
             }
 
             val idx = xLabels.indexOfFirst { it.value == targets.first().x.toLong() }

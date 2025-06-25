@@ -16,6 +16,7 @@ import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageYValuesInRange
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
@@ -159,7 +160,7 @@ fun GraphView(
                 if (isActive) {
                     val joinedLabel = subset.values
                         .filterNotNull()
-                        .joinToString(" / ") { "%.1f".format(it) }
+                        .joinToString(" / ") { it.toDouble().rounded().toString() }
                     onLabelUpdate(joinedLabel)
                 }
 
@@ -170,7 +171,7 @@ fun GraphView(
             onScroll(null)
             onLabelUpdate(
                 selectedData.first().y.value.toDouble()
-                    .let { "%.0f".format(it) },
+                    .rounded().toString(),
             )
         }
     }
@@ -184,6 +185,11 @@ fun GraphView(
             .collect { (min, max) ->
                 // Run your logic here after the debounce period
                 computationJob = launch(Dispatchers.Default) {
+                    val formattedRange = GraphUtil.formatDateRange(
+                        min ?: 0L,
+                        max ?: 0L, segment,
+                    )
+                    onScroll(formattedRange)
                     val subset = averageYValuesInRange(
                         stableGraphLines,
                         min ?: 0L,
@@ -209,7 +215,6 @@ fun GraphView(
     val horizontalItemPlacer = horizontalItemPlacer(
         isEnabled = !isUpdating,
         segment = segment,
-        onScroll = onScroll,
         onDestinationUpdate = { min, max ->
             minTarget = min
             maxTarget = max
@@ -224,7 +229,6 @@ fun GraphView(
             onSelected = {
                 selectedData = it
             },
-            segment = segment,
             setMarkerIndex = { markerIndex = it },
             selectedData = selectedData,
             onDestinationUpdate = { selectedTarget = it },
