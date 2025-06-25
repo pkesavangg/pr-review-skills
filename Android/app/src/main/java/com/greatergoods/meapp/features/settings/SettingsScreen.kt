@@ -222,6 +222,6 @@ fun SettingsScreenContent(
 @Composable
 fun SettingsScreenPreview() {
     MeAppTheme {
-        SettingsScreenContent(SettingsState(), {  })
+        SettingsScreenContent(SettingsState(), { })
     }
 }

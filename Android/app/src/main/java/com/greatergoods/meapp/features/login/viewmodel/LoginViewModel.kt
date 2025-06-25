@@ -14,6 +14,7 @@ import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginReducer
 import com.greatergoods.meapp.features.login.model.LoginState
 import com.greatergoods.meapp.features.login.strings.LoginStrings
+import com.greatergoods.meapp.features.profile.strings.ProfileStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject

@@ -264,7 +264,7 @@ constructor(
 
     fun onSwitchAccountClick() {
         viewModelScope.launch {
-            navigationService.navigateTo(AppRoute.SettingsRoute.MyAccounts)
+            navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts)
         }
         AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
     }

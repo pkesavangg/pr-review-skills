@@ -58,7 +58,6 @@ fun NavHost(
                 entry<AppRoute.MonthDetails> { entry ->
                     HistoryDetailScreen(entry.month)
                 }
-                settingsEntries()
             },
         transitionSpec = {
             // Slide in from right when navigating forward
