@@ -133,7 +133,9 @@ struct MyScalesScreen: View {
 import SwiftUI
 
 // MARK: ModelNumberHelpModalView
-/// A view that displays a simple help modal for model number help (placeholder)
+/// A view that displays a simple help modal for model number help, matching the provided screenshot.
+import SwiftUI
+
 struct ModelNumberHelpModalView: View {
     let onClose: () -> Void
     @Environment(\.appTheme) private var theme
@@ -142,20 +144,75 @@ struct ModelNumberHelpModalView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack {
-                VStack(alignment: .leading){
+
+                HStack{
+                    Spacer()
+                    Image(AppAssets.xmark)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                        .onTapGesture {
+                            onClose()
+                        }
+                }
+                
+                // Illustration matching the screenshot
+                ZStack(alignment: .center) {
+                    // Box background
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.black, lineWidth: 1)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white)
+                        )
+                        .frame(height: 60)
+                    // Logo on the left
+//                    HStack(spacing: 0) {
+//                        Image(AppAssets.modelNumberExampleLogo)
+//                            .resizable()
+//                            .scaledToFit()
+//                            .frame(width: 36, height: 36)
+//                            .padding(.leading, 8)
+//                        Spacer()
+//                    }
+                    // URL text in the center
+                    HStack {
+                        Spacer().frame(width: 44)
+                        Text("GREATERGOODS.COM/")
+                            .fontOpenSans(.body2)
+                            .italic()
+                            .foregroundColor(.purple)
+                        Text("1234")
+                            .fontOpenSans(.body2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    // Blue circle overlay on the right
+//                    HStack {
+//                        Spacer()
+//                       // Image(AppAssets.modelNumberExampleCircle)
+//                            .resizable()
+//                            .scaledToFit()
+//                            .frame(width: 56, height: 56)
+//                            .offset(x: 12)
+//                    }
+                }
+                .frame(height: 60)
+                .padding(.horizontal, 8)
+                
+                VStack(alignment: .center, spacing: .spacingMD) {
                     Text("Check the back of your scale for a sticker with your four-digit model number.")
                         .fontOpenSans(.body2)
-                        
-                    Text("For example, if you have a 0375 Bluetooth Scale, your sticker will show the URL")
+                        .multilineTextAlignment(.center)
+                    Text("For example, if you have a 0375 Bluetooth Scale, the sticker will show the URL:\ngreatergoods.com/0375")
                         .fontOpenSans(.body2)
-                    Text("greatergoods.com/0375.")
-                        .fontOpenSans(.body2)
+                        .multilineTextAlignment(.center)
                 }
-                .padding(.horizontal,.spacingXS)
-                .padding(.vertical, .spacingLG)
+//                .padding(.horizontal, .spacingXS)
+//                .padding(.vertical, .spacingLG)
             }
-            .padding(.horizontal, .spacingXS)
-            .padding(.vertical, .spacingXS)
+            .padding(.spacingMD)
             .background(theme.backgroundSecondary)
             .cornerRadius(.radiusXL)
             .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 5)
