@@ -7,12 +7,11 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
-import com.greatergoods.meapp.domain.model.Account
-import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
@@ -29,7 +28,6 @@ import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
@@ -102,6 +100,15 @@ constructor(
                     isSynced = true,
                     lastActiveTime = Date().time.toString(),
                     zipcode = info.zipcode,
+                    weightUnit = info.weightUnit,
+                    isWeightlessOn = info.isWeightlessOn,
+                    height = info.height,
+                    activityLevel = info.activityLevel,
+                    weightlessTimestamp = info.weightlessTimestamp,
+                    weightlessWeight = info.weightlessWeight,
+                    isStreakOn = info.isStreakOn,
+                    dashboardType = info.dashboardType,
+                    dashboardMetrics = info.dashboardMetrics
                 )
             val savedAccount = accountRepository.addAccountInDB(account)
             tokenManager.setTokens(
@@ -243,6 +250,15 @@ constructor(
                     isSynced = false,
                     lastActiveTime = Date().time.toString(),
                     zipcode = info.zipcode,
+                    weightUnit = info.weightUnit,
+                    isWeightlessOn = info.isWeightlessOn,
+                    height = info.height,
+                    activityLevel = info.activityLevel,
+                    weightlessTimestamp = info.weightlessTimestamp,
+                    weightlessWeight = info.weightlessWeight,
+                    isStreakOn = info.isStreakOn,
+                    dashboardType = info.dashboardType,
+                    dashboardMetrics = info.dashboardMetrics
                 )
             val savedAccount = accountRepository.addAccountInDB(account)
             tokenManager.setTokens(
@@ -420,7 +436,6 @@ constructor(
         try {
             val response = this.accountRepository.resetPasswordInAPI(email)
             if (response.isSuccessful) {
-                Log.d(TAG, "Successfully reset password: $response")
                 AppLog.d(TAG, "Successfully reset password")
                 showSuccessToast(AuthAction.RESET_PASSWORD, email)
             } else {
@@ -434,7 +449,7 @@ constructor(
     }
 
         /**
-     * Updates the user's profile information.
+     * Updates the user's profile information using DTO for better data handling.
      * @param profileData Map containing the profile data to update
      * @return The updated account or null if update fails
      */
@@ -459,7 +474,7 @@ constructor(
 
             // Call API to update profile
             val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
-            val updatedAccountInfo: AccountInfo = response.account
+            val updatedAccountInfo = response.account
             val updatedAccount = currentAccount.copy(
                 firstName = updatedAccountInfo.firstName,
                 lastName = updatedAccountInfo.lastName,
@@ -478,13 +493,11 @@ constructor(
                 fcmToken = currentAccount.fcmToken
             )
             val savedAccount = accountRepository.updateAccountInDB(updatedAccount)
-            AppLog.d(TAG, "Profile updated successfully for account: ${savedAccount.id}")
             _authStateFlow.emit(AuthState.ProfileUpdated(savedAccount))
             showSuccessToast(AuthAction.UPDATE_PROFILE)
             savedAccount
         } catch (e: HttpException) {
             showErrorToast(AuthAction.UPDATE_PROFILE, e)
-            AppLog.e(TAG, "Profile update failed", e.toString())
             _authStateFlow.emit(AuthState.Error(e.message ?: "Profile update failed"))
             null
         }

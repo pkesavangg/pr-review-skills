@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.helper.AppDraggableListState
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme

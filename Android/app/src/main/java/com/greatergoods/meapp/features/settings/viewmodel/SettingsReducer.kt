@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.settings.viewmodel
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 
 /**
  * UI state for the settings feature, holding loading state and errors.
@@ -21,6 +21,7 @@ data class SettingsState(
  */
 sealed interface SettingsIntent : IReducer.Intent {
     object LoadSettings : SettingsIntent
+    object ExportData : SettingsIntent
 
     data class SetError(
         val message: String,

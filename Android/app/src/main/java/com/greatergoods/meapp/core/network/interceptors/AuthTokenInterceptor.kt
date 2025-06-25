@@ -44,11 +44,6 @@ class AuthTokenInterceptor @Inject constructor(
             }
         }
 
-        if (accessToken.isNullOrEmpty()) {
-            AppLog.w(TAG, "No access token available for account: $accountId")
-            return chain.proceed(request)
-        }
-
         // Build a new request with the Authorization header
         val newRequest = request.newBuilder()
             .addHeader(AppConfig.AUTHORIZATION_HEADER, "Bearer $accessToken")

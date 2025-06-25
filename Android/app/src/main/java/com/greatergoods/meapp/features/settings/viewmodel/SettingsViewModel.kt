@@ -1,13 +1,20 @@
 package com.greatergoods.meapp.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.enum.AccountSettingsAction
 import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.strings.ToastStrings
+import com.greatergoods.meapp.features.export.strings.ExportStrings
 import com.greatergoods.meapp.features.settings.strings.SettingsScreenStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
 
 /**
@@ -20,10 +27,12 @@ class SettingsViewModel
     @Inject
     constructor(
         private val authService: IAccountAuthService,
+        private val exportService: IExportService,
     ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
             SettingsReducer(),
         ) {
         override fun provideInitialState(): SettingsState = SettingsState()
+        private val TAG = "SettingsViewModel"
 
         init {
             getUserProfile()
@@ -44,6 +53,10 @@ class SettingsViewModel
                     _state.value = _state.value.copy(account = intent.account)
                 }
 
+                is SettingsIntent.ExportData -> {
+                    onExportDataClick()
+                }
+
                 is SettingsIntent.Logout -> {
                     onLogOutClick()
                 }
@@ -53,29 +66,112 @@ class SettingsViewModel
         }
 
         fun onEditProfileClick() {
-            AppLog.d("SettingsViewModel", "Edit profile clicked")
+            AppLog.d("TAG", "Edit profile clicked")
             // TODO: Navigate to edit profile screen
         }
 
         fun onAddEditScalesClick() {
-            AppLog.d("SettingsViewModel", "Add/Edit scales clicked")
+            AppLog.d("TAG", "Add/Edit scales clicked")
             // TODO: Navigate to scales screen
         }
 
         fun onIntegrationsClick() {
-            AppLog.d("SettingsViewModel", "Integrations clicked")
+            AppLog.d("TAG", "Integrations clicked")
             // TODO: Navigate to integrations screen
         }
 
         fun onExportDataClick() {
-            AppLog.d("SettingsViewModel", "Export data clicked")
-            // TODO: Show export data dialog
+            AppLog.d("TAG", "Export data clicked")
+
+            // Show confirmation dialog
+            dialogQueueService.enqueue(
+                DialogModel.Confirm(
+                    title = ExportStrings.ExportDialogTitle,
+                    message = ExportStrings.ExportDialogMessage,
+                    confirmText = ExportStrings.SendButton,
+                    cancelText = ExportStrings.CancelButton,
+                    onConfirm = {
+                        performExport()
+                        dialogQueueService.dismissCurrent()
+                    },
+                    onCancel = {
+                        AppLog.d("TAG", "User cancelled export")
+                        dialogQueueService.dismissCurrent()
+                    },
+                ),
+            )
         }
 
-        fun onChangePasswordClick() {
-            AppLog.d("SettingsViewModel", "Change password clicked")
-            // TODO: Navigate to change password screen
+        /**
+         * Performs the actual export operation with loading and error handling.
+         */
+        private fun performExport() {
+            AppLog.i("TAG", ExportStrings.ExportStarted)
+
+            // Show loading spinner
+            dialogQueueService.showLoader(
+                message = ExportStrings.LoaderMessage,
+            )
+
+            viewModelScope.launch {
+                try {
+                    // Call the export service
+                    exportService.exportCsvWithPrompt()
+                    // Show success toast
+                    showExportSuccessToast()
+                    AppLog.i("TAG", ExportStrings.ExportCompleted)
+                } catch (e: HttpException) {
+                    // Show error toast
+                    showErrorToast(AccountSettingsAction.EXPORT_CSV, e)
+                    AppLog.e("TAG", ExportStrings.ExportFailed, e.toString())
+                } finally {
+                    // Dismiss loading spinner
+                    dialogQueueService.dismissLoader()
+                }
+            }
         }
+
+        /**
+         * Shows success toast for export operation.
+         */
+        private fun showExportSuccessToast() {
+            dialogQueueService.showToast(
+                Toast(
+                    title = "",
+                    message = ExportStrings.SuccessMessage,
+                    action = null,
+                ),
+            )
+        }
+
+
+    fun showErrorToast(action: AccountSettingsAction, error: HttpException?) {
+        val (title, message) = when (action) {
+            AccountSettingsAction.EXPORT_CSV -> {
+                val header = ""
+                val message = when (error?.code()) {
+                    HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                        ToastStrings.Error.LoginError.MessageNoConn
+
+                    HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                        ToastStrings.Error.LoginError.MessageServError
+
+                    HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                        ToastStrings.Error.LoginError.MessageNotAuth
+
+                    else ->
+                        ToastStrings.Error.LoginError.MessageGeneric
+                }
+                header to message
+            }
+        }
+        val errorToast = Toast(
+            title = title,
+            message = message,
+            action = null,
+        )
+        dialogQueueService.showToast(errorToast)
+    }
 
         fun onGoalSettingClick() {
             AppLog.d("SettingsViewModel", "Goal setting clicked")

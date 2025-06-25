@@ -14,7 +14,6 @@ import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
-import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT

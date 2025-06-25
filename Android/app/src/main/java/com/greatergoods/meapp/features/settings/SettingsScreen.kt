@@ -70,7 +70,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.ExportData,
                             type = SettingsItemType.None,
-                            onClick = { },
+                            onClick = {
+                               handleIntent.invoke(SettingsIntent.ExportData)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ChangePassword,

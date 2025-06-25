@@ -7,7 +7,6 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
-import com.greatergoods.meapp.domain.model.Account
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
@@ -20,6 +19,7 @@ import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -216,23 +216,7 @@ class AccountRepository @Inject constructor(
     }
 
     private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): Account {
-        val entity = this.account
-        return Account(
-            id = entity.id,
-            firstName = entity.firstName,
-            lastName = entity.lastName,
-            dob = entity.dob,
-            email = entity.email,
-            expiresAt = entity.expiresAt,
-            fcmToken = entity.fcmToken,
-            gender = entity.gender,
-            isActiveAccount = entity.isActiveAccount,
-            isLoggedIn = entity.isLoggedIn,
-            isExpired = entity.isExpired,
-            isSynced = entity.isSynced,
-            lastActiveTime = entity.lastActiveTime,
-            zipcode = entity.zipcode ?: "",
-        )
+        return AccountEntityMapper.toDomainFromAccountWithRelations(this)
     }
 
     override suspend fun updateSyncTimeStamp(timeStamp: String) {
@@ -264,12 +248,9 @@ class AccountRepository @Inject constructor(
             zipcode = accountInfo.zipcode,
             isSynced = true,
         )
-
         // Update in database
         accountDao.updateAccount(updatedAccountEntity)
-
         AppLog.d(TAG, "Updated account $accountId with API response data")
-
         return AccountEntityMapper.toDomain(updatedAccountEntity)
     }
 

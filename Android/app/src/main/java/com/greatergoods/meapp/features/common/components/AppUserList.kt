@@ -12,7 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.helper.rememberAppDraggableListState
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -107,6 +107,17 @@ fun AppUserListPreview() {
                     isLoggedIn = true,
                     lastActiveTime = "2024-01-15T10:30:00.000Z",
                     zipcode = "12345",
+                    isSynced = true,
+                    isExpired = false,
+                    weightUnit = "lbs",
+                    isWeightlessOn = true,
+                    height = 175,
+                    activityLevel = "Moderately Active",
+                    weightlessTimestamp = "2024-01-15T10:30:00.000Z",
+                    weightlessWeight = 70.5f,
+                    isStreakOn = true,
+                    dashboardType = "Dashboard4",
+                    dashboardMetrics = listOf("weight", "bmi")
                 ),
                 Account(
                     id = "2",
@@ -119,6 +130,17 @@ fun AppUserListPreview() {
                     isLoggedIn = true,
                     lastActiveTime = "2024-01-10T14:20:00.000Z",
                     zipcode = "67890",
+                    isSynced = true,
+                    isExpired = false,
+                    weightUnit = "kg",
+                    isWeightlessOn = false,
+                    height = 165,
+                    activityLevel = "Active",
+                    weightlessTimestamp = null,
+                    weightlessWeight = null,
+                    isStreakOn = false,
+                    dashboardType = "Dashboard12",
+                    dashboardMetrics = listOf("weight", "bodyfat", "muscle")
                 ),
             )
         }
@@ -155,6 +177,17 @@ fun AppUserListSingleItemPreview() {
                     isLoggedIn = true,
                     lastActiveTime = "2024-01-15T10:30:00.000Z",
                     zipcode = "12345",
+                    isSynced = true,
+                    isExpired = false,
+                    weightUnit = "lbs",
+                    isWeightlessOn = false,
+                    height = 180,
+                    activityLevel = "Very Active",
+                    weightlessTimestamp = null,
+                    weightlessWeight = null,
+                    isStreakOn = true,
+                    dashboardType = "Dashboard4",
+                    dashboardMetrics = listOf("weight")
                 ),
             )
         }

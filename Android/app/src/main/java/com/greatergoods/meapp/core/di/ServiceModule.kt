@@ -9,7 +9,9 @@ import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
+import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
+import com.greatergoods.meapp.data.services.ExportService
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.IAccountRepository
@@ -20,6 +22,7 @@ import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.notification.NotificationService
@@ -57,7 +60,6 @@ object ServiceModule {
         dialogQueueService,
         userDataStore,
     )
-
     /**
      * Provides a singleton instance of [IAppEventService].
      * @return [AppEventService] instance.
@@ -126,4 +128,15 @@ object ServiceModule {
         integrationRepository: IIntegrationRepository,
         dialogQueueService: DialogQueueService,
     ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
+
+
+    /**
+     * Provides the export service implementation.
+     */
+    @Provides
+    @Singleton
+    fun provideExportService(
+        exportAPI: IExportAPI,
+        accountAuthService: IAccountAuthService,
+    ): IExportService = ExportService(exportAPI, accountAuthService)
 }
