@@ -311,5 +311,8 @@ struct AppAssets {
     static let emptyStateIcon = "emptyStateIcon"
     static let checkMarkCircle = "checkMarkCircle"
     static let wifi = "wifi"
+    static let filledCloseCircle = "filledCloseCircle"
+    static let filledTickCircle = "filledTickCircle"
+    static let exclamationMark = "exclamationMark"
 }
 

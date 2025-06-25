@@ -14,12 +14,12 @@ enum SettingsRoute: Routable {
 
     var body: some View {
         switch self {
-        case .addEditScales:
-            EmptyView() // TODO: Implement AddEditScalesScreen
         case .integrations:
             EmptyView() // TODO: Implement IntegrationsScreen
         case .changePassword:
             ChangePasswordScreen()
+        case .addEditScales:
+            MyScalesScreen()
         case .editProfile:
             EditProfileScreen()
         case .goal:
