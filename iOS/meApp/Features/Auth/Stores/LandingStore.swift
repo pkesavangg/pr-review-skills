@@ -15,27 +15,46 @@ final class LandingStore: ObservableObject {
     @Injector private var accountService: AccountService
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
-
+    
     // MARK: Published State
     @Published var accounts: [Account] = []
+    @Published var userItems: [UserItemInfo] = []
     
     let loadingLang = LoaderStrings.self
-
+    
     // MARK: Private
     private var cancellables: Set<AnyCancellable> = []
     private let tag = "LandingStore"
-
+    
     // MARK: Init
     init() {
         // Keep the local list in-sync with `AccountService`.
         accountService.$allAccounts
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
-                self?.accounts = all.filter { $0.isLoggedIn == true }
+                guard let self = self else { return }
+                self.accounts = all.filter { $0.isLoggedIn == true }
+                
+                let sortedAccounts = self.accounts.sorted { lhs, rhs in
+                    let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
+                    let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
+                    return lhsDate > rhsDate
+                }
+                
+                self.userItems = sortedAccounts.map { account in
+                    UserItemInfo(
+                        accountID: account.accountId,
+                        name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
+                        email: account.email,
+                        isSelected: false,
+                        isExpired: account.isExpired ?? false,
+                        canShowSelection: false
+                    )
+                }
             }
             .store(in: &cancellables)
     }
-
+    
     // MARK: Intent(s)
     /// Attempts to make the supplied account active.
     func switchAccount(to accountID: String) {
@@ -43,7 +62,7 @@ final class LandingStore: ObservableObject {
             logger.log(level: .error, tag: tag, message: "Account with ID \(accountID) not found")
             return
         }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loadingLang.loading))
             defer {

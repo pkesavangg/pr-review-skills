@@ -21,10 +21,10 @@ struct LandingScreen: View {
         RoutingView(stack: $router.stack) {
             ZStack {
                 Group {
-                    userItems.count > 0 ? theme.backgroundSecondary : theme.actionPrimary
+                    landingStore.userItems.count > 0 ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()
-                if !(userItems.count > 0) {
+                if !(landingStore.userItems.count > 0) {
                     VStack(alignment: .center) {
                         Spacer()
                             .frame(minHeight: .spacing6XL)
@@ -60,7 +60,7 @@ struct LandingScreen: View {
                             ScrollView(.vertical, showsIndicators: false) {
                                 VStack(spacing: .spacingXS) {
                                     VStack(spacing: 0) {
-                                        ForEach(Array(userItems.enumerated()), id: \.element.id) { index, item in
+                                        ForEach(Array(landingStore.userItems.enumerated()), id: \.element.id) { index, item in
                                             VStack(spacing: 0) {
                                                 UserListItemView(
                                                     user: item,
@@ -74,7 +74,7 @@ struct LandingScreen: View {
                                                     }
                                                 )
                                                 // Show divider only if not the last item
-                                                if index < userItems.count - 1 {
+                                                if index < landingStore.userItems.count - 1 {
                                                     Divider()
                                                         .frame(height: 0.5)
                                                         .background(theme.statusUtility)
@@ -109,29 +109,4 @@ struct LandingScreen: View {
 #Preview {
     LandingScreen()
         .environmentObject(Theme.shared)
-}
-
-// MARK: - Helpers
-private extension LandingScreen {
-    var userItems: [UserItemInfo] {
-        
-        let sortedAccounts = landingStore.accounts.sorted { lhs, rhs in
-            let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
-            let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
-            return lhsDate > rhsDate
-        }
-        
-        
-        return sortedAccounts.map { account in
-            UserItemInfo(
-                accountID: account.accountId,
-                name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
-                email: account.email,
-                isSelected: false,
-                isExpired: account.isExpired ?? false,
-                canShowSelection: false
-            )
-        }
-        
-    }
 }

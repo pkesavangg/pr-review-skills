@@ -30,6 +30,8 @@ class AccountsStore: ObservableObject {
     @Published var userItems: [UserItemInfo] = []
     
     @Published var canShowLoginScreen = false
+    /// Holds the email to prefill in `LoginScreen` when opening from account switching flow.
+    @Published var emailForLogin: String? = nil
     @Published var canShowAccountSignupScreen = false
     
     private let tag = "AccountsStore"
@@ -69,11 +71,14 @@ class AccountsStore: ObservableObject {
             .store(in: &accountService.cancellables)
     }
     
-    func handleLoginCTA() {
+    /// Triggers display of `LoginScreen`. Pass the email to pre-fill if available.
+    /// - Parameter email: Optional email address to prefill in the login form.
+    func handleLoginCTA(email: String? = nil) {
         if accounts.count >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return
         }
+        emailForLogin = email
         canShowLoginScreen = true
     }
     

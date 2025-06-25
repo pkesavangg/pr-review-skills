@@ -38,7 +38,7 @@ struct MyAccountsScreen: View {
             }
         }
         .sheet(isPresented: $accountsStore.canShowLoginScreen, content: {
-            LoginScreen(isFromAccountSwitching: true)
+            LoginScreen(prefilledEmail: accountsStore.emailForLogin, isFromAccountSwitching: true)
                 .interactiveDismissDisabled()
         })
         .sheet(isPresented: $accountsStore.canShowAccountSignupScreen, content: {
@@ -59,7 +59,7 @@ struct MyAccountsScreen: View {
                         openItemID: $openItemID,
                         onTap: { id, isExpired in
                             if isExpired {
-                                accountsStore.handleLoginCTA()
+                                accountsStore.handleLoginCTA(email: account.email)
                             } else {
                                 accountsStore.switchActiveAccount(to: id)
                             }
