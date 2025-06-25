@@ -137,9 +137,7 @@ class SettingsViewModel
         private fun showExportSuccessToast() {
             dialogQueueService.showToast(
                 Toast(
-                    title = "",
                     message = ExportStrings.SuccessMessage,
-                    action = null,
                 ),
             )
         }
