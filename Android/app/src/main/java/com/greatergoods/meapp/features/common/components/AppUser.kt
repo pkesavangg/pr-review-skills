@@ -98,7 +98,7 @@ fun AppUser(
                     type = AppIconType.Primary,
                     modifier = Modifier.size(24.dp),
                 )
-            } else {
+            } else if(account.isExpired) {
                 AppButton(
                     label = AppUserStrings.LogInButton,
                     onClick = onLoginRequest,

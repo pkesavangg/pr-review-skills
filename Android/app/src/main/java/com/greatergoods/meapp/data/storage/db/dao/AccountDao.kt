@@ -58,10 +58,16 @@ interface AccountDao {
     @Query("UPDATE account SET isActiveAccount = 0 WHERE accountId != :accountId")
     suspend fun deactivateOtherAccounts(accountId: String)
 
+    @Query("UPDATE account SET isActiveAccount = 1 WHERE accountId = :accountId")
+    suspend fun activateAccount(accountId: String)
+
+    @Query("UPDATE account SET lastActiveTime = :timestamp WHERE accountId = :accountId")
+    suspend fun updateLastActiveTime(accountId: String, timestamp: String)
+
     @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0 WHERE accountId = :accountId")
     suspend fun logoutAccount(accountId: String)
 
-    @Query("UPDATE account SET isLoggedIn = 0")
+    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0")
     suspend fun logoutAllAccounts()
 
     @Query("UPDATE account SET isSynced = :isSynced WHERE accountId = :accountId")
@@ -125,4 +131,8 @@ interface AccountDao {
 
     @Query("UPDATE account SET isSynced = 1 WHERE accountId = :accountId")
     suspend fun markAccountSynced(accountId: String)
+
+    // Account Expiration Management
+    @Query("UPDATE account SET isExpired = 1, isLoggedIn = 0, isActiveAccount = 0, expiresAt = '' WHERE accountId = :accountId")
+    suspend fun markAccountExpired(accountId: String)
 }

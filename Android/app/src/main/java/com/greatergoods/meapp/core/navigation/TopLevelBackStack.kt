@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.navigation3.runtime.NavKey
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -108,6 +109,7 @@ class TopLevelBackStack<T : NavKey>(
         stack.add(initialKey.first)
 
         addRoute(initialKey.second, initialKey.first)
+        AppLog.i("autoLogin", "Navigation to dashboard successful")
     }
 
     fun logout() {

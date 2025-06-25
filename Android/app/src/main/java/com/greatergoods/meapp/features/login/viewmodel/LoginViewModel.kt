@@ -71,6 +71,8 @@ constructor(
                 val account = accountAuthService.login(email, password)
                 if (account != null) {
                     handleIntent(LoginIntent.Success)
+                } else {
+                    handleIntent(LoginIntent.Error("Login failed"))
                 }
             } catch (e: Exception) {
                 handleIntent(LoginIntent.Error(e.toString()))
@@ -112,7 +114,7 @@ constructor(
     private fun navigateToDashboard() {
         viewModelScope.launch {
             navigationService.replaceStack(AppRoute.Init.Loading)
-            AppLog.i("onSubmit", "Navigation to dashboard successful")
+
         }
     }
 }

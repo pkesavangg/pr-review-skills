@@ -41,6 +41,10 @@ interface ITokenManager {
     suspend fun getAccessToken(accountId: String): String?
 
     suspend fun getRefreshToken(accountId: String): String?
+
+    fun getAccountIdForToken(token: String): String?
+
+    suspend fun loadAllTokens()
 }
 
 @Singleton
@@ -68,8 +72,12 @@ class TokenManager
         override var isOtherUserTokenRefreshed = false
             private set
 
+        // In-memory map for multi-account token management
+        private val accountTokens = mutableMapOf<String, Token>()
+
         override suspend fun setTokens(token: Token) {
-            AppLog.d(TAG, "Setting tokens")
+            AppLog.d(TAG, "Setting tokens for account: ${token.accountId}")
+            accountTokens[token.accountId] = token
             userDataStore.updateAccountTokens(
                 accountId = token.accountId,
                 isActive = token.isActive,
@@ -86,10 +94,11 @@ class TokenManager
         }
 
         override fun clearTokens() {
-            AppLog.d(TAG, "Clearing tokens")
+            AppLog.d(TAG, "Clearing all tokens")
             _tokens.value = null
             _otherUserToken.value = null
             isOtherUserTokenRefreshed = false
+            accountTokens.clear()
         }
 
         override fun setTokenRefreshed(refreshed: Boolean) {
@@ -141,12 +150,35 @@ class TokenManager
         override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
         override suspend fun getAccessToken(accountId: String): String? {
-            val userPrefs = userDataStore.getData()
-            return userPrefs.accounts[accountId]?.accessToken
+            // Prefer in-memory map for fast lookup
+            return accountTokens[accountId]?.accessToken
+                ?: userDataStore.getData().accounts[accountId]?.accessToken
         }
 
         override suspend fun getRefreshToken(accountId: String): String? {
-            val userPrefs = userDataStore.getData()
-            return userPrefs.accounts[accountId]?.refreshToken
+            // Prefer in-memory map for fast lookup
+            return accountTokens[accountId]?.refreshToken
+                ?: userDataStore.getData().accounts[accountId]?.refreshToken
+        }
+
+        override fun getAccountIdForToken(token: String): String? {
+            return accountTokens.entries.find {
+                it.value.accessToken == token || it.value.refreshToken == token
+            }?.key
+        }
+
+        override suspend fun loadAllTokens() {
+            AppLog.d(TAG, "Loading all tokens from UserDataStore")
+            accountTokens.clear()
+            val allAccounts = userDataStore.getData().accounts
+            allAccounts.forEach { (id, userAccount) ->
+                accountTokens[id] = Token(
+                    accountId = id,
+                    isActive = userAccount.isActive,
+                    accessToken = userAccount.accessToken,
+                    refreshToken = userAccount.refreshToken,
+                    expiresAt = userAccount.expiresAt
+                )
+            }
         }
     }

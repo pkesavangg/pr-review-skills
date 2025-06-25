@@ -287,6 +287,28 @@ class UserDataStore @Inject constructor(
     }
 
     /**
+     * Clears the tokens for a specific account without removing the account.
+     * @param accountId The account ID whose tokens should be cleared.
+     */
+    suspend fun clearAccountTokens(accountId: String) {
+        val current = getData()
+        val updated = current.toBuilder().apply {
+            val userAccount = accountsMap[accountId]
+            if (userAccount != null) {
+                putAccounts(
+                    accountId,
+                    userAccount.toBuilder()
+                        .setAccessToken("")
+                        .setRefreshToken("")
+                        .setExpiresAt("")
+                        .build()
+                )
+            }
+        }.build()
+        updateData { updated }
+    }
+
+    /**
      * Gets whether the account switch info modal has been shown for a specific account.
      * @param accountId The account ID to check.
      * @return True if the modal has been shown, false otherwise.

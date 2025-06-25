@@ -2,12 +2,11 @@ package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.shared.utilities.DeviceInfoUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.domain.model.common.DeviceInfo
+import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
@@ -22,7 +21,7 @@ class DeviceInfoService
 constructor(
     @ApplicationContext private val context: Context,
     private val deviceInfoRepository: IDeviceInfoRepository,
-    private val fcmDataStore: FcmDataStore,
+    private val appRepository: IAppRepository,
 ) : IDeviceInfoService {
 
     companion object {
@@ -81,7 +80,7 @@ constructor(
      */
     override suspend fun getFcmToken(): String {
         return try {
-            val token = fcmDataStore.tokenFlow.first()
+            val token = appRepository.getFcmToken()
             AppLog.d(TAG, "Retrieved FCM token from DataStore: $token")
             token
         } catch (e: Exception) {

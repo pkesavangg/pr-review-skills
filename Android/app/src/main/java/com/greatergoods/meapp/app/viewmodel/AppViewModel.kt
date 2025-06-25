@@ -11,7 +11,6 @@ import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.util.Log
@@ -51,28 +50,68 @@ class AppViewModel @Inject constructor(
                 AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
             }
         }
+
+        // Auto-navigate to landing if no active account (restores old behavior)
+        viewModelScope.launch {
+            accountAuthService.activeAccountFlow.collect { account ->
+                if (account == null) {
+                    AppLog.d(TAG, "No active account detected, navigating to landing")
+                    navigationService.replaceStack(AppRoute.Auth.Landing)
+                }
+            }
+        }
     }
 
     private fun initLogic() {
         viewModelScope.launch {
-            accountAuthService.activeAccountFlow.collectLatest { account ->
-                if(account?.id != currentAccountId) {
-                    currentAccountId = account?.id
-                    if (account != null) {
-                        initLoadingData(account.id)
-                    } else {
-                        navigationService.replaceStack(
-                            route =
-                                if (accountAuthService.checkForLoggedInUser()) {
-                                    AppRoute.Auth.UserList
-                                } else {
-                                    AppRoute.Auth.Landing
-                                },
-                        )
-                    }
+            val isLoginStatusChecked = checkLoginStatus()
+            if (isLoginStatusChecked) {
+                val currentAccount = accountAuthService.getCurrentAccount()
+                val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
+                    !it.isActiveAccount
                 }
+                if (currentAccount != null) {
+                    initLoadingData(currentAccount.id)
+                } else {
+                    routeToLandingOrApp(loggedInAccounts.isNotEmpty())
+                }
+            } else {
+                routeToLandingOrApp()
             }
         }
+    }
+
+    /**
+     * Checks the login status for all accounts using the split methods.
+     * @return true if login status check was successful
+     */
+    private suspend fun checkLoginStatus(): Boolean {
+        return try {
+            // Check active account first
+            accountAuthService.checkLoginStatusForActiveAccount()
+
+            // Then check other logged-in accounts
+            accountAuthService.checkLoginStatusForLoggedInAccounts()
+
+            AppLog.d(TAG, "Checked login status for all accounts")
+            true
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error checking login status", e.toString())
+            false
+        }
+    }
+
+    /**
+     * Routes to either the landing page or the app based on login status.
+     * @param isLoggedIn true if user is logged in, false otherwise
+     */
+    private suspend fun routeToLandingOrApp(hasAccounts: Boolean = false) {
+        val route = if (hasAccounts) {
+            AppRoute.Auth.UserList
+        } else {
+            AppRoute.Auth.Landing
+        }
+        navigationService.replaceStack(route = route)
     }
 
     private fun initLoadingData(accountId: String) {
