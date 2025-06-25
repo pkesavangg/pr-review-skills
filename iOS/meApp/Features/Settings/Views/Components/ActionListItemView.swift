@@ -12,39 +12,44 @@ import SwiftUI
 struct ActionListItemView: View {
     @Environment(\.appTheme) private var theme
     let config: ActionListItemConfig
-    
+    let rowHeight = CGFloat(48)
     var body: some View {
         Button {
             if config.toggleBinding == nil {
                 config.onTap?()
             }
         } label: {
-            HStack(spacing: 12) {
-                // Conditional dot indicator
-                if config.showDot {
-                    Circle()
-                        .fill(config.dotColor ?? theme.textError)
-                        .frame(width: 9, height: 9)
-                } else if let leadingIcon = config.leadingIcon {
-                    leadingIcon
-                }
-                
-                actionLabelText(config.title, isDestructive: config.isDestructive)
+            VStack {
                 Spacer()
-                
-                // Toggle or value display
-                if let toggleBinding = config.toggleBinding {
-                    CustomToggleView(isOn: toggleBinding)
-                        .onChange(of: toggleBinding.wrappedValue) { _, newValue in
-                            config.onTap?()
-                        }
-                } else if let value = config.value {
-                    valueText(value)
+                HStack(spacing: 12) {
+                    // Conditional dot indicator
+                    if config.showDot {
+                        Circle()
+                            .fill(config.dotColor ?? theme.textError)
+                            .frame(width: 9, height: 9)
+                    } else if let leadingIcon = config.leadingIcon {
+                        leadingIcon
+                    }
+                    
+                    actionLabelText(config.title, isDestructive: config.isDestructive)
+                    Spacer()
+                    
+                    // Toggle or value display
+                    if let toggleBinding = config.toggleBinding {
+                        CustomToggleView(isOn: toggleBinding)
+                            .onChange(of: toggleBinding.wrappedValue) { _, newValue in
+                                config.onTap?()
+                            }
+                    } else if let value = config.value {
+                        valueText(value)
+                    }
+                    
+                    // Chevron based on type
+                    chevronView()
                 }
-                
-                // Chevron based on type
-                chevronView()
+                Spacer()
             }
+            .frame(height: 48)
         }
         .disabled(config.toggleBinding != nil && config.onTap == nil)
     }
@@ -122,6 +127,7 @@ struct ActionListItemView: View {
                 chevronType: .none, isDestructive: true,
                 onTap: { print("Tapped Destructive Row") }
             ))
+            .listRowInsets()
         }
     }
     .listStyle(.insetGrouped)
