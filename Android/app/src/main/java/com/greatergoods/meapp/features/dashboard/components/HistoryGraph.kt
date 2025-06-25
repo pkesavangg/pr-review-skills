@@ -25,10 +25,8 @@ import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
-import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import android.util.Log
 
 @Composable
 fun HistoryGraph(state: DashboardState) {
@@ -43,7 +41,7 @@ fun HistoryGraph(state: DashboardState) {
     }
     var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
 
-    var subText : String?  by remember { mutableStateOf(null) }
+    var subText: String? by remember { mutableStateOf(null) }
 
     fun getWeightGraphPoints(segment: GraphSegment): GraphLine {
         return when (segment) {
@@ -60,14 +58,10 @@ fun HistoryGraph(state: DashboardState) {
     var graphLines by remember(state.dayWiseEntries, state.monthWiseEntries) {
         mutableStateOf(getWeightGraphPoints(selectedSegment))
     }
-    var selectedData by remember(graphLines) {
-        mutableStateOf(
-            graphLines.points.lastOrNull()?.let { listOf(it) } ?: emptyList(),
-        )
-    }
 
-    val labelData =
-        if (selectedData.isNotEmpty()) selectedData.first().y.value.toDouble().rounded().toString() else "000"
+    var labelData by remember {
+        mutableStateOf("")
+    }
     Column(
         modifier =
             Modifier
@@ -79,15 +73,17 @@ fun HistoryGraph(state: DashboardState) {
         Text(
             text =
                 buildAnnotatedString {
-                    append(labelData)
-                    withStyle(
-                        style =
-                            SpanStyle(
-                                fontSize = MeTheme.typography.subHeading2.fontSize,
-                                color = MeTheme.colorScheme.textSubheading,
-                            ),
-                    ) {
-                        append(" lbs")
+                    append(labelData.ifBlank { "No data" })
+                    if(labelData.isNotBlank()) {
+                        withStyle(
+                            style =
+                                SpanStyle(
+                                    fontSize = MeTheme.typography.subHeading2.fontSize,
+                                    color = MeTheme.colorScheme.textSubheading,
+                                ),
+                        ) {
+                            append(" lbs")
+                        }
                     }
                 },
             modifier = Modifier.padding(
@@ -112,12 +108,11 @@ fun HistoryGraph(state: DashboardState) {
                     .fillMaxHeight(0.55f),
             segment = selectedSegment,
             graphLines = listOf(graphLines),
-            selectedData = selectedData,
             onScroll = {
                 subText = it
             },
-            onSelected = {
-                selectedData = it
+            onLabelUpdate = {
+                labelData = it
             },
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))

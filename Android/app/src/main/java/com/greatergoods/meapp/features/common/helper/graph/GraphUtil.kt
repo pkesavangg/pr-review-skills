@@ -17,6 +17,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
+import android.util.Log
 
 /**
  * Utility object for graph-related data transformation and formatting.
@@ -136,7 +137,8 @@ object GraphUtil {
     fun formatTimestampForSegment(
         timestamp: Long,
         segment: GraphSegment,
-    ): String {
+
+        ): String {
         val date = Date(timestamp)
         val formatter = when (segment) {
             GraphSegment.WEEK -> weekFormatter
@@ -145,6 +147,40 @@ object GraphUtil {
         }
         val result = formatter.format(date)
         return if (segment == GraphSegment.YEAR) result.take(1) else result
+    }
+
+    fun markerValueFormatter(
+        timestamp: Long,
+        segment: GraphSegment,
+    ): String {
+        val formatter = when (segment) {
+            GraphSegment.WEEK, GraphSegment.MONTH -> dateRangeFormatter
+            GraphSegment.YEAR, GraphSegment.TOTAL -> monthYearFormatter
+        }
+        val zone = ZoneId.systemDefault()
+        val startDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
+        return startDate.format(formatter)
+    }
+
+    fun averageYValuesInRange(
+        graphLines: List<GraphLine>,
+        min: Long,
+        max: Long
+    ): Map<String, Float?> {
+        val result = graphLines.associate { line ->
+
+            val yValues = line.points
+                .filter { it.x.value.toLong() in min..max }
+                .map { it.y.value.toDouble() }
+
+            Log.d("GraphView", "Average Y values for ${line.name}: $yValues")
+            val average = if (yValues.isNotEmpty()) {
+                yValues.average().toFloat()
+            } else null
+
+            line.name to average
+        }
+        return result
     }
 
     /**
