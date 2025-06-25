@@ -13,6 +13,7 @@ struct MyAccountsScreen: View {
     @EnvironmentObject private var router: Router<SettingsRoute>
     @EnvironmentObject private var settingsStore: SettingsStore
     @StateObject private var accountsStore = AccountsStore()
+    @State private var openItemID: UUID? = nil
     
     /// Transforms `Account` models from `AccountsStore` into immutable `UserItemInfo` models used by the list.
     private var userItems: [UserItemInfo] {
@@ -76,6 +77,7 @@ struct MyAccountsScreen: View {
                 ForEach(userItems) { account in
                     UserListItemView(
                         user: account,
+                        openItemID: $openItemID,
                         onTap: { id, isExpired in
                             if isExpired {
                                 accountsStore.handleLoginCTA()

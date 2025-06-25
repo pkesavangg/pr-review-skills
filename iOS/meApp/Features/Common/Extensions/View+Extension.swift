@@ -179,11 +179,22 @@ extension View {
     /// - Parameters:
     ///  - buttonWidth: The width of each swipeable button (default is 72).
     ///  - buttons: An array of `SwipeButton` configurations for the swipeable actions.
+    ///  - itemID: The unique identifier for the row.
+    ///  - openItemID: A binding to the currently opened row identifier to ensure only one row is open at a time.
     ///  - Returns: A view with swipeable actions applied.
     func swipeableActions(
         buttonWidth: CGFloat = 72,
-        buttons: [SwipeButton]
+        buttons: [SwipeButton],
+        itemID: UUID,
+        openItemID: Binding<UUID?>? = nil
     ) -> some View {
-        self.modifier(SwipeableModifier(swipeButtons: buttons, buttonWidth: buttonWidth))
+        self.modifier(
+            SwipeableModifier(
+                swipeButtons: buttons,
+                buttonWidth: buttonWidth,
+                itemID: itemID,
+                openItemID: openItemID
+            )
+        )
     }
 }
