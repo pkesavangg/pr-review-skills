@@ -103,7 +103,7 @@ struct MyScalesScreen: View {
                                 status: .connected,
                                 onTap: {
                                     let name = scale.deviceName ?? lang.unknownScale
-                                    router.navigate(to: .scaleSettings(scaleName: name))
+                                    router.navigate(to: .scaleSettings(scaleName: name, scaleType: .bluetoothR4)) // TODO: Add action to define scaleType
                                 }
                             )
                             .padding(.horizontal, .spacingSM)

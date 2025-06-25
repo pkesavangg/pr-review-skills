@@ -286,5 +286,6 @@ struct AppAssets {
     static let bluetooth = "bluetooth"
     static let exclamationMark = "exclamationMark"
     static let scale0412 = "0412"
+    static let weightOnlyMode = "weightOnlyMode"
 }
 
