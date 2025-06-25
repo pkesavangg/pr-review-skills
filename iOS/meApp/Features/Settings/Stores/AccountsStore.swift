@@ -44,7 +44,6 @@ class AccountsStore: ObservableObject {
         accountService.$allAccounts
             .sink { [weak self] allAccounts in
                 self?.accounts = allAccounts
-                print("Accounts updated: \(allAccounts) accounts", allAccounts.count)
             }
             .store(in: &accountService.cancellables)
     }
