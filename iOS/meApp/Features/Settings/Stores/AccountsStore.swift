@@ -111,7 +111,7 @@ class AccountsStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    func removeUser(user: UserItemInfo) {
+    private func removeUser(user: UserItemInfo) {
         guard let account = accounts.first(where: { $0.accountId == user.accountID }) else {
             logger.log(level: .error, tag: tag, message: "Account with ID \(user.accountID) does not exist")
             return
