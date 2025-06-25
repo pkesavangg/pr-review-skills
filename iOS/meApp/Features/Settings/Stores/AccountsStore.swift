@@ -95,7 +95,7 @@ class AccountsStore: ObservableObject {
         }
     }
     
-    func handleDeleteOperation(user: UserItemInfo) {
+    func userRemoveHandler(user: UserItemInfo) {
         let alertLang = alertStrings.DeleteUserAlert
         let alert = AlertModel(
             title: alertLang.title(user.name),
