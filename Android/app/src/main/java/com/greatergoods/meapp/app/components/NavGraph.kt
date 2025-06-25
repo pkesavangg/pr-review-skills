@@ -34,7 +34,6 @@ fun EntryProviderBuilder<NavKey>.topLevelEntries() {
 }
 
 fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
-     entry<AppRoute.Profile.Edit> { ProfileScreen()
+    entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
     entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
-}
 }

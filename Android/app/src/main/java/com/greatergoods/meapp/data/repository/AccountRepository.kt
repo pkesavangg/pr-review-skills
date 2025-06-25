@@ -1,20 +1,22 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.core.network.ITokenManager
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
 import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
+import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
-import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
@@ -60,10 +62,12 @@ class AccountRepository @Inject constructor(
     }
 
     /**
-     * Logs out via API.
+     * Logs out via API for a specific account.
+     * @param fcmToken Optional FCM token to unregister
+     * @param accountId The account ID to logout
      */
-    override suspend fun logoutInAPI(fcmToken: String?) {
-        authAPI.logout(LogoutRequest(fcmToken ?: ""))
+    override suspend fun logoutInAPI(fcmToken: String?, accountId: String) {
+        authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
     }
 
     /**
@@ -74,10 +78,12 @@ class AccountRepository @Inject constructor(
     }
 
     /**
-     * Gets account info via API and returns AccountResponse.
+     * Gets account info via API for a specific account and returns AccountResponse.
+     * @param accountId The account ID to get info for
+     * @return AccountInfo for the specified account
      */
-    override suspend fun getAccountInAPI(): AccountResponse {
-        return userAPI.getAccount()
+    override suspend fun getAccountInAPI(accountId: String): AccountInfo {
+        return authAPI.getAccountWithToken(accountId)
     }
 
     /**
@@ -107,7 +113,7 @@ class AccountRepository @Inject constructor(
     /**
      * Adds an account to the database and returns the domain model.
      */
-    override suspend fun addAccountInDB(account: com.greatergoods.meapp.domain.model.Account): com.greatergoods.meapp.domain.model.Account {
+    override suspend fun addAccountInDB(account: Account): Account {
         val accountEntity = AccountEntityMapper.toEntity(account)
         accountDao.insertAccount(accountEntity)
         return account
@@ -150,7 +156,7 @@ class AccountRepository @Inject constructor(
     /**
      * Gets the stored active account from the database.
      */
-    override suspend fun getStoredActiveAccountFromDB(): com.greatergoods.meapp.domain.model.Account? {
+    override suspend fun getStoredActiveAccountFromDB(): Account? {
         return accountDao.getActiveAccount().firstOrNull()?.toDomainAccount()
     }
 
@@ -164,7 +170,7 @@ class AccountRepository @Inject constructor(
     /**
      * Gets all logged-in accounts from the database as a Flow.
      */
-    override fun getLoggedInAccountsFromDB(): Flow<List<com.greatergoods.meapp.domain.model.Account>> {
+    override fun getLoggedInAccountsFromDB(): Flow<List<Account>> {
         return accountDao.getAllLoggedInAccounts().map { accounts ->
             accounts.map { it.toDomainAccount() }
         }
@@ -186,11 +192,16 @@ class AccountRepository @Inject constructor(
 
     /**
      * Refreshes the token via API and returns a Token.
+     * @param refreshToken The refresh token to use
+     * @param accountId The account ID to associate with the refreshed token
+     * @return Token object with refreshed tokens
      */
-    override suspend fun refreshTokenInAPI(refreshToken: String): Token {
+    override suspend fun refreshTokenInAPI(refreshToken: String, accountId: String?): Token {
+        AppLog.d(TAG, "Refreshing token for account: $accountId")
         val response = authAPI.refreshToken(RefreshTokenRequest(refreshToken))
         return Token(
-            accountId = "", // Set the correct account id if available
+            accountId = accountId ?: "", // Preserve the account ID
+            isActive = true,
             accessToken = response.accessToken,
             refreshToken = response.refreshToken,
             expiresAt = response.expiresAt,
@@ -204,7 +215,7 @@ class AccountRepository @Inject constructor(
         TODO() // Implement this if you have a method in AccountDao, otherwise leave as a stub
     }
 
-    private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): com.greatergoods.meapp.domain.model.Account {
+    private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): Account {
         val entity = this.account
         return Account(
             id = entity.id,
@@ -232,5 +243,38 @@ class AccountRepository @Inject constructor(
     override suspend fun getSyncTimeStamp(): Flow<String> {
         return userDataStore.currentAccountFlow
             .map { it?.syncTimestamp ?: "" } // Return empty string if null
+    }
+
+    override suspend fun updateAccountFromAPI(
+        accountId: String,
+        accountInfo: AccountInfo
+    ): Account {
+        // Get current account from database
+        val currentAccount = accountDao.getAccount(accountId).first()
+        currentAccount?.account
+            ?: throw IllegalStateException("AccountEntity not found for accountId: $accountId")
+
+        // Update account entity with API response data
+        val updatedAccountEntity = currentAccount.account.copy(
+            firstName = accountInfo.firstName,
+            lastName = accountInfo.lastName,
+            email = accountInfo.email,
+            dob = accountInfo.dob,
+            gender = accountInfo.gender,
+            zipcode = accountInfo.zipcode,
+            isSynced = true,
+        )
+
+        // Update in database
+        accountDao.updateAccount(updatedAccountEntity)
+
+        AppLog.d(TAG, "Updated account $accountId with API response data")
+
+        return AccountEntityMapper.toDomain(updatedAccountEntity)
+    }
+
+    override suspend fun markAccountExpired(accountId: String) {
+        accountDao.markAccountExpired(accountId)
+        AppLog.d(TAG, "Marked account $accountId as expired")
     }
 }

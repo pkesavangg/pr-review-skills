@@ -10,7 +10,7 @@ import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.services.EntryService
-import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
@@ -48,12 +48,14 @@ object ServiceModule {
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
         tokenManager: ITokenManager,
-        dialogQueueService: IDialogQueueService
+        dialogQueueService: IDialogQueueService,
+        userDataStore: UserDataStore
     ): IAccountAuthService = AccountAuthService(
         accountRepository,
         connectivityObserver,
         tokenManager,
         dialogQueueService,
+        userDataStore,
     )
 
     /**
@@ -109,8 +111,8 @@ object ServiceModule {
     fun provideDeviceInfoService(
         @ApplicationContext context: Context,
         deviceInfoRepository: IDeviceInfoRepository,
-        fcmDataStore: FcmDataStore,
-    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, fcmDataStore)
+        appRepository: IAppRepository,
+    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, appRepository)
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.

@@ -37,9 +37,6 @@ interface IUserAPI {
         @Body request: CreateAccountRequest,
     ): LoginResponse
 
-    @GET(ACCOUNT)
-    suspend fun getAccount(): AccountResponse
-
     @PATCH(ACCOUNT + PROFILE)
     suspend fun updateProfile(
         @Body request: ProfileUpdateRequest,

@@ -52,7 +52,6 @@ fun SettingsScreenContent(
                     .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
         ) {
             UserProfileSection(state.account) {
-                backStack.addRoute(AppRoute.Profile.Edit)
             }
             Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
             // Account Settings Section
@@ -81,7 +80,7 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UserProfile,
-                            onClick = {backStack.addRoute(AppRoute.Profile.Edit) },
+                            onClick = {backStack.addRoute(AppRoute.AccountSettings.Profile) },
                         ),
                     ),
             )
@@ -99,7 +98,6 @@ fun SettingsScreenContent(
                             title = SettingsScreenStrings.BiologicalSex,
                             type = SettingsItemType.Dropdown("Female"),
                             onClick = {
-                                backStack.addRoute(AppRoute.Profile.Edit)
                             },
                         ),
                         SettingsItem(

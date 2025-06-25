@@ -56,6 +56,7 @@ sealed class LoginIntent : IReducer.Intent {
     object Submit : LoginIntent()
     object OpenForgotPasswordModal : LoginIntent()
     object OpenHelpModal : LoginIntent()
+    object OnBack : LoginIntent()
     data class OpenInAppBrowser(val url: String) : LoginIntent()
 
     /** Show an error message. */
@@ -108,6 +109,10 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
             }
 
             is LoginIntent.Success -> {
+                state.copy(isLoading = false, error = null)
+            }
+
+            is LoginIntent.OnBack -> {
                 state.copy(isLoading = false, error = null)
             }
 
