@@ -167,6 +167,10 @@ struct SettingsScreen: View {
                 size: 36,
                 style: .fill
             )
+            .onLongPressGesture {
+                tabViewModel.showTabBar = false
+                router.navigate(to: .myAccounts)
+            }
             Text(settingsStore.profileName)
                 .fontOpenSans(.heading3)
                 .foregroundColor(theme.textHeading)
