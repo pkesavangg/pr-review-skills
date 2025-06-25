@@ -575,7 +575,8 @@ constructor(
                 }
                 header to message
             }
-            AuthAction.CHANGE_PASSWORD -> ToastStrings.Error.ChangePasswordError.Header
+            AuthAction.CHANGE_PASSWORD -> {
+                val header = ToastStrings.Error.ChangePasswordError.Header
                 val message = when (error?.code()) {
                     HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
                         ToastStrings.Error.UpdateProfileError.MessageNoConn
@@ -590,7 +591,7 @@ constructor(
                         ToastStrings.Error.UpdateProfileError.MessageGeneric
                 }
                 header to message
-
+            }
             else -> "" to ""
         }
 

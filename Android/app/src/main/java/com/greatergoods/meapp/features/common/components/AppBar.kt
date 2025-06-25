@@ -40,7 +40,6 @@ fun AppBar(
     title: String? = null,
     borderColor: Color = Color.Transparent,
     containerColor: Color = colorScheme.primaryBackground,
-    borderColor: Color = Color.Transparent,
     navigationIcon: (@Composable (() -> Unit))? = null,
     actions: (@Composable (() -> Unit))? = null,
 ) {
