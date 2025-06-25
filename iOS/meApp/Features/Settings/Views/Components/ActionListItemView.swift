@@ -49,7 +49,7 @@ struct ActionListItemView: View {
                 }
                 Spacer()
             }
-            .frame(height: 48)
+            .frame(height: rowHeight)
         }
         .disabled(config.toggleBinding != nil && config.onTap == nil)
     }
