@@ -250,7 +250,7 @@ fun <T> InputFieldBase(
             !isPassword &&
             enabled &&
             !readOnly &&
-            showTrailingIcon 
+            showTrailingIcon
 
     val inputTextColor =
         when {
@@ -419,7 +419,7 @@ fun <T> InputFieldBase(
                 errorCursorColor = colorScheme.textError,
             ),
     )
-    Box(modifier = Modifier.padding(top = spacing.xs, start = spacing.sm)) {
+    Box(modifier = Modifier.padding(top = spacing.x2s, start = spacing.sm)) {
         val errorMessage = formControl?.error?.message.orEmpty()
         when {
             isError ->

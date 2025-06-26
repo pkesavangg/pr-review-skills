@@ -2,19 +2,21 @@ package com.greatergoods.meapp.app.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.network.ITokenManager
+import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -28,7 +30,9 @@ class AppViewModel @Inject constructor(
     private val entryService: IEntryService,
     private val accountAuthService: IAccountAuthService,
     private val logManager: LogManager,
-    private val deviceInfoService: IDeviceInfoService
+    private val deviceInfoService: IDeviceInfoService,
+    private val appEventService: IAppEventService,
+    private val tokenManager: ITokenManager
 ) : BaseIntentViewModel<AppState, AppIntent>(
     reducer = AppReducer(),
 ) {
@@ -42,6 +46,7 @@ class AppViewModel @Inject constructor(
     }
 
     init {
+
         viewModelScope.launch {
             try {
                 logManager.cleanupOldLogs(5)
@@ -49,35 +54,46 @@ class AppViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
             }
-        }
-        initLogic()
-    }
 
-    override fun onCleared() {
-        Log.i("CHECKING", "on cleared")
-        super.onCleared()
-    }
-
-    private fun initLogic() {
-        viewModelScope.launch {
+            // Load all tokens into TokenManager's in-memory map
             try {
-                accountAuthService.activeAccountIdFlow
-                    .distinctUntilChanged()
-                    .collect { accountId ->
-                        val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
-                            !it.isActiveAccount
-                        }
-                        val isLoginStatusChecked = checkLoginStatus()
-                        if (isLoginStatusChecked && accountId != null) {
-                            initLoadingData(accountId)
-                        } else {
-                            routeToLandingOrApp(loggedInAccounts.isNotEmpty())
-                        }
-                    }
+                tokenManager.loadAllTokens()
+                AppLog.d(TAG, "Loaded all tokens into TokenManager")
             } catch (e: Exception) {
-                routeToLandingOrApp()
-                AppLog.e(TAG, "Load data failed", e.toString())
+                AppLog.e(TAG, "Failed to load tokens into TokenManager", e.toString())
             }
+
+            val account = accountAuthService.getCurrentAccount()
+            initLoadingData(account)
+            initEvents()
+        }
+    }
+
+    private fun initEvents() {
+        viewModelScope.launch {
+            appEventService.authEvent.collect { authState ->
+                when (authState) {
+                    is AuthState.LoggedIn -> {
+                        // handle login event
+                        initLoadingData(authState.account)
+                    }
+
+                    is AuthState.LoggedOut -> {
+                        routeToLandingOrApp()
+                    }
+
+                    is AuthState.AccountAdded -> {
+                        initLoadingData(authState.account)
+                    }
+
+                    is AuthState.AccountSwitched -> {
+                        initLoadingData(authState.account)
+                    }
+                    // handle other AuthState events as needed
+                    else -> {}
+                }
+            }
+
         }
     }
 
@@ -89,7 +105,6 @@ class AppViewModel @Inject constructor(
         return try {
             // Check active account first
             accountAuthService.checkLoginStatusForActiveAccount()
-
             // Then check other logged-in accounts
             accountAuthService.checkLoginStatusForLoggedInAccounts()
 
@@ -105,7 +120,11 @@ class AppViewModel @Inject constructor(
      * Routes to either the landing page or the app based on login status.
      * @param isLoggedIn true if user is logged in, false otherwise
      */
-    private suspend fun routeToLandingOrApp(hasAccounts: Boolean = false) {
+    private suspend fun routeToLandingOrApp() {
+        val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
+            !it.isActiveAccount
+        }
+        val hasAccounts = loggedInAccounts.isNotEmpty()
         val route = if (hasAccounts) {
             AppRoute.Auth.UserList
         } else {
@@ -114,16 +133,22 @@ class AppViewModel @Inject constructor(
         navigationService.replaceStack(route = route)
     }
 
-    private fun initLoadingData(accountId: String) {
-        viewModelScope.launch {
-            try {
+    private suspend fun initLoadingData(account: Account?) {
+        try {
+            if (account != null) {
                 delay(1000)
-                entryService.updateAccountId(accountId)
-                deviceInfoService.updateDeviceInfo()
-                navigationService.autoLogin()
-            } catch (e: Exception) {
-                Log.d(TAG, e.toString())
+                val isLoginStatusChecked = checkLoginStatus()
+                if (isLoginStatusChecked) {
+                    entryService.updateAccountId(account.id)
+                    deviceInfoService.updateDeviceInfo()
+                    navigationService.autoLogin()
+                }
+            } else {
+                routeToLandingOrApp()
             }
+        } catch (e: Exception) {
+            routeToLandingOrApp()
+            AppLog.e(TAG, "Load data failed", e.toString())
         }
     }
 }

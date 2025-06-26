@@ -7,7 +7,7 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
@@ -20,10 +20,10 @@ import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import retrofit2.Response
 import javax.inject.Inject
@@ -120,16 +120,50 @@ class AccountRepository @Inject constructor(
     }
 
     /**
-     * Updates an account in the database and returns the updated domain model.
+     * Updates an account in the database with partial data and returns the updated domain model.
+     * Only the fields provided in partialUpdate will be updated, others will remain unchanged.
+     * @param accountId The ID of the account to update
+     * @param partialUpdate Partial account data to update
+     * @return The updated account
      */
-    override suspend fun updateAccountInDB(account: Account): Account {
-        val accountEntity = AccountEntityMapper.toEntity(account)
-        accountDao.updateAccount(accountEntity)
-        return account
+    override suspend fun updateAccountInDB(accountId: String, partialUpdate: PartialAccount): Account {
+        // Get current account from database
+        val currentAccountEntity = accountDao.getAccount(accountId).first()
+            ?: throw IllegalStateException("Account not found for ID: $accountId")
+
+        val currentAccount = currentAccountEntity.account
+
+        // Merge current account with partial update
+        val updatedAccountEntity = currentAccount.copy(
+            firstName = partialUpdate.firstName ?: currentAccount.firstName,
+            lastName = partialUpdate.lastName ?: currentAccount.lastName,
+            dob = partialUpdate.dob ?: currentAccount.dob,
+            email = partialUpdate.email ?: currentAccount.email,
+            expiresAt = partialUpdate.expiresAt ?: currentAccount.expiresAt,
+            fcmToken = partialUpdate.fcmToken ?: currentAccount.fcmToken,
+            gender = partialUpdate.gender ?: currentAccount.gender,
+            isActiveAccount = partialUpdate.isActiveAccount ?: currentAccount.isActiveAccount,
+            isLoggedIn = partialUpdate.isLoggedIn ?: currentAccount.isLoggedIn,
+            isExpired = partialUpdate.isExpired ?: currentAccount.isExpired,
+            isSynced = partialUpdate.isSynced ?: currentAccount.isSynced,
+            lastActiveTime = partialUpdate.lastActiveTime ?: currentAccount.lastActiveTime,
+            zipcode = partialUpdate.zipcode ?: currentAccount.zipcode,
+        )
+
+        // Update in database
+        accountDao.updateAccount(updatedAccountEntity)
+
+        AppLog.d(TAG, "Updated account $accountId with partial data")
+
+        return AccountEntityMapper.toDomain(updatedAccountEntity)
     }
 
     override suspend fun logoutInDb(accountId: String) {
         accountDao.logoutAccount(accountId)
+    }
+
+    override suspend fun logoutAllAccountsInDb() {
+        accountDao.logoutAllAccounts()
     }
 
     /**
@@ -154,10 +188,10 @@ class AccountRepository @Inject constructor(
     }
 
     /**
-     * Gets the stored active account from the database.
+     * Gets the stored active account from the database as a Flow.
      */
-    override suspend fun getStoredActiveAccountFromDB(): Account? {
-        return accountDao.getActiveAccount().firstOrNull()?.toDomainAccount()
+    override fun getStoredActiveAccountFromDB(): Flow<Account?> {
+        return accountDao.getActiveAccount().map { it?.toDomainAccount() }
     }
 
     /**
@@ -165,6 +199,13 @@ class AccountRepository @Inject constructor(
      */
     override suspend fun deactivateOtherAccountsInDB(accountId: String) {
         accountDao.deactivateOtherAccounts(accountId)
+    }
+
+    /**
+     * Activates the specified account by setting it as the active account.
+     */
+    override suspend fun activateAccountInDB(accountId: String) {
+        accountDao.activateAccount(accountId)
     }
 
     /**
@@ -212,27 +253,13 @@ class AccountRepository @Inject constructor(
      * Updates the last active time for the account in the database.
      */
     override suspend fun updateLastActiveTimeInDB(accountId: String) {
-        TODO() // Implement this if you have a method in AccountDao, otherwise leave as a stub
+        val timestamp = System.currentTimeMillis().toString()
+        accountDao.updateLastActiveTime(accountId, timestamp)
+        AppLog.d(TAG, "Updated last active time for account: $accountId")
     }
 
     private fun com.greatergoods.meapp.data.storage.db.entity.account.Account.toDomainAccount(): Account {
-        val entity = this.account
-        return Account(
-            id = entity.id,
-            firstName = entity.firstName,
-            lastName = entity.lastName,
-            dob = entity.dob,
-            email = entity.email,
-            expiresAt = entity.expiresAt,
-            fcmToken = entity.fcmToken,
-            gender = entity.gender,
-            isActiveAccount = entity.isActiveAccount,
-            isLoggedIn = entity.isLoggedIn,
-            isExpired = entity.isExpired,
-            isSynced = entity.isSynced,
-            lastActiveTime = entity.lastActiveTime,
-            zipcode = entity.zipcode ?: "",
-        )
+        return AccountEntityMapper.toDomainFromAccountWithRelations(this)
     }
 
     override suspend fun updateSyncTimeStamp(timeStamp: String) {
@@ -264,12 +291,9 @@ class AccountRepository @Inject constructor(
             zipcode = accountInfo.zipcode,
             isSynced = true,
         )
-
         // Update in database
         accountDao.updateAccount(updatedAccountEntity)
-
         AppLog.d(TAG, "Updated account $accountId with API response data")
-
         return AccountEntityMapper.toDomain(updatedAccountEntity)
     }
 

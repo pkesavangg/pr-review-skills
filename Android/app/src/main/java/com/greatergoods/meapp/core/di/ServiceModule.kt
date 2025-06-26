@@ -9,17 +9,21 @@ import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
+import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
+import com.greatergoods.meapp.data.services.ExportService
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.notification.NotificationService
@@ -49,15 +53,16 @@ object ServiceModule {
         connectivityObserver: IConnectivityObserver,
         tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
-        userDataStore: UserDataStore
+        userDataStore: UserDataStore,
+        appEventService: IAppEventService
     ): IAccountAuthService = AccountAuthService(
         accountRepository,
         connectivityObserver,
         tokenManager,
         dialogQueueService,
         userDataStore,
+        appEventService,
     )
-
     /**
      * Provides a singleton instance of [IAppEventService].
      * @return [AppEventService] instance.
@@ -102,7 +107,7 @@ object ServiceModule {
     @Provides
     @Singleton
     fun provideEntryService(
-        entryRepository: com.greatergoods.meapp.domain.repository.IEntryRepository,
+        entryRepository: IEntryRepository,
         accountRepository: IAccountRepository
     ): IEntryService = EntryService(entryRepository, accountRepository)
 
@@ -112,7 +117,8 @@ object ServiceModule {
         @ApplicationContext context: Context,
         deviceInfoRepository: IDeviceInfoRepository,
         appRepository: IAppRepository,
-    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, appRepository)
+        accountRepository: IAccountRepository
+    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, appRepository, accountRepository)
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
@@ -126,4 +132,15 @@ object ServiceModule {
         integrationRepository: IIntegrationRepository,
         dialogQueueService: DialogQueueService,
     ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
+
+
+    /**
+     * Provides the export service implementation.
+     */
+    @Provides
+    @Singleton
+    fun provideExportService(
+        exportAPI: IExportAPI,
+        accountAuthService: IAccountAuthService,
+    ): IExportService = ExportService(exportAPI, accountAuthService)
 }

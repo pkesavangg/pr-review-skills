@@ -18,6 +18,10 @@ object ToastStrings {
             const val Header = "Success!"
             const val Message = "Password updated."
         }
+        
+        object AccountSwitchSuccess {
+            fun Message(accountName: String) = "Switched to $accountName"
+        }
     }
 
     object Error {

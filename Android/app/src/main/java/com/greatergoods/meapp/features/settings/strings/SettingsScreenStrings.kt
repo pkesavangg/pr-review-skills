@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.settings.strings
 
+// TODO: MyAccountsScreenStrings will be implemented in a new file in this folder, following the PascalCase object pattern for static text.
+
 object SettingsScreenStrings {
     const val Title = "Settings"
 
@@ -10,6 +12,7 @@ object SettingsScreenStrings {
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
     const val UserProfile = "User Profile"
+    const val NotSet = "Not Set"
 
     // Profile Settings
     const val ProfileSettings = "Profile Settings"
@@ -47,5 +50,12 @@ object SettingsScreenStrings {
         const val Body = "Are you sure you want to log out?"
         const val Confirm = "Log out"
         const val Cancel = "Cancel"
+    }
+
+    // URL Constants (extracted from TypeScript account-settings.page.ts)
+    object Urls {
+        const val PrivacyPolicy = "https://greatergoods.com/legal/privacy-policy"
+        const val TermsOfService = "https://greatergoods.com/legal/weight-gurus-tos"
+        const val GreaterGoodsWebsite = "https://greatergoods.com"
     }
 }

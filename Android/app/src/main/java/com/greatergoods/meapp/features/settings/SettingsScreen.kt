@@ -29,6 +29,12 @@ import com.greatergoods.meapp.features.settings.viewmodel.SettingsViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
+// TODO: A new folder 'screens' will be created under 'settings' for MyAccountsScreen, MaxAccountsReachedDialog, and RemoveAccountDialog.
+// TODO: MyAccountsScreen and related dialogs/popups will be implemented in a new 'screens' folder under 'settings'.
+// This follows the feature-based structure and keeps My Accounts logic modular and maintainable.
+// TODO: Navigation to MyAccountsScreen will be added to the settings list.
+// MyAccountsScreen will be implemented in a new file under 'screens'.
+
 @Composable
 fun SettingsScreen() {
     val viewmodel: SettingsViewModel = hiltViewModel()
@@ -70,7 +76,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.ExportData,
                             type = SettingsItemType.None,
-                            onClick = { },
+                            onClick = {
+                               handleIntent.invoke(SettingsIntent.ExportData)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ChangePassword,
@@ -96,8 +104,11 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.BiologicalSex,
-                            type = SettingsItemType.Dropdown("Female"),
+                            type = SettingsItemType.Dropdown(
+                                state.account?.gender?.replaceFirstChar { it.uppercase() } ?: SettingsScreenStrings.NotSet
+                            ),
                             onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowBiologicalSexModal)
                             },
                         ),
                         SettingsItem(
@@ -154,22 +165,28 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.HelpCustomerService,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {},
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.PrivacyPolicy,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenPrivacyPolicy)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.TermsOfService,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenTermsOfService)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.GreaterGoodsDotCom,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenGreaterGoodsWebsite)
+                            },
                         ),
                     ),
             )
@@ -181,7 +198,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.SwitchAccounts,
                             type = SettingsItemType.None,
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.SwitchAccount)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.LogOut,
@@ -206,6 +225,6 @@ fun SettingsScreenContent(
 @Composable
 fun SettingsScreenPreview() {
     MeAppTheme {
-        SettingsScreenContent(SettingsState(), {  })
+        SettingsScreenContent(SettingsState(), { })
     }
 }

@@ -9,7 +9,7 @@ object ProfileStrings {
     const val LastNameLabel = "LAST NAME"
     const val EmailLabel = "EMAIL"
     const val ZipcodeLabel = "ZIPCODE"
-    const val BirthdayLabel = "BIRTHDAY"
+    const val BirthdayLabel = "Birthday"
     const val SaveButton = "SAVE"
     const val LoaderMessage = "Saving..."
 

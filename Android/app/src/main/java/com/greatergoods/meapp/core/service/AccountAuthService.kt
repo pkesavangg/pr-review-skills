@@ -7,12 +7,13 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
@@ -29,7 +30,6 @@ import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
@@ -43,7 +43,8 @@ constructor(
     private val connectivityObserver: IConnectivityObserver,
     private val tokenManager: ITokenManager,
     private val dialogQueueService: IDialogQueueService,
-    private val userDataStore: UserDataStore
+    private val userDataStore: UserDataStore,
+    private val appEventService: IAppEventService
 ) : IAccountAuthService {
     companion object {
         private const val MAX_ACCOUNTS = 10
@@ -51,26 +52,28 @@ constructor(
     }
 
     // Event flow for authentication state changes
-    private val _authStateFlow = MutableSharedFlow<AuthState>()
-    override val authStateFlow: SharedFlow<AuthState> = _authStateFlow
+    override val authEvent = appEventService.authEvent
 
     // Current active account flow
     override val activeAccountFlow: Flow<Account?> =
+        accountRepository.getStoredActiveAccountFromDB()
+
+    // All logged in accounts flow - active account first, then by lastActiveTime
+    override val loggedInAccountsFlow: Flow<List<Account>> =
         accountRepository.getLoggedInAccountsFromDB().map { accounts ->
-            accounts.find { it.isActiveAccount }
+            val active = accounts.find { it.isActiveAccount }
+            val others = accounts.filter { !it.isActiveAccount }
+                .sortedByDescending { it.lastActiveTime?.toLongOrNull() ?: 0L }
+            listOfNotNull(active) + others
         }
-
-    override val activeAccountIdFlow: Flow<String?>
-        get() = accountRepository.getLoggedInAccountsFromDB().map { accounts ->
-            accounts.find { it.isActiveAccount }?.id
-        }
-
-    // All logged in accounts flow - sorted by lastActiveTime
-    override val loggedInAccountsFlow: Flow<List<Account>> = accountRepository.getLoggedInAccountsFromDB()
 
     // Account status flows
     private val _isSignUpFlow = MutableSharedFlow<Boolean>()
     override val isSignUpFlow: SharedFlow<Boolean> = _isSignUpFlow
+
+    // Account status flows
+    private val _activeAccount = MutableSharedFlow<Account?>()
+    val activeAccount: SharedFlow<Account?> = _activeAccount
 
     private val _isLoginFlow = MutableSharedFlow<Boolean>()
     override val isLoginFlow: SharedFlow<Boolean> = _isLoginFlow
@@ -107,7 +110,18 @@ constructor(
                     isSynced = true,
                     lastActiveTime = Date().time.toString(),
                     zipcode = info.zipcode,
+                    weightUnit = info.weightUnit,
+                    isWeightlessOn = info.isWeightlessOn,
+                    height = info.height,
+                    activityLevel = info.activityLevel,
+                    weightlessTimestamp = info.weightlessTimestamp,
+                    weightlessWeight = info.weightlessWeight,
+                    isStreakOn = info.isStreakOn,
+                    dashboardType = info.dashboardType,
+                    dashboardMetrics = info.dashboardMetrics,
                 )
+            // Deactivate all other accounts before saving this one as active
+            accountRepository.deactivateOtherAccountsInDB(account.id)
             val savedAccount = accountRepository.addAccountInDB(account)
             tokenManager.setTokens(
                 Token(
@@ -118,13 +132,13 @@ constructor(
                     expiresAt = loginResponse.expiresAt,
                 ),
             )
-            _authStateFlow.emit(AuthState.LoggedIn(savedAccount))
+            appEventService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
             _isLoginFlow.emit(true)
             savedAccount
         } catch (e: HttpException) {
             showErrorToast(AuthAction.LOGIN, e)
             AppLog.e(TAG, "Login failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Login failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
             null
         }
     }
@@ -134,12 +148,12 @@ constructor(
      * @param accountId ID of the account to log out
      * @return true if logout was successful
      */
-    override suspend fun logout(accountId: String): Boolean =
+    override suspend fun logout(accountId: String, fcmToken: String?): Boolean =
         try {
             // Try to logout on API if network is available
             if (isNetworkAvailable()) {
                 try {
-                    accountRepository.logoutInAPI(null, accountId)
+                    accountRepository.logoutInAPI(fcmToken ?: "", accountId)
                 } catch (e: Exception) {
                     AppLog.e(TAG, "API logout failed", e.toString())
                     // Continue with local logout even if API fails
@@ -148,14 +162,15 @@ constructor(
 
             // Always perform local logout
             accountRepository.logoutInDb(accountId)
+            userDataStore.clearAccountTokens(accountId)
             tokenManager.clearTokens()
             AppLog.d(TAG, "Logout successful")
-            _authStateFlow.emit(AuthState.LoggedOut())
+            appEventService.emitAuthEvent(AuthState.LoggedOut())
             _isLoginFlow.emit(false)
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Logout failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Logout failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
             false
         }
 
@@ -176,28 +191,27 @@ constructor(
                 try {
                     if (isNetworkAvailable()) {
                         try {
-                            accountRepository.logoutInAPI(null, account.id)
+                            accountRepository.logoutInAPI(account.fcmToken ?: "", account.id)
                         } catch (e: Exception) {
                             AppLog.e(TAG, "API logout failed for account ${account.id}", e.toString())
                             // Continue with local logout even if API fails
                         }
                     }
-                    accountRepository.removeAccountInDB(account.id)
                 } catch (e: Exception) {
                     AppLog.e(TAG, "Failed to logout account ${account.id}", e.toString())
                 }
             }
             // Clear all accounts from database
-            accountRepository.removeAllAccountsInDB()
+            accountRepository.logoutAllAccountsInDb()
             // Clear tokens
             tokenManager.clearTokens()
             AppLog.d(TAG, "All accounts logged out successfully")
-            _authStateFlow.emit(AuthState.LoggedOut())
+            appEventService.emitAuthEvent(AuthState.LoggedOut())
             _isLoginFlow.emit(false)
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Logout all failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Logout all failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
             false
         }
 
@@ -211,7 +225,7 @@ constructor(
         val currentAccounts = loggedInAccountsFlow.first()
         if (currentAccounts.size >= MAX_ACCOUNTS) {
             AppLog.e(TAG, "Maximum account limit reached")
-            _authStateFlow.emit(AuthState.Error("Maximum account limit reached"))
+            appEventService.emitAuthEvent(AuthState.Error("Maximum account limit reached"))
             return null
         }
         return try {
@@ -248,23 +262,34 @@ constructor(
                     isSynced = false,
                     lastActiveTime = Date().time.toString(),
                     zipcode = info.zipcode,
+                    weightUnit = info.weightUnit,
+                    isWeightlessOn = info.isWeightlessOn,
+                    height = info.height,
+                    activityLevel = info.activityLevel,
+                    weightlessTimestamp = info.weightlessTimestamp,
+                    weightlessWeight = info.weightlessWeight,
+                    isStreakOn = info.isStreakOn,
+                    dashboardType = info.dashboardType,
+                    dashboardMetrics = info.dashboardMetrics,
                 )
+            accountRepository.deactivateOtherAccountsInDB(account.id)
             val savedAccount = accountRepository.addAccountInDB(account)
             tokenManager.setTokens(
                 Token(
                     accountId = savedAccount.id,
+                    isActive = true,
                     accessToken = response.accessToken,
                     refreshToken = response.refreshToken,
                     expiresAt = response.expiresAt,
                 ),
             )
-            _authStateFlow.emit(AuthState.AccountAdded(savedAccount))
+            appEventService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
             _isSignUpFlow.emit(true)
             savedAccount
         } catch (e: Exception) {
             handleSignupError(e as HttpException)
             AppLog.e(TAG, "Account creation failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Account creation failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Account creation failed"))
             null
         }
     }
@@ -286,11 +311,11 @@ constructor(
             }
             accountRepository.removeAccountInDB(accountId)
             AppLog.d(TAG, "Account removed successfully: $accountId")
-            _authStateFlow.emit(AuthState.AccountRemoved(accountId))
+            appEventService.emitAuthEvent(AuthState.AccountRemoved(accountId))
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Account removal failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Account removal failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Account removal failed"))
             false
         }
 
@@ -300,11 +325,35 @@ constructor(
      * @return true if switch was successful
      */
     override suspend fun switchAccount(account: Account): Boolean {
-        // Example implementation: deactivate others, activate this one
-        accountRepository.deactivateOtherAccountsInDB(account.id)
-        // Optionally update last active time
-        accountRepository.updateLastActiveTimeInDB(account.id)
-        return true
+        try {
+
+            // Activate the target account
+            accountRepository.activateAccountInDB(account.id)
+            // Deactivate all other accounts
+            accountRepository.deactivateOtherAccountsInDB(account.id)
+            // Update last active time
+            accountRepository.updateLastActiveTimeInDB(account.id)
+            // Update tokens in TokenManager for the switched account
+            val currentTokens = userDataStore.getData().accounts[account.id]
+            if (currentTokens != null) {
+                tokenManager.setTokens(
+                    Token(
+                        accountId = account.id,
+                        isActive = true,
+                        accessToken = currentTokens.accessToken,
+                        refreshToken = currentTokens.refreshToken,
+                        expiresAt = currentTokens.expiresAt,
+                    ),
+                )
+            }
+            AppLog.d(TAG, "Successfully switched to account: ${account.email}")
+            appEventService.emitAuthEvent(AuthState.AccountSwitched(account))
+            return true
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to switch account", e.toString())
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
+            return false
+        }
     }
 
     /**
@@ -345,7 +394,7 @@ constructor(
     override suspend fun refreshSession(): Boolean {
         if (!isNetworkAvailable()) {
             AppLog.e(TAG, "No network connection available")
-            _authStateFlow.emit(AuthState.Error("No network connection available"))
+            appEventService.emitAuthEvent(AuthState.Error("No network connection available"))
             return false
         }
 
@@ -359,7 +408,7 @@ constructor(
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Session refresh failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Session refresh failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Session refresh failed"))
             false
         }
     }
@@ -373,11 +422,11 @@ constructor(
         try {
             accountRepository.updateTokensInDB(tokens)
             AppLog.d(TAG, "Tokens updated successfully")
-            _authStateFlow.emit(AuthState.TokensUpdated)
+            appEventService.emitAuthEvent(AuthState.TokensUpdated)
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Token update failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Token update failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Token update failed"))
             false
         }
 
@@ -387,14 +436,14 @@ constructor(
      */
     override suspend fun checkForLoggedInUser(): Boolean {
         return try {
-            val storedAccount = accountRepository.getStoredActiveAccountFromDB()
+            val storedAccount = getCurrentAccount()
             if (storedAccount != null && storedAccount.id.isNotEmpty() && !storedAccount.isExpired) {
                 // Restore the session
                 if (storedAccount.expiresAt != null) {
                     val expirationDate = Date(storedAccount.expiresAt.toLong())
                     if (expirationDate.after(Date())) {
                         AppLog.d(TAG, "Restored valid session for account: ${storedAccount.email}")
-                        _authStateFlow.emit(AuthState.LoggedIn(storedAccount))
+                        appEventService.emitAuthEvent(AuthState.LoggedIn(storedAccount))
                         _isLoginFlow.emit(true)
                         return true
                     } else {
@@ -402,7 +451,7 @@ constructor(
                             refreshSession()
                         } catch (e: Exception) {
                             AppLog.e(TAG, "Session expired for account: " + storedAccount.email, e.toString())
-                            _authStateFlow.emit(AuthState.LoggedOut("Session expired"))
+                            appEventService.emitAuthEvent(AuthState.LoggedOut("Session expired"))
                             _isLoginFlow.emit(false)
                             false
                         }
@@ -415,7 +464,7 @@ constructor(
             }
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to check logged in user", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Failed to check logged in user"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to check logged in user"))
             false
         }
     }
@@ -425,7 +474,6 @@ constructor(
         try {
             val response = this.accountRepository.resetPasswordInAPI(email)
             if (response.isSuccessful) {
-                Log.d(TAG, "Successfully reset password: $response")
                 AppLog.d(TAG, "Successfully reset password")
                 showSuccessToast(AuthAction.RESET_PASSWORD, email)
             } else {
@@ -448,7 +496,7 @@ constructor(
             // Get current account from flow (reactive approach like Angular observables)
             val currentAccount = activeAccountFlow.first()
             if (currentAccount == null) {
-                _authStateFlow.emit(AuthState.Error("No active account found"))
+                appEventService.emitAuthEvent(AuthState.Error("No active account found"))
                 return null
             }
 
@@ -465,32 +513,26 @@ constructor(
             // Call API to update profile
             val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
             val updatedAccountInfo: AccountInfo = response.account
-            val updatedAccount = currentAccount.copy(
-                firstName = updatedAccountInfo.firstName,
-                lastName = updatedAccountInfo.lastName,
-                dob = updatedAccountInfo.dob,
-                gender = updatedAccountInfo.gender,
-                zipcode = updatedAccountInfo.zipcode,
-                // Update other fields if they exist in AccountInfo
-                email = updatedAccountInfo.email,
-                // Keep existing values for fields not in AccountInfo
-                isActiveAccount = currentAccount.isActiveAccount,
-                isLoggedIn = currentAccount.isLoggedIn,
-                isExpired = currentAccount.isExpired,
-                isSynced = true, // Mark as synced since we just updated via API
-                lastActiveTime = currentAccount.lastActiveTime,
-                expiresAt = currentAccount.expiresAt,
-                fcmToken = currentAccount.fcmToken,
+            updatedAccountInfo.copy(gender = updatedAccountInfo.gender)
+            val savedAccount = accountRepository.updateAccountInDB(
+                updatedAccountInfo.id,
+                PartialAccount(
+                    firstName = updatedAccountInfo.firstName,
+                    lastName = updatedAccountInfo.lastName,
+                    dob = updatedAccountInfo.dob,
+                    gender = updatedAccountInfo.gender,
+                    zipcode = updatedAccountInfo.zipcode,
+                    email = updatedAccountInfo.email,
+                ),
             )
-            val savedAccount = accountRepository.updateAccountInDB(updatedAccount)
             AppLog.d(TAG, "Profile updated successfully for account: ${savedAccount.id}")
-            _authStateFlow.emit(AuthState.ProfileUpdated(savedAccount))
+            savedAccount.let { appEventService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
             showSuccessToast(AuthAction.UPDATE_PROFILE)
             savedAccount
         } catch (e: HttpException) {
             showErrorToast(AuthAction.UPDATE_PROFILE, e)
             AppLog.e(TAG, "Profile update failed", e.toString())
-            _authStateFlow.emit(AuthState.Error(e.message ?: "Profile update failed"))
+            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Profile update failed"))
             null
         }
     }
@@ -659,6 +701,10 @@ constructor(
                 return false
             }
 
+            // Log the token before making the API call
+            userDataStore.getData().accounts[activeAccount.id]
+            // Update tokens in TokenManager for active account BEFORE making the API call
+
             AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
             val accountInfo = accountRepository.getAccountInAPI(activeAccount.id)
 
@@ -696,12 +742,8 @@ constructor(
             for (account in loggedInAccounts) {
                 try {
                     AppLog.d(TAG, "Checking login status for account: ${account.id}")
-                    accountRepository.getAccountInAPI(account.id)
 
-                    // Update account data with API response
-                    // accountRepository.updateAccountFromAPI(account.id, accountInfo)
-
-                    // Update tokens in TokenManager for this account
+                    // Update tokens in TokenManager for this account BEFORE making the API call
                     val currentTokens = userDataStore.getData().accounts[account.id]
                     if (currentTokens != null) {
                         tokenManager.setTokens(
@@ -714,6 +756,11 @@ constructor(
                             ),
                         )
                     }
+
+                    val accountInfo = accountRepository.getAccountInAPI(account.id)
+
+                    // Update account data with API response
+                    accountRepository.updateAccountFromAPI(account.id, accountInfo)
 
                     AppLog.d(TAG, "Account ${account.id} login status check successful")
                 } catch (e: Exception) {

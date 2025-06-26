@@ -4,6 +4,7 @@ import androidx.navigation3.runtime.EntryProviderBuilder
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.features.MyAccounts.screen.MyAccountsScreen
 import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.changePassword.ChangePasswordScreen
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
@@ -36,4 +37,5 @@ fun EntryProviderBuilder<NavKey>.topLevelEntries() {
 fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
     entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
+    entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
 }

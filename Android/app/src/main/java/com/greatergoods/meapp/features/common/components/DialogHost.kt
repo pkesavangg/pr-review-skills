@@ -10,6 +10,7 @@ enum class DialogType {
     HeightPicker,
     HelpPopup,
     PasswordReset,
+    RadioGroupPicker,
 }
 
 @Composable
@@ -43,6 +44,29 @@ fun DialogHost() {
                         dialogQueueViewModel.dismissCurrent()
                     },
                 )
+            }
+
+            DialogType.RadioGroupPicker -> {
+                // Custom dialog for radio group picker
+                val config = dialog.params["config"] as? RadioGroupModalConfig<*>
+                val onConfirm = dialog.params["onConfirm"] as? (Any?) -> Unit
+                val onCancel = dialog.params["onCancel"] as? (() -> Unit)
+
+                if (config != null) {
+                    AppRadioGroupModal(
+                        config = config as RadioGroupModalConfig<Any>,
+                        onCancel = {
+                            onCancel?.invoke()
+                            dialog.onDismiss?.invoke()
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                        onOk = { selectedValue ->
+                            onConfirm?.invoke(selectedValue)
+                            selectedValue?.let { dialog.onConfirm?.invoke(it) }
+                            dialogQueueViewModel.dismissCurrent()
+                        }
+                    )
+                }
             }
 
             DialogType.PasswordReset -> {

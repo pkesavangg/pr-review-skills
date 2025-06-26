@@ -3,7 +3,9 @@ package com.greatergoods.meapp.core.service
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.interfaces.INavigationUtility
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
+import com.greatergoods.meapp.domain.services.AuthState
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 /**
@@ -12,6 +14,10 @@ import kotlinx.coroutines.flow.asSharedFlow
  */
 class AppEventService : IAppEventService {
     private val _navigationIntent = MutableSharedFlow<NavigationIntent>(replay = 1)
+
+    // Auth event flow for authentication events (login, logout, etc.)
+    private val _authEvent = MutableSharedFlow<AuthState>(replay = 1)
+    override val authEvent: SharedFlow<AuthState> = _authEvent.asSharedFlow()
 
     /**
      * Shared flow of navigation intents to be observed by the UI.
@@ -89,6 +95,10 @@ class AppEventService : IAppEventService {
         )
     }
 
+    override suspend fun emitAuthEvent(state: AuthState) {
+        _authEvent.emit(state)
+    }
+
     /**
      * Helper to emit a navigation intent to the shared flow.
      * @param intent The navigation intent to emit.
@@ -102,4 +112,7 @@ class AppEventService : IAppEventService {
  * Interface for app event services that manage navigation.
  * Extends [INavigationUtility].
  */
-interface IAppEventService : INavigationUtility
+interface IAppEventService : INavigationUtility {
+    val authEvent: SharedFlow<AuthState>
+    suspend fun emitAuthEvent(state: AuthState)
+}

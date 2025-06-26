@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.data.api
 
+import com.greatergoods.meapp.core.network.HttpClient
 import com.greatergoods.meapp.domain.model.api.auth.LoginRequest
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
@@ -29,7 +30,6 @@ interface IAuthAPI {
         private const val PASSWORD_RESET = "password-reset/request"
         private const val REFRESH_TOKEN = "refresh-token"
         private const val PASSWORD_UPDATE = "password"
-        private const val ACCOUNT_ID_HEADER = "X-Account-ID"
     }
 
     @POST(ACCOUNT + LOGIN)
@@ -45,7 +45,7 @@ interface IAuthAPI {
     @POST(ACCOUNT + LOGOUT)
     suspend fun logoutWithToken(
         @Body request: LogoutRequest,
-        @Header(ACCOUNT_ID_HEADER) accountId: String
+        @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String
     )
 
     @POST(ACCOUNT + PASSWORD_RESET)
@@ -60,7 +60,7 @@ interface IAuthAPI {
 
     @GET(ACCOUNT)
     suspend fun getAccountWithToken(
-        @Header(ACCOUNT_ID_HEADER) accountId: String
+        @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String
     ): AccountInfo
 
     @PUT(ACCOUNT + PASSWORD_UPDATE)

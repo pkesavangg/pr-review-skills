@@ -2,11 +2,14 @@ package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.shared.utilities.DeviceInfoUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.common.DeviceInfo
+import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
@@ -22,6 +25,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val deviceInfoRepository: IDeviceInfoRepository,
     private val appRepository: IAppRepository,
+    private val accountRepository: IAccountRepository
 ) : IDeviceInfoService {
 
     companion object {
@@ -67,6 +71,14 @@ constructor(
             )
 
             deviceInfoRepository.updateDeviceInfo(deviceInfo)
+
+            // Update FCM token for the active account
+            val activeAccount = accountRepository.getStoredActiveAccountFromDB().first()
+            activeAccount?.let { account ->
+                val partialUpdate = PartialAccount(fcmToken = fcmToken)
+                accountRepository.updateAccountInDB(account.id, partialUpdate)
+            }
+
             AppLog.i(TAG, "Device info updated successfully", deviceInfo.toString())
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to update device info", e.toString())

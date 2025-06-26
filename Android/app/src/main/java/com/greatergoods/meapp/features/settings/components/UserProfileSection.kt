@@ -8,7 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.components.AppProfileAvatar
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -50,13 +50,29 @@ fun UserProfileSectionPreview() {
     MeAppTheme {
         UserProfileSection(
             Account(
-                "1",
-                "John",
-                "Doe",
+                id = "1",
+                firstName = "John",
+                lastName = "Doe",
                 dob = "1990-01-01",
                 email = "john.mckinley@examplepetstore.com",
+                expiresAt = null,
+                fcmToken = null,
                 gender = "m",
-                zipcode = "12345"
+                isActiveAccount = true,
+                isLoggedIn = true,
+                isExpired = false,
+                isSynced = true,
+                lastActiveTime = "1234567890",
+                zipcode = "12345",
+                weightUnit = null,
+                isWeightlessOn = false,
+                height = null,
+                activityLevel = null,
+                weightlessTimestamp = null,
+                weightlessWeight = null,
+                isStreakOn = false,
+                dashboardType = null,
+                dashboardMetrics = null
             ),
         ) { }
     }

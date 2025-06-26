@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.strings.AppUserStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -89,25 +89,24 @@ fun AppUser(
             )
         }
 
-        if (showAccountActivity) {
-            if (account.isLoggedIn) {
-                AppIcon(
-                    id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-                    contentDescription = "Select account",
-                    onClick = onAccountSelect,
-                    type = AppIconType.Primary,
-                    modifier = Modifier.size(24.dp),
-                )
-            } else if(account.isExpired) {
-                AppButton(
-                    label = AppUserStrings.LogInButton,
-                    onClick = onLoginRequest,
-                    type = ButtonType.TextPrimary,
-                    size = ButtonSize.Small,
-                    textTransform = TextTransform.NONE
-                )
-            }
+        if (showAccountActivity && account.isLoggedIn) {
+            AppIcon(
+                id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
+                contentDescription = "Select account",
+                onClick = onAccountSelect,
+                type = AppIconType.Primary,
+                modifier = Modifier.size(24.dp),
+            )
+        } else if(account.isExpired) {
+            AppButton(
+                label = AppUserStrings.LogInButton,
+                onClick = onLoginRequest,
+                type = ButtonType.TextPrimary,
+                size = ButtonSize.Small,
+                textTransform = TextTransform.NONE
+            )
         }
+
     }
 }
 
@@ -128,6 +127,17 @@ fun AppUserPreview() {
                     isLoggedIn = true,
                     lastActiveTime = "2024-01-15T10:30:00.000Z",
                     zipcode = "12345",
+                    isSynced = true,
+                    isExpired = false,
+                    weightUnit = "lbs",
+                    isWeightlessOn = true,
+                    height = 170,
+                    activityLevel = "Active",
+                    weightlessTimestamp = "2024-01-15T10:30:00.000Z",
+                    weightlessWeight = 65.5f,
+                    isStreakOn = true,
+                    dashboardType = "Dashboard4",
+                    dashboardMetrics = listOf("weight", "bmi", "bodyfat")
                 ),
                 onAccountSelect = {},
                 onLoginRequest = {},
@@ -144,6 +154,17 @@ fun AppUserPreview() {
                     isLoggedIn = false,
                     lastActiveTime = "2024-01-15T10:30:00.000Z",
                     zipcode = "12345",
+                    isSynced = false,
+                    isExpired = true,
+                    weightUnit = null,
+                    isWeightlessOn = false,
+                    height = null,
+                    activityLevel = null,
+                    weightlessTimestamp = null,
+                    weightlessWeight = null,
+                    isStreakOn = false,
+                    dashboardType = null,
+                    dashboardMetrics = null
                 ),
                 onAccountSelect = {},
                 onLoginRequest = {},
