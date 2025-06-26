@@ -10,6 +10,7 @@ import SwiftUI
 struct ScaleModesScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
+    @ObservedObject var scaleStore = ScaleStore()
     let lang = ScaleModesStrings.self
     
     var body: some View {
@@ -49,7 +50,7 @@ struct ScaleModesScreen: View {
             linkText: lang.biaButtonText,
             suffix: lang.biaExplanationSuffix
         ) {
-            // TODO: Add action
+            scaleStore.openBIAModel()
         }
         .padding(.top, .spacingMD)
     }

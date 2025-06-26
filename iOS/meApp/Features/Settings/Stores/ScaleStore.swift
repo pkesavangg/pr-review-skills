@@ -232,4 +232,13 @@ class ScaleStore: ObservableObject {
         browserURL = productGuideURL(for: sku)
         showTermsBrowser = true
     }
+    
+    func openBIAModel(){
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(BIAInfoModalView(){
+                self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
+    }
 }
