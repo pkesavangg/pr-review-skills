@@ -106,6 +106,50 @@ struct HelpStrings {
     static let viewGuide = "View Getting Started Guide"
 }
 
+struct HKIntegrationStrings {
+    static let healthAccess = "Health Access"
+    
+}
+
+/// Constants for Apple Health integration strings used in the app
+struct HKIntegrationHealthAccessStrings {
+    static let notConnected = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsNotAllowedSS,
+        title: "Integrate Apple Health",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        buttonTitle: "CONNECT"
+    )
+    
+    static let permissionsAllowed = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsAllowedSS,
+        title: "Integrate Apple Health",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        buttonTitle: "CONNECT"
+    )
+    
+    static let integrationComplete = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkIntegrationCompleteSS,
+        title: "Integration Complete",
+        description: "Manage settings anytime by opening Apple Health and going to Profile → Privacy → Apps → Weight Gurus.",
+        buttonTitle: "FINISH"
+    )
+
+    static let integrationFailed = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsNotAllowedSS,
+        title: "Integration Failed",
+        description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. Then, come back to Weight Gurus and finish connecting.",
+        buttonTitle: "OPEN APPLE HEALTH"
+    )
+    
+    static let userConflict = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsAllowedSS,
+        title: "User Conflict",
+        description: "Another user has already connected to Apple Health on this device. Please ask them to log in to their account and disconnect the integration.",
+        buttonTitle: "EXIT"
+    )
+}
+
+
 /// Constants for form validation error messages
 struct FormErrorMessages {
     static let required = "must not be left blank"
@@ -361,5 +405,16 @@ struct AppAssets {
     static let filledTickCircle = "filledTickCircle"
     static let exclamationMark = "exclamationMark"
     static let userProfile = "userProfile"
+    // Newly added from image
+    static let exclamationDanger = "exclamationDanger"
+    static let hkIntegrationCompleteSS = "hkIntegrationCompleteSS"
+    static let hkPermissionsAllowedSS = "hkPermissionsAllowedSS"
+    static let hkPermissionsNotAllowedSS = "hkPermissionsNotAllowedSS"
+    static let fitbitLogoSmall = "fitbitLogoSmall"
+    static let fitbitLogoLarge = "fitbitLogoLarge"
+    static let hkLogoLarge = "hkLogoLarge"
+    static let hkLogoSmall = "hkLogoSmall"
+    static let myFitnessLogoSmall = "myFitnessLogoSmall"
+    static let myFitnessLogoLarge = "myFitnessLogoLarge"
 }
 
