@@ -33,8 +33,16 @@ struct LandingScreen: View {
                             .padding(.bottom, 55)
                         
                         VStack(alignment: .center, spacing: .spacingSM){
-                            ButtonView(text: commonLang.logIn, type: .filledSecondary, size: .large, isDisabled: false, action: {router.navigate(to: .login(nil))})
-                            ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false, action: {router.navigate(to: .signup)})
+                            ButtonView(text: commonLang.logIn, type: .filledSecondary, size: .large, isDisabled: false) {
+                                if landingStore.canAddMoreAccounts() {
+                                    router.navigate(to: .login(nil))
+                                }
+                            }
+                            ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
+                                if landingStore.canAddMoreAccounts() {
+                                    router.navigate(to: .signup)
+                                }
+                            }
                         }
                         .padding(.bottom, .spacing6XL)
                         
@@ -67,7 +75,9 @@ struct LandingScreen: View {
                                                     openItemID: $openItemID,
                                                     onTap: { id, isExpired in
                                                         if isExpired {
-                                                            router.navigate(to: .login(item.email))
+                                                            if landingStore.canAddMoreAccounts() {
+                                                                router.navigate(to: .login(item.email))
+                                                            }
                                                         } else {
                                                             landingStore.switchAccount(to: id)
                                                         }
@@ -87,10 +97,14 @@ struct LandingScreen: View {
                                     .cornerRadius(.radiusSM)
                                     .padding(.horizontal, .spacingSM)
                                     ButtonView(text: lang.logInToExistingAccount, type: .outlinedPrimary, size: .large, isDisabled: false) {
-                                        router.navigate(to: .login(nil))
+                                        if landingStore.canAddMoreAccounts() {
+                                            router.navigate(to: .login(nil))
+                                        }
                                     }
                                     ButtonView(text: lang.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                                        router.navigate(to: .signup)
+                                        if landingStore.canAddMoreAccounts() {
+                                            router.navigate(to: .signup)
+                                        }
                                     }
                                 }
                             }
