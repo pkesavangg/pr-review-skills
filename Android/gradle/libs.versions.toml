@@ -40,7 +40,6 @@ vico = "2.1.3"
 uiTestJunit4Android = "1.8.3"
 foundationLayout = "1.8.3"
 runtimeSaveable = "1.8.3"
-foundationPullrefresh = "1.8.2"
 composeUITest = "1.8.3"
 
 
@@ -98,7 +97,6 @@ vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", ve
 androidx-ui-test-junit4-android = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "uiTestJunit4Android" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
-androidx-foundation-pullrefresh = { group = "androidx.compose.foundation", name = "foundation-pullrefresh", version.ref = "foundationPullrefresh" }
 
 
 [plugins]
