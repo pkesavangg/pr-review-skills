@@ -14,7 +14,7 @@ struct DisplayMetricsScreen: View {
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
-                title: "Display Metrics",
+                title: DisplayMetricStrings.displayMetricsTitle,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: {
                         AnyView(ButtonView(
