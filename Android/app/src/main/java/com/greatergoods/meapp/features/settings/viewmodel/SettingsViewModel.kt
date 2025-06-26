@@ -63,10 +63,6 @@ class SettingsViewModel
 
                 else -> {}
             }
-
-        fun onEditProfileClick() {
-            AppLog.d("TAG", "Edit profile clicked")
-            // TODO: Navigate to edit profile screen
         }
 
         fun onAddEditScalesClick() {
@@ -100,7 +96,6 @@ class SettingsViewModel
                 ),
             )
         }
-    }
 
         /**
          * Performs the actual export operation with loading and error handling.
@@ -171,25 +166,6 @@ class SettingsViewModel
         dialogQueueService.showToast(errorToast)
     }
 
-        fun onGoalSettingClick() {
-            AppLog.d("SettingsViewModel", "Goal setting clicked")
-            // TODO: Navigate to goal setting screen
-        }
-
-    fun onIntegrationsClick() {
-        AppLog.d("SettingsViewModel", "Integrations clicked")
-        // TODO: Navigate to integrations screen
-    }
-
-    fun onExportDataClick() {
-        AppLog.d("SettingsViewModel", "Export data clicked")
-        // TODO: Show export data dialog
-    }
-
-    fun onChangePasswordClick() {
-        AppLog.d("SettingsViewModel", "Change password clicked")
-        // TODO: Navigate to change password screen
-    }
 
     fun onGoalSettingClick() {
         AppLog.d("SettingsViewModel", "Goal setting clicked")
@@ -239,21 +215,6 @@ class SettingsViewModel
     fun onHelpClick() {
         AppLog.d("SettingsViewModel", "Help clicked")
         // TODO: Navigate to help screen
-    }
-
-    fun onPrivacyPolicyClick() {
-        AppLog.d("SettingsViewModel", "Privacy policy clicked")
-        // TODO: Open privacy policy in browser
-    }
-
-    fun onTermsOfServiceClick() {
-        AppLog.d("SettingsViewModel", "Terms of service clicked")
-        // TODO: Open terms of service in browser
-    }
-
-    fun onGreaterGoodsClick() {
-        AppLog.d("SettingsViewModel", "GreaterGoods.com clicked")
-        // TODO: Open GreaterGoods.com in browser
     }
 
     /*
