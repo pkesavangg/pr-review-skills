@@ -717,6 +717,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the published state of active and all accounts.
     func updatePublishedState() async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
-        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true })
+        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true && $0.isExpired == false && $0.isLoggedIn == true })
     }
 }

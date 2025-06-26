@@ -39,7 +39,7 @@ class BottomTabBarViewModel: ObservableObject {
                     return
                 }
             }
-            .store(in: &accountService.cancellables)
+            .store(in: &cancellables)
         
         self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
         // TODO: Update the app sync display based on the app sync scale defined in the paired scale list
