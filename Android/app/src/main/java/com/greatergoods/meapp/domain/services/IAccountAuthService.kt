@@ -8,16 +8,15 @@ import kotlinx.coroutines.flow.SharedFlow
  * Interface for account authentication service.
  */
 interface IAccountAuthService {
-    val authStateFlow: SharedFlow<AuthState>
+    val authEvent: SharedFlow<AuthState>
     val activeAccountFlow: Flow<Account?>
-    val activeAccountIdFlow: Flow<String?>
     val loggedInAccountsFlow: Flow<List<Account>>
     val isSignUpFlow: SharedFlow<Boolean>
     val isLoginFlow: SharedFlow<Boolean>
     val isSwitchAccountFlow: SharedFlow<Boolean>
 
     suspend fun login(email: String, password: String): Account?
-    suspend fun logout(accountId: String): Boolean
+    suspend fun logout(accountId: String, fcmToken: String?): Boolean
     suspend fun logoutAll(): Boolean
     suspend fun addAccount(request: Map<String, Any>): Account?
     suspend fun removeAccount(accountId: String): Boolean

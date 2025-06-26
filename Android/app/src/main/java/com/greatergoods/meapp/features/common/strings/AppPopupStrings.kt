@@ -14,12 +14,19 @@ object AppPopupStrings {
         const val Exit = "Exit"
     }
 
-    object AppRemoveUserStrings {
-        const val RemoveUserTitle = "Remove %s?"
-        const val RemoveUserMessage = "Are you sure you want to remove %s from this device?"
-        const val RemoveButton = "Remove"
+    object MaxAccountReachedAlert {
+        const val Title = "Maximum Users Reached"
+
+        const val Message =
+            "You have reached the maximum number of accounts (10) on this device. Please remove an account before adding a new one."
+        const val ConfirmButton = "OK"
+    }
+
+    object RemoveAccountDialog {
+        const val Title = "Remove %s?"
+        const val Message = "Are you sure you want to remove %s from this device?"
         const val CancelButton = "Cancel"
-        const val NoAccountsMessage = "No accounts found"
-        const val DeleteAccount = "Delete Account"
+        const val ConfirmButton = "Remove"
+        const val Loader = "Removing Account..."
     }
 }

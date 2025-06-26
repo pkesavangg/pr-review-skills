@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.domain.repository
 
+import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
@@ -71,30 +72,19 @@ interface IAccountRepository {
 
     // DB Operations
     suspend fun addAccountInDB(account: Account): Account
-    suspend fun updateAccountInDB(account: Account): Account
+    suspend fun updateAccountInDB(accountId: String, partialUpdate: PartialAccount): Account
     suspend fun logoutInDb(accountId: String)
+    suspend fun logoutAllAccountsInDb()
     suspend fun removeAccountInDB(accountId: String)
     suspend fun removeAllAccountsInDB()
-    suspend fun getStoredActiveAccountFromDB(): Account?
     suspend fun deactivateOtherAccountsInDB(accountId: String)
-    fun getLoggedInAccountsFromDB(): Flow<List<Account>>
+    suspend fun activateAccountInDB(accountId: String)
     suspend fun updateTokensInDB(tokens: Map<String, String>)
     suspend fun updateLastActiveTimeInDB(accountId: String)
-
-    suspend fun updateSyncTimeStamp(timeStamp: String)
     suspend fun getSyncTimeStamp(): Flow<String>
-
-    /**
-     * Updates account data in the database with API response data.
-     * @param accountId The account ID to update
-     * @param accountInfo The account info from API response
-     * @return The updated account
-     */
+    suspend fun updateSyncTimeStamp(timeStamp: String)
     suspend fun updateAccountFromAPI(accountId: String, accountInfo: AccountInfo): Account
-
-    /**
-     * Marks an account as expired in the database.
-     * @param accountId The account ID to mark as expired
-     */
     suspend fun markAccountExpired(accountId: String)
+    fun getLoggedInAccountsFromDB(): Flow<List<Account>>
+    fun getStoredActiveAccountFromDB(): Flow<Account?>
 }

@@ -17,6 +17,7 @@ import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.services.IAccountAuthService
@@ -52,13 +53,15 @@ object ServiceModule {
         connectivityObserver: IConnectivityObserver,
         tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
-        userDataStore: UserDataStore
+        userDataStore: UserDataStore,
+        appEventService: IAppEventService
     ): IAccountAuthService = AccountAuthService(
         accountRepository,
         connectivityObserver,
         tokenManager,
         dialogQueueService,
         userDataStore,
+        appEventService,
     )
     /**
      * Provides a singleton instance of [IAppEventService].
@@ -104,7 +107,7 @@ object ServiceModule {
     @Provides
     @Singleton
     fun provideEntryService(
-        entryRepository: com.greatergoods.meapp.domain.repository.IEntryRepository,
+        entryRepository: IEntryRepository,
         accountRepository: IAccountRepository
     ): IEntryService = EntryService(entryRepository, accountRepository)
 
@@ -114,7 +117,8 @@ object ServiceModule {
         @ApplicationContext context: Context,
         deviceInfoRepository: IDeviceInfoRepository,
         appRepository: IAppRepository,
-    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, appRepository)
+        accountRepository: IAccountRepository
+    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, appRepository, accountRepository)
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.

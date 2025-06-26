@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.config.HttpErrorConfig
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.AccountSettingsAction
 import com.greatergoods.meapp.domain.services.IAccountAuthService
@@ -22,17 +23,19 @@ import javax.inject.Inject
  *
  * (Add service dependencies as needed.)
  */
+// TODO: MyAccountsViewModel will be implemented in a new file under 'viewmodel' if needed.
+// MyAccountsScreen will use AccountAuthService.loggedInAccountsFlow for account data.
 @HiltViewModel
 class SettingsViewModel
-    @Inject
-    constructor(
-        private val authService: IAccountAuthService,
-        private val exportService: IExportService,
-    ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
-            SettingsReducer(),
-        ) {
-        override fun provideInitialState(): SettingsState = SettingsState()
-        private val TAG = "SettingsViewModel"
+@Inject
+constructor(
+    private val authService: IAccountAuthService,
+    private val exportService: IExportService,
+) : BaseIntentViewModel<SettingsState, SettingsIntent>(
+    SettingsReducer(),
+) {
+    override fun provideInitialState(): SettingsState = SettingsState()
+    private val TAG = "SettingsViewModel"
 
     init {
         getUserProfile()
@@ -46,23 +49,26 @@ class SettingsViewModel
         }
     }
 
-        override fun handleIntent(intent: SettingsIntent) {
-            super.handleIntent(intent)
-            when (intent) {
-                is SettingsIntent.updateAccount -> {
-                    _state.value = _state.value.copy(account = intent.account)
-                }
-
-                is SettingsIntent.ExportData -> {
-                    onExportDataClick()
-                }
-
-                is SettingsIntent.Logout -> {
-                    onLogOutClick()
-                }
-
-                else -> {}
+    override fun handleIntent(intent: SettingsIntent) {
+        super.handleIntent(intent)
+        when (intent) {
+            is SettingsIntent.updateAccount -> {
+                _state.value = _state.value.copy(account = intent.account)
             }
+
+            is SettingsIntent.ExportData -> {
+                onExportDataClick()
+            }
+
+            is SettingsIntent.Logout -> {
+                onLogOutClick()
+            }
+
+            is SettingsIntent.SwitchAccount -> {
+                onSwitchAccountClick()
+            }
+
+            else -> {}
         }
 
         fun onAddEditScalesClick() {
@@ -74,69 +80,69 @@ class SettingsViewModel
             AppLog.d("TAG", "Integrations clicked")
             // TODO: Navigate to integrations screen
         }
+    }
 
-        fun onExportDataClick() {
-            AppLog.d("TAG", "Export data clicked")
+    fun onExportDataClick() {
+        AppLog.d("TAG", "Export data clicked")
 
-            // Show confirmation dialog
-            dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    title = ExportStrings.ExportDialogTitle,
-                    message = ExportStrings.ExportDialogMessage,
-                    confirmText = ExportStrings.SendButton,
-                    cancelText = ExportStrings.CancelButton,
-                    onConfirm = {
-                        performExport()
-                        dialogQueueService.dismissCurrent()
-                    },
-                    onCancel = {
-                        AppLog.d("TAG", "User cancelled export")
-                        dialogQueueService.dismissCurrent()
-                    },
-                ),
-            )
-        }
+        // Show confirmation dialog
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title = ExportStrings.ExportDialogTitle,
+                message = ExportStrings.ExportDialogMessage,
+                confirmText = ExportStrings.SendButton,
+                cancelText = ExportStrings.CancelButton,
+                onConfirm = {
+                    performExport()
+                    dialogQueueService.dismissCurrent()
+                },
+                onCancel = {
+                    AppLog.d("TAG", "User cancelled export")
+                    dialogQueueService.dismissCurrent()
+                },
+            ),
+        )
+    }
 
-        /**
-         * Performs the actual export operation with loading and error handling.
-         */
-        private fun performExport() {
-            AppLog.i("TAG", ExportStrings.ExportStarted)
+    /**
+     * Performs the actual export operation with loading and error handling.
+     */
+    private fun performExport() {
+        AppLog.i("TAG", ExportStrings.ExportStarted)
 
-            // Show loading spinner
-            dialogQueueService.showLoader(
-                message = ExportStrings.LoaderMessage,
-            )
+        // Show loading spinner
+        dialogQueueService.showLoader(
+            message = ExportStrings.LoaderMessage,
+        )
 
-            viewModelScope.launch {
-                try {
-                    // Call the export service
-                    exportService.exportCsvWithPrompt()
-                    // Show success toast
-                    showExportSuccessToast()
-                    AppLog.i("TAG", ExportStrings.ExportCompleted)
-                } catch (e: HttpException) {
-                    // Show error toast
-                    showErrorToast(AccountSettingsAction.EXPORT_CSV, e)
-                    AppLog.e("TAG", ExportStrings.ExportFailed, e.toString())
-                } finally {
-                    // Dismiss loading spinner
-                    dialogQueueService.dismissLoader()
-                }
+        viewModelScope.launch {
+            try {
+                // Call the export service
+                exportService.exportCsvWithPrompt()
+                // Show success toast
+                showExportSuccessToast()
+                AppLog.i("TAG", ExportStrings.ExportCompleted)
+            } catch (e: HttpException) {
+                // Show error toast
+                showErrorToast(AccountSettingsAction.EXPORT_CSV, e)
+                AppLog.e("TAG", ExportStrings.ExportFailed, e.toString())
+            } finally {
+                // Dismiss loading spinner
+                dialogQueueService.dismissLoader()
             }
         }
+    }
 
-        /**
-         * Shows success toast for export operation.
-         */
-        private fun showExportSuccessToast() {
-            dialogQueueService.showToast(
-                Toast(
-                    message = ExportStrings.SuccessMessage,
-                ),
-            )
-        }
-
+    /**
+     * Shows success toast for export operation.
+     */
+    private fun showExportSuccessToast() {
+        dialogQueueService.showToast(
+            Toast(
+                message = ExportStrings.SuccessMessage,
+            ),
+        )
+    }
 
     fun showErrorToast(action: AccountSettingsAction, error: HttpException?) {
         val (title, message) = when (action) {
@@ -165,7 +171,6 @@ class SettingsViewModel
         )
         dialogQueueService.showToast(errorToast)
     }
-
 
     fun onGoalSettingClick() {
         AppLog.d("SettingsViewModel", "Goal setting clicked")
@@ -242,7 +247,7 @@ class SettingsViewModel
             try {
                 val account = state.value.account
                 if (account != null) {
-                    authService.logout(account.id)
+                    authService.logout(account.id, account.fcmToken)
                 }
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
@@ -255,5 +260,12 @@ class SettingsViewModel
     fun onDeleteAccountClick() {
         AppLog.d("SettingsViewModel", "Delete account clicked")
         // TODO: Show delete account confirmation dialog
+    }
+
+    fun onSwitchAccountClick() {
+        viewModelScope.launch {
+            navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts)
+        }
+        AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
     }
 }
