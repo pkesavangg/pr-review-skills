@@ -14,7 +14,7 @@ final class ContentViewModel: ObservableObject {
     /// Represents the current screen that should be visible in `ContentView`.
     @Published var contentViewState: ContentViewState = .initializing
     @Published var entries: [Entry] = []
-
+    
     @Injector var accountService: AccountService
     @Injector var scaleService : ScaleService
     @Injector var feedService : FeedService
@@ -27,7 +27,7 @@ final class ContentViewModel: ObservableObject {
     
     init() {
         accountService.$activeAccount
-            // Avoid unnecessary re-initialisation when the account ID hasn't changed
+        // Avoid unnecessary re-initialisation when the account ID hasn't changed
             .removeDuplicates { lhs, rhs in
                 lhs?.accountId == rhs?.accountId
             }
@@ -35,33 +35,34 @@ final class ContentViewModel: ObservableObject {
                 guard let self else { return }
                 self.currentAccount = account
                 self.isLoggedIn = (account != nil)
-
+                
                 // Prevent recursive calls while an initialisation cycle is already running
                 guard self.contentViewState != .initializing else { return }
-
-                Task { [weak self] in
-                    await self?.performAppInitialization()
-                }
+                
+                self.performAppInitialization()
             }
             .store(in: &cancellables)
     }
-
-    func performAppInitialization() async {
-        contentViewState = .initializing
-        let loggedIn = await checkLoginStatus()
-        if loggedIn {
-            // Check if notifications are required for the current account/scales
-            let notificationsRequired = await areNotificationsRequired()
-            if notificationsRequired {
-                await pushNotificationService.setupPushNotifications()
-            } else {
-                await pushNotificationService.updateDeviceInfo()
+    
+    func performAppInitialization() {
+        Task {
+            contentViewState = .initializing
+            let loggedIn = await checkLoginStatus()
+            if loggedIn {
+                // Check if notifications are required for the current account/scales
+                let notificationsRequired = await areNotificationsRequired()
+                if notificationsRequired {
+                    await pushNotificationService.setupPushNotifications()
+                } else {
+                    await pushNotificationService.updateDeviceInfo()
+                }
+                await loadData()
             }
-            await loadData()
+            let afterUpdate = await checkLoginStatus()
+            await updateViewState(isLoggedIn: afterUpdate)
         }
-        await updateViewState(isLoggedIn: loggedIn)
     }
-
+    
     // MARK: - Login Status Check
     private func checkLoginStatus() async -> Bool {
         do {
@@ -73,13 +74,13 @@ final class ContentViewModel: ObservableObject {
         isLoggedIn = (currentAccount != nil)
         return isLoggedIn
     }
-
+    
     // MARK: - Data Loading (if logged in)
     private func loadData() async {
         await scaleService.syncAllScalesWithRemote()
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
-
+        
         do {
             entries = try await entryService.getAllEntries()
         } catch {
@@ -91,27 +92,14 @@ final class ContentViewModel: ObservableObject {
             logger.log(level: .error, tag: "ContentViewModel", message: "Failed to fetch feed items: \(error)")
         }
     }
-
+    
     // MARK: - View State Management
     func updateViewState(isLoggedIn: Bool) async {
         contentViewState = isLoggedIn ? .dashboard : .landing
     }
-
+    
     // MARK: - Notification Permission Logic
     private func areNotificationsRequired() async -> Bool {
         await pushNotificationService.isNotificationAuthorized()
     }
-    
-#if DEBUG
-    @MainActor
-    func logout() async {
-        do {
-            try await accountService.logOut(accountId: accountService.activeAccount?.accountId)
-            await performAppInitialization()
-        } catch {
-            logger.log(level: .error, tag: "ContentViewModel", message: "Force logout failed: \(error)")
-        }
-    }
-#endif
-    
 }

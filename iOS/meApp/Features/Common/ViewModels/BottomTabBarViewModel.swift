@@ -7,40 +7,16 @@
 
 
 import Foundation
-import Combine
 
 @MainActor
 class BottomTabBarViewModel: ObservableObject {
     @Injector var feedService: FeedService
-    @Injector var accountService: AccountService
-    @Injector var notificationService: NotificationHelperService
-    @Injector var logger: LoggerService
-    
     @Published var selectedTab: BottomTab = .dash
     @Published var showSettingsBadge: Bool = false
     @Published var showAppSync: Bool = false
     @Published var showTabBar: Bool = true
     
-    /// A set to hold Combine cancellables for this view model.
-    private var cancellables = Set<AnyCancellable>()
-    
-    // MARK: Strings
-    private let alertLang = AlertStrings.self.ExpiredUserLogOutAlert
-    private let loaderLang = LoaderStrings.self
-    
-    private let tag = "BottomTabBarViewModel"
-    
     init() {
-        accountService.$activeAccount
-            .sink { [weak self] account in
-                guard let self else { return }
-                if let account, account.isExpired == true {
-                    self.presentExpiredAccountAlert(for: account)
-                    return
-                }
-            }
-            .store(in: &cancellables)
-        
         self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
         // TODO: Update the app sync display based on the app sync scale defined in the paired scale list
     }
@@ -82,34 +58,4 @@ class BottomTabBarViewModel: ObservableObject {
     func selectTab(_ tab: BottomTab) {
         selectedTab = tab
     }
-    
-    // MARK: - Expired Account Handling
-    private func presentExpiredAccountAlert(for account: Account) {
-        let userName = "\(account.firstName ?? "")"
-        let alert = AlertModel(
-            title: alertLang.title(userName),
-            message: alertLang.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in
-                    Task { [weak self] in
-                        guard let self else { return }
-                        notificationService.showLoader(LoaderModel(text: loaderLang.loading))
-                        do {
-                            try await self.accountService.logOut(accountId: account.accountId)
-                        } catch {
-                            logger.log(
-                                level: .error,
-                                tag: tag,
-                                message: "Failed to log out expired account",
-                                data: error
-                            )
-                        }
-                        notificationService.dismissLoader()
-                    }
-                }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-
 }

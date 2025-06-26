@@ -4,6 +4,7 @@ import Combine
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
     static let shared: AccountService = AccountService()
+    @Injector var notificationService: NotificationHelperService
     
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
@@ -11,6 +12,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
+
+    var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
     
     init() {
@@ -103,22 +106,28 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.accountNotFound(id: accountId)
         }
         
-        do {
-            // Pass the fcm token and accountId to the API for logout
-            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
-        } catch {
-            // Ignore errors during logout
+        // Helper to perform the actual logout work (API + local updates)
+        let performLogout: @Sendable () async throws -> Void = { [weak self] in
+            guard let self else { return }
+            try await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout)
         }
         
-        do {
-            // Logout the account locally (happens regardless of API success/failure)
-            localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
-            localAccount.isActiveAccount = false
-            try await localRepo.updateAccount(localAccount)
-        } catch {
-            // Ignore errors during logout
+        // Notify observers **before** performing the local logout so UI can react.
+        if isAutoLogout, localAccount.isActiveAccount == true {
+            let userName = "\(localAccount.firstName ?? "")"
+            let alert = AlertModel(
+                title: alertLang.title(userName),
+                message: alertLang.message,
+                buttons: [
+                    AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in
+                        Task { try? await performLogout() }
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        } else {
+            try await performLogout()
         }
-        try await updatePublishedState()
     }
     
     /// Deletes the current active account or a specific account by ID.
@@ -716,6 +725,29 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the published state of active and all accounts.
     func updatePublishedState() async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
-        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true && $0.isExpired == false && $0.isLoggedIn == true })
+        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true})
+    }
+    
+    // MARK: - Private Helpers
+    /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
+    private func executeLogout(on localAccount: Account, isAutoLogout: Bool) async throws {
+        do {
+            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
+        } catch {
+            // Ignore API errors during logout
+        }
+        
+        do {
+            // Logout the account locally (happens regardless of API success/failure)
+            localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
+            localAccount.isActiveAccount = false
+            localAccount.isExpired = isAutoLogout
+            try await localRepo.updateAccount(localAccount)
+        } catch {
+            // Ignore local persistence errors during logout
+        }
+        
+        // Attempt to refresh published state; propagate any errors to the caller
+        try await updatePublishedState()
     }
 }
