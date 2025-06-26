@@ -200,10 +200,6 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
-    func displayMetricsTapped() {
-        // TODO: Implement displayMetricsTapped action
-    }
     func usersTapped() {
         // TODO: Implement usersTapped action
     }

@@ -103,7 +103,7 @@ struct ScaleSettingsScreen: View {
                     config: SettingsItemConfig(
                         title: lang.displayMetrics,
                         value: scaleStore.displayMetricsValue,
-                        onTap: { scaleStore.displayMetricsTapped() }
+                        onTap: { router.navigate(to: .displayMetrics) }
                     )
                 )
                 SettingsListItem(

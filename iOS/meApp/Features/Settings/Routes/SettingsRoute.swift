@@ -15,6 +15,7 @@ enum SettingsRoute: Routable {
     case addAndEditScales
     case scaleSettings(scale: Device, scaleType: ScaleType)
     case scaleModes
+    case displayMetrics
     
     var body: some View {
         switch self {
@@ -28,6 +29,8 @@ enum SettingsRoute: Routable {
             ScaleSettingsScreen(scale: scale, scaleType: scaleType)
         case .scaleModes:
             ScaleModesScreen()
+        case .displayMetrics:
+            DisplayMetricsScreen()
         }
     }
 }
