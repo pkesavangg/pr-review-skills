@@ -70,28 +70,31 @@ fun <T> AppRadioGroupModal(
     BaseModal(
         title = title,
         body = subtitle,
-        primaryAction = ActionButton(
-            text = confirmText,
-            action = { onOk(currentSelection) }
-        ),
-        secondaryAction = ActionButton(
-            text = cancelText,
-            action = onCancel
-        ),
-        modifier = modifier
+        primaryAction =
+            ActionButton(
+                text = confirmText,
+                action = { onOk(currentSelection) },
+            ),
+        secondaryAction =
+            ActionButton(
+                text = cancelText,
+                action = onCancel,
+            ),
+        modifier = modifier,
     ) {
-                // Add spacing before radio group content
+        // Add spacing before radio group content
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
         // Radio Group Section - auto-sized with optional max height and scrolling
-        val radioGroupModifier = if (maxHeight != null) {
-            Modifier
-                .fillMaxWidth()
-                .height(maxHeight)
-                .verticalScroll(rememberScrollState())
-        } else {
-            Modifier.fillMaxWidth()
-        }
+        val radioGroupModifier =
+            if (maxHeight != null) {
+                Modifier
+                    .fillMaxWidth()
+                    .height(maxHeight)
+                    .verticalScroll(rememberScrollState())
+            } else {
+                Modifier.fillMaxWidth()
+            }
 
         AppRadioGroup(
             options = options,
@@ -99,7 +102,7 @@ fun <T> AppRadioGroupModal(
             onOptionSelected = { selectedId ->
                 currentSelection = selectedId
             },
-            modifier = radioGroupModifier
+            modifier = radioGroupModifier,
         )
     }
 }
@@ -124,7 +127,7 @@ fun <T> AppRadioGroupModal(
         confirmText = config.confirmText,
         cancelText = config.cancelText,
         maxHeight = config.maxHeight,
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -134,23 +137,23 @@ fun <T> AppRadioGroupModal(
  */
 fun <T> createRadioGroupDialog(
     config: RadioGroupModalConfig<T>,
-    onConfirm: (T?) -> Unit,
+    onConfirm: (T) -> Unit,
     onCancel: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
-    priority: Int = 1
-): DialogModel.Custom {
-    return DialogModel.Custom(
+    priority: Int = 1,
+): DialogModel.Custom =
+    DialogModel.Custom(
         contentKey = DialogType.RadioGroupPicker,
-        params = mapOf(
-            "config" to config,
-            "onConfirm" to onConfirm,
-            "onCancel" to onCancel
-        ),
+        params =
+            mapOf(
+                "config" to config,
+                "onConfirm" to onConfirm,
+                "onCancel" to onCancel,
+            ),
         onDismiss = onDismiss,
-        onConfirm = { result -> onConfirm(result as? T) },
-        customPriority = priority
+        onConfirm = { result -> onConfirm(result as T) },
+        customPriority = priority,
     )
-}
 
 /**
  * Convenience function to show radio group modal using dialog service.
@@ -174,23 +177,25 @@ fun <T> showRadioGroupModal(
     onCancel: (() -> Unit)? = null,
     subtitle: String? = null,
     confirmText: String = "OK",
-    cancelText: String = "Cancel"
+    cancelText: String = "Cancel",
 ) {
-    val config = RadioGroupModalConfig(
-        title = title,
-        subtitle = subtitle,
-        options = options,
-        selectedItem = selectedItem,
-        confirmText = confirmText,
-        cancelText = cancelText
-    )
+    val config =
+        RadioGroupModalConfig(
+            title = title,
+            subtitle = subtitle,
+            options = options,
+            selectedItem = selectedItem,
+            confirmText = confirmText,
+            cancelText = cancelText,
+        )
 
-    val dialog = createRadioGroupDialog(
-        config = config,
-        onConfirm = onConfirm,
-        onCancel = onCancel,
-        onDismiss = onCancel
-    )
+    val dialog =
+        createRadioGroupDialog(
+            config = config,
+            onConfirm = onConfirm,
+            onCancel = onCancel,
+            onDismiss = onCancel,
+        )
 
     dialogService.enqueue(dialog)
 }
@@ -199,15 +204,16 @@ fun <T> showRadioGroupModal(
 @Composable
 fun AppRadioGroupModalPreview() {
     MeAppTheme {
-        val options = remember {
-            listOf(
-                RadioButtonOption(id = "option1", label = "Option 1"),
-                RadioButtonOption(id = "option2", label = "Option 2"),
-                RadioButtonOption(id = "option3", label = "Option 3"),
-                RadioButtonOption(id = "option4", label = "Option 4 (Disabled)", enabled = false),
-                RadioButtonOption(id = "option5", label = "Option 5"),
-            )
-        }
+        val options =
+            remember {
+                listOf(
+                    RadioButtonOption(id = "option1", label = "Option 1"),
+                    RadioButtonOption(id = "option2", label = "Option 2"),
+                    RadioButtonOption(id = "option3", label = "Option 3"),
+                    RadioButtonOption(id = "option4", label = "Option 4 (Disabled)", enabled = false),
+                    RadioButtonOption(id = "option5", label = "Option 5"),
+                )
+            }
 
         AppRadioGroupModal(
             title = "Select an Option",
@@ -215,7 +221,7 @@ fun AppRadioGroupModalPreview() {
             options = options,
             selectedItem = "option2",
             onCancel = { },
-            onOk = { }
+            onOk = { },
         )
     }
 }

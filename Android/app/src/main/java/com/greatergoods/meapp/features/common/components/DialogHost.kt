@@ -64,7 +64,7 @@ fun DialogHost() {
                             onConfirm?.invoke(selectedValue)
                             selectedValue?.let { dialog.onConfirm?.invoke(it) }
                             dialogQueueViewModel.dismissCurrent()
-                        }
+                        },
                     )
                 }
             }
