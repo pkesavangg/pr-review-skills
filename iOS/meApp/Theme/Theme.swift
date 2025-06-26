@@ -56,7 +56,7 @@ final class Theme: ObservableObject {
             appearanceMode = mode
         } else {
             // Default to system mode if no saved preference
-            appearanceMode = .light
+            appearanceMode = .system
         }
         updateWindowInterfaceStyle()
     }

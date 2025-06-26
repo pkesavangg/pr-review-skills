@@ -19,8 +19,8 @@ struct LogoView: View {
             
             Image(
                 isFromAccountSwitching
-                ? AppAssets.wgLogoDark
-                : (themeManager.isDarkMode ? AppAssets.wgLogoDark : AppAssets.wgLogoLight) //TODO: Need to update the logo after UX confirmation
+                ? (themeManager.isDarkMode ? AppAssets.wgLogoLight : AppAssets.wgLogoDark)
+                : (themeManager.isDarkMode ? AppAssets.wgLogoDark : AppAssets.wgLogoLight)
             )
             .resizable()
             .aspectRatio(contentMode: .fit)
@@ -29,7 +29,7 @@ struct LogoView: View {
             Text(CommonStrings.byGreaterGoods)
                 .fontOpenSans(.subHeading1)
                 .fontWeight(.regular)
-                .foregroundColor(isFromAccountSwitching ? theme.textHeading : theme.actionInverse) //TODO: Need to update the color after UX confirmation
+                .foregroundColor(isFromAccountSwitching ? theme.actionSecondary : theme.actionInverse)
         }
     }
 }
