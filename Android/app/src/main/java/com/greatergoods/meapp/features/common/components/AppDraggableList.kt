@@ -43,6 +43,7 @@ fun <T> AppDraggableList(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     iconWidth: Dp = 56.dp,
+    maxVisibleItems: Int? = null,
     keySelector: (T) -> Any,
     trailingActions: @Composable RowScope.(index: Int, item: T) -> Unit,
     positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
@@ -57,7 +58,7 @@ fun <T> AppDraggableList(
     LazyColumn(
         state = lazyListState,
         contentPadding = contentPadding,
-        modifier = modifier,
+        modifier = modifier.then(heightModifier),
     ) {
         itemsIndexed(items, key = { _, item -> keySelector(item) }) { index, item ->
             AppDraggableListItem(

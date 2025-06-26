@@ -78,6 +78,7 @@ interface IAccountRepository {
     suspend fun removeAccountInDB(accountId: String)
     suspend fun removeAllAccountsInDB()
     suspend fun deactivateOtherAccountsInDB(accountId: String)
+    suspend fun deactivateAllAccountsInDB()
     suspend fun activateAccountInDB(accountId: String)
     suspend fun updateTokensInDB(tokens: Map<String, String>)
     suspend fun updateLastActiveTimeInDB(accountId: String)

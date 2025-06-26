@@ -17,12 +17,8 @@ data class MyAccountsState(
  */
 sealed interface MyAccountsIntent : IReducer.Intent {
     data class SetAccounts(val accounts: List<Account>) : MyAccountsIntent
-    object ShowMaxAccountsDialog : MyAccountsIntent
-    object DismissMaxAccountsDialog : MyAccountsIntent
-
+    object ShowMaxAccountsAlert : MyAccountsIntent
     data class RequestRemoveAccount(val account: Account) : MyAccountsIntent
-    object ConfirmRemoveAccount : MyAccountsIntent
-    object CancelRemoveAccount : MyAccountsIntent
 
     data class LoginToAccount(
         val account: Account? = null,
@@ -37,26 +33,11 @@ sealed interface MyAccountsIntent : IReducer.Intent {
  */
 class MyAccountsReducer : IReducer<MyAccountsState, MyAccountsIntent> {
     override fun reduce(state: MyAccountsState, intent: MyAccountsIntent): MyAccountsState? = when (intent) {
-        is MyAccountsIntent.SetAccounts -> {
-            state.copy(accounts = intent.accounts)
-        }
+        is MyAccountsIntent.SetAccounts -> state.copy(accounts = intent.accounts)
 
-        MyAccountsIntent.ShowMaxAccountsDialog -> {
-            state.copy(showMaxAccountsDialog = true)
-        }
+        MyAccountsIntent.ShowMaxAccountsAlert -> state.copy(showMaxAccountsDialog = true)
 
-        MyAccountsIntent.DismissMaxAccountsDialog -> {
-            state.copy(showMaxAccountsDialog = false)
-        }
-
-        is MyAccountsIntent.RequestRemoveAccount -> {
-            state.copy(accountToRemove = intent.account)
-        }
-
-        MyAccountsIntent.ConfirmRemoveAccount,
-        MyAccountsIntent.CancelRemoveAccount -> {
-            state.copy(accountToRemove = null)
-        }
+        is MyAccountsIntent.RequestRemoveAccount -> state.copy(accountToRemove = intent.account)
 
         // Intents handled only in ViewModel (side-effects), no state change needed
         is MyAccountsIntent.LoginToAccount,

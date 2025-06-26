@@ -44,7 +44,7 @@ class DashboardViewModel @Inject constructor(
             appEventService.authEvent.collect { authState ->
                 when (authState) {
                     is AuthState.AccountSwitched -> {
-                        val accountName = authState.account.firstName ?: authState.account.email
+                        val accountName = authState.account.firstName
                         dialogQueueService.showToast(
                             Toast(
                                 title = null,
@@ -53,6 +53,7 @@ class DashboardViewModel @Inject constructor(
                             ),
                         )
                     }
+
                     else -> {
                         // Handle other auth states if needed
                     }

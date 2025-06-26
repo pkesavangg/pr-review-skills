@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,10 +53,15 @@ fun AppUser(
             .fillMaxWidth()
             .background(colorScheme.primaryBackground, shape = shape)
             .clip(shape)
-            .padding(    start = spacing.sm,
-                         top = spacing.sm,
-                         bottom = spacing.sm,
-                         end = if (account.isLoggedIn) spacing.sm else 0.dp
+            .clickable(
+                enabled = account.isLoggedIn && !account.isExpired,
+                onClick = onAccountSelect,
+            )
+            .padding(
+                start = spacing.sm,
+                top = spacing.sm,
+                bottom = spacing.sm,
+                end = if (account.isLoggedIn) spacing.sm else 0.dp,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -93,17 +99,16 @@ fun AppUser(
             AppIcon(
                 id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
                 contentDescription = "Select account",
-                onClick = onAccountSelect,
                 type = AppIconType.Primary,
                 modifier = Modifier.size(24.dp),
             )
-        } else if(account.isExpired) {
+        } else if (account.isExpired) {
             AppButton(
                 label = AppUserStrings.LogInButton,
                 onClick = onLoginRequest,
                 type = ButtonType.TextPrimary,
                 size = ButtonSize.Small,
-                textTransform = TextTransform.NONE
+                textTransform = TextTransform.NONE,
             )
         }
 
@@ -137,7 +142,7 @@ fun AppUserPreview() {
                     weightlessWeight = 65.5f,
                     isStreakOn = true,
                     dashboardType = "Dashboard4",
-                    dashboardMetrics = listOf("weight", "bmi", "bodyfat")
+                    dashboardMetrics = listOf("weight", "bmi", "bodyfat"),
                 ),
                 onAccountSelect = {},
                 onLoginRequest = {},
@@ -164,7 +169,7 @@ fun AppUserPreview() {
                     weightlessWeight = null,
                     isStreakOn = false,
                     dashboardType = null,
-                    dashboardMetrics = null
+                    dashboardMetrics = null,
                 ),
                 onAccountSelect = {},
                 onLoginRequest = {},

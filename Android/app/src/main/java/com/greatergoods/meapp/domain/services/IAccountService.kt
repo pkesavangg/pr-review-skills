@@ -84,4 +84,4 @@ sealed class AuthState {
 /**
  * Custom exception for authentication-related errors.
  */
-class AuthException(message: String, cause: Throwable? = null) : Exception(message, cause) 
+class AuthException(message: String, cause: Throwable? = null) : Exception(message, cause)

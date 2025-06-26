@@ -9,9 +9,9 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.services.AuthState
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
-import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -136,7 +136,7 @@ class AppViewModel @Inject constructor(
         }
         val hasAccounts = loggedInAccounts.isNotEmpty()
         val route = if (hasAccounts) {
-            AppRoute.Auth.UserList
+            AppRoute.Auth.MultiAccountLanding
         } else {
             AppRoute.Auth.Landing
         }

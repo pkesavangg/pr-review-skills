@@ -154,6 +154,7 @@ constructor(
      */
     override suspend fun logout(accountId: String, fcmToken: String?): Boolean =
         try {
+            val isActiveAccount = getCurrentAccount()?.id == accountId
             // Try to logout on API if network is available
             if (isNetworkAvailable()) {
                 try {
@@ -163,7 +164,9 @@ constructor(
                     // Continue with local logout even if API fails
                 }
             }
-
+            if (isActiveAccount) {
+                accountRepository.deactivateAllAccountsInDB()
+            }
             // Always perform local logout
             accountRepository.logoutInDb(accountId)
             userDataStore.clearAccountTokens(accountId)
@@ -188,7 +191,8 @@ constructor(
             val activeAccount = activeAccountFlow.first()
 
             // Sort accounts to handle active account last
-            val sortedAccounts = loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
+            val sortedAccounts =
+                loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
 
             for (account in sortedAccounts) {
                 account.id != activeAccount?.id
@@ -197,7 +201,11 @@ constructor(
                         try {
                             accountRepository.logoutInAPI(account.fcmToken ?: "", account.id)
                         } catch (e: Exception) {
-                            AppLog.e(TAG, "API logout failed for account ${account.id}", e.toString())
+                            AppLog.e(
+                                TAG,
+                                "API logout failed for account ${account.id}",
+                                e.toString()
+                            )
                             // Continue with local logout even if API fails
                         }
                     }
@@ -454,7 +462,11 @@ constructor(
                         return try {
                             refreshSession()
                         } catch (e: Exception) {
-                            AppLog.e(TAG, "Session expired for account: " + storedAccount.email, e.toString())
+                            AppLog.e(
+                                TAG,
+                                "Session expired for account: " + storedAccount.email,
+                                e.toString()
+                            )
                             appEventService.emitAuthEvent(AuthState.LoggedOut("Session expired"))
                             _isLoginFlow.emit(false)
                             false
@@ -468,7 +480,11 @@ constructor(
             }
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to check logged in user", e.toString())
-            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to check logged in user"))
+            appEventService.emitAuthEvent(
+                AuthState.Error(
+                    e.message ?: "Failed to check logged in user"
+                )
+            )
             false
         }
     }
@@ -481,7 +497,10 @@ constructor(
                 AppLog.d(TAG, "Successfully reset password")
                 showSuccessToast(AuthAction.RESET_PASSWORD, email)
             } else {
-                AppLog.e(TAG, "Failed to reset password: ${response.code()} - ${response.message()}")
+                AppLog.e(
+                    TAG,
+                    "Failed to reset password: ${response.code()} - ${response.message()}"
+                )
                 showErrorToast(AuthAction.RESET_PASSWORD, HttpException(response))
             }
         } catch (e: HttpException) {
@@ -563,13 +582,13 @@ constructor(
     fun showSuccessToast(action: AuthAction, data: String? = null) {
         val (title, message) = when (action) {
             AuthAction.RESET_PASSWORD -> ToastStrings.Success.ResetPasswordSuccess.Header to
-                ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
+                    ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
 
             AuthAction.UPDATE_PROFILE -> ToastStrings.Success.UpdateProfileSuccess.Header to
-                ToastStrings.Success.UpdateProfileSuccess.Message
+                    ToastStrings.Success.UpdateProfileSuccess.Message
 
             AuthAction.CHANGE_PASSWORD -> ToastStrings.Success.ChangePasswordSuccess.Header to
-                ToastStrings.Success.ChangePasswordSuccess.Message
+                    ToastStrings.Success.ChangePasswordSuccess.Message
 
             else -> "" to ""
         }
@@ -603,7 +622,7 @@ constructor(
             }
 
             AuthAction.RESET_PASSWORD -> ToastStrings.Error.ResetPasswordError.Header to
-                ToastStrings.Error.ResetPasswordError.Message
+                    ToastStrings.Error.ResetPasswordError.Message
 
             AuthAction.UPDATE_PROFILE -> {
                 val header = ToastStrings.Error.UpdateProfileError.Header

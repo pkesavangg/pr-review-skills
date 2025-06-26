@@ -7,7 +7,9 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsIntent
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsReducer
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsState
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -28,32 +30,24 @@ class MyAccountsViewModel @Inject constructor(
         super.handleIntent(intent)
 
         when (intent) {
-            is MyAccountsIntent.ConfirmRemoveAccount -> {
-                onRemoveAccount()
-            }
-
             is MyAccountsIntent.RequestRemoveAccount -> {
-                // Already handled by reducer to set `accountToRemove`
-            }
-
-            is MyAccountsIntent.CancelRemoveAccount -> {
-                // Clears the dialog
+                showRemoveAccountDialog(intent.account)
             }
 
             is MyAccountsIntent.LoginToAccount -> {
-                onLogin(intent.account)
+                goToLogin(intent.account)
             }
 
             is MyAccountsIntent.CreateAccount -> {
-                if (state.value.accounts.size >= 10) {
-                    handleIntent(MyAccountsIntent.ShowMaxAccountsDialog)
-                } else {
-                    navigateTo(AppRoute.Auth.Signup)
-                }
+                goToSignup()
             }
 
             is MyAccountsIntent.SelectAccount -> {
                 onAccountSelect(intent.account)
+            }
+
+            is MyAccountsIntent.ShowMaxAccountsAlert -> {
+                showMaxLimitReachedDialog()
             }
 
             else -> {} // SetAccounts and dialog dismiss handled by reducer
@@ -68,11 +62,19 @@ class MyAccountsViewModel @Inject constructor(
         }
     }
 
-    private fun onLogin(account: Account?) {
+    private fun goToLogin(account: Account?) {
         if (state.value.accounts.size >= 10) {
-            handleIntent(MyAccountsIntent.ShowMaxAccountsDialog)
+            handleIntent(MyAccountsIntent.ShowMaxAccountsAlert)
         } else {
             navigateTo(AppRoute.Auth.Login)
+        }
+    }
+
+    private fun goToSignup() {
+        if (state.value.accounts.size >= 10) {
+            handleIntent(MyAccountsIntent.ShowMaxAccountsAlert)
+        } else {
+            navigateTo(AppRoute.Auth.Signup)
         }
     }
 
@@ -85,17 +87,54 @@ class MyAccountsViewModel @Inject constructor(
         }
     }
 
+    private fun navigateTo(path: AppRoute) {
+        viewModelScope.launch {
+            navigationService.navigateTo(path)
+        }
+    }
+
+    private fun showRemoveAccountDialog(account: Account) {
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title = String.format(AppPopupStrings.RemoveAccountDialog.Title, account.firstName),
+                message = String.format(AppPopupStrings.RemoveAccountDialog.Message, account.firstName),
+                confirmText = AppPopupStrings.RemoveAccountDialog.ConfirmButton,
+                cancelText = AppPopupStrings.RemoveAccountDialog.CancelButton,
+                onConfirm = {
+                    onRemoveAccount()
+                    dialogQueueService.dismissCurrent()
+                },
+                onCancel = {
+                    dialogQueueService.dismissCurrent()
+                },
+                onDismiss = {
+                    dialogQueueService.dismissCurrent()
+                },
+            ),
+        )
+    }
+
+    /**
+     * Shows the max limit reached alert dialog.
+     */
+    private fun showMaxLimitReachedDialog() {
+        dialogQueueService.enqueue(
+            DialogModel.Alert(
+                title = AppPopupStrings.MaxAccountReachedAlert.Title,
+                message = AppPopupStrings.MaxAccountReachedAlert.Message,
+                dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
+                onDismiss = {
+                    dialogQueueService.dismissCurrent()
+                },
+            ),
+        )
+    }
+
     private fun onRemoveAccount() {
         state.value.accountToRemove?.let { account ->
             viewModelScope.launch {
                 accountService.logout(account.id, account.fcmToken)
             }
-        }
-    }
-
-    private fun navigateTo(path: AppRoute) {
-        viewModelScope.launch {
-            navigationService.navigateTo(path)
         }
     }
 }
