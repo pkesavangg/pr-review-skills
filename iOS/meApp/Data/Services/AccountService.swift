@@ -92,7 +92,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     /// Logs out the current active account or a specific account by ID.
-    func logOut(accountId: String? = nil) async throws {
+    func logOut(accountId: String? = nil, isAutoLogout: Bool = false) async throws {
         // Always try API, fallback to local only if network error
         // if accountId is nil, use current logged in account
         guard let accountId = accountId ?? activeAccount?.accountId else {
@@ -112,10 +112,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         
         do {
             // Logout the account locally (happens regardless of API success/failure)
-            localAccount.isLoggedIn = false
+            localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
             localAccount.isActiveAccount = false
-            try await localRepo.saveAccount(localAccount)
-            
+            try await localRepo.updateAccount(localAccount)
         } catch {
             // Ignore errors during logout
         }
