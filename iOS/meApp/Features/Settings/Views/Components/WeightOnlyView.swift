@@ -34,7 +34,6 @@ struct WeightOnlyView: View {
             }
             
             NoteBox(title: lang.noteTitle, content: lang.AllBodyMetricsNoteDescription)
-                .padding(.top, .spacingMD)
         }
         .background(theme.backgroundSecondary)
     }
