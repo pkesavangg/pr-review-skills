@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,7 +46,6 @@ fun MyAccountsScreenContent(
     handleIntent: (MyAccountsIntent) -> Unit
 ) {
     val backStack = LocalNavBackStack.current
-
     AppScaffold(
         title = MyAccountsScreenStrings.Title,
         navigationIcon = {
@@ -52,9 +53,9 @@ fun MyAccountsScreenContent(
                 backStack.removeLast()
             }
         },
-    ) { modifier ->
+    ) {
         Column(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(MeTheme.spacing.sm),
             verticalArrangement = Arrangement.Top,

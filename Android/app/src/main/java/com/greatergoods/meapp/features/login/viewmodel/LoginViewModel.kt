@@ -14,7 +14,6 @@ import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginReducer
 import com.greatergoods.meapp.features.login.model.LoginState
 import com.greatergoods.meapp.features.login.strings.LoginStrings
-import com.greatergoods.meapp.features.profile.strings.ProfileStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -71,17 +70,17 @@ constructor(
         val password = state.value.form.controls.password.value
         viewModelScope.launch {
             try {
-                val account = accountAuthService.login(email, password)
-                if (account != null) {
-                    handleIntent(LoginIntent.Success)
-                } else {
-                    handleIntent(LoginIntent.Error("Login failed"))
-                }
+                accountAuthService.login(email, password)
             } catch (e: Exception) {
                 handleIntent(LoginIntent.Error(e.toString()))
                 AppLog.e("onSubmit", "Login failed", e.toString())
             } finally {
                 dialogQueueService.dismissLoader()
+                if (state.value.error.isNullOrEmpty()) {
+                    handleIntent(LoginIntent.Success)
+                } else {
+                    handleIntent(LoginIntent.Error("Login failed"))
+                }
             }
         }
     }

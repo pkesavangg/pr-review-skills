@@ -13,7 +13,6 @@ import com.greatergoods.meapp.data.repository.EntryRepository
 import com.greatergoods.meapp.data.repository.HealthConnectRepository
 import com.greatergoods.meapp.data.repository.IntegrationRepository
 import com.greatergoods.meapp.data.repository.LogRepository
-import com.greatergoods.meapp.data.repository.UserRepository
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
@@ -27,7 +26,6 @@ import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
-import com.greatergoods.meapp.domain.repository.IUserRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -75,10 +73,6 @@ object RepositoryModule {
 
     @Provides
     fun provideCurrentAccountId(): String = "current_account_id"
-
-    @Provides
-    @Singleton
-    fun provideUserRepository(userDataStore: UserDataStore): IUserRepository = UserRepository(userDataStore)
 
     @Provides
     @Singleton

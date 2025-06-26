@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.MyAccounts.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsIntent
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsReducer
@@ -69,29 +69,26 @@ class MyAccountsViewModel @Inject constructor(
     }
 
     private fun onLogin(account: Account?) {
-        if (account == null) {
-            if (state.value.accounts.size >= 10) {
-                handleIntent(MyAccountsIntent.ShowMaxAccountsDialog)
-            } else {
-                navigateTo(AppRoute.Auth.Login)
-            }
+        if (state.value.accounts.size >= 10) {
+            handleIntent(MyAccountsIntent.ShowMaxAccountsDialog)
         } else {
-            // Handle login for existing/inactive account
-            viewModelScope.launch {
-                // TODO: implement actual login behavior for the inactive account
-                // accountAuthService.login(account)
-            }
+            navigateTo(AppRoute.Auth.Login)
         }
     }
 
     private fun onAccountSelect(account: Account) {
-        // Implement switch/select account logic if needed
+        if (!account.isActiveAccount) {
+            viewModelScope.launch {
+                accountAuthService.switchAccount(account)
+                navigationService.replaceStack(AppRoute.Init.Loading)
+            }
+        }
     }
 
     private fun onRemoveAccount() {
         state.value.accountToRemove?.let { account ->
             viewModelScope.launch {
-                accountAuthService.removeAccount(account.id)
+                accountAuthService.logout(account.id, account.fcmToken)
             }
         }
     }

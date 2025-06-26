@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.MyAccounts.reducer
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 
 /**
  * State for MyAccountsScreen.

@@ -16,7 +16,7 @@ import javax.inject.Inject
  * Supports multi-account token management by checking for X-Account-ID headers.
  */
 class AuthTokenInterceptor @Inject constructor(
-    private val tokenManager: ITokenManager
+    private val tokenManager: ITokenManager,
 ) : Interceptor {
     companion object {
         private const val TAG = "AuthTokenInterceptor"

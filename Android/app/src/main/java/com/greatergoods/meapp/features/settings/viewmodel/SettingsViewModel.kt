@@ -247,7 +247,7 @@ constructor(
             try {
                 val account = state.value.account
                 if (account != null) {
-                    authService.logout(account.id)
+                    authService.logout(account.id, account.fcmToken)
                 }
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out", e.toString())

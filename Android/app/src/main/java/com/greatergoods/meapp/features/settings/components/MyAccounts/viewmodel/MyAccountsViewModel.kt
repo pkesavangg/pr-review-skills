@@ -3,7 +3,7 @@ package com.greatergoods.meapp.features.settings.components.MyAccounts.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.AccountAuthService
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.settings.components.MyAccounts.reducer.MyAccountsIntent
 import com.greatergoods.meapp.features.settings.components.MyAccounts.reducer.MyAccountsReducer

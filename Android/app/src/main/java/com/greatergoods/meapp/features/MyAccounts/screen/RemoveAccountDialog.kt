@@ -1,9 +1,9 @@
 package com.greatergoods.meapp.features.MyAccounts.screen
 
 import androidx.compose.runtime.Composable
-import com.greatergoods.meapp.domain.model.Account
-import com.greatergoods.meapp.features.common.components.AppPopup
-import com.greatergoods.meapp.features.MyAccounts.strings.MyAccountsScreenStrings
+import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 
 /**
  * Dialog shown to confirm account removal.
@@ -14,14 +14,12 @@ fun RemoveAccountDialog(
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
-    AppPopup(
-        visible = true,
-        heading = String.format(MyAccountsScreenStrings.RemoveAccountTitle, account.firstName),
-        supportingText = String.format(MyAccountsScreenStrings.RemoveAccountBody, account.firstName),
-        onClose = onCancel,
-        primaryLabel = MyAccountsScreenStrings.RemoveAccountConfirm,
-        secondaryLabel = MyAccountsScreenStrings.RemoveAccountCancel,
-        onPrimaryAction = onConfirm,
-        onSecondaryAction = onCancel,
+    DialogModel.Confirm(
+        title = String.format(AppPopupStrings.RemoveAccountDialog.Title, account.firstName),
+        message = String.format(AppPopupStrings.RemoveAccountDialog.Message, account.firstName),
+        confirmText = AppPopupStrings.RemoveAccountDialog.ConfirmButton,
+        cancelText = AppPopupStrings.RemoveAccountDialog.CancelButton,
+        onConfirm = onConfirm,
+        onCancel = onCancel,
     )
 }

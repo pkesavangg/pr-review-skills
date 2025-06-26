@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.settings.components.MyAccounts.screen
 
 import androidx.compose.runtime.Composable
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.components.AppPopup
 import com.greatergoods.meapp.features.settings.components.MyAccounts.strings.MyAccountsScreenStrings
 
@@ -24,4 +24,4 @@ fun RemoveAccountDialog(
         onPrimaryAction = onConfirm,
         onSecondaryAction = onCancel,
     )
-} 
+}

@@ -89,25 +89,24 @@ fun AppUser(
             )
         }
 
-        if (showAccountActivity) {
-            if (account.isLoggedIn) {
-                AppIcon(
-                    id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-                    contentDescription = "Select account",
-                    onClick = onAccountSelect,
-                    type = AppIconType.Primary,
-                    modifier = Modifier.size(24.dp),
-                )
-            } else if(account.isExpired) {
-                AppButton(
-                    label = AppUserStrings.LogInButton,
-                    onClick = onLoginRequest,
-                    type = ButtonType.TextPrimary,
-                    size = ButtonSize.Small,
-                    textTransform = TextTransform.NONE
-                )
-            }
+        if (showAccountActivity && account.isLoggedIn) {
+            AppIcon(
+                id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
+                contentDescription = "Select account",
+                onClick = onAccountSelect,
+                type = AppIconType.Primary,
+                modifier = Modifier.size(24.dp),
+            )
+        } else if(account.isExpired) {
+            AppButton(
+                label = AppUserStrings.LogInButton,
+                onClick = onLoginRequest,
+                type = ButtonType.TextPrimary,
+                size = ButtonSize.Small,
+                textTransform = TextTransform.NONE
+            )
         }
+
     }
 }
 

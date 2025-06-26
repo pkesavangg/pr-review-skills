@@ -1,20 +1,18 @@
 package com.greatergoods.meapp.features.MyAccounts.screen
 
 import androidx.compose.runtime.Composable
-import com.greatergoods.meapp.features.common.components.AppPopup
-import com.greatergoods.meapp.features.MyAccounts.strings.MyAccountsScreenStrings
+import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 
 /**
  * Dialog shown when the maximum number of accounts is reached.
  */
 @Composable
 fun MaxAccountsReachedDialog(onDismiss: () -> Unit) {
-    AppPopup(
-        visible = true,
-        heading = MyAccountsScreenStrings.MaxAccountsReachedTitle,
-        supportingText = MyAccountsScreenStrings.MaxAccountsReachedBody,
-        onClose = onDismiss,
-        primaryLabel = MyAccountsScreenStrings.MaxAccountsReachedButton,
-        onPrimaryAction = onDismiss,
+    DialogModel.Alert(
+        title = AppPopupStrings.MaxAccountReachedAlert.Title,
+        message = AppPopupStrings.MaxAccountReachedAlert.Message,
+        dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
+        onDismiss = onDismiss,
     )
 }

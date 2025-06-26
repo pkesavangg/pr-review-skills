@@ -47,7 +47,6 @@ fun AppUserList(
             iconWidth = 56.dp,
             contentPadding = contentPadding,
             onDelete = onDeleteRequest,
-            isItemDraggable = { account -> !account.isActiveAccount && account.isLoggedIn },
         ) { item, progress ->
             val isDragging = progress > 0f
             val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.lg

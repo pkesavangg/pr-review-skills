@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.settings.components.MyAccounts.reducer
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 
 /**
  * State for MyAccountsScreen.
@@ -39,4 +39,4 @@ class MyAccountsReducer : IReducer<MyAccountsState, MyAccountsIntent> {
         MyAccountsIntent.ConfirmRemoveAccount, MyAccountsIntent.CancelRemoveAccount -> state.copy(accountToRemove = null)
         else -> null
     }
-} 
+}
