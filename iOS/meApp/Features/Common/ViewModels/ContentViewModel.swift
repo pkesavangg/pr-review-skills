@@ -27,9 +27,14 @@ final class ContentViewModel: ObservableObject {
     
     init() {
         accountService.$activeAccount
-        // Avoid unnecessary re-initialisation when the account ID hasn't changed
+        // Treat re-logins of the *same* account as a new value so that the
+        // loading flow gets a chance to run again. Comparing both the
+        // accountId *and* lastActiveTime ensures that we still suppress
+        // redundant emissions (e.g. when tokens refresh) while allowing a
+        // fresh login to pass through.
             .removeDuplicates { lhs, rhs in
-                lhs?.accountId == rhs?.accountId
+                lhs?.accountId == rhs?.accountId &&
+                lhs?.lastActiveTime == rhs?.lastActiveTime
             }
             .sink { [weak self] account in
                 guard let self else { return }
