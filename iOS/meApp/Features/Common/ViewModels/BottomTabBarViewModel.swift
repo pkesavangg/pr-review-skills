@@ -93,7 +93,7 @@ class BottomTabBarViewModel: ObservableObject {
                 AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in
                     Task { [weak self] in
                         guard let self else { return }
-                        notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut))
+                        notificationService.showLoader(LoaderModel(text: loaderLang.loading))
                         do {
                             try await self.accountService.logOut(accountId: account.accountId)
                         } catch {
