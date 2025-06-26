@@ -18,7 +18,7 @@ struct ScaleModesStrings {
     static let biaInfoPara3 = "If you have a cardiac pacemaker, implantable cardioverter-defibrillator (ICD), other implanted electronic devices, are pregnant, or you just aren’t sure whether BIA is right for you, consult with your doctor before using All Body Metrics Mode."
     static let weightOnlyIndicatorLabel = "indicates Weight Only Mode is on"
     static let noteTitle = "NOTE:"
-    static let AllBodyMetricsNoteDescription = "Other scale users can temporarily enable All Body Metrics for one session via their app."
+    static let WeightOnlyNoteDescription = "Other scale users can temporarily enable All Body Metrics for one session via their app."
     static let heartRateInfoDescription = "This metric takes additional time to collect. When off, the scale will only collect weight and body composition."
     static let medicalNoteDescription = "If you have certain medical conditions —like implanted medical devices or you are pregnant — you should not use All Body Metrics Mode without first consulting your doctor."
     static let heartRateLabel = "Heart Rate: "

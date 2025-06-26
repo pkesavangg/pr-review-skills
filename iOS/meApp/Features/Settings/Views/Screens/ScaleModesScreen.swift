@@ -56,9 +56,10 @@ struct ScaleModesScreen: View {
                         WeightOnlyView()
                     }
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
 
-                Spacer()
             }
+
             .padding(.horizontal, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())

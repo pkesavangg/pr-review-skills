@@ -30,10 +30,11 @@ struct WeightOnlyView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 179, height: 169)
+                    .padding(.bottom, .spacingMD)
                 
             }
             
-            NoteBox(title: lang.noteTitle, content: lang.AllBodyMetricsNoteDescription)
+            NoteBox(title: lang.noteTitle, content: lang.WeightOnlyNoteDescription)
         }
         .background(theme.backgroundSecondary)
     }
