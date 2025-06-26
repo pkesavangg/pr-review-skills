@@ -89,6 +89,17 @@ class AppViewModel @Inject constructor(
                     is AuthState.AccountSwitched -> {
                         initLoadingData(authState.account)
                     }
+
+                    is AuthState.ProfileUpdated -> {
+                        // Profile updated - no navigation needed, just log
+                        AppLog.d(TAG, "Profile updated for account: ${authState.account.id}")
+                    }
+
+                    is AuthState.Error -> {
+                        // Handle auth errors without triggering navigation
+                        AppLog.e(TAG, "Auth error: ${authState.message}")
+                    }
+
                     // handle other AuthState events as needed
                     else -> {}
                 }

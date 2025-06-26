@@ -17,7 +17,6 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountAuthService
-import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
@@ -50,6 +49,11 @@ constructor(
         private const val MAX_ACCOUNTS = 10
         private const val TAG = "AccountAuthService"
     }
+
+    /**
+     * Checks if network is available using the connectivity observer
+     */
+    private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
 
     // Event flow for authentication state changes
     override val authEvent = appEventService.authEvent
@@ -486,56 +490,51 @@ constructor(
         }
     }
 
+    override suspend fun updateProfileInDB(accountId: String, partialAccount: PartialAccount): Account {
+        return accountRepository.updateAccountInDB(accountId, partialAccount)
+    }
+
     /**
-     * Updates the user's profile information.
-     * @param profileData Map containing the profile data to update
+     * Updates the user's profile information with offline support.
+     * If online, calls API and marks as synced. If offline, stores locally with isSynced = false.
+     * Follows the same pattern as Angular account.service.ts updateProfile method.
+     * @param profileUpdateRequest The profile data to update
      * @return The updated account or null if update fails
      */
-    override suspend fun updateProfile(profileData: Map<String, Any>): Account? {
+    override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account? {
         return try {
             // Get current account from flow (reactive approach like Angular observables)
             val currentAccount = activeAccountFlow.first()
             if (currentAccount == null) {
-                appEventService.emitAuthEvent(AuthState.Error("No active account found"))
                 return null
             }
-
-            val profileUpdateRequest = ProfileUpdateRequest(
-                id = currentAccount.id,
-                firstName = profileData["firstName"] as String,
-                lastName = profileData["lastName"] as String,
-                email = profileData["email"] as String,
-                zipcode = profileData["zipcode"] as String,
-                gender = currentAccount.gender,
-                dob = DateTimeValue.getDateFormatFromMilliseconds(profileData["birthday"] as Long),
-            )
-
-            // Call API to update profile
-            val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
-            val updatedAccountInfo: AccountInfo = response.account
-            updatedAccountInfo.copy(gender = updatedAccountInfo.gender)
-            val savedAccount = accountRepository.updateAccountInDB(
-                updatedAccountInfo.id,
-                PartialAccount(
-                    firstName = updatedAccountInfo.firstName,
-                    lastName = updatedAccountInfo.lastName,
-                    dob = updatedAccountInfo.dob,
-                    gender = updatedAccountInfo.gender,
-                    zipcode = updatedAccountInfo.zipcode,
-                    email = updatedAccountInfo.email,
-                ),
-            )
-            AppLog.d(TAG, "Profile updated successfully for account: ${savedAccount.id}")
-            savedAccount.let { appEventService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
-            showSuccessToast(AuthAction.UPDATE_PROFILE)
-            savedAccount
+                // Call API to update profile
+                val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
+                val updatedAccountInfo: AccountInfo = response.account
+                val savedAccount = updateProfileInDB(
+                    updatedAccountInfo.id,
+                    PartialAccount(
+                        firstName = updatedAccountInfo.firstName,
+                        lastName = updatedAccountInfo.lastName,
+                        dob = updatedAccountInfo.dob,
+                        gender = updatedAccountInfo.gender,
+                        zipcode = updatedAccountInfo.zipcode,
+                        email = updatedAccountInfo.email,
+                        isActiveAccount = true,
+                        isSynced = true,  // Mark as synced since API call was successful
+                    ),
+                )
+                AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
+                savedAccount.let { appEventService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
+                showSuccessToast(AuthAction.UPDATE_PROFILE)
+                savedAccount
         } catch (e: HttpException) {
             showErrorToast(AuthAction.UPDATE_PROFILE, e)
             AppLog.e(TAG, "Profile update failed", e.toString())
-            appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Profile update failed"))
-            null
+            throw e
         }
     }
+
 
     override suspend fun changePassword(currentPassword: String, newPassword: String): Boolean {
         return try {
@@ -561,10 +560,6 @@ constructor(
         }
     }
 
-    /**
-     * Checks if network is available using the connectivity observer
-     */
-    private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
     fun showSuccessToast(action: AuthAction, data: String? = null) {
         val (title, message) = when (action) {
             AuthAction.RESET_PASSWORD -> ToastStrings.Success.ResetPasswordSuccess.Header to

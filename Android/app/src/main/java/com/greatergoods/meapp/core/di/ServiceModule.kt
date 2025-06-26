@@ -7,6 +7,7 @@ import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppEventService
 import com.greatergoods.meapp.core.service.IntegrationService
+import com.greatergoods.meapp.core.service.OfflineHandlerService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.api.IExportAPI
@@ -25,6 +26,7 @@ import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IIntegrationService
+import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.notification.NotificationService
 import dagger.Module
@@ -116,9 +118,11 @@ object ServiceModule {
     fun provideDeviceInfoService(
         @ApplicationContext context: Context,
         deviceInfoRepository: IDeviceInfoRepository,
+        connectivityObserver: IConnectivityObserver,
+        offlineHandlerService: IOfflineHandlerService,
         appRepository: IAppRepository,
         accountRepository: IAccountRepository
-    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, appRepository, accountRepository)
+    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, connectivityObserver,offlineHandlerService,appRepository, accountRepository)
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
@@ -143,4 +147,18 @@ object ServiceModule {
         exportAPI: IExportAPI,
         accountAuthService: IAccountAuthService,
     ): IExportService = ExportService(exportAPI, accountAuthService)
+
+    /**
+     * Provides the offline handler service implementation.
+     * Handles offline data synchronization and biological sex updates.
+     */
+    @Provides
+    @Singleton
+    fun provideOfflineHandlerService(
+        accountRepository: IAccountRepository,
+        connectivityObserver: IConnectivityObserver,
+    ): IOfflineHandlerService = OfflineHandlerService(
+        accountRepository,
+        connectivityObserver,
+    )
 }

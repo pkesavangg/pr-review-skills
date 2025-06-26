@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.domain.services
 
+import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,7 +31,7 @@ interface IAccountAuthService {
     suspend fun checkForLoggedInUser(): Boolean
 
     suspend fun resetPassword(email: String)
-    suspend fun updateProfile(profileData: Map<String, Any>): Account?
+    suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account?
     suspend fun changePassword(currentPassword: String, newPassword: String): Boolean
 
     /**
@@ -46,6 +48,7 @@ interface IAccountAuthService {
      * @return true if all accounts are valid, false if any account is expired
      */
     suspend fun checkLoginStatusForLoggedInAccounts(): Boolean
+    suspend fun updateProfileInDB(accountId: String,partialAccount: PartialAccount): Account?
 }
 
 /**
