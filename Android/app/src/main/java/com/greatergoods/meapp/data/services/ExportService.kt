@@ -3,7 +3,7 @@ package com.greatergoods.meapp.data.services
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.domain.model.storage.Account.Account
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IExportService
 import java.util.TimeZone
 import javax.inject.Inject
@@ -16,7 +16,7 @@ import javax.inject.Singleton
 @Singleton
 class ExportService @Inject constructor(
     private val exportAPI: IExportAPI,
-    private val accountAuthService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : IExportService {
 
     companion object {
@@ -86,7 +86,7 @@ class ExportService @Inject constructor(
      * Gets the current account or throws an exception if no account is available.
      */
     private suspend fun getCurrentAccount(): Account {
-        return accountAuthService.getCurrentAccount()
+        return accountService.getCurrentAccount()
             ?: throw IllegalStateException("No current account available")
     }
 

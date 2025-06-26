@@ -3,7 +3,7 @@ package com.greatergoods.meapp.features.profile.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -22,7 +22,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val accountService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<ProfileState, ProfileIntent>(
     reducer = ProfileReducer(),
 ) {

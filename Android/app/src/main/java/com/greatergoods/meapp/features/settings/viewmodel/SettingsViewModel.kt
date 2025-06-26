@@ -7,7 +7,7 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.AccountSettingsAction
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
@@ -30,12 +30,12 @@ import javax.inject.Inject
  * (Add service dependencies as needed.)
  */
 // TODO: MyAccountsViewModel will be implemented in a new file under 'viewmodel' if needed.
-// MyAccountsScreen will use AccountAuthService.loggedInAccountsFlow for account data.
+// MyAccountsScreen will use AccountService.loggedInAccountsFlow for account data.
 @HiltViewModel
 class SettingsViewModel
 @Inject
 constructor(
-    private val accountService: IAccountAuthService,
+    private val accountService: IAccountService,
     private val exportService: IExportService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
