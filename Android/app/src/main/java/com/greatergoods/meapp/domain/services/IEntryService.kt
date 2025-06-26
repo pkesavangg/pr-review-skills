@@ -32,29 +32,25 @@ interface IEntryService {
 
     /**
      * Gets monthly averages of body scale data for an account using JOINs.
-     * @param accountId The account ID.
      * @return Flow of monthly averages as PeriodBodyScaleSummary.
      */
-    fun getMonthlyBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+    fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>>
 
     /**
      * Gets the latest body scale entry for each month for an account using JOINs.
-     * @param accountId The account ID.
      * @return Flow of latest entries per month as PeriodBodyScaleSummary.
      */
-    fun getMonthlyBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+    fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>>
 
     /**
      * Gets daywise averages of body scale data for an account using JOINs.
-     * @param accountId The account ID.
      * @return Flow of daywise averages as PeriodBodyScaleSummary.
      */
-    fun getDaywiseBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+    fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>>
 
     /**
      * Gets the latest body scale entry for each day for an account using JOINs.
-     * @param accountId The account ID.
      * @return Flow of latest entries per day as PeriodBodyScaleSummary.
      */
-    fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+    fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>>
 }

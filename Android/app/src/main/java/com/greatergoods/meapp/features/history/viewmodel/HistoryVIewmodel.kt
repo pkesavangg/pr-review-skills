@@ -28,7 +28,6 @@ constructor(
             is HistoryIntent.getHistory -> {
                 viewModelScope.launch {
                     entryService.monthDetails(intent.start).collect {
-                        Log.d("CHECKING", "Monthly history size: ${it.size}")
                     }
                 }
             }

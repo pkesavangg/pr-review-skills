@@ -37,7 +37,6 @@ fun NavHost(
         topLevelBackStack,
     )
     val backStack = topLevelBackStack.topLevelStacks.collectAsState()
-    Log.i("CHECKING", "Top Level Back Stack: ${backStack.value}")
     NavDisplay(
         modifier = Modifier.navigationBarsPadding(),
         entryDecorators =
@@ -88,7 +87,6 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
             ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {
-            Log.i("CHECKING", "Top Level Back: ${topLevelBackStack.topLevelStacks.value}")
             topLevelBackStack.removeLast(AppRoute.Home)
         },
         entryProvider =

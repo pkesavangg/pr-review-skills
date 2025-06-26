@@ -11,6 +11,7 @@ import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.util.Log
@@ -55,17 +56,19 @@ class AppViewModel @Inject constructor(
     private fun initLogic() {
         viewModelScope.launch {
             try {
-                accountAuthService.activeAccountFlow.collect { account ->
-                    val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
-                        !it.isActiveAccount
+                accountAuthService.activeAccountIdFlow
+                    .distinctUntilChanged()
+                    .collect { accountId ->
+                        val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
+                            !it.isActiveAccount
+                        }
+                        val isLoginStatusChecked = checkLoginStatus()
+                        if (isLoginStatusChecked && accountId != null) {
+                            initLoadingData(accountId)
+                        } else {
+                            routeToLandingOrApp(loggedInAccounts.isNotEmpty())
+                        }
                     }
-                    val isLoginStatusChecked = checkLoginStatus()
-                    if (isLoginStatusChecked && account != null) {
-                        initLoadingData(account.id)
-                    } else {
-                        routeToLandingOrApp(loggedInAccounts.isNotEmpty())
-                    }
-                }
             } catch (e: Exception) {
                 routeToLandingOrApp()
                 AppLog.e(TAG, "Load data failed", e.toString())

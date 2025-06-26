@@ -15,7 +15,8 @@ import javax.inject.Inject
  * @property entryService The entry service for fetching and updating entries.
  */
 @HiltViewModel
-class DashboardViewModel @Inject constructor(
+class
+DashboardViewModel @Inject constructor(
     private val entryService: IEntryService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
     reducer = DashboardReducer(),
@@ -34,12 +35,12 @@ class DashboardViewModel @Inject constructor(
      */
     private fun loadEntries() {
         viewModelScope.launch {
-            entryService.getDaywiseBodyScaleLatestWithJoin("1").collect { dayWise ->
+            entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
                 handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
             }
         }
         viewModelScope.launch {
-            entryService.getMonthlyBodyScaleAveragesWithJoin("1").collect { monthWise ->
+            entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
                 handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
             }
         }
