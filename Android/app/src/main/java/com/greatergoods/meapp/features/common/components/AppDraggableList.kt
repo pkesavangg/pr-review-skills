@@ -42,7 +42,7 @@ fun <T> AppDraggableList(
     items: List<T>,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    iconWidth: Dp = 40.dp,
+    iconWidth: Dp = 56.dp,
     keySelector: (T) -> Any,
     trailingActions: @Composable RowScope.(index: Int, item: T) -> Unit,
     positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
