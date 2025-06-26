@@ -3,8 +3,8 @@ package com.greatergoods.meapp.features.dashboard.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,11 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
 import com.greatergoods.meapp.features.historyDetail.modal.Metric
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -38,7 +40,7 @@ private fun MetricItem(
     index: Int,
     totalItems: Int,
 ) {
-    val backgroundColor = if (totalItems == 1) {
+    if (totalItems == 1) {
         MeTheme.colorScheme.primaryBackground
     } else if (index % 2 != 0) {
         MeTheme.colorScheme.primaryBackground
@@ -46,35 +48,32 @@ private fun MetricItem(
         MeTheme.colorScheme.secondaryBackground
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(backgroundColor)
-            .padding(all = MeTheme.spacing.md),
+    Card(
+        modifier = Modifier
+            .fillMaxSize(),
+        colors = CardDefaults.cardColors(
+            containerColor = MeTheme.colorScheme.inverseAction,
+        ),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(vertical = MeTheme.spacing.sm),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = metric.label,
-                style = MeTheme.typography.body2,
-                color = MeTheme.colorScheme.textBody,
+                text = metric.value ?: "---",
+                style = MeTheme.typography.heading4,
+                color = MeTheme.colorScheme.textHeading,
             )
-            AppIcon(
-                id = metric.icon,
-                contentDescription = metric.label,
+            Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
+            Text(
+                text = metric.label.plus(metric.unit),
+                style = MeTheme.typography.subHeading2,
+                color = MeTheme.colorScheme.textSubheading,
             )
         }
-
-        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-
-        Text(
-            text = metric.value.plus(metric.unit),
-            style = MeTheme.typography.heading3,
-            color = MeTheme.colorScheme.textHeading,
-        )
     }
 }
 
@@ -105,7 +104,7 @@ fun averageSummary(metrics: List<PeriodBodyScaleSummary>): PeriodBodyScaleSummar
 }
 
 // Extension for safe nullable average
-fun List<Double>.averageOrNull(): Double? = if (isNotEmpty()) average() else null
+fun List<Double>.averageOrNull(): Double? = if (isNotEmpty()) average().rounded() else null
 
 /**
  * Composable for the dashboard metrics section that displays health metrics in a grid layout.
@@ -115,40 +114,39 @@ fun DashboardMetrics(metric: List<PeriodBodyScaleSummary>) {
     // Get the latest summary from day-wise entries for metrics
     val latestSummary = averageSummary(metric)
     val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
-    val metrics = MetricHelper.getMetrics(dashboardMetric)
+    val metrics = MetricHelper.getMetrics(dashboardMetric, useShort = true, filterNulls = false)
 
     if (metrics.isEmpty()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MeTheme.colorScheme.primaryBackground)
-                .padding(MeTheme.spacing.md),
+                .background(MeTheme.colorScheme.primaryBackground),
         ) {
             Text(
                 text = DashboardString.Metrics.Title,
                 style = MeTheme.typography.heading4,
                 color = MeTheme.colorScheme.textHeading,
             )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+            Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
             Text(
                 text = "No metrics available",
-                style = MeTheme.typography.body2,
+                style = MeTheme.typography.subHeading2,
                 color = MeTheme.colorScheme.textSubheading,
             )
         }
-        return
     }
 
 
-
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         userScrollEnabled = false,
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = MeTheme.spacing.sm)
             .heightIn(max = 500.dp), // Constrain height
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
+        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     ) {
         items(
             items = metrics,
@@ -165,12 +163,12 @@ fun DashboardMetrics(metric: List<PeriodBodyScaleSummary>) {
                 HorizontalDivider(
                     thickness = 0.5.dp,
                     color = MeTheme.colorScheme.utility,
-                    modifier = Modifier.padding(horizontal = MeTheme.spacing.md),
+                    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
                 )
             }
         }
     }
-    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 }
 
 @PreviewTheme

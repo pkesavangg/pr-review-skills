@@ -17,12 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
 import com.greatergoods.meapp.features.common.components.chart.GraphView
-import com.greatergoods.meapp.features.common.enum.GraphSegment
+import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
@@ -111,7 +112,7 @@ fun HistoryGraph(state: DashboardState, onSelected: (List<PeriodBodyScaleSummary
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.45f),
+                    .height(300.dp),
             segment = selectedSegment,
             graphLines = listOf(graphLines),
             onScroll = {

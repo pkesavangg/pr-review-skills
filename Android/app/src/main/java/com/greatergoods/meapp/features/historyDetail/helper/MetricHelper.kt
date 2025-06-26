@@ -3,89 +3,92 @@ package com.greatergoods.meapp.features.historyDetail.helper
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
+import com.greatergoods.meapp.features.common.enums.MetricKey
+import com.greatergoods.meapp.features.common.strings.MetricLabels
 import com.greatergoods.meapp.features.historyDetail.modal.Metric
-import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
 
 object MetricHelper {
-    fun getMetrics(item: DashboardMetric): List<Metric> {
-        return listOfNotNull(
-            metric(HistoryDetailScreenStrings.BmiLabel, item.bmi, "", AppIcons.Metrics.Bmi),
+    fun getMetrics(
+        item: DashboardMetric,
+        useShort: Boolean = false,
+        filterNulls: Boolean = true,
+    ): List<Metric> {
+        val metrics = listOf(
+            metric(MetricLabels.getLabel(MetricKey.BMI, useShort), item.bmi, "", AppIcons.Metrics.Bmi),
             metric(
-                HistoryDetailScreenStrings.BodyFatLabel,
-                item.bodyFat,
-                HistoryDetailScreenStrings.PercentageUnit,
+                MetricLabels.getLabel(MetricKey.BODY_FAT, useShort),
+                item.bodyFat?.toDouble()?.rounded(),
+                "%",
                 AppIcons.Metrics.BodyFat,
             ),
             metric(
-                HistoryDetailScreenStrings.MuscleMassLabel,
-                item.muscleMass,
-                HistoryDetailScreenStrings.PercentageUnit,
+                MetricLabels.getLabel(MetricKey.MUSCLE_MASS, useShort),
+                item.muscleMass?.toDouble()?.rounded(),
+                "%",
                 AppIcons.Metrics.MuscleMass,
             ),
             metric(
-                HistoryDetailScreenStrings.BodyWaterLabel,
-                item.bodyWater,
-                HistoryDetailScreenStrings.PercentageUnit,
+                MetricLabels.getLabel(MetricKey.BODY_WATER, useShort),
+                item.bodyWater?.toDouble()?.rounded(),
+                "%",
                 AppIcons.Metrics.Water,
             ),
             metric(
-                HistoryDetailScreenStrings.HeartRateLabel,
+                MetricLabels.getLabel(MetricKey.HEART_RATE, useShort),
                 item.heartRate,
-                HistoryDetailScreenStrings.BpmUnit,
+                "bpm",
                 AppIcons.Metrics.Pulse,
             ),
             metric(
-                HistoryDetailScreenStrings.BoneMassLabel,
-                item.boneMass,
-                HistoryDetailScreenStrings.PercentageUnit,
+                MetricLabels.getLabel(MetricKey.BONE_MASS, useShort),
+                item.boneMass?.toDouble()?.rounded(),
+                "%",
                 AppIcons.Metrics.BoneMass,
             ),
             metric(
-                HistoryDetailScreenStrings.VisceralFatLabel,
+                MetricLabels.getLabel(MetricKey.VISCERAL_FAT, useShort),
                 item.visceralFatLevel,
-                HistoryDetailScreenStrings.LevelUnit,
+                "Level",
                 AppIcons.Metrics.VisceralFat,
             ),
             metric(
-                HistoryDetailScreenStrings.SubcutaneousFatLabel,
-                item.subcutaneousFatPercent,
-                HistoryDetailScreenStrings.PercentageUnit,
+                MetricLabels.getLabel(MetricKey.SUBCUTANEOUS_FAT, useShort),
+                item.subcutaneousFatPercent?.toDouble()?.rounded(),
+                "%",
                 AppIcons.Metrics.SubcutaneousFat,
             ),
             metric(
-                HistoryDetailScreenStrings.ProteinLabel,
-                item.proteinPercent,
-                HistoryDetailScreenStrings.PercentageUnit,
+                MetricLabels.getLabel(MetricKey.PROTEIN, useShort),
+                item.proteinPercent?.toDouble()?.rounded(),
+                "%",
                 AppIcons.Metrics.Protein,
             ),
             metric(
-                HistoryDetailScreenStrings.SkeletalMuscleLabel,
-                item.skeletalMusclePercent,
-                HistoryDetailScreenStrings.PercentageUnit,
+                MetricLabels.getLabel(MetricKey.SKELETAL_MUSCLE, useShort),
+                item.skeletalMusclePercent?.toDouble()?.rounded(),
+                "%",
                 AppIcons.Metrics.MuscleMass,
             ),
+            metric(MetricLabels.getLabel(MetricKey.BMR, useShort), item.bmr?.toInt(), "kcal", AppIcons.Metrics.Bmr),
             metric(
-                HistoryDetailScreenStrings.BmrLabel,
-                item.bmr?.toInt(),
-                HistoryDetailScreenStrings.KcalUnit,
-                AppIcons.Metrics.Bmr,
-            ),
-            metric(
-                HistoryDetailScreenStrings.MetabolicAgeLabel,
+                MetricLabels.getLabel(MetricKey.METABOLIC_AGE, useShort),
                 item.metabolicAge?.toInt(),
-                HistoryDetailScreenStrings.YearsUnit,
+                "yrs",
                 AppIcons.Metrics.MetabolicAge,
             ),
         )
+
+        return if (filterNulls) metrics.filter { it.value != null } else metrics
     }
 
-    fun metric(label: String, value: Number?, unit: String, icon: Int): Metric? {
-        if (value == null || value == 0 || value == 0.0) return null
+    fun metric(label: String, value: Number?, unit: String, icon: Int): Metric {
+        val calculatedValue = if (value == null || value == 0.0 || value == 0) null else value
         return Metric(
             label = label,
-            value = value.toString(),
+            value = calculatedValue?.toString(),
             unit = unit,
             icon = icon,
         )

@@ -53,6 +53,11 @@ class AppViewModel @Inject constructor(
         initLogic()
     }
 
+    override fun onCleared() {
+        Log.i("CHECKING", "on cleared")
+        super.onCleared()
+    }
+
     private fun initLogic() {
         viewModelScope.launch {
             try {

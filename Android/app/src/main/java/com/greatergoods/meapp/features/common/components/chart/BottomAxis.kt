@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.common.components.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.features.common.enum.GraphSegment
+import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
@@ -25,7 +25,7 @@ internal fun bottomAxis(
                 CartesianValueFormatter { _, value, _ ->
                     if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
                         value.toLong(),
-                        segment
+                        segment,
                     ) else " "
                 },
             itemPlacer = horizontalItemPlacer,

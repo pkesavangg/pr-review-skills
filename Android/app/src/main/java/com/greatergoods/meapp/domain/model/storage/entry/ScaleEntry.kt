@@ -64,15 +64,15 @@ data class ScaleEntry(
 
             val scaleEntryMetricEntity = BodyScaleEntryMetricEntity(
                 id = entryId ?: 0,
-                bmr = scaleEntry.bmr?.div(10.0) ?: 0.0,
-                metabolicAge = scaleEntry.metabolicAge ?: 0,
-                proteinPercent = scaleEntry.proteinPercent?.div(10.0) ?: 0.0,
-                pulse = scaleEntry.pulse ?: 0,
-                skeletalMusclePercent = scaleEntry.skeletalMusclePercent?.div(10.0) ?: 0.0,
-                subcutaneousFatPercent = scaleEntry.subcutaneousFatPercent?.div(10.0) ?: 0.0,
-                visceralFatLevel = scaleEntry.visceralFatLevel?.div(10.0) ?: 0.0,
+                bmr = scaleEntry.bmr?.div(10.0),
+                metabolicAge = scaleEntry.metabolicAge,
+                proteinPercent = scaleEntry.proteinPercent?.div(10.0),
+                pulse = scaleEntry.pulse,
+                skeletalMusclePercent = scaleEntry.skeletalMusclePercent?.div(10.0),
+                subcutaneousFatPercent = scaleEntry.subcutaneousFatPercent?.div(10.0),
+                visceralFatLevel = scaleEntry.visceralFatLevel?.div(10.0),
                 boneMass = scaleEntry.boneMass.div(10.0),
-                impedance = scaleEntry.impedance ?: 0,
+                impedance = scaleEntry.impedance,
             )
 
             val scaleEntity = ScaleEntryWithMetrics(
