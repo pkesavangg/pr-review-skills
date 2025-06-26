@@ -71,7 +71,9 @@ struct UserListItemView: View {
             Spacer()
             if user.isExpired {
                 ButtonView(text: CommonStrings.logIn, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                    onTap(user.accountID, user.isExpired)
+                    if openItemID?.wrappedValue != user.id {
+                        onTap(user.accountID, user.isExpired)
+                    }
                 }
             } else if user.canShowSelection {
                 AppIconView(icon: user.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline, size: IconSize(width: 24, height: 24))

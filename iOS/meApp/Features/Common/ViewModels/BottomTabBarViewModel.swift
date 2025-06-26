@@ -85,7 +85,7 @@ class BottomTabBarViewModel: ObservableObject {
     
     // MARK: - Expired Account Handling
     private func presentExpiredAccountAlert(for account: Account) {
-        let userName = "\(account.firstName ?? "") \(account.lastName ?? "")"
+        let userName = "\(account.firstName ?? "")"
         let alert = AlertModel(
             title: alertLang.title(userName),
             message: alertLang.message,
