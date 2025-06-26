@@ -162,6 +162,14 @@ object GraphUtil {
         return startDate.format(formatter)
     }
 
+    fun filterXValuesInRange(graphLines: List<GraphLine>, min: Long, max: Long): List<GraphLine> {
+        return graphLines.map { line ->
+            line.copy(
+                points = line.points.filter { it.x.value.toLong() in min..max },
+            )
+        }
+    }
+
     fun averageYValuesInRange(
         graphLines: List<GraphLine>,
         min: Long,

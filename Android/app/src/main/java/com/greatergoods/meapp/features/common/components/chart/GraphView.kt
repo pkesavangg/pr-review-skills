@@ -14,6 +14,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import com.greatergoods.meapp.features.common.enum.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageYValuesInRange
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
@@ -61,6 +62,7 @@ fun GraphView(
     graphLines: List<GraphLine>,
     segment: GraphSegment = GraphSegment.WEEK,
     placeHolder: String? = null,
+    onMetricUpdate: (List<GraphPoint>) -> Unit = {},
     onScroll: (String?) -> Unit = {},
     onLabelUpdate: (String) -> Unit = {},
 ) {
@@ -162,6 +164,12 @@ fun GraphView(
                         .filterNotNull()
                         .joinToString(" / ") { it.toDouble().rounded().toString() }
                     onLabelUpdate(joinedLabel)
+                    val graphLines = filterXValuesInRange(
+                        stableGraphLines,
+                        minTarget ?: 0L,
+                        maxTarget ?: 0L,
+                    )
+                    onMetricUpdate(graphLines.flatMap { it.points })
                 }
 
                 // Clear the job reference when done
@@ -169,6 +177,11 @@ fun GraphView(
             }
         } else {
             onScroll(null)
+            onMetricUpdate(
+                listOf(
+                    selectedData.first(),
+                ),
+            )
             onLabelUpdate(
                 selectedData.first().y.value.toDouble()
                     .rounded().toString(),
@@ -201,6 +214,12 @@ fun GraphView(
                         .filterNotNull()
                         .joinToString(" / ") { "%.1f".format(it) }
                     onLabelUpdate(joinedLabel)
+                    val graphLines = filterXValuesInRange(
+                        stableGraphLines,
+                        minTarget ?: 0L,
+                        maxTarget ?: 0L,
+                    )
+                    onMetricUpdate(graphLines.flatMap { it.points })
 
                     // Clear the job reference when done
                     computationJob = null

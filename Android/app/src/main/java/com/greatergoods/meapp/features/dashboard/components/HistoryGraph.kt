@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
 import com.greatergoods.meapp.features.common.components.chart.GraphView
@@ -29,7 +30,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun HistoryGraph(state: DashboardState) {
+fun HistoryGraph(state: DashboardState, onSelected: (List<PeriodBodyScaleSummary>) -> Unit) {
     if (state.isLoading) {
         Text(
             text = "Loading...",
@@ -55,7 +56,11 @@ fun HistoryGraph(state: DashboardState) {
         }
     }
 
-    var graphLines by remember(state.dayWiseEntries, state.monthWiseEntries) {
+    var entries by remember(state.dayWiseEntries, state.monthWiseEntries) {
+        mutableStateOf(state.dayWiseEntries)
+    }
+
+    var graphLines by remember(entries) {
         mutableStateOf(getWeightGraphPoints(selectedSegment))
     }
 
@@ -106,11 +111,19 @@ fun HistoryGraph(state: DashboardState) {
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.55f),
+                    .fillMaxHeight(0.45f),
             segment = selectedSegment,
             graphLines = listOf(graphLines),
             onScroll = {
                 subText = it
+            },
+            onMetricUpdate = { grahpoints ->
+                val timeStamps = grahpoints.map { it.x.value.toLong() }
+                val filteredEntries =
+                    entries.filter { DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps }
+                onSelected(
+                    filteredEntries,
+                )
             },
             onLabelUpdate = {
                 labelData = it
@@ -123,6 +136,10 @@ fun HistoryGraph(state: DashboardState) {
             key = GraphSegment::name,
             onSelected = { segment ->
                 selectedSegment = segment
+                entries = when (segment) {
+                    GraphSegment.YEAR, GraphSegment.TOTAL -> state.monthWiseEntries
+                    GraphSegment.MONTH, GraphSegment.WEEK -> state.dayWiseEntries
+                }
                 graphLines = getWeightGraphPoints(segment)
 
             },
@@ -140,6 +157,6 @@ private fun HistoryGraphPreview() {
         HistoryGraph(
             state =
                 DashboardState(),
-        )
+        ) {}
     }
 }

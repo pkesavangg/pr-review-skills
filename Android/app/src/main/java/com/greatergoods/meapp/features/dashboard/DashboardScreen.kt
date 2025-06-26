@@ -3,22 +3,28 @@ package com.greatergoods.meapp.features.dashboard
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.dashboard.components.DashboardMetrics
 import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardIntent
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import kotlinx.coroutines.launch
-import android.app.Activity
 
 @Composable
 fun DashboardScreen() {
@@ -45,9 +51,16 @@ fun DashboardScreen() {
 
 @Composable
 private fun DashboardScreenContent(state: DashboardState, handleIntent: (DashboardIntent) -> Unit) {
+    val scrollState = rememberScrollState()
     AppScaffold(title = null) {
-        Column {
-            HistoryGraph(state ,)
+        var selectedMetrics: List<PeriodBodyScaleSummary> by remember {
+            mutableStateOf(listOf())
+        }
+        Column(modifier = Modifier.verticalScroll(scrollState)) {
+            HistoryGraph(state) {
+                selectedMetrics = it
+            }
+            DashboardMetrics(selectedMetrics)
         }
     }
 }
