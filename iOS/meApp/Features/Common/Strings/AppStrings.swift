@@ -271,6 +271,14 @@ struct AlertStrings {
         static let removeButton = "Remove"
         static let cancelButton = "Cancel"
     }
+    
+    struct ExpiredUserLogOutAlert {
+        static let title: (String) -> String = { name in
+            return "\(name) was logged out"
+        }
+        static let message = "Please log back in to continue."
+        static let okButton = "OK"
+    }
 }
 
 struct LoaderStrings {
@@ -352,5 +360,6 @@ struct AppAssets {
     static let filledCloseCircle = "filledCloseCircle"
     static let filledTickCircle = "filledTickCircle"
     static let exclamationMark = "exclamationMark"
+    static let userProfile = "userProfile"
 }
 

@@ -18,7 +18,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         Task {
             do {
                 try await updatePublishedState()
-                let _ = try await refreshAccount()
                 let _ = try await refreshAllAccounts()
                 try await syncUnsyncedAccounts() // Try to sync any offline changes
             } catch {
@@ -33,6 +32,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     }
                 })
                 .store(in: &cancellables)
+            try await updatePublishedState()
         }
     }
     
@@ -382,11 +382,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func refreshAllAccounts() async throws {
         let accounts = try await localRepo.fetchAllAccounts()
         for account in accounts {
-            // Skip active account to avoid unnecessary refresh
-            if account.isActiveAccount ?? false {
-                continue
-            }
-            
             do {
                 _ = try await refreshAccount(accountId: account.accountId)
             } catch {
@@ -548,7 +543,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     isHealthKitOn: integrationSettings.isMfpOn,
                     isHealthConnectOn: integrationSettings.isHealthConnectOn
                 )
-               let _ = try await updateIntegrations(integrations: integrations)
+                let _ = try await updateIntegrations(integrations: integrations)
             }
             
             // Mark account as synced

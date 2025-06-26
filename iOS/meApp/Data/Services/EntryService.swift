@@ -303,7 +303,6 @@ final class EntryService: EntryServiceProtocol {
     /// Exports entries as CSV based on current dashboard type (4 or 12 metrics)
     func exportCSV() async throws {
         // Determine account and dashboard setting
-        let accountId = try await getAccountId()
         guard let account = try await accountService.getActiveAccount() else {
             throw AccountError.noActiveAccount
         }

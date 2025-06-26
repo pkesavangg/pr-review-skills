@@ -25,18 +25,18 @@ struct UserListItemView: View {
             }
             .swipeableActions(
                 buttons:
-                    !user.canShowSelection || user.isSelected || user.isExpired || onDelete == nil ? [] : [
-                                    SwipeButton(
-                                        tint: theme.textError,
-                                        action: { onDelete?(user.accountID) },
-                                        label: {
-                                            AnyView(
-                                                AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
-                                                    .foregroundColor(theme.backgroundPrimary)
-                                            )
-                                        }
-                                    )
-                                ],
+                    !user.canShowSelection || onDelete == nil ? [] : [
+                        SwipeButton(
+                            tint: theme.textError,
+                            action: { onDelete?(user.accountID) },
+                            label: {
+                                AnyView(
+                                    AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
+                                        .foregroundColor(theme.backgroundPrimary)
+                                )
+                            }
+                        )
+                    ],
                 itemID: user.id,
                 openItemID: openItemID
             )
