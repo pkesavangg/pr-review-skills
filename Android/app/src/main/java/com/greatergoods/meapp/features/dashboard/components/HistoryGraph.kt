@@ -1,9 +1,9 @@
 package com.greatergoods.meapp.features.dashboard.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,11 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -74,45 +73,47 @@ fun HistoryGraph(state: DashboardState, onSelected: (List<PeriodBodyScaleSummary
                 .background(MeTheme.colorScheme.primaryBackground),
     ) {
 
-        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-        Column(modifier = Modifier.fillMaxHeight(0.15f)) {
+        Column(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.x3s)) {
+            Box(
+                modifier = Modifier
+                    .height(22.dp),
+                contentAlignment = Alignment.TopStart,
+            ) {
+
+                if (subText != null) {
+                    Text(
+                        text = selectedSegment.name.lowercase().plus(" average"),
+                        style = MeTheme.typography.subHeading1,
+                        color = MeTheme.colorScheme.textSubheading,
+                    )
+                }
+            }
             Text(
-                text =
-                    buildAnnotatedString {
-                        append(labelData.ifBlank { "No data" })
-                        if (labelData.isNotBlank()) {
-                            withStyle(
-                                style =
-                                    SpanStyle(
-                                        fontSize = MeTheme.typography.subHeading2.fontSize,
-                                        color = MeTheme.colorScheme.textSubheading,
-                                    ),
-                            ) {
-                                append(" lbs")
-                            }
-                        }
-                    },
-                modifier = Modifier.padding(
-                    horizontal = MeTheme.spacing.sm,
-                ),
-                style = MeTheme.typography.heading1,
+                text = labelData.ifBlank { "No data" },
+                style = MeTheme.typography.heading2,
+                lineHeight = 0.sp,
                 color = MeTheme.colorScheme.textBody,
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-            subText?.let {
-                Text(
-                    text = it,
-                    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
-                    style = MeTheme.typography.body2,
-                    color = MeTheme.colorScheme.textSubheading,
+
                 )
+            Box(
+                modifier = Modifier
+                    .height(18.dp),
+                contentAlignment = Alignment.TopStart,
+            ) {
+                if (subText != null) {
+                    Text(
+                        text = subText!!,
+                        style = MeTheme.typography.subHeading2,
+                        color = MeTheme.colorScheme.textSubheading,
+                    )
+                }
             }
         }
+
         GraphView(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .height(300.dp),
+                    .fillMaxWidth(),
             segment = selectedSegment,
             graphLines = listOf(graphLines),
             onScroll = {

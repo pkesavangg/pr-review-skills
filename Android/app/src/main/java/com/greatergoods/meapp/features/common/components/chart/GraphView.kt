@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.components.chart
 
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,6 +12,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageYValuesInRange
@@ -18,6 +20,7 @@ import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.filterXValu
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
+import com.greatergoods.meapp.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
@@ -66,6 +69,7 @@ fun GraphView(
     onScroll: (String?) -> Unit = {},
     onLabelUpdate: (String) -> Unit = {},
 ) {
+    MeTheme.spacing.lg
     var selectedData: List<GraphPoint> by remember {
         mutableStateOf(listOf())
     }
@@ -100,6 +104,7 @@ fun GraphView(
     var selectedTarget by remember { mutableStateOf<Long?>(null) }
 
     var markerIndex: Int? by remember(xLabels) { mutableStateOf(null) }
+
     var isUpdating by remember { mutableStateOf(false) }
 
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -254,17 +259,21 @@ fun GraphView(
         )
 
     ChartHostSection(
-        modifier = modifier.pointerInput(Unit) {
-            awaitPointerEventScope {
-                while (true) {
-                    val event = awaitPointerEvent()
-                    val position = event.changes.firstOrNull()?.position
-                    if (position != null) {
-                        point = (Point(position.x, position.y))
+        modifier = modifier
+            .height(
+                300.dp,
+            )
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val position = event.changes.firstOrNull()?.position
+                        if (position != null) {
+                            point = (Point(position.x, position.y))
+                        }
                     }
                 }
-            }
-        },
+            },
         segment = segment,
         max = max,
         primaryLayer = primaryLayer,

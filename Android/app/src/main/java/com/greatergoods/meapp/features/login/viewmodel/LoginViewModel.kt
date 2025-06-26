@@ -70,17 +70,17 @@ constructor(
         val password = state.value.form.controls.password.value
         viewModelScope.launch {
             try {
-                accountAuthService.login(email, password)
+                val account = accountAuthService.login(email, password)
+                if (account != null) {
+                    handleIntent(LoginIntent.Success)
+                } else {
+                    handleIntent(LoginIntent.Error("Login failed"))
+                }
             } catch (e: Exception) {
                 handleIntent(LoginIntent.Error(e.toString()))
                 AppLog.e("onSubmit", "Login failed", e.toString())
             } finally {
                 dialogQueueService.dismissLoader()
-                if (state.value.error.isNullOrEmpty()) {
-                    handleIntent(LoginIntent.Success)
-                } else {
-                    handleIntent(LoginIntent.Error("Login failed"))
-                }
             }
         }
     }

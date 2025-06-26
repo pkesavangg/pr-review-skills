@@ -15,6 +15,7 @@ import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
+import com.patrykandpatrick.vico.core.common.Insets
 import com.patrykandpatrick.vico.core.common.component.ShapeComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 
@@ -29,7 +30,9 @@ internal fun rememberDefaultMarker(
         rememberTextComponent(
             color = MeTheme.colorScheme.textSubheading,
             textSize = 14.sp,
-        )
+            padding = Insets(topDp = -10f),
+
+            )
     val guideline = rememberAxisGuidelineComponent(
         fill = fill(MeTheme.colorScheme.textBody),
         thickness = 1.dp,
