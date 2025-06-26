@@ -48,4 +48,11 @@ object SettingsScreenStrings {
         const val Confirm = "Log out"
         const val Cancel = "Cancel"
     }
+
+    // URL Constants (extracted from TypeScript account-settings.page.ts)
+    object Urls {
+        const val PrivacyPolicy = "https://greatergoods.com/legal/privacy-policy"
+        const val TermsOfService = "https://greatergoods.com/legal/weight-gurus-tos"
+        const val GreaterGoodsWebsite = "https://greatergoods.com"
+    }
 }
