@@ -36,7 +36,7 @@ class ScaleStore: ObservableObject {
     @Published var browserURL: URL? = nil
     
     // Settings/detail values for UI (replace with computed or fetched values later)
-    @Published var modeValue: String = "Weight Only" // TODO: Replace with actual mode value
+    @Published var modeValue: ScaleModes = .weightOnly 
     @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
     @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
     @Published var scaleNameValue: String = "AccuCheck Verve..." // TODO: Replace with actual scale name
@@ -221,6 +221,13 @@ class ScaleStore: ObservableObject {
     }
     func scaleTypeTapped() {
         // TODO: Implement scaleTypeTapped action
+    }
+    func handleSave() {
+        // TODO: Implement save button action
+    }
+    
+    func handleHelp() {
+        // TODO: Implement help button action
     }
     
     // MARK: - Product Guide URL helper & Browser Presentation

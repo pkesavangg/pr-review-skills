@@ -93,7 +93,7 @@ struct ScaleSettingsScreen: View {
                 SettingsListItem(
                     config: SettingsItemConfig(
                         title: lang.mode,
-                        value: scaleStore.modeValue,
+                        value: scaleStore.modeValue.rawValue,
                         onTap: {
                             router.navigate(to: .scaleModes)
                         }
