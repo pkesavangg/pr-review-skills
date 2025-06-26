@@ -277,6 +277,7 @@ constructor(
             tokenManager.setTokens(
                 Token(
                     accountId = savedAccount.id,
+                    isActive = true,
                     accessToken = response.accessToken,
                     refreshToken = response.refreshToken,
                     expiresAt = response.expiresAt,
