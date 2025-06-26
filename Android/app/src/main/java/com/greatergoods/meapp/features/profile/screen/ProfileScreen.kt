@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.profile.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -73,7 +74,9 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
     val emailFocusRequester = remember { FocusRequester() }
     val zipcodeFocusRequester = remember { FocusRequester() }
     val birthdayFocusRequester = remember { FocusRequester() }
-
+    BackHandler {
+        onBack()
+    }
     AppScaffold(
         title = ProfileStrings.ScreenTitle,
         navigationIcon = {

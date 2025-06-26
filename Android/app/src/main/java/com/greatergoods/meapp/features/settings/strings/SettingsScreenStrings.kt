@@ -12,6 +12,7 @@ object SettingsScreenStrings {
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
     const val UserProfile = "User Profile"
+    const val NotSet = "Not Set"
 
     // Profile Settings
     const val ProfileSettings = "Profile Settings"

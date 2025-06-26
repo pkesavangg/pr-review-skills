@@ -104,8 +104,11 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.BiologicalSex,
-                            type = SettingsItemType.Dropdown("Female"),
+                            type = SettingsItemType.Dropdown(
+                                state.account?.gender?.replaceFirstChar { it.uppercase() } ?: SettingsScreenStrings.NotSet
+                            ),
                             onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowBiologicalSexModal)
                             },
                         ),
                         SettingsItem(

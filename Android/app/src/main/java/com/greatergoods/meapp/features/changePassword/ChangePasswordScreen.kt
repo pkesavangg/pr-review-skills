@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.changePassword
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +23,6 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.changePassword.model.ChangePasswordFormControls
 import com.greatergoods.meapp.features.changePassword.model.ChangePasswordIntent
 import com.greatergoods.meapp.features.changePassword.model.ChangePasswordState
@@ -51,18 +51,14 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 fun ChangePasswordScreen() {
     val viewmodel: ChangePasswordViewModel = hiltViewModel()
     val state by viewmodel.state.collectAsState()
-    val backStack = LocalNavBackStack.current
 
-    ChangePasswordContent(state, viewmodel::handleIntent) {
-     backStack.removeLast()
-    }
+    ChangePasswordContent(state, viewmodel::handleIntent)
 }
 
 @Composable
 private fun ChangePasswordContent(
     state: ChangePasswordState,
     handleIntent: (ChangePasswordIntent) -> Unit,
-    onBack: () -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -70,7 +66,9 @@ private fun ChangePasswordContent(
     val currentPasswordFocusRequester = remember { FocusRequester() }
     val newPasswordFocusRequester = remember { FocusRequester() }
     val confirmPasswordFocusRequester = remember { FocusRequester() }
-
+    BackHandler{
+        handleIntent.invoke(ChangePasswordIntent.OnRequestBack)
+    }
     AppScaffold(
         title = ChangePasswordStrings.Title,
         navigationIcon = {
@@ -179,6 +177,6 @@ fun ChangePasswordScreenPreview() {
         ChangePasswordContent(
             state = dummyChangePasswordState,
             handleIntent = {},
-        ) {}
+        )
     }
 }

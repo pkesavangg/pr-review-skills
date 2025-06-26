@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.signup
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,6 +55,7 @@ fun SignupScreenContent(
     handleIntent: (SignupIntent) -> Unit,
     onBack: () -> Unit,
 ) {
+
     val windowSize = LocalWindowInfo.current.containerSize
     val isTablet =
         with(LocalDensity.current) {
@@ -83,6 +85,10 @@ fun SignupScreenContent(
         } else {
             onBack()
         }
+    }
+
+    BackHandler {
+        handleBack()
     }
 
     AppScaffold(

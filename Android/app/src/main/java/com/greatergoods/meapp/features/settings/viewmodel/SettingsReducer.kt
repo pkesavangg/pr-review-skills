@@ -15,7 +15,6 @@ data class SettingsState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val account: Account? = null,
-    // Add more settings fields as needed
 ) : IReducer.State
 
 /**
@@ -44,7 +43,8 @@ sealed interface SettingsIntent : IReducer.Intent {
     object OpenTermsOfService : SettingsIntent
     object OpenGreaterGoodsWebsite : SettingsIntent
 
-    // Add more intents as needed for updating settings
+    // Biological Sex Selection Intent
+    object ShowBiologicalSexModal : SettingsIntent
 }
 
 /**
