@@ -32,13 +32,8 @@ struct AllBodyMetricsView: View {
                         .fontWeight(.bold)
                     
                     Spacer()
-                    CustomToggleView(
-                        isOn: $isHeartRateOn,
-                        text: nil,
-                        onColor: theme.actionPrimary,
-                        offColor: theme.actionTertiaryDisabled,
-                        thumbColor: .white
-                    )
+                    
+                    CustomToggleView(isOn: $isHeartRateOn)
                     
                 }
                 
