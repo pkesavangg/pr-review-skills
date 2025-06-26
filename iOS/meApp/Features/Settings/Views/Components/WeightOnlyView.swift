@@ -34,7 +34,10 @@ struct WeightOnlyView: View {
                 
             }
             
-            NoteBox(title: lang.noteTitle, content: lang.WeightOnlyNoteDescription)
+            NoteBox {
+                AttributedTextView(title: lang.noteTitle.uppercased(), content: lang.WeightOnlyNoteDescription)
+            }
+            
         }
         .background(theme.backgroundSecondary)
     }
@@ -43,3 +46,4 @@ struct WeightOnlyView: View {
 #Preview {
     WeightOnlyView()
 }
+

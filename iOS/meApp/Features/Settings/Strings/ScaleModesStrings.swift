@@ -21,9 +21,17 @@ struct ScaleModesStrings {
     static let WeightOnlyNoteDescription = "Other scale users can temporarily enable All Body Metrics for one session via their app."
     static let heartRateInfoDescription = "This metric takes additional time to collect. When off, the scale will only collect weight and body composition."
     static let medicalNoteDescription = "If you have certain medical conditions —like implanted medical devices or you are pregnant — you should not use All Body Metrics Mode without first consulting your doctor."
-    static let heartRateLabel = "Heart Rate: "
-    static let off = "Off"
-    static let on = "On"
     static let changeScaleModeTitle = "Change the Scale Mode"
     static let r4scaleSetupTitle = "Scale Setup - 0412"
+    
+    // Display Metrics
+    static let displayMetricsTitle = "Display Metrics"
+    static let displayMetricsDescription = "Rearrange tiles and/or hide unwanted metrics from your scale screen."
+    static let goalProgress = "Goal Progress"
+    static let dailyAverage = "Daily Average"
+    static let weeklyAverage = "Weekly Average"
+    static let monthlyAverage = "Monthly Average"
+    static let weightOnlyLabel = "Weight Only: "
+    static let weightOnlyBannerTitle = "A user has Weight Only Mode on"
+    static let weightOnlyBannerDescription = "Only weight and BMI will be collected. You can temporarily enable All Body Metrics and/or review users from scale settings."
 }

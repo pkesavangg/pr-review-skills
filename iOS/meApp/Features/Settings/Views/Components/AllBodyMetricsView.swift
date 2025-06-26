@@ -10,26 +10,24 @@ import SwiftUI
 struct AllBodyMetricsView: View {
     @Environment(\.appTheme) private var theme
     @State private var isHeartRateOn: Bool = true
-    
     let lang = ScaleModesStrings.self
+    let commonLang = CommonStrings.self
     
     var body: some View {
+
+        let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
+        
         VStack() {
             VStack(spacing:0){
                 HStack(alignment: .center, spacing: .spacingXS) {
                     
-                    Image(AppAssets.heartIcon)
-                        .resizable()
-                        .frame(width: 20, height: 20)
-                        .foregroundColor(theme.actionPrimary)
-                    
-                    Text(lang.heartRateLabel)
-                        .fontOpenSans(.heading5)
-                        .fontWeight(.bold)
-                    
-                    Text(isHeartRateOn ? lang.on.uppercased() : lang.off.uppercased())
-                        .fontOpenSans(.heading5)
-                        .fontWeight(.bold)
+                    StatusRowView(
+                        iconName: AppAssets.heartIcon,
+                        label: commonLang.heartRateLabel,
+                        statusText: isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
+                        foregroundColor: iconAndLabelColor
+                    )
+                    .fontWeight(.bold)
                     
                     Spacer()
                     
@@ -44,7 +42,9 @@ struct AllBodyMetricsView: View {
             }
             .padding(.bottom, .spacingMD)
             
-            NoteBox(title: lang.noteTitle.uppercased(), content: lang.medicalNoteDescription)
+            NoteBox {
+                AttributedTextView(title: lang.noteTitle.uppercased(), content: lang.medicalNoteDescription)
+            }
             
         }
         .background(theme.backgroundSecondary)
