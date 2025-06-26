@@ -55,8 +55,9 @@ final class Theme: ObservableObject {
            let mode = AppearanceMode(rawValue: savedMode) {
             appearanceMode = mode
         } else {
-            // Default to system mode if no saved preference
-            appearanceMode = .system
+            // TODO: Set this to system mode once the tab bar icons are updated
+            // Default to light mode if no saved preference
+            appearanceMode = .light
         }
         updateWindowInterfaceStyle()
     }
