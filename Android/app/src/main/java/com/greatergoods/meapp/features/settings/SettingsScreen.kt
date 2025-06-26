@@ -70,7 +70,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.ExportData,
                             type = SettingsItemType.None,
-                            onClick = { },
+                            onClick = {
+                               handleIntent.invoke(SettingsIntent.ExportData)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ChangePassword,
@@ -154,22 +156,28 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.HelpCustomerService,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {},
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.PrivacyPolicy,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenPrivacyPolicy)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.TermsOfService,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenTermsOfService)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.GreaterGoodsDotCom,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenGreaterGoodsWebsite)
+                            },
                         ),
                     ),
             )

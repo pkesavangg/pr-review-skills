@@ -250,7 +250,7 @@ fun <T> InputFieldBase(
             !isPassword &&
             enabled &&
             !readOnly &&
-            showTrailingIcon 
+            showTrailingIcon
 
     val inputTextColor =
         when {
