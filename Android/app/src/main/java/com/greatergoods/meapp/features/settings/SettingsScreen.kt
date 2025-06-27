@@ -124,8 +124,12 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ActivityLevel,
-                            type = SettingsItemType.Dropdown("Athlete"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(
+                                state.account?.activityLevel?.replaceFirstChar { it.uppercase() } ?: SettingsScreenStrings.NotSet
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Height,
@@ -134,8 +138,16 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UnitType,
-                            type = SettingsItemType.Dropdown("lbs & feet"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(
+                                when (state.account?.weightUnit?.value) {
+                                    "kg" -> "kg & cm"
+                                    "lb" -> "lbs & feet"
+                                    else -> SettingsScreenStrings.NotSet
+                                }
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Weightless,

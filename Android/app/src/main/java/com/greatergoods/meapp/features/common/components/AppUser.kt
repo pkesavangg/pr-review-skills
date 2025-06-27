@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.strings.AppUserStrings
 import com.greatergoods.meapp.resources.AppIcons
@@ -134,7 +135,7 @@ fun AppUserPreview() {
                     zipcode = "12345",
                     isSynced = true,
                     isExpired = false,
-                    weightUnit = "lbs",
+                    weightUnit = WeightUnit.LB,
                     isWeightlessOn = true,
                     height = 170,
                     activityLevel = "Active",

@@ -9,12 +9,20 @@ object RadioGroupModalStrings {
     // Common radio group titles
     object Titles {
         const val BiologicalSex = "Biological Sex"
+        const val ActivityLevel = "Activity Level"
+        const val UnitType = "Unit Type"
     }
 
     // Biological Sex Options
     object BiologicalSex {
         const val Male = "Male"
         const val Female = "Female"
+    }
+
+    // Activity Level Options
+    object ActivityLevel {
+        const val Normal = "Normal"
+        const val Athlete = "Athlete"
     }
 
     // Unit Type Options

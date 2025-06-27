@@ -4,6 +4,8 @@ import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppNavigationService
+import com.greatergoods.meapp.core.service.AppEventService
+import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
@@ -18,11 +20,13 @@ import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
@@ -176,10 +180,25 @@ object ServiceModule {
     @Singleton
     fun provideOfflineHandlerService(
         accountRepository: IAccountRepository,
+        bodyCompositionRepository: IBodyCompositionRepository,
         connectivityObserver: IConnectivityObserver,
-    ): IOfflineHandlerService =
-        OfflineHandlerService(
-            accountRepository,
-            connectivityObserver,
-        )
+    ): IOfflineHandlerService = OfflineHandlerService(
+        accountRepository,
+        bodyCompositionRepository,
+        connectivityObserver,
+    )
+
+    /**
+     * Provides the body composition service implementation.
+     * Handles activity level, weight unit, and height updates with offline support.
+     */
+    @Provides
+    @Singleton
+    fun provideBodyCompositionService(
+        bodyCompositionRepository: IBodyCompositionRepository,
+        connectivityObserver: IConnectivityObserver,
+    ): IBodyCompositionService = BodyCompositionService(
+        bodyCompositionRepository,
+        connectivityObserver,
+    )
 }

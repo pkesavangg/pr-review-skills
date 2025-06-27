@@ -6,8 +6,13 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.AccountSettingsAction
 import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
+import com.greatergoods.meapp.domain.model.common.ActivityLevel
+import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.domain.services.BodyCompUpdateType
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
@@ -37,6 +42,7 @@ class SettingsViewModel
 constructor(
     private val accountService: IAccountService,
     private val exportService: IExportService,
+    private val bodyCompositionService: IBodyCompositionService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
@@ -76,6 +82,14 @@ constructor(
 
             is SettingsIntent.ShowBiologicalSexModal -> {
                 onBiologicalSexClick()
+            }
+
+            is SettingsIntent.ShowActivityLevelModal -> {
+                onActivityLevelClick()
+            }
+
+            is SettingsIntent.ShowUnitTypeModal -> {
+                onUnitTypeClick()
             }
 
             else -> {}
@@ -267,17 +281,125 @@ constructor(
 
     fun onActivityLevelClick() {
         AppLog.d("SettingsViewModel", "Activity level clicked")
-        // TODO: Show activity level dialog
+        showActivityLevelModal()
     }
 
-    fun onHeightClick() {
-        AppLog.d("SettingsViewModel", "Height clicked")
-        // TODO: Show height dialog
+    /**
+     * Shows the activity level selection modal.
+     */
+    private fun showActivityLevelModal() {
+        AppLog.d("SettingsViewModel", "showActivityLevelModal called")
+
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.ActivityLevel,
+            options = listOf(
+                RadioButtonOption(ActivityLevel.NORMAL.name.lowercase(), RadioGroupModalStrings.ActivityLevel.Normal),
+                RadioButtonOption(ActivityLevel.ATHLETE.name.lowercase(), RadioGroupModalStrings.ActivityLevel.Athlete),
+            ),
+            selectedItem = state.value.account?.activityLevel,
+            onConfirm = { selectedActivityLevel ->
+                selectedActivityLevel?.let { activityLevel ->
+                    onActivityLevelUpdate(activityLevel)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Activity level selection cancelled")
+            },
+        )
     }
 
-    fun onUnitTypeClick() {
-        AppLog.d("SettingsViewModel", "Unit type clicked")
-        // TODO: Show unit type dialog
+    /**
+     * Updates the activity level via the body composition service.
+     * Follows the same pattern as Angular onActivitySelectionChange method.
+     */
+    private fun onActivityLevelUpdate(activityLevel: String) {
+        // Show loading dialog
+        val currentAccount = state.value.account
+
+        dialogQueueService.showLoader("Updating activity level...")
+        viewModelScope.launch {
+            try {
+                val bodyComposition = BodyCompUpdateRequest(
+                    height = currentAccount?.height ?: 1700,
+                    activityLevel = activityLevel,
+                    weightUnit = currentAccount?.weightUnit?.value ?: "lb"
+                )
+                bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
+                AppLog.i("SettingsViewModel", "Successfully updated activity level")
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Error updating activity level", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+    /**
+     * Shows the unit type selection modal.
+     */
+    private fun onUnitTypeClick() {
+        AppLog.d("SettingsViewModel", "showUnitTypeModal called")
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.UnitType,
+            options = listOf(
+                RadioButtonOption(WeightUnit.LB.value, RadioGroupModalStrings.UnitType.Imperial),
+                RadioButtonOption(WeightUnit.KG.value, RadioGroupModalStrings.UnitType.Metric),
+            ),
+            selectedItem = state.value.account?.weightUnit?.value,
+            onConfirm = { selectedUnitType ->
+                AppLog.d("SettingsViewModel", "Unit type modal onConfirm called with: $selectedUnitType")
+                selectedUnitType?.let { unitType ->
+                    onUnitTypeUpdate(unitType)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Unit type selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Updates the unit type via the body composition service.
+     * Follows the same pattern as Angular onUnitSelectionChange method.
+     */
+    private fun onUnitTypeUpdate(unitTypeValue: String) {
+        AppLog.d("SettingsViewModel", "onUnitTypeUpdate called with unitType: $unitTypeValue")
+
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e("SettingsViewModel", "No active account found for unit type update")
+            return
+        }
+        val newWeightUnit = when (unitTypeValue) {
+            WeightUnit.KG.value -> WeightUnit.KG
+            WeightUnit.LB.value -> WeightUnit.LB
+            else -> {
+                return
+            }
+        }
+        if (currentAccount.weightUnit == newWeightUnit) {
+            return
+        }
+        dialogQueueService.showLoader("Updating unit type...")
+        viewModelScope.launch {
+            try {
+                val bodyComposition = BodyCompUpdateRequest(
+                    height = currentAccount.height ?: 1700,
+                    activityLevel = currentAccount.activityLevel ?: "normal",
+                    weightUnit = newWeightUnit.value
+                )
+                bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
+                AppLog.i("SettingsViewModel", "Successfully updated unit type")
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Error updating unit type", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
     }
 
     fun onWeightlessClick() {

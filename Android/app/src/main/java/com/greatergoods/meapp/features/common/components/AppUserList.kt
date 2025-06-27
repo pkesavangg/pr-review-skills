@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -265,7 +266,7 @@ fun AppUserListMaxVisibleItemsPreview() {
                     zipcode = "12345",
                     isSynced = true,
                     isExpired = false,
-                    weightUnit = "lbs",
+                    weightUnit = WeightUnit.LB,
                     isWeightlessOn = true,
                     height = 175,
                     activityLevel = "Moderately Active",
@@ -288,7 +289,7 @@ fun AppUserListMaxVisibleItemsPreview() {
                     zipcode = "67890",
                     isSynced = true,
                     isExpired = false,
-                    weightUnit = "kg",
+                    weightUnit = WeightUnit.KG,
                     isWeightlessOn = false,
                     height = 165,
                     activityLevel = "Active",
@@ -311,8 +312,8 @@ fun AppUserListMaxVisibleItemsPreview() {
                     zipcode = "54321",
                     isSynced = true,
                     isExpired = false,
-                    weightUnit = "lbs",
-                    isWeightlessOn = true,
+                    weightUnit = WeightUnit.LB,
+                    isWeightlessOn = false,
                     height = 180,
                     activityLevel = "Very Active",
                     weightlessTimestamp = "2024-01-12T09:15:00.000Z",

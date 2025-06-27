@@ -126,8 +126,18 @@ interface AccountDao {
     suspend fun updateIntegrationsSettings(settings: IntegrationsSettingsEntity)
 
     // Sync Operations
+    @Transaction
     @Query("SELECT * FROM account WHERE isSynced = 0")
     fun getUnsyncedAccounts(): Flow<List<AccountEntity>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM weight_comp_settings WHERE isSynced = 0
+        ) OR isSynced = 0
+    """)
+    fun getUnsyncedBodyCompAccounts(): Flow<List<Account>>
 
     @Query("UPDATE account SET isSynced = 1")
     suspend fun markAllAccountsSynced()

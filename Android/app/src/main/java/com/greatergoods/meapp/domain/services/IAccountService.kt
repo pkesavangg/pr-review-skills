@@ -58,11 +58,7 @@ interface IAccountService {
     suspend fun checkLoginStatusForActiveAccount(): Boolean
 
     suspend fun checkLoginStatusForLoggedInAccounts(): Boolean
-
-    suspend fun updateProfileInDB(
-        accountId: String,
-        partialAccount: PartialAccount,
-    ): Account?
+    suspend fun updateProfileInDB(accountId: String,partialAccount: PartialAccount): Account
 }
 
 /**

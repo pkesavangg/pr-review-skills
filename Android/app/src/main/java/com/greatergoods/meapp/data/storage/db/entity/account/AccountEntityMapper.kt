@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.data.storage.db.entity.account
 
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account as DomainAccount
 
 /**
@@ -81,7 +82,13 @@ object AccountEntityMapper {
             lastActiveTime = entity.lastActiveTime,
             zipcode = entity.zipcode,
             // Map from related entities
-            weightUnit = accountWithRelations.dashboardSettings?.dashboardType,
+            weightUnit = accountWithRelations.weightCompSettings?.weightUnit?.let { weightUnitString ->
+                when (weightUnitString.lowercase()) {
+                    "kg" -> WeightUnit.KG
+                    "lb", "lbs" -> WeightUnit.LB
+                    else -> WeightUnit.LB // Default fallback
+                }
+            },
             isWeightlessOn = accountWithRelations.weightlessSettings?.isWeightlessOn ?: false,
             height = accountWithRelations.weightCompSettings?.height,
             activityLevel = accountWithRelations.weightCompSettings?.activityLevel,
