@@ -68,7 +68,7 @@ struct ScaleBluetoothScreen: View {
     }
 
     private var permissionItems: some View {
-        VStack() {
+        VStack(spacing: 0) {
             permissionRow(title: lang.bluetoothAuthorized)
             divider()
             permissionRow(title: lang.bluetoothOn)
@@ -82,7 +82,8 @@ struct ScaleBluetoothScreen: View {
     private func permissionRow(title: String) -> some View {
         ListItemView<EmptyView>(
             leadingImage: AppAssets.filledTickCircle,
-            title: title
+            title: title,
+            verticalPadding: .zero
         )
     }
 
