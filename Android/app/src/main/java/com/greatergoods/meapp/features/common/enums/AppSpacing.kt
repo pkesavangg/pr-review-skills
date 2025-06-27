@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.common.enum
+package com.greatergoods.meapp.features.common.enums
 
 import androidx.compose.ui.unit.dp
 

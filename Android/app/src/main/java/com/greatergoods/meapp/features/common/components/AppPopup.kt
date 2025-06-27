@@ -20,7 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.toUpperCase
-import com.greatergoods.meapp.features.common.enum.AppSpacing
+import com.greatergoods.meapp.features.common.enums.AppSpacing
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.resources.AppIcons
@@ -145,7 +145,7 @@ fun AppPopup(
                 contentDescription = AppPopupStrings.LogoContentDescription,
                 modifier = Modifier.align(Alignment.TopEnd),
                 type = AppIconType.Default,
-            ){
+            ) {
                 onClose()
             }
         }

@@ -7,21 +7,11 @@ object HistoryDetailScreenStrings {
     const val MoreDetailsButton = "More Details"
     const val DeleteButton = "Delete"
     const val DeleteEntryContentDescription = "Delete entry"
-    const val BmiLabel = "Body Mass Index"
-    const val BodyFatLabel = "Body Fat"
-    const val MuscleMassLabel = "Muscle Mass"
-    const val BodyWaterLabel = "Body Water"
-    const val HeartRateLabel = "Heart Rate"
-    const val BoneMassLabel = "Bone Mass"
-    const val VisceralFatLabel = "Visceral Fat"
-    const val SubcutaneousFatLabel = "Subcutaneous Fat"
-    const val ProteinLabel = "Protein"
-    const val SkeletalMuscleLabel = "Skeletal Muscle"
-    const val BmrLabel = "Basal Metabolic Rate"
-    const val MetabolicAgeLabel = "Metabolic Age"
+
     const val BpmUnit = "bpm"
     const val KcalUnit = "kcal"
     const val YearsUnit = "yrs"
     const val LevelUnit = "Lv."
     const val PercentageUnit = "%"
 }
+

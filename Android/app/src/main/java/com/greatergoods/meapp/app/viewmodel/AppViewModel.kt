@@ -14,7 +14,6 @@ import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -147,7 +146,6 @@ class AppViewModel @Inject constructor(
     private suspend fun initLoadingData(account: Account?) {
         try {
             if (account != null) {
-                delay(1000)
                 val isLoginStatusChecked = checkLoginStatus()
                 if (isLoginStatusChecked) {
                     entryService.updateAccountId(account.id)

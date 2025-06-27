@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.common.components.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.greatergoods.meapp.features.common.enum.GraphSegment
+import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 

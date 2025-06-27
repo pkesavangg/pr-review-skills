@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.common.enum
+package com.greatergoods.meapp.features.common.enums
 
 /**
  * Enum representing height units for the height picker.
@@ -6,6 +6,7 @@ package com.greatergoods.meapp.features.common.enum
 enum class AppHeightUnit {
     /** Centimeters. */
     CM,
+
     /** Feet and inches. */
     FEET
-} 
+}
