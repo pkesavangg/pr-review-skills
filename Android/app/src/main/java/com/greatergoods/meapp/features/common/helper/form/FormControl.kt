@@ -182,7 +182,7 @@ class FormGroup<T : Any>(
     val controls: T,
     private val groupValidators: List<(T) -> String?> = emptyList(),
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
+    val json = Json { ignoreUnknownKeys = true }
     private val _groupError = mutableStateOf<String?>(null)
     val groupError: String? get() = _groupError.value
 
@@ -200,7 +200,7 @@ class FormGroup<T : Any>(
      * @param R The target `@Serializable` data class, which must be `reified`.
      * @return An instance of `R` populated with the form's values.
      */
-    private inline fun <reified R : Any> getValuesAsType(): R {
+    inline fun <reified R : Any> getValuesAsType(): R {
         val valueMap = getValues()
         val jsonObjectMap =
             valueMap.mapValues { (_, value) ->
@@ -293,72 +293,90 @@ class FormGroup<T : Any>(
 }
 
 @Stable
-class MultiFormGroup(
-    vararg formGroups: FormGroup<*>,
-    private val crossValidators: List<() -> String?> = emptyList()
+class MultiFormGroup<T : Any>(
+    val forms: T,
+    private val crossValidators: List<(T) -> String?> = emptyList()
 ) {
     private val json = Json { ignoreUnknownKeys = true }
-    private val groups = formGroups.toList()
     private val _groupError = mutableStateOf<String?>(null)
     val groupError: String? get() = _groupError.value
 
+    /**
+     * Returns true if all nested FormGroups are valid and cross-validation passes
+     */
     val isValid: Boolean
-        get() = groups.all { it.isValid } && groupError == null
+        get() = forms.toFormGroupList().all { it.isValid } && groupError == null
 
     val isDirty: Boolean
-        get() = groups.any { it.isDirty }
+        get() = forms.toFormGroupList().any { it.isDirty }
 
     val isTouched: Boolean
-        get() = groups.any { it.isTouched }
+        get() = forms.toFormGroupList().any { it.isTouched }
 
     val isPending: Boolean
-        get() = groups.any { it.isPending }
+        get() = forms.toFormGroupList().any { it.isPending }
 
     /**
-     * Validates all inner groups and cross-form validation rules.
-     * Sets groupError if any cross-validator fails.
+     * Validates all nested FormGroups and runs cross-validation
      */
     fun validate(): Boolean {
-        val groupsValid = groups.all { it.validate() }
+        val formGroups = forms.toFormGroupList()
+        val formsValid = formGroups.all { it.validate() }
 
         // Clear group error before validation
         _groupError.value = null
 
         for (validator in crossValidators) {
-            val err = validator()
+            val err = validator(forms)
             if (err != null) {
                 _groupError.value = err
                 return false
             }
         }
 
-        return groupsValid
+        return formsValid
     }
 
     /**
-     * Forces all controls in all groups to show their error states.
+     * Forces all controls in all nested FormGroups to show their error states
      */
     fun forceShowAllErrors() {
-        groups.forEach { it.forceShowAllErrors() }
+        forms.toFormGroupList().forEach { it.forceShowAllErrors() }
     }
 
     /**
-     * Resets all controls in all groups to their initial state.
+     * Resets all controls in all nested FormGroups to their initial state
      */
     fun resetForm() {
-        groups.forEach { it.resetForm() }
+        forms.toFormGroupList().forEach { it.resetForm() }
         _groupError.value = null
     }
 
     /**
-     * Combines all field values from all inner groups into a single flat map.
+     * Combines all field values from all nested FormGroups into a single flat map
      */
     fun getValues(): Map<String, Any?> {
-        return groups.flatMap { it.getValues().entries }.associate { it.toPair() }
+        return forms.toFormGroupList().flatMap { it.getValues().entries }.associate { it.toPair() }
     }
 
     /**
-     * Serializes combined values into the specified @Serializable type.
+     * Returns a nested map structure preserving the original form organization
+     */
+    fun getNestedValues(): Map<String, Map<String, Any?>> {
+        return forms.javaClass.declaredFields
+            .mapNotNull { field ->
+                field.isAccessible = true
+                val formGroup = field.get(forms) as? FormGroup<*>
+                if (formGroup != null) {
+                    field.name to formGroup.getValues()
+                } else {
+                    null
+                }
+            }.toMap()
+    }
+
+    /**
+     * Serializes combined values into the specified @Serializable type
      */
     private inline fun <reified R : Any> getValuesAsType(): R {
         val valueMap = getValues()
@@ -375,7 +393,20 @@ class MultiFormGroup(
         }
         return json.decodeFromJsonElement(JsonObject(jsonObjectMap))
     }
+
+    companion object {
+        fun <T : Any> create(forms: T, crossValidators: List<(T) -> String?> = emptyList()): MultiFormGroup<T> {
+            return MultiFormGroup(forms, crossValidators)
+        }
+    }
 }
+
+// Extension for nested FormGroup access
+private fun <T : Any> T.toFormGroupList(): List<FormGroup<*>> =
+    javaClass.declaredFields.mapNotNull { field ->
+        field.isAccessible = true
+        field.get(this) as? FormGroup<*>
+    }
 
 // Extension for explicit control access
 private fun <T : Any> T.toFormControlList(): List<FormControl<*>> =
