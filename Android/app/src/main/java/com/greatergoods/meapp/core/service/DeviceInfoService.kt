@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.core.service
 
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.DeviceInfoUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.PartialAccount
@@ -8,8 +9,14 @@ import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
+import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
@@ -24,6 +31,8 @@ class DeviceInfoService
 constructor(
     @ApplicationContext private val context: Context,
     private val deviceInfoRepository: IDeviceInfoRepository,
+    private val connectivityObserver: IConnectivityObserver,
+    private val offlineHandlerService: IOfflineHandlerService,
     private val appRepository: IAppRepository,
     private val accountRepository: IAccountRepository
 ) : IDeviceInfoService {
@@ -31,7 +40,31 @@ constructor(
     companion object {
         private const val TAG = "DeviceInfoService"
     }
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    init {
+        // Start monitoring network connectivity for auto-sync
+        startNetworkMonitoring()
+    }
+
+    /**
+     * Starts monitoring network connectivity to auto-sync when network becomes available.
+     */
+    private fun startNetworkMonitoring() {
+        serviceScope.launch {
+            connectivityObserver.observe()
+                .distinctUntilChanged()
+                .collect { networkState ->
+                    AppLog.d(TAG, "Network state changed: available=${!networkState.unAvailable}")
+
+                    // When network becomes available, check for pending sync
+                    if (networkState.available) {
+                        AppLog.d(TAG, "Network is available, checking for pending offline sync")
+                        offlineHandlerService.handleOfflineSync()
+                    }
+                }
+        }
+    }
     /**
      * The current FCM token for this device (cached after retrieval).
      */

@@ -57,14 +57,12 @@ fun DialogHost() {
                         config = config as RadioGroupModalConfig<Any>,
                         onCancel = {
                             onCancel?.invoke()
-                            dialog.onDismiss?.invoke()
                             dialogQueueViewModel.dismissCurrent()
                         },
                         onOk = { selectedValue ->
                             onConfirm?.invoke(selectedValue)
-                            selectedValue?.let { dialog.onConfirm?.invoke(it) }
                             dialogQueueViewModel.dismissCurrent()
-                        }
+                        },
                     )
                 }
             }

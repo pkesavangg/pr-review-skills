@@ -2,7 +2,8 @@ package com.greatergoods.meapp.features.profile.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -21,7 +22,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val accountService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<ProfileState, ProfileIntent>(
     reducer = ProfileReducer(),
 ) {
@@ -99,17 +100,23 @@ class ProfileViewModel @Inject constructor(
         }
 
         val formControls = state.value.form.controls
-        val profileData = mapOf<String, Any>(
-            "firstName" to formControls.firstName.value.trim(),
-            "lastName" to formControls.lastName.value.trim(),
-            "email" to formControls.email.value.trim(),
-            "zipcode" to formControls.zipcode.value.trim(),
-            "birthday" to formControls.birthday.value.getTimestamp()
-        )
-
         viewModelScope.launch {
+            //its an flow
+            val currentAccount = accountService.getCurrentAccount()
+            if(currentAccount == null){
+                return@launch
+            }
+            val profileUpdateRequest = ProfileUpdateRequest(
+                id = currentAccount.id,
+                firstName = formControls.firstName.value.trim(),
+                lastName = formControls.lastName.value.trim(),
+                email = formControls.email.value.trim(),
+                zipcode = formControls.zipcode.value.trim(),
+                gender = currentAccount.gender,
+                dob = DateTimeValue.getDateFormatFromMilliseconds(formControls.birthday.value.getTimestamp()),
+            )
             try {
-                val success = accountService.updateProfile(profileData)
+                val success = accountService.updateProfile(profileUpdateRequest)
                 if (success?.isLoggedIn ?: false) {
                     handleIntent(ProfileIntent.Success)
                     navigateBack()

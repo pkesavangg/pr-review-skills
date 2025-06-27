@@ -87,4 +87,11 @@ interface IAccountRepository {
     suspend fun markAccountExpired(accountId: String)
     fun getLoggedInAccountsFromDB(): Flow<List<Account>>
     fun getStoredActiveAccountFromDB(): Flow<Account?>
+
+    /**
+     * Gets all accounts with unsynced data (isSynced = false) from the database.
+     * Used by offline handler service to sync pending changes.
+     * @return List of accounts that need to be synced
+     */
+    suspend fun getUnsyncedAccountsFromDB(): List<Account>
 }

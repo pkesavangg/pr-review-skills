@@ -24,19 +24,21 @@ data class ChangePasswordFormControls(
          * Creates confirm password validator for password matching
          * Only the confirm password field should show mismatch errors
          */
-        private fun createConfirmPasswordValidator(formGroup: () -> FormGroup<ChangePasswordFormControls>): Validator<String> =
+        private fun createConfirmPasswordValidator(
+            formGroup: () -> FormGroup<ChangePasswordFormControls>,
+        ): Validator<String> =
             { confirmPasswordValue ->
                 val form = formGroup()
                 val newPasswordValue = form.controls.newPassword.value
 
                 // Only show mismatch error if both fields have values and they don't match
-                                if (confirmPasswordValue.isNotEmpty() &&
+                if (confirmPasswordValue.isNotEmpty() &&
                     newPasswordValue.isNotEmpty() &&
                     confirmPasswordValue != newPasswordValue
                 ) {
                     ValidationError(
                         ValidationType.MATCH_PASSWORD,
-                        ValidationMessages.PASSWORD_MISMATCH
+                        ValidationMessages.PASSWORD_MISMATCH,
                     )
                 } else {
                     null
@@ -46,13 +48,15 @@ data class ChangePasswordFormControls(
         /**
          * Creates a validator to ensure new password is different from current password
          */
-        private fun createNewPasswordValidator(formGroup: () -> FormGroup<ChangePasswordFormControls>): Validator<String> =
+        private fun createNewPasswordValidator(
+            formGroup: () -> FormGroup<ChangePasswordFormControls>,
+        ): Validator<String> =
             { value ->
                 val currentPassword = formGroup().controls.currentPassword.value
                 if (value.isNotEmpty() && currentPassword.isNotEmpty() && value == currentPassword) {
                     ValidationError(
                         ValidationType.NOT_SAME,
-                        "New password must be different from old password"
+                        "New password must be different from old password",
                     )
                 } else {
                     null
@@ -63,32 +67,57 @@ data class ChangePasswordFormControls(
          * Creates a new instance of ChangePasswordFormControls with default values and validations.
          */
         fun create(): ChangePasswordFormControls {
-            val controls = ChangePasswordFormControls(
-                currentPassword = FormControl.create(
-                    initialValue = "",
-                    validators = listOf(
-                        FormValidations.required(),
-                        FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, ChangePasswordStrings.CurrentPasswordLabel),
-                        FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH, ChangePasswordStrings.CurrentPasswordLabel),
-                    ),
-                ),
-                newPassword = FormControl.create(
-                    initialValue = "",
-                    validators = listOf(
-                        FormValidations.required(),
-                        FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, ChangePasswordStrings.NewPasswordLabel),
-                        FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH, ChangePasswordStrings.NewPasswordLabel),
-                    ),
-                ),
-                confirmPassword = FormControl.create(
-                    initialValue = "",
-                    validators = listOf(
-                        FormValidations.required(),
-                        FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, ChangePasswordStrings.ConfirmPasswordLabel),
-                        FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH, ChangePasswordStrings.ConfirmPasswordLabel),
-                    ),
-                ),
-            )
+            val controls =
+                ChangePasswordFormControls(
+                    currentPassword =
+                        FormControl.create(
+                            initialValue = "",
+                            validators =
+                                listOf(
+                                    FormValidations.required(),
+                                    FormValidations.minLength(
+                                        AppValidatorConfig.Password.MIN_LENGTH,
+                                        ChangePasswordStrings.CurrentPasswordLabel,
+                                    ),
+                                    FormValidations.maxLength(
+                                        AppValidatorConfig.Password.MAX_LENGTH,
+                                        ChangePasswordStrings.CurrentPasswordLabel,
+                                    ),
+                                ),
+                        ),
+                    newPassword =
+                        FormControl.create(
+                            initialValue = "",
+                            validators =
+                                listOf(
+                                    FormValidations.required(),
+                                    FormValidations.minLength(
+                                        AppValidatorConfig.Password.MIN_LENGTH,
+                                        ChangePasswordStrings.NewPasswordLabel,
+                                    ),
+                                    FormValidations.maxLength(
+                                        AppValidatorConfig.Password.MAX_LENGTH,
+                                        ChangePasswordStrings.NewPasswordLabel,
+                                    ),
+                                ),
+                        ),
+                    confirmPassword =
+                        FormControl.create(
+                            initialValue = "",
+                            validators =
+                                listOf(
+                                    FormValidations.required(),
+                                    FormValidations.minLength(
+                                        AppValidatorConfig.Password.MIN_LENGTH,
+                                        ChangePasswordStrings.ConfirmPasswordLabel,
+                                    ),
+                                    FormValidations.maxLength(
+                                        AppValidatorConfig.Password.MAX_LENGTH,
+                                        ChangePasswordStrings.ConfirmPasswordLabel,
+                                    ),
+                                ),
+                        ),
+                )
 
             val formGroup = FormGroup(controls)
 
@@ -171,7 +200,7 @@ class ChangePasswordReducer : IReducer<ChangePasswordState, ChangePasswordIntent
         intent: ChangePasswordIntent,
     ): ChangePasswordState =
         when (intent) {
-                        is ChangePasswordIntent.Submit -> {
+            is ChangePasswordIntent.Submit -> {
                 state.copy(isLoading = true, error = null)
             }
 
@@ -194,7 +223,5 @@ class ChangePasswordReducer : IReducer<ChangePasswordState, ChangePasswordIntent
             is ChangePasswordIntent.Success -> {
                 state.copy(isLoading = false, error = null)
             }
-
-            else -> state
         }
 }

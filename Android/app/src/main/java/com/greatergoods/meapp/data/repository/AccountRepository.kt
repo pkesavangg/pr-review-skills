@@ -301,4 +301,15 @@ class AccountRepository @Inject constructor(
         accountDao.markAccountExpired(accountId)
         AppLog.d(TAG, "Marked account $accountId as expired")
     }
+
+    /**
+     * Gets all accounts with unsynced data (isSynced = false) from the database.
+     * Used by offline handler service to sync pending changes.
+     * @return List of accounts that need to be synced
+     */
+    override suspend fun getUnsyncedAccountsFromDB(): List<Account> {
+        return accountDao.getUnsyncedAccounts().first().map { accountEntity ->
+            AccountEntityMapper.toDomain(accountEntity)
+        }
+    }
 }

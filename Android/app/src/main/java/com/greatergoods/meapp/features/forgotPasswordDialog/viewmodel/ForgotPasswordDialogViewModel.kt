@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.forgotPasswordDialog.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.model.ForgotPasswordDialogFormControls
@@ -16,14 +16,14 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the Forgot Password Dialog. Handles form state, validation, and password reset logic.
- * @property accountAuthService Service for authentication.
+ * @property accountService Service for authentication.
  * @property dialogQueueService Service for managing dialog queue.
  */
 @HiltViewModel
 class ForgotPasswordDialogViewModel
 @Inject
 constructor(
-    private val accountAuthService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<ForgotPasswordDialogState, ForgotPasswordDialogIntent>(
     reducer = ForgotPasswordDialogReducer(),
 ) {
@@ -92,7 +92,7 @@ constructor(
         )
         viewModelScope.launch {
             try {
-                accountAuthService.resetPassword(email)
+                accountService.resetPassword(email)
                 AppLog.i("resetPassword", "Password reset requested for email: $email")
                 handleIntent(ForgotPasswordDialogIntent.Success)
             } catch (e: Exception) {

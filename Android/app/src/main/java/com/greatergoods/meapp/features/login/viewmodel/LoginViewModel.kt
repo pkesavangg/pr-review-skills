@@ -3,7 +3,7 @@ package com.greatergoods.meapp.features.login.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -20,14 +20,14 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the Login screen. Handles form state, validation, login logic, and navigation.
- * @property accountAuthService Service for authentication.
+ * @property accountService Service for authentication.
  * @property customTabManager Service for opening URLs in custom tabs.
  */
 @HiltViewModel
 class LoginViewModel
 @Inject
 constructor(
-    private val accountAuthService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<LoginState, LoginIntent>(
     reducer = LoginReducer(),
 ) {
@@ -70,7 +70,7 @@ constructor(
         val password = state.value.form.controls.password.value
         viewModelScope.launch {
             try {
-                val account = accountAuthService.login(email, password)
+                val account = accountService.login(email, password)
                 if (account != null) {
                     handleIntent(LoginIntent.Success)
                 } else {
