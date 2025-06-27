@@ -21,12 +21,15 @@ import com.greatergoods.meapp.features.history.viewmodel.HistoryIntent
 import com.greatergoods.meapp.features.history.viewmodel.HistoryState
 import com.greatergoods.meapp.features.history.viewmodel.HistoryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryScreen() {
     val viewModel: HistoryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
     val isRefreshing = state.isLoading
+    val coroutineScope = rememberCoroutineScope()
     HistoryScreenContent(
         state = state,
         isRefreshing = isRefreshing,
@@ -45,6 +48,7 @@ fun HistoryScreenContent(
     handleIntent: (HistoryIntent) -> Unit,
 ) {
     val navBackStack = LocalNavBackStack.current
+    val coroutineScope = rememberCoroutineScope()
     AppScaffold(
         title = HistoryScreenStrings.Title,
         isRefreshing = state.isLoading,
@@ -64,8 +68,11 @@ fun HistoryScreenContent(
                     HistoryList(
                         items = state.historyItems,
                         onItemClick = { item ->
-                            if (item.entryTimestamp != null)
-                                navBackStack.addRoute(AppRoute.MonthDetails(item.entryTimestamp))
+                            if (item.entryTimestamp != null) {
+                                coroutineScope.launch {
+                                    navBackStack.addRoute(AppRoute.MonthDetails(item.entryTimestamp))
+                                }
+                            }
                         },
                     )
                 }

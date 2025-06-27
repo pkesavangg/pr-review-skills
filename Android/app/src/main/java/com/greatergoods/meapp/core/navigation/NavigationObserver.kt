@@ -3,9 +3,13 @@ package com.greatergoods.meapp.core.navigation
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation3.runtime.NavKey
 import com.example.nav3integration.TopLevelBackStack
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -20,21 +24,26 @@ fun NavigationObserver(
     backStack: TopLevelBackStack<NavKey>,
 ) {
     val activity = LocalActivity.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(activity) {
         navigationIntentFlow
             ?.collect { intent ->
                 when (intent) {
                     is NavigationIntent.NavigateTo -> {
-                        backStack.addRoute(
-                            intent.route,
-                            intent.topLevel,
-                            intent.popUpTo,
-                        )
+                        coroutineScope.launch {
+                            backStack.addRoute(
+                                intent.route,
+                                intent.topLevel,
+                                intent.popUpTo,
+                            )
+                        }
                     }
 
                     is NavigationIntent.NavigateBack -> {
-                        backStack.removeLast(intent.topLevel)
+                        coroutineScope.launch {
+                            backStack.removeLast(intent.topLevel)
+                        }
                     }
 
                     is NavigationIntent.Login -> {
@@ -50,14 +59,15 @@ fun NavigationObserver(
                     }
 
                     is NavigationIntent.ReplaceStack -> {
-                        backStack.replaceStack(intent.route, intent.topLevel)
+                        coroutineScope.launch {
+                            backStack.replaceStack(intent.route, intent.topLevel)
+                        }
                     }
 
                     is NavigationIntent.ReplaceStackSingle -> {
-                        backStack.replaceStack(
-                            listOf(intent.route),
-                            intent.topLevel,
-                        )
+                        coroutineScope.launch {
+                            backStack.replaceStack(listOf(intent.route), intent.topLevel)
+                        }
                     }
                 }
             }

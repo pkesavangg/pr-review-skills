@@ -47,6 +47,10 @@ import java.util.Calendar
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.greatergoods.meapp.domain.model.common.DashboardType
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 @Composable
 fun EntryScreen() {
@@ -55,17 +59,29 @@ fun EntryScreen() {
     val backStack = LocalNavBackStack.current
     EntryScreenContent(state, viewModel::handleIntent)
 
-    if (state.form.isTouched && state.form.isDirty) {
-        BackHandler {
-            viewModel.dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                    message = AppPopupStrings.UnsavedChanges.Message,
-                    onConfirm = {
-                        backStack.removeLast(AppRoute.Home)
-                        state.form.resetForm() },
-                ),
-            )
+    // Register canDeactivate callback for this screen
+    LaunchedEffect(backStack, state.form.isDirty, state.form.isTouched) {
+        backStack.registerCanDeactivate(AppRoute.Main.Entry) {
+            if (state.form.isTouched && state.form.isDirty) {
+                suspendCancellableCoroutine { cont ->
+                    viewModel.dialogQueueService.enqueue(
+                        DialogModel.Confirm(
+                            title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                            message = AppPopupStrings.UnsavedChanges.Message,
+                            onConfirm = { cont.resume(true) },
+                            onCancel = { cont.resume(false) }
+                        )
+                    )
+                }
+            } else {
+                true
+            }
+        }
+    }
+    // Unregister on dispose
+    DisposableEffect(backStack) {
+        onDispose {
+            backStack.unregisterCanDeactivate(AppRoute.Main.Entry)
         }
     }
 }
