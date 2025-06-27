@@ -1,10 +1,6 @@
 package com.greatergoods.meapp.features.common.components.chart
 
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.TwoWayConverter
-import androidx.compose.animation.core.animateValueAsState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -17,10 +13,16 @@ import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
+import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.compose.common.insets
+import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
@@ -30,6 +32,7 @@ import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibilityListener
 import com.patrykandpatrick.vico.core.common.Position
+import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlin.math.roundToInt
 
 @Composable
@@ -50,18 +53,39 @@ internal fun ChartHostSection(
     decorations: Decoration,
 ) {
     key(segment) {
-        val NumberVectorConverter = TwoWayConverter<Number, AnimationVector1D>(
-            convertToVector = { AnimationVector1D(it.toFloat()) },
-            convertFromVector = { it.value },
-        )
-        val animateX by animateValueAsState(
-            targetValue = xLabels[markerIndex ?: 0].value,
-            typeConverter = NumberVectorConverter,
-            label = "animateX",
+        val secondaryLayer = rememberLineCartesianLayer(
+            lineProvider = LineCartesianLayer.LineProvider.series(
+                listOf(MeTheme.colorScheme.secondaryAction).map {
+                    LineCartesianLayer.rememberLine(
+                        fill = LineCartesianLayer.LineFill.single(fill(it)),
+                        stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
+                        pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
+                        pointProvider = LineCartesianLayer.PointProvider.single(
+                            point = LineCartesianLayer.Point(
+                                rememberShapeComponent(
+                                    fill(it),
+                                    CorneredShape.Pill,
+                                    strokeThickness = 2.dp,
+                                ),
+                            ),
+                        ),
+                    )
+                },
+            ),
+            verticalAxisPosition = Axis.Position.Vertical.Start,
+            pointSpacing = pointSpacing(segment, 10.dp),
         )
         val bottomAxis = bottomAxis(segment, horizontalItemPlacer)
-        val chart = rememberCartesianChart(
+        val primaryChart = rememberCartesianChart(
             primaryLayer,
+            secondaryLayer,
+            startAxis =
+                VerticalAxis.rememberStart(
+                    label = null,
+                    line = null,
+                    guideline = null,
+                    tickLength = 0.dp,
+                ),
             endAxis =
                 VerticalAxis.rememberEnd(
                     valueFormatter =
@@ -92,16 +116,13 @@ internal fun ChartHostSection(
             marker = emptyMarker(),
             decorations = listOf(decorations),
             markerVisibilityListener = markerListener,
-            persistentMarkers = key(animateX) {
+            persistentMarkers = key(markerIndex) {
                 if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
-
                     {
                         defaultMarker at xLabels[markerIndex].value
                     }
                 } else {
-                    {
-                        null
-                    }
+                    null
                 }
             },
             getXStep = {
@@ -112,7 +133,7 @@ internal fun ChartHostSection(
             },
         )
         CartesianChartHost(
-            chart = chart,
+            chart = primaryChart,
             modelProducer = modelProducer,
             modifier =
                 modifier,
@@ -120,5 +141,6 @@ internal fun ChartHostSection(
             scrollState = scrollState,
             consumeMoveEvents = true,
         )
+
     }
 }

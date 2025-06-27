@@ -23,23 +23,20 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
 import com.greatergoods.meapp.features.common.components.chart.GraphView
 import com.greatergoods.meapp.features.common.enums.GraphSegment
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
+import com.greatergoods.meapp.features.historyDetail.modal.Metric
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun HistoryGraph(state: DashboardState, onSelected: (List<PeriodBodyScaleSummary>) -> Unit) {
-    if (state.isLoading) {
-        Text(
-            text = "Loading...",
-            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
-            style = MeTheme.typography.body2,
-            color = MeTheme.colorScheme.textSubheading,
-        )
-        return
-    }
+fun HistoryGraph(
+    state: DashboardState,
+    selectedMetric: Metric? = null,
+    onSelected: (List<PeriodBodyScaleSummary>) -> Unit
+) {
     var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
 
     var subText: String? by remember { mutableStateOf(null) }
@@ -109,12 +106,12 @@ fun HistoryGraph(state: DashboardState, onSelected: (List<PeriodBodyScaleSummary
                 }
             }
         }
-
         GraphView(
             modifier =
                 Modifier
                     .fillMaxWidth(),
             segment = selectedSegment,
+            secondaryGraphLines = if (selectedMetric != null) entries.toGraphPoints(selectedMetric.key) else null,
             graphLines = listOf(graphLines),
             onScroll = {
                 subText = it

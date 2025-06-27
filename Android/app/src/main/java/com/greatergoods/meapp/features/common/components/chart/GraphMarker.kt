@@ -25,7 +25,6 @@ internal fun rememberDefaultMarker(
     markerIndex: Int?,
     segment: GraphSegment
 ): CartesianMarker {
-    val pointColor = MeTheme.colorScheme.primaryAction
     val label =
         rememberTextComponent(
             color = MeTheme.colorScheme.textSubheading,
@@ -44,7 +43,7 @@ internal fun rememberDefaultMarker(
         valueFormatter = valueFormatter(xLabels, markerIndex, segment),
         indicator = { color ->
             ShapeComponent(
-                fill = fill(pointColor),
+                fill = fill(color),
                 strokeFill = fill(color),
                 shape = CorneredShape.Pill,
                 strokeThicknessDp = 2f,

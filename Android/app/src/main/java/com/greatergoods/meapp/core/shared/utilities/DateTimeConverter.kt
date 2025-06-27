@@ -48,4 +48,13 @@ object DateTimeConverter {
             ""
         }
     }
+
+    fun isValidIsoTimestamp(timestamp: String): Boolean {
+        return try {
+            Instant.parse(timestamp) // For full ISO-8601 (with Z or time zone)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 }

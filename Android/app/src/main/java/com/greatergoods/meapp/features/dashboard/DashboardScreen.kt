@@ -3,6 +3,8 @@ package com.greatergoods.meapp.features.dashboard
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -23,7 +25,9 @@ import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardIntent
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
+import com.greatergoods.meapp.features.historyDetail.modal.Metric
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -52,15 +56,22 @@ fun DashboardScreen() {
 @Composable
 private fun DashboardScreenContent(state: DashboardState, handleIntent: (DashboardIntent) -> Unit) {
     val scrollState = rememberScrollState()
+    var metricData: List<PeriodBodyScaleSummary> by remember {
+        mutableStateOf(listOf())
+    }
+    var selectedMetric: Metric? by remember {
+        mutableStateOf(null)
+    }
     AppScaffold(title = null) {
-        var selectedMetrics: List<PeriodBodyScaleSummary> by remember {
-            mutableStateOf(listOf())
-        }
+
         Column(modifier = Modifier.verticalScroll(scrollState)) {
-            HistoryGraph(state) {
-                selectedMetrics = it
+            HistoryGraph(state, selectedMetric) {
+                metricData = it
             }
-            DashboardMetrics(selectedMetrics)
+            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+            DashboardMetrics(metricData = metricData, selectedMetric = selectedMetric) {
+                selectedMetric = it
+            }
         }
     }
 }

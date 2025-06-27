@@ -396,7 +396,7 @@ interface EntryDao {
           AVG(bsem.boneMass) AS boneMass,
           AVG(bsem.impedance) AS impedance,
           MAX(e.unit) AS unit
-        FROM entry AS e
+        FROM entry_view AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
         WHERE e.accountId = :accountId
@@ -435,7 +435,7 @@ interface EntryDao {
           bsem.boneMass,
           bsem.impedance,
           e.unit
-        FROM entry AS e
+        FROM entry_view AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
         WHERE e.accountId = :accountId

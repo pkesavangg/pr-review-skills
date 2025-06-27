@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.dashboard.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -23,10 +22,9 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.dashboard.string.DashboardString
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageSummary
 import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
 import com.greatergoods.meapp.features.historyDetail.modal.Metric
-import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -36,24 +34,17 @@ import com.greatergoods.meapp.theme.MeTheme
 @Composable
 private fun MetricItem(
     metric: Metric,
+    isSelected: Boolean,
     modifier: Modifier = Modifier,
-    index: Int,
-    totalItems: Int,
+    onMetricClick: (Metric) -> Unit
 ) {
-    if (totalItems == 1) {
-        MeTheme.colorScheme.primaryBackground
-    } else if (index % 2 != 0) {
-        MeTheme.colorScheme.primaryBackground
-    } else {
-        MeTheme.colorScheme.secondaryBackground
-    }
-
     Card(
         modifier = Modifier
             .fillMaxSize(),
         colors = CardDefaults.cardColors(
-            containerColor = MeTheme.colorScheme.inverseAction,
+            containerColor = if (isSelected) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
         ),
+        onClick = { onMetricClick(metric) },
     ) {
         Column(
             modifier = modifier
@@ -65,79 +56,32 @@ private fun MetricItem(
             Text(
                 text = metric.value ?: "---",
                 style = MeTheme.typography.heading4,
-                color = MeTheme.colorScheme.textHeading,
+                color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textHeading,
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
             Text(
                 text = metric.label.plus(metric.unit),
                 style = MeTheme.typography.subHeading2,
-                color = MeTheme.colorScheme.textSubheading,
+                color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textSubheading,
             )
         }
     }
 }
-
-fun averageSummary(metrics: List<PeriodBodyScaleSummary>): PeriodBodyScaleSummary? {
-    if (metrics.isEmpty()) return null
-
-    val size = metrics.size.toDouble()
-
-    return PeriodBodyScaleSummary(
-        period = "average",
-        entryTimestamp = metrics.maxByOrNull { it.entryTimestamp }?.entryTimestamp.orEmpty(),
-        weight = metrics.sumOf { it.weight } / size,
-        bodyFat = metrics.mapNotNull { it.bodyFat }.averageOrNull(),
-        muscleMass = metrics.mapNotNull { it.muscleMass }.averageOrNull(),
-        water = metrics.mapNotNull { it.water }.averageOrNull(),
-        bmi = metrics.mapNotNull { it.bmi }.averageOrNull(),
-        bmr = metrics.mapNotNull { it.bmr }.averageOrNull(),
-        metabolicAge = metrics.mapNotNull { it.metabolicAge }.averageOrNull(),
-        proteinPercent = metrics.mapNotNull { it.proteinPercent }.averageOrNull(),
-        pulse = metrics.mapNotNull { it.pulse }.averageOrNull(),
-        skeletalMusclePercent = metrics.mapNotNull { it.skeletalMusclePercent }.averageOrNull(),
-        subcutaneousFatPercent = metrics.mapNotNull { it.subcutaneousFatPercent }.averageOrNull(),
-        visceralFatLevel = metrics.mapNotNull { it.visceralFatLevel }.averageOrNull(),
-        boneMass = metrics.mapNotNull { it.boneMass }.averageOrNull(),
-        impedance = metrics.mapNotNull { it.impedance }.averageOrNull(),
-        unit = metrics.firstOrNull { it.unit != null }?.unit,
-    )
-}
-
-// Extension for safe nullable average
-fun List<Double>.averageOrNull(): Double? = if (isNotEmpty()) average().rounded() else null
 
 /**
  * Composable for the dashboard metrics section that displays health metrics in a grid layout.
  */
 @Composable
-fun DashboardMetrics(metric: List<PeriodBodyScaleSummary>) {
+fun DashboardMetrics(
+    metricData: List<PeriodBodyScaleSummary>,
+    selectedMetric: Metric? = null,
+    onMetricClick: (Metric?) -> Unit
+) {
     // Get the latest summary from day-wise entries for metrics
-    val latestSummary = averageSummary(metric)
+    val latestSummary = averageSummary(metricData)
     val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
     val metrics = MetricHelper.getMetrics(dashboardMetric, useShort = true, filterNulls = false)
 
-    if (metrics.isEmpty()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MeTheme.colorScheme.primaryBackground),
-        ) {
-            Text(
-                text = DashboardString.Metrics.Title,
-                style = MeTheme.typography.heading4,
-                color = MeTheme.colorScheme.textHeading,
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
-            Text(
-                text = "No metrics available",
-                style = MeTheme.typography.subHeading2,
-                color = MeTheme.colorScheme.textSubheading,
-            )
-        }
-    }
-
-
-    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         userScrollEnabled = false,
@@ -150,12 +94,18 @@ fun DashboardMetrics(metric: List<PeriodBodyScaleSummary>) {
     ) {
         items(
             items = metrics,
-            key = { it.label },
+            key = { it.key },
         ) { metric ->
+            val isSelected = selectedMetric?.key == metric.key
             MetricItem(
                 metric = metric,
-                index = metrics.indexOf(metric),
-                totalItems = metrics.size,
+                isSelected = isSelected,
+                onMetricClick = {
+                    if (isSelected) {
+                        onMetricClick(null)
+                    } else
+                        onMetricClick(metric)
+                },
             )
         }
         if (metrics.size % 2 != 0) {
@@ -176,7 +126,7 @@ fun DashboardMetrics(metric: List<PeriodBodyScaleSummary>) {
 private fun DashboardMetricsPreview() {
     MeAppTheme {
         DashboardMetrics(
-            metric = listOf(),
-        )
+            metricData = listOf(),
+        ) {}
     }
 }

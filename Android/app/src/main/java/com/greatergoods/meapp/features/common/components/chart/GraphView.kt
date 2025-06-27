@@ -20,7 +20,6 @@ import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.filterXValu
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
-import com.greatergoods.meapp.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
@@ -63,57 +62,48 @@ inline fun <T> rememberStable(
 fun GraphView(
     modifier: Modifier = Modifier,
     graphLines: List<GraphLine>,
+    secondaryGraphLines: GraphLine? = null,
     segment: GraphSegment = GraphSegment.WEEK,
     placeHolder: String? = null,
     onMetricUpdate: (List<GraphPoint>) -> Unit = {},
     onScroll: (String?) -> Unit = {},
     onLabelUpdate: (String) -> Unit = {},
 ) {
-    MeTheme.spacing.lg
     var selectedData: List<GraphPoint> by remember {
         mutableStateOf(listOf())
     }
     val stableGraphLines = rememberStable(graphLines)
-
     if (stableGraphLines.isEmpty() || stableGraphLines.all { it.points.isEmpty() }) {
         GraphEmptyState(modifier = modifier, placeHolder = placeHolder)
         return
     }
-
     var point: Point? by remember { mutableStateOf(Point(0f, 0f)) }
-
     val xLabels = remember(stableGraphLines) {
         stableGraphLines.first().points.map { it.x }
     }
-
     val ySeries = remember(stableGraphLines) {
         stableGraphLines.map { it.points.map { point -> point.y } }
     }
-
     val max = remember(ySeries) {
         ySeries.flatten().maxOfOrNull { it.value.toDouble() }
     }
-
     val scrollState = rememberVicoScrollState(
         scrollEnabled = segment != GraphSegment.TOTAL,
         initialScroll = Scroll.Absolute.End,
     )
-
     var minTarget by remember { mutableStateOf<Long?>(null) }
     var maxTarget by remember { mutableStateOf<Long?>(null) }
     var selectedTarget by remember { mutableStateOf<Long?>(null) }
-
     var markerIndex: Int? by remember(xLabels) { mutableStateOf(null) }
-
     var isUpdating by remember { mutableStateOf(false) }
-
     val modelProducer = remember { CartesianChartModelProducer() }
     val graphKey = remember(stableGraphLines) { stableGraphLines.hashCode() }
+    // Remember the job outside LaunchedEffect
+    var computationJob by remember { mutableStateOf<Job?>(null) }
+    val minTargetState = rememberUpdatedState(minTarget)
+    val maxTargetState = rememberUpdatedState(maxTarget)
 
-    LaunchedEffect(graphKey, segment) {
-        isUpdating = true
-        markerIndex = xLabels.lastIndex
-
+    LaunchedEffect(graphKey, secondaryGraphLines) {
         modelProducer.runTransaction {
             lineSeries {
                 ySeries.forEach { y ->
@@ -123,9 +113,20 @@ fun GraphView(
                     )
                 }
             }
+            if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+                lineSeries {
+                    series(
+                        x = secondaryGraphLines.points.map { it.x.value as Long },
+                        y = secondaryGraphLines.points.map { it.y.value },
+                    )
+                }
+            }
         }
+    }
 
-        // Wait for one frame (non-suspending block)
+    LaunchedEffect(segment) {
+        isUpdating = true
+        markerIndex = xLabels.lastIndex
 
         val target = selectedTarget ?: maxTarget
         val nearest = target?.let {
@@ -143,10 +144,6 @@ fun GraphView(
         selectedTarget = null
         isUpdating = false
     }
-
-    // Remember the job outside LaunchedEffect
-    var computationJob by remember { mutableStateOf<Job?>(null) }
-
     LaunchedEffect(selectedData) {
         // Cancel any existing computation job first
         computationJob?.cancel()
@@ -193,10 +190,6 @@ fun GraphView(
             )
         }
     }
-
-    val minTargetState = rememberUpdatedState(minTarget)
-    val maxTargetState = rememberUpdatedState(maxTarget)
-
     LaunchedEffect(Unit) {
         snapshotFlow { minTargetState.value to maxTargetState.value }
             .debounce(500) // wait for 500ms of inactivity
@@ -245,24 +238,21 @@ fun GraphView(
         },
     )
 
-    val markerListener =
-        markerListener(
-            stableGraphLines = stableGraphLines,
-            point = point,
-            xLabels = xLabels,
-            onSelected = {
-                selectedData = it
-            },
-            setMarkerIndex = { markerIndex = it },
-            selectedData = selectedData,
-            onDestinationUpdate = { selectedTarget = it },
-        )
+    val markerListener = markerListener(
+        stableGraphLines = stableGraphLines,
+        point = point,
+        xLabels = xLabels,
+        onSelected = {
+            selectedData = it
+        },
+        setMarkerIndex = { markerIndex = it },
+        selectedData = selectedData,
+        onDestinationUpdate = { selectedTarget = it },
+    )
 
     ChartHostSection(
         modifier = modifier
-            .height(
-                300.dp,
-            )
+            .height(300.dp)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -289,3 +279,5 @@ fun GraphView(
         horizontalItemPlacer = horizontalItemPlacer,
     )
 }
+
+

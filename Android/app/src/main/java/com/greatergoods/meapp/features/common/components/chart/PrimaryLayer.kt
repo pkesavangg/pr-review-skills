@@ -13,6 +13,7 @@ import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.fill
+import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 
@@ -40,6 +41,7 @@ internal fun primaryLayer(segment: GraphSegment): LineCartesianLayer {
                 )
             },
         ),
+        verticalAxisPosition = Axis.Position.Vertical.End,
         pointSpacing = pointSpacing(segment, 10.dp),
     )
 }
@@ -49,7 +51,7 @@ internal fun primaryLayer(segment: GraphSegment): LineCartesianLayer {
  * UI-only logic, not business/data transformation.
  */
 @Composable
-private fun pointSpacing(
+fun pointSpacing(
     segment: GraphSegment,
     axisPadding: Dp = 0.dp
 ): Dp {
