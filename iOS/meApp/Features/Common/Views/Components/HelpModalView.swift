@@ -73,4 +73,5 @@ struct HelpModalView: View {
 #Preview {
     HelpModalView() {}
         .environmentObject(Theme.shared)
+        .padding(.horizontal)
 }
