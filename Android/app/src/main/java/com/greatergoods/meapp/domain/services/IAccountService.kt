@@ -1,13 +1,15 @@
 package com.greatergoods.meapp.domain.services
 
+import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 
 /**
- * Interface for account authentication service.
+ * Interface for account service.
  */
-interface IAccountAuthService {
+interface IAccountService {
     val authEvent: SharedFlow<AuthState>
     val activeAccountFlow: Flow<Account?>
     val loggedInAccountsFlow: Flow<List<Account>>
@@ -29,23 +31,13 @@ interface IAccountAuthService {
     suspend fun checkForLoggedInUser(): Boolean
 
     suspend fun resetPassword(email: String)
-    suspend fun updateProfile(profileData: Map<String, Any>): Account?
+    suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account?
     suspend fun changePassword(currentPassword: String, newPassword: String): Boolean
 
-    /**
-     * Checks login status for the active account by calling getAccount API.
-     * Updates the account data in DB with the response and refreshes tokens if needed.
-     * @return true if account is still valid, false if expired
-     */
     suspend fun checkLoginStatusForActiveAccount(): Boolean
 
-    /**
-     * Checks login status for all logged-in accounts (non-active) by calling getAccount API.
-     * Updates account data in DB with responses and refreshes tokens if needed.
-     * For expired accounts, marks them as expired and clears tokens.
-     * @return true if all accounts are valid, false if any account is expired
-     */
     suspend fun checkLoginStatusForLoggedInAccounts(): Boolean
+    suspend fun updateProfileInDB(accountId: String,partialAccount: PartialAccount): Account?
 }
 
 /**
@@ -66,4 +58,4 @@ sealed class AuthState {
 /**
  * Custom exception for authentication-related errors.
  */
-class AuthException(message: String, cause: Throwable? = null) : Exception(message, cause)
+class AuthException(message: String, cause: Throwable? = null) : Exception(message, cause) 

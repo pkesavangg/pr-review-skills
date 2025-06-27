@@ -4,35 +4,31 @@ import androidx.annotation.RequiresApi
 import com.greatergoods.meapp.BuildConfig
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.network.HttpClient
+import com.greatergoods.meapp.core.network.ITokenManager
+import com.greatergoods.meapp.core.network.TokenManager
 import com.greatergoods.meapp.core.network.interceptors.AuthTokenInterceptor
 import com.greatergoods.meapp.core.network.interceptors.BaseUrlInterceptor
 import com.greatergoods.meapp.core.network.interceptors.NetworkInterceptor
 import com.greatergoods.meapp.core.network.interceptors.ResponseInterceptor
 import com.greatergoods.meapp.core.network.interceptors.TokenAuthenticator
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import com.greatergoods.meapp.core.network.qualifiers.RefreshClient
 import com.greatergoods.meapp.core.network.utility.LegacyNetworkConnectivityObserver
 import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
-import com.greatergoods.meapp.domain.repository.IAccountRepository
-import com.greatergoods.meapp.core.service.AccountAuthService
-import com.greatergoods.meapp.core.network.ITokenManager
-import com.greatergoods.meapp.core.network.TokenManager
+import com.greatergoods.meapp.data.api.RefreshTokenAPI
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Build
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import com.greatergoods.meapp.data.api.IAuthAPI
-import com.greatergoods.meapp.data.api.RefreshTokenAPI
-import com.greatergoods.meapp.core.network.qualifiers.RefreshClient
 
 /**
  * Dagger Hilt module for providing network-related dependencies such as OkHttpClient and interceptors.
@@ -102,7 +98,8 @@ object NetworkModule {
      */
     @Provides
     @Singleton
-    fun provideAuthTokenInterceptor(tokenManager: ITokenManager): AuthTokenInterceptor = AuthTokenInterceptor(tokenManager)
+    fun provideAuthTokenInterceptor(tokenManager: ITokenManager): AuthTokenInterceptor =
+        AuthTokenInterceptor(tokenManager)
 
     /**
      * Provides a response interceptor for OkHttp.
@@ -164,19 +161,6 @@ object NetworkModule {
             .addInterceptor(responseInterceptor)
             .authenticator(tokenAuthenticator)
         return okHttpClient.build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideAuthApiService(
-        okHttpClient: OkHttpClient
-    ): AccountAuthService {
-        return Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(AccountAuthService::class.java)
     }
 
     @Provides

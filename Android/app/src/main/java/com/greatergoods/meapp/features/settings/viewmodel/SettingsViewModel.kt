@@ -5,7 +5,9 @@ import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.AccountSettingsAction
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
@@ -28,12 +30,12 @@ import javax.inject.Inject
  * (Add service dependencies as needed.)
  */
 // TODO: MyAccountsViewModel will be implemented in a new file under 'viewmodel' if needed.
-// MyAccountsScreen will use AccountAuthService.loggedInAccountsFlow for account data.
+// MyAccountsScreen will use AccountService.loggedInAccountsFlow for account data.
 @HiltViewModel
 class SettingsViewModel
 @Inject
 constructor(
-    private val authService: IAccountAuthService,
+    private val accountService: IAccountService,
     private val exportService: IExportService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
@@ -47,8 +49,8 @@ constructor(
 
     fun getUserProfile() {
         viewModelScope.launch {
-            authService.activeAccountFlow.collect {
-                handleIntent(SettingsIntent.updateAccount(it))
+            accountService.activeAccountFlow.collect {
+                handleIntent(SettingsIntent.UpdateAccount(it))
             }
         }
     }
@@ -56,7 +58,7 @@ constructor(
     override fun handleIntent(intent: SettingsIntent) {
         super.handleIntent(intent)
         when (intent) {
-            is SettingsIntent.updateAccount -> {
+            is SettingsIntent.UpdateAccount -> {
                 _state.value = _state.value.copy(account = intent.account)
             }
 
@@ -72,17 +74,11 @@ constructor(
                 onSwitchAccountClick()
             }
 
+            is SettingsIntent.ShowBiologicalSexModal -> {
+                onBiologicalSexClick()
+            }
+
             else -> {}
-        }
-
-        fun onAddEditScalesClick() {
-            AppLog.d("TAG", "Add/Edit scales clicked")
-            // TODO: Navigate to scales screen
-        }
-
-        fun onIntegrationsClick() {
-            AppLog.d("TAG", "Integrations clicked")
-            // TODO: Navigate to integrations screen
         }
     }
 
@@ -183,7 +179,90 @@ constructor(
 
     fun onBiologicalSexClick() {
         AppLog.d("SettingsViewModel", "Biological sex clicked")
-        // TODO: Show biological sex dialog
+        showBiologicalSexModal()
+    }
+
+    /**
+     * Shows the biological sex selection modal.
+     */
+    private fun showBiologicalSexModal() {
+        AppLog.d("SettingsViewModel", "showBiologicalSexModal called")
+
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.BiologicalSex,
+            options = listOf(
+                RadioButtonOption(Gender.MALE.value, RadioGroupModalStrings.BiologicalSex.Male),
+                RadioButtonOption(Gender.FEMALE.value, RadioGroupModalStrings.BiologicalSex.Female),
+            ),
+            selectedItem = state.value.account?.gender,
+            onConfirm = { selectedSex ->
+                AppLog.d("SettingsViewModel", "Biological sex modal onConfirm called with: $selectedSex")
+                selectedSex?.let { gender ->
+                    onBiologicalSexUpdate(gender)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Biological sex selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Updates the biological sex via the offline handler service.
+     * Follows the same pattern as Angular onSexSelectionChange method.
+     */
+    private fun onBiologicalSexUpdate(gender: String) {
+        AppLog.d("SettingsViewModel", "onBiologicalSexUpdate called with gender: $gender")
+
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e("SettingsViewModel", "No active account found for biological sex update")
+            return
+        }
+
+        if (currentAccount.gender == gender) {
+            AppLog.d("SettingsViewModel", "Gender is already set to $gender, no update needed")
+            return
+        }
+
+        AppLog.i("SettingsViewModel", "Starting biological sex update from '${currentAccount.gender}' to '$gender'")
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating biological sex...")
+        viewModelScope.launch {
+            try {
+                val updatedCurrentProfile = ProfileUpdateRequest(
+                    id = currentAccount.id,
+                    firstName = currentAccount.firstName,
+                    lastName = currentAccount.lastName,
+                    email = currentAccount.email,
+                    dob = currentAccount.dob,
+                    gender = gender,
+                    zipcode = currentAccount.zipcode,
+                )
+                // Use offline handler service similar to Angular implementation
+                accountService.updateProfile(updatedCurrentProfile)
+                AppLog.i("SettingsViewModel", "Successfully updated biological sex")
+            } catch (e: Exception) {
+                val accountID = currentAccount.id
+                val updatedAccount = PartialAccount(
+                    firstName = currentAccount.firstName,
+                    lastName = currentAccount.lastName,
+                    dob = currentAccount.dob,
+                    gender = gender,  // Use the NEW gender value, not the old one
+                    zipcode = currentAccount.zipcode,
+                    email = currentAccount.email,
+                    isActiveAccount = true,
+                    isSynced = false,  // Mark as unsynced for later offline sync
+                )
+                accountService.updateProfileInDB(accountID, updatedAccount)
+                AppLog.e("SettingsViewModel", "Error updating biological sex", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
     }
 
     fun onActivityLevelClick() {
@@ -251,7 +330,7 @@ constructor(
             try {
                 val account = state.value.account
                 if (account != null) {
-                    authService.logout(account.id, account.fcmToken)
+                    accountService.logout(account.id, account.fcmToken)
                 }
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out", e.toString())

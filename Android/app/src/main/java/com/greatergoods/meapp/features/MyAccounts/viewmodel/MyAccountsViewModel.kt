@@ -3,7 +3,7 @@ package com.greatergoods.meapp.features.MyAccounts.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.model.storage.Account.Account
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsIntent
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsReducer
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsState
@@ -19,7 +19,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MyAccountsViewModel @Inject constructor(
-    private val accountAuthService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<MyAccountsState, MyAccountsIntent>(MyAccountsReducer()) {
 
     override fun provideInitialState(): MyAccountsState = MyAccountsState()
@@ -62,7 +62,7 @@ class MyAccountsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            accountAuthService.loggedInAccountsFlow.collectLatest {
+            accountService.loggedInAccountsFlow.collectLatest {
                 handleIntent(MyAccountsIntent.SetAccounts(it))
             }
         }
@@ -79,7 +79,7 @@ class MyAccountsViewModel @Inject constructor(
     private fun onAccountSelect(account: Account) {
         if (!account.isActiveAccount) {
             viewModelScope.launch {
-                accountAuthService.switchAccount(account)
+                accountService.switchAccount(account)
                 navigationService.replaceStack(AppRoute.Init.Loading)
             }
         }
@@ -88,7 +88,7 @@ class MyAccountsViewModel @Inject constructor(
     private fun onRemoveAccount() {
         state.value.accountToRemove?.let { account ->
             viewModelScope.launch {
-                accountAuthService.logout(account.id, account.fcmToken)
+                accountService.logout(account.id, account.fcmToken)
             }
         }
     }

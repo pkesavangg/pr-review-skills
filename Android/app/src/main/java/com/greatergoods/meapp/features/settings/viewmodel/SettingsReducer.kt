@@ -34,7 +34,7 @@ sealed interface SettingsIntent : IReducer.Intent {
 
     object SwitchAccount : SettingsIntent
 
-    data class updateAccount(
+    data class UpdateAccount(
         val account: Account?,
     ) : SettingsIntent
 
@@ -59,7 +59,7 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
             is SettingsIntent.SetError -> state.copy(errorMessage = intent.message, isLoading = false)
             SettingsIntent.ClearError -> state.copy(errorMessage = null)
             SettingsIntent.LoadSettings -> state.copy(isLoading = true)
-            is SettingsIntent.updateAccount -> state.copy(account = intent.account)
+            is SettingsIntent.UpdateAccount -> state.copy(account = intent.account)
             else -> null
             // Add more intent handling as needed
         }

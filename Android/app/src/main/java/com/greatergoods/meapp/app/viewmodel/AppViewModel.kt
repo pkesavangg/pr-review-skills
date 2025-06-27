@@ -9,9 +9,9 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.services.AuthState
-import com.greatergoods.meapp.domain.services.IAccountAuthService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -28,11 +28,11 @@ import javax.inject.Inject
 class AppViewModel @Inject constructor(
     private val appRepository: IAppRepository,
     private val entryService: IEntryService,
-    private val accountAuthService: IAccountAuthService,
     private val logManager: LogManager,
     private val deviceInfoService: IDeviceInfoService,
     private val appEventService: IAppEventService,
-    private val tokenManager: ITokenManager
+    private val tokenManager: ITokenManager,
+    private val accountService: IAccountService
 ) : BaseIntentViewModel<AppState, AppIntent>(
     reducer = AppReducer(),
 ) {
@@ -63,7 +63,7 @@ class AppViewModel @Inject constructor(
                 AppLog.e(TAG, "Failed to load tokens into TokenManager", e.toString())
             }
 
-            val account = accountAuthService.getCurrentAccount()
+            val account = accountService.getCurrentAccount()
             initLoadingData(account)
             initEvents()
         }
@@ -89,6 +89,17 @@ class AppViewModel @Inject constructor(
                     is AuthState.AccountSwitched -> {
                         initLoadingData(authState.account)
                     }
+
+                    is AuthState.ProfileUpdated -> {
+                        // Profile updated - no navigation needed, just log
+                        AppLog.d(TAG, "Profile updated for account: ${authState.account.id}")
+                    }
+
+                    is AuthState.Error -> {
+                        // Handle auth errors without triggering navigation
+                        AppLog.e(TAG, "Auth error: ${authState.message}")
+                    }
+
                     // handle other AuthState events as needed
                     else -> {}
                 }
@@ -104,9 +115,9 @@ class AppViewModel @Inject constructor(
     private suspend fun checkLoginStatus(): Boolean {
         return try {
             // Check active account first
-            accountAuthService.checkLoginStatusForActiveAccount()
+            accountService.checkLoginStatusForActiveAccount()
             // Then check other logged-in accounts
-            accountAuthService.checkLoginStatusForLoggedInAccounts()
+            accountService.checkLoginStatusForLoggedInAccounts()
 
             AppLog.d(TAG, "Checked login status for all accounts")
             true
@@ -121,7 +132,7 @@ class AppViewModel @Inject constructor(
      * @param isLoggedIn true if user is logged in, false otherwise
      */
     private suspend fun routeToLandingOrApp() {
-        val loggedInAccounts = accountAuthService.getLoggedInAccounts().filter {
+        val loggedInAccounts = accountService.getLoggedInAccounts().filter {
             !it.isActiveAccount
         }
         val hasAccounts = loggedInAccounts.isNotEmpty()
