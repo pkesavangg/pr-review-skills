@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
@@ -81,6 +82,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
         },
         containerColor = colorScheme.secondaryBackground,
         appBarColor = colorScheme.secondaryBackground,
+        borderColor = Color.Transparent,
     ) { scaffoldModifier ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

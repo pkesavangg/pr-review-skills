@@ -113,7 +113,7 @@ fun AppUserList(
             if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
                 HorizontalDivider(
                     color = MeTheme.colorScheme.utility,
-                    thickness = 1.dp,
+                    thickness = .5.dp,
                 )
             }
         }
