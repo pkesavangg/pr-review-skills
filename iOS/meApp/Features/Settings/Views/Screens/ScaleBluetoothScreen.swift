@@ -32,10 +32,9 @@ struct ScaleBluetoothScreen: View {
                 scaleItemView
 
                 divider()
-                    .padding(.horizontal, .spacingSM)
-                    .padding(.bottom, .spacingMD)
 
                 sectionTitle(lang.permissionsTitle)
+                    .padding(.top, .spacingMD)
 
                 permissionItems
             }
