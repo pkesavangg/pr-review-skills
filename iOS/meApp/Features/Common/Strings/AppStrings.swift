@@ -97,6 +97,9 @@ struct ToastStrings {
     static let switchingAccount = { (name: String) in
         "Switched to \(name)."
     }
+    static let weightHistorySynced = "Weight history successfully synced."
+    static let hkIntegrationRemoved = "Apple Health integration removed."
+    static let hkIntegrationSynced = "Apple Health is synced!"
 }
 
 /// Constants for help modal strings used in the app
@@ -130,9 +133,14 @@ struct HKIntegrationHealthAccessStrings {
     static let integrationComplete = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkIntegrationCompleteSS,
         title: "Integration Complete",
-        description: "Manage settings anytime by opening Apple Health and going to Profile → Privacy → Apps → Weight Gurus.",
-        buttonTitle: "FINISH"
+        description: nil,
+        buttonTitle: "FINISH",
+        attributedParts: (
+            prefix: "Manage settings anytime by opening Apple Health and going to ",
+            highlight: "Profile → Privacy → Apps → Weight Gurus."
+        )
     )
+
 
     static let integrationFailed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
@@ -148,6 +156,40 @@ struct HKIntegrationHealthAccessStrings {
         buttonTitle: "EXIT"
     )
 }
+
+struct HKIntegrationModalStrings {
+    
+    static let outOfSync = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Apple Health is Out of Sync",
+        message: nil,
+        primaryButtonTitle: "OPEN APPLE HEALTH",
+        secondaryButtonTitle: "REMOVE INTEGRATION",
+        attributedParts: (
+            prefix: "Enable settings in Apple Health by navigating to ",
+            highlight: "Profile → Privacy → Apps → Weight Gurus",
+            suffix: ". Or remove the integration in Weight Gurus."
+        )
+    )
+
+    
+    static let finishAdding = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Finish Adding Apple Health",
+        message: "Weight Gurus permissions have been turned on in Apple Health. Connect to complete set up.",
+        primaryButtonTitle: "CONNECT",
+        secondaryButtonTitle: nil
+    )
+    
+    static let addIntegration = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Add Apple Health Integration",
+        message: "It looks like you’re using Weight Gurus on a new device. To continue syncing with Apple Health, please reconnect.",
+        primaryButtonTitle: "CONNECT",
+        secondaryButtonTitle: nil
+    )
+}
+
 
 
 /// Constants for form validation error messages
@@ -323,6 +365,26 @@ struct AlertStrings {
         static let message = "Please log back in to continue."
         static let okButton = "OK"
     }
+    
+    struct SyncWeightHistoryAlert {
+        static let title = "Sync Weight History"
+        static let message = "Do you want to sync all entries to Apple Health? You cannot do this later without reconnecting."
+        static let syncButton = "Sync"
+        static let cancelButton = "Cancel"
+    }
+    
+    struct HKOutOfSyncAlert {
+        static let title = "Apple Health Out of Sync"
+        static let message = "Enable app permissions in Apple Health or remove the integration in Weight Gurus."
+        static let closeButton = "CLOSE"
+    }
+    
+    struct HKRemoveAlert {
+        static let title = "Are you sure?"
+        static let message = "The integration will be removed.  To fully disconnect, ensure Weight Gurus is disabled in the Apple Health App."
+        static let removeButton = "Remove"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -416,5 +478,7 @@ struct AppAssets {
     static let hkLogoSmall = "hkLogoSmall"
     static let myFitnessLogoSmall = "myFitnessLogoSmall"
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
+    static let ggLogoSmall = "ggLogoSmall"
+    static let ggLogoLarge = "ggLogoLarge"
 }
 

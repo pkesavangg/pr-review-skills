@@ -9,6 +9,10 @@
 struct HKIntegrationHealthAccessContent {
     let imageName: String
     let title: String
-    let description: String
+    let description: String?
     let buttonTitle: String
+
+    // Optional structured attributed content for better formatting
+    var attributedParts: (prefix: String, highlight: String)? = nil
 }
+
