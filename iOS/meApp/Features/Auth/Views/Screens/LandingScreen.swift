@@ -80,9 +80,9 @@ struct LandingScreen: View {
                                                         openItemID: $openItemID,
                                                         onTap: { id, isExpired in
                                                             if isExpired {
-                                                                if landingStore.canAddMoreAccounts() {
-                                                                    router.navigate(to: .login(item.email))
-                                                                }
+                                                                // If the user is expired, allow login with the same email.
+                                                                // If the user modifies the email and the account limit has been reached, show the max accounts alert.
+                                                                router.navigate(to: .login(item.email))
                                                             } else {
                                                                 landingStore.switchAccount(to: id)
                                                             }

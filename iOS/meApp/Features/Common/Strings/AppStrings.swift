@@ -251,6 +251,7 @@ struct AlertStrings {
     struct MaxUsersAlert {
         static let title = "Maximum Users Reached"
         static let message = "Please swipe left to remove any unused accounts before attempting to add a new one."
+        static let logInAndRemoveMessage = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
         static let okButton = "OK"
     }
     

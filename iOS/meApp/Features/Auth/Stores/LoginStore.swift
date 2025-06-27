@@ -168,6 +168,10 @@ final class LoginStore: ObservableObject {
             }
         } catch {
             logger.log(level: .error, tag: logTag, message: "Login Error: \(error)")
+            if case AccountError.maxAccountsReached = error {
+                showMaxUserAccountsAlert()
+                return
+            }
             handleLoginError(error)
         }
     }
@@ -283,6 +287,20 @@ final class LoginStore: ObservableObject {
                     self.dismissAction?()
                 },
                 AlertButtonModel(title: loginExitAlert.goBackButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Presents an alert informing the user that the maximum number of accounts
+    /// has been reached.
+    private func showMaxUserAccountsAlert() {
+        let alertLang = alertLang.MaxUsersAlert
+        let alert = AlertModel(
+            title: alertLang.title,
+            message: isFromAccountSwitching ? alertLang.message : alertLang.logInAndRemoveMessage,
+            buttons: [
+                AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
             ]
         )
         notificationService.showAlert(alert)

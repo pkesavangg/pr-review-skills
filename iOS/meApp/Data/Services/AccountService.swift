@@ -45,9 +45,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func signUp(email: String, password: String, profile: Profile) async throws -> Account {
         do {
             // Check if maximum accounts reached
-            if try await hasReachedMaxAccounts() {
-                throw AccountError.maxAccountsReached
-            }
+            try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.createAccount(email: email, password: password, profile: profile)
             let account = Account(from: response.account)
             account.accessToken = response.accessToken
@@ -71,9 +69,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func logIn(email: String, password: String) async throws -> Account {
         do {
             // Check if maximum accounts reached
-            if try await hasReachedMaxAccounts() {
-                throw AccountError.maxAccountsReached
-            }
+            try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.logIn(email: email, password: password)
             let account = Account(from: response.account)
             account.accessToken = response.accessToken
@@ -701,6 +697,18 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    /// Checks whether the maximum number of allowed accounts has been reached.
+    /// If the limit is exceeded and the email does not match any existing logged-in account,
+    /// it throws a `maxAccountsReached` error to prevent adding a new account.
+    private func checkIfMaxAccountsReached(email: String) async throws {
+        if try await hasReachedMaxAccounts() {
+            allAccounts = try await localRepo.fetchAllAccounts().filter { $0.isLoggedIn == true }
+            if !(allAccounts.contains { $0.email == email } ) {
+                throw AccountError.maxAccountsReached
+            }
+        }
+    }
+    
     /// Checks if the maximum number of accounts has been reached.
     private func hasReachedMaxAccounts() async throws -> Bool {
         let count = try await getAccountCount()
@@ -710,6 +718,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Gets the count of all accounts stored locally.
     private func getAccountCount() async throws -> Int {
         let accounts = try await localRepo.fetchAllAccounts()
+            .filter { $0.isLoggedIn == true }
         return accounts.count
     }
     
