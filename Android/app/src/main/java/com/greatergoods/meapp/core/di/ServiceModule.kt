@@ -15,6 +15,7 @@ import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.data.services.ExportService
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
@@ -28,6 +29,7 @@ import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
+import com.greatergoods.meapp.features.common.service.DialogUtility
 import com.greatergoods.notification.NotificationService
 import dagger.Module
 import dagger.Provides
@@ -105,6 +107,17 @@ object ServiceModule {
     @Singleton
     fun provideDialogQueueService(): IDialogQueueService {
         return DialogQueueService()
+    }
+
+    /**
+     * Provides a singleton instance of [IDialogUtility] for common dialog operations.
+     * @param dialogQueueService The dialog queue service dependency.
+     * @return [DialogUtility] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility {
+        return DialogUtility(dialogQueueService)
     }
 
     @Provides

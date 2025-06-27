@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.common.components
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
 
@@ -10,7 +11,7 @@ enum class DialogType {
     HeightPicker,
     HelpPopup,
     PasswordReset,
-    RadioGroupPicker,
+    RadioGroupPicker
 }
 
 @Composable

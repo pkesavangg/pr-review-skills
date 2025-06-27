@@ -201,6 +201,10 @@ class AccountRepository @Inject constructor(
         accountDao.deactivateOtherAccounts(accountId)
     }
 
+    override suspend fun deactivateAllAccountsInDB() {
+        accountDao.deactivateAllAccounts()
+    }
+
     /**
      * Activates the specified account by setting it as the active account.
      */
