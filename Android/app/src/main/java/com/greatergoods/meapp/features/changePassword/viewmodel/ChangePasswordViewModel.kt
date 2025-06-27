@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.changePassword.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.changePassword.model.ChangePasswordFormControls
 import com.greatergoods.meapp.features.changePassword.model.ChangePasswordIntent
 import com.greatergoods.meapp.features.changePassword.model.ChangePasswordReducer
@@ -19,13 +19,13 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the Change Password screen. Handles form state, validation, change password logic, and navigation.
- * @property accountAuthService Service for authentication.
+ * @property accountService Service for authentication.
  */
 @HiltViewModel
 class ChangePasswordViewModel
 @Inject
 constructor(
-    private val accountAuthService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<ChangePasswordState, ChangePasswordIntent>(
     reducer = ChangePasswordReducer(),
 ) {
@@ -67,7 +67,7 @@ constructor(
         val newPassword = state.value.form.controls.newPassword.value
         viewModelScope.launch {
             try {
-                val result = accountAuthService.changePassword(currentPassword, newPassword)
+                val result = accountService.changePassword(currentPassword, newPassword)
                 if (result) {
                     handleIntent(ChangePasswordIntent.Success)
                 } else {
@@ -105,7 +105,7 @@ constructor(
       private fun openForgotPasswordModal() {
           viewModelScope.launch {
               // Get current user's email - in change password screen, we get it from auth service
-              val currentAccount = accountAuthService.getCurrentAccount()
+              val currentAccount = accountService.getCurrentAccount()
               val currentUserEmail = currentAccount?.email ?: ""
 
               dialogQueueService.enqueue(
@@ -136,7 +136,7 @@ constructor(
         )
         viewModelScope.launch {
             try {
-                accountAuthService.resetPassword(email)
+                accountService.resetPassword(email)
                 AppLog.i("resetPasswordForCurrentUser", "Password reset requested for email: $email")
 
                 // Show success toast

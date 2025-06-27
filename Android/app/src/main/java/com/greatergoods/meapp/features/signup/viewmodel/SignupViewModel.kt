@@ -5,7 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.common.WeightUnit
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
@@ -25,13 +25,13 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the Signup screen. Handles form state, validation, signup logic, and navigation.
- * @property accountAuthService Service for authentication.
+ * @property accountService Service for authentication.
  */
 @HiltViewModel
 class SignupViewModel
 @Inject
 constructor(
-    private val accountAuthService: IAccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<SignupState, SignupIntent>(
     reducer = SignupReducer(),
 ) {
@@ -168,7 +168,7 @@ constructor(
                         // Add weight unit to account data for body composition update (always lbs)
                         signupRequest["weightUnit"] = if (isMetric) WeightUnit.KG else WeightUnit.LB
                     }
-                    val account = accountAuthService.addAccount(signupRequest)
+                    val account = accountService.addAccount(signupRequest)
                     if (account != null) {
                         AppLog.i("SignupViewModel", "Account created successfully")
                         navigationService.replaceStack(AppRoute.Init.Loading)

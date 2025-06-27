@@ -2,8 +2,8 @@ package com.greatergoods.meapp.features.settings.components.MyAccounts.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.core.service.AccountAuthService
 import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.settings.components.MyAccounts.reducer.MyAccountsIntent
 import com.greatergoods.meapp.features.settings.components.MyAccounts.reducer.MyAccountsReducer
@@ -18,7 +18,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MyAccountsViewModel @Inject constructor(
-    private val accountAuthService: AccountAuthService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<MyAccountsState, MyAccountsIntent>(MyAccountsReducer()) {
 
     override fun provideInitialState(): MyAccountsState = MyAccountsState()
@@ -30,7 +30,7 @@ class MyAccountsViewModel @Inject constructor(
             is MyAccountsIntent.ConfirmRemoveAccount -> {
                 state.value.accountToRemove?.let { account ->
                     viewModelScope.launch {
-                        accountAuthService.removeAccount(account.id)
+                        accountService.removeAccount(account.id)
                         // State update is already handled by reducer
                     }
                 }
@@ -42,7 +42,7 @@ class MyAccountsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            accountAuthService.loggedInAccountsFlow.collectLatest {
+            accountService.loggedInAccountsFlow.collectLatest {
                 handleIntent(MyAccountsIntent.SetAccounts(it))
             }
         }

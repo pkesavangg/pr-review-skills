@@ -16,7 +16,8 @@ import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
@@ -35,7 +36,7 @@ import javax.inject.Singleton
  * Handles login, logout, account switching, and token management.
  */
 @Singleton
-class AccountAuthService
+class AccountService
 @Inject
 constructor(
     private val accountRepository: IAccountRepository,
@@ -44,10 +45,10 @@ constructor(
     private val dialogQueueService: IDialogQueueService,
     private val userDataStore: UserDataStore,
     private val appEventService: IAppEventService
-) : IAccountAuthService {
+) : IAccountService {
     companion object {
         private const val MAX_ACCOUNTS = 10
-        private const val TAG = "AccountAuthService"
+        private const val TAG = "AccountService"
     }
 
     /**

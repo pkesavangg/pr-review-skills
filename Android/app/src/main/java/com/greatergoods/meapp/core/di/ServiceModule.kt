@@ -2,7 +2,7 @@ package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
-import com.greatergoods.meapp.core.service.AccountAuthService
+import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppEventService
@@ -21,7 +21,7 @@ import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
@@ -44,20 +44,20 @@ import android.content.Context
 @InstallIn(SingletonComponent::class)
 object ServiceModule {
     /**
-     * Provides a singleton instance of [IAccountAuthService].
-     * @param accountAuthService The implementation of AccountAuthService.
-     * @return [IAccountAuthService] instance.
+     * Provides a singleton instance of [IAccountService].
+     * @param accountService The implementation of AccountService.
+     * @return [IAccountService] instance.
      */
     @Provides
     @Singleton
-    fun provideAccountAuthService(
+    fun provideAccountService(
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
         tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
         userDataStore: UserDataStore,
         appEventService: IAppEventService
-    ): IAccountAuthService = AccountAuthService(
+    ): IAccountService = AccountService(
         accountRepository,
         connectivityObserver,
         tokenManager,
@@ -65,6 +65,7 @@ object ServiceModule {
         userDataStore,
         appEventService,
     )
+
     /**
      * Provides a singleton instance of [IAppEventService].
      * @return [AppEventService] instance.
@@ -137,7 +138,6 @@ object ServiceModule {
         dialogQueueService: DialogQueueService,
     ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
 
-
     /**
      * Provides the export service implementation.
      */
@@ -145,8 +145,8 @@ object ServiceModule {
     @Singleton
     fun provideExportService(
         exportAPI: IExportAPI,
-        accountAuthService: IAccountAuthService,
-    ): IExportService = ExportService(exportAPI, accountAuthService)
+        accountService: IAccountService,
+    ): IExportService = ExportService(exportAPI, accountService)
 
     /**
      * Provides the offline handler service implementation.
