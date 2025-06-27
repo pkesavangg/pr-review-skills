@@ -18,6 +18,7 @@ enum SettingsRoute: Routable {
     case displayMetrics
     case scaleNameScreen(scaleName: String)
     case users
+    case scaleBluetoothScreen(scale: Device)
     
     var body: some View {
         switch self {
@@ -37,6 +38,8 @@ enum SettingsRoute: Routable {
             ScaleNameScreen(scaleName: scaleName)
         case .users:
             UsersScreen()
+        case .scaleBluetoothScreen(let scale):
+            ScaleBluetoothScreen(scale: scale)
         }
     }
 }

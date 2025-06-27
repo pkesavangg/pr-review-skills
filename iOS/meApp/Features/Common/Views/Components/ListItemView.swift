@@ -11,7 +11,7 @@ import SwiftUI
 /// Use for both "User Name + Delete" and "Title + Detail + Chevron" row styles.
 struct ListItemView<Trailing: View>: View {
     @Environment(\.appTheme) private var theme
-    let leadingImage: Image?
+    let leadingImage: String?
     let title: String
     let subtitleTop: String?
     let subtitleBottom: String?
@@ -19,9 +19,9 @@ struct ListItemView<Trailing: View>: View {
     let onTap: (() -> Void)?
     let rowHeight: CGFloat?
     let verticalPadding: CGFloat
-
+    
     init(
-        leadingImage: Image? = nil,
+        leadingImage: String? = nil,
         title: String,
         subtitleTop: String? = nil,
         subtitleBottom: String? = nil,
@@ -40,7 +40,7 @@ struct ListItemView<Trailing: View>: View {
         self.verticalPadding = verticalPadding
     }
     init(
-        leadingImage: Image? = nil,
+        leadingImage: String? = nil,
         title: String,
         subtitle: String? = nil,
         trailing: Trailing? = nil,
@@ -59,14 +59,11 @@ struct ListItemView<Trailing: View>: View {
             verticalPadding: verticalPadding
         )
     }
-
+    
     var body: some View {
         HStack(spacing: 12) {
             if let leadingImage {
-                leadingImage
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 22, height: 22)
+                AppIconView(icon: leadingImage)
                     .foregroundColor(theme.actionPrimary)
             }
             VStack(alignment: .leading, spacing: 2) {
@@ -99,13 +96,35 @@ struct ListItemView<Trailing: View>: View {
 
 struct GenericListRow_Previews: PreviewProvider {
     static var previews: some View {
-        VStack(spacing: 0) {
+        VStack() {
             ListItemView<EmptyView>(
                 title: "Title"
             )
             ListItemView(
                 title: "Title With Trailing",
                 trailing: Image(systemName: "chevron.right")
+            )
+            
+            ListItemView(
+                leadingImage: AppAssets.filledTickCircle,
+                title: "Title With Trailing",
+                trailing: Image(systemName: "chevron.right")
+            )
+            Divider()
+            ListItemView(
+                leadingImage: AppAssets.filledTickCircle,
+                title: "Title With Trailing",
+                trailing: Image(systemName: "chevron.right")
+            )
+            Divider()
+            ListItemView<EmptyView>(
+                leadingImage: AppAssets.filledTickCircle,
+                title: "Title With Trailing"
+            )
+            Divider()
+            ListItemView<EmptyView>(
+                leadingImage: AppAssets.filledTickCircle,
+                title: "Title With Trailing"
             )
         }
         .frame(maxHeight: .infinity)
