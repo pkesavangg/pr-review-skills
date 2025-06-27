@@ -2,16 +2,19 @@ package com.greatergoods.meapp.features.MyAccounts.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsIntent
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsReducer
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsState
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -47,7 +50,7 @@ class MyAccountsViewModel @Inject constructor(
             }
 
             is MyAccountsIntent.ShowMaxAccountsAlert -> {
-                showMaxLimitReachedDialog()
+                showMaxLimitReachedAlert()
             }
 
             else -> {} // SetAccounts and dialog dismiss handled by reducer
@@ -56,14 +59,16 @@ class MyAccountsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+
             accountService.loggedInAccountsFlow.collectLatest {
-                handleIntent(MyAccountsIntent.SetAccounts(it))
+                val hasReachedMaxAccounts = accountService.hasReachedMaxAccounts.first()
+                handleIntent(MyAccountsIntent.SetAccounts(it, hasReachedMaxAccounts))
             }
         }
     }
 
     private fun goToLogin(account: Account?) {
-        if (state.value.accounts.size >= 10) {
+        if (state.value.hasReachedMaxAccounts) {
             handleIntent(MyAccountsIntent.ShowMaxAccountsAlert)
         } else {
             navigateTo(AppRoute.Auth.Login)
@@ -71,7 +76,7 @@ class MyAccountsViewModel @Inject constructor(
     }
 
     private fun goToSignup() {
-        if (state.value.accounts.size >= 10) {
+        if (state.value.hasReachedMaxAccounts) {
             handleIntent(MyAccountsIntent.ShowMaxAccountsAlert)
         } else {
             navigateTo(AppRoute.Auth.Signup)
@@ -81,7 +86,7 @@ class MyAccountsViewModel @Inject constructor(
     private fun onAccountSelect(account: Account) {
         if (!account.isActiveAccount) {
             viewModelScope.launch {
-                accountService.switchAccount(account)
+                accountService.switchAccount(account, true)
                 navigationService.replaceStack(AppRoute.Init.Loading)
             }
         }
@@ -117,23 +122,29 @@ class MyAccountsViewModel @Inject constructor(
     /**
      * Shows the max limit reached alert dialog.
      */
-    private fun showMaxLimitReachedDialog() {
+    private fun showMaxLimitReachedAlert() {
         dialogQueueService.enqueue(
-            DialogModel.Alert(
-                title = AppPopupStrings.MaxAccountReachedAlert.Title,
-                message = AppPopupStrings.MaxAccountReachedAlert.Message,
-                dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
-                onDismiss = {
-                    dialogQueueService.dismissCurrent()
-                },
+            DialogModel.Custom(
+                contentKey = DialogType.MaxAccountAlert,
+                params = mapOf(
+                    "isFromLanding" to false,
+                ),
+                onDismiss = {},
             ),
         )
     }
 
     private fun onRemoveAccount() {
+        dialogQueueService.showLoader(AppPopupStrings.RemoveAccountDialog.Loader)
         state.value.accountToRemove?.let { account ->
             viewModelScope.launch {
-                accountService.logout(account.id, account.fcmToken)
+                try {
+                    accountService.logout(account.id, account.fcmToken)
+                } catch (e: Exception) {
+                    AppLog.e("onRemoveAccount", e.toString())
+                } finally {
+                    dialogQueueService.dismissLoader()
+                }
             }
         }
     }

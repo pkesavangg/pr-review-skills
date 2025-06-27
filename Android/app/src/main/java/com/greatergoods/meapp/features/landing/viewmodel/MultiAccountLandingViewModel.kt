@@ -4,14 +4,15 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.landing.reducer.MultiAccountLandingIntent
 import com.greatergoods.meapp.features.landing.reducer.MultiAccountLandingReducer
 import com.greatergoods.meapp.features.landing.reducer.MultiAccountLandingState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,7 +23,7 @@ import javax.inject.Inject
 class MultiAccountLandingViewModel @Inject constructor(
     private val accountService: IAccountService,
 ) : BaseIntentViewModel<MultiAccountLandingState, MultiAccountLandingIntent>(
-    MultiAccountLandingReducer()
+    MultiAccountLandingReducer(),
 ) {
     override fun provideInitialState(): MultiAccountLandingState = MultiAccountLandingState()
 
@@ -34,10 +35,7 @@ class MultiAccountLandingViewModel @Inject constructor(
         when (intent) {
 
             is MultiAccountLandingIntent.SelectAccount -> {
-            }
-
-            is MultiAccountLandingIntent.RemoveAccount -> {
-                showRemoveAccountDialog(intent.account)
+                onSelectAccount(intent.account)
             }
 
             is MultiAccountLandingIntent.Login -> {
@@ -45,7 +43,7 @@ class MultiAccountLandingViewModel @Inject constructor(
             }
 
             is MultiAccountLandingIntent.CreateAccount -> {
-                navigate(AppRoute.Auth.Signup)
+                goToSignup()
             }
 
             is MultiAccountLandingIntent.ShowMaxLimitReachedAlert -> {
@@ -60,68 +58,57 @@ class MultiAccountLandingViewModel @Inject constructor(
         loadAccounts()
     }
 
-    private fun navigate(route: AppRoute) {
+    private fun onSelectAccount(account: Account) {
         viewModelScope.launch {
-            navigationService.navigateTo(route)
-        }
-    }
-
-    private fun goToLogin(account: Account?) {
-        viewModelScope.launch {
-            navigate(AppRoute.Auth.Login)
+            accountService.switchAccount(account)
+            navigationService.replaceStack(AppRoute.Init.Loading)
         }
     }
 
     /**
-     * Shows the remove account confirmation dialog.
+     * Loads accounts.
      */
-    private fun showRemoveAccountDialog(account: Account) {
-        dialogQueueService.enqueue(
-            DialogModel.Confirm(
-                title = String.format(AppPopupStrings.RemoveAccountDialog.Title, account.firstName),
-                message = String.format(
-                    AppPopupStrings.RemoveAccountDialog.Message,
-                    account.firstName
-                ),
-                confirmText = AppPopupStrings.RemoveAccountDialog.ConfirmButton,
-                cancelText = AppPopupStrings.RemoveAccountDialog.CancelButton,
-                onConfirm = {
-                    // TODO: Implement account removal logic
-                    // Example: accountService.removeAccount(account.id)
-                    // Then refresh the accounts list
-                    dialogQueueService.dismissCurrent()
-                },
-                onCancel = {
-                    dialogQueueService.dismissCurrent()
-                },
-                onDismiss = {
-                    dialogQueueService.dismissCurrent()
-                })
-        )
+    private fun loadAccounts() {
+        viewModelScope.launch {
+            accountService.loggedInAccountsFlow.collectLatest {
+                val hasReachedMaxAccounts = accountService.hasReachedMaxAccounts.first()
+                handleIntent(MultiAccountLandingIntent.SetAccounts(it, hasReachedMaxAccounts))
+            }
+        }
     }
 
     /**
      * Shows the max limit reached alert dialog.
      */
     private fun showMaxLimitReachedDialog() {
+
         dialogQueueService.enqueue(
-            DialogModel.Alert(
-                title = AppPopupStrings.MaxAccountReachedAlert.Title,
-                message = AppPopupStrings.MaxAccountReachedAlert.Message,
-                dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
-                onDismiss = {
-                    dialogQueueService.dismissCurrent()
-                })
+            DialogModel.Custom(
+                contentKey = DialogType.MaxAccountAlert,
+                params = mapOf(
+                    "isFromLanding" to true,
+                ),
+                onDismiss = {},
+            ),
         )
     }
 
-    /**
-     * Loads accounts (stub for now).
-     */
-    private fun loadAccounts() {
+    private fun goToLogin(account: Account?) {
         viewModelScope.launch {
-            accountService.loggedInAccountsFlow.collectLatest {
-                handleIntent(MultiAccountLandingIntent.SetAccounts(it))
+            if (state.value.hasReachedMaxAccounts && account == null) {
+                handleIntent(MultiAccountLandingIntent.ShowMaxLimitReachedAlert)
+            } else {
+                navigationService.navigateTo(AppRoute.Auth.Login)
+            }
+        }
+    }
+
+    private fun goToSignup() {
+        viewModelScope.launch {
+            if (state.value.hasReachedMaxAccounts) {
+                handleIntent(MultiAccountLandingIntent.ShowMaxLimitReachedAlert)
+            } else {
+                navigationService.navigateTo(AppRoute.Auth.Signup)
             }
         }
     }

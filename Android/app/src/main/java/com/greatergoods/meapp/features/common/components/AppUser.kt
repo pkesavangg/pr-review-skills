@@ -77,7 +77,7 @@ fun AppUser(
         // User Info (Name and Email)
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${account.firstName} ${account.lastName}",
+                text = account.firstName,
                 style = typography.body2.copy(
                     color = colorScheme.textHeading,
                 ),

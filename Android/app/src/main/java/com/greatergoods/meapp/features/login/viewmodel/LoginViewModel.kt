@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -50,6 +51,7 @@ constructor(
             is LoginIntent.Success -> navigateToDashboard()
             is LoginIntent.OpenHelpModal -> openHelpModal()
             is LoginIntent.OnBack -> onBack()
+            is LoginIntent.ShowMaxAccountAlert -> showMaxLimitReachedAlert()
             else -> null
         }
     }
@@ -76,6 +78,8 @@ constructor(
                 } else {
                     handleIntent(LoginIntent.Error("Login failed"))
                 }
+            } catch (e: MaxAccountsReachedException) {
+                handleIntent(LoginIntent.ShowMaxAccountAlert)
             } catch (e: Exception) {
                 handleIntent(LoginIntent.Error(e.toString()))
                 AppLog.e("onSubmit", "Login failed", e.toString())
@@ -130,6 +134,18 @@ constructor(
         dialogQueueService.enqueue(
             DialogModel.Custom(
                 contentKey = DialogType.HelpPopup,
+                onDismiss = {},
+            ),
+        )
+    }
+
+    private fun showMaxLimitReachedAlert() {
+        dialogQueueService.enqueue(
+            DialogModel.Custom(
+                contentKey = DialogType.MaxAccountAlert,
+                params = mapOf(
+                    "isFromLanding" to true,
+                ),
                 onDismiss = {},
             ),
         )

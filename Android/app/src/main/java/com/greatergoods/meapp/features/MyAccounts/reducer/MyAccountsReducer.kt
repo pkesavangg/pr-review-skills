@@ -9,14 +9,15 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
 data class MyAccountsState(
     val accounts: List<Account> = emptyList(),
     val showMaxAccountsDialog: Boolean = false,
-    val accountToRemove: Account? = null
+    val accountToRemove: Account? = null,
+    val hasReachedMaxAccounts: Boolean = false,
 ) : IReducer.State
 
 /**
  * Intents for MyAccountsScreen actions.
  */
 sealed interface MyAccountsIntent : IReducer.Intent {
-    data class SetAccounts(val accounts: List<Account>) : MyAccountsIntent
+    data class SetAccounts(val accounts: List<Account>, val hasReachedMaxAccounts: Boolean) : MyAccountsIntent
     object ShowMaxAccountsAlert : MyAccountsIntent
     data class RequestRemoveAccount(val account: Account) : MyAccountsIntent
 
@@ -33,7 +34,10 @@ sealed interface MyAccountsIntent : IReducer.Intent {
  */
 class MyAccountsReducer : IReducer<MyAccountsState, MyAccountsIntent> {
     override fun reduce(state: MyAccountsState, intent: MyAccountsIntent): MyAccountsState? = when (intent) {
-        is MyAccountsIntent.SetAccounts -> state.copy(accounts = intent.accounts)
+        is MyAccountsIntent.SetAccounts -> state.copy(
+            accounts = intent.accounts,
+            hasReachedMaxAccounts = intent.hasReachedMaxAccounts,
+        )
 
         MyAccountsIntent.ShowMaxAccountsAlert -> state.copy(showMaxAccountsDialog = true)
 

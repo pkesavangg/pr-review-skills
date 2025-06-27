@@ -17,6 +17,8 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
+import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
@@ -71,6 +73,9 @@ constructor(
             listOfNotNull(active) + others
         }
 
+    override val hasReachedMaxAccounts: Flow<Boolean> =
+        loggedInAccountsFlow.map { it.size >= MAX_ACCOUNTS }
+
     // Account status flows
     private val _isSignUpFlow = MutableSharedFlow<Boolean>()
     override val isSignUpFlow: SharedFlow<Boolean> = _isSignUpFlow
@@ -96,6 +101,10 @@ constructor(
         password: String,
     ): Account? {
         return try {
+            val isExistingAccount = getLoggedInAccounts().any { it.email == email }
+            if (hasReachedMaxAccounts.first() && !isExistingAccount) {
+                throw MaxAccountsReachedException()
+            }
             val loginResponse = accountRepository.loginInAPI(email, password)
             val info = loginResponse.account
             val account =
@@ -127,6 +136,7 @@ constructor(
             // Deactivate all other accounts before saving this one as active
             accountRepository.deactivateOtherAccountsInDB(account.id)
             val savedAccount = accountRepository.addAccountInDB(account)
+            userDataStore.setActiveAccount(account.id)
             tokenManager.setTokens(
                 Token(
                     accountId = savedAccount.id,
@@ -204,7 +214,7 @@ constructor(
                             AppLog.e(
                                 TAG,
                                 "API logout failed for account ${account.id}",
-                                e.toString()
+                                e.toString(),
                             )
                             // Continue with local logout even if API fails
                         }
@@ -233,12 +243,9 @@ constructor(
      * @return The created account or null if creation fails
      */
     override suspend fun addAccount(request: Map<String, Any>): Account? {
-
-        val currentAccounts = loggedInAccountsFlow.first()
-        if (currentAccounts.size >= MAX_ACCOUNTS) {
-            AppLog.e(TAG, "Maximum account limit reached")
+        if (hasReachedMaxAccounts.first()) {
             appEventService.emitAuthEvent(AuthState.Error("Maximum account limit reached"))
-            return null
+            throw MaxAccountsReachedException()
         }
         return try {
             val createRequest =
@@ -286,6 +293,7 @@ constructor(
                 )
             accountRepository.deactivateOtherAccountsInDB(account.id)
             val savedAccount = accountRepository.addAccountInDB(account)
+            userDataStore.setActiveAccount(account.id)
             tokenManager.setTokens(
                 Token(
                     accountId = savedAccount.id,
@@ -336,13 +344,14 @@ constructor(
      * @param account Account to switch to
      * @return true if switch was successful
      */
-    override suspend fun switchAccount(account: Account): Boolean {
+    override suspend fun switchAccount(account: Account, showToast: Boolean): Boolean {
         try {
 
             // Activate the target account
             accountRepository.activateAccountInDB(account.id)
             // Deactivate all other accounts
             accountRepository.deactivateOtherAccountsInDB(account.id)
+            userDataStore.setActiveAccount(account.id)
             // Update last active time
             accountRepository.updateLastActiveTimeInDB(account.id)
             // Update tokens in TokenManager for the switched account
@@ -359,7 +368,7 @@ constructor(
                 )
             }
             AppLog.d(TAG, "Successfully switched to account: ${account.email}")
-            appEventService.emitAuthEvent(AuthState.AccountSwitched(account))
+            appEventService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
             return true
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to switch account", e.toString())
@@ -465,7 +474,7 @@ constructor(
                             AppLog.e(
                                 TAG,
                                 "Session expired for account: " + storedAccount.email,
-                                e.toString()
+                                e.toString(),
                             )
                             appEventService.emitAuthEvent(AuthState.LoggedOut("Session expired"))
                             _isLoginFlow.emit(false)
@@ -482,8 +491,8 @@ constructor(
             AppLog.e(TAG, "Failed to check logged in user", e.toString())
             appEventService.emitAuthEvent(
                 AuthState.Error(
-                    e.message ?: "Failed to check logged in user"
-                )
+                    e.message ?: "Failed to check logged in user",
+                ),
             )
             false
         }
@@ -499,7 +508,7 @@ constructor(
             } else {
                 AppLog.e(
                     TAG,
-                    "Failed to reset password: ${response.code()} - ${response.message()}"
+                    "Failed to reset password: ${response.code()} - ${response.message()}",
                 )
                 showErrorToast(AuthAction.RESET_PASSWORD, HttpException(response))
             }
@@ -582,13 +591,13 @@ constructor(
     fun showSuccessToast(action: AuthAction, data: String? = null) {
         val (title, message) = when (action) {
             AuthAction.RESET_PASSWORD -> ToastStrings.Success.ResetPasswordSuccess.Header to
-                    ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
+                ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
 
             AuthAction.UPDATE_PROFILE -> ToastStrings.Success.UpdateProfileSuccess.Header to
-                    ToastStrings.Success.UpdateProfileSuccess.Message
+                ToastStrings.Success.UpdateProfileSuccess.Message
 
             AuthAction.CHANGE_PASSWORD -> ToastStrings.Success.ChangePasswordSuccess.Header to
-                    ToastStrings.Success.ChangePasswordSuccess.Message
+                ToastStrings.Success.ChangePasswordSuccess.Message
 
             else -> "" to ""
         }
@@ -622,7 +631,7 @@ constructor(
             }
 
             AuthAction.RESET_PASSWORD -> ToastStrings.Error.ResetPasswordError.Header to
-                    ToastStrings.Error.ResetPasswordError.Message
+                ToastStrings.Error.ResetPasswordError.Message
 
             AuthAction.UPDATE_PROFILE -> {
                 val header = ToastStrings.Error.UpdateProfileError.Header

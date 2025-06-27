@@ -7,16 +7,18 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
  * State for MultiAccountLandingScreen.
  */
 data class MultiAccountLandingState(
-    val accounts: List<Account> = emptyList()
+    val accounts: List<Account> = emptyList(),
+    val hasReachedMaxAccounts: Boolean = false
 ) : IReducer.State
 
 /**
  * Intents for MultiAccountLandingScreen actions.
  */
 sealed interface MultiAccountLandingIntent : IReducer.Intent {
-    data class SetAccounts(val accounts: List<Account>) : MultiAccountLandingIntent
+    data class SetAccounts(val accounts: List<Account>, val hasReachedMaxAccounts: Boolean = false) :
+        MultiAccountLandingIntent
+
     data class SelectAccount(val account: Account) : MultiAccountLandingIntent
-    data class RemoveAccount(val account: Account) : MultiAccountLandingIntent
     data class Login(val account: Account? = null) : MultiAccountLandingIntent
     object CreateAccount : MultiAccountLandingIntent
     object ShowMaxLimitReachedAlert : MultiAccountLandingIntent
@@ -31,9 +33,10 @@ class MultiAccountLandingReducer : IReducer<MultiAccountLandingState, MultiAccou
         intent: MultiAccountLandingIntent
     ): MultiAccountLandingState? =
         when (intent) {
-            is MultiAccountLandingIntent.SetAccounts -> state.copy(accounts = intent.accounts)
+            is MultiAccountLandingIntent.SetAccounts ->
+                state.copy(accounts = intent.accounts, hasReachedMaxAccounts = intent.hasReachedMaxAccounts)
+
             is MultiAccountLandingIntent.SelectAccount -> state // No state change, handled in ViewModel
-            is MultiAccountLandingIntent.RemoveAccount -> state
             is MultiAccountLandingIntent.Login -> state
             MultiAccountLandingIntent.CreateAccount -> state
             MultiAccountLandingIntent.ShowMaxLimitReachedAlert -> state

@@ -3,6 +3,8 @@ package com.greatergoods.meapp.features.common.components
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
+import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
 
@@ -11,6 +13,7 @@ enum class DialogType {
     HelpPopup,
     PasswordReset,
     RadioGroupPicker,
+    MaxAccountAlert
 }
 
 @Composable
@@ -73,6 +76,21 @@ fun DialogHost() {
                     email = email,
                     onDismiss = {
                         dialog.onDismiss?.let { it() }
+                        dialogQueueViewModel.dismissCurrent()
+                    },
+                )
+            }
+
+            DialogType.MaxAccountAlert -> {
+                val isFromLanding = dialog.params["isFromLanding"] as? Boolean ?: false
+                DialogModel.Alert(
+                    title = AppPopupStrings.MaxAccountReachedAlert.Title,
+                    message = if (isFromLanding)
+                        AppPopupStrings.MaxAccountReachedAlert.Message2
+                    else
+                        AppPopupStrings.MaxAccountReachedAlert.Message1,
+                    dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
+                    onDismiss = {
                         dialogQueueViewModel.dismissCurrent()
                     },
                 )

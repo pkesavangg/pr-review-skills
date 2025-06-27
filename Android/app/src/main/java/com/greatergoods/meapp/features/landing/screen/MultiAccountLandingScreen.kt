@@ -80,7 +80,7 @@ fun MultiAccountLandingScreenContent(
                     accounts = state.accounts,
                     showAccountActivity = false,
                     maxVisibleItems = 5,
-                    onDeleteRequest = { handleIntent(MultiAccountLandingIntent.RemoveAccount(it)) },
+                    onDeleteRequest = {},
                     onAccountSelect = { handleIntent(MultiAccountLandingIntent.SelectAccount(it)) },
                     onLoginRequest = { handleIntent(MultiAccountLandingIntent.Login(it)) },
                 )
