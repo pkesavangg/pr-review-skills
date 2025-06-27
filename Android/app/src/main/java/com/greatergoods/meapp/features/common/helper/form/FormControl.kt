@@ -15,7 +15,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
-import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
 typealias AsyncValidator<T> = suspend (T) -> ValidationError?
@@ -44,7 +43,7 @@ class FormControl<T> private constructor(
     private val _error = mutableStateOf<ValidationError?>(null)
     val error: ValidationError? get() = _error.value
     val errorMessage: String? get() = _error.value?.message
-    val isError: Boolean get() = _error.value != null && _error.value?.type != null
+    val isError: Boolean get() = _error.value != null
 
     private val _touched = mutableStateOf(false)
     val touched: Boolean get() = _touched.value
@@ -63,17 +62,10 @@ class FormControl<T> private constructor(
 
     private var onValueChangeCallback: OnValueChangeCallback<T>? = null
 
-    /**
-     * Sets a callback to be notified when the value changes
-     * @param callback The callback function that receives both old and new values
-     */
     fun onValueChangeListener(callback: OnValueChangeCallback<T>) {
         onValueChangeCallback = callback
     }
 
-    /**
-     * Updates the value and triggers validation
-     */
     fun onValueChange(newValue: T) {
         val oldValue = _value.value
         _value.value = newValue
@@ -82,60 +74,34 @@ class FormControl<T> private constructor(
         validate()
     }
 
-    /**
-     * Marks the control as touched and triggers validation
-     */
     fun onBlur() {
         _touched.value = true
         validate()
     }
 
-    /**
-     * Adds a synchronous validator to the control
-     */
     fun addValidator(validator: Validator<T>) {
         _validators.value = _validators.value + validator
         validate()
     }
 
-    /**
-     * Adds an asynchronous validator to the control
-     * @param type The type identifier for the async validator
-     * @param validator The async validator function
-     * @param scope The coroutine scope to run the validator in
-     */
-    fun addAsyncValidator(
-        type: String,
-        validator: AsyncValidator<T>,
-        scope: CoroutineScope,
-    ) {
+    fun addAsyncValidator(type: String, validator: AsyncValidator<T>, scope: CoroutineScope) {
         _asyncValidators.value = _asyncValidators.value + AsyncValidatorWrapper(type, validator, scope)
         validate()
     }
 
-    /**
-     * Removes a validator by type
-     */
     fun removeValidator(type: String) {
-        _validators.value =
-            _validators.value.filter { validator ->
-                validator(value)?.type != type
-            }
-        _asyncValidators.value =
-            _asyncValidators.value.filter { wrapper ->
-                wrapper.type != type
-            }
+        _validators.value = _validators.value.filter { it(value)?.type != type }
+        _asyncValidators.value = _asyncValidators.value.filter { it.type != type }
         validate()
     }
 
-    /**
-     * Validates the control using both sync and async validators
-     * @return true if validation passed synchronous checks
-     */
     fun validate(): Boolean {
         validationJob?.cancel()
 
-        // Run sync validators first
+        // Clear error before validation
+        _error.value = null
+
+        // Run sync validators
         for (validator in _validators.value) {
             val err = validator(value)
             if (err != null) {
@@ -145,55 +111,45 @@ class FormControl<T> private constructor(
             }
         }
 
-        // If we have async validators, run them
+        // Run async validators
         if (_asyncValidators.value.isNotEmpty()) {
             _pending.value = true
+            var pendingCount = _asyncValidators.value.size
 
-            // Launch each async validator in its own scope
             _asyncValidators.value.forEach { wrapper ->
-                wrapper.scope.launch {
+                validationJob = wrapper.scope.launch {
                     validationMutex.withLock {
                         val err = wrapper.validator(value)
+                        pendingCount--
+
                         if (err != null) {
                             _error.value = err
                             _pending.value = false
-                            return@launch
+                            return@withLock
                         }
-                        // Only clear error if no other async validators have set an error
-                        if (_error.value == null) {
+
+                        // Only set pending to false when all async validators are done
+                        if (pendingCount == 0) {
                             _pending.value = false
                         }
                     }
                 }
             }
         } else {
-            _error.value = null
             _pending.value = false
         }
-        return true
+
+        return _error.value == null
     }
 
-    /**
-     * Forces error display regardless of touched/dirty state
-     */
     fun forceShowError() {
         _touched.value = true
     }
 
-    /**
-     * Returns true if the current value passes all sync validators (regardless of touched/dirty state).
-     */
     fun isValueValid(): Boolean {
-        for (validator in _validators.value) {
-            if (validator(value) != null) return false
-        }
-        return true
+        return _validators.value.all { it(value) == null }
     }
 
-    /**
-     * Resets the control to its initial state
-     * @param newInitialValue Optional new initial value to set
-     */
     fun reset(newInitialValue: T? = null) {
         val valueToReset = newInitialValue ?: _initialValue
         _initialValue = valueToReset
@@ -206,22 +162,11 @@ class FormControl<T> private constructor(
     }
 
     companion object {
-        /**
-         * Creates a new FormControl instance
-         */
-        fun <T> create(
-            initialValue: T,
-            validators: List<Validator<T>> = emptyList(),
-        ): FormControl<T> =
-            FormControl(
-                initialValue = initialValue,
-                validators = validators,
-            )
+        fun <T> create(initialValue: T, validators: List<Validator<T>> = emptyList()): FormControl<T> {
+            return FormControl(initialValue, validators)
+        }
     }
 
-    /**
-     * Wrapper class to keep async validator, its type, and its scope together
-     */
     private data class AsyncValidatorWrapper<T>(
         val type: String,
         val validator: AsyncValidator<T>,
@@ -237,7 +182,7 @@ class FormGroup<T : Any>(
     val controls: T,
     private val groupValidators: List<(T) -> String?> = emptyList(),
 ) {
-    val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true }
     private val _groupError = mutableStateOf<String?>(null)
     val groupError: String? get() = _groupError.value
 
@@ -255,7 +200,7 @@ class FormGroup<T : Any>(
      * @param R The target `@Serializable` data class, which must be `reified`.
      * @return An instance of `R` populated with the form's values.
      */
-    inline fun <reified R : Any> getValuesAsType(): R {
+    private inline fun <reified R : Any> getValuesAsType(): R {
         val valueMap = getValues()
         val jsonObjectMap =
             valueMap.mapValues { (_, value) ->
@@ -277,13 +222,16 @@ class FormGroup<T : Any>(
      * This checks all sync validators for each control, even if untouched.
      */
     val isValid: Boolean
-        get() = controls.toList().all { it.isValueValid() } && groupError == null
+        get() = controls.toFormControlList().all { it.isValueValid() } && groupError == null
 
     val isDirty: Boolean
-        get() = controls.toList().any { it.dirty }
+        get() = controls.toFormControlList().any { it.dirty }
 
     val isTouched: Boolean
-        get() = controls.toList().any { it.touched }
+        get() = controls.toFormControlList().any { it.touched }
+
+    val isPending: Boolean
+        get() = controls.toFormControlList().any { it.pending }
 
     /**
      * Returns a map of all form control values where the key is the field name
@@ -305,30 +253,32 @@ class FormGroup<T : Any>(
      * Validates all controls in the group and runs group-level validation
      */
     fun validate(): Boolean {
-        val fieldsValid = controls.toList().all { it.validate() && it.error == null }
+        val controlList = controls.toFormControlList()
+        val fieldsValid = controlList.all { it.validate() } && controlList.all { it.error == null }
+
+        // Clear group error before validation
+        _groupError.value = null
 
         for (validator in groupValidators) {
             val err = validator(controls)
-            Log.d("hello", "Group validator: $err")
             if (err != null) {
                 _groupError.value = err
                 return false
             }
         }
-        _groupError.value = null
-        return fieldsValid && groupError == null
+
+        return fieldsValid
     }
 
     /**
      * Forces error display for all controls in the group
      */
     fun forceShowAllErrors() {
-        controls.toList().forEach { it.forceShowError() }
+        controls.toFormControlList().forEach { it.forceShowError() }
     }
 
     /**
      * Resets all controls in the group to their initial state
-     * @param newValues Optional map of field names to new initial values
      */
     fun resetForm() {
         controls.javaClass.declaredFields.forEach { field ->
@@ -342,8 +292,93 @@ class FormGroup<T : Any>(
     }
 }
 
+@Stable
+class MultiFormGroup(
+    vararg formGroups: FormGroup<*>,
+    private val crossValidators: List<() -> String?> = emptyList()
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+    private val groups = formGroups.toList()
+    private val _groupError = mutableStateOf<String?>(null)
+    val groupError: String? get() = _groupError.value
+
+    val isValid: Boolean
+        get() = groups.all { it.isValid } && groupError == null
+
+    val isDirty: Boolean
+        get() = groups.any { it.isDirty }
+
+    val isTouched: Boolean
+        get() = groups.any { it.isTouched }
+
+    val isPending: Boolean
+        get() = groups.any { it.isPending }
+
+    /**
+     * Validates all inner groups and cross-form validation rules.
+     * Sets groupError if any cross-validator fails.
+     */
+    fun validate(): Boolean {
+        val groupsValid = groups.all { it.validate() }
+
+        // Clear group error before validation
+        _groupError.value = null
+
+        for (validator in crossValidators) {
+            val err = validator()
+            if (err != null) {
+                _groupError.value = err
+                return false
+            }
+        }
+
+        return groupsValid
+    }
+
+    /**
+     * Forces all controls in all groups to show their error states.
+     */
+    fun forceShowAllErrors() {
+        groups.forEach { it.forceShowAllErrors() }
+    }
+
+    /**
+     * Resets all controls in all groups to their initial state.
+     */
+    fun resetForm() {
+        groups.forEach { it.resetForm() }
+        _groupError.value = null
+    }
+
+    /**
+     * Combines all field values from all inner groups into a single flat map.
+     */
+    fun getValues(): Map<String, Any?> {
+        return groups.flatMap { it.getValues().entries }.associate { it.toPair() }
+    }
+
+    /**
+     * Serializes combined values into the specified @Serializable type.
+     */
+    private inline fun <reified R : Any> getValuesAsType(): R {
+        val valueMap = getValues()
+        val jsonObjectMap = valueMap.mapValues { (_, value) ->
+            when (value) {
+                null -> JsonNull
+                is String -> JsonPrimitive(value)
+                is Number -> JsonPrimitive(value)
+                is Boolean -> JsonPrimitive(value)
+                is DateTimeValue -> json.encodeToJsonElement(value)
+                is HeightInput -> json.encodeToJsonElement(value)
+                else -> JsonPrimitive(value.toString())
+            }
+        }
+        return json.decodeFromJsonElement(JsonObject(jsonObjectMap))
+    }
+}
+
 // Extension for explicit control access
-private fun <T : Any> T.toList(): List<FormControl<*>> =
+private fun <T : Any> T.toFormControlList(): List<FormControl<*>> =
     javaClass.declaredFields.mapNotNull { field ->
         field.isAccessible = true
         field.get(this) as? FormControl<*>
