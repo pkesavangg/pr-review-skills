@@ -26,10 +26,10 @@ struct DisplayMetricsScreen: View {
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
-                title: lang.displayMetricsTitle,
+                title: DisplayMetricStrings.displayMetricsTitle,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: {
-                    AnyView(ButtonView(
+                    ButtonView(
                         text: CommonStrings.save.uppercased(),
                         type: .inlineTextPrimary,
                         size: .small,
@@ -37,10 +37,12 @@ struct DisplayMetricsScreen: View {
                         action: {
                             // TODO: ADD Action
                         }
-                    ))
+                    )
                 },
                 onLeadingTap: { router.navigateBack() },
-                onTrailingTap: {},
+                onTrailingTap: {
+                    // TODO: ADD Action
+                },
                 canShowBorder: true
             )
 
