@@ -18,7 +18,8 @@ struct ListItemView<Trailing: View>: View {
     let trailing: Trailing?
     let onTap: (() -> Void)?
     let rowHeight: CGFloat?
-    
+    let verticalPadding: CGFloat
+
     init(
         leadingImage: Image? = nil,
         title: String,
@@ -26,7 +27,8 @@ struct ListItemView<Trailing: View>: View {
         subtitleBottom: String? = nil,
         trailing: Trailing? = nil,
         rowHeight: CGFloat? = nil,
-        onTap: (() -> Void)? = nil
+        onTap: (() -> Void)? = nil,
+        verticalPadding: CGFloat = .spacingSM
     ) {
         self.leadingImage = leadingImage
         self.title = title
@@ -35,6 +37,7 @@ struct ListItemView<Trailing: View>: View {
         self.trailing = trailing
         self.rowHeight = rowHeight
         self.onTap = onTap
+        self.verticalPadding = verticalPadding
     }
     init(
         leadingImage: Image? = nil,
@@ -42,11 +45,21 @@ struct ListItemView<Trailing: View>: View {
         subtitle: String? = nil,
         trailing: Trailing? = nil,
         rowHeight: CGFloat? = nil,
-        onTap: (() -> Void)? = nil
+        onTap: (() -> Void)? = nil,
+        verticalPadding: CGFloat = .spacingSM
     ) {
-        self.init(leadingImage: leadingImage, title: title, subtitleTop: nil, subtitleBottom: subtitle, trailing: trailing, rowHeight: rowHeight, onTap: onTap)
+        self.init(
+            leadingImage: leadingImage,
+            title: title,
+            subtitleTop: nil,
+            subtitleBottom: subtitle,
+            trailing: trailing,
+            rowHeight: rowHeight,
+            onTap: onTap,
+            verticalPadding: verticalPadding
+        )
     }
-    
+
     var body: some View {
         HStack(spacing: 12) {
             if let leadingImage {
@@ -77,8 +90,8 @@ struct ListItemView<Trailing: View>: View {
                     .onTapGesture(perform: {onTap?()})
             }
         }
-        .padding(.vertical, .spacingSM)
-        .padding(.horizontal,.spacingSM)
+        .padding(.vertical, verticalPadding)
+        .padding(.horizontal, .spacingSM)
         .background(theme.backgroundPrimary)
         .frame(height: rowHeight ?? 44)
     }

@@ -110,7 +110,7 @@ struct ScaleSettingsScreen: View {
                     config: SettingsItemConfig(
                         title: lang.users,
                         value: scaleStore.usersValue,
-                        onTap: { scaleStore.usersTapped() }
+                        onTap: { router.navigate(to: .users) }
                     )
                 )
             }

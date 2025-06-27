@@ -217,9 +217,6 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    func usersTapped() {
-        // TODO: Implement usersTapped action
-    }
     func bluetoothTapped() {
         // TODO: Implement bluetoothTapped action
     }
@@ -238,6 +235,15 @@ class ScaleStore: ObservableObject {
     
     func handleHelp() {
         // TODO: Implement help button action
+    }
+    func saveUsers() {
+        // TODO: Implement save users logic
+    }
+    func deleteCurrentUser() {
+        // TODO: Implement delete current user logic
+    }
+    func deleteOtherUser(at index: Int) {
+        // TODO: Implement delete other user logic
     }
     
     // MARK: - Product Guide URL helper & Browser Presentation
