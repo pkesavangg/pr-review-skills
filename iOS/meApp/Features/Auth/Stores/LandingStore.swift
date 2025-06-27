@@ -95,7 +95,7 @@ final class LandingStore: ObservableObject {
         let alertLang = alertStrings.MaxUsersAlert
         let alert = AlertModel(
             title: alertLang.title,
-            message: alertLang.message,
+            message: alertLang.logInAndRemoveMessage,
             buttons: [
                 AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
             ]
