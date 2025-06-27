@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.manualEntry
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -12,18 +11,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import com.greatergoods.meapp.domain.model.common.DashboardType
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
@@ -43,13 +48,8 @@ import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryState
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import java.util.Calendar
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import com.greatergoods.meapp.domain.model.common.DashboardType
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.Calendar
 import kotlin.coroutines.resume
 
 @Composable
@@ -60,17 +60,17 @@ fun EntryScreen() {
     EntryScreenContent(state, viewModel::handleIntent)
 
     // Register canDeactivate callback for this screen
-    LaunchedEffect(backStack, state.form.isDirty, state.form.isTouched) {
+    LaunchedEffect(backStack, state.form.isDirty) {
         backStack.registerCanDeactivate(AppRoute.Main.Entry) {
-            if (state.form.isTouched && state.form.isDirty) {
+            if (state.form.controls.weightDateTime.weight.dirty) {
                 suspendCancellableCoroutine { cont ->
                     viewModel.dialogQueueService.enqueue(
                         DialogModel.Confirm(
                             title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
                             message = AppPopupStrings.UnsavedChanges.Message,
                             onConfirm = { cont.resume(true) },
-                            onCancel = { cont.resume(false) }
-                        )
+                            onCancel = { cont.resume(false) },
+                        ),
                     )
                 }
             } else {
@@ -96,11 +96,12 @@ private fun EntryScreenContent(
     val controls = state.form.controls
     val scrollState = rememberScrollState()
     val calendar = Calendar.getInstance()
-    val maxValue = DateTimeValue.DateTime(
-        millis = calendar.timeInMillis,
-        hour = calendar.get(Calendar.HOUR_OF_DAY),
-        minute = calendar.get(Calendar.MINUTE)
-    )
+    val maxValue =
+        DateTimeValue.DateTime(
+            millis = calendar.timeInMillis,
+            hour = calendar.get(Calendar.HOUR_OF_DAY),
+            minute = calendar.get(Calendar.MINUTE),
+        )
     val interactionSource = remember { MutableInteractionSource() }
     val weightFocusRequester = remember { FocusRequester() }
 
@@ -127,9 +128,10 @@ private fun EntryScreenContent(
                     focusManager.clearFocus()
                     keyboardController?.hide()
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(weightFocusRequester),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .focusRequester(weightFocusRequester),
             )
             DateTimeInput(
                 formControl = controls.weightDateTime.dateTime,

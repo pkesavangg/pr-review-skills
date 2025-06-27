@@ -20,56 +20,59 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class EntryViewModel
-@Inject
-constructor(
-    private val entryService: IEntryService,
-) : BaseIntentViewModel<EntryState, EntryIntent>(
-    reducer = EntryReducer(),
-) {
-    override fun provideInitialState(): EntryState =
-        EntryState(
-            form =
-                FormGroup(
-                    EntryFormControls.create(viewModelScope, true, WeightUnit.LB),
-                ),
-        )
+    @Inject
+    constructor(
+        private val entryService: IEntryService,
+    ) : BaseIntentViewModel<EntryState, EntryIntent>(
+            reducer = EntryReducer(),
+        ) {
+        override fun provideInitialState(): EntryState =
+            EntryState(
+                form =
+                    FormGroup(
+                        EntryFormControls.create(viewModelScope, true, WeightUnit.LB),
+                    ),
+            )
 
-    override fun handleIntent(intent: EntryIntent) {
-        super.handleIntent(intent)
-        when (intent) {
-            is EntryIntent.Save -> {
-                saveEntry()
+        override fun handleIntent(intent: EntryIntent) {
+            super.handleIntent(intent)
+            when (intent) {
+                is EntryIntent.Save -> {
+                    saveEntry()
+                }
+            }
+        }
+
+        init {
+        }
+
+        private fun saveEntry() {
+            dialogQueueService.showLoader(
+                message = "saving entry...",
+            )
+            viewModelScope.launch {
+                val scaleEntry =
+                    _state.value.form.controls
+                        .toScaleEntry(_state.value.weightMode.value)
+                try {
+                    entryService.syncOperations(newEntries = listOf(scaleEntry))
+                    dialogQueueService.showToast(
+                        Toast(
+                            message = "entry saved successfully!",
+                        ),
+                    )
+                    _state.value.form.resetForm()
+                    navigationService.navigateBack(AppRoute.Home)
+                } catch (e: Exception) {
+                    AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
+                    dialogQueueService.showToast(
+                        Toast(
+                            message = "Failed to save entry: ${e.message}",
+                        ),
+                    )
+                } finally {
+                    dialogQueueService.dismissLoader()
+                }
             }
         }
     }
-
-    private fun saveEntry() {
-        dialogQueueService.showLoader(
-            message = "saving entry...",
-        )
-        viewModelScope.launch {
-            val scaleEntry =
-                _state.value.form.controls
-                    .toScaleEntry(_state.value.weightMode.value)
-            try {
-                entryService.syncOperations(newEntries = listOf(scaleEntry))
-                dialogQueueService.showToast(
-                    Toast(
-                        message = "entry saved successfully!",
-                    ),
-                )
-                _state.value.form.resetForm()
-                navigationService.navigateBack(AppRoute.Home)
-            } catch (e: Exception) {
-                AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
-                dialogQueueService.showToast(
-                    Toast(
-                        message = "Failed to save entry: ${e.message}",
-                    ),
-                )
-            } finally {
-                dialogQueueService.dismissLoader()
-            }
-        }
-    }
-}
