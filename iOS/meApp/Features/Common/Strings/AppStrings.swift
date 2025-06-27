@@ -141,7 +141,6 @@ struct HKIntegrationHealthAccessStrings {
         )
     )
 
-
     static let integrationFailed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integration Failed",

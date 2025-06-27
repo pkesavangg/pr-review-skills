@@ -7,7 +7,6 @@
 
 
 enum AppleHealthIntegrationState {
-    case notConnected
     case permissionsAllowed
     case permissionsNotAllowed
     case integrationComplete

@@ -20,8 +20,6 @@ struct HKIntegrationHealthAccessView: View {
     
     private var content: HKIntegrationHealthAccessContent {
         switch state {
-        case .notConnected:
-            return HKIntegrationHealthAccessStrings.notConnected
         case .permissionsAllowed:
             return HKIntegrationHealthAccessStrings.permissionsAllowed
         case .permissionsNotAllowed:
@@ -125,10 +123,6 @@ struct HKIntegrationHealthAccessView: View {
 struct AppleHealthIntegrationScreen_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            HKIntegrationHealthAccessView(state: .notConnected) {
-                
-            }
-            .environmentObject(Theme.shared)
             HKIntegrationHealthAccessView(state: .permissionsAllowed) {
                 
             }
