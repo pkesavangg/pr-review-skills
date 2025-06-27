@@ -17,18 +17,20 @@ struct DisplayMetricsScreen: View {
                 title: DisplayMetricStrings.displayMetricsTitle,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: {
-                        AnyView(ButtonView(
-                            text: CommonStrings.save.uppercased(),
-                            type: .inlineTextPrimary,
-                            size: .small,
-                            isDisabled: false,
-                            action: {
-                                // TODO: ADD Action
-                            }
-                        ))
+                    ButtonView(
+                        text: CommonStrings.save.uppercased(),
+                        type: .inlineTextPrimary,
+                        size: .small,
+                        isDisabled: false,
+                        action: {
+                            // TODO: ADD Action
+                        }
+                    )
                 },
                 onLeadingTap: { router.navigateBack() },
-                onTrailingTap: {},
+                onTrailingTap: {
+                    // TODO: ADD Action
+                },
                 canShowBorder: true
             )
         }
