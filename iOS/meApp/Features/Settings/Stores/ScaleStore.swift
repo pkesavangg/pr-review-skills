@@ -39,7 +39,6 @@ class ScaleStore: ObservableObject {
     @Published var modeValue: ScaleModes = .weightOnly 
     @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
     @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
-    @Published var scaleNameValue: String = "AccuCheck Verve..." // TODO: Replace with actual scale name
     @Published var bluetoothValue: String = "Connected" // TODO: Replace with actual BT status
     @Published var wifiValue: String = "greatergoods1" // TODO: Replace with actual Wi-Fi SSID
     @Published var wifiMacAddressValue: String = "" // TODO: Replace with actual Wi-Fi MAC address
@@ -220,9 +219,6 @@ class ScaleStore: ObservableObject {
     }
     func usersTapped() {
         // TODO: Implement usersTapped action
-    }
-    func scaleNameTapped() {
-        // TODO: Implement scaleNameTapped action
     }
     func bluetoothTapped() {
         // TODO: Implement bluetoothTapped action

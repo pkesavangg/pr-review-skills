@@ -117,8 +117,8 @@ struct ScaleSettingsScreen: View {
             SettingsListItem(
                 config: SettingsItemConfig(
                     title: lang.scaleName,
-                    value: scaleStore.scaleNameValue,
-                    onTap: { scaleStore.scaleNameTapped() }
+                    value: scale.deviceName,
+                    onTap: { router.navigate(to: .scaleNameScreen(scaleName: scale.deviceName ?? MyScaleStrings.unknownScale)) }
                 )
             )
         }

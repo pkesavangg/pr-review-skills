@@ -18,6 +18,7 @@ struct ListItemView<Trailing: View>: View {
     let trailing: Trailing?
     let onTap: (() -> Void)?
     let rowHeight: CGFloat?
+    
     init(
         leadingImage: Image? = nil,
         title: String,
@@ -45,6 +46,7 @@ struct ListItemView<Trailing: View>: View {
     ) {
         self.init(leadingImage: leadingImage, title: title, subtitleTop: nil, subtitleBottom: subtitle, trailing: trailing, rowHeight: rowHeight, onTap: onTap)
     }
+    
     var body: some View {
         HStack(spacing: 12) {
             if let leadingImage {
@@ -75,10 +77,9 @@ struct ListItemView<Trailing: View>: View {
                     .onTapGesture(perform: {onTap?()})
             }
         }
-        .padding(.vertical, .spacingXS)
+        .padding(.vertical, .spacingSM)
         .padding(.horizontal,.spacingSM)
         .background(theme.backgroundPrimary)
-        .cornerRadius(.radiusXS)
         .frame(height: rowHeight ?? 44)
     }
 }
@@ -94,6 +95,8 @@ struct GenericListRow_Previews: PreviewProvider {
                 trailing: Image(systemName: "chevron.right")
             )
         }
+        .frame(maxHeight: .infinity)
+        .background(Color.gray)
         .padding()
         .previewLayout(.sizeThatFits)
     }

@@ -13,7 +13,7 @@ struct ScaleSettingsStrings {
     static let weightOnlyOn = "Weight Only: On"
     static let setupIncomplete = "Setup Incomplete"
     static let deleteScale = "Delete Scale"
-    
+    static let scalenName = "Scale Name"
     // Section Headers
     static let settingsSectionHeader = "Settings"
     static let connectionSectionHeader = "Connection"
