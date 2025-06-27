@@ -67,6 +67,7 @@ class ScaleStore: ObservableObject {
     // User Management State
     @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
     @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
+    @Published var isWifiLoading = false
     
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self
@@ -224,9 +225,6 @@ class ScaleStore: ObservableObject {
     func bluetoothTapped() {
         // TODO: Implement bluetoothTapped action
     }
-    func wifiTapped() {
-        // TODO: Implement wifiTapped action
-    }
     func wifiMacAddressTapped() {
         // TODO: Implement wifiMacAddressTapped action
     }
@@ -290,4 +288,10 @@ class ScaleStore: ObservableObject {
         // - Toggle heart rate monitoring on/off
         // - Update scale configuration
     }
+    
+    /// Updates the heart rate monitoring setting
+    func refreshWifiNetworks() {
+        // TODO: Implement refreshWifiNetworks functionality
+    }
+    
 }

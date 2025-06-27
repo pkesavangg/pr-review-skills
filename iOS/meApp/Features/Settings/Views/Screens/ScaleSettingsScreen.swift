@@ -139,7 +139,7 @@ struct ScaleSettingsScreen: View {
                 config: SettingsItemConfig(
                     title: lang.wifi,
                     value: scaleStore.wifiValue,
-                    onTap: { scaleStore.wifiTapped() }
+                    onTap: { router.navigate(to: .wifi) }
                 )
             )
             SettingsListItem(
