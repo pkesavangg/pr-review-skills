@@ -47,6 +47,7 @@ fun <T> AppDraggableList(
     trailingActions: @Composable RowScope.(index: Int, item: T) -> Unit,
     positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
     velocityThreshold: Float = DragDefaults.VELOCITY_THRESHOLD,
+    footerContent: @Composable (() -> Unit)? = null,
     itemContent: @Composable (item: T, progress: Float) -> Unit,
 ) {
     val lazyListState = rememberLazyListState()
@@ -77,6 +78,11 @@ fun <T> AppDraggableList(
                 velocityThreshold = velocityThreshold,
             ) { progress ->
                 itemContent(item, progress)
+            }
+        }
+        footerContent?.let {
+            item {
+                footerContent()
             }
         }
     }

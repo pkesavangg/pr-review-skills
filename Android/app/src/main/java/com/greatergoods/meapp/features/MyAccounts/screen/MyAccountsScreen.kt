@@ -1,19 +1,20 @@
 package com.greatergoods.meapp.features.MyAccounts.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsIntent
@@ -43,7 +44,7 @@ fun MyAccountsScreen() {
 @Composable
 fun MyAccountsScreenContent(
     state: MyAccountsState,
-    handleIntent: (MyAccountsIntent) -> Unit
+    handleIntent: (MyAccountsIntent) -> Unit,
 ) {
     val backStack = LocalNavBackStack.current
     AppScaffold(
@@ -55,31 +56,39 @@ fun MyAccountsScreenContent(
         },
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(MeTheme.spacing.sm),
+            modifier =
+                Modifier
+                    .fillMaxSize(),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             AppUserList(
-                accounts = state.accounts,
+                accounts =
+                    List(10) { index ->
+                        state.accounts.map { it.copy(id = index.toString()) }
+                    }.flatten(),
+                modifier = Modifier.background(Color.Green),
                 showAccountActivity = true,
                 onDeleteRequest = { handleIntent(MyAccountsIntent.RequestRemoveAccount(it)) },
                 onAccountSelect = { handleIntent(MyAccountsIntent.SelectAccount(it)) },
                 onLoginRequest = { handleIntent(MyAccountsIntent.LoginToAccount(it)) },
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
-            AppButton(
-                label = MyAccountsScreenStrings.LogIntoExistingAccount,
-                type = ButtonType.PrimaryOutlined,
-                onClick = { handleIntent(MyAccountsIntent.LoginToAccount()) },
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            AppButton(
-                label = MyAccountsScreenStrings.CreateNewAccount,
-                type = ButtonType.TextPrimary,
-                onClick = { handleIntent(MyAccountsIntent.CreateAccount) },
-            )
+                contentPadding = PaddingValues(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
+                    AppButton(
+                        label = MyAccountsScreenStrings.LogIntoExistingAccount,
+                        type = ButtonType.PrimaryOutlined,
+                        onClick = { handleIntent(MyAccountsIntent.LoginToAccount()) },
+                    )
+                    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+                    AppButton(
+                        label = MyAccountsScreenStrings.CreateNewAccount,
+                        type = ButtonType.TextPrimary,
+                        onClick = { handleIntent(MyAccountsIntent.CreateAccount) },
+                    )
+                }
+            }
         }
         if (state.showMaxAccountsDialog) {
             MaxAccountsReachedDialog(

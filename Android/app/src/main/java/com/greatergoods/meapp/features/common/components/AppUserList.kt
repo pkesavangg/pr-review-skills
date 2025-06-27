@@ -1,19 +1,22 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import com.greatergoods.meapp.theme.MeTheme.borderRadius
 
 /**
  * A list component that displays user accounts with swipe-to-delete functionality.
@@ -34,42 +37,84 @@ fun AppUserList(
     onAccountSelect: (Account) -> Unit,
     onLoginRequest: (Account) -> Unit,
     contentPadding: PaddingValues = PaddingValues(),
+    footerContent: @Composable (() -> Unit)? = null,
 ) {
-    if (accounts.isNotEmpty()) {
-        AppDraggableList(
-            items = accounts,
-            modifier = modifier.clip(RoundedCornerShape(borderRadius.sm)),
-            iconWidth = 56.dp,
-            contentPadding = contentPadding,
-            keySelector = { it.id },
-            trailingActions = { index, item ->
-                AppDraggableListActions {
-                    AppDraggableActionItem(
-                        iconId = AppIcons.Default.Delete,
-                        text = "Delete",
-                        contentDescription = "Delete item",
-                        backgroundColor = MeTheme.colorScheme.danger,
-                    ) {
-                        onDeleteRequest(item)
-                    }
-                }
-            },
-        ) { item, progress ->
+    AppDraggableList(
+        items = accounts,
+        iconWidth = 56.dp,
+        contentPadding = contentPadding,
+        keySelector = { it.id },
+        trailingActions = { index, item ->
+            val targetCornerRadius = MeTheme.borderRadius.sm
+            val shape =
+                when {
+                    accounts.size == 1 -> RoundedCornerShape(targetCornerRadius + 2.dp)
+                    index == 0 ->
+                        RoundedCornerShape(
+                            topEnd = targetCornerRadius + 2.dp,
+                        )
 
-            Column {
-                AppUser(
-                    account = item,
-                    onAccountSelect = { onAccountSelect(item) },
-                    onLoginRequest = { onLoginRequest(item) },
-                    avatarAlpha = 1f - progress,
-                    showAccountActivity = showAccountActivity,
-                )
-                if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
-                    HorizontalDivider(
-                        color = MeTheme.colorScheme.utility,
-                        thickness = 1.dp,
-                    )
+                    index == accounts.size - 1 ->
+                        RoundedCornerShape(
+                            bottomEnd = targetCornerRadius + 2.dp,
+                        )
+
+                    else -> RectangleShape
                 }
+            AppDraggableListActions(
+                shape = shape,
+            ) {
+                AppDraggableActionItem(
+                    iconId = AppIcons.Default.Delete,
+                    text = "Delete",
+                    contentDescription = "Delete item",
+                    backgroundColor = MeTheme.colorScheme.danger,
+                ) {
+                    onDeleteRequest(item)
+                }
+            }
+        },
+        footerContent = footerContent,
+    ) { item, progress ->
+        val isDragging = progress > 0f
+        val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.sm
+        val animatedCornerRadius by animateDpAsState(
+            targetValue = targetCornerRadius,
+            animationSpec = tween(durationMillis = 250),
+        )
+        val index = accounts.indexOf(item)
+        val shape =
+            when {
+                accounts.size == 1 -> RoundedCornerShape(animatedCornerRadius)
+                index == 0 ->
+                    RoundedCornerShape(
+                        topStart = animatedCornerRadius,
+                        topEnd = animatedCornerRadius,
+                    )
+
+                index == accounts.size - 1 ->
+                    RoundedCornerShape(
+                        bottomStart = animatedCornerRadius,
+                        bottomEnd = animatedCornerRadius,
+                    )
+
+                else -> RectangleShape
+            }
+
+        Column {
+            AppUser(
+                account = item,
+                modifier = Modifier.clip(shape),
+                onAccountSelect = { onAccountSelect(item) },
+                onLoginRequest = { onLoginRequest(item) },
+                avatarAlpha = 1f - progress,
+                showAccountActivity = showAccountActivity,
+            )
+            if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
+                HorizontalDivider(
+                    color = MeTheme.colorScheme.utility,
+                    thickness = 1.dp,
+                )
             }
         }
     }
