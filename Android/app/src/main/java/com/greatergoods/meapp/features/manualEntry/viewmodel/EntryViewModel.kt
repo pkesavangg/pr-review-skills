@@ -44,6 +44,37 @@ class EntryViewModel
         }
 
         init {
+        /*  viewModelScope.launch {
+              // Register canDeactivate callback for this screen
+              navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
+                  if (state.value.form.controls.weightDateTime.weight.dirty) {
+                      suspendCancellableCoroutine { cont ->
+                          dialogQueueService.enqueue(
+                              DialogModel.Confirm(
+                                  title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                                  message = AppPopupStrings.UnsavedChanges.Message,
+                                  onConfirm = {
+                                      deactivate()
+                                      cont.resume(true)
+                                  },
+                                  onCancel = {
+
+                                      cont.resume(false)
+                                  },
+                              ),
+                          )
+                      }
+                  } else {
+                      true
+                  }
+              }
+          }*/
+        }
+
+        fun deactivate() {
+        /*  viewModelScope.launch {
+              navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
+          }*/
         }
 
         private fun saveEntry() {

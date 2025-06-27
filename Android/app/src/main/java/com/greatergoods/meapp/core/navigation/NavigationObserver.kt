@@ -7,10 +7,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation3.runtime.NavKey
 import com.example.nav3integration.TopLevelBackStack
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 /**
  * Observes navigation intents and updates the navigation back stack accordingly.
@@ -67,6 +65,18 @@ fun NavigationObserver(
                     is NavigationIntent.ReplaceStackSingle -> {
                         coroutineScope.launch {
                             backStack.replaceStack(listOf(intent.route), intent.topLevel)
+                        }
+                    }
+
+                    is NavigationIntent.RegisterOnDeactivate -> {
+                        coroutineScope.launch {
+                            backStack.registerCanDeactivate(intent.route, intent.callback)
+                        }
+                    }
+
+                    is NavigationIntent.UnregisterOnDeactivate -> {
+                        coroutineScope.launch {
+                            backStack.unregisterCanDeactivate(intent.route)
                         }
                     }
                 }

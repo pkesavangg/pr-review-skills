@@ -3,9 +3,9 @@ package com.greatergoods.meapp.core.di
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountService
-import com.greatergoods.meapp.core.service.AppEventService
+import com.greatergoods.meapp.core.service.AppNavigationService
 import com.greatergoods.meapp.core.service.DeviceInfoService
-import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.OfflineHandlerService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
@@ -56,23 +56,24 @@ object ServiceModule {
         tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
         userDataStore: UserDataStore,
-        appEventService: IAppEventService
-    ): IAccountService = AccountService(
-        accountRepository,
-        connectivityObserver,
-        tokenManager,
-        dialogQueueService,
-        userDataStore,
-        appEventService,
-    )
+        appEventService: IAppNavigationService,
+    ): IAccountService =
+        AccountService(
+            accountRepository,
+            connectivityObserver,
+            tokenManager,
+            dialogQueueService,
+            userDataStore,
+            appEventService,
+        )
 
     /**
-     * Provides a singleton instance of [IAppEventService].
-     * @return [AppEventService] instance.
+     * Provides a singleton instance of [IAppNavigationService].
+     * @return [AppNavigationService] instance.
      */
     @Provides
     @Singleton
-    fun provideAppEventService(): IAppEventService = AppEventService()
+    fun provideAppEventService(): IAppNavigationService = AppNavigationService()
 
     /**
      * Provides a singleton instance of [GGNotificationManager] for notification operations.
@@ -103,15 +104,13 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogQueueService(): IDialogQueueService {
-        return DialogQueueService()
-    }
+    fun provideDialogQueueService(): IDialogQueueService = DialogQueueService()
 
     @Provides
     @Singleton
     fun provideEntryService(
         entryRepository: IEntryRepository,
-        accountRepository: IAccountRepository
+        accountRepository: IAccountRepository,
     ): IEntryService = EntryService(entryRepository, accountRepository)
 
     @Provides
@@ -122,8 +121,16 @@ object ServiceModule {
         connectivityObserver: IConnectivityObserver,
         offlineHandlerService: IOfflineHandlerService,
         appRepository: IAppRepository,
-        accountRepository: IAccountRepository
-    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, connectivityObserver,offlineHandlerService,appRepository, accountRepository)
+        accountRepository: IAccountRepository,
+    ): IDeviceInfoService =
+        DeviceInfoService(
+            context,
+            deviceInfoRepository,
+            connectivityObserver,
+            offlineHandlerService,
+            appRepository,
+            accountRepository,
+        )
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
@@ -157,8 +164,9 @@ object ServiceModule {
     fun provideOfflineHandlerService(
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
-    ): IOfflineHandlerService = OfflineHandlerService(
-        accountRepository,
-        connectivityObserver,
-    )
+    ): IOfflineHandlerService =
+        OfflineHandlerService(
+            accountRepository,
+            connectivityObserver,
+        )
 }

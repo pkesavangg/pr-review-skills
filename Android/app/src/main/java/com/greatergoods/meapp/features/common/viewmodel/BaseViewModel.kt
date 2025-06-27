@@ -1,29 +1,30 @@
 package com.greatergoods.meapp.features.common.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @HiltViewModel
-open class BaseViewModel @Inject constructor() : ViewModel() {
+open class BaseViewModel
     @Inject
-    lateinit var navigationService: IAppEventService
+    constructor() : ViewModel() {
+        @Inject
+        lateinit var navigationService: IAppNavigationService
 
-    @Inject
-    lateinit var dialogQueueService: IDialogQueueService
+        @Inject
+        lateinit var dialogQueueService: IDialogQueueService
 
-    @Inject
-    lateinit var customTabManager: ICustomTabManager
+        @Inject
+        lateinit var customTabManager: ICustomTabManager
 
-    /**
-     * Opens a URL using the injected CustomTabManager.
-     * @param url The URL to open.
-     */
-    fun openInAppBrowser(url: String) {
-        customTabManager.openChromeTab(url)
+        /**
+         * Opens a URL using the injected CustomTabManager.
+         * @param url The URL to open.
+         */
+        fun openInAppBrowser(url: String) {
+            customTabManager.openChromeTab(url)
+        }
     }
-
-}

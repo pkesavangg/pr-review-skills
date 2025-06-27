@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -26,7 +23,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.common.DashboardType
 import com.greatergoods.meapp.features.common.components.AppButton
@@ -39,8 +35,6 @@ import com.greatergoods.meapp.features.common.components.DateTimeInput
 import com.greatergoods.meapp.features.common.components.DateTimeInputMode
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.model.DialogModel
-import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.manualEntry.components.ExpandableMetricsCard
 import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryIntent
@@ -48,9 +42,7 @@ import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryState
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Calendar
-import kotlin.coroutines.resume
 
 @Composable
 fun EntryScreen() {
@@ -59,31 +51,31 @@ fun EntryScreen() {
     val backStack = LocalNavBackStack.current
     EntryScreenContent(state, viewModel::handleIntent)
 
-    // Register canDeactivate callback for this screen
-    LaunchedEffect(backStack, state.form.isDirty) {
-        backStack.registerCanDeactivate(AppRoute.Main.Entry) {
-            if (state.form.controls.weightDateTime.weight.dirty) {
-                suspendCancellableCoroutine { cont ->
-                    viewModel.dialogQueueService.enqueue(
-                        DialogModel.Confirm(
-                            title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                            message = AppPopupStrings.UnsavedChanges.Message,
-                            onConfirm = { cont.resume(true) },
-                            onCancel = { cont.resume(false) },
-                        ),
-                    )
-                }
-            } else {
-                true
-            }
-        }
-    }
-    // Unregister on dispose
-    DisposableEffect(backStack) {
-        onDispose {
-            backStack.unregisterCanDeactivate(AppRoute.Main.Entry)
-        }
-    }
+    /* // Register canDeactivate callback for this screen
+     LaunchedEffect(backStack, state.form.isDirty) {
+         backStack.registerCanDeactivate(AppRoute.Main.Entry) {
+             if (state.form.controls.weightDateTime.weight.dirty) {
+                 suspendCancellableCoroutine { cont ->
+                     viewModel.dialogQueueService.enqueue(
+                         DialogModel.Confirm(
+                             title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                             message = AppPopupStrings.UnsavedChanges.Message,
+                             onConfirm = { cont.resume(true) },
+                             onCancel = { cont.resume(false) },
+                         ),
+                     )
+                 }
+             } else {
+                 true
+             }
+         }
+     }
+     // Unregister on dispose
+     DisposableEffect(backStack) {
+         onDispose {
+             backStack.unregisterCanDeactivate(AppRoute.Main.Entry)
+         }
+     }*/
 }
 
 @Composable

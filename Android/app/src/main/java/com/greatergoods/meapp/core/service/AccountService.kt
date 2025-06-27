@@ -43,7 +43,7 @@ class AccountService
         private val tokenManager: ITokenManager,
         private val dialogQueueService: IDialogQueueService,
         private val userDataStore: UserDataStore,
-        private val appEventService: IAppEventService,
+        private val appEventService: IAppNavigationService,
     ) : IAccountService {
         companion object {
             private const val MAX_ACCOUNTS = 10
