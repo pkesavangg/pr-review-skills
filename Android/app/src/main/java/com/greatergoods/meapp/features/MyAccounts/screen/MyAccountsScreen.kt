@@ -63,14 +63,10 @@ fun MyAccountsScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             AppUserList(
-                accounts =
-                    List(10) { index ->
-                        state.accounts.map { it.copy(id = index.toString()) }
-                    }.flatten(),
+                accounts = state.accounts,
                 modifier = Modifier.background(Color.Green),
                 showAccountActivity = true,
                 canRemoveAccount = true,
-                maxVisibleItems = 7,
                 onDeleteRequest = { handleIntent(MyAccountsIntent.RequestRemoveAccount(it)) },
                 onAccountSelect = { handleIntent(MyAccountsIntent.SelectAccount(it)) },
                 onLoginRequest = { handleIntent(MyAccountsIntent.LoginToAccount(it)) },

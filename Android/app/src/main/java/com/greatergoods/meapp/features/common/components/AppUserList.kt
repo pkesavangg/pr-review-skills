@@ -46,6 +46,7 @@ fun AppUserList(
         items = accounts,
         iconWidth = 56.dp,
         maxVisibleItems = maxVisibleItems,
+        isItemDraggable = {canRemoveAccount},
         contentPadding = contentPadding,
         keySelector = { it.id },
         trailingActions = { index, item ->
