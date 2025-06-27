@@ -170,7 +170,8 @@ object ServiceModule {
     fun provideExportService(
         exportAPI: IExportAPI,
         accountService: IAccountService,
-    ): IExportService = ExportService(exportAPI, accountService)
+        dialogQueueService: IDialogQueueService
+    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
 
     /**
      * Provides the offline handler service implementation.
