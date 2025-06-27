@@ -13,11 +13,28 @@ struct ListItemView<Trailing: View>: View {
     @Environment(\.appTheme) private var theme
     let leadingImage: Image?
     let title: String
-    let subtitle: String?
+    let subtitleTop: String?
+    let subtitleBottom: String?
     let trailing: Trailing?
     let onTap: (() -> Void)?
     let rowHeight: CGFloat?
-
+    init(
+        leadingImage: Image? = nil,
+        title: String,
+        subtitleTop: String? = nil,
+        subtitleBottom: String? = nil,
+        trailing: Trailing? = nil,
+        rowHeight: CGFloat? = nil,
+        onTap: (() -> Void)? = nil
+    ) {
+        self.leadingImage = leadingImage
+        self.title = title
+        self.subtitleTop = subtitleTop
+        self.subtitleBottom = subtitleBottom
+        self.trailing = trailing
+        self.rowHeight = rowHeight
+        self.onTap = onTap
+    }
     init(
         leadingImage: Image? = nil,
         title: String,
@@ -26,77 +43,55 @@ struct ListItemView<Trailing: View>: View {
         rowHeight: CGFloat? = nil,
         onTap: (() -> Void)? = nil
     ) {
-        self.leadingImage = leadingImage
-        self.title = title
-        self.subtitle = subtitle
-        self.trailing = trailing
-        self.rowHeight = rowHeight
-        self.onTap = onTap
+        self.init(leadingImage: leadingImage, title: title, subtitleTop: nil, subtitleBottom: subtitle, trailing: trailing, rowHeight: rowHeight, onTap: onTap)
     }
-
     var body: some View {
-        Button(action: { onTap?() }) {
-            HStack(spacing: 12) {
-                if let leadingImage {
-                    leadingImage
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 22, height: 22)
-                        .foregroundColor(theme.actionPrimary)
+        HStack(spacing: 12) {
+            if let leadingImage {
+                leadingImage
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22)
+                    .foregroundColor(theme.actionPrimary)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                if let subtitleTop {
+                    Text(subtitleTop)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
                 }
-                VStack(alignment: .leading, spacing: subtitle == nil ? 0 : 2) {
-                    Text(title)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
-                    if let subtitle {
-                        Text(subtitle)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
-                    }
-                }
-                Spacer()
-                if let trailing {
-                    trailing
+                Text(title)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textBody)
+                if let subtitleBottom {
+                    Text(subtitleBottom)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
                 }
             }
-            .frame(height: rowHeight ?? 44)
-            .contentShape(Rectangle())
+            Spacer()
+            if let trailing {
+                trailing
+                    .onTapGesture(perform: {onTap?()})
+            }
         }
+        .padding(.vertical, .spacingXS)
+        .padding(.horizontal,.spacingSM)
+        .background(theme.backgroundPrimary)
+        .cornerRadius(.radiusXS)
+        .frame(height: rowHeight ?? 44)
     }
 }
 
 struct GenericListRow_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 0) {
-            // Row style: Image + Title + Subtitle + Trailing Delete
-            ListItemView(
-                leadingImage: Image(systemName: "star"),
-                title: "User Name",
-                subtitle: "last active on [date]",
-                trailing: Image(systemName: "trash")
-                    .foregroundColor(.blue)
-                    .padding(.trailing, 8),
-                onTap: { print("Delete tapped") }
-            )
-            Divider()
-
-            ListItemView(
-                title: "Title",
-                trailing: HStack(spacing: 6) {
-                    Text("Detail")
-                        .foregroundColor(.gray)
-                        .font(.body)
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.blue)
-                }
-            )
-            .overlay(Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.2)), alignment: .bottom)
-
-            Divider()
-            
             ListItemView<EmptyView>(
-                title: "Short Row",
-                rowHeight: 32
+                title: "Title"
+            )
+            ListItemView(
+                title: "Title With Trailing",
+                trailing: Image(systemName: "chevron.right")
             )
         }
         .padding()
