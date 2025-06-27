@@ -11,6 +11,8 @@ struct DisplayMetricsScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @StateObject private var scaleStore = ScaleStore()
+    @State private var isWeightOnlyModeOn: Bool = true
+    @State private var isHeartRateOn: Bool = true
     let lang = ScaleModesStrings.self
 
     var body: some View {
@@ -114,7 +116,6 @@ struct DisplayMetricsScreen: View {
     
     private func weightOnlyBanner() -> some View {
         let commonLang = CommonStrings.self
-        @State var isWeightOnlyModeOn: Bool = true
         return NoteBox {
             HStack(spacing: .spacingSM) {
                 StatusRowView(
@@ -151,7 +152,6 @@ struct DisplayMetricsScreen: View {
 
     private func heartRateBanner() -> some View {
         let commonLang = CommonStrings.self
-        @State var isHeartRateOn: Bool = true
         let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
 
         return NoteBox {
