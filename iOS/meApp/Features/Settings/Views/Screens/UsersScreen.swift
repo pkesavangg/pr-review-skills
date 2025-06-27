@@ -10,10 +10,8 @@ import SwiftUI
 struct UsersScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @State private var currentUser: String = "Kristin"
-    @State private var otherUsers: [String] = Array(repeating: "User Name", count: 8)
-    let lang = UsersViewStrings.self
     @ObservedObject var scaleStore = ScaleStore()
+    let lang = UsersViewStrings.self
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
@@ -30,14 +28,13 @@ struct UsersScreen: View {
                     ))
                 },
                 onLeadingTap: { router.navigateBack() },
-                onTrailingTap: {},
                 canShowBorder: true
             )
             
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .spacingMD) {
                     ListItemView(
-                        title: currentUser,
+                        title: scaleStore.currentUser,
                         subtitleTop: lang.userNameLabel,
                         trailing: Button(action: { scaleStore.deleteCurrentUser() }) {
                             Image(AppAssets.closeCircle)
@@ -61,10 +58,10 @@ struct UsersScreen: View {
                             .foregroundColor(theme.textSubheading)
                             .padding(.bottom, .radiusXS)
                         
-                        VStack(spacing: 2) {
-                            ForEach(otherUsers.indices, id: \.self) { idx in
+                        VStack(spacing: 0) {
+                            ForEach(scaleStore.otherUsers.indices, id: \.self) { idx in
                                 ListItemView(
-                                    title: otherUsers[idx],
+                                    title: scaleStore.otherUsers[idx],
                                     subtitle: lang.lastActive,
                                     trailing: Button(action: { scaleStore.deleteOtherUser(at: idx) }) {
                                         Image(AppAssets.trash)
@@ -74,13 +71,16 @@ struct UsersScreen: View {
                                     onTap: { scaleStore.deleteOtherUser(at: idx) },
                                     verticalPadding: .spacingXS
                                 )
-                                
-                                if idx < otherUsers.count - 1 {
+                                if idx < scaleStore.otherUsers.count - 1 {
                                     Divider()
+                                        .frame(height: 1)
+                                        .frame(maxWidth: .infinity)
                                         .background(theme.textSubheading)
                                 }
                             }
-                        }                                .cornerRadius(.spacingXS)
+                        }
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(.radiusXS)
                     }
                 }
                 .padding(.horizontal, .spacingSM)

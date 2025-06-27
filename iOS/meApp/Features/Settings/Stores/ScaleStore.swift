@@ -64,6 +64,10 @@ class ScaleStore: ObservableObject {
         .filter { $0 != .weight }
         .map { BodyMetricItem(id: $0, isOn: true) }
     
+    // User Management State
+    @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
+    @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
+    
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self
     
