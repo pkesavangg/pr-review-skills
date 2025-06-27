@@ -2,10 +2,9 @@ package com.greatergoods.meapp.features.landing.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountService
-import com.greatergoods.meapp.features.common.components.DialogType
-import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.landing.reducer.MultiAccountLandingIntent
 import com.greatergoods.meapp.features.landing.reducer.MultiAccountLandingReducer
@@ -22,6 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MultiAccountLandingViewModel @Inject constructor(
     private val accountService: IAccountService,
+    private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<MultiAccountLandingState, MultiAccountLandingIntent>(
     MultiAccountLandingReducer(),
 ) {
@@ -81,15 +81,9 @@ class MultiAccountLandingViewModel @Inject constructor(
      * Shows the max limit reached alert dialog.
      */
     private fun showMaxLimitReachedDialog() {
-
-        dialogQueueService.enqueue(
-            DialogModel.Custom(
-                contentKey = DialogType.MaxAccountAlert,
-                params = mapOf(
-                    "isFromLanding" to true,
-                ),
-                onDismiss = {},
-            ),
+        dialogUtility.showMaxAccountAlert(
+            isFromLanding = true,
+            onDismiss = {}
         )
     }
 

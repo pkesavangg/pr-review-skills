@@ -3,12 +3,12 @@ package com.greatergoods.meapp.features.MyAccounts.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsIntent
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsReducer
 import com.greatergoods.meapp.features.MyAccounts.reducer.MyAccountsState
-import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
@@ -25,6 +25,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MyAccountsViewModel @Inject constructor(
     private val accountService: IAccountService,
+    private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<MyAccountsState, MyAccountsIntent>(MyAccountsReducer()) {
 
     override fun provideInitialState(): MyAccountsState = MyAccountsState()
@@ -123,14 +124,9 @@ class MyAccountsViewModel @Inject constructor(
      * Shows the max limit reached alert dialog.
      */
     private fun showMaxLimitReachedAlert() {
-        dialogQueueService.enqueue(
-            DialogModel.Custom(
-                contentKey = DialogType.MaxAccountAlert,
-                params = mapOf(
-                    "isFromLanding" to false,
-                ),
-                onDismiss = {},
-            ),
+        dialogUtility.showMaxAccountAlert(
+            isFromLanding = false,
+            onDismiss = {},
         )
     }
 

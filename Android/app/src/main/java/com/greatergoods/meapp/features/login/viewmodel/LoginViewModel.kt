@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.login.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
 import com.greatergoods.meapp.features.common.components.DialogType
@@ -29,6 +30,7 @@ class LoginViewModel
 @Inject
 constructor(
     private val accountService: IAccountService,
+    private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<LoginState, LoginIntent>(
     reducer = LoginReducer(),
 ) {
@@ -140,14 +142,9 @@ constructor(
     }
 
     private fun showMaxLimitReachedAlert() {
-        dialogQueueService.enqueue(
-            DialogModel.Custom(
-                contentKey = DialogType.MaxAccountAlert,
-                params = mapOf(
-                    "isFromLanding" to true,
-                ),
-                onDismiss = {},
-            ),
+        dialogUtility.showMaxAccountAlert(
+            isFromLanding = true,
+            onDismiss = {}
         )
     }
 

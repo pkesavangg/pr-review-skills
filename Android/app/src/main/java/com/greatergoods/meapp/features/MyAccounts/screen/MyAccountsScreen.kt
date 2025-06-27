@@ -70,6 +70,7 @@ fun MyAccountsScreenContent(
                 modifier = Modifier.background(Color.Green),
                 showAccountActivity = true,
                 canRemoveAccount = true,
+                maxVisibleItems = 7,
                 onDeleteRequest = { handleIntent(MyAccountsIntent.RequestRemoveAccount(it)) },
                 onAccountSelect = { handleIntent(MyAccountsIntent.SelectAccount(it)) },
                 onLoginRequest = { handleIntent(MyAccountsIntent.LoginToAccount(it)) },
