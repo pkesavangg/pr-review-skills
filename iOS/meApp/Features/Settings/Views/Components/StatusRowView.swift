@@ -33,11 +33,11 @@ struct StatusRowView: View {
                 .foregroundColor(foregroundColor ?? theme.actionPrimary)
             
             Text(label)
-                .fontOpenSans(.heading5)
+                .fontOpenSans(.body3)
                 .foregroundColor(foregroundColor ?? theme.textHeading)
             
             Text(statusText)
-                .fontOpenSans(.heading5)
+                .fontOpenSans(.body3)
                 .foregroundColor(foregroundColor ?? theme.textHeading)
         }
     }

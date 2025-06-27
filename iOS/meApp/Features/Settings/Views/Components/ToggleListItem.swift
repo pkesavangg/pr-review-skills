@@ -31,22 +31,17 @@ struct ToggleListItem: View {
         self.isDisabled = isDisabled
         self.showDivider = showDivider
     }
-    
+
     private var imageForegroundColor: Color {
-        if isDisabled {
-            return theme.actionTertiaryDisabled
-        } else if !isOn {
-            return theme.statusIconSecondary
-        } else {
-            return theme.actionPrimary
-        }
+        isDisabled
+            ? theme.actionTertiaryDisabled
+            : (isOn ? theme.actionPrimary : theme.statusIconSecondary)
     }
+
     private var textForegroundColor: Color {
-        if !isOn {
-            return theme.statusIconSecondary
-        } else {
-            return theme.textBody
-        }
+        isOn
+            ? theme.textBody
+            : theme.statusIconSecondary
     }
     
     var body: some View {
@@ -64,7 +59,7 @@ struct ToggleListItem: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, icon == nil ? .spacingXS : .spacingSM)
             }
-            
+
             CustomToggleView(isOn: $isOn)
                 .frame(width: 51, height: 31)
                 .padding(.trailing, .spacingSM)

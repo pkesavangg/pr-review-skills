@@ -47,6 +47,24 @@ class ScaleStore: ObservableObject {
     @Published var skuValue: String = "0412" // TODO: Replace with actual SKU
     @Published var datePairedValue: String = "June 2, 2025" // TODO: Replace with actual date paired
     
+    // Display Metrics State
+    @Published var progressMetrics: [ProgressMetricItem] = [
+        ProgressMetricItem(id: "goalProgress", label: ScaleModesStrings.goalProgress, isOn: true),
+        ProgressMetricItem(id: "dailyAverage", label: ScaleModesStrings.dailyAverage, isOn: true),
+        ProgressMetricItem(id: "weeklyAverage", label: ScaleModesStrings.weeklyAverage, isOn: true),
+        ProgressMetricItem(id: "monthlyAverage", label: ScaleModesStrings.monthlyAverage, isOn: true),
+    ]
+    
+    // Banner States
+    @Published var showWeightOnlyBanner: Bool = false
+    @Published var showWeightOnlyInfo: Bool = false
+    @Published var showHeartRateBanner: Bool = false
+    
+    // Metrics State
+    @Published var metrics: [BodyMetricItem] = BodyMetrics.config.keys
+        .filter { $0 != .weight }
+        .map { BodyMetricItem(id: $0, isOn: true) }
+    
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self
     
@@ -243,5 +261,27 @@ class ScaleStore: ObservableObject {
             }),
             backdropDismiss: true
         ))
+    }
+    
+    // MARK: - Display Metrics Functions
+    
+    /// Saves the display metrics configuration
+    func saveDisplayMetrics() {
+        // TODO: Implement saveDisplayMetrics functionality
+        // - Save the current state of metrics and extraToggles
+    }
+    
+    /// Updates the weight-only mode setting
+    func updateWeightOnlyMode() {
+        // TODO: Implement updateWeightOnlyMode functionality
+        // - Toggle weight-only mode on/off
+        // - Update scale configuration
+    }
+    
+    /// Updates the heart rate monitoring setting
+    func updateHeartRate() {
+        // TODO: Implement updateHeartRate functionality
+        // - Toggle heart rate monitoring on/off
+        // - Update scale configuration
     }
 }
