@@ -58,7 +58,7 @@ struct UsersScreen: View {
                             .foregroundColor(theme.textSubheading)
                             .padding(.bottom, .radiusXS)
                         
-                        VStack(spacing: 0) {
+                        VStack(spacing: 2) {
                             ForEach(scaleStore.otherUsers.indices, id: \.self) { idx in
                                 ListItemView(
                                     title: scaleStore.otherUsers[idx],
@@ -73,9 +73,7 @@ struct UsersScreen: View {
                                 )
                                 if idx < scaleStore.otherUsers.count - 1 {
                                     Divider()
-                                        .frame(height: 1)
-                                        .frame(maxWidth: .infinity)
-                                        .background(theme.textSubheading)
+                                        .background(theme.statusUtility)
                                 }
                             }
                         }
