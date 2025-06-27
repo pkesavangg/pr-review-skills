@@ -17,7 +17,7 @@ class DialogUtility @Inject constructor(
 ) : IDialogUtility {
     /**
      * Shows a max account reached alert dialog.
-     * 
+     *
      * @param isFromLanding Whether the alert is shown from the landing screen
      * @param onDismiss Optional callback when the dialog is dismissed
      */
@@ -41,4 +41,20 @@ class DialogUtility @Inject constructor(
 
         dialogQueueService.enqueue(alert)
     }
-} 
+
+    override fun showAccountLoggedOutAlert(
+        username: String,
+        onDismiss: (() -> Unit)?
+    ) {
+
+        val alert = DialogModel.Alert(
+            title = AppPopupStrings.MaxAccountReachedAlert.Title,
+            message = AppPopupStrings.MaxAccountReachedAlert.Title,
+            dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
+            onDismiss = onDismiss,
+            alertPriority = 10 // High priority for account-related alerts
+        )
+
+        dialogQueueService.enqueue(alert)
+    }
+}

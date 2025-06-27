@@ -29,4 +29,9 @@ object AppPopupStrings {
         const val ConfirmButton = "Remove"
         const val Loader = "Removing Account..."
     }
+
+    object BackgroundLoggedOutAlert {
+        const val Title = "Please log back in to continue."
+        const val ConfirmButton = "OK"
+    }
 }

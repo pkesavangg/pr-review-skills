@@ -15,6 +15,7 @@ data class SettingsState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val account: Account? = null,
+    val hasMultipleAccounts: Boolean = false,
 ) : IReducer.State
 
 /**
@@ -31,11 +32,12 @@ sealed interface SettingsIntent : IReducer.Intent {
     object ClearError : SettingsIntent
 
     object Logout : SettingsIntent
-
+    object LogoutAllAccounts : SettingsIntent
     object SwitchAccount : SettingsIntent
 
     data class UpdateAccount(
         val account: Account?,
+        val hasMultipleAccounts: Boolean = false
     ) : SettingsIntent
 
     // URL Opening Intents
@@ -61,7 +63,11 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
             is SettingsIntent.SetError -> state.copy(errorMessage = intent.message, isLoading = false)
             SettingsIntent.ClearError -> state.copy(errorMessage = null)
             SettingsIntent.LoadSettings -> state.copy(isLoading = true)
-            is SettingsIntent.UpdateAccount -> state.copy(account = intent.account)
+            is SettingsIntent.UpdateAccount -> state.copy(
+                account = intent.account,
+                hasMultipleAccounts = intent.hasMultipleAccounts,
+            )
+
             else -> null
             // Add more intent handling as needed
         }

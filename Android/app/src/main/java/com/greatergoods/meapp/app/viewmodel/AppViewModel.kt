@@ -78,7 +78,9 @@ class AppViewModel
                         }
 
                         is AuthState.LoggedOut -> {
-                            routeToLandingOrApp()
+                            if (authState.isActiveAccount) {
+                                routeToLandingOrApp()
+                            }
                         }
 
                         is AuthState.AccountAdded -> {

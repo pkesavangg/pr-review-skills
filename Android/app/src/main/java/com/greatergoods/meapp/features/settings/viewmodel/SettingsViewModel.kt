@@ -51,8 +51,10 @@ constructor(
 
     fun getUserProfile() {
         viewModelScope.launch {
-            accountService.activeAccountFlow.collect {
-                handleIntent(SettingsIntent.UpdateAccount(it))
+            accountService.loggedInAccountsFlow.collect {
+                val account = accountService.getCurrentAccount()
+                val hasMultipleAccounts = it.size > 1
+                handleIntent(SettingsIntent.UpdateAccount(account, hasMultipleAccounts))
             }
         }
     }
@@ -70,6 +72,10 @@ constructor(
 
             is SettingsIntent.Logout -> {
                 onLogOutClick()
+            }
+
+            is SettingsIntent.LogoutAllAccounts -> {
+                onLogoutAllAccounts()
             }
 
             is SettingsIntent.SwitchAccount -> {
@@ -324,22 +330,6 @@ constructor(
         }
     }
 
-    private fun logout() {
-        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
-        viewModelScope.launch {
-            try {
-                val account = state.value.account
-                if (account != null) {
-                    accountService.logout(account.id, account.fcmToken)
-                }
-            } catch (e: Exception) {
-                AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
-            } finally {
-                dialogQueueService.dismissLoader()
-            }
-        }
-    }
-
 
     fun onBiologicalSexClick() {
         AppLog.d("SettingsViewModel", "Biological sex clicked")
@@ -386,18 +376,6 @@ constructor(
         // TODO: Navigate to help screen
     }
 
-    fun onDeleteAccountClick() {
-        AppLog.d("SettingsViewModel", "Delete account clicked")
-        // TODO: Show delete account confirmation dialog
-    }
-
-    fun onSwitchAccountClick() {
-        viewModelScope.launch {
-            navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts)
-        }
-        AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
-    }
-
     /*
      * Show a confirmation dialog before logging out.
      */
@@ -415,5 +393,41 @@ constructor(
                 },
             ),
         )
+    }
+
+    private fun logout() {
+        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
+        viewModelScope.launch {
+            try {
+                val account = state.value.account
+                if (account != null) {
+                    accountService.logout(account.id, account.fcmToken)
+                }
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+    private fun onLogoutAllAccounts() {
+        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOutAll)
+        viewModelScope.launch {
+            try {
+                accountService.logoutAll()
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Failed to log out all accounts", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+    fun onSwitchAccountClick() {
+        viewModelScope.launch {
+            navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts)
+        }
+        AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
     }
 }
