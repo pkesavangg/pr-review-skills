@@ -1,21 +1,19 @@
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.Account.Account
-import com.greatergoods.meapp.features.common.helper.rememberAppDraggableListState
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.borderRadius
 
 /**
  * A list component that displays user accounts with swipe-to-delete functionality.
@@ -37,46 +35,34 @@ fun AppUserList(
     onLoginRequest: (Account) -> Unit,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
-    val draggableListState = rememberAppDraggableListState()
-
     if (accounts.isNotEmpty()) {
         AppDraggableList(
             items = accounts,
-            draggableListState = draggableListState,
-            modifier = modifier,
+            modifier = modifier.clip(RoundedCornerShape(borderRadius.sm)),
             iconWidth = 56.dp,
             contentPadding = contentPadding,
-            onDelete = onDeleteRequest,
+            keySelector = { it.id },
+            trailingActions = { index, item ->
+                AppDraggableListActions {
+                    AppDraggableActionItem(
+                        iconId = AppIcons.Default.Delete,
+                        text = "Delete",
+                        contentDescription = "Delete item",
+                        backgroundColor = MeTheme.colorScheme.danger,
+                    ) {
+                        onDeleteRequest(item)
+                    }
+                }
+            },
         ) { item, progress ->
-            val isDragging = progress > 0f
-            val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.lg
-            val animatedCornerRadius by animateDpAsState(
-                targetValue = targetCornerRadius,
-                animationSpec = tween(durationMillis = 250),
-            )
-            val index = accounts.indexOf(item)
 
-            val shape = when {
-                accounts.size == 1 -> RoundedCornerShape(animatedCornerRadius)
-                index == 0 -> RoundedCornerShape(
-                    topStart = animatedCornerRadius,
-                    topEnd = animatedCornerRadius,
-                )
-                index == accounts.size - 1 -> RoundedCornerShape(
-                    bottomStart = animatedCornerRadius,
-                    bottomEnd = animatedCornerRadius,
-                )
-
-                else -> RectangleShape
-            }
             Column {
                 AppUser(
                     account = item,
                     onAccountSelect = { onAccountSelect(item) },
                     onLoginRequest = { onLoginRequest(item) },
                     avatarAlpha = 1f - progress,
-                    shape = shape,
-                    showAccountActivity = showAccountActivity
+                    showAccountActivity = showAccountActivity,
                 )
                 if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
                     HorizontalDivider(
@@ -93,56 +79,57 @@ fun AppUserList(
 @Composable
 fun AppUserListPreview() {
     MeAppTheme {
-        val sampleAccounts = remember {
-            listOf(
-                Account(
-                    id = "1",
-                    firstName = "John",
-                    lastName = "Doe",
-                    dob = "1990-01-01",
-                    email = "john.doe@example.com",
-                    gender = "Male",
-                    isActiveAccount = true,
-                    isLoggedIn = true,
-                    lastActiveTime = "2024-01-15T10:30:00.000Z",
-                    zipcode = "12345",
-                    isSynced = true,
-                    isExpired = false,
-                    weightUnit = "lbs",
-                    isWeightlessOn = true,
-                    height = 175,
-                    activityLevel = "Moderately Active",
-                    weightlessTimestamp = "2024-01-15T10:30:00.000Z",
-                    weightlessWeight = 70.5f,
-                    isStreakOn = true,
-                    dashboardType = "Dashboard4",
-                    dashboardMetrics = listOf("weight", "bmi")
-                ),
-                Account(
-                    id = "2",
-                    firstName = "Jane",
-                    lastName = "Smith",
-                    dob = "1985-05-15",
-                    email = "jane.smith@example.com",
-                    gender = "Female",
-                    isActiveAccount = false,
-                    isLoggedIn = true,
-                    lastActiveTime = "2024-01-10T14:20:00.000Z",
-                    zipcode = "67890",
-                    isSynced = true,
-                    isExpired = false,
-                    weightUnit = "kg",
-                    isWeightlessOn = false,
-                    height = 165,
-                    activityLevel = "Active",
-                    weightlessTimestamp = null,
-                    weightlessWeight = null,
-                    isStreakOn = false,
-                    dashboardType = "Dashboard12",
-                    dashboardMetrics = listOf("weight", "bodyfat", "muscle")
-                ),
-            )
-        }
+        val sampleAccounts =
+            remember {
+                listOf(
+                    Account(
+                        id = "1",
+                        firstName = "John",
+                        lastName = "Doe",
+                        dob = "1990-01-01",
+                        email = "john.doe@example.com",
+                        gender = "Male",
+                        isActiveAccount = true,
+                        isLoggedIn = true,
+                        lastActiveTime = "2024-01-15T10:30:00.000Z",
+                        zipcode = "12345",
+                        isSynced = true,
+                        isExpired = false,
+                        weightUnit = "lbs",
+                        isWeightlessOn = true,
+                        height = 175,
+                        activityLevel = "Moderately Active",
+                        weightlessTimestamp = "2024-01-15T10:30:00.000Z",
+                        weightlessWeight = 70.5f,
+                        isStreakOn = true,
+                        dashboardType = "Dashboard4",
+                        dashboardMetrics = listOf("weight", "bmi"),
+                    ),
+                    Account(
+                        id = "2",
+                        firstName = "Jane",
+                        lastName = "Smith",
+                        dob = "1985-05-15",
+                        email = "jane.smith@example.com",
+                        gender = "Female",
+                        isActiveAccount = false,
+                        isLoggedIn = true,
+                        lastActiveTime = "2024-01-10T14:20:00.000Z",
+                        zipcode = "67890",
+                        isSynced = true,
+                        isExpired = false,
+                        weightUnit = "kg",
+                        isWeightlessOn = false,
+                        height = 165,
+                        activityLevel = "Active",
+                        weightlessTimestamp = null,
+                        weightlessWeight = null,
+                        isStreakOn = false,
+                        dashboardType = "Dashboard12",
+                        dashboardMetrics = listOf("weight", "bodyfat", "muscle"),
+                    ),
+                )
+            }
 
         AppScaffold(
             title = "User Accounts",
@@ -163,33 +150,34 @@ fun AppUserListPreview() {
 @Composable
 fun AppUserListSingleItemPreview() {
     MeAppTheme {
-        val singleAccount = remember {
-            listOf(
-                Account(
-                    id = "1",
-                    firstName = "Single",
-                    lastName = "User",
-                    dob = "1990-01-01",
-                    email = "single.user@example.com",
-                    gender = "Male",
-                    isActiveAccount = true,
-                    isLoggedIn = true,
-                    lastActiveTime = "2024-01-15T10:30:00.000Z",
-                    zipcode = "12345",
-                    isSynced = true,
-                    isExpired = false,
-                    weightUnit = "lbs",
-                    isWeightlessOn = false,
-                    height = 180,
-                    activityLevel = "Very Active",
-                    weightlessTimestamp = null,
-                    weightlessWeight = null,
-                    isStreakOn = true,
-                    dashboardType = "Dashboard4",
-                    dashboardMetrics = listOf("weight")
-                ),
-            )
-        }
+        val singleAccount =
+            remember {
+                listOf(
+                    Account(
+                        id = "1",
+                        firstName = "Single",
+                        lastName = "User",
+                        dob = "1990-01-01",
+                        email = "single.user@example.com",
+                        gender = "Male",
+                        isActiveAccount = true,
+                        isLoggedIn = true,
+                        lastActiveTime = "2024-01-15T10:30:00.000Z",
+                        zipcode = "12345",
+                        isSynced = true,
+                        isExpired = false,
+                        weightUnit = "lbs",
+                        isWeightlessOn = false,
+                        height = 180,
+                        activityLevel = "Very Active",
+                        weightlessTimestamp = null,
+                        weightlessWeight = null,
+                        isStreakOn = true,
+                        dashboardType = "Dashboard4",
+                        dashboardMetrics = listOf("weight"),
+                    ),
+                )
+            }
 
         AppScaffold(
             title = "Single User",

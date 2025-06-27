@@ -62,7 +62,7 @@ fun DialogHost() {
                         onOk = { selectedValue ->
                             onConfirm?.invoke(selectedValue)
                             dialogQueueViewModel.dismissCurrent()
-                        }
+                        },
                     )
                 }
             }
