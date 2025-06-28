@@ -3,7 +3,7 @@
 
     <application>
         <activity
-            android:name=".AppSyncScanActivity"
+            android:name=".activity.AppSyncScanActivity"
             android:exported="false" />
     </application>
 </manifest>

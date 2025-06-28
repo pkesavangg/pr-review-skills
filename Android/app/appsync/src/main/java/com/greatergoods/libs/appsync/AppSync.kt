@@ -1,5 +1,7 @@
 package com.greatergoods.libs.appsync
 
+import com.greatergoods.libs.appsync.activity.AppSyncScanActivity
+import com.greatergoods.libs.appsync.model.AppSyncResult
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import android.app.Activity

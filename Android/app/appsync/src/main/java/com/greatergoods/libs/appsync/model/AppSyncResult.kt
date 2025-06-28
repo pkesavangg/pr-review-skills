@@ -1,4 +1,4 @@
-package com.greatergoods.libs.appsync
+package com.greatergoods.libs.appsync.model
 
 /**
  * Result of an AppSync scan operation.
