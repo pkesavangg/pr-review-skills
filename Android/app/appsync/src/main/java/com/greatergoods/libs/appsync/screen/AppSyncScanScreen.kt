@@ -2,6 +2,7 @@ package com.greatergoods.libs.appsync.screen
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfo
 import androidx.compose.animation.AnimatedVisibility
@@ -19,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,10 +34,12 @@ import com.greatergoods.libs.appsync.screen.components.CameraPreview
 import com.greatergoods.libs.appsync.screen.components.OverlayControls
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
+import com.greatergoods.libs.appsync.utility.AppSyncZoomManager
 import java.util.concurrent.Executors
 import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Main Composable for the scan screen. Shows CameraX preview and overlays UI controls.
@@ -50,6 +54,8 @@ fun AppSyncScanScreen(
     onResult: (AppSyncResult) -> Unit,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -74,11 +80,10 @@ fun AppSyncScanScreen(
     val cameraControlState = remember { mutableStateOf<CameraControl?>(null) }
     val cameraInfoState = remember { mutableStateOf<CameraInfo?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-    var zoomLevel by remember {
-        mutableStateOf(
-            initialZoom.toFloat().coerceIn(AppSyncConstants.MIN_ZOOM, AppSyncConstants.MAX_ZOOM),
-        )
-    }
+
+    // Zoom state with animation
+    var zoomLevel by remember { mutableStateOf(initialZoom.toFloat().coerceIn(AppSyncConstants.MIN_ZOOM, AppSyncConstants.MAX_ZOOM)) }
+    var zoomManager by remember { mutableStateOf<AppSyncZoomManager?>(null) }
 
     // UI state
     var scanResult by remember { mutableStateOf<AppSyncResult?>(null) }
@@ -92,6 +97,7 @@ fun AppSyncScanScreen(
         onDispose {
             if (resultHandled) {
                 cameraExecutor.shutdown()
+                zoomManager?.stopAnimation()
             }
         }
     }
@@ -116,12 +122,22 @@ fun AppSyncScanScreen(
         }
     }
 
-    // Update CameraX zoom when zoomLevel changes
-    LaunchedEffect(zoomLevel, cameraControlState.value) {
-        cameraControlState.value?.setLinearZoom(
-            ((zoomLevel - AppSyncConstants.MIN_ZOOM) / (AppSyncConstants.MAX_ZOOM - AppSyncConstants.MIN_ZOOM))
-                .coerceIn(0f, 1f),
-        )
+    // Update zoom manager when camera is ready
+    LaunchedEffect(cameraControlState.value, cameraInfoState.value, coroutineScope) {
+        if (cameraControlState.value != null && cameraInfoState.value != null) {
+            zoomManager = AppSyncZoomManager(
+                cameraControl = cameraControlState.value,
+                cameraInfo = cameraInfoState.value,
+                coroutineScope = coroutineScope
+            )
+            // Set initial zoom
+            zoomManager?.setZoom(zoomLevel, animate = false)
+        }
+    }
+
+    // Update zoom when zoomLevel changes
+    LaunchedEffect(zoomLevel) {
+        zoomManager?.setZoom(zoomLevel, animate = true)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -170,8 +186,16 @@ fun AppSyncScanScreen(
                 )
                 OverlayControls(
                     zoomLevel = zoomLevel.toInt(),
-                    onZoomIn = { if (zoomLevel < AppSyncConstants.MAX_ZOOM) zoomLevel += AppSyncConstants.ZOOM_STEP },
-                    onZoomOut = { if (zoomLevel > AppSyncConstants.MIN_ZOOM) zoomLevel -= AppSyncConstants.ZOOM_STEP },
+                    onZoomIn = {
+                        if (zoomLevel < AppSyncConstants.MAX_ZOOM) {
+                            zoomLevel += AppSyncConstants.ZOOM_STEP
+                        }
+                    },
+                    onZoomOut = {
+                        if (zoomLevel > AppSyncConstants.MIN_ZOOM) {
+                            zoomLevel -= AppSyncConstants.ZOOM_STEP
+                        }
+                    },
                     onManualEntry = if (showManualEntryButton) handleManualEntry else null,
                     onClose = handleCancel,
                 )

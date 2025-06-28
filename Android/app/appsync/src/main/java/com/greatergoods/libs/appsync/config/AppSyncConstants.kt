@@ -7,8 +7,13 @@ object AppSyncConstants {
     // Camera zoom settings
     const val MIN_ZOOM = 1.0f
     const val MAX_ZOOM = 5.0f
-    const val ZOOM_STEP = 0.1f
+    const val ZOOM_STEP = 0.5f
     const val DEFAULT_ZOOM = 1
+
+    // Zoom animation settings
+    const val ZOOM_ANIMATION_DURATION = 300L // 300ms animation
+    const val ZOOM_ANIMATION_STEPS = 30 // 30 steps for smooth animation
+    const val ZOOM_CHANGE_THRESHOLD = 0.01f // Minimum change to trigger animation
 
     // FS003 protocol constants
     const val HAMMING_BLOCK_SIZE = 7
