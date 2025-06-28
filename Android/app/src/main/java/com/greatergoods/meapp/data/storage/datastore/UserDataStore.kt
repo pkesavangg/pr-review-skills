@@ -248,13 +248,57 @@ class UserDataStore @Inject constructor(
     }
 
     /**
-     * Logs out the current account by removing it from UserDataStore.
+     * Logs out the current account by setting its isActive status to false.
+     * Only affects the currently active account.
      */
     suspend fun logoutCurrentAccount() {
         val current = getData()
+        val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
+        
+        if (currentActiveAccount != null) {
+            val updated = current.toBuilder().apply {
+                putAccounts(
+                    currentActiveAccount.key,
+                    currentActiveAccount.value.toBuilder().setIsActive(false).build()
+                )
+            }.build()
+            updateData { updated }
+        }
+    }
+
+    /**
+     * Removes the current active account from the DataStore completely.
+     * This permanently deletes the account and all its data.
+     */
+    suspend fun removeCurrentAccount() {
+        val current = getData()
+        val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
+        
+        if (currentActiveAccount != null) {
+            val updated = current.toBuilder().apply {
+                removeAccounts(currentActiveAccount.key)
+            }.build()
+            updateData { updated }
+        }
+    }
+
+    /**
+     * Logs out all accounts by clearing their tokens and setting isActive to false.
+     * This removes all authentication data while keeping the account records.
+     */
+    suspend fun logoutAllAccounts() {
+        val current = getData()
         val updated = current.toBuilder().apply {
             accountsMap.forEach { (id, account) ->
-                putAccounts(id, account.toBuilder().setIsActive(false).build())
+                putAccounts(
+                    id,
+                    account.toBuilder()
+                        .setAccessToken("")
+                        .setRefreshToken("")
+                        .setExpiresAt("")
+                        .setIsActive(false)
+                        .build()
+                )
             }
         }.build()
         updateData { updated }
@@ -302,6 +346,7 @@ class UserDataStore @Inject constructor(
                         .setAccessToken("")
                         .setRefreshToken("")
                         .setExpiresAt("")
+                        .setIsActive(false)
                         .build(),
                 )
             }

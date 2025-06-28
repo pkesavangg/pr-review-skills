@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.core.service
 
+import androidx.navigation3.runtime.NavKey
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.interfaces.INavigationUtility
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
@@ -10,9 +11,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 
 /**
  * Service for managing navigation events and emitting navigation intents to be observed by the UI.
- * Implements [IAppEventService].
+ * Implements [IAppNavigationService].
  */
-class AppEventService : IAppEventService {
+class AppNavigationService : IAppNavigationService {
     private val _navigationIntent = MutableSharedFlow<NavigationIntent>(replay = 1)
 
     // Auth event flow for authentication events (login, logout, etc.)
@@ -28,7 +29,11 @@ class AppEventService : IAppEventService {
      * Emits a navigation intent to navigate to the specified route.
      * @param route The destination [AppRoute].
      */
-    override suspend fun navigateTo(route: AppRoute, topLevel: AppRoute?, popUpTo: AppRoute?) {
+    override suspend fun navigateTo(
+        route: AppRoute,
+        topLevel: AppRoute?,
+        popUpTo: AppRoute?,
+    ) {
         emitNavigationIntent(
             NavigationIntent.NavigateTo(
                 route,
@@ -43,9 +48,7 @@ class AppEventService : IAppEventService {
      * @param route The route to navigate back to (optional).
      * @param inclusive Whether to include the specified route in the pop.
      */
-    override suspend fun navigateBack(
-        topLevel: AppRoute?,
-    ) {
+    override suspend fun navigateBack(topLevel: AppRoute?) {
         emitNavigationIntent(
             NavigationIntent.NavigateBack(
                 topLevel,
@@ -106,13 +109,34 @@ class AppEventService : IAppEventService {
     private suspend fun emitNavigationIntent(intent: NavigationIntent) {
         _navigationIntent.emit(intent)
     }
+
+    /**
+     * Registers an onDeactivate callback for a route. The callback is invoked before navigating away from the route.
+     * @param route The route to guard.
+     * @param callback The suspendable callback to invoke before navigation away.
+     */
+    override suspend fun registerOnDeactivate(
+        route: NavKey,
+        callback: suspend () -> Boolean,
+    ) {
+        _navigationIntent.emit(NavigationIntent.RegisterOnDeactivate(route, callback))
+    }
+
+    /**
+     * Unregisters the onDeactivate callback for a route.
+     * @param route The route to remove the guard from.
+     */
+    override suspend fun unregisterOnDeactivate(route: NavKey) {
+        _navigationIntent.emit(NavigationIntent.UnregisterOnDeactivate(route))
+    }
 }
 
 /**
  * Interface for app event services that manage navigation.
  * Extends [INavigationUtility].
  */
-interface IAppEventService : INavigationUtility {
+interface IAppNavigationService : INavigationUtility {
     val authEvent: SharedFlow<AuthState>
+
     suspend fun emitAuthEvent(state: AuthState)
 }

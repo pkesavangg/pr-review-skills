@@ -17,8 +17,8 @@ object AppPopupStrings {
     object MaxAccountReachedAlert {
         const val Title = "Maximum Users Reached"
 
-        const val Message =
-            "You have reached the maximum number of accounts (10) on this device. Please remove an account before adding a new one."
+        const val Message1 = "Please swipe left to remove any unused accounts before attempting to add a new one."
+        const val Message2 = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
         const val ConfirmButton = "OK"
     }
 

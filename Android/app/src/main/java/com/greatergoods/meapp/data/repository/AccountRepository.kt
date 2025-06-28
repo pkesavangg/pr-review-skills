@@ -7,6 +7,8 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
@@ -111,11 +113,31 @@ class AccountRepository @Inject constructor(
 
     // DB Operations
     /**
-     * Adds an account to the database and returns the domain model.
+     * Adds an account to the database with all entity relations and returns the domain model.
+     * Inserts the main account entity and all related settings entities.
      */
     override suspend fun addAccountInDB(account: Account): Account {
         val accountEntity = AccountEntityMapper.toEntity(account)
         accountDao.insertAccount(accountEntity)
+
+        // Insert WeightCompSettings entity with data from account
+        val weightCompSettings = WeightCompSettingsEntity(
+            accountId = account.id,
+            height = account.height ?: 1700, // Default height if not set
+            activityLevel = account.activityLevel ?: "normal", // Default activity level
+            weightUnit = account.weightUnit?.value ?: "lb", // Default weight unit
+            isSynced = true // New account data is already synced
+        )
+        accountDao.insertWeightCompSettings(weightCompSettings)
+        // Insert StreaksSettings entity with data from account
+        val streaksSettings = StreaksSettingsEntity(
+            accountId = account.id,
+            isStreakOn = account.isStreakOn ?: false,
+            streakTimestamp = System.currentTimeMillis().toString(),
+            isSynced = true
+        )
+        accountDao.insertStreaksSettings(streaksSettings)
+        AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
         return account
     }
 
@@ -130,10 +152,8 @@ class AccountRepository @Inject constructor(
         // Get current account from database
         val currentAccountEntity = accountDao.getAccount(accountId).first()
             ?: throw IllegalStateException("Account not found for ID: $accountId")
-
         val currentAccount = currentAccountEntity.account
-
-        // Merge current account with partial update
+        // Merge current account with partial update (only AccountEntity properties)
         val updatedAccountEntity = currentAccount.copy(
             firstName = partialUpdate.firstName ?: currentAccount.firstName,
             lastName = partialUpdate.lastName ?: currentAccount.lastName,
@@ -149,12 +169,8 @@ class AccountRepository @Inject constructor(
             lastActiveTime = partialUpdate.lastActiveTime ?: currentAccount.lastActiveTime,
             zipcode = partialUpdate.zipcode ?: currentAccount.zipcode,
         )
-
-        // Update in database
+        // Update account entity in database
         accountDao.updateAccount(updatedAccountEntity)
-
-        AppLog.d(TAG, "Updated account $accountId with partial data")
-
         return AccountEntityMapper.toDomain(updatedAccountEntity)
     }
 
@@ -199,6 +215,10 @@ class AccountRepository @Inject constructor(
      */
     override suspend fun deactivateOtherAccountsInDB(accountId: String) {
         accountDao.deactivateOtherAccounts(accountId)
+    }
+
+    override suspend fun deactivateAllAccountsInDB() {
+        accountDao.deactivateAllAccounts()
     }
 
     /**
@@ -278,8 +298,7 @@ class AccountRepository @Inject constructor(
     ): Account {
         // Get current account from database
         val currentAccount = accountDao.getAccount(accountId).first()
-        currentAccount?.account
-            ?: throw IllegalStateException("AccountEntity not found for accountId: $accountId")
+            ?: throw IllegalStateException("Account not found for accountId: $accountId")
 
         // Update account entity with API response data
         val updatedAccountEntity = currentAccount.account.copy(
@@ -290,9 +309,14 @@ class AccountRepository @Inject constructor(
             gender = accountInfo.gender,
             zipcode = accountInfo.zipcode,
             isSynced = true,
+            isLoggedIn = true,
+            isActiveAccount = true,
+            isExpired = false,
         )
-        // Update in database
+
+        // Update account entity in database
         accountDao.updateAccount(updatedAccountEntity)
+
         AppLog.d(TAG, "Updated account $accountId with API response data")
         return AccountEntityMapper.toDomain(updatedAccountEntity)
     }

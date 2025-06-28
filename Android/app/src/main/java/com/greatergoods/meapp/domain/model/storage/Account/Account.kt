@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.domain.model.storage.Account
 
+import com.greatergoods.meapp.domain.model.common.WeightUnit
+
 /**
  * Domain model representing a user account and its settings.
  */
@@ -20,7 +22,7 @@ data class Account(
     val zipcode: String,
 
     // Add other settings as needed, or use separate domain models
-    val weightUnit: String?,
+    val weightUnit: WeightUnit?,
     val isWeightlessOn: Boolean? = false,
     val height: Int?,
     val activityLevel: String?,
