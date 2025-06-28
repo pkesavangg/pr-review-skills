@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.landing
+package com.greatergoods.meapp.features.landing.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

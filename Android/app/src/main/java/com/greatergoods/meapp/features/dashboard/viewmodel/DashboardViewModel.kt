@@ -11,6 +11,7 @@ import com.greatergoods.meapp.features.common.strings.ToastStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -35,15 +36,16 @@ class DashboardViewModel
 
         override fun provideInitialState(): DashboardState = DashboardState()
 
-        /**
-         * Observes authentication state changes and shows toast for account switches.
-         */
-        private fun observeAuthEvent() {
-            viewModelScope.launch {
-                appEventService.authEvent.collect { authState ->
-                    when (authState) {
-                        is AuthState.AccountSwitched -> {
-                            val accountName = authState.account.firstName ?: authState.account.email
+    /**
+     * Observes authentication state changes and shows toast for account switches.
+     */
+    private fun observeAuthEvent() {
+        viewModelScope.launch {
+            appEventService.authEvent.collect { authState ->
+                when (authState) {
+                    is AuthState.AccountSwitched -> {
+                        if (authState.showToast) {
+                            val accountName = authState.account.firstName
                             dialogQueueService.showToast(
                                 Toast(
                                     title = null,
@@ -57,26 +59,20 @@ class DashboardViewModel
                             // Handle other auth states if needed
                         }
                     }
+
+                    else -> {}
                 }
             }
         }
 
-        /**
-         * Loads entries and updates the state accordingly.
-         */
-        private fun loadEntries() {
-            viewModelScope.launch {
-                entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
-                    handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
-                }
-            }
-            viewModelScope.launch {
-                entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
-                    handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
-                }
-            }
-            viewModelScope.launch {
-                handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
+    /**
+     * Loads entries and updates the state accordingly.
+     */
+    private fun loadEntries() {
+        viewModelScope.launch {
+            entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
+                Log.i("CHECKING", dayWise.toString())
+                handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
             }
         }
 

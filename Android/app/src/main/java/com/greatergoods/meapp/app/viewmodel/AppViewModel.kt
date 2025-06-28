@@ -14,7 +14,6 @@ import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -125,14 +124,31 @@ class AppViewModel
                 false
             }
 
-        /**
-         * Routes to either the landing page or the app based on login status.
-         * @param isLoggedIn true if user is logged in, false otherwise
-         */
-        private suspend fun routeToLandingOrApp() {
-            val loggedInAccounts =
-                accountService.getLoggedInAccounts().filter {
-                    !it.isActiveAccount
+    /**
+     * Routes to either the landing page or the app based on login status.
+     * @param isLoggedIn true if user is logged in, false otherwise
+     */
+    private suspend fun routeToLandingOrApp() {
+        val loggedInAccounts = accountService.getLoggedInAccounts().filter {
+            !it.isActiveAccount
+        }
+        val hasAccounts = loggedInAccounts.isNotEmpty()
+        val route = if (hasAccounts) {
+            AppRoute.Auth.MultiAccountLanding
+        } else {
+            AppRoute.Auth.Landing
+        }
+        navigationService.replaceStack(route = route)
+    }
+
+    private suspend fun initLoadingData(account: Account?) {
+        try {
+            if (account != null) {
+                val isLoginStatusChecked = checkLoginStatus()
+                if (isLoginStatusChecked) {
+                    entryService.updateAccountId(account.id)
+                    deviceInfoService.updateDeviceInfo()
+                    navigationService.autoLogin()
                 }
             val hasAccounts = loggedInAccounts.isNotEmpty()
             val route =

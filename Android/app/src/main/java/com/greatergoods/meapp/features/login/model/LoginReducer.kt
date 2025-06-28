@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.login.model
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
+import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
@@ -57,6 +58,7 @@ sealed class LoginIntent : IReducer.Intent {
     object OpenForgotPasswordModal : LoginIntent()
     object OpenHelpModal : LoginIntent()
     object OnBack : LoginIntent()
+    object ShowMaxAccountAlert : LoginIntent()
     data class OpenInAppBrowser(val url: String) : LoginIntent()
 
     /** Show an error message. */
@@ -114,6 +116,10 @@ class LoginReducer : IReducer<LoginState, LoginIntent> {
 
             is LoginIntent.OnBack -> {
                 state.copy(isLoading = false, error = null)
+            }
+
+            is LoginIntent.ShowMaxAccountAlert -> {
+                state.copy(isLoading = false, error = MaxAccountsReachedException().message)
             }
 
             else -> state

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.components.AppIcon
@@ -45,6 +46,7 @@ fun HistoryDetailItem(
     item: ScaleEntry,
     modifier: Modifier = Modifier,
 ) {
+    val bodyMetric = fromScaleEntry(item)
     var isExpanded by remember { mutableStateOf(false) }
 
     val backgroundColor =
@@ -53,7 +55,7 @@ fun HistoryDetailItem(
     Column(modifier = modifier.background(backgroundColor)) {
         HistoryDetailItemHeader(
             item = item,
-            canExpand = getMetrics(item).isNotEmpty(),
+            canExpand = getMetrics(bodyMetric).isNotEmpty(),
             isExpanded = isExpanded,
             onClick = {
                 isExpanded = !isExpanded

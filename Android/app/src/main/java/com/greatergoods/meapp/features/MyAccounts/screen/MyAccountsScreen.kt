@@ -69,12 +69,10 @@ fun MyAccountsScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             AppUserList(
-                accounts =
-                    List(10) { index ->
-                        state.accounts.map { it.copy(id = index.toString()) }
-                    }.flatten(),
+                accounts = state.accounts,
                 modifier = Modifier.background(Color.Green),
                 showAccountActivity = true,
+                canRemoveAccount = true,
                 onDeleteRequest = { handleIntent(MyAccountsIntent.RequestRemoveAccount(it)) },
                 onAccountSelect = { handleIntent(MyAccountsIntent.SelectAccount(it)) },
                 onLoginRequest = { handleIntent(MyAccountsIntent.LoginToAccount(it)) },
@@ -95,20 +93,6 @@ fun MyAccountsScreenContent(
                     )
                 }
             }
-        }
-        if (state.showMaxAccountsDialog) {
-            MaxAccountsReachedDialog(
-                onDismiss = {
-                    handleIntent(MyAccountsIntent.DismissMaxAccountsDialog)
-                },
-            )
-        }
-        if (state.accountToRemove != null) {
-            RemoveAccountDialog(
-                account = state.accountToRemove,
-                onConfirm = { handleIntent(MyAccountsIntent.ConfirmRemoveAccount) },
-                onCancel = { handleIntent(MyAccountsIntent.CancelRemoveAccount) },
-            )
         }
     }
 }
