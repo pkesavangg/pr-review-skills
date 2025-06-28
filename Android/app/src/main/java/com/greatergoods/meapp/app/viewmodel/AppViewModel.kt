@@ -31,7 +31,7 @@ class AppViewModel
         private val entryService: IEntryService,
         private val logManager: LogManager,
         private val deviceInfoService: IDeviceInfoService,
-        private val appEventService: IAppNavigationService,
+        private val appNavigationService: IAppNavigationService,
         private val tokenManager: ITokenManager,
         private val accountService: IAccountService,
     ) : BaseIntentViewModel<AppState, AppIntent>(
@@ -70,7 +70,7 @@ class AppViewModel
 
         private fun initEvents() {
             viewModelScope.launch {
-                appEventService.authEvent.collect { authState ->
+                appNavigationService.authEvent.collect { authState ->
                     when (authState) {
                         is AuthState.LoggedIn -> {
                             // handle login event
@@ -124,36 +124,19 @@ class AppViewModel
                 false
             }
 
-    /**
-     * Routes to either the landing page or the app based on login status.
-     * @param isLoggedIn true if user is logged in, false otherwise
-     */
-    private suspend fun routeToLandingOrApp() {
-        val loggedInAccounts = accountService.getLoggedInAccounts().filter {
-            !it.isActiveAccount
-        }
-        val hasAccounts = loggedInAccounts.isNotEmpty()
-        val route = if (hasAccounts) {
-            AppRoute.Auth.MultiAccountLanding
-        } else {
-            AppRoute.Auth.Landing
-        }
-        navigationService.replaceStack(route = route)
-    }
-
-    private suspend fun initLoadingData(account: Account?) {
-        try {
-            if (account != null) {
-                val isLoginStatusChecked = checkLoginStatus()
-                if (isLoginStatusChecked) {
-                    entryService.updateAccountId(account.id)
-                    deviceInfoService.updateDeviceInfo()
-                    navigationService.autoLogin()
+        /**
+         * Routes to either the landing page or the app based on login status.
+         * @param isLoggedIn true if user is logged in, false otherwise
+         */
+        private suspend fun routeToLandingOrApp() {
+            val loggedInAccounts =
+                accountService.getLoggedInAccounts().filter {
+                    !it.isActiveAccount
                 }
             val hasAccounts = loggedInAccounts.isNotEmpty()
             val route =
                 if (hasAccounts) {
-                    AppRoute.Auth.UserList
+                    AppRoute.Auth.MultiAccountLanding
                 } else {
                     AppRoute.Auth.Landing
                 }
@@ -163,7 +146,6 @@ class AppViewModel
         private suspend fun initLoadingData(account: Account?) {
             try {
                 if (account != null) {
-                    delay(1000)
                     val isLoginStatusChecked = checkLoginStatus()
                     if (isLoginStatusChecked) {
                         entryService.updateAccountId(account.id)

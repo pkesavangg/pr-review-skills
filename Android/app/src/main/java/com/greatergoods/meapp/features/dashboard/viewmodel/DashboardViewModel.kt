@@ -17,14 +17,14 @@ import android.util.Log
  * ViewModel for the dashboard, managing state and handling dashboard intents.
  *
  * @property entryService The entry service for fetching and updating entries.
- * @property appEventService The app event service for observing auth state changes.
+ * @property appNavigationService The app event service for observing auth state changes.
  */
 @HiltViewModel
 class DashboardViewModel
     @Inject
     constructor(
         private val entryService: IEntryService,
-        private val appEventService: IAppNavigationService,
+        private val appNavigationService: IAppNavigationService,
     ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
             reducer = DashboardReducer(),
         ) {
@@ -36,43 +36,49 @@ class DashboardViewModel
 
         override fun provideInitialState(): DashboardState = DashboardState()
 
-    /**
-     * Observes authentication state changes and shows toast for account switches.
-     */
-    private fun observeAuthEvent() {
-        viewModelScope.launch {
-            appEventService.authEvent.collect { authState ->
-                when (authState) {
-                    is AuthState.AccountSwitched -> {
-                        if (authState.showToast) {
-                            val accountName = authState.account.firstName
-                            dialogQueueService.showToast(
-                                Toast(
-                                    title = null,
-                                    message = ToastStrings.Success.AccountSwitchSuccess.Message(accountName),
-                                    action = null,
-                                ),
-                            )
+        /**
+         * Observes authentication state changes and shows toast for account switches.
+         */
+        private fun observeAuthEvent() {
+            viewModelScope.launch {
+                appNavigationService.authEvent.collect { authState ->
+                    when (authState) {
+                        is AuthState.AccountSwitched -> {
+                            if (authState.showToast) {
+                                val accountName = authState.account.firstName
+                                dialogQueueService.showToast(
+                                    Toast(
+                                        title = null,
+                                        message = ToastStrings.Success.AccountSwitchSuccess.Message(accountName),
+                                        action = null,
+                                    ),
+                                )
+                            }
                         }
 
-                        else -> {
-                            // Handle other auth states if needed
-                        }
+                        else -> {}
                     }
-
-                    else -> {}
                 }
             }
         }
 
-    /**
-     * Loads entries and updates the state accordingly.
-     */
-    private fun loadEntries() {
-        viewModelScope.launch {
-            entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
-                Log.i("CHECKING", dayWise.toString())
-                handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
+        /**
+         * Loads entries and updates the state accordingly.
+         */
+        private fun loadEntries() {
+            viewModelScope.launch {
+                entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
+                    Log.i("CHECKING", dayWise.toString())
+                    handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
+                }
+            }
+            viewModelScope.launch {
+                entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
+                    handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
+                }
+            }
+            viewModelScope.launch {
+                handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
             }
         }
 
