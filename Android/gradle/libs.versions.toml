@@ -1,4 +1,5 @@
 [versions]
+activityComposeVersion = "1.8.2"
 agp = "8.12.0-alpha06"
 coreSplashscreen = "1.0.1"
 connectClient = "1.1.0-rc02"
@@ -15,6 +16,8 @@ activityCompose = "1.10.1"
 composeBom = "2025.06.01"
 hilt = "2.56.2"
 hiltNavigationCompose = "1.2.0"
+lifecycleRuntimeKtxVersion = "2.6.2"
+material3Version = "1.2.0"
 protobufJavalite = "4.31.1"
 retrofit = "3.0.0"
 okhttp = "4.12.0"
@@ -45,10 +48,12 @@ composeUITest = "1.8.3"
 
 
 [libraries]
+androidx-activity-compose-v182 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }
 androidx-connect-client = { module = "androidx.health.connect:connect-client", version.ref = "connectClient" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-hilt-navigation-fragment = { module = "androidx.hilt:hilt-navigation-fragment", version.ref = "hiltNavigationFragment" }
+androidx-lifecycle-runtime-ktx-v262 = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtxVersion" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
