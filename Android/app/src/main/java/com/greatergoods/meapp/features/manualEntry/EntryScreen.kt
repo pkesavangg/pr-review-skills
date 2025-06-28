@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -50,6 +51,10 @@ fun EntryScreen() {
     val state by viewModel.state.collectAsState()
     val backStack = LocalNavBackStack.current
     EntryScreenContent(state, viewModel::handleIntent)
+
+    LaunchedEffect(Unit) {
+        viewModel.initDeactivate()
+    }
 
     /* // Register canDeactivate callback for this screen
      LaunchedEffect(backStack, state.form.isDirty) {

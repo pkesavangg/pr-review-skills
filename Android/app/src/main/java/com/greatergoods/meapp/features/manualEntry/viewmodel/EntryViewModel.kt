@@ -6,12 +6,16 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
+import kotlin.coroutines.resume
 
 /**
  * ViewModel for the entry feature, managing state and handling entry intents.
@@ -43,38 +47,44 @@ class EntryViewModel
             }
         }
 
-        init {
-        /*  viewModelScope.launch {
-              // Register canDeactivate callback for this screen
-              navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
-                  if (state.value.form.controls.weightDateTime.weight.dirty) {
-                      suspendCancellableCoroutine { cont ->
-                          dialogQueueService.enqueue(
-                              DialogModel.Confirm(
-                                  title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                                  message = AppPopupStrings.UnsavedChanges.Message,
-                                  onConfirm = {
-                                      deactivate()
-                                      cont.resume(true)
-                                  },
-                                  onCancel = {
+        fun initDeactivate() {
+            viewModelScope.launch {
+                navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
+                    if (state.value.form.controls.weightDateTime.weight.dirty) {
+                        return@registerOnDeactivate suspendCancellableCoroutine { cont ->
+                            var isResumed = false
 
-                                      cont.resume(false)
-                                  },
-                              ),
-                          )
-                      }
-                  } else {
-                      true
-                  }
-              }
-          }*/
+                            dialogQueueService.enqueue(
+                                DialogModel.Confirm(
+                                    title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                                    message = AppPopupStrings.UnsavedChanges.Message,
+                                    onConfirm = {
+                                        if (!isResumed) {
+                                            isResumed = true
+                                            deactivate()
+                                            cont.resume(true)
+                                        }
+                                    },
+                                    onCancel = {
+                                        if (!isResumed) {
+                                            isResumed = true
+                                            cont.resume(false)
+                                        }
+                                    },
+                                ),
+                            )
+                        }
+                    } else {
+                        return@registerOnDeactivate true
+                    }
+                }
+            }
         }
 
         fun deactivate() {
-        /*  viewModelScope.launch {
-              navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
-          }*/
+            viewModelScope.launch {
+                navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
+            }
         }
 
         private fun saveEntry() {
