@@ -3,9 +3,8 @@ package com.greatergoods.meapp.features.manualEntry.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.IEntryService
-import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.helper.form.MultiFormGroup
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
@@ -28,10 +27,9 @@ constructor(
 ) {
     override fun provideInitialState(): EntryState =
         EntryState(
-            form =
-                FormGroup(
-                    EntryFormControls.create(viewModelScope, true, WeightUnit.LB),
-                ),
+            form = MultiFormGroup.create(
+                forms = EntryForm.create(true),
+            ),
         )
 
     override fun handleIntent(intent: EntryIntent) {
@@ -44,12 +42,15 @@ constructor(
     }
 
     private fun saveEntry() {
+        if (!state.value.form.isValid) {
+            return
+        }
         dialogQueueService.showLoader(
             message = "saving entry...",
         )
         viewModelScope.launch {
             val scaleEntry =
-                _state.value.form.controls
+                _state.value.form.forms
                     .toScaleEntry(_state.value.weightMode.value)
             try {
                 entryService.syncOperations(newEntries = listOf(scaleEntry))

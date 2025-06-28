@@ -9,7 +9,7 @@ import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.helper.form.FormControl
-import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryFormControls
+import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryForm
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -27,13 +27,13 @@ object EntryHelper {
 
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
-    fun EntryFormControls.toScaleEntry(weightMode: String): ScaleEntry {
+    fun EntryForm.toScaleEntry(weightMode: String): ScaleEntry {
         System.currentTimeMillis()
         val entryEntity =
             EntryEntity(
                 id = 0L, // Let Room auto-generate
                 accountId = "TODO", // Replace with actual user/account ID
-                entryTimestamp = DateTimeConverter.timestampToIso(weightDateTime.dateTime.value.getTimestamp()), // Assuming DateTimeValue has .timestamp: Long
+                entryTimestamp = DateTimeConverter.timestampToIso(weightDateTime.controls.dateTime.value.getTimestamp()), // Assuming DateTimeValue has .timestamp: Long
                 serverTimestamp = null,
                 opTimestamp = null,
                 unit = weightMode, // or whatever is relevant
@@ -47,11 +47,11 @@ object EntryHelper {
         val scaleEntry =
             BodyScaleEntryEntity(
                 id = 0L, // Will be set by DB
-                weight = weightDateTime.weight.toDoubleSafe() / 10,
-                bodyFat = generalMetrics.bodyFat.toDoubleSafe() / 10,
-                muscleMass = generalMetrics.muscleMass.toDoubleSafe() / 10,
-                water = generalMetrics.bodyWater.toDoubleSafe() / 10,
-                bmi = generalMetrics.bodyMassIndex.toDoubleSafe() / 10,
+                weight = weightDateTime.controls.weight.toDoubleSafe() / 10,
+                bodyFat = generalMetrics.controls.bodyFat.toDoubleSafe() / 10,
+                muscleMass = generalMetrics.controls.muscleMass.toDoubleSafe() / 10,
+                water = generalMetrics.controls.bodyWater.toDoubleSafe() / 10,
+                bmi = generalMetrics.controls.bodyMassIndex.toDoubleSafe() / 10,
                 source = "manual", // or "bluetooth", "cloud", etc.
             )
 
@@ -59,14 +59,14 @@ object EntryHelper {
             r4ScaleMetrics?.let {
                 BodyScaleEntryMetricEntity(
                     id = 0L,
-                    bmr = it.bmr.toDoubleSafe(),
-                    metabolicAge = it.metabolicAge.toIntSafe(),
-                    proteinPercent = it.protein.toDoubleSafe() / 10,
-                    pulse = it.heartRate.toIntSafe(),
-                    skeletalMusclePercent = it.skeletalMuscles.toDoubleSafe() / 10,
-                    subcutaneousFatPercent = it.subcutaneousFat.toDoubleSafe() / 10,
-                    visceralFatLevel = it.visceralFat.toDoubleSafe() / 10,
-                    boneMass = it.boneMass.toDoubleSafe() / 10,
+                    bmr = it.controls.bmr.toDoubleSafe(),
+                    metabolicAge = it.controls.metabolicAge.toIntSafe(),
+                    proteinPercent = it.controls.protein.toDoubleSafe() / 10,
+                    pulse = it.controls.heartRate.toIntSafe(),
+                    skeletalMusclePercent = it.controls.skeletalMuscles.toDoubleSafe() / 10,
+                    subcutaneousFatPercent = it.controls.subcutaneousFat.toDoubleSafe() / 10,
+                    visceralFatLevel = it.controls.visceralFat.toDoubleSafe() / 10,
+                    boneMass = it.controls.boneMass.toDoubleSafe() / 10,
                     impedance = 0, // You didn’t provide this in form controls – use 0 or calculate if needed
                 )
             }
