@@ -3,11 +3,13 @@ package com.greatergoods.meapp.core.di
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.api.IAuthAPI
+import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.repository.AccountRepository
 import com.greatergoods.meapp.data.repository.AppRepository
+import com.greatergoods.meapp.data.repository.BodyCompositionRepository
 import com.greatergoods.meapp.data.repository.DeviceInfoRepository
 import com.greatergoods.meapp.data.repository.EntryRepository
 import com.greatergoods.meapp.data.repository.HealthConnectRepository
@@ -21,6 +23,7 @@ import com.greatergoods.meapp.data.storage.db.dao.EntryDao
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
@@ -84,4 +87,11 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideLogRepository(logDao: LogDao): ILogRepository = LogRepository(logDao)
+
+    @Provides
+    @Singleton
+    fun provideBodyCompositionRepository(
+        accountDao: AccountDao,
+        bodyCompAPI: IBodyCompAPI,
+    ): IBodyCompositionRepository = BodyCompositionRepository(accountDao, bodyCompAPI)
 }

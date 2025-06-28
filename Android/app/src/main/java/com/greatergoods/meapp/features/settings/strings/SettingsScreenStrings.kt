@@ -45,6 +45,17 @@ object SettingsScreenStrings {
     const val ProfileImage = "Profile Image"
     const val LoggingOut = "Logging out..."
 
+    object Error {
+        const val Header = "Profile Update Error"
+        const val MessageGeneric = "Something went wrong. Please try again."
+        const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
+        const val MessageValidation = "Please check your information and try again."
+    }
+
+    object Success {
+        const val Header = "Profile Updated"
+        const val Message = "Your profile has been updated successfully."
+    }
     object LogoutDialog {
         const val Title = "Log out"
         const val Body = "Are you sure you want to log out?"

@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.manualEntry
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -52,11 +52,35 @@ fun EntryScreen() {
     LocalNavBackStack.current
     EntryScreenContent(state, viewModel::handleIntent)
 
-    if (state.form.isTouched && state.form.isDirty) {
-        BackHandler {
-            state.form.resetForm()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.initDeactivate()
     }
+
+    /* // Register canDeactivate callback for this screen
+     LaunchedEffect(backStack, state.form.isDirty) {
+         backStack.registerCanDeactivate(AppRoute.Main.Entry) {
+             if (state.form.controls.weightDateTime.weight.dirty) {
+                 suspendCancellableCoroutine { cont ->
+                     viewModel.dialogQueueService.enqueue(
+                         DialogModel.Confirm(
+                             title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                             message = AppPopupStrings.UnsavedChanges.Message,
+                             onConfirm = { cont.resume(true) },
+                             onCancel = { cont.resume(false) },
+                         ),
+                     )
+                 }
+             } else {
+                 true
+             }
+         }
+     }
+     // Unregister on dispose
+     DisposableEffect(backStack) {
+         onDispose {
+             backStack.unregisterCanDeactivate(AppRoute.Main.Entry)
+         }
+     }*/
 }
 
 @Composable
@@ -69,11 +93,12 @@ private fun EntryScreenContent(
     val entryForm = state.form.forms
     val scrollState = rememberScrollState()
     val calendar = Calendar.getInstance()
-    val maxValue = DateTimeValue.DateTime(
-        millis = calendar.timeInMillis,
-        hour = calendar.get(Calendar.HOUR_OF_DAY),
-        minute = calendar.get(Calendar.MINUTE),
-    )
+    val maxValue =
+        DateTimeValue.DateTime(
+            millis = calendar.timeInMillis,
+            hour = calendar.get(Calendar.HOUR_OF_DAY),
+            minute = calendar.get(Calendar.MINUTE),
+        )
     val interactionSource = remember { MutableInteractionSource() }
     val weightFocusRequester = remember { FocusRequester() }
 
@@ -100,9 +125,10 @@ private fun EntryScreenContent(
                     focusManager.clearFocus()
                     keyboardController?.hide()
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(weightFocusRequester),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .focusRequester(weightFocusRequester),
             )
             DateTimeInput(
                 formControl = entryForm.weightDateTime.controls.dateTime,

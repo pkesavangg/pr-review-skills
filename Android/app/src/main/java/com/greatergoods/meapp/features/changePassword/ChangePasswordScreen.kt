@@ -66,7 +66,7 @@ private fun ChangePasswordContent(
     val currentPasswordFocusRequester = remember { FocusRequester() }
     val newPasswordFocusRequester = remember { FocusRequester() }
     val confirmPasswordFocusRequester = remember { FocusRequester() }
-    BackHandler{
+    BackHandler {
         handleIntent.invoke(ChangePasswordIntent.OnRequestBack)
     }
     AppScaffold(
@@ -75,16 +75,17 @@ private fun ChangePasswordContent(
             AppIconButton(AppIcons.Default.Close) { handleIntent.invoke(ChangePasswordIntent.OnRequestBack) }
         },
         actions = {
-            AppButton(ChangePasswordStrings.SaveButton,
-                      type = ButtonType.InlineTextPrimary,
-                      size = ButtonSize.Small,
-                      enabled = state.form.isValid && state.form.isDirty)
-            {
+            AppButton(
+                ChangePasswordStrings.SaveButton,
+                type = ButtonType.InlineTextPrimary,
+                size = ButtonSize.Small,
+                enabled = state.form.isValid && state.form.isDirty,
+            ) {
                 handleIntent.invoke(ChangePasswordIntent.Submit)
             }
         },
         containerColor = colorScheme.secondaryBackground,
-        appBarColor = colorScheme.secondaryBackground
+        appBarColor = colorScheme.secondaryBackground,
     ) { scaffoldModifier ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -122,9 +123,10 @@ private fun ChangePasswordContent(
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = confirmPasswordFocusRequester,
-                        modifier = Modifier
-                            .semantics { contentType = ContentType.NewPassword }
-                            .focusRequester(newPasswordFocusRequester),
+                        modifier =
+                            Modifier
+                                .semantics { contentType = ContentType.NewPassword }
+                                .focusRequester(newPasswordFocusRequester),
                     )
                     AppInput(
                         formControl = state.form.controls.confirmPassword,
@@ -137,9 +139,10 @@ private fun ChangePasswordContent(
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         },
-                        modifier = Modifier
-                            .semantics { contentType = ContentType.NewPassword }
-                            .focusRequester(confirmPasswordFocusRequester),
+                        modifier =
+                            Modifier
+                                .semantics { contentType = ContentType.NewPassword }
+                                .focusRequester(confirmPasswordFocusRequester),
                     )
                     Spacer(Modifier.height(spacing.sm))
                     AppButton(
@@ -162,17 +165,20 @@ private fun ChangePasswordContent(
 @Composable
 fun ChangePasswordScreenPreview() {
     MeAppTheme {
-        val dummyChangePasswordState = ChangePasswordState(
-            form = FormGroup(
-                controls = ChangePasswordFormControls(
-                    currentPassword = FormControl.create(""),
-                    newPassword = FormControl.create(""),
-                    confirmPassword = FormControl.create(""),
-                ),
-            ),
-            isLoading = false,
-            error = null,
-        )
+        val dummyChangePasswordState =
+            ChangePasswordState(
+                form =
+                    FormGroup(
+                        controls =
+                            ChangePasswordFormControls(
+                                currentPassword = FormControl.create(""),
+                                newPassword = FormControl.create(""),
+                                confirmPassword = FormControl.create(""),
+                            ),
+                    ),
+                isLoading = false,
+                error = null,
+            )
 
         ChangePasswordContent(
             state = dummyChangePasswordState,

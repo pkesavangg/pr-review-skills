@@ -17,6 +17,7 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
@@ -43,12 +44,29 @@ class AccountService
         private val tokenManager: ITokenManager,
         private val dialogQueueService: IDialogQueueService,
         private val userDataStore: UserDataStore,
-        private val appEventService: IAppEventService,
+        private val appNavigationService: IAppNavigationService,
     ) : IAccountService {
         companion object {
             private const val MAX_ACCOUNTS = 10
             private const val TAG = "AccountService"
         }
+
+    /**
+     * Safely parses a weight unit string to WeightUnit enum.
+     * Handles both enum names (KG, LB) and values (kg, lb) with fallback to LB.
+     */
+    private fun parseWeightUnit(weightUnitString: String): WeightUnit {
+        if (weightUnitString.isBlank()) return WeightUnit.LB
+
+        return when (weightUnitString.lowercase()) {
+            "kg" -> WeightUnit.KG
+            "lb", "lbs" -> WeightUnit.LB
+            else -> {
+                AppLog.w(TAG, "Unknown weight unit '$weightUnitString', defaulting to LB")
+                WeightUnit.LB
+            }
+        }
+    }
 
         /**
          * Checks if network is available using the connectivity observer
@@ -56,7 +74,7 @@ class AccountService
         private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
 
         // Event flow for authentication state changes
-        override val authEvent = appEventService.authEvent
+        override val authEvent = appNavigationService.authEvent
 
         // Current active account flow
         override val activeAccountFlow: Flow<Account?> =
@@ -72,6 +90,9 @@ class AccountService
                         .sortedByDescending { it.lastActiveTime?.toLongOrNull() ?: 0L }
                 listOfNotNull(active) + others
             }
+
+        override val hasReachedMaxAccounts: Flow<Boolean> =
+            loggedInAccountsFlow.map { it.size >= MAX_ACCOUNTS }
 
         // Account status flows
         private val _isSignUpFlow = MutableSharedFlow<Boolean>()
@@ -98,6 +119,10 @@ class AccountService
             password: String,
         ): Account? =
             try {
+                val isExistingAccount = getLoggedInAccounts().any { it.email == email }
+                if (hasReachedMaxAccounts.first() && !isExistingAccount) {
+                    throw MaxAccountsReachedException()
+                }
                 val loginResponse = accountRepository.loginInAPI(email, password)
                 val info = loginResponse.account
                 val account =
@@ -116,7 +141,7 @@ class AccountService
                         isSynced = true,
                         lastActiveTime = Date().time.toString(),
                         zipcode = info.zipcode,
-                        weightUnit = info.weightUnit,
+                        weightUnit = parseWeightUnit(info.weightUnit),
                         isWeightlessOn = info.isWeightlessOn,
                         height = info.height,
                         activityLevel = info.activityLevel,
@@ -129,6 +154,7 @@ class AccountService
                 // Deactivate all other accounts before saving this one as active
                 accountRepository.deactivateOtherAccountsInDB(account.id)
                 val savedAccount = accountRepository.addAccountInDB(account)
+                userDataStore.setActiveAccount(account.id)
                 tokenManager.setTokens(
                     Token(
                         accountId = savedAccount.id,
@@ -138,13 +164,13 @@ class AccountService
                         expiresAt = loginResponse.expiresAt,
                     ),
                 )
-                appEventService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
+                appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
                 _isLoginFlow.emit(true)
                 savedAccount
             } catch (e: HttpException) {
                 showErrorToast(AuthAction.LOGIN, e)
                 AppLog.e(TAG, "Login failed", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
                 null
             }
 
@@ -158,6 +184,7 @@ class AccountService
             fcmToken: String?,
         ): Boolean =
             try {
+                val isActiveAccount = getCurrentAccount()?.id == accountId
                 // Try to logout on API if network is available
                 if (isNetworkAvailable()) {
                     try {
@@ -167,18 +194,20 @@ class AccountService
                         // Continue with local logout even if API fails
                     }
                 }
-
+                if (isActiveAccount) {
+                    accountRepository.deactivateAllAccountsInDB()
+                }
                 // Always perform local logout
                 accountRepository.logoutInDb(accountId)
                 userDataStore.clearAccountTokens(accountId)
                 tokenManager.clearTokens()
                 AppLog.d(TAG, "Logout successful")
-                appEventService.emitAuthEvent(AuthState.LoggedOut())
+                appNavigationService.emitAuthEvent(AuthState.LoggedOut())
                 _isLoginFlow.emit(false)
                 true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Logout failed", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
                 false
             }
 
@@ -192,7 +221,8 @@ class AccountService
                 val activeAccount = activeAccountFlow.first()
 
                 // Sort accounts to handle active account last
-                val sortedAccounts = loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
+                val sortedAccounts =
+                    loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
 
                 for (account in sortedAccounts) {
                     account.id != activeAccount?.id
@@ -201,7 +231,11 @@ class AccountService
                             try {
                                 accountRepository.logoutInAPI(account.fcmToken ?: "", account.id)
                             } catch (e: Exception) {
-                                AppLog.e(TAG, "API logout failed for account ${account.id}", e.toString())
+                                AppLog.e(
+                                    TAG,
+                                    "API logout failed for account ${account.id}",
+                                    e.toString(),
+                                )
                                 // Continue with local logout even if API fails
                             }
                         }
@@ -214,12 +248,12 @@ class AccountService
                 // Clear tokens
                 tokenManager.clearTokens()
                 AppLog.d(TAG, "All accounts logged out successfully")
-                appEventService.emitAuthEvent(AuthState.LoggedOut())
+                appNavigationService.emitAuthEvent(AuthState.LoggedOut())
                 _isLoginFlow.emit(false)
                 true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Logout all failed", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
                 false
             }
 
@@ -229,11 +263,9 @@ class AccountService
          * @return The created account or null if creation fails
          */
         override suspend fun addAccount(request: Map<String, Any>): Account? {
-            val currentAccounts = loggedInAccountsFlow.first()
-            if (currentAccounts.size >= MAX_ACCOUNTS) {
-                AppLog.e(TAG, "Maximum account limit reached")
-                appEventService.emitAuthEvent(AuthState.Error("Maximum account limit reached"))
-                return null
+            if (hasReachedMaxAccounts.first()) {
+                appNavigationService.emitAuthEvent(AuthState.Error("Maximum account limit reached"))
+                throw MaxAccountsReachedException()
             }
             return try {
                 val createRequest =
@@ -268,7 +300,7 @@ class AccountService
                         isSynced = false,
                         lastActiveTime = Date().time.toString(),
                         zipcode = info.zipcode,
-                        weightUnit = info.weightUnit,
+                        weightUnit = parseWeightUnit(info.weightUnit),
                         isWeightlessOn = info.isWeightlessOn,
                         height = info.height,
                         activityLevel = info.activityLevel,
@@ -280,6 +312,7 @@ class AccountService
                     )
                 accountRepository.deactivateOtherAccountsInDB(account.id)
                 val savedAccount = accountRepository.addAccountInDB(account)
+                userDataStore.setActiveAccount(account.id)
                 tokenManager.setTokens(
                     Token(
                         accountId = savedAccount.id,
@@ -289,13 +322,13 @@ class AccountService
                         expiresAt = response.expiresAt,
                     ),
                 )
-                appEventService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
+                appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
                 _isSignUpFlow.emit(true)
                 savedAccount
             } catch (e: Exception) {
                 handleSignupError(e as HttpException)
                 AppLog.e(TAG, "Account creation failed", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Account creation failed"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Account creation failed"))
                 null
             }
         }
@@ -317,11 +350,11 @@ class AccountService
                 }
                 accountRepository.removeAccountInDB(accountId)
                 AppLog.d(TAG, "Account removed successfully: $accountId")
-                appEventService.emitAuthEvent(AuthState.AccountRemoved(accountId))
+                appNavigationService.emitAuthEvent(AuthState.AccountRemoved(accountId))
                 true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Account removal failed", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Account removal failed"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Account removal failed"))
                 false
             }
 
@@ -330,12 +363,16 @@ class AccountService
          * @param account Account to switch to
          * @return true if switch was successful
          */
-        override suspend fun switchAccount(account: Account): Boolean {
+        override suspend fun switchAccount(
+            account: Account,
+            showToast: Boolean,
+        ): Boolean {
             try {
                 // Activate the target account
                 accountRepository.activateAccountInDB(account.id)
                 // Deactivate all other accounts
                 accountRepository.deactivateOtherAccountsInDB(account.id)
+                userDataStore.setActiveAccount(account.id)
                 // Update last active time
                 accountRepository.updateLastActiveTimeInDB(account.id)
                 // Update tokens in TokenManager for the switched account
@@ -352,11 +389,11 @@ class AccountService
                     )
                 }
                 AppLog.d(TAG, "Successfully switched to account: ${account.email}")
-                appEventService.emitAuthEvent(AuthState.AccountSwitched(account))
+                appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
                 return true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Failed to switch account", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
                 return false
             }
         }
@@ -400,7 +437,7 @@ class AccountService
         override suspend fun refreshSession(): Boolean {
             if (!isNetworkAvailable()) {
                 AppLog.e(TAG, "No network connection available")
-                appEventService.emitAuthEvent(AuthState.Error("No network connection available"))
+                appNavigationService.emitAuthEvent(AuthState.Error("No network connection available"))
                 return false
             }
 
@@ -414,7 +451,7 @@ class AccountService
                 true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Session refresh failed", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Session refresh failed"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Session refresh failed"))
                 false
             }
         }
@@ -428,11 +465,11 @@ class AccountService
             try {
                 accountRepository.updateTokensInDB(tokens)
                 AppLog.d(TAG, "Tokens updated successfully")
-                appEventService.emitAuthEvent(AuthState.TokensUpdated)
+                appNavigationService.emitAuthEvent(AuthState.TokensUpdated)
                 true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token update failed", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Token update failed"))
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Token update failed"))
                 false
             }
 
@@ -449,15 +486,19 @@ class AccountService
                         val expirationDate = Date(storedAccount.expiresAt.toLong())
                         if (expirationDate.after(Date())) {
                             AppLog.d(TAG, "Restored valid session for account: ${storedAccount.email}")
-                            appEventService.emitAuthEvent(AuthState.LoggedIn(storedAccount))
+                            appNavigationService.emitAuthEvent(AuthState.LoggedIn(storedAccount))
                             _isLoginFlow.emit(true)
                             return true
                         } else {
                             return try {
                                 refreshSession()
                             } catch (e: Exception) {
-                                AppLog.e(TAG, "Session expired for account: " + storedAccount.email, e.toString())
-                                appEventService.emitAuthEvent(AuthState.LoggedOut("Session expired"))
+                                AppLog.e(
+                                    TAG,
+                                    "Session expired for account: " + storedAccount.email,
+                                    e.toString(),
+                                )
+                                appNavigationService.emitAuthEvent(AuthState.LoggedOut("Session expired"))
                                 _isLoginFlow.emit(false)
                                 false
                             }
@@ -470,7 +511,11 @@ class AccountService
                 }
             } catch (e: Exception) {
                 AppLog.e(TAG, "Failed to check logged in user", e.toString())
-                appEventService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to check logged in user"))
+                appNavigationService.emitAuthEvent(
+                    AuthState.Error(
+                        e.message ?: "Failed to check logged in user",
+                    ),
+                )
                 false
             }
         }
@@ -482,7 +527,10 @@ class AccountService
                     AppLog.d(TAG, "Successfully reset password")
                     showSuccessToast(AuthAction.RESET_PASSWORD, email)
                 } else {
-                    AppLog.e(TAG, "Failed to reset password: ${response.code()} - ${response.message()}")
+                    AppLog.e(
+                        TAG,
+                        "Failed to reset password: ${response.code()} - ${response.message()}",
+                    )
                     showErrorToast(AuthAction.RESET_PASSWORD, HttpException(response))
                 }
             } catch (e: HttpException) {
@@ -528,7 +576,7 @@ class AccountService
                         ),
                     )
                 AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
-                savedAccount.let { appEventService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
+                savedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
                 showSuccessToast(AuthAction.UPDATE_PROFILE)
                 savedAccount
             } catch (e: HttpException) {

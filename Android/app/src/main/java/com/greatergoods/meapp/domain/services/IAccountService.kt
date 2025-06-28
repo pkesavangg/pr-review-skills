@@ -16,6 +16,7 @@ interface IAccountService {
     val isSignUpFlow: SharedFlow<Boolean>
     val isLoginFlow: SharedFlow<Boolean>
     val isSwitchAccountFlow: SharedFlow<Boolean>
+    val hasReachedMaxAccounts: Flow<Boolean>
 
     suspend fun login(
         email: String,
@@ -32,9 +33,7 @@ interface IAccountService {
     suspend fun addAccount(request: Map<String, Any>): Account?
 
     suspend fun removeAccount(accountId: String): Boolean
-
-    suspend fun switchAccount(account: Account): Boolean
-
+    suspend fun switchAccount(account: Account, showToast: Boolean = false): Boolean
     suspend fun getCurrentAccount(): Account?
 
     suspend fun getLoggedInAccounts(): List<Account>
@@ -59,56 +58,26 @@ interface IAccountService {
     suspend fun checkLoginStatusForActiveAccount(): Boolean
 
     suspend fun checkLoginStatusForLoggedInAccounts(): Boolean
-
-    suspend fun updateProfileInDB(
-        accountId: String,
-        partialAccount: PartialAccount,
-    ): Account?
+    suspend fun updateProfileInDB(accountId: String,partialAccount: PartialAccount): Account
 }
 
 /**
  * Sealed class representing different authentication states.
  */
 sealed class AuthState {
-    data class LoggedIn(
-        val account: Account,
-    ) : AuthState()
-
-    data class LoggedOut(
-        val message: String? = null,
-    ) : AuthState()
-
-    data class AccountAdded(
-        val account: Account,
-    ) : AuthState()
-
-    data class AccountRemoved(
-        val accountId: String,
-    ) : AuthState()
-
-    data class AccountSwitched(
-        val account: Account,
-    ) : AuthState()
-
-    data class SessionRefreshed(
-        val account: Account,
-    ) : AuthState()
-
-    data class ProfileUpdated(
-        val account: Account,
-    ) : AuthState()
-
+    data class LoggedIn(val account: Account) : AuthState()
+    data class LoggedOut(val message: String? = null) : AuthState()
+    data class AccountAdded(val account: Account) : AuthState()
+    data class AccountRemoved(val accountId: String) : AuthState()
+    data class AccountSwitched(val account: Account, val showToast: Boolean) : AuthState()
+    data class SessionRefreshed(val account: Account) : AuthState()
+    data class ProfileUpdated(val account: Account) : AuthState()
     object TokensUpdated : AuthState()
-
-    data class Error(
-        val message: String,
-    ) : AuthState()
+    data class Error(val message: String) : AuthState()
 }
 
 /**
  * Custom exception for authentication-related errors.
  */
-class AuthException(
-    message: String,
-    cause: Throwable? = null,
-) : Exception(message, cause)
+class AuthException(message: String, cause: Throwable? = null) : Exception(message, cause)
+class MaxAccountsReachedException : Exception("Maximum number of accounts reached.")

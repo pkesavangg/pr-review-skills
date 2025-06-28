@@ -43,8 +43,10 @@ sealed interface SettingsIntent : IReducer.Intent {
     object OpenTermsOfService : SettingsIntent
     object OpenGreaterGoodsWebsite : SettingsIntent
 
-    // Biological Sex Selection Intent
+    // Modal Selection Intents
     object ShowBiologicalSexModal : SettingsIntent
+    object ShowActivityLevelModal : SettingsIntent
+    object ShowUnitTypeModal : SettingsIntent
 }
 
 /**

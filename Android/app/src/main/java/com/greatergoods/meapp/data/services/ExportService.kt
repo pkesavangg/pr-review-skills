@@ -1,10 +1,17 @@
 package com.greatergoods.meapp.data.services
 
+import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IExportAPI
+import com.greatergoods.meapp.domain.enum.AccountSettingsAction
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IExportService
+import com.greatergoods.meapp.features.common.model.Toast
+import com.greatergoods.meapp.features.common.strings.ToastStrings
+import com.greatergoods.meapp.features.export.strings.ExportStrings
+import retrofit2.HttpException
 import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +24,7 @@ import javax.inject.Singleton
 class ExportService @Inject constructor(
     private val exportAPI: IExportAPI,
     private val accountService: IAccountService,
+    private val dialogQueueService: IDialogQueueService
 ) : IExportService {
 
     companion object {
@@ -54,8 +62,10 @@ class ExportService @Inject constructor(
     override suspend fun exportCsvWithPrompt() {
         try {
             exportCsvToEmail()
+            showExportSuccessToast()
             AppLog.i(TAG, "exportCsvWithPrompt - CSV export completed successfully")
-        } catch (e: Exception) {
+        } catch (e: HttpException) {
+            showErrorToast(action = AccountSettingsAction.EXPORT_CSV, e)
             AppLog.e(TAG, "exportCsvWithPrompt - Error during CSV export", e.toString())
             throw e
         }
@@ -108,4 +118,44 @@ class ExportService @Inject constructor(
         // For now, returning false as default (Dashboard4)
         return account.dashboardType.equals(DASHBOARD_TYPE_12, ignoreCase = true)
     }
+
+    /**
+     * Shows success toast for export operation.
+     */
+    private fun showExportSuccessToast() {
+        dialogQueueService.showToast(
+            Toast(
+                message = ExportStrings.SuccessMessage,
+            ),
+        )
+    }
+
+    fun showErrorToast(action: AccountSettingsAction, error: HttpException?) {
+        val (title, message) = when (action) {
+            AccountSettingsAction.EXPORT_CSV -> {
+                val header = ""
+                val message = when (error?.code()) {
+                    HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                        ToastStrings.Error.LoginError.MessageNoConn
+
+                    HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                        ToastStrings.Error.LoginError.MessageServError
+
+                    HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                        ToastStrings.Error.LoginError.MessageNotAuth
+
+                    else ->
+                        ToastStrings.Error.LoginError.MessageGeneric
+                }
+                header to message
+            }
+        }
+        val errorToast = Toast(
+            title = title,
+            message = message,
+            action = null,
+        )
+        dialogQueueService.showToast(errorToast)
+    }
+
 }

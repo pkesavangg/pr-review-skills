@@ -14,7 +14,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,7 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Main signup screen with horizontal pager navigation
@@ -44,8 +47,11 @@ import kotlinx.coroutines.delay
 fun SignupScreen(viewModel: SignupViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val backStack = LocalNavBackStack.current
+    val coroutineScope = rememberCoroutineScope()
     SignupScreenContent(state, viewModel::handleIntent) {
-        backStack.removeLast()
+        coroutineScope.launch {
+            backStack.removeLast()
+        }
     }
 }
 
@@ -100,6 +106,7 @@ fun SignupScreenContent(
                 handleBack()
             }
         },
+        borderColor = Color.Transparent,
         actions = { AppIconButton(AppIcons.Outlined.Help) { handleIntent.invoke(SignupIntent.OpenHelpModal) } },
     ) {
         Column(

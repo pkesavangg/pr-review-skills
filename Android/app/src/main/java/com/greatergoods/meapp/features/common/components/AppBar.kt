@@ -38,21 +38,22 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 fun AppBar(
     modifier: Modifier = Modifier,
     title: String? = null,
-    borderColor: Color = Color.Transparent,
+    borderColor: Color = colorScheme.utility,
     containerColor: Color = colorScheme.primaryBackground,
     navigationIcon: (@Composable (() -> Unit))? = null,
     actions: (@Composable (() -> Unit))? = null,
 ) {
     TopAppBar(
-        modifier = Modifier.drawBehind{
-            val borderSize = 1.dp.toPx()
-            drawLine(
-                color = borderColor,
-                start = Offset(0f, size.height),
-                end = Offset(size.width, size.height),
-                strokeWidth = borderSize
-            )
-        },
+        modifier =
+            Modifier.drawBehind {
+                val borderSize = 1.dp.toPx()
+                drawLine(
+                    color = borderColor,
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = borderSize,
+                )
+            },
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = containerColor,

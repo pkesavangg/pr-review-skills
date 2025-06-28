@@ -9,7 +9,8 @@ import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.changePassword.ChangePasswordScreen
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
-import com.greatergoods.meapp.features.landing.LandingScreen
+import com.greatergoods.meapp.features.landing.screen.LandingScreen
+import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.manualEntry.EntryScreen
 import com.greatergoods.meapp.features.profile.screen.ProfileScreen
@@ -24,6 +25,7 @@ fun EntryProviderBuilder<NavKey>.authEntries() {
     entry<AppRoute.Auth.Landing> { LandingScreen() }
     entry<AppRoute.Auth.Login> { LoginScreen() }
     entry<AppRoute.Auth.Signup> { SignupScreen() }
+    entry<AppRoute.Auth.MultiAccountLanding>{ MultiAccountLandingScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {
