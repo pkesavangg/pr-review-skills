@@ -51,6 +51,23 @@ class AccountService
             private const val TAG = "AccountService"
         }
 
+    /**
+     * Safely parses a weight unit string to WeightUnit enum.
+     * Handles both enum names (KG, LB) and values (kg, lb) with fallback to LB.
+     */
+    private fun parseWeightUnit(weightUnitString: String): WeightUnit {
+        if (weightUnitString.isBlank()) return WeightUnit.LB
+
+        return when (weightUnitString.lowercase()) {
+            "kg" -> WeightUnit.KG
+            "lb", "lbs" -> WeightUnit.LB
+            else -> {
+                AppLog.w(TAG, "Unknown weight unit '$weightUnitString', defaulting to LB")
+                WeightUnit.LB
+            }
+        }
+    }
+
         /**
          * Checks if network is available using the connectivity observer
          */
@@ -124,7 +141,7 @@ class AccountService
                         isSynced = true,
                         lastActiveTime = Date().time.toString(),
                         zipcode = info.zipcode,
-                        weightUnit = info.weightUnit,
+                        weightUnit = parseWeightUnit(info.weightUnit),
                         isWeightlessOn = info.isWeightlessOn,
                         height = info.height,
                         activityLevel = info.activityLevel,
@@ -283,7 +300,7 @@ class AccountService
                         isSynced = false,
                         lastActiveTime = Date().time.toString(),
                         zipcode = info.zipcode,
-                        weightUnit = info.weightUnit,
+                        weightUnit = parseWeightUnit(info.weightUnit),
                         isWeightlessOn = info.isWeightlessOn,
                         height = info.height,
                         activityLevel = info.activityLevel,

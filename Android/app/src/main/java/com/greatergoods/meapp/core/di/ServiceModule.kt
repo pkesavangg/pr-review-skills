@@ -4,7 +4,6 @@ import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppNavigationService
-import com.greatergoods.meapp.core.service.AppEventService
 import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.IAppNavigationService
@@ -198,8 +197,10 @@ object ServiceModule {
     fun provideBodyCompositionService(
         bodyCompositionRepository: IBodyCompositionRepository,
         connectivityObserver: IConnectivityObserver,
+        dialogQueueService: IDialogQueueService
     ): IBodyCompositionService = BodyCompositionService(
         bodyCompositionRepository,
         connectivityObserver,
+        dialogQueueService
     )
 }
