@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,7 @@ import com.greatergoods.meapp.features.dashboard.enum.BOTTOM_NAV_ITEMS
 import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.launch
 
 /**
  * Stateless bottom navigation bar.
@@ -51,6 +53,7 @@ fun MainBottomNav(
     var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
     val topBackStack = LocalNavBackStack.current
     val backStack = topBackStack.getStackForTopLevel(AppRoute.Home)
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(backStack.lastOrNull()) {
         selectedItem =
@@ -113,7 +116,9 @@ fun MainBottomNav(
                     selected = false,
                     onClick = {
                         selectedItem = item
-                        topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+                        coroutineScope.launch {
+                            topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+                        }
                     },
                 )
             }

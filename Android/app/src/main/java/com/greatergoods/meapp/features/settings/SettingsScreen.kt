@@ -11,6 +11,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -28,6 +29,7 @@ import com.greatergoods.meapp.features.settings.viewmodel.SettingsState
 import com.greatergoods.meapp.features.settings.viewmodel.SettingsViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.launch
 
 // TODO: A new folder 'screens' will be created under 'settings' for MyAccountsScreen, MaxAccountsReachedDialog, and RemoveAccountDialog.
 // TODO: MyAccountsScreen and related dialogs/popups will be implemented in a new 'screens' folder under 'settings'.
@@ -48,6 +50,7 @@ fun SettingsScreenContent(
     state: SettingsState,
     handleIntent: (SettingsIntent) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val backStack = LocalNavBackStack.current
     AppScaffold(title = SettingsScreenStrings.Title) {
         Column(
@@ -77,18 +80,24 @@ fun SettingsScreenContent(
                             title = SettingsScreenStrings.ExportData,
                             type = SettingsItemType.None,
                             onClick = {
-                               handleIntent.invoke(SettingsIntent.ExportData)
+                                handleIntent.invoke(SettingsIntent.ExportData)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ChangePassword,
                             onClick = {
-                                backStack.addRoute(AppRoute.AccountSettings.ChangePassword)
+                                coroutineScope.launch {
+                                    backStack.addRoute(AppRoute.AccountSettings.ChangePassword)
+                                }
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UserProfile,
-                            onClick = {backStack.addRoute(AppRoute.AccountSettings.Profile) },
+                            onClick = {
+                                coroutineScope.launch {
+                                    backStack.addRoute(AppRoute.AccountSettings.Profile)
+                                }
+                            },
                         ),
                     ),
             )
@@ -104,9 +113,11 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.BiologicalSex,
-                            type = SettingsItemType.Dropdown(
-                                state.account?.gender?.replaceFirstChar { it.uppercase() } ?: SettingsScreenStrings.NotSet
-                            ),
+                            type =
+                                SettingsItemType.Dropdown(
+                                    state.account?.gender?.replaceFirstChar { it.uppercase() }
+                                        ?: SettingsScreenStrings.NotSet,
+                                ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowBiologicalSexModal)
                             },

@@ -28,6 +28,8 @@ import com.greatergoods.meapp.features.common.components.AppUserList
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * MyAccountsScreen displays the list of logged-in accounts and allows switching, login, and removal.
@@ -37,6 +39,7 @@ import com.greatergoods.meapp.theme.MeTheme
 fun MyAccountsScreen() {
     val viewmodel: MyAccountsViewModel = hiltViewModel()
     val state by viewmodel.state.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
     MyAccountsScreenContent(state, viewmodel::handleIntent)
 }
 
@@ -47,11 +50,14 @@ fun MyAccountsScreenContent(
     handleIntent: (MyAccountsIntent) -> Unit,
 ) {
     val backStack = LocalNavBackStack.current
+    val coroutineScope = rememberCoroutineScope()
     AppScaffold(
         title = MyAccountsScreenStrings.Title,
         navigationIcon = {
             AppIconButton(AppIcons.Default.Close) {
-                backStack.removeLast()
+                coroutineScope.launch {
+                    backStack.removeLast()
+                }
             }
         },
     ) {
