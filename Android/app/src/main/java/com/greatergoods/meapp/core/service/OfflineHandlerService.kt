@@ -2,11 +2,15 @@ package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
+import com.greatergoods.meapp.domain.repository.INotificationRepository
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +24,7 @@ import javax.inject.Singleton
 class OfflineHandlerService @Inject constructor(
     private val accountRepository: IAccountRepository,
     private val bodyCompositionRepository: IBodyCompositionRepository,
+    private val notificationRepository: INotificationRepository,
     private val connectivityObserver: IConnectivityObserver,
 ) : IOfflineHandlerService {
 
@@ -43,6 +48,8 @@ class OfflineHandlerService @Inject constructor(
             syncProfileData()
             // Sync body composition data if there are unsynced body comp accounts
             syncBodyCompositionData()
+            // Sync notification settings if there are unsynced notification accounts
+            syncNotificationData()
             AppLog.i(TAG, "Selective offline sync process completed")
         } catch (e: Exception) {
             AppLog.e(TAG, "Offline sync process failed", e.toString())
@@ -72,8 +79,17 @@ class OfflineHandlerService @Inject constructor(
                     zipcode = account.zipcode,
                 )
                 val profileResponse = accountRepository.updateProfileInAPI(profileUpdateRequest)
+                val profileUpdate = PartialAccount(
+                    firstName = profileResponse.account.firstName,
+                    lastName = profileResponse.account.lastName,
+                    email = profileResponse.account.email,
+                    dob = profileResponse.account.dob,
+                    gender = profileResponse.account.gender,
+                    zipcode = profileResponse.account.zipcode,
+                    isSynced = true,
+                )
                 // Update account with profile response and mark as synced
-                accountRepository.updateAccountFromAPI(account.id, profileResponse.account)
+                accountRepository.updateAccountInDB(profileResponse.account.id, profileUpdate)
                 AppLog.i(TAG, "Successfully synced profile data for account: ${account.id}")
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error syncing profile data for account ${account.id}", e.toString())
@@ -92,7 +108,6 @@ class OfflineHandlerService @Inject constructor(
         }
         for (account in unsyncedBodyCompAccounts) {
             try {
-                AppLog.d(TAG, "Syncing body composition data for account: ${account.id}")
                 // Sync body composition data (height, activity level, weight unit)
                 val bodyCompUpdateRequest = BodyCompUpdateRequest(
                     height = account.height ?: 1700,
@@ -113,6 +128,41 @@ class OfflineHandlerService @Inject constructor(
                 AppLog.i(TAG, "Successfully synced body composition data for account: ${account.id}")
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error syncing body composition data for account ${account.id}", e.toString())
+            }
+        }
+    }
+
+    /**
+     * Syncs notification settings for accounts that have unsynced notification changes.
+     */
+    private suspend fun syncNotificationData() {
+        val unsyncedNotificationAccounts = notificationRepository.getUnsyncedNotificationAccountsFromDB()
+        if (unsyncedNotificationAccounts.isEmpty()) {
+            AppLog.d(TAG, "No unsynced notification accounts found")
+            return
+        }
+
+        for (account in unsyncedNotificationAccounts) {
+            try {
+                // Sync notification settings (entry notifications and weight in notifications)
+                val notificationSettingsRequest = NotificationSettingsRequest(
+                    shouldSendEntryNotifications = account.entryNotificationsEnabled ?: false,
+                    shouldSendWeightInEntryNotifications = account.showWeightInNotifications ?: false
+                )
+                val notificationResponse = notificationRepository.updateNotificationSettingsInAPI(notificationSettingsRequest)
+
+                // Create NotificationSettings entity with data from API response
+                val notificationSettings = NotificationSettingsEntity(
+                    accountId = notificationResponse.account.id,
+                    entryNotificationsEnabled = notificationResponse.account.shouldSendEntryNotifications,
+                    showWeightInNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
+                    isSynced = true
+                )
+                notificationRepository.updateNotificationSettingsInDB(account.id, notificationSettings)
+
+                AppLog.i(TAG, "Successfully synced notification settings for account: ${account.id}")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing notification settings for account ${account.id}", e.toString())
             }
         }
     }

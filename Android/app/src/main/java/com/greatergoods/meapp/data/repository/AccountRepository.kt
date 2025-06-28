@@ -7,6 +7,7 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.greatergoods.meapp.domain.model.PartialAccount
@@ -129,6 +130,15 @@ class AccountRepository @Inject constructor(
             isSynced = true, // New account data is already synced
         )
         accountDao.insertWeightCompSettings(weightCompSettings)
+
+        val notificationCompSettings = NotificationSettingsEntity(
+            accountId = account.id,
+            isSynced = true,
+            showWeightInNotifications = account.showWeightInNotifications ?: false,
+            entryNotificationsEnabled = account.entryNotificationsEnabled ?: false,
+        )
+        accountDao.insertNotificationSettings(notificationCompSettings)
+
         // Insert StreaksSettings entity with data from account
         val streaksSettings = StreaksSettingsEntity(
             accountId = account.id,

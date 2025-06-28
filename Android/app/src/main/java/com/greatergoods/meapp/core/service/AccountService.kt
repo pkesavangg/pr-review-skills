@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.PartialAccount
@@ -30,7 +31,6 @@ import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
@@ -45,7 +45,7 @@ constructor(
     private val tokenManager: ITokenManager,
     private val dialogQueueService: IDialogQueueService,
     private val userDataStore: UserDataStore,
-    private val appNavigationService: IAppNavigationService
+    private val appNavigationService: IAppNavigationService,
 ) : IAccountService {
     companion object {
         private const val MAX_ACCOUNTS = 10
@@ -636,6 +636,14 @@ constructor(
 
             // Update account data with API response
             accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
+            val weightlessSetting = WeightlessSettingsEntity(
+                accountId = accountInfo.id,
+                isWeightlessOn = accountInfo.isWeightlessOn,
+                weightlessTimestamp = accountInfo.weightlessTimestamp,
+                weightlessWeight = accountInfo.weightlessWeight,
+                isSynced = true
+            )
+            // userSettingsRepository.updateWeightlessInDB(weightlessSetting)
             AppLog.d(TAG, "Active account login status check successful")
             true
         } catch (e: Exception) {

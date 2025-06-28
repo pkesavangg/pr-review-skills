@@ -164,8 +164,10 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.Notifications,
-                            type = SettingsItemType.Dropdown("Off"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(state.currentNotificationStatus),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowNotificationsModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Messages,

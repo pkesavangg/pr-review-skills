@@ -7,6 +7,7 @@ import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
+import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.IUserAPI
 import dagger.Module
 import dagger.Provides
@@ -73,4 +74,13 @@ class APIModule {
     @Provides
     @Singleton
     fun provideBodyCompAPI(httpClient: HttpClient): IBodyCompAPI = httpClient.createService(IBodyCompAPI::class.java)
+
+    /**
+     * Provides a singleton instance of [INotificationAPI] using the provided [HttpClient].
+     * @param httpClient The HTTP client for network operations.
+     * @return [INotificationAPI] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideNotificationAPI(httpClient: HttpClient): INotificationAPI = httpClient.createService(INotificationAPI::class.java)
 }

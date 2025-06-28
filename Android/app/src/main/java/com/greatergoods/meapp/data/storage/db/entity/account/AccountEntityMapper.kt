@@ -57,7 +57,9 @@ object AccountEntityMapper {
         weightlessWeight = null,
         isStreakOn = false,
         dashboardType = null,
-        dashboardMetrics = null
+        dashboardMetrics = null,
+        entryNotificationsEnabled = false,
+        showWeightInNotifications = false
     )
 
     /**
@@ -97,7 +99,10 @@ object AccountEntityMapper {
             isStreakOn = accountWithRelations.streaksSettings?.isStreakOn ?: false,
             dashboardType = accountWithRelations.dashboardSettings?.dashboardType,
             dashboardMetrics = accountWithRelations.dashboardSettings?.dashboardMetrics?.split(",")
-                ?.filterNot { it.isBlank() }
+                ?.filterNot { it.isBlank() },
+            // Map notification settings
+            entryNotificationsEnabled = accountWithRelations.notificationSettings?.entryNotificationsEnabled ?: false,
+            showWeightInNotifications = accountWithRelations.notificationSettings?.showWeightInNotifications ?: false
         )
     }
 }

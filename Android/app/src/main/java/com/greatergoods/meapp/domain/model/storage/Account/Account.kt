@@ -30,5 +30,9 @@ data class Account(
     val weightlessWeight: Float?,       // nullable
     val isStreakOn: Boolean?,
     val dashboardType: String?,
-    val dashboardMetrics: List<String>?
+    val dashboardMetrics: List<String>?,
+
+    // Notification settings
+    val entryNotificationsEnabled: Boolean? = false,
+    val showWeightInNotifications: Boolean? = false
 )

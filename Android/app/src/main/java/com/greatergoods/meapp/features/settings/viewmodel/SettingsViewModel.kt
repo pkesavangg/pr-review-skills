@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.common.ActivityLevel
@@ -14,6 +15,7 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -26,6 +28,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the settings feature, managing state and handling settings intents.
@@ -42,6 +45,7 @@ constructor(
     private val exportService: IExportService,
     private val bodyCompositionService: IBodyCompositionService,
     private val userDataStore: UserDataStore,
+    private val notificationService: INotificationService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
@@ -67,7 +71,8 @@ constructor(
         super.handleIntent(intent)
         when (intent) {
             is SettingsIntent.UpdateAccount -> {
-                _state.value = _state.value.copy(account = intent.account)
+                val account = intent.account
+                _state.value = _state.value.copy(account = account)
             }
 
             is SettingsIntent.ExportData -> {
@@ -96,6 +101,10 @@ constructor(
 
             is SettingsIntent.ShowUnitTypeModal -> {
                 onUnitTypeClick()
+            }
+
+            is SettingsIntent.ShowNotificationsModal -> {
+                onNotificationsClick()
             }
 
             else -> {}
@@ -360,7 +369,88 @@ constructor(
 
     fun onNotificationsClick() {
         AppLog.d("SettingsViewModel", "Notifications clicked")
-        // TODO: Navigate to notifications settings
+        showNotificationsModal()
+    }
+
+    /**
+     * Shows the notifications selection modal.
+     * Follows the same pattern as Angular onNotifSelectionChange method.
+     * Uses reactive state property for selectedItem.
+     */
+    private fun showNotificationsModal() {
+        // Get current notification status from reactive state property
+        val currentNotificationStatus = state.value.currentNotificationStatus
+        AppLog.d(TAG, "Showing notifications modal with reactive status: $currentNotificationStatus")
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.Notifications,
+            options = listOf(
+                RadioButtonOption("On", RadioGroupModalStrings.Notifications.On),
+                RadioButtonOption("w/ weight", RadioGroupModalStrings.Notifications.WithWeight),
+                RadioButtonOption("Off", RadioGroupModalStrings.Notifications.Off),
+            ),
+            selectedItem = when {
+                state.value.account?.entryNotificationsEnabled == true && state.value.account?.showWeightInNotifications == true -> "w/ weight"
+                state.value.account?.entryNotificationsEnabled == true -> "On"
+                else -> "Off"
+            },
+            onConfirm = { selectedNotification ->
+                selectedNotification?.let { notificationOption ->
+                    onNotificationUpdate(notificationOption)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Notification selection cancelled")
+            },
+        )
+    }
+
+
+
+    /**
+     * Converts notification option string to NotificationSettingsRequest following Angular pattern.
+     */
+    private fun getNotificationSettingsFromOption(option: String): NotificationSettingsRequest {
+        return when (option) {
+            "On" -> NotificationSettingsRequest(
+                shouldSendEntryNotifications = true,
+                shouldSendWeightInEntryNotifications = false
+            )
+            "w/ weight" -> NotificationSettingsRequest(
+                shouldSendEntryNotifications = true,
+                shouldSendWeightInEntryNotifications = true
+            )
+            else -> NotificationSettingsRequest(
+                shouldSendEntryNotifications = false,
+                shouldSendWeightInEntryNotifications = false
+            )
+        }
+    }
+
+    /**
+     * Updates the notification settings via the notification service.
+     * Follows the same pattern as Angular onNotifSelectionChange method.
+     * Relies on activeAccountFlow to automatically update the UI state.
+     */
+    private fun onNotificationUpdate(notificationOption: String) {
+        dialogQueueService.showLoader("Updating notification settings...")
+        viewModelScope.launch {
+            try {
+                val notificationSettings = getNotificationSettingsFromOption(notificationOption)
+                val updatedAccount = notificationService.updateNotificationSettings(notificationSettings)
+                if (updatedAccount != null) {
+                    AppLog.i(TAG, "Successfully updated notification settings - flow will update UI")
+                    // The activeAccountFlow will automatically emit the updated account and update the UI
+                } else {
+                    AppLog.e(TAG, "Notification settings update returned null account")
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating notification settings", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
     }
 
     fun onMessagesClick() {
