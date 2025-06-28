@@ -77,7 +77,9 @@ final class HealthKitStore: ObservableObject {
         case .integrationComplete:
             finishIntegrationFlow()
         case .integrationFailed:
-            healthKitService.openAppleHealth()
+            // TODO: After healthkit service implemented need to uncomment this.
+            // healthKitService.openAppleHealth()
+            break
         case .permissionsAllowed:
             // Not used in current flow – treat same as `.permissionsNotAllowed`.
             requestAuthorization()
