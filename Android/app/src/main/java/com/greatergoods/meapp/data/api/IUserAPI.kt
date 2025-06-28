@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.data.api
 
 import StreakRequest
-import com.greatergoods.meapp.domain.model.api.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
@@ -49,11 +48,6 @@ interface IUserAPI {
     @PATCH(ACCOUNT + WEIGHTLESS)
     suspend fun updateWeightless(
         @Body request: WeightlessRequest,
-    ): AccountResponse
-
-    @PATCH(ACCOUNT + NOTIFICATION)
-    suspend fun updateNotificationSettings(
-        @Body request: NotificationSettingsRequest,
     ): AccountResponse
 
     @PATCH(ACCOUNT + STREAK)
