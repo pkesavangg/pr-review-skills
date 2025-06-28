@@ -17,6 +17,8 @@ struct HKIntegrationHealthAccessView: View {
     let commonLang = CommonStrings.self
     let lang = HKIntegrationStrings.self
     let onDismiss: (() -> Void)?
+    /// Action executed when the primary button (CONNECT / FINISH / OPEN APPLE HEALTH) is tapped.
+    let primaryAction: () -> Void
     
     private var content: HKIntegrationHealthAccessContent {
         switch state {
@@ -107,7 +109,7 @@ struct HKIntegrationHealthAccessView: View {
                            type: .filledPrimary,
                            size: .large,
                            isDisabled: false,
-                           action: {})
+                           action: primaryAction)
                 .padding(.top, .spacingSM)
                 
                 Spacer()
@@ -125,21 +127,31 @@ struct AppleHealthIntegrationScreen_Previews: PreviewProvider {
         Group {
             HKIntegrationHealthAccessView(state: .permissionsAllowed) {
                 
+            } primaryAction: {
+                
             }
             .environmentObject(Theme.shared)
             HKIntegrationHealthAccessView(state: .permissionsNotAllowed) {
+                
+            } primaryAction: {
                 
             }
             .environmentObject(Theme.shared)
             HKIntegrationHealthAccessView(state: .integrationComplete) {
                 
+            } primaryAction: {
+                
             }
             .environmentObject(Theme.shared)
             HKIntegrationHealthAccessView(state: .integrationFailed) {
                 
+            } primaryAction: {
+                
             }
             .environmentObject(Theme.shared)
             HKIntegrationHealthAccessView(state: .userConflict) {
+                
+            } primaryAction: {
                 
             }
             .environmentObject(Theme.shared)
