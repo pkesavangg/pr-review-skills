@@ -9,6 +9,7 @@ import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.IUserAPI
+import com.greatergoods.meapp.data.api.IUserSettingsAPI
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -44,6 +45,10 @@ class APIModule {
     @Provides
     @Singleton
     fun provideUserAPI(httpClient: HttpClient): IUserAPI = httpClient.createService(IUserAPI::class.java)
+
+    @Provides
+    @Singleton
+    fun provideUserSettingsAPI(httpClient: HttpClient): IUserSettingsAPI = httpClient.createService(IUserSettingsAPI::class.java)
 
     /**
      * Provides a singleton instance of [IDeviceAPI] using the provided [HttpClient].

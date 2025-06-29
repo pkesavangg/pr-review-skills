@@ -150,6 +150,24 @@ interface AccountDao {
     """)
     fun getUnsyncedNotificationAccounts(): Flow<List<Account>>
 
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM streaks_settings WHERE isSynced = 0
+        )
+    """)
+    fun getUnsyncedStreakAccounts(): Flow<List<Account>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM weightless_settings WHERE isSynced = 0
+        )
+    """)
+    fun getUnsyncedWeightlessAccounts(): Flow<List<Account>>
+
     @Query("UPDATE account SET isSynced = 1")
     suspend fun markAllAccountsSynced()
 

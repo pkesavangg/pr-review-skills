@@ -1,13 +1,11 @@
 package com.greatergoods.meapp.data.api
 
-import StreakRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.dashboard.DashboardMetricsRequest
 import com.greatergoods.meapp.domain.model.api.dashboard.DashboardTypeRequest
 import com.greatergoods.meapp.domain.model.api.metrics.BodyCompRequest
-import com.greatergoods.meapp.domain.model.api.metrics.WeightlessRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -22,9 +20,7 @@ interface IUserAPI {
         private const val ACCOUNT = "account/"
         private const val PROFILE = "profile"
         private const val BODY_COMP = "bodycomp"
-        private const val WEIGHTLESS = "weightless"
         private const val NOTIFICATION = "notification"
-        private const val STREAK = "streak"
         private const val DASHBOARD_TYPE = "dashboard-type"
         private const val DASHBOARD_METRICS = "dashboard-metrics"
         private const val PASSWORD = "password"
@@ -43,16 +39,6 @@ interface IUserAPI {
     @PATCH(ACCOUNT + BODY_COMP)
     suspend fun updateBodyComp(
         @Body request: BodyCompRequest,
-    ): AccountResponse
-
-    @PATCH(ACCOUNT + WEIGHTLESS)
-    suspend fun updateWeightless(
-        @Body request: WeightlessRequest,
-    ): AccountResponse
-
-    @PATCH(ACCOUNT + STREAK)
-    suspend fun updateStreak(
-        @Body request: StreakRequest,
     ): AccountResponse
 
     @PATCH(ACCOUNT + DASHBOARD_TYPE)

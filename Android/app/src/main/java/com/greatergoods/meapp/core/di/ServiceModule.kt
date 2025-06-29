@@ -10,6 +10,7 @@ import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.NotificationService
 import com.greatergoods.meapp.core.service.OfflineHandlerService
+import com.greatergoods.meapp.core.service.UserSettingsService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.api.IExportAPI
@@ -26,6 +27,7 @@ import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
+import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
@@ -34,6 +36,7 @@ import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
+import com.greatergoods.meapp.domain.services.IUserSettingsService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.meapp.features.common.service.DialogUtility
 import com.greatergoods.notification.NotificationService as GGNotificationService
@@ -179,11 +182,13 @@ object ServiceModule {
         accountRepository: IAccountRepository,
         bodyCompositionRepository: IBodyCompositionRepository,
         notificationRepository: INotificationRepository,
+        userSettingsRepository: IUserSettingsRepository,
         connectivityObserver: IConnectivityObserver,
     ): IOfflineHandlerService = OfflineHandlerService(
         accountRepository,
         bodyCompositionRepository,
         notificationRepository,
+        userSettingsRepository,
         connectivityObserver,
     )
 
@@ -216,4 +221,13 @@ object ServiceModule {
         notificationRepository,
         connectivityObserver
     )
+     * Provides the user settings service implementation.
+     * Handles streak and weightless mode settings with offline support.
+     */
+    @Provides
+    @Singleton
+    fun provideUserSettingsService(
+        userSettingsRepository: IUserSettingsRepository,
+        connectivityObserver: IConnectivityObserver
+    ): IUserSettingsService = UserSettingsService(userSettingsRepository, connectivityObserver)
 }

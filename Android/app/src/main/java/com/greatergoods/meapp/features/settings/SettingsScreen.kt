@@ -151,8 +151,12 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Weightless,
-                            type = SettingsItemType.TextOnly("On"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(
+                                if (state.account?.isWeightlessOn == true) "On" else "Off"
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
+                            },
                         ),
                     ),
             )
@@ -173,6 +177,15 @@ fun SettingsScreenContent(
                             title = SettingsScreenStrings.Messages,
                             type = SettingsItemType.Action(),
                             onClick = { },
+                        ),
+                        SettingsItem(
+                            title = SettingsScreenStrings.Streaks,
+                            type = SettingsItemType.Dropdown(
+                                if (state.account?.isStreakOn == true) "On" else "Off"
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowStreakModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.AppPermissions,

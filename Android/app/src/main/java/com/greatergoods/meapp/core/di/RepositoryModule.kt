@@ -8,6 +8,7 @@ import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.IUserAPI
+import com.greatergoods.meapp.data.api.IUserSettingsAPI
 import com.greatergoods.meapp.data.repository.AccountRepository
 import com.greatergoods.meapp.data.repository.AppRepository
 import com.greatergoods.meapp.data.repository.BodyCompositionRepository
@@ -17,6 +18,7 @@ import com.greatergoods.meapp.data.repository.HealthConnectRepository
 import com.greatergoods.meapp.data.repository.IntegrationRepository
 import com.greatergoods.meapp.data.repository.LogRepository
 import com.greatergoods.meapp.data.repository.NotificationRepository
+import com.greatergoods.meapp.data.repository.UserSettingsRepository
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
@@ -32,6 +34,7 @@ import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
+import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -104,4 +107,11 @@ object RepositoryModule {
         accountDao: AccountDao,
         notificationAPI: INotificationAPI,
     ): INotificationRepository = NotificationRepository(notificationAPI, accountDao)
+
+    @Provides
+    @Singleton
+    fun provideUserSettingsRepository(
+        userSettingsAPI: IUserSettingsAPI,
+        accountDao: AccountDao,
+    ): IUserSettingsRepository = UserSettingsRepository(userSettingsAPI, accountDao)
 }

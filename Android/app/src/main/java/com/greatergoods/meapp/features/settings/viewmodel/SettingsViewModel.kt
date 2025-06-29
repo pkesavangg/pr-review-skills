@@ -16,6 +16,7 @@ import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.domain.services.INotificationService
+import com.greatergoods.meapp.domain.services.IUserSettingsService
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -46,6 +47,7 @@ constructor(
     private val bodyCompositionService: IBodyCompositionService,
     private val userDataStore: UserDataStore,
     private val notificationService: INotificationService,
+    private val userSettingsService: IUserSettingsService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
@@ -105,6 +107,14 @@ constructor(
 
             is SettingsIntent.ShowNotificationsModal -> {
                 onNotificationsClick()
+            }
+
+            is SettingsIntent.ShowWeightlessModal -> {
+                onWeightlessClick()
+            }
+
+            is SettingsIntent.ShowStreakModal -> {
+                onStreakClick()
             }
 
             else -> {}
@@ -364,7 +374,117 @@ constructor(
 
     fun onWeightlessClick() {
         AppLog.d("SettingsViewModel", "Weightless clicked")
-        // TODO: Toggle weightless mode
+        showWeightlessModal()
+    }
+
+    fun onStreakClick() {
+        AppLog.d("SettingsViewModel", "Streak clicked")
+        showStreakModal()
+    }
+
+    /**
+     * Shows the weightless mode selection modal.
+     */
+    private fun showWeightlessModal() {
+        val currentAccount = state.value.account
+        val currentWeightlessStatus = currentAccount?.isWeightlessOn ?: false
+
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = "Weightless Mode",
+            options = listOf(
+                RadioButtonOption("true", "On"),
+                RadioButtonOption("false", "Off"),
+            ),
+            selectedItem = state.value.account?.isWeightlessOn ?: false,
+            onConfirm = { selectedWeightless ->
+                selectedWeightless?.let { weightlessValue ->
+                    val isWeightlessOn = weightlessValue.toString().toBoolean()
+                    onWeightlessUpdate(isWeightlessOn)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Weightless mode selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Updates the weightless mode via the user settings service.
+     */
+    private fun onWeightlessUpdate(isWeightlessOn: Boolean) {
+        val currentAccount = state.value.account
+        if (currentAccount?.isWeightlessOn == isWeightlessOn) {
+            AppLog.d(TAG, "Weightless mode is already set to $isWeightlessOn, no update needed")
+            return
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating weightless mode...")
+        viewModelScope.launch {
+            try {
+                userSettingsService.toggleWeightlessSetting(
+                    isWeightlessOn = isWeightlessOn,
+                    weightlessWeight = if (isWeightlessOn) currentAccount?.weightlessWeight?.toDouble() else null
+                )
+                AppLog.i(TAG, "Successfully updated weightless mode")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating weightless mode", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+    /**
+     * Shows the streak mode selection modal.
+     */
+    private fun showStreakModal() {
+        val currentAccount = state.value.account
+        val currentStreakStatus = currentAccount?.isStreakOn ?: false
+
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = "Streak Mode",
+            options = listOf(
+                RadioButtonOption(true, "On"),
+                RadioButtonOption(false, "Off"),
+            ),
+            selectedItem = state.value.account?.isStreakOn ?: false,
+            onConfirm = { selectedStreak ->
+                selectedStreak?.let { streakValue ->
+                    val isStreakOn = streakValue.toString().toBoolean()
+                    onStreakUpdate(isStreakOn)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Streak mode selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Updates the streak mode via the user settings service.
+     */
+    private fun onStreakUpdate(isStreakOn: Boolean) {
+        val currentAccount = state.value.account
+        if (currentAccount?.isStreakOn == isStreakOn) {
+            AppLog.d(TAG, "Streak mode is already set to $isStreakOn, no update needed")
+            return
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating streak mode...")
+        viewModelScope.launch {
+            try {
+                userSettingsService.toggleStreakSetting(isStreakOn = isStreakOn)
+                AppLog.i(TAG, "Successfully updated streak mode")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating streak mode", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
     }
 
     fun onNotificationsClick() {
