@@ -1,23 +1,28 @@
 package com.greatergoods.libs.appsync.screen.components
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.libs.appsync.R
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
@@ -26,75 +31,104 @@ import com.greatergoods.libs.appsync.strings.AppSyncStrings
  * Overlay UI controls for scan screen: zoom, manual entry, close.
  * @param onManualEntry If null, manual entry button is hidden.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun OverlayControls(
     zoomLevel: Int,
+    showLowLightWarning: Boolean = false,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     onManualEntry: (() -> Unit)? = null,
     onClose: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Close button (top right)
-        IconButton(
-            onClick = onClose,
-            modifier =
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-                    .semantics { contentDescription = AppSyncStrings.CloseScan },
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                // .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(
+                    top = 24.dp,
+                    start = 54.dp,
+                    end = 24.dp,
+                ),
+    ) {
+        Row(
+            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(painter = painterResource(R.drawable.close), contentDescription = null, tint = Color.White)
+            // Close button (top right)
+            Image(
+                painterResource(R.drawable.logo),
+                contentDescription = "Appsync Logo",
+                contentScale = ContentScale.FillWidth,
+                modifier = Modifier.width(100.dp),
+            )
+            AppsyncButton(
+                onClose,
+                src = R.drawable.ic_close,
+                contentDescription = AppSyncStrings.CloseScan,
+            )
         }
-        // Zoom controls (bottom right)
+
         Column(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AppsyncButton(onZoomIn, R.drawable.ic_plus, AppSyncStrings.ZoomIn)
+            Image(
+                painterResource(R.drawable.zoom),
+                contentDescription = "Zoom",
+                modifier = Modifier.width(40.dp),
+                contentScale = ContentScale.FillWidth,
+            )
+            AppsyncButton(onZoomOut, R.drawable.ic_minus, AppSyncStrings.ZoomOut)
+        }
+
+        // Low light warning (center vertical)
+        if (showLowLightWarning) {
+            Column(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.warning),
+                    contentDescription = "Low light warning",
+                    modifier = Modifier.size(50.dp),
+                )
+            }
+        }
+
+        // Zoom controls (bottom right)
+        Row(
             modifier =
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-            horizontalAlignment = Alignment.End,
+                    .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.End,
         ) {
-            FloatingActionButton(
-                onClick = onZoomIn,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                modifier =
-                    Modifier
-                        .size(40.dp)
-                        .semantics { contentDescription = AppSyncStrings.ZoomIn },
-            ) {
-                Icon(painter = painterResource(R.drawable.zoomincrease), contentDescription = null, tint = Color.White)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            FloatingActionButton(
-                onClick = onZoomOut,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                modifier =
-                    Modifier
-                        .size(40.dp)
-                        .semantics { contentDescription = AppSyncStrings.ZoomOut },
-            ) {
-                Icon(painter = painterResource(R.drawable.zoomdecrease), contentDescription = null, tint = Color.White)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
             if (onManualEntry != null) {
-                FloatingActionButton(
+                Button(
                     onClick = onManualEntry,
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = Color.White,
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .semantics { contentDescription = AppSyncStrings.ManualEntry },
+                    modifier = Modifier,
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.zoomdecrease),
-                        contentDescription = null,
-                        tint = Color.White,
-                    )
+                    Text(AppSyncStrings.ManualEntry.uppercase())
                 }
             }
         }
     }
+}
+
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+fun OverlayControlsPreview() {
+    OverlayControls(1, true, {}, {}, {}) {}
 }

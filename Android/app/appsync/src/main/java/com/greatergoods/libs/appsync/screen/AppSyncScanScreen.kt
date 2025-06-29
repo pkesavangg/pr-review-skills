@@ -2,7 +2,6 @@ package com.greatergoods.libs.appsync.screen
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.Camera
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfo
 import androidx.compose.animation.AnimatedVisibility
@@ -39,7 +38,6 @@ import java.util.concurrent.Executors
 import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
 
 /**
  * Main Composable for the scan screen. Shows CameraX preview and overlays UI controls.
@@ -82,7 +80,11 @@ fun AppSyncScanScreen(
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
     // Zoom state with animation
-    var zoomLevel by remember { mutableStateOf(initialZoom.toFloat().coerceIn(AppSyncConstants.MIN_ZOOM, AppSyncConstants.MAX_ZOOM)) }
+    var zoomLevel by remember {
+        mutableStateOf(
+            initialZoom.toFloat().coerceIn(AppSyncConstants.MIN_ZOOM, AppSyncConstants.MAX_ZOOM),
+        )
+    }
     var zoomManager by remember { mutableStateOf<AppSyncZoomManager?>(null) }
 
     // UI state
@@ -125,11 +127,12 @@ fun AppSyncScanScreen(
     // Update zoom manager when camera is ready
     LaunchedEffect(cameraControlState.value, cameraInfoState.value, coroutineScope) {
         if (cameraControlState.value != null && cameraInfoState.value != null) {
-            zoomManager = AppSyncZoomManager(
-                cameraControl = cameraControlState.value,
-                cameraInfo = cameraInfoState.value,
-                coroutineScope = coroutineScope
-            )
+            zoomManager =
+                AppSyncZoomManager(
+                    cameraControl = cameraControlState.value,
+                    cameraInfo = cameraInfoState.value,
+                    coroutineScope = coroutineScope,
+                )
             // Set initial zoom
             zoomManager?.setZoom(zoomLevel, animate = false)
         }

@@ -2,6 +2,7 @@ package com.greatergoods.libs.appsync.activity
 
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,6 +22,7 @@ class AppSyncScanActivity : ComponentActivity() {
         val showManualEntryButton = intent.getBooleanExtra("showManualEntryButton", true)
         setContent {
             var finished by remember { mutableStateOf(false) }
+            enableEdgeToEdge()
             AppSyncScanScreen(
                 initialZoom = initialZoom,
                 showManualEntryButton = showManualEntryButton,
