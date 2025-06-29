@@ -68,6 +68,7 @@ object ServiceModule {
         dialogQueueService: IDialogQueueService,
         userDataStore: UserDataStore,
         appNavigationService: IAppNavigationService,
+        userSettingsRepository: IUserSettingsRepository,
     ): IAccountService =
         AccountService(
             accountRepository,
@@ -76,6 +77,7 @@ object ServiceModule {
             dialogQueueService,
             userDataStore,
             appNavigationService,
+            userSettingsRepository,
         )
 
     /**

@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen() {
     val viewmodel: SettingsViewModel = hiltViewModel()
     val state by viewmodel.state.collectAsState()
-    SettingsScreenContent(state, viewmodel::handleIntent)
+    SettingsScreenContent(state, viewmodel::handleIntent, viewmodel)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +50,7 @@ fun SettingsScreen() {
 fun SettingsScreenContent(
     state: SettingsState,
     handleIntent: (SettingsIntent) -> Unit,
+    viewModel: SettingsViewModel? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val backStack = LocalNavBackStack.current
@@ -160,7 +161,7 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.Weightless,
                             type = SettingsItemType.Dropdown(
-                                if (state.account?.isWeightlessOn == true) "On" else "Off"
+                                viewModel?.getWeightlessDisplayText() ?: "Off"
                             ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
@@ -288,6 +289,6 @@ fun SettingsScreenContent(
 @Composable
 fun SettingsScreenPreview() {
     MeAppTheme {
-        SettingsScreenContent(SettingsState(), { })
+        SettingsScreenContent(SettingsState(), { }, null)
     }
 }

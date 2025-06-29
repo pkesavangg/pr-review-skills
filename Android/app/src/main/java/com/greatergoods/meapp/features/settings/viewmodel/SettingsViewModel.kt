@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.model.PartialAccount
@@ -459,7 +460,9 @@ constructor(
 
     fun onWeightlessClick() {
         AppLog.d("SettingsViewModel", "Weightless clicked")
-        showWeightlessModal()
+        viewModelScope.launch {
+            navigationService.navigateTo(AppRoute.AccountSettings.Weightless)
+        }
     }
 
     fun onStreakClick() {
@@ -773,6 +776,28 @@ constructor(
         viewModelScope.launch {
             userDataStore.setAccountSwitchInfoModalShownForDevice(true)
             dialogQueueService.dismissCurrent()
+        }
+    }
+
+    /**
+     * Formats the weightless display text for the settings screen.
+     * Converts stored weight to display format with proper unit.
+     * @return Formatted weightless display text
+     */
+    fun getWeightlessDisplayText(): String {
+        val account = state.value.account
+        return if (account?.isWeightlessOn == true) {
+            val weightlessWeight = account.weightlessWeight
+            if (weightlessWeight != null) {
+                val isMetric = account.weightUnit?.value == "kg"
+                val displayWeight = ConversionTools.convertStoredToDisplay(weightlessWeight.toDouble(), isMetric)
+                val formattedWeight = String.format("%.1f", displayWeight)
+                "On - $formattedWeight"
+            } else {
+                "On"
+            }
+        } else {
+            "Off"
         }
     }
 }

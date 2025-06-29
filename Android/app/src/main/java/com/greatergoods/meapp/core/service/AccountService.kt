@@ -16,6 +16,7 @@ import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
@@ -38,19 +39,20 @@ import javax.inject.Singleton
  */
 @Singleton
 class AccountService
-@Inject
-constructor(
-    private val accountRepository: IAccountRepository,
-    private val connectivityObserver: IConnectivityObserver,
-    private val tokenManager: ITokenManager,
-    private val dialogQueueService: IDialogQueueService,
-    private val userDataStore: UserDataStore,
-    private val appNavigationService: IAppNavigationService,
-) : IAccountService {
-    companion object {
-        private const val MAX_ACCOUNTS = 10
-        private const val TAG = "AccountService"
-    }
+    @Inject
+    constructor(
+        private val accountRepository: IAccountRepository,
+        private val connectivityObserver: IConnectivityObserver,
+        private val tokenManager: ITokenManager,
+        private val dialogQueueService: IDialogQueueService,
+        private val userDataStore: UserDataStore,
+        private val appNavigationService: IAppNavigationService,
+        private val userSettingsRepository: IUserSettingsRepository
+    ) : IAccountService {
+        companion object {
+            private const val MAX_ACCOUNTS = 10
+            private const val TAG = "AccountService"
+        }
 
     /**
      * Safely parses a weight unit string to WeightUnit enum.
@@ -444,30 +446,306 @@ constructor(
             if (currentAccount == null) {
                 return null
             }
-            // Call API to update profile
-            val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
-            val updatedAccountInfo: AccountInfo = response.account
-            val savedAccount = updateProfileInDB(
-                updatedAccountInfo.id,
-                PartialAccount(
-                    firstName = updatedAccountInfo.firstName,
-                    lastName = updatedAccountInfo.lastName,
-                    dob = updatedAccountInfo.dob,
-                    gender = updatedAccountInfo.gender,
-                    zipcode = updatedAccountInfo.zipcode,
-                    email = updatedAccountInfo.email,
-                    isActiveAccount = true,
-                    isSynced = true,  // Mark as synced since API call was successful
-                ),
+                // Call API to update profile
+                val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
+                val updatedAccountInfo: AccountInfo = response.account
+                val savedAccount = updateProfileInDB(
+                    updatedAccountInfo.id,
+                    PartialAccount(
+                        firstName = updatedAccountInfo.firstName,
+                        lastName = updatedAccountInfo.lastName,
+                        dob = updatedAccountInfo.dob,
+                        gender = updatedAccountInfo.gender,
+                        zipcode = updatedAccountInfo.zipcode,
+                        email = updatedAccountInfo.email,
+                        isActiveAccount = true,
+                        isSynced = true,  // Mark as synced since API call was successful
+                    ),
+                )
+                AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
+                savedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
+                showSuccessToast(AuthAction.UPDATE_PROFILE)
+                savedAccount
+            } catch (e: HttpException) {
+                showErrorToast(AuthAction.UPDATE_PROFILE, e)
+                AppLog.e(TAG, "Profile update failed", e.toString())
+                throw e
+            }
+        }
+
+        override suspend fun changePassword(
+            currentPassword: String,
+            newPassword: String,
+        ): Boolean {
+            return try {
+                getCurrentAccount() ?: return false
+                val response = accountRepository.updatePasswordInAPI(currentPassword, newPassword)
+                tokenManager.setTokens(
+                    Token(
+                        accountId = activeAccountFlow.first()?.id ?: "",
+                        accessToken = response.accessToken,
+                        refreshToken = response.refreshToken,
+                        expiresAt = response.expiresAt,
+                    ),
+                )
+                AppLog.d(TAG, "Password changed successfully")
+                showSuccessToast(AuthAction.CHANGE_PASSWORD)
+                // Password change typically invalidates existing tokens, but we'll keep using current session
+                // unless the API specifically returns new tokens
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Password change failed", e.toString())
+                showErrorToast(AuthAction.CHANGE_PASSWORD, e as? HttpException)
+                false
+            }
+        }
+
+        fun showSuccessToast(
+            action: AuthAction,
+            data: String? = null,
+        ) {
+            val (title, message) =
+                when (action) {
+                    AuthAction.RESET_PASSWORD ->
+                        ToastStrings.Success.ResetPasswordSuccess.Header to
+                            ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
+
+                    AuthAction.UPDATE_PROFILE ->
+                        ToastStrings.Success.UpdateProfileSuccess.Header to
+                            ToastStrings.Success.UpdateProfileSuccess.Message
+
+                    AuthAction.CHANGE_PASSWORD ->
+                        ToastStrings.Success.ChangePasswordSuccess.Header to
+                            ToastStrings.Success.ChangePasswordSuccess.Message
+
+                    else -> "" to ""
+                }
+
+            val successToast =
+                Toast(
+                    title = title,
+                    message = message,
+                    action = null,
+                )
+            dialogQueueService.showToast(successToast)
+        }
+
+        fun showErrorToast(
+            action: AuthAction,
+            error: HttpException?,
+        ) {
+            val (title, message) =
+                when (action) {
+                    AuthAction.LOGIN -> {
+                        val header = ToastStrings.Error.LoginError.Header
+                        val message =
+                            when (error?.code()) {
+                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                                    ToastStrings.Error.LoginError.MessageNoConn
+
+                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                                    ToastStrings.Error.LoginError.MessageServError
+
+                                HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                                    ToastStrings.Error.LoginError.MessageNotAuth
+
+                                else ->
+                                    ToastStrings.Error.LoginError.MessageGeneric
+                            }
+                        header to message
+                    }
+
+                    AuthAction.RESET_PASSWORD ->
+                        ToastStrings.Error.ResetPasswordError.Header to
+                            ToastStrings.Error.ResetPasswordError.Message
+
+                    AuthAction.UPDATE_PROFILE -> {
+                        val header = ToastStrings.Error.UpdateProfileError.Header
+                        val message =
+                            when (error?.code()) {
+                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                                    ToastStrings.Error.UpdateProfileError.MessageNoConn
+
+                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                                    ToastStrings.Error.UpdateProfileError.MessageServError
+
+                                HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                                    ToastStrings.Error.UpdateProfileError.MessageNotAuth
+
+                                else ->
+                                    ToastStrings.Error.UpdateProfileError.MessageGeneric
+                            }
+                        header to message
+                    }
+
+                    AuthAction.CHANGE_PASSWORD -> {
+                        val header = ToastStrings.Error.ChangePasswordError.Header
+                        val message =
+                            when (error?.code()) {
+                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                                    ToastStrings.Error.UpdateProfileError.MessageNoConn
+
+                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                                    ToastStrings.Error.UpdateProfileError.MessageServError
+
+                                HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                                    ToastStrings.Error.UpdateProfileError.MessageNotAuth
+
+                                else ->
+                                    ToastStrings.Error.UpdateProfileError.MessageGeneric
+                            }
+                        header to message
+                    }
+
+                    else -> "" to ""
+                }
+
+            val errorToast =
+                Toast(
+                    title = title,
+                    message = message,
+                    action = null,
+                )
+            dialogQueueService.showToast(errorToast)
+        }
+
+        /**
+         * Handles signup errors by displaying appropriate error messages based on the HTTP status code.
+         * @param error The HttpException containing the error details
+         */
+        private fun handleSignupError(error: HttpException) {
+            val signupError = SignupStrings.Error
+            val errorMessage =
+                when (error.code()) {
+                    HttpErrorConfig.ResponseCode.UNAUTHORIZED -> signupError.MessageNotAuth
+                    HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> signupError.MessageNoConn
+                    HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
+                    else -> signupError.MessageGeneric
+                }
+            val errorHeader =
+                when (error.code()) {
+                    HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
+                    else -> signupError.Header
+                }
+            val errorToast =
+                Toast(
+                    message = errorMessage,
+                    title = errorHeader,
+                    action = null,
+                )
+            dialogQueueService.showToast(
+                errorToast,
             )
-            AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
-            savedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
-            showSuccessToast(AuthAction.UPDATE_PROFILE)
-            savedAccount
-        } catch (e: HttpException) {
-            showErrorToast(AuthAction.UPDATE_PROFILE, e)
-            AppLog.e(TAG, "Profile update failed", e.toString())
-            throw e
+        }
+
+        /**
+         * Checks login status for the active account by calling getAccount API.
+         * Updates the account data in DB with the response and refreshes tokens if needed.
+         * @return true if account is still valid, false if expired
+         */
+        override suspend fun checkLoginStatusForActiveAccount(): Boolean {
+            return try {
+                if (!isNetworkAvailable()) {
+                    AppLog.w(TAG, "No network available for active account status check")
+                    return false // Assume valid if no network
+                }
+
+                val activeAccount = getCurrentAccount()
+                if (activeAccount == null) {
+                    AppLog.d(TAG, "No active account found")
+                    return false
+                }
+
+                // Log the token before making the API call
+                userDataStore.getData().accounts[activeAccount.id]
+                // Update tokens in TokenManager for active account BEFORE making the API call
+
+                AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
+                val accountInfo = accountRepository.getAccountInAPI(activeAccount.id)
+
+                // Update account data with API response
+                accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
+                val weightlessSetting = WeightlessSettingsEntity(
+                    accountId = accountInfo.id,
+                    isWeightlessOn = accountInfo.isWeightlessOn,
+                    weightlessTimestamp = accountInfo.weightlessTimestamp,
+                    weightlessWeight = accountInfo.weightlessWeight,
+                    isSynced = true
+                )
+                userSettingsRepository.updateWeightlessInDB(weightlessSetting)
+
+                AppLog.d(TAG, "Active account login status check successful")
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Active account login status check failed", e.toString())
+                false
+            }
+        }
+
+        /**
+         * Checks login status for all logged-in accounts (non-active) by calling getAccount API.
+         * Updates account data in DB with responses and refreshes tokens if needed.
+         * For expired accounts, marks them as expired and clears tokens.
+         * @return true if all accounts are valid, false if any account is expired
+         */
+        override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean {
+            return try {
+                if (!isNetworkAvailable()) {
+                    AppLog.w(TAG, "No network available for logged-in accounts status check")
+                    return true // Assume valid if no network
+                }
+
+                val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
+                if (loggedInAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No non-active logged-in accounts found")
+                    return true
+                }
+
+                var allAccountsValid = true
+
+                for (account in loggedInAccounts) {
+                    try {
+                        AppLog.d(TAG, "Checking login status for account: ${account.id}")
+
+                        // Update tokens in TokenManager for this account BEFORE making the API call
+                        val currentTokens = userDataStore.getData().accounts[account.id]
+                        if (currentTokens != null) {
+                            tokenManager.setTokens(
+                                Token(
+                                    accountId = account.id,
+                                    isActive = false,
+                                    accessToken = currentTokens.accessToken,
+                                    refreshToken = currentTokens.refreshToken,
+                                    expiresAt = currentTokens.expiresAt,
+                                ),
+                            )
+                        }
+
+                        val accountInfo = accountRepository.getAccountInAPI(account.id)
+
+                        // Update account data with API response
+                        accountRepository.updateAccountFromAPI(account.id, accountInfo)
+
+                        AppLog.d(TAG, "Account ${account.id} login status check successful")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Account ${account.id} login status check failed", e.toString())
+
+                        // Mark account as expired in database
+                        accountRepository.markAccountExpired(account.id)
+
+                        // Clear tokens for this account
+                        userDataStore.removeAccount(account.id)
+
+                        allAccountsValid = false
+                    }
+                }
+
+                AppLog.d(TAG, "Logged-in accounts status check completed. All valid: $allAccountsValid")
+                allAccountsValid
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Logged-in accounts status check failed", e.toString())
+                false
+            }
         }
     }
 
