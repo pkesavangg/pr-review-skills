@@ -188,7 +188,7 @@ fun AppSyncScanScreen(
                     },
                 )
                 OverlayControls(
-                    zoomLevel = zoomLevel.toInt(),
+                    zoomLevel = zoomLevel,
                     onZoomIn = {
                         if (zoomLevel < AppSyncConstants.MAX_ZOOM) {
                             zoomLevel += AppSyncConstants.ZOOM_STEP

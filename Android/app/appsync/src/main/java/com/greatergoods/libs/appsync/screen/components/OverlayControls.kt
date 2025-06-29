@@ -25,6 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.libs.appsync.R
+import com.greatergoods.libs.appsync.config.AppSyncConstants
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
 
 /**
@@ -34,13 +35,17 @@ import com.greatergoods.libs.appsync.strings.AppSyncStrings
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun OverlayControls(
-    zoomLevel: Int,
+    zoomLevel: Float,
     showLowLightWarning: Boolean = false,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     onManualEntry: (() -> Unit)? = null,
     onClose: () -> Unit,
 ) {
+    // Calculate enabled states for zoom buttons
+    val canZoomIn = zoomLevel < AppSyncConstants.MAX_ZOOM
+    val canZoomOut = zoomLevel > AppSyncConstants.MIN_ZOOM
+
     Box(
         modifier =
             Modifier
@@ -76,14 +81,24 @@ fun OverlayControls(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AppsyncButton(onZoomIn, R.drawable.ic_plus, AppSyncStrings.ZoomIn)
+            AppsyncButton(
+                onClick = onZoomIn,
+                src = R.drawable.ic_plus,
+                contentDescription = AppSyncStrings.ZoomIn,
+                enabled = canZoomIn,
+            )
             Image(
                 painterResource(R.drawable.zoom),
                 contentDescription = "Zoom",
                 modifier = Modifier.width(40.dp),
                 contentScale = ContentScale.FillWidth,
             )
-            AppsyncButton(onZoomOut, R.drawable.ic_minus, AppSyncStrings.ZoomOut)
+            AppsyncButton(
+                onClick = onZoomOut,
+                src = R.drawable.ic_minus,
+                contentDescription = AppSyncStrings.ZoomOut,
+                enabled = canZoomOut,
+            )
         }
 
         // Low light warning (center vertical)
@@ -130,5 +145,17 @@ fun OverlayControls(
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsPreview() {
-    OverlayControls(1, true, {}, {}, {}) {}
+    OverlayControls(1.0f, true, {}, {}, {}) {}
+}
+
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+fun OverlayControlsMaxZoomPreview() {
+    OverlayControls(5.0f, true, {}, {}, {}) {}
+}
+
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+fun OverlayControlsMinZoomPreview() {
+    OverlayControls(1.0f, true, {}, {}, {}) {}
 }

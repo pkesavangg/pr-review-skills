@@ -20,13 +20,17 @@ fun AppsyncButton(
     onClick: () -> Unit,
     src: Int,
     contentDescription: String,
+    enabled: Boolean = true,
 ) {
     FilledIconButton(
         onClick = onClick,
+        enabled = enabled,
         colors =
             IconButtonDefaults.iconButtonColors(
-                containerColor = Color.White,
-                contentColor = Color.Black,
+                containerColor = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                contentColor = if (enabled) Color.Black else Color.Black.copy(alpha = 0.5f),
+                disabledContainerColor = Color.White.copy(alpha = 0.5f),
+                disabledContentColor = Color.Black.copy(alpha = 0.5f),
             ),
         shape = RoundedCornerShape(4.dp),
         modifier =
@@ -51,5 +55,17 @@ fun AppsyncButtonPreview() {
         },
         R.drawable.ic_close,
         contentDescription = "",
+    )
+}
+
+@Preview(showSystemUi = true)
+@Composable
+fun AppsyncButtonDisabledPreview() {
+    AppsyncButton(
+        {
+        },
+        R.drawable.ic_close,
+        contentDescription = "",
+        enabled = false,
     )
 }
