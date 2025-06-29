@@ -57,7 +57,7 @@ class UserSettingsRepository @Inject constructor(
                     accountId = account.account.id,
                     isStreakOn = streakRequest.isStreakOn,
                     streakTimestamp = streakRequest.streakTimestamp ?: System.currentTimeMillis().toString(),
-                    isSynced = true,
+                    isSynced = true
                 )
                 accountDao.updateStreaksSettings(streaksSettingsEntity)
                 // Return updated account
@@ -74,12 +74,9 @@ class UserSettingsRepository @Inject constructor(
                     accountId = account.account.id,
                     isStreakOn = streakRequest.isStreakOn,
                     streakTimestamp = streakRequest.streakTimestamp ?: System.currentTimeMillis().toString(),
-                    isSynced = false,
+                    isSynced = false
                 )
                 accountDao.updateStreaksSettings(streaksSettingsEntity)
-
-                // Force trigger Flow update by updating account's sync status
-                accountDao.updateSyncStatus(account.account.id, false)
 
                 // Return updated account
                 val updatedAccount = accountDao.getActiveAccount().first()
@@ -103,15 +100,11 @@ class UserSettingsRepository @Inject constructor(
                 val weightlessSettingsEntity = WeightlessSettingsEntity(
                     accountId = account.account.id,
                     isWeightlessOn = weightlessRequest.isWeightlessOn,
-                    weightlessTimestamp = weightlessRequest.weightlessTimestamp ?: System.currentTimeMillis()
-                        .toString(),
+                    weightlessTimestamp = weightlessRequest.weightlessTimestamp ?: System.currentTimeMillis().toString(),
                     weightlessWeight = weightlessRequest.weightlessWeight?.toFloat() ?: 0.0f,
-                    isSynced = true,
+                    isSynced = true
                 )
                 accountDao.updateWeightlessSettings(weightlessSettingsEntity)
-
-                // Force trigger Flow update by updating account's sync status
-                accountDao.updateSyncStatus(account.account.id, true)
 
                 // Return updated account
                 val updatedAccount = accountDao.getActiveAccount().first()
@@ -126,15 +119,11 @@ class UserSettingsRepository @Inject constructor(
                 val weightlessSettingsEntity = WeightlessSettingsEntity(
                     accountId = account.account.id,
                     isWeightlessOn = weightlessRequest.isWeightlessOn,
-                    weightlessTimestamp = weightlessRequest.weightlessTimestamp ?: System.currentTimeMillis()
-                        .toString(),
+                    weightlessTimestamp = weightlessRequest.weightlessTimestamp ?: System.currentTimeMillis().toString(),
                     weightlessWeight = weightlessRequest.weightlessWeight?.toFloat() ?: 0.0f,
-                    isSynced = false,
+                    isSynced = false
                 )
                 accountDao.updateWeightlessSettings(weightlessSettingsEntity)
-
-                // Force trigger Flow update by updating account's sync status
-                accountDao.updateSyncStatus(account.account.id, false)
 
                 // Return updated account
                 val updatedAccount = accountDao.getActiveAccount().first()
@@ -159,12 +148,9 @@ class UserSettingsRepository @Inject constructor(
                     accountId = account.account.id,
                     isStreakOn = request.isStreakOn,
                     streakTimestamp = request.streakTimestamp ?: System.currentTimeMillis().toString(),
-                    isSynced = false, // Mark as unsynced for offline mode
+                    isSynced = false // Mark as unsynced for offline mode
                 )
                 accountDao.updateStreaksSettings(streaksSettingsEntity)
-
-                // Force trigger Flow update by updating account's sync status
-                accountDao.updateSyncStatus(account.account.id, false)
 
                 // Return updated account
                 val updatedAccount = accountDao.getActiveAccount().first()
@@ -193,12 +179,9 @@ class UserSettingsRepository @Inject constructor(
                     isWeightlessOn = request.isWeightlessOn,
                     weightlessTimestamp = request.weightlessTimestamp ?: System.currentTimeMillis().toString(),
                     weightlessWeight = request.weightlessWeight?.toFloat() ?: 0.0f,
-                    isSynced = false, // Mark as unsynced for offline mode
+                    isSynced = false // Mark as unsynced for offline mode
                 )
                 accountDao.updateWeightlessSettings(weightlessSettingsEntity)
-
-                // Force trigger Flow update by updating account's sync status
-                accountDao.updateSyncStatus(account.account.id, false)
 
                 // Return updated account
                 val updatedAccount = accountDao.getActiveAccount().first()
