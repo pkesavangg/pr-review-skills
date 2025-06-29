@@ -35,5 +35,5 @@ data class Account(
 
     // Notification settings
     val entryNotificationsEnabled: Boolean? = false,
-    val showWeightInNotifications: Boolean? = false
+    val showWeightInNotifications: Boolean? = false,
 )
