@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppScaffold
+import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SettingsSection
 import com.greatergoods.meapp.features.common.model.SettingColorType
@@ -133,8 +134,15 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Height,
-                            type = SettingsItemType.TextOnly("5' 7\""),
-                            onClick = { },
+                            type = SettingsItemType.TextOnly(
+                                HeightInput.formatHeightDisplay(
+                                    height = state.account?.height,
+                                    isMetric = state.account?.weightUnit?.value == "kg"
+                                )
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowHeightModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UnitType,
@@ -274,6 +282,7 @@ fun SettingsScreenContent(
         }
     }
 }
+
 
 @PreviewTheme
 @Composable

@@ -17,6 +17,8 @@ import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IUserSettingsService
+import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -107,6 +109,10 @@ constructor(
 
             is SettingsIntent.ShowNotificationsModal -> {
                 onNotificationsClick()
+            }
+
+            is SettingsIntent.ShowHeightModal -> {
+                onHeightClick()
             }
 
             is SettingsIntent.ShowWeightlessModal -> {
@@ -365,6 +371,85 @@ constructor(
     fun onUnitTypeClick() {
         AppLog.d("SettingsViewModel", "Unit type clicked")
         showUnitTypeModal()
+    }
+
+    fun onHeightClick() {
+        AppLog.d("SettingsViewModel", "Height clicked")
+        showHeightModal()
+    }
+
+    /**
+     * Shows the height picker modal.
+     * Uses metric (cm) or imperial (ft/in) based on user's weight unit preference.
+     */
+    private fun showHeightModal() {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for height update")
+            return
+        }
+
+        val currentHeightInput = HeightInput.fromStoredHeight(
+            storedHeight = currentAccount.height ?: 1700, // Default to 170cm (1700 in stored format)
+            isMetric = currentAccount.weightUnit?.value == "kg"
+        )
+
+        dialogQueueService.enqueue(
+            DialogModel.Custom(
+                contentKey = DialogType.HeightPicker,
+                params = mapOf("value" to currentHeightInput),
+                onConfirm = { selectedHeight ->
+                    if (selectedHeight is HeightInput) {
+                        onHeightUpdate(selectedHeight)
+                    }
+                },
+                onDismiss = {
+                    AppLog.d(TAG, "Height picker cancelled")
+                },
+            )
+        )
+    }
+
+
+
+    /**
+     * Updates the height via the body composition service.
+     * Follows the same pattern as Angular height update method.
+     */
+    private fun onHeightUpdate(heightInput: HeightInput) {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for height update")
+            return
+        }
+
+        // Convert HeightInput to stored format
+        val newStoredHeight = heightInput.toStoredHeight()
+
+        // Check if height actually changed
+        if (currentAccount.height == newStoredHeight) {
+            AppLog.d(TAG, "Height is already set to $newStoredHeight, no update needed")
+            return
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating height...")
+        viewModelScope.launch {
+            try {
+                val bodyComposition = BodyCompUpdateRequest(
+                    height = newStoredHeight,
+                    activityLevel = currentAccount.activityLevel ?: "normal",
+                    weightUnit = currentAccount.weightUnit?.value ?: "lb"
+                )
+                bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
+                AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating height", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
     }
 
     fun onGoalSettingClick() {
