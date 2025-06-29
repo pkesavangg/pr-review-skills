@@ -112,16 +112,17 @@ private fun processFrameWithJNI(
 ) {
     try {
         if (imageProxy.format == ImageFormat.YUV_420_888) {
-            // Check for low light conditions
-            val isLowLight = AppSyncLowLightDetector.isLowLight(imageProxy)
-            onLowLightDetected(isLowLight)
-
+            // Extract Y-plane data once for both low light detection and scanning
             val yBuffer = imageProxy.planes[0].buffer
             val width = imageProxy.width
             val height = imageProxy.height
             val ySize = yBuffer.remaining()
             val yBytes = ByteArray(ySize)
             yBuffer.get(yBytes)
+
+            // Check for low light conditions using the extracted data
+            val isLowLight = AppSyncLowLightDetector.isLowLight(yBytes, width, height)
+            onLowLightDetected(isLowLight)
 
             // Call native detector using the unified bridge
             val bits = CameraHandlerCallback.nativeDetector(yBytes, width, height)

@@ -20,7 +20,34 @@ object AppSyncLowLightDetector {
     private const val SAMPLE_RATE = 0.1 // Sample 10% of pixels for performance
 
     /**
+     * Detects if the current frame has low light conditions using pre-extracted Y-plane data.
+     * This method should be used when the Y-plane data has already been extracted for scanning.
+     *
+     * @param yBytes Pre-extracted Y-plane bytes (luminance data)
+     * @param width Image width
+     * @param height Image height
+     * @return true if low light is detected, false otherwise
+     */
+    fun isLowLight(yBytes: ByteArray, width: Int, height: Int): Boolean {
+        return try {
+            val averageLuminance = calculateAverageLuminance(yBytes, width, height)
+            val isLowLight = averageLuminance < LOW_LIGHT_THRESHOLD
+
+            if (isLowLight) {
+                Log.d(TAG, "Low light detected: average luminance = $averageLuminance")
+            }
+
+            isLowLight
+        } catch (e: Exception) {
+            Log.e(TAG, "Error detecting low light", e)
+            false
+        }
+    }
+
+    /**
      * Detects if the current frame has low light conditions.
+     * Note: This method consumes the ImageProxy buffer and should not be used
+     * when the same buffer is needed for scanning.
      *
      * @param imageProxy The camera image proxy to analyze
      * @return true if low light is detected, false otherwise
@@ -54,6 +81,8 @@ object AppSyncLowLightDetector {
 
     /**
      * Detects if the current frame has low light conditions.
+     * Note: This method consumes the Image buffer and should not be used
+     * when the same buffer is needed for scanning.
      *
      * @param image The camera image to analyze
      * @return true if low light is detected, false otherwise
@@ -87,6 +116,8 @@ object AppSyncLowLightDetector {
 
     /**
      * Detects if the current frame has very low light conditions.
+     * Note: This method consumes the Image buffer and should not be used
+     * when the same buffer is needed for scanning.
      *
      * @param image The camera image to analyze
      * @return true if very low light is detected, false otherwise
