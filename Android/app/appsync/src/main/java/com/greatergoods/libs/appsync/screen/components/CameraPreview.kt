@@ -9,6 +9,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -45,56 +46,59 @@ fun CameraPreview(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     Log.i("CHECK", AppSyncStrings.Initializes)
-    AndroidView(
-        factory = { ctx ->
-            val previewView =
-                PreviewView(ctx).apply {
-                    layoutParams =
-                        FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
-                }
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-            cameraProviderFuture.addListener(
-                {
-                    try {
-                        val cameraProvider = cameraProviderFuture.get()
-                        val preview =
-                            Preview.Builder().build().also {
-                                it.setSurfaceProvider(previewView.surfaceProvider)
-                            }
-                        val imageAnalyzer =
-                            ImageAnalysis
-                                .Builder()
-                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                .build()
-                        imageAnalyzer.setAnalyzer(
-                            cameraExecutor,
-                            { imageProxy ->
-                                processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected)
-                            },
-                        )
-                        cameraProvider.unbindAll()
-                        val camera =
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                CameraSelector.DEFAULT_BACK_CAMERA,
-                                preview,
-                                imageAnalyzer,
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { ctx ->
+                val previewView =
+                    PreviewView(ctx).apply {
+                        layoutParams =
+                            FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
                             )
-                        onCameraReady(camera, camera.cameraControl, camera.cameraInfo)
-                    } catch (exc: Exception) {
-                        Log.e("AppSyncScan", AppSyncStrings.CameraBindingFailed, exc)
-                        onError(AppSyncStrings.CameraInitializationFailed)
                     }
-                },
-                ContextCompat.getMainExecutor(ctx),
-            )
-            previewView
-        },
-        modifier = Modifier.fillMaxSize(),
-    )
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                cameraProviderFuture.addListener(
+                    {
+                        try {
+                            val cameraProvider = cameraProviderFuture.get()
+                            val preview =
+                                Preview.Builder().build().also {
+                                    it.setSurfaceProvider(previewView.surfaceProvider)
+                                }
+                            val imageAnalyzer =
+                                ImageAnalysis
+                                    .Builder()
+                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                    .build()
+                            imageAnalyzer.setAnalyzer(
+                                cameraExecutor,
+                                { imageProxy ->
+                                    processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected)
+                                },
+                            )
+                            cameraProvider.unbindAll()
+                            val camera =
+                                cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    CameraSelector.DEFAULT_BACK_CAMERA,
+                                    preview,
+                                    imageAnalyzer,
+                                )
+                            onCameraReady(camera, camera.cameraControl, camera.cameraInfo)
+                        } catch (exc: Exception) {
+                            Log.e("AppSyncScan", AppSyncStrings.CameraBindingFailed, exc)
+                            onError(AppSyncStrings.CameraInitializationFailed)
+                        }
+                    },
+                    ContextCompat.getMainExecutor(ctx),
+                )
+                previewView
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+        CameraOverlayBox()
+    }
 }
 
 /**
