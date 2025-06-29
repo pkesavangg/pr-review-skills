@@ -93,6 +93,7 @@ fun AppSyncScanScreen(
     var cameraReady by remember { mutableStateOf(false) }
     var cameraError by remember { mutableStateOf<String?>(null) }
     var showResultTransition by remember { mutableStateOf(false) }
+    var showLowLightWarning by remember { mutableStateOf(false) }
 
     // Cleanup camera executor when scan completes or composable is disposed
     DisposableEffect(resultHandled) {
@@ -186,9 +187,13 @@ fun AppSyncScanScreen(
                     onError = { errorMsg ->
                         cameraError = errorMsg
                     },
+                    onLowLightDetected = { isLowLight ->
+                        showLowLightWarning = isLowLight
+                    },
                 )
                 OverlayControls(
                     zoomLevel = zoomLevel,
+                    showLowLightWarning = showLowLightWarning,
                     onZoomIn = {
                         if (zoomLevel < AppSyncConstants.MAX_ZOOM) {
                             zoomLevel += AppSyncConstants.ZOOM_STEP

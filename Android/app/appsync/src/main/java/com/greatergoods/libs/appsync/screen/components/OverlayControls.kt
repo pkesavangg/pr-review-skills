@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.libs.appsync.R
@@ -113,9 +115,15 @@ fun OverlayControls(
             ) {
                 Image(
                     painter = painterResource(R.drawable.warning),
-                    contentDescription = "Low light warning",
+                    contentDescription = AppSyncStrings.LowLightWarning,
                     modifier = Modifier.size(50.dp),
                 )
+                // Text(
+                //     text = AppSyncStrings.LowLightMessage,
+                //     color = Color.White,
+                //     style = MaterialTheme.typography.bodyMedium,
+                //     modifier = Modifier.padding(top = 8.dp),
+                // )
             }
         }
 
@@ -158,4 +166,10 @@ fun OverlayControlsMaxZoomPreview() {
 @Composable
 fun OverlayControlsMinZoomPreview() {
     OverlayControls(1.0f, true, {}, {}, {}) {}
+}
+
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+fun OverlayControlsLowLightPreview() {
+    OverlayControls(1.0f, showLowLightWarning = true, {}, {}, {}) {}
 }

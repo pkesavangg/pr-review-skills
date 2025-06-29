@@ -17,6 +17,10 @@ object AppSyncStrings {
     const val ZoomOut = "Zoom out"
     const val ManualEntry = "Manual entry"
 
+    // Low light warning
+    const val LowLightWarning = "Low light detected"
+    const val LowLightMessage = "Please move to a brighter area for better scanning"
+
     // Log messages
     const val CameraBindingFailed = "Camera binding failed"
     const val EmptyBitArrayReceived = "Empty bit array received"

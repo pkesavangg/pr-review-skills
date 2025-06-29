@@ -20,6 +20,7 @@ import com.dmdbrands.appsync.CameraHandlerCallback
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
 import com.greatergoods.libs.appsync.utility.AppSyncFs003Interpreter
+import com.greatergoods.libs.appsync.utility.AppSyncLowLightDetector
 import java.util.concurrent.ExecutorService
 import android.graphics.ImageFormat
 import android.util.Log
@@ -31,6 +32,7 @@ import android.widget.FrameLayout
  * Notifies when camera is ready via onCameraReady callback.
  * Sets up ImageAnalysis for frame processing and calls onScanResult when a valid result is found.
  * Calls onError if camera initialization fails.
+ * Detects low light conditions and notifies via onLowLightDetected callback.
  */
 @Composable
 fun CameraPreview(
@@ -38,6 +40,7 @@ fun CameraPreview(
     cameraExecutor: ExecutorService,
     onScanResult: (AppSyncResult) -> Unit,
     onError: (String) -> Unit = {},
+    onLowLightDetected: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -69,7 +72,7 @@ fun CameraPreview(
                         imageAnalyzer.setAnalyzer(
                             cameraExecutor,
                             { imageProxy ->
-                                processFrameWithJNI(imageProxy, onScanResult)
+                                processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected)
                             },
                         )
                         cameraProvider.unbindAll()
@@ -100,13 +103,19 @@ fun CameraPreview(
  * Calls AppSyncJniBridge.nativeDetector and handles the result.
  * Decodes the result using AppSyncFs003Interpreter.
  * Calls onScanResult with a valid AppSyncResult.
+ * Detects low light conditions and calls onLowLightDetected.
  */
 private fun processFrameWithJNI(
     imageProxy: ImageProxy,
     onScanResult: (AppSyncResult) -> Unit,
+    onLowLightDetected: (Boolean) -> Unit,
 ) {
     try {
         if (imageProxy.format == ImageFormat.YUV_420_888) {
+            // Check for low light conditions
+            val isLowLight = AppSyncLowLightDetector.isLowLight(imageProxy)
+            onLowLightDetected(isLowLight)
+
             val yBuffer = imageProxy.planes[0].buffer
             val width = imageProxy.width
             val height = imageProxy.height
