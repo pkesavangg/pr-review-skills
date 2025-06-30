@@ -16,6 +16,7 @@ import Combine
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var accountService: AccountService
+    @Injector var logger: LoggerService
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     
@@ -46,6 +47,8 @@ final class SignupStore: ObservableObject {
     
     private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
+    
+    private let tag = "SignupStore"
     
     init() {
         setupFormObservers()
@@ -218,6 +221,11 @@ final class SignupStore: ObservableObject {
             }
             resetForm()
         } catch {
+            logger.log(level: .error, tag: tag, message: "Signup Error: \(error)")
+            if case AccountError.maxAccountsReached = error {
+                showMaxUserAccountsAlert()
+                return
+            }
             handleSignupError(error)
         }
         notificationService.dismissLoader()
@@ -360,5 +368,19 @@ final class SignupStore: ObservableObject {
 
         // Ensure the primary action button reflects the current (reset) state.
         updateNextButtonState()
+    }
+    
+    /// Presents an alert informing the user that the maximum number of accounts
+    /// has been reached.
+    private func showMaxUserAccountsAlert() {
+        let alertLang = alertLang.MaxUsersAlert
+        let alert = AlertModel(
+            title: alertLang.title,
+            message: isFromAccountSwitching ? alertLang.message : alertLang.logInAndRemoveMessage,
+            buttons: [
+                AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 }

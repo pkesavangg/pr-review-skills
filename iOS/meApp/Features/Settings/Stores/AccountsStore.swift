@@ -73,8 +73,11 @@ class AccountsStore: ObservableObject {
     
     /// Triggers display of `LoginScreen`. Pass the email to pre-fill if available.
     /// - Parameter email: Optional email address to prefill in the login form.
-    func handleLoginCTA(email: String? = nil) {
-        if accounts.count >= appConstants.Account.maxAccounts {
+    /// - Parameter isUserExpired: Indicates if the user account is expired.
+    func handleLoginCTA(email: String? = nil, isUserExpired: Bool = false) {
+        // If the user is expired, allow login with the same email.
+        // If the user modifies the email and the account limit has been reached, show the max accounts alert.
+        if accounts.count >= appConstants.Account.maxAccounts && !isUserExpired {
             showMaxUserAccountsAlert()
             return
         }

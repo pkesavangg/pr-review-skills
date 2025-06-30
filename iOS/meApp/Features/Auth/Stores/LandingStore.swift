@@ -21,6 +21,8 @@ final class LandingStore: ObservableObject {
     @Published var userItems: [UserItemInfo] = []
     
     let loadingLang = LoaderStrings.self
+    private let alertStrings = AlertStrings.self
+    private let appConstants = AppConstants.self
     
     // MARK: Private
     private var cancellables: Set<AnyCancellable> = []
@@ -74,5 +76,30 @@ final class LandingStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Failed to switch account", data: error.localizedDescription)
             }
         }
+    }
+    
+    // MARK: Max Accounts Handling
+    /// Returns `true` if another account can be added. If the maximum number of
+    /// accounts has already been reached, shows an alert and returns `false`.
+    func canAddMoreAccounts() -> Bool {
+        if accounts.count >= appConstants.Account.maxAccounts {
+            showMaxUserAccountsAlert()
+            return false
+        }
+        return true
+    }
+    
+    /// Presents an alert informing the user that the maximum number of accounts
+    /// has been reached.
+    private func showMaxUserAccountsAlert() {
+        let alertLang = alertStrings.MaxUsersAlert
+        let alert = AlertModel(
+            title: alertLang.title,
+            message: alertLang.logInAndRemoveMessage,
+            buttons: [
+                AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 } 

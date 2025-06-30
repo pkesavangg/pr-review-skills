@@ -4,6 +4,7 @@ import Combine
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
     static let shared: AccountService = AccountService()
+    @Injector var notificationService: NotificationHelperService
     
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
@@ -11,6 +12,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
+
+    var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
     
     init() {
@@ -18,7 +21,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         Task {
             do {
                 try await updatePublishedState()
-                let _ = try await refreshAccount()
                 let _ = try await refreshAllAccounts()
                 try await syncUnsyncedAccounts() // Try to sync any offline changes
             } catch {
@@ -33,6 +35,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     }
                 })
                 .store(in: &cancellables)
+            try await updatePublishedState()
         }
     }
     
@@ -42,9 +45,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func signUp(email: String, password: String, profile: Profile) async throws -> Account {
         do {
             // Check if maximum accounts reached
-            if try await hasReachedMaxAccounts() {
-                throw AccountError.maxAccountsReached
-            }
+            try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.createAccount(email: email, password: password, profile: profile)
             let account = Account(from: response.account)
             account.accessToken = response.accessToken
@@ -68,9 +69,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func logIn(email: String, password: String) async throws -> Account {
         do {
             // Check if maximum accounts reached
-            if try await hasReachedMaxAccounts() {
-                throw AccountError.maxAccountsReached
-            }
+            try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.logIn(email: email, password: password)
             let account = Account(from: response.account)
             account.accessToken = response.accessToken
@@ -92,7 +91,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     /// Logs out the current active account or a specific account by ID.
-    func logOut(accountId: String? = nil) async throws {
+    func logOut(accountId: String? = nil, isAutoLogout: Bool = false) async throws {
         // Always try API, fallback to local only if network error
         // if accountId is nil, use current logged in account
         guard let accountId = accountId ?? activeAccount?.accountId else {
@@ -103,23 +102,28 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.accountNotFound(id: accountId)
         }
         
-        do {
-            // Pass the fcm token and accountId to the API for logout
-            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
-        } catch {
-            // Ignore errors during logout
+        // Helper to perform the actual logout work (API + local updates)
+        let performLogout: @Sendable () async throws -> Void = { [weak self] in
+            guard let self else { return }
+            try await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout)
         }
         
-        do {
-            // Logout the account locally (happens regardless of API success/failure)
-            localAccount.isLoggedIn = false
-            localAccount.isActiveAccount = false
-            try await localRepo.saveAccount(localAccount)
-            
-        } catch {
-            // Ignore errors during logout
+        // Notify observers **before** performing the local logout so UI can react.
+        if isAutoLogout, localAccount.isActiveAccount == true {
+            let userName = "\(localAccount.firstName ?? "")"
+            let alert = AlertModel(
+                title: alertLang.title(userName),
+                message: alertLang.message,
+                buttons: [
+                    AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in
+                        Task { try? await performLogout() }
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        } else {
+            try await performLogout()
         }
-        try await updatePublishedState()
     }
     
     /// Deletes the current active account or a specific account by ID.
@@ -382,11 +386,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func refreshAllAccounts() async throws {
         let accounts = try await localRepo.fetchAllAccounts()
         for account in accounts {
-            // Skip active account to avoid unnecessary refresh
-            if account.isActiveAccount ?? false {
-                continue
-            }
-            
             do {
                 _ = try await refreshAccount(accountId: account.accountId)
             } catch {
@@ -548,7 +547,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     isHealthKitOn: integrationSettings.isMfpOn,
                     isHealthConnectOn: integrationSettings.isHealthConnectOn
                 )
-               let _ = try await updateIntegrations(integrations: integrations)
+                let _ = try await updateIntegrations(integrations: integrations)
             }
             
             // Mark account as synced
@@ -698,6 +697,18 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    /// Checks whether the maximum number of allowed accounts has been reached.
+    /// If the limit is exceeded and the email does not match any existing logged-in account,
+    /// it throws a `maxAccountsReached` error to prevent adding a new account.
+    private func checkIfMaxAccountsReached(email: String) async throws {
+        if try await hasReachedMaxAccounts() {
+            allAccounts = try await localRepo.fetchAllAccounts().filter { $0.isLoggedIn == true }
+            if !(allAccounts.contains { $0.email == email } ) {
+                throw AccountError.maxAccountsReached
+            }
+        }
+    }
+    
     /// Checks if the maximum number of accounts has been reached.
     private func hasReachedMaxAccounts() async throws -> Bool {
         let count = try await getAccountCount()
@@ -707,6 +718,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Gets the count of all accounts stored locally.
     private func getAccountCount() async throws -> Int {
         let accounts = try await localRepo.fetchAllAccounts()
+            .filter { $0.isLoggedIn == true }
         return accounts.count
     }
     
@@ -722,6 +734,29 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the published state of active and all accounts.
     func updatePublishedState() async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
-        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true })
+        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true})
+    }
+    
+    // MARK: - Private Helpers
+    /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
+    private func executeLogout(on localAccount: Account, isAutoLogout: Bool) async throws {
+        do {
+            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
+        } catch {
+            // Ignore API errors during logout
+        }
+        
+        do {
+            // Logout the account locally (happens regardless of API success/failure)
+            localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
+            localAccount.isActiveAccount = false
+            localAccount.isExpired = isAutoLogout
+            try await localRepo.updateAccount(localAccount)
+        } catch {
+            // Ignore local persistence errors during logout
+        }
+        
+        // Attempt to refresh published state; propagate any errors to the caller
+        try await updatePublishedState()
     }
 }

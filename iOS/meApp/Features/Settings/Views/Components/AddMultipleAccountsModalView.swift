@@ -68,15 +68,7 @@ struct AddMultipleAccountsModalView: View {
         ZStack() {
             VStack {
                 ZStack {
-                    // TODO: Replace with a profile icon from the App Icons once available
-                    Circle()
-                        .stroke(theme.statusIconPrimary, lineWidth: 3)
-                        .frame(width: 50, height: 50)
-
-                    Image(systemName: "person.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
+                    AppIconView(icon: AppAssets.userProfile, size: IconSize(width: 60, height: 60))
                         .foregroundColor(theme.statusIconPrimary)
                 }
             }
@@ -91,7 +83,7 @@ struct AddMultipleAccountsModalView: View {
             )
             .overlay {
                 Circle()
-                    .stroke(.white, lineWidth: 3)
+                    .stroke(theme.backgroundPrimary, lineWidth: 3)
                     .frame(width: 54, height: 54)
             }
             .padding(.trailing, 40)

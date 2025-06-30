@@ -187,7 +187,10 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales,
                 onTap: {router.navigate(to:.addEditScales)}))
                 .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations, onTap: {
+                tabViewModel.showTabBar = false
+                router.navigate(to: .integrations)
+            }))
                 .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
                 settingsStore.handleExport()
