@@ -33,8 +33,8 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
         
         do {
             let decoder = JSONDecoder()
-            let data = try decoder.decode(IntegrationInfo.self, from: data)
-            return data
+            let integrationData = try decoder.decode(IntegrationInfo.self, from: data)
+            return integrationData
         } catch {
             logger.log(level: .error, tag: "IntegrationRepository", message: "Failed to decode integration info: \(error.localizedDescription)")
             throw error
