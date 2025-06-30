@@ -29,8 +29,6 @@ struct ScaleStatusBanner: View {
                     .foregroundColor(theme.statusIconPrimary)
             }
         }
-        .padding(.horizontal, .spacingSM)
-        .padding(.vertical, .spacingXS)
         .background(theme.backgroundPrimary)
         .cornerRadius(10)
     }

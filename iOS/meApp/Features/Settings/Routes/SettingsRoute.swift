@@ -13,7 +13,7 @@ enum SettingsRoute: Routable {
     case editProfile
     case changePassword
     case addAndEditScales
-    case scaleSettings(scaleName: String, scaleType: ScaleType)
+    case scaleSettings(scale: Device, scaleType: ScaleType)
     
     var body: some View {
         switch self {
@@ -23,8 +23,8 @@ enum SettingsRoute: Routable {
             ChangePasswordScreen()
         case .addAndEditScales:
             MyScalesScreen()
-        case .scaleSettings(let scaleName, let scaleType):
-            ScaleSettingsScreen(scaleName: scaleName, scaleType: scaleType)
+        case .scaleSettings(let scale, let scaleType):
+            ScaleSettingsScreen(scale: scale, scaleType: scaleType)
         }
     }
 }
