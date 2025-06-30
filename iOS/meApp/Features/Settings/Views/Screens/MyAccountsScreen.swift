@@ -12,16 +12,8 @@ struct MyAccountsScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var router: Router<SettingsRoute>
     @EnvironmentObject private var settingsStore: SettingsStore
-    
-    // Placeholder data – replace with real accounts when wired up.
-    @State private var accounts: [UserItemInfo] = [
-        .init(accountID: "abc", name: "Kristin", email: "kristin@gmail.com", isSelected: true,  isExpired: false, canShowSelection: true),
-        .init(accountID: "123", name: "William", email: "william@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
-        .init(accountID: "xyz", name: "Jacob",   email: "jacob@gmail.com",   isSelected: false, isExpired: true,  canShowSelection: true)
-    ]
-    
-    @State private var showDeleteAlert = false
-    @State private var accountPendingDelete: UserItemInfo? = nil
+    @StateObject private var accountsStore = AccountsStore()
+    @State private var openItemID: UUID? = nil
     
     private let strings = MyAccountsStrings.self
     
@@ -38,57 +30,75 @@ struct MyAccountsScreen: View {
                 theme.backgroundSecondary.ignoresSafeArea()
                 List {
                     accountList
-                    actionButtons
+                    loginCTA
+                    signupCTA
                 }
                 .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
             }
         }
+        .sheet(isPresented: $accountsStore.canShowLoginScreen, content: {
+            LoginScreen(prefilledEmail: accountsStore.emailForLogin, isFromAccountSwitching: true)
+                .interactiveDismissDisabled()
+        })
+        .sheet(isPresented: $accountsStore.canShowAccountSignupScreen, content: {
+            SignupScreen(isFromAccountSwitching: true)
+                .interactiveDismissDisabled()
+        })
         .navigationBarBackButtonHidden(true)
-        .alert(strings.deleteAccountTitle, isPresented: $showDeleteAlert, presenting: accountPendingDelete) { item in
-            Button(strings.deleteAction, role: .destructive) {
-                if let idx = accounts.firstIndex(where: { $0.id == item.id }) {
-                    accounts.remove(at: idx)
-                }
-            }
-            Button(strings.cancelAction, role: .cancel) {}
-        } message: { item in
-            Text(strings.deleteMessagePrefix + item.email + "?")
-        }
     }
     
     // MARK: Account List
+    @ViewBuilder
     private var accountList: some View {
-        Section {
-            ForEach(accounts) { account in
-                UserListItemView(
-                    user: account,
-                    onTap: { id, isFromLogin in
-                        // TODO: Implement account switching / login flow.
-                    },
-                    onDelete: { _ in
-                        accountPendingDelete = account
-                        showDeleteAlert = true
-                    }
-                )
-                .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+        if accountsStore.userItems.count > 1 {
+            Section {
+                ForEach(accountsStore.userItems) { account in
+                    UserListItemView(
+                        user: account,
+                        openItemID: $openItemID,
+                        onTap: { id, isExpired in
+                            if isExpired {
+                                accountsStore.handleLoginCTA(email: account.email, isUserExpired: true)
+                            } else {
+                                accountsStore.switchActiveAccount(to: id)
+                            }
+                        },
+                        onDelete: { _ in
+                            accountsStore.userRemoveHandler(user: account)
+                        }
+                    )
+                    .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+                }
             }
         }
     }
     
     // MARK: Buttons
-    private var actionButtons: some View {
-        VStack(alignment:.center, spacing: .spacingLG) {
+    private var loginCTA: some View {
+        VStack(alignment: .center, spacing: .spacingLG) {
             ButtonView(text: strings.logIntoExistingAccount, type: .outlinedPrimary, size: .large, isDisabled: false) {
-                // TODO: Implement login flow
+                accountsStore.handleLoginCTA()
             }
+            
+        }
+        .frame(maxWidth: .infinity)
+        .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+    
+    private var signupCTA: some View {
+        VStack(alignment: .center, spacing: .spacingLG) {
             ButtonView(text: strings.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                // TODO: Implement create new account flow
+                accountsStore.handleSignupCTA()
             }
         }
         .frame(maxWidth: .infinity)
         .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
         .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .padding(.top, .spacingXS)
     }
 }
 

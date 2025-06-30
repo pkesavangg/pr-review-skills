@@ -12,30 +12,34 @@ struct UserListItemView: View {
     @Environment(\.appTheme) private var theme
     
     let user: UserItemInfo
+    var openItemID: Binding<UUID?>? // Optional binding to track open item for swipeable actions
     var iconSize: CGFloat = 32
     var onTap: ((String, Bool) -> Void)
     var onDelete: ((String) -> Void)? = nil // optional deletion trigger
     
     var body: some View {
-        Button {
-            onTap(user.accountID, user.isExpired)
-        } label: {
-            rowContent
-        }
-        .swipeableActions(buttons:
-                            user.isSelected || user.isExpired || onDelete == nil ? [] : [
-                                SwipeButton(
-                                    tint: theme.textError,
-                                    action: { onDelete?(user.accountID) },
-                                    label: {
-                                        AnyView(
-                                            AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
-                                                .foregroundColor(theme.backgroundPrimary)
-                                        )
-                                    }
+        rowContent
+            .contentShape(Rectangle()) // Makes entire row tappable
+            .onTapGesture {
+                onTap(user.accountID, user.isExpired)
+            }
+            .swipeableActions(
+                buttons:
+                    !user.canShowSelection || onDelete == nil ? [] : [
+                        SwipeButton(
+                            tint: theme.textError,
+                            action: { onDelete?(user.accountID) },
+                            label: {
+                                AnyView(
+                                    AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
+                                        .foregroundColor(theme.backgroundPrimary)
                                 )
-                            ]
-        )
+                            }
+                        )
+                    ],
+                itemID: user.id,
+                openItemID: openItemID
+            )
     }
     
     private var rowContent: some View {
@@ -67,7 +71,9 @@ struct UserListItemView: View {
             Spacer()
             if user.isExpired {
                 ButtonView(text: CommonStrings.logIn, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                    onTap(user.accountID, user.isExpired)
+                    if openItemID?.wrappedValue != user.id {
+                        onTap(user.accountID, user.isExpired)
+                    }
                 }
             } else if user.canShowSelection {
                 AppIconView(icon: user.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline, size: IconSize(width: 24, height: 24))
@@ -85,6 +91,8 @@ struct UserListItemView: View {
 struct AccountListView: View {
     @Environment(\.appTheme) private var theme
     @State private var accounts: [UserItemInfo] = [
+        .init(accountID: "567", name: "Kesavan", email: "kesavan@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
+        .init(accountID: "Random", name: "Random", email: "Random@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
         .init(accountID: "abc", name: "Kristin", email: "kristin@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
         .init(accountID: "123",name: "William", email: "william@gmail.com", isSelected: true, isExpired: false, canShowSelection: true),
         .init(accountID: "xyz",name: "Jacob", email: "jacob@gmail.com", isSelected: false, isExpired: true, canShowSelection: true)
@@ -92,16 +100,19 @@ struct AccountListView: View {
     
     @State private var showDeleteAlert = false
     @State private var userToDelete: UserItemInfo?
+    @State private var openItemID: UUID? = nil
     
     var body: some View {
         List {
             ForEach(accounts) { account in
                 UserListItemView(
                     user: account,
+                    openItemID: $openItemID, // Binding to track open item and closes the other open item
                     onTap: { _, isFromLogin in
                         print("\(account.name) tapped", isFromLogin)
                     },
                     onDelete: { _ in
+                        print("Delete tapped for \(account.name)")
                         userToDelete = account
                         showDeleteAlert = true
                     }

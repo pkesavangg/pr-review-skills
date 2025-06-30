@@ -32,7 +32,7 @@ final class TokenManager {
         }
         
         if retryCount >= AppConstants.Account.tokenRefreshMaxRetries {
-            try await accountService.logOut(accountId: accountId)
+            try await accountService.logOut(accountId: accountId, isAutoLogout: true)
             throw HTTPError.statusCode(HTTPStatusCode.unauthorized.rawValue)
         }
         
@@ -46,17 +46,13 @@ final class TokenManager {
             return tokens
         } catch {
             resumeWaitingRequests(with: error)
-            
             if let networkError = error as? HTTPError {
                 switch networkError {
+                case HTTPError.unauthorized:
+                    try await accountService.logOut(accountId: accountId, isAutoLogout: true)
+                    throw error
                 case .statusCode(let code):
-                    if code == HTTPStatusCode.unauthorized.rawValue {
-                        // Unauthorized error, attempt to refresh token
-                        if await accountId == accountService.activeAccount?.accountId {
-                            try await accountService.logOut(accountId: accountId)
-                        }
-                        throw error
-                    } else if let status = HTTPStatusCode(rawValue: code), status.isRetryable {
+                    if let status = HTTPStatusCode(rawValue: code), status.isRetryable {
                         return try await refreshToken(accountId: accountId, retryCount: retryCount + 1)
                     }
                 case .noInternet:
@@ -66,9 +62,7 @@ final class TokenManager {
                 }
             }
             // If we reach here, it means we couldn't refresh the token
-            if await accountId == accountService.activeAccount?.accountId {
-                try await accountService.logOut(accountId: accountId)
-            }
+            try await accountService.logOut(accountId: accountId, isAutoLogout: true)
             throw error
         }
     }

@@ -23,7 +23,8 @@ protocol AccountServiceProtocol {
 
     /// Logs out the account with the specified ID.
     /// - Parameter accountId: The ID of the account to log out. If nil, logs out the currently active account.
-    func logOut(accountId: String?) async throws
+    /// - Parameter isAutoLogout: Indicates if this is an automatic logout (e.g., due to inactivity).
+    func logOut(accountId: String?, isAutoLogout: Bool) async throws
 
     /// Deletes the currently active account.
     func deleteAccount() async throws

@@ -27,6 +27,14 @@ final class AccountRepository: AccountRepositoryProtocol {
     /// Saves a new account to the local data store.
     /// - Parameter account: The Account object to save.
     func saveAccount(_ account: Account) async throws {
+        // Remove any existing accounts that have the same email to avoid duplicates
+        let existingEmail = account.email // capture email as a value to use in the predicate
+        let duplicateDescriptor = FetchDescriptor<Account>(predicate: #Predicate<Account> { $0.email == existingEmail })
+        let duplicates = try context.fetch(duplicateDescriptor)
+        for dup in duplicates {
+            context.delete(dup)
+        }
+        // Now insert the new/updated account and persist the context
         context.insert(account)
         try context.save()
     }
