@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.libs.appsync.R
@@ -31,8 +29,27 @@ import com.greatergoods.libs.appsync.config.AppSyncConstants
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
 
 /**
- * Overlay UI controls for scan screen: zoom, manual entry, close.
- * @param onManualEntry If null, manual entry button is hidden.
+ * Overlay UI controls for the AppSync scan screen.
+ *
+ * This composable provides the complete set of user interface controls that appear
+ * as overlays on top of the camera preview. The controls are positioned strategically
+ * to provide easy access while not obstructing the scanning area. The layout includes:
+ *
+ * - **Top bar**: AppSync logo on the left and close button on the right
+ * - **Right side**: Zoom controls (zoom in/out buttons with zoom indicator)
+ * - **Left side**: Low light warning indicator (when conditions are poor)
+ * - **Bottom**: Manual entry button (optional, can be hidden)
+ *
+ * The controls automatically adjust their enabled states based on the current zoom
+ * level and provide visual feedback for various conditions like low light.
+ *
+ * @param zoomLevel Current zoom level of the camera (1.0 to 5.0)
+ * @param showLowLightWarning Whether to display the low light warning indicator
+ * @param onZoomIn Callback invoked when the zoom in button is pressed
+ * @param onZoomOut Callback invoked when the zoom out button is pressed
+ * @param onManualEntry Optional callback for manual entry. If null, the manual entry
+ *                      button is hidden
+ * @param onClose Callback invoked when the close button is pressed
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -44,7 +61,7 @@ fun OverlayControls(
     onManualEntry: (() -> Unit)? = null,
     onClose: () -> Unit,
 ) {
-    // Calculate enabled states for zoom buttons
+    // Calculate enabled states for zoom buttons based on current zoom level
     val canZoomIn = zoomLevel < AppSyncConstants.MAX_ZOOM
     val canZoomOut = zoomLevel > AppSyncConstants.MIN_ZOOM
 
@@ -52,49 +69,57 @@ fun OverlayControls(
         modifier =
             Modifier
                 .fillMaxSize()
-                // .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(
                     top = 24.dp,
                     start = 54.dp,
                     end = 24.dp,
                 ),
     ) {
+        // Top bar with logo and close button
         Row(
             modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Close button (top right)
+            // AppSync logo on the left
             Image(
                 painterResource(R.drawable.logo),
                 contentDescription = "Appsync Logo",
                 contentScale = ContentScale.FillWidth,
                 modifier = Modifier.width(100.dp),
             )
+
+            // Close button on the right
             AppsyncButton(
-                onClose,
+                onClick = onClose,
                 src = R.drawable.ic_close,
                 contentDescription = AppSyncStrings.CloseScan,
             )
         }
 
+        // Right side zoom controls
         Column(
             modifier = Modifier.align(Alignment.CenterEnd),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Zoom in button
             AppsyncButton(
                 onClick = onZoomIn,
                 src = R.drawable.ic_plus,
                 contentDescription = AppSyncStrings.ZoomIn,
                 enabled = canZoomIn,
             )
+
+            // Zoom indicator image
             Image(
                 painterResource(R.drawable.zoom),
                 contentDescription = "Zoom",
                 modifier = Modifier.width(40.dp),
                 contentScale = ContentScale.FillWidth,
             )
+
+            // Zoom out button
             AppsyncButton(
                 onClick = onZoomOut,
                 src = R.drawable.ic_minus,
@@ -103,7 +128,7 @@ fun OverlayControls(
             )
         }
 
-        // Low light warning (center vertical)
+        // Low light warning indicator (left side)
         if (showLowLightWarning) {
             Column(
                 modifier =
@@ -113,11 +138,14 @@ fun OverlayControls(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
+                // Warning icon
                 Image(
                     painter = painterResource(R.drawable.warning),
                     contentDescription = AppSyncStrings.LowLightWarning,
                     modifier = Modifier.size(50.dp),
                 )
+
+                // Optional warning text (commented out)
                 // Text(
                 //     text = AppSyncStrings.LowLightMessage,
                 //     color = Color.White,
@@ -127,7 +155,7 @@ fun OverlayControls(
             }
         }
 
-        // Zoom controls (bottom right)
+        // Bottom manual entry button (optional)
         Row(
             modifier =
                 Modifier
@@ -135,13 +163,18 @@ fun OverlayControls(
                     .padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.End,
         ) {
+            // Only show manual entry button if callback is provided
             if (onManualEntry != null) {
                 Button(
                     onClick = onManualEntry,
                     modifier = Modifier,
                     shape = RoundedCornerShape(4.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black,
+                        ),
                 ) {
                     Text(AppSyncStrings.ManualEntry.uppercase())
                 }
@@ -150,26 +183,78 @@ fun OverlayControls(
     }
 }
 
+/**
+ * Preview composable for OverlayControls with default zoom level.
+ *
+ * Shows the controls in their normal state with zoom level 1.0 and low light
+ * warning enabled. Used for development and testing purposes.
+ */
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsPreview() {
-    OverlayControls(1.0f, true, {}, {}, {}) {}
+    OverlayControls(
+        zoomLevel = 1.0f,
+        showLowLightWarning = true,
+        onZoomIn = { /* Preview only */ },
+        onZoomOut = { /* Preview only */ },
+        onManualEntry = { /* Preview only */ },
+        onClose = { /* Preview only */ },
+    )
 }
 
+/**
+ * Preview composable for OverlayControls at maximum zoom level.
+ *
+ * Shows the controls when zoom is at maximum (5.0), demonstrating how the
+ * zoom in button becomes disabled. Used for development and testing purposes.
+ */
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsMaxZoomPreview() {
-    OverlayControls(5.0f, true, {}, {}, {}) {}
+    OverlayControls(
+        zoomLevel = 5.0f,
+        showLowLightWarning = true,
+        onZoomIn = { /* Preview only */ },
+        onZoomOut = { /* Preview only */ },
+        onManualEntry = { /* Preview only */ },
+        onClose = { /* Preview only */ },
+    )
 }
 
+/**
+ * Preview composable for OverlayControls at minimum zoom level.
+ *
+ * Shows the controls when zoom is at minimum (1.0), demonstrating how the
+ * zoom out button becomes disabled. Used for development and testing purposes.
+ */
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsMinZoomPreview() {
-    OverlayControls(1.0f, true, {}, {}, {}) {}
+    OverlayControls(
+        zoomLevel = 1.0f,
+        showLowLightWarning = true,
+        onZoomIn = { /* Preview only */ },
+        onZoomOut = { /* Preview only */ },
+        onManualEntry = { /* Preview only */ },
+        onClose = { /* Preview only */ },
+    )
 }
 
+/**
+ * Preview composable for OverlayControls with low light warning.
+ *
+ * Shows the controls with the low light warning indicator displayed on the
+ * left side. Used for development and testing purposes.
+ */
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsLowLightPreview() {
-    OverlayControls(1.0f, showLowLightWarning = true, {}, {}, {}) {}
+    OverlayControls(
+        zoomLevel = 1.0f,
+        showLowLightWarning = true,
+        onZoomIn = { /* Preview only */ },
+        onZoomOut = { /* Preview only */ },
+        onManualEntry = { /* Preview only */ },
+        onClose = { /* Preview only */ },
+    )
 }

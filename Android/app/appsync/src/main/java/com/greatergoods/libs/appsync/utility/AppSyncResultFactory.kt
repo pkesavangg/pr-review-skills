@@ -4,26 +4,44 @@ import com.greatergoods.libs.appsync.config.AppSyncConstants
 import com.greatergoods.libs.appsync.model.AppSyncResult
 
 /**
- * Factory for creating AppSyncResult objects.
- * Provides methods to create different types of results (success, cancel, manual, error).
+ * Factory for creating AppSyncResult objects for different scan scenarios.
+ *
+ * This object provides a centralized way to create [AppSyncResult] instances
+ * for various outcomes of the scanning process. It ensures consistent result
+ * creation and reduces code duplication across the scanning components.
+ *
+ * The factory supports creating results for:
+ * - Successful scans with measurement data
+ * - User cancellation of the scan
+ * - Manual entry selection
+ * - Error conditions
+ * - Empty/invalid scans
+ *
+ * Each factory method sets appropriate default values and flags to ensure
+ * the result accurately represents the specific scenario.
  */
 object AppSyncResultFactory {
     /**
      * Creates a successful scan result with measurement values.
      *
-     * @param weight Weight in kilograms
-     * @param fat Percent body fat
-     * @param muscle Percent muscle
-     * @param water Percent water
-     * @param mode Measurement mode (kg/lb)
-     * @param weightErrors Number of errors in weight extraction
-     * @param fatErrors Number of errors in fat extraction
-     * @param muscleErrors Number of errors in muscle extraction
-     * @param waterErrors Number of errors in water extraction
-     * @param modeErrors Number of errors in mode extraction
-     * @param errors Total number of errors
-     * @param zoom Zoom level used
-     * @return AppSyncResult with measurement data
+     * This method creates a result object representing a successful scan
+     * where valid measurement data was extracted from the FS003 protocol.
+     * All measurement values are optional (nullable) to handle cases where
+     * some measurements may not be available or valid.
+     *
+     * @param weight Weight in kilograms, or null if not available
+     * @param fat Percent body fat, or null if not available
+     * @param muscle Percent muscle, or null if not available
+     * @param water Percent water, or null if not available
+     * @param mode Measurement mode (e.g., "kg", "lb"), or null if not available
+     * @param weightErrors Number of transmission errors detected during weight extraction
+     * @param fatErrors Number of transmission errors detected during fat extraction
+     * @param muscleErrors Number of transmission errors detected during muscle extraction
+     * @param waterErrors Number of transmission errors detected during water extraction
+     * @param modeErrors Number of transmission errors detected during mode extraction
+     * @param errors Total number of transmission errors across all measurements
+     * @param zoom Zoom level used during the scan (1-5)
+     * @return [AppSyncResult] with measurement data and error counts
      */
     fun createSuccessResult(
         weight: Float?,
@@ -59,8 +77,12 @@ object AppSyncResultFactory {
     /**
      * Creates a cancel result when the user cancels the scan.
      *
-     * @param zoom Zoom level at time of cancellation
-     * @return AppSyncResult indicating cancellation
+     * This method creates a result object indicating that the user actively
+     * cancelled the scanning process. All measurement values are set to null
+     * since no scan was completed, and the [canceled] flag is set to true.
+     *
+     * @param zoom Zoom level at the time of cancellation (1-5)
+     * @return [AppSyncResult] indicating user cancellation with no measurements
      */
     fun createCancelResult(zoom: Int = AppSyncConstants.DEFAULT_ZOOM): AppSyncResult =
         AppSyncResult(
@@ -77,8 +99,13 @@ object AppSyncResultFactory {
     /**
      * Creates a manual entry result when the user chooses manual entry.
      *
-     * @param zoom Zoom level at time of manual entry selection
-     * @return AppSyncResult indicating manual entry
+     * This method creates a result object indicating that the user chose
+     * to manually enter measurement data instead of completing a scan.
+     * All measurement values are set to null since no scan was performed,
+     * and the [manual] flag is set to true.
+     *
+     * @param zoom Zoom level at the time of manual entry selection (1-5)
+     * @return [AppSyncResult] indicating manual entry selection with no measurements
      */
     fun createManualEntryResult(zoom: Int = AppSyncConstants.DEFAULT_ZOOM): AppSyncResult =
         AppSyncResult(
@@ -95,9 +122,14 @@ object AppSyncResultFactory {
     /**
      * Creates an error result when the scan fails.
      *
-     * @param errorMessage Optional error message
-     * @param zoom Zoom level at time of error
-     * @return AppSyncResult indicating error
+     * This method creates a result object indicating that the scan failed
+     * due to an error condition. All measurement values are set to null
+     * since no valid data was extracted, and the total error count is set
+     * to -1 to indicate an error state.
+     *
+     * @param errorMessage Optional error message describing the failure
+     * @param zoom Zoom level at the time of the error (1-5)
+     * @return [AppSyncResult] indicating scan failure with no measurements
      */
     fun createErrorResult(
         errorMessage: String? = null,
@@ -118,8 +150,13 @@ object AppSyncResultFactory {
     /**
      * Creates an empty result with no measurements.
      *
-     * @param zoom Zoom level
-     * @return AppSyncResult with null measurements
+     * This method creates a result object with no measurement data.
+     * This is typically used for initialization or when a scan completes
+     * but no valid data was extracted. All measurement values are set
+     * to null and error counts are set to 0.
+     *
+     * @param zoom Zoom level used during the scan (1-5)
+     * @return [AppSyncResult] with no measurements and zero error counts
      */
     fun createEmptyResult(zoom: Int = AppSyncConstants.DEFAULT_ZOOM): AppSyncResult =
         AppSyncResult(

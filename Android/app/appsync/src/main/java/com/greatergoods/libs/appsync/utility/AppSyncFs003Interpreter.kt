@@ -6,8 +6,22 @@ import com.greatergoods.libs.appsync.strings.AppSyncStrings
 import android.util.Log
 
 /**
- * Interpreter for FS003 protocol data.
- * Decodes bit arrays from the native detector into measurement values.
+ * Interpreter for FS003 protocol data from smart scales.
+ *
+ * This object is responsible for decoding the raw bit arrays received from the native
+ * detector into meaningful measurement values. The FS003 protocol is a proprietary
+ * protocol used by certain smart scales to encode weight, body fat, muscle, and water
+ * measurements in a specific bit pattern.
+ *
+ * The interpretation process involves:
+ * 1. Hamming code decoding to correct transmission errors
+ * 2. Bit extraction and assembly for each measurement type
+ * 3. Value conversion using protocol-specific constants
+ * 4. Validation of extracted values
+ * 5. Error counting and result creation
+ *
+ * The interpreter handles various edge cases including invalid measurements,
+ * transmission errors, and protocol-specific data formats.
  */
 object AppSyncFs003Interpreter {
     private const val TAG = "AppSyncFs003Interpreter"
@@ -15,24 +29,37 @@ object AppSyncFs003Interpreter {
     /**
      * Interprets a bit array from the native detector into measurement values.
      *
-     * @param bits Array of bits from the native detector
-     * @return AppSyncResult with decoded values, or null if invalid
+     * This is the main entry point for FS003 protocol interpretation. It takes
+     * the raw bit array detected by the native image processing code and converts
+     * it into a structured [AppSyncResult] containing all the extracted measurements.
+     *
+     * The interpretation process includes error correction using Hamming codes,
+     * extraction of individual measurement values, validation of the results,
+     * and creation of the final result object.
+     *
+     * @param bits Array of bits (0s and 1s) from the native detector representing
+     *             the FS003 protocol data pattern
+     * @return [AppSyncResult] with decoded measurement values, or null if the
+     *         bit array is empty or contains invalid data
      */
     fun interpret(bits: IntArray): AppSyncResult? {
+        // Validate input
         if (bits.isEmpty()) {
             Log.w(TAG, AppSyncStrings.EmptyBitArrayReceived)
             return null
         }
 
+        // Decode Hamming-encoded data and extract measurements
         val (data, errorsFound) = decodeHammingData(bits)
         val measurements = extractMeasurements(data, errorsFound)
 
-        // Validate the result
+        // Validate the extracted measurements
         if (isInvalidScan(measurements)) {
             Log.w(TAG, AppSyncStrings.InvalidScanDetected)
             return null
         }
 
+        // Create and return the final result
         return createResult(measurements, errorsFound)
     }
 

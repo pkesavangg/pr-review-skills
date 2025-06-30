@@ -40,10 +40,29 @@ import android.content.pm.PackageManager
 import android.util.Log
 
 /**
- * Main Composable for the scan screen. Shows CameraX preview and overlays UI controls.
- * Calls [onResult] when a scan result (including cancel/manual) is available.
- * @param initialZoom The initial zoom level (default: 1)
- * @param showManualEntryButton Whether to show the manual entry button (default: true)
+ * Main Composable for the AppSync scan screen.
+ *
+ * This composable provides the complete camera-based scanning interface, including:
+ * - Camera preview with real-time image analysis
+ * - Permission handling for camera access
+ * - Zoom controls with smooth animations
+ * - Overlay controls for user interaction
+ * - Error handling and status display
+ * - Result delivery to the parent component
+ *
+ * The composable manages its own state for camera permissions, zoom levels,
+ * scan results, and UI transitions. It automatically requests camera permissions
+ * if not already granted and provides appropriate feedback to the user.
+ *
+ * @param initialZoom The initial zoom level for the camera. Must be between
+ *                    [AppSyncConstants.MIN_ZOOM] and [AppSyncConstants.MAX_ZOOM].
+ *                    Defaults to [AppSyncConstants.DEFAULT_ZOOM].
+ * @param showManualEntryButton Whether to show the manual entry button in the
+ *                              overlay controls. When true, users can choose to
+ *                              manually enter data instead of scanning. Defaults to true.
+ * @param onResult Callback function that receives the scan result. This is called
+ *                 when the scan completes (successfully or with errors), when the
+ *                 user cancels, or when manual entry is selected.
  */
 @Composable
 fun AppSyncScanScreen(
@@ -54,6 +73,7 @@ fun AppSyncScanScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    // Camera permission state and launcher
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -68,18 +88,19 @@ fun AppSyncScanScreen(
             onResult = { granted -> hasCameraPermission = granted },
         )
 
+    // Request camera permission if not already granted
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
-    // CameraX state
+    // CameraX state management
     val cameraControlState = remember { mutableStateOf<CameraControl?>(null) }
     val cameraInfoState = remember { mutableStateOf<CameraInfo?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Zoom state with animation
+    // Zoom state with animation support
     var zoomLevel by remember {
         mutableStateOf(
             initialZoom.toFloat().coerceIn(AppSyncConstants.MIN_ZOOM, AppSyncConstants.MAX_ZOOM),
@@ -87,7 +108,7 @@ fun AppSyncScanScreen(
     }
     var zoomManager by remember { mutableStateOf<AppSyncZoomManager?>(null) }
 
-    // UI state
+    // UI state management
     var scanResult by remember { mutableStateOf<AppSyncResult?>(null) }
     var resultHandled by remember { mutableStateOf(false) }
     var cameraReady by remember { mutableStateOf(false) }
@@ -95,7 +116,7 @@ fun AppSyncScanScreen(
     var showResultTransition by remember { mutableStateOf(false) }
     var showLowLightWarning by remember { mutableStateOf(false) }
 
-    // Cleanup camera executor when scan completes or composable is disposed
+    // Cleanup resources when scan completes or composable is disposed
     DisposableEffect(resultHandled) {
         onDispose {
             if (resultHandled) {
@@ -105,7 +126,7 @@ fun AppSyncScanScreen(
         }
     }
 
-    // Manual/cancel handlers using the factory
+    // Manual entry handler - creates a manual entry result and delivers it
     val handleManualEntry = {
         if (!resultHandled) {
             val result = AppSyncResultFactory.createManualEntryResult(zoomLevel.toInt())
@@ -115,6 +136,8 @@ fun AppSyncScanScreen(
             onResult(result)
         }
     }
+
+    // Cancel handler - creates a cancel result and delivers it
     val handleCancel = {
         if (!resultHandled) {
             val result = AppSyncResultFactory.createCancelResult(zoomLevel.toInt())
@@ -125,7 +148,7 @@ fun AppSyncScanScreen(
         }
     }
 
-    // Update zoom manager when camera is ready
+    // Initialize zoom manager when camera is ready
     LaunchedEffect(cameraControlState.value, cameraInfoState.value, coroutineScope) {
         if (cameraControlState.value != null && cameraInfoState.value != null) {
             zoomManager =
@@ -134,27 +157,28 @@ fun AppSyncScanScreen(
                     cameraInfo = cameraInfoState.value,
                     coroutineScope = coroutineScope,
                 )
-            // Set initial zoom
+            // Set initial zoom without animation
             zoomManager?.setZoom(zoomLevel, animate = false)
         }
     }
 
-    // Update zoom when zoomLevel changes
+    // Update camera zoom when zoom level changes
     LaunchedEffect(zoomLevel) {
         zoomManager?.setZoom(zoomLevel, animate = true)
     }
 
+    // Main UI layout
     Box(modifier = Modifier.fillMaxSize()) {
         when {
+            // Show error message if camera initialization failed
             cameraError != null -> {
-                // Show error message if camera failed
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(text = cameraError!!, color = MaterialTheme.colorScheme.error)
                 }
             }
 
+            // Show completion transition when scan finishes
             scanResult != null && showResultTransition -> {
-                // Fade out transition before finishing
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn(),
@@ -167,8 +191,11 @@ fun AppSyncScanScreen(
                 }
             }
 
+            // Main scanning interface when camera permission is granted
             hasCameraPermission -> {
                 Log.i("CHECK", AppSyncStrings.Initializes1)
+
+                // Camera preview component with callbacks
                 CameraPreview(
                     onCameraReady = { camera, cameraControl, cameraInfo ->
                         cameraControlState.value = cameraControl
@@ -191,6 +218,8 @@ fun AppSyncScanScreen(
                         showLowLightWarning = isLowLight
                     },
                 )
+
+                // Overlay controls for user interaction
                 OverlayControls(
                     zoomLevel = zoomLevel,
                     showLowLightWarning = showLowLightWarning,
@@ -207,8 +236,9 @@ fun AppSyncScanScreen(
                     onManualEntry = if (showManualEntryButton) handleManualEntry else null,
                     onClose = handleCancel,
                 )
+
+                // Loading indicator while camera initializes
                 if (!cameraReady) {
-                    // Show loading indicator while camera is initializing
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column {
                             CircularProgressIndicator(
@@ -221,6 +251,7 @@ fun AppSyncScanScreen(
                 }
             }
 
+            // Show permission request message when camera permission is not granted
             else -> {
                 Text(AppSyncStrings.CameraPermissionRequired)
             }
@@ -230,6 +261,11 @@ fun AppSyncScanScreen(
 
 /**
  * Placeholder result screen for displaying scan results.
+ *
+ * This composable is a simple placeholder that can be used to display
+ * scan results in a separate screen. Currently shows a basic completion message.
+ *
+ * @param result The scan result to display
  */
 @Composable
 fun ResultScreen(result: AppSyncResult) {
@@ -238,6 +274,12 @@ fun ResultScreen(result: AppSyncResult) {
     }
 }
 
+/**
+ * Preview composable for the AppSyncScanScreen.
+ *
+ * This preview is used for development and testing purposes to visualize
+ * the scan screen in Android Studio's preview pane.
+ */
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true)
 @Composable
 fun AppSyncScanScreenPreviews() {
