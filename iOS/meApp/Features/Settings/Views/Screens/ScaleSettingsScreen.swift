@@ -64,7 +64,7 @@ struct ScaleSettingsScreen: View {
         Section {
             ScaleStatusBanner(type: .weightOnly {})
         }
-        .settingsRowInsets()
+        .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
@@ -83,15 +83,16 @@ struct ScaleSettingsScreen: View {
                 )
             )
         }
-        .settingsRowInsets()
+        .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
+    
     private func settingsSection() -> some View {
         Section(header: SectionHeader(title: lang.settingsSectionHeader)) {
             if scaleType == .bluetoothR4 {
-                SettingsListItem(
-                    config: SettingsItemConfig(
+                ActionListItemView(
+                    config: ActionListItemConfig(
                         title: lang.mode,
                         value: scaleStore.modeValue.rawValue,
                         onTap: {
@@ -99,92 +100,94 @@ struct ScaleSettingsScreen: View {
                         }
                     )
                 )
-                SettingsListItem(
-                    config: SettingsItemConfig(
+                ActionListItemView(
+                    config: ActionListItemConfig(
                         title: lang.displayMetrics,
                         value: scaleStore.displayMetricsValue,
                         onTap: { router.navigate(to: .displayMetrics) }
                     )
                 )
-                SettingsListItem(
-                    config: SettingsItemConfig(
+                ActionListItemView(
+                    config: ActionListItemConfig(
                         title: lang.users,
                         value: scaleStore.usersValue,
                         onTap: { router.navigate(to: .users) }
                     )
                 )
             }
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.scaleName,
                     value: scale.deviceName,
                     onTap: { router.navigate(to: .scaleNameScreen(scaleName: scale.deviceName ?? MyScaleStrings.unknownScale)) }
                 )
             )
         }
-        .settingsRowInsets()
+        .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
+    
     private func connectionSection() -> some View {
         Section(header: SectionHeader(title: lang.connectionSectionHeader)) {
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.bluetooth,
                     value: scaleStore.bluetoothValue,
                     onTap: { router.navigate(to: .scaleBluetoothScreen(scale: scale)) }
                 )
             )
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.wifi,
                     value: scaleStore.wifiValue,
                     onTap: { scaleStore.wifiTapped() }
                 )
             )
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.wifiMacAddress,
                     value: scaleStore.wifiMacAddressValue,
                     onTap: { scaleStore.wifiMacAddressTapped() }
                 )
             )
         }
-        .settingsRowInsets()
+        .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
+    
     private func supportSection() -> some View {
         Section(header: SectionHeader(title: lang.supportSectionHeader)) {
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.scaleType,
                     value: scaleStore.scaleTypeValue,
                     onTap: { scaleStore.scaleTypeTapped() }
                 )
             )
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.sku.uppercased(),
                     value: scaleStore.skuValue,
-                    canShowChevron: false
+                    chevronType: .none
                 )
             )
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.datePaired,
                     value: scaleStore.datePairedValue,
-                    canShowChevron: false
+                    chevronType: .none
                 )
             )
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.productGuide,
                     onTap: { scaleStore.openProductGuide(for: scaleStore.skuValue) }
                 )
             )
         }
-        .settingsRowInsets()
+        .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }

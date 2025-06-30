@@ -378,6 +378,16 @@ struct SettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
+    
+    private func sectionHeader(title: String) -> some View {
+        Text(title)
+            .fontOpenSans(.heading4)
+            .foregroundColor(theme.textHeading)
+            .textCase(.none)
+            .padding(.bottom, .spacingXS)
+            .padding(.leading, -16)
+    }
+    
 }
 
 #Preview {

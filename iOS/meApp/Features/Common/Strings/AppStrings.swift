@@ -480,7 +480,6 @@ struct AppAssets {
     static let scale0412 = "0412"
     static let weightOnlyMode = "weightOnlyMode"
     static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
-    static let trash = "trash"
     static let  skuNumberSticker = "skuNumberSticker"
     static let userProfile = "userProfile"
     // Newly added from image

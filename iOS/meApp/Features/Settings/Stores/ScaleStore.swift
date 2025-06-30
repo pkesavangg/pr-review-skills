@@ -92,8 +92,6 @@ class ScaleStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     let alertLang = AlertStrings.self
     
-    private var cancellables = Set<AnyCancellable>()
-
     init() {
         wireForm()
         fetchScales()
