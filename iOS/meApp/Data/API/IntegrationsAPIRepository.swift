@@ -7,7 +7,6 @@
 
 import Foundation
 
-@MainActor
 final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
     private let httpClient = HTTPClient.shared
     
@@ -30,6 +29,76 @@ final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
                 needsAuth: true
             ) as EmptyResponse
         }
+    }
+
+    func createHealthIntegration(deviceId: String, type: IntegrationType, preferences: [String: AnyCodable]) async throws -> HealthIntegrationResponse {
+        struct CreateRequest: Codable {
+            let deviceId: String
+            let type: String
+            let preferences: [String: AnyCodable]
+        }
+        let requestBody = CreateRequest(deviceId: deviceId, type: type.rawValue, preferences: preferences)
+        return try await httpClient.send(
+            .integrationHealth,
+            method: .post,
+            body: requestBody,
+            needsAuth: true
+        )
+    }
+
+    func logHealthIntegration(
+        type: IntegrationType,
+        sentAt: String,
+        timestamp: String,
+        weight: Int?,
+        bodyFat: Int?,
+        muscleMass: Int?,
+        water: Int?,
+        bmi: Int?,
+        data: [String: AnyCodable]
+    ) async throws -> HealthIntegrationLogResponse {
+        struct LogRequest: Codable {
+            let type: String
+            let sentAt: String
+            let timestamp: String
+            let weight: Int?
+            let bodyFat: Int?
+            let muscleMass: Int?
+            let water: Int?
+            let bmi: Int?
+            let data: [String: AnyCodable]
+        }
+        let requestBody = LogRequest(
+            type: type.rawValue,
+            sentAt: sentAt,
+            timestamp: timestamp,
+            weight: weight,
+            bodyFat: bodyFat,
+            muscleMass: muscleMass,
+            water: water,
+            bmi: bmi,
+            data: data
+        )
+        return try await httpClient.send(
+            .integrationHealthLog,
+            method: .post,
+            body: requestBody,
+            needsAuth: true
+        )
+    }
+
+    // MARK: - Delete Health Integration
+    /// Deletes the Health Connect/HealthKit integration for the given **device identifier**.
+    ///
+    /// Endpoint: `DELETE /integrations/health/{deviceId}`
+    /// - Parameter deviceId: The unique identifier for the Health integration device.
+    func deleteHealthIntegration(deviceId: String) async throws {
+        _ = try await httpClient.send(
+            .integrationHealthDevice(deviceId),
+            method: .delete,
+            body: EmptyBody(),
+            needsAuth: true
+        ) as EmptyResponse
     }
 }
 
