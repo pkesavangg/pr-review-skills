@@ -12,37 +12,128 @@ struct LandingScreen: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var router = Router<AuthRoute>()
+    @StateObject private var landingStore = LandingStore()
+    @State private var openItemID: UUID? = nil
     let lang = LandingScreenStrings.self
     let commonLang = CommonStrings.self
+    let itemHeight = 72
     
-  var body: some View {
-      RoutingView(stack: $router.stack) {
-          ZStack {
-              theme.actionPrimary
-                  .ignoresSafeArea()
-
-          VStack(alignment: .center) {
-              
-              Spacer()
-                  .frame(minHeight: .spacing6XL)
-
-              LogoView()
-                  .padding(.bottom, 55)
-              
-              VStack(alignment: .center, spacing: .spacingSM){                 
-                  ButtonView(text: commonLang.logIn, type: .filledSecondary, size: .large, isDisabled: false, action: {router.navigate(to: .login)})
-                  ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false, action: {router.navigate(to: .signup)})
-              }
-              .padding(.bottom, .spacing6XL)
-                                          
-              Spacer()
-                  .frame(minHeight: .spacing6XL)
-
-                  VersionView()
-              }
-          }
-      }
-      .environmentObject(router)
+    var height: CGFloat {
+        CGFloat(min(itemHeight * landingStore.userItems.count, itemHeight * 5))
+    }
+    
+    var body: some View {
+        RoutingView(stack: $router.stack) {
+            ZStack {
+                Group {
+                    landingStore.userItems.count > 0 ? theme.backgroundSecondary : theme.actionPrimary
+                }
+                .ignoresSafeArea()
+                if landingStore.userItems.isEmpty {
+                    VStack(alignment: .center) {
+                        Spacer()
+                            .frame(minHeight: .spacing6XL)
+                        
+                        LogoView()
+                            .padding(.bottom, 55)
+                        
+                        VStack(alignment: .center, spacing: .spacingSM){
+                            ButtonView(text: commonLang.logIn, type: .filledSecondary, size: .large, isDisabled: false) {
+                                if landingStore.canAddMoreAccounts() {
+                                    router.navigate(to: .login(nil))
+                                }
+                            }
+                            ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
+                                if landingStore.canAddMoreAccounts() {
+                                    router.navigate(to: .signup)
+                                }
+                            }
+                        }
+                        .padding(.bottom, .spacing6XL)
+                        
+                        Spacer()
+                            .frame(minHeight: .spacing6XL)
+                        
+                        VersionView()
+                    }
+                } else {
+                    // Layout when accounts exist – logo stays above the halfway mark, list & buttons scroll underneath
+                    GeometryReader { proxy in
+                        VStack(spacing: 0) {
+                            // Fixed logo section — height based on screen height
+                            VStack {
+                                Spacer()
+                                LogoView(isFromAccountSwitching: true)
+                                    .padding(.bottom, .spacingMD)
+                            }
+                            .frame(height: proxy.size.height * 0.33) // consistent across previews
+                            
+                            VStack {
+                                // Scrollable account list and CTAs
+                                ScrollView(.vertical, showsIndicators: false) {
+                                    VStack(spacing: .spacingXS) {
+                                        VStack(spacing: 0) {
+                                            ForEach(Array(landingStore.userItems.enumerated()), id: \.element.id) { index, item in
+                                                VStack(spacing: 0) {
+                                                    UserListItemView(
+                                                        user: item,
+                                                        openItemID: $openItemID,
+                                                        onTap: { id, isExpired in
+                                                            if isExpired {
+                                                                // If the user is expired, allow login with the same email.
+                                                                // If the user modifies the email and the account limit has been reached, show the max accounts alert.
+                                                                router.navigate(to: .login(item.email))
+                                                            } else {
+                                                                landingStore.switchAccount(to: id)
+                                                            }
+                                                        }
+                                                    )
+                                                    if index < landingStore.userItems.count - 1 {
+                                                        Divider()
+                                                            .frame(height: 0.5)
+                                                            .background(theme.statusUtility)
+                                                            .padding(.leading, 56)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        .background(theme.backgroundPrimary)
+                                        .cornerRadius(.radiusSM)
+                                        .padding(.horizontal, .spacingSM)
+                                    }
+                                }
+                                .scrollDisabled(landingStore.userItems.count <= 5) // Disable scrolling if 5 or fewer accounts
+                                .frame(height: height)
+                                .frame(maxWidth: .infinity)
+                                
+                                // CTA Buttons
+                                ButtonView(text: lang.logInToExistingAccount, type: .outlinedPrimary, size: .large, isDisabled: false) {
+                                    if landingStore.canAddMoreAccounts() {
+                                        router.navigate(to: .login(nil))
+                                    }
+                                }
+                                .padding(.top, .spacingSM)
+                                
+                                ButtonView(text: lang.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                                    if landingStore.canAddMoreAccounts() {
+                                        router.navigate(to: .signup)
+                                    }
+                                }
+                                .padding(.bottom, .spacing6XL)
+                            }
+                            
+                        }
+                    }
+                    
+                }
+                
+            }
+        }
+        .environmentObject(router)
     }
 }
 
+#Preview("1 Account") {
+    LandingScreen()
+        .environmentObject(Theme.shared)
+}

@@ -13,6 +13,9 @@ struct LoginScreen: View {
     @Environment(\.appTheme) var theme
     @StateObject private var store = LoginStore()
     @FocusState private var focusedField: FocusField?
+
+    /// Optional e-mail address passed from previous screen to pre-populate the form
+    var prefilledEmail: String? = nil
     var isFromAccountSwitching: Bool = false
 
     let labels = InputFieldLabels.self
@@ -49,7 +52,8 @@ struct LoginScreen: View {
                             router.navigateBack()
                         }
                     },
-                    onTrailingTap: {  }
+                    onTrailingTap: {  },
+                    canShowPresentationIndicator: isFromAccountSwitching
                 )
                 .padding(.bottom, .spacingLG)
 
@@ -164,6 +168,9 @@ struct LoginScreen: View {
             } else {
                 store.onLoginSuccess = { router.navigateBack() }
             }
+
+            // Prefill email if provided
+            store.prefillEmailIfNeeded(prefilledEmail)
         }
     }
 }

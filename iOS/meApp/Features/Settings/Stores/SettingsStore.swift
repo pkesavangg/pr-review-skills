@@ -65,6 +65,9 @@ class SettingsStore: ObservableObject {
     // MARK: - Message Indicators
     @Published var hasUnreadMessages: Bool = true
     
+    // MARK: - Log Out All Accounts
+    @Published var canShowLogOutAllItems = false
+    
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
         Binding(
@@ -83,10 +86,6 @@ class SettingsStore: ObservableObject {
     /// Browser URL used by the view
     var presentingBrowserURL: URL {
         browserURL ?? legalURLs.greaterGoodsWebsite
-    }
-    
-    var canShowLogOutAllItems: Bool {
-        return accountService.allAccounts.count > 1
     }
     
     // MARK: - Height Picker State
@@ -113,6 +112,13 @@ class SettingsStore: ObservableObject {
                 self?.syncSettingsStates()
             }
             .store(in: &accountService.cancellables)
+        
+        accountService.$allAccounts
+            .sink { [weak self] allAccounts in
+                self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn == true }.count > 1
+            }
+            .store(in: &accountService.cancellables)
+        
         self.populateWeightlessFormIfNeeded()
         
         // Listen to theme appearance changes so SettingsScreen refreshes immediately
