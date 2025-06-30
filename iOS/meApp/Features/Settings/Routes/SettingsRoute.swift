@@ -10,7 +10,10 @@ import SwiftUI
 
 // MARK: - Settings Route
 enum SettingsRoute: Routable {
-    case addEditScales, integrations, changePassword, editProfile, goal, weightless, messages, appPermissions, help, myAccounts
+    case editProfile
+    case changePassword
+    case scaleSettings(scale: Device, scaleType: ScaleType)  
+    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts
 
     var body: some View {
         switch self {
@@ -20,6 +23,8 @@ enum SettingsRoute: Routable {
             ChangePasswordScreen()
         case .addEditScales:
             MyScalesScreen()
+        case .scaleSettings(let scale, let scaleType):
+            ScaleSettingsScreen(scale: scale, scaleType: scaleType)
         case .editProfile:
             EditProfileScreen()
         case .goal:
