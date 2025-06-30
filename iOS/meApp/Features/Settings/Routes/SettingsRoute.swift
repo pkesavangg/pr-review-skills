@@ -20,7 +20,7 @@ enum SettingsRoute: Routable {
     case wifiCredentials(wifiName: String)    
     case scaleBluetoothScreen(scale: Device)  
     case scaleSettings(scale: Device, scaleType: ScaleType)  
-    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts
+    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts, wifiMacAddress
 
     var body: some View {
         switch self {
@@ -60,6 +60,8 @@ enum SettingsRoute: Routable {
             HelpScreen()
         case .myAccounts:
             MyAccountsScreen()
+        case .wifiMacAddress:
+            WifiMacAddressScreen()
         }
     }
 }

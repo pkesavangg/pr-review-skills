@@ -266,12 +266,6 @@ class ScaleStore: ObservableObject {
            }
        }
     
-    func bluetoothTapped() {
-        // TODO: Implement bluetoothTapped action
-    }
-    func wifiMacAddressTapped() {
-        // TODO: Implement wifiMacAddressTapped action
-    }
     func scaleTypeTapped() {
         // TODO: Implement scaleTypeTapped action
     }
@@ -345,6 +339,11 @@ class ScaleStore: ObservableObject {
     /// Updates the heart rate monitoring setting
     func refreshWifiNetworks() {
         // TODO: Implement refreshWifiNetworks functionality
+    }
+    
+    func getWifiMacAddressString() -> String {
+        // TODO: Replace with actual MAC address from BluetoothService once integration is done
+            return "##:##:##:##:##:##"
     }
     
 }
