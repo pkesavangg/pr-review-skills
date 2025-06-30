@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 481F009E2DF0122300799EAA /* ggHealthKitPackage */; };
 		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
 		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
+		D00DD6342E0E9F5700053D07 /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D00DD6332E0E9F5700053D07 /* ggHealthKitPackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,8 +78,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
+				D00DD6342E0E9F5700053D07 /* ggHealthKitPackage in Frameworks */,
 				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
-				481F009F2DF0122300799EAA /* ggHealthKitPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -140,9 +140,9 @@
 			);
 			name = meApp;
 			packageProductDependencies = (
-				481F009E2DF0122300799EAA /* ggHealthKitPackage */,
 				481F096C2DF05C8D00799EAA /* FirebaseCore */,
 				481F096E2DF05C8D00799EAA /* FirebaseMessaging */,
+				D00DD6332E0E9F5700053D07 /* ggHealthKitPackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -227,8 +227,8 @@
 			mainGroup = 105A1F912DE585B800FBB764;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
 				481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				D00DD6322E0E9F5700053D07 /* XCLocalSwiftPackageReference "../../ggHealthKitPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -931,15 +931,14 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/dmdbrands/ggHealthKitPackage.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		D00DD6322E0E9F5700053D07 /* XCLocalSwiftPackageReference "../../ggHealthKitPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../ggHealthKitPackage;
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -951,11 +950,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		481F009E2DF0122300799EAA /* ggHealthKitPackage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 481F009D2DF0122200799EAA /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */;
-			productName = ggHealthKitPackage;
-		};
 		481F096C2DF05C8D00799EAA /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -965,6 +959,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		D00DD6332E0E9F5700053D07 /* ggHealthKitPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ggHealthKitPackage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

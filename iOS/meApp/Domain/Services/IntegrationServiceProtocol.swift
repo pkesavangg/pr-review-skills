@@ -3,6 +3,7 @@ import Foundation
 /// Protocol defining the service interface for managing integrations, including CRUD, sync, device/entry operations, and state management.
 ///
 /// This protocol matches the business logic and flows in integration.service.ts, orchestrating repository calls and business rules for integrations.
+@MainActor
 protocol IntegrationServiceProtocol {
     // MARK: - CRUD
 
@@ -30,7 +31,7 @@ protocol IntegrationServiceProtocol {
     /// Checks if the integration is already used by another device/account.
     /// - Parameter type: The integration type to check.
     /// - Returns: True if available, false if conflict.
-    func checkIfIntegrationIsAlreadyUsed(type: IntegrationType) async throws -> Bool
+    func isIntegrationAlreadyUsed(type: IntegrationType) async throws -> Bool
 
     /// Clears the integration status for the active account (e.g., on account deletion).
     func clearIntegrationStatus() async throws

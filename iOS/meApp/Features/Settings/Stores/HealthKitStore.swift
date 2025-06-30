@@ -27,31 +27,29 @@ final class HealthKitStore: ObservableObject {
     @Injector private var accountService: AccountService
     @Injector private var integrationService: IntegrationsService
     @Injector private var healthKitService: HealthKitService
+    @Injector private var logger: LoggerService
     
     var cancellables: Set<AnyCancellable> = []
+    
+    let alertLang = AlertStrings.self
+    let tag = "HealthKitStore"
     // MARK: - Init
     init() {
         loadStatus()
     }
     
     func loadStatus() {
-        accountService.$activeAccount
-            .sink { [weak self] account in
-                self?.isIntegrated = account?.integrationSettings?.isHealthKitOn ?? false
-            }
-            .store(in: &cancellables)
+        self.getLocalStoredData()
     }
     
-    /// Clears *all* HealthKit data that was previously written by the app and
-    /// updates local status accordingly.
-    func clearIntegration() {
+    func getLocalStoredData() {
         Task {
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
             do {
-                 try await healthKitService.clearHealthKit()
-            } catch {
+                let result = try await self.integrationService.getStoredIntegrationData()
+                isIntegrated = ((result?.isIntegrated) != nil)
+            } catch  {
+                logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
             }
-            notificationService.dismissLoader()
         }
     }
     
@@ -59,10 +57,9 @@ final class HealthKitStore: ObservableObject {
     /// Called when the Apple-Health row is tapped in the integrations list.
     func handleRowTap() {
         if isIntegrated {
-            clearIntegration()
+            showHKRemoveAlert()
             return
         } else {
-            // Kick off the access flow.
             activeState = .permissionsNotAllowed
         }
     }
@@ -77,8 +74,7 @@ final class HealthKitStore: ObservableObject {
         case .integrationComplete:
             finishIntegrationFlow()
         case .integrationFailed:
-            // TODO: After healthkit service implemented need to uncomment this.
-            // healthKitService.openAppleHealth()
+            healthKitService.openAppleHealth()
             break
         case .permissionsAllowed:
             // Not used in current flow – treat same as `.permissionsNotAllowed`.
@@ -101,16 +97,19 @@ final class HealthKitStore: ObservableObject {
             // notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
             do {
                 let success = try await healthKitService.integrate(turnOn: true)
-                // notificationService.dismissLoader()
                 if success {
-                    // Persisted successfully
                     activeState = .integrationComplete
                 } else {
                     activeState = .integrationFailed
                 }
+                getLocalStoredData()
             } catch {
-                // notificationService.dismissLoader()
-                activeState = .integrationFailed
+                switch error {
+                case IntegrationError.userConflict:
+                    activeState = .userConflict
+                default:
+                    activeState = .integrationFailed
+                }
             }
         }
     }
@@ -165,6 +164,36 @@ final class HealthKitStore: ObservableObject {
                 notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
             }
             self.dismissModal()
+        }
+    }
+    
+    private func showHKRemoveAlert() {
+        let hkRemoveAlertLang = alertLang.HKRemoveAlert
+        let alert = AlertModel(
+            title: hkRemoveAlertLang.title,
+            message: hkRemoveAlertLang.message,
+            buttons: [
+                AlertButtonModel(title: hkRemoveAlertLang.cancelButton, type: .secondary) { _ in
+                },
+                AlertButtonModel(title: hkRemoveAlertLang.removeButton, type: .danger) { _ in
+                    self.clearIntegration()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Clears *all* HealthKit data that was previously written by the app and
+    /// updates local status accordingly.
+    private func clearIntegration() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
+            do {
+                try await healthKitService.clearHealthKit()
+                getLocalStoredData()
+            } catch {
+            }
+            notificationService.dismissLoader()
         }
     }
 }

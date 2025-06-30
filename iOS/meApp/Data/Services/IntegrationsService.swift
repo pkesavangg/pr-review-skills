@@ -11,38 +11,22 @@ import Foundation
 final class IntegrationsService: IntegrationServiceProtocol {
     static let shared = IntegrationsService()
     
+    @Injector var accountService: AccountService
+    @Injector var logger: LoggerService
+    
+    
     // MARK: - Properties
-    private let apiRepository: IntegrationRepositoryAPIProtocol
-    private let localRepository: IntegrationRepositoryProtocol
-    private let accountService: AccountServiceProtocol
-    private let logger = LoggerService.shared
-    
-    /// Default initializer that creates its own dependencies.
-    init() {
-        self.apiRepository = IntegrationAPIRepository()
-        self.localRepository = IntegrationRepository()
-        self.accountService = AccountService.shared
-    }
-    
-    /// Initializes the service with required dependencies.
-    /// Use this initializer for testing or custom dependency injection.
-    init(
-        apiRepository: IntegrationRepositoryAPIProtocol,
-        localRepository: IntegrationRepositoryProtocol,
-        accountService: AccountServiceProtocol
-    ) {
-        self.apiRepository = apiRepository
-        self.localRepository = localRepository
-        self.accountService = accountService
-    }
+    private let apiRepository = IntegrationAPIRepository()
+    private let localRepository = IntegrationRepository()
+
     
     // MARK: - Helper
     @Sendable
     private func getAccountId() async throws -> String {
         guard let account = try await accountService.getActiveAccount() else {
-            throw NSError(domain: "IntegrationService", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active account found"])
+            return ""
         }
-        return String(describing: account.id)
+        return account.accountId
     }
     
     // MARK: - IntegrationServiceProtocol Implementation
@@ -71,29 +55,42 @@ final class IntegrationsService: IntegrationServiceProtocol {
             logger.log(level: .error, tag: "IntegrationService", message: "Failed to remove integration from API: \(error.localizedDescription)")
             throw error
         }
-        try await localRepository.setIntegrationData(accountId: accountId, info: nil)
+        try localRepository.setIntegrationData(accountId: accountId, info: nil)
         logger.log(level: .info, tag: "IntegrationService", message: "Successfully cleared local integration data")
     }
     
     func getStoredIntegrationData() async throws -> IntegrationInfo? {
         let accountId = try await getAccountId()
-        return try await localRepository.getIntegrationData(accountId: accountId)
+        return try localRepository.getIntegrationData(accountId: accountId)
     }
     
     func setStoredIntegrationData(_ info: IntegrationInfo?) async throws {
         let accountId = try await getAccountId()
-        try await localRepository.setIntegrationData(accountId: accountId, info: info)
+        try localRepository.setIntegrationData(accountId: accountId, info: info)
+        if let integrationType = info?.type {
+            do {
+                try await accountService.updateIntegrations(integrationType: integrationType)
+            } catch {
+                logger.log(level: .error, tag: "IntegrationService", message: "Failed to update account integrations: \(error.localizedDescription)")
+            }
+        }
+        
         logger.log(level: .info, tag: "IntegrationService", message: "Successfully set integration data for provider \(info?.type.rawValue ?? "none")")
     }
     
-    func checkIfIntegrationIsAlreadyUsed(type: IntegrationType) async throws -> Bool {
+    func isIntegrationAlreadyUsed(type: IntegrationType) async throws -> Bool {
         let accountId = try await getAccountId()
-        return try await localRepository.checkIfIntegrationIsAlreadyUsed(accountId: accountId, type: type)
+        return try localRepository.isIntegrationAlreadyUsed(accountId: accountId, type: type)
     }
     
     func clearIntegrationStatus() async throws {
         let accountId = try await getAccountId()
-        try await localRepository.clearIntegrationStatus(accountId: accountId)
+        try localRepository.clearIntegrationStatus(accountId: accountId)
+        do {
+            try await accountService.deleteHealthIntegration(.healthKit)
+        } catch {
+            logger.log(level: .error, tag: "IntegrationService", message: "Failed to update account integrations after clearing status: \(error.localizedDescription)")
+        }
         logger.log(level: .info, tag: "IntegrationService", message: "Successfully cleared integration status for account \(accountId)")
     }
 }

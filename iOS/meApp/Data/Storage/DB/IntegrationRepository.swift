@@ -33,10 +33,11 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
         
         do {
             let decoder = JSONDecoder()
-            return try decoder.decode(IntegrationInfo.self, from: data)
+            let data = try decoder.decode(IntegrationInfo.self, from: data)
+            return data
         } catch {
             logger.log(level: .error, tag: "IntegrationRepository", message: "Failed to decode integration info: \(error.localizedDescription)")
-            throw NSError(domain: "IntegrationRepository", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to decode integration data: \(error.localizedDescription)"])
+            throw error
         }
     }
     
@@ -46,7 +47,6 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     ///   - info: The device info to store.
     func setIntegrationData(accountId: String, info: IntegrationInfo?) throws {
         let key = makeIntegrationKey(for: accountId)
-        
         if let info = info {
             do {
                 let encoder = JSONEncoder()
@@ -55,7 +55,7 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
                 addIntegrationKey(key)
             } catch {
                 logger.log(level: .error, tag: "IntegrationRepository", message: "Failed to encode integration info: \(error.localizedDescription)")
-                throw NSError(domain: "IntegrationRepository", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode integration data: \(error.localizedDescription)"])
+                throw error
             }
         } else {
             userDefaults.removeObject(forKey: key)
@@ -67,8 +67,8 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     /// - Parameters:
     ///   - accountId: The account/user ID.
     ///   - type: The integration type to check.
-    /// - Returns: True if available, false if conflict.
-    func checkIfIntegrationIsAlreadyUsed(accountId: String, type: IntegrationType) throws -> Bool {
+    /// - Returns: True if the integration is already used (conflict), false if available.
+    func isIntegrationAlreadyUsed(accountId: String, type: IntegrationType) throws -> Bool {
         let integrationKeys = getIntegrationKeys()
         
         for key in integrationKeys {
