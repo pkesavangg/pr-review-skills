@@ -160,8 +160,8 @@ extension View {
     ///   - trailing: Trailing inset (default is .spacingSM).
     /// - Returns: A view with modified row insets suitable for settings.
     func listRowInsets(
-        top: CGFloat = 11,
-        bottom: CGFloat = 11,
+        top: CGFloat = 0,
+        bottom: CGFloat = 0,
         leading: CGFloat = .spacingSM,
         trailing: CGFloat = .spacingSM
     ) -> some View {

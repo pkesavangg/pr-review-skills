@@ -97,6 +97,9 @@ struct ToastStrings {
     static let switchingAccount = { (name: String) in
         "Switched to \(name)."
     }
+    static let weightHistorySynced = "Weight history successfully synced."
+    static let hkIntegrationRemoved = "Apple Health integration removed."
+    static let hkIntegrationSynced = "Apple Health is synced!"
 }
 
 /// Constants for help modal strings used in the app
@@ -105,6 +108,88 @@ struct HelpStrings {
     static let generalHelp = "We're here for you. Contact us and we'll be happy to help."
     static let viewGuide = "View Getting Started Guide"
 }
+
+struct HKIntegrationStrings {
+    static let healthAccess = "Health Access"
+    
+}
+
+/// Constants for Apple Health integration strings used in the app
+struct HKIntegrationHealthAccessStrings {
+    static let notConnected = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsNotAllowedSS,
+        title: "Integrate Apple Health",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        buttonTitle: "CONNECT"
+    )
+    
+    static let permissionsAllowed = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsAllowedSS,
+        title: "Integrate Apple Health",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        buttonTitle: "CONNECT"
+    )
+    
+    static let integrationComplete = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkIntegrationCompleteSS,
+        title: "Integration Complete",
+        description: nil,
+        buttonTitle: "FINISH",
+        attributedParts: (
+            prefix: "Manage settings anytime by opening Apple Health and going to ",
+            highlight: "Profile → Privacy → Apps → Weight Gurus."
+        )
+    )
+
+    static let integrationFailed = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsNotAllowedSS,
+        title: "Integration Failed",
+        description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. Then, come back to Weight Gurus and finish connecting.",
+        buttonTitle: "OPEN APPLE HEALTH"
+    )
+    
+    static let userConflict = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsAllowedSS,
+        title: "User Conflict",
+        description: "Another user has already connected to Apple Health on this device. Please ask them to log in to their account and disconnect the integration.",
+        buttonTitle: "EXIT"
+    )
+}
+
+struct HKIntegrationModalStrings {
+    
+    static let outOfSync = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Apple Health is Out of Sync",
+        message: nil,
+        primaryButtonTitle: "OPEN APPLE HEALTH",
+        secondaryButtonTitle: "REMOVE INTEGRATION",
+        attributedParts: (
+            prefix: "Enable settings in Apple Health by navigating to ",
+            highlight: "Profile → Privacy → Apps → Weight Gurus",
+            suffix: ". Or remove the integration in Weight Gurus."
+        )
+    )
+
+    
+    static let finishAdding = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Finish Adding Apple Health",
+        message: "Weight Gurus permissions have been turned on in Apple Health. Connect to complete set up.",
+        primaryButtonTitle: "CONNECT",
+        secondaryButtonTitle: nil
+    )
+    
+    static let addIntegration = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Add Apple Health Integration",
+        message: "It looks like you’re using Weight Gurus on a new device. To continue syncing with Apple Health, please reconnect.",
+        primaryButtonTitle: "CONNECT",
+        secondaryButtonTitle: nil
+    )
+}
+
+
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
@@ -251,6 +336,7 @@ struct AlertStrings {
     struct MaxUsersAlert {
         static let title = "Maximum Users Reached"
         static let message = "Please swipe left to remove any unused accounts before attempting to add a new one."
+        static let logInAndRemoveMessage = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
         static let okButton = "OK"
     }
     
@@ -268,6 +354,34 @@ struct AlertStrings {
         static let message: (String) -> String = { name in
             return "Are you sure you want to remove \(name) from this device?"
         }
+        static let removeButton = "Remove"
+        static let cancelButton = "Cancel"
+    }
+    
+    struct ExpiredUserLogOutAlert {
+        static let title: (String) -> String = { name in
+            return "\(name) was logged out"
+        }
+        static let message = "Please log back in to continue."
+        static let okButton = "OK"
+    }
+    
+    struct SyncWeightHistoryAlert {
+        static let title = "Sync Weight History"
+        static let message = "Do you want to sync all entries to Apple Health? You cannot do this later without reconnecting."
+        static let syncButton = "Sync"
+        static let cancelButton = "Cancel"
+    }
+    
+    struct HKOutOfSyncAlert {
+        static let title = "Apple Health Out of Sync"
+        static let message = "Enable app permissions in Apple Health or remove the integration in Weight Gurus."
+        static let closeButton = "CLOSE"
+    }
+    
+    struct HKRemoveAlert {
+        static let title = "Are you sure?"
+        static let message = "The integration will be removed.  To fully disconnect, ensure Weight Gurus is disabled in the Apple Health App."
         static let removeButton = "Remove"
         static let cancelButton = "Cancel"
     }
@@ -352,5 +466,19 @@ struct AppAssets {
     static let filledCloseCircle = "filledCloseCircle"
     static let filledTickCircle = "filledTickCircle"
     static let exclamationMark = "exclamationMark"
+    static let userProfile = "userProfile"
+    // Newly added from image
+    static let exclamationDanger = "exclamationDanger"
+    static let hkIntegrationCompleteSS = "hkIntegrationCompleteSS"
+    static let hkPermissionsAllowedSS = "hkPermissionsAllowedSS"
+    static let hkPermissionsNotAllowedSS = "hkPermissionsNotAllowedSS"
+    static let fitbitLogoSmall = "fitbitLogoSmall"
+    static let fitbitLogoLarge = "fitbitLogoLarge"
+    static let hkLogoLarge = "hkLogoLarge"
+    static let hkLogoSmall = "hkLogoSmall"
+    static let myFitnessLogoSmall = "myFitnessLogoSmall"
+    static let myFitnessLogoLarge = "myFitnessLogoLarge"
+    static let ggLogoSmall = "ggLogoSmall"
+    static let ggLogoLarge = "ggLogoLarge"
 }
 
