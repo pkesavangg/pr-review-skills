@@ -8,6 +8,8 @@
 import Foundation
 import UIKit
 
-func getDeviceId() -> String {
-    return UIDevice.current.identifierForVendor?.uuidString ?? ""
+struct DeviceInfoHelper {
+    static func getDeviceId() -> String {
+        return UIDevice.current.identifierForVendor?.uuidString ?? ""
+    }
 }
