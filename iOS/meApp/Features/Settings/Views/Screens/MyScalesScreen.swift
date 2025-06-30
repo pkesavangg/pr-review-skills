@@ -12,7 +12,15 @@ struct MyScalesScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject var scaleStore = ScaleStore()
     let lang = MyScaleStrings.self
-
+    
+    @FocusState private var focusedField: FocusField?
+    private var focusBinding: Binding<FocusField?> {
+        Binding(
+            get: { focusedField },
+            set: { focusedField = $0 }
+        )
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
@@ -23,7 +31,7 @@ struct MyScalesScreen: View {
                 onTrailingTap: {},
                 canShowBorder: true
             )
-
+            
             ScrollView (showsIndicators: false){
                 VStack(alignment: .leading, spacing: .spacingXS){
                     Text(lang.addAScale)
@@ -36,10 +44,88 @@ struct MyScalesScreen: View {
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingLG)
+                
+                VStack(alignment: .center, spacing: 0){
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: lang.modelNumber,
+                            inputType: .metric,
+                            errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
+                            focusField: .modelNumber,
+                            customIcon: AppAssets.helpCircle,
+                            onCustomIconTap: { scaleStore.openHelp() },
+                            maxLength: 4,
+                            allowWholeNumbers: true
+                        ),
+                        value: Binding(
+                            get: { scaleStore.addScaleForm.modelNumber },
+                            set: { scaleStore.addScaleForm.setModelNumber($0) }
+                        ),
+                        focusedField: focusBinding
+                    )
+                    .padding(.bottom, .spacingMD)
+                    ButtonView(
+                        text: CommonStrings.submit,
+                        type: .filledPrimary,
+                        size: .large,
+                        isDisabled: !scaleStore.addScaleForm.isValid,
+                        action: {
+                            // TODO: ADD action
+                        }
+                    )
+                    .padding(.bottom, .spacingSM)
+                    ButtonView(
+                        text: lang.cantFindModelNumber,
+                        type: .textPrimary,
+                        size: .large,
+                        isDisabled: false,
+                        action: {
+                            // TODO: ADD action
+                        }
+                    )
+                }
+                .padding(.horizontal, .spacingSM)
+                .padding(.vertical, .spacingLG)
+                
+                if !scaleStore.scales.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        
+                        Text(lang.myScales)
+                            .fontOpenSans(.heading4)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.leading)
+                            .padding(.horizontal, .spacingSM)
+                        
+                        ForEach(scaleStore.scales, id: \.id) { scale in
+                            ScaleItemView(
+                                scaleIcon: Image(AppAssets.meLogoDark),
+                                modelNumber: scale.sku ?? "----",
+                                scaleName: scale.deviceName ?? lang.unknownScale,
+                                status: .connected,
+                                onTap: {
+                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: .bluetoothR4)) // TODO: Add action to define scaleType
+                                }
+                            )
+                            .padding(.horizontal, .spacingSM)
+                            
+                            Divider()
+                        }
+                    }
+                }
             }
+        }
+        .onAppear{
+            scaleStore.fetchScales()
+        }
+        .onDisappear {
+            scaleStore.resetForm()
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
     }
 }
 

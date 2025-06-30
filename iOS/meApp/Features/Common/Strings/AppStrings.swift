@@ -115,6 +115,7 @@ struct FormErrorMessages {
     static let maxValue = {(value: Int) in "value should be less than \(value)"}
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
+    static let modelNumberInvalid = "Model Number Invalid"
 }
 
 /// Constants for input field labels used in the app
@@ -209,6 +210,13 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+    
+    struct DeleteScaleAlert {
+        static let title = "Delete Your Scale"
+        static let message = "Are you sure you want to delete this scale? This action cannot be undone."
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -284,5 +292,8 @@ struct AppAssets {
     static let filledTickCircle = "filledTickCircle"
     static let bluetooth = "bluetooth"
     static let exclamationMark = "exclamationMark"
+    static let scale0412 = "0412"
+    static let weightOnlyMode = "weightOnlyMode"
+    static let  skuNumberSticker = "skuNumberSticker"
 }
 
