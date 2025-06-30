@@ -14,6 +14,23 @@ struct ScaleItemView: View {
     let scaleName: String
     let status: ScaleConnectionStatus
     let onTap: () -> Void
+    let hideChevron: Bool
+    
+    init(
+        scaleIcon: Image,
+        modelNumber: String,
+        scaleName: String,
+        status: ScaleConnectionStatus,
+        onTap: @escaping () -> Void,
+        hideChevron: Bool = false
+    ) {
+        self.scaleIcon = scaleIcon
+        self.modelNumber = modelNumber
+        self.scaleName = scaleName
+        self.status = status
+        self.onTap = onTap
+        self.hideChevron = hideChevron
+    }
 
     private var statusIconDetails: (icon: String, color: Color) {
         switch status {
@@ -59,14 +76,15 @@ struct ScaleItemView: View {
             
             Spacer()
 
-            Button(action: {
-                onTap()
-            }) {
-                Image(AppAssets.chevronRight)
-                    .foregroundColor(theme.actionPrimary)
-                    .frame(width: 24, height: 24)
+            if !hideChevron {
+                Button(action: {
+                    onTap()
+                }) {
+                    Image(AppAssets.chevronRight)
+                        .foregroundColor(theme.actionPrimary)
+                        .frame(width: 24, height: 24)
+                }
             }
-           
         }
         .padding(.horizontal, .spacingSM)
         .padding(.vertical, .spacingLG)

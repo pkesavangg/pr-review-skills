@@ -110,7 +110,7 @@ struct ScaleSettingsScreen: View {
                     config: SettingsItemConfig(
                         title: lang.users,
                         value: scaleStore.usersValue,
-                        onTap: { scaleStore.usersTapped() }
+                        onTap: { router.navigate(to: .users) }
                     )
                 )
             }
@@ -132,7 +132,7 @@ struct ScaleSettingsScreen: View {
                 config: SettingsItemConfig(
                     title: lang.bluetooth,
                     value: scaleStore.bluetoothValue,
-                    onTap: { scaleStore.bluetoothTapped() }
+                    onTap: { router.navigate(to: .scaleBluetoothScreen(scale: scale)) }
                 )
             )
             SettingsListItem(

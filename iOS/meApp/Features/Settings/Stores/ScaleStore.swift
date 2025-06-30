@@ -64,6 +64,10 @@ class ScaleStore: ObservableObject {
         .filter { $0 != .weight }
         .map { BodyMetricItem(id: $0, isOn: true) }
     
+    // User Management State
+    @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
+    @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
+    
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self
     
@@ -217,9 +221,6 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    func usersTapped() {
-        // TODO: Implement usersTapped action
-    }
     func bluetoothTapped() {
         // TODO: Implement bluetoothTapped action
     }
@@ -238,6 +239,15 @@ class ScaleStore: ObservableObject {
     
     func handleHelp() {
         // TODO: Implement help button action
+    }
+    func saveUsers() {
+        // TODO: Implement save users logic
+    }
+    func deleteCurrentUser() {
+        // TODO: Implement delete current user logic
+    }
+    func deleteOtherUser(at index: Int) {
+        // TODO: Implement delete other user logic
     }
     
     // MARK: - Product Guide URL helper & Browser Presentation
