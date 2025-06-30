@@ -18,6 +18,8 @@ final class HealthKitStore: ObservableObject {
     // MARK: - Published State
     /// Current on/off status of the Apple Health integration.
     @Published var isIntegrated: Bool = false
+    
+    @Published var isOutOfSync: Bool = false
     /// Current Health-access modal state. `nil` means no modal is visible.
     @Published var activeState: AppleHealthIntegrationState? = nil
     
@@ -47,6 +49,7 @@ final class HealthKitStore: ObservableObject {
             do {
                 let result = try await self.integrationService.getStoredIntegrationData()
                 isIntegrated = result?.isIntegrated ?? false
+                self.isOutOfSync = await self.healthKitService.isHKOutOfSync()
             } catch  {
                 logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
             }

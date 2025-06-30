@@ -61,6 +61,18 @@ public final class HealthKitService: HealthKitServiceProtocol {
         }
     }
     
+    public func isHKOutOfSync() async -> Bool {
+        do {
+            let result = try await self.integrationService.getStoredIntegrationData()
+            let isIntegrated = result?.isIntegrated ?? false
+            let approvedPermissions = self.getApprovedPermissionList()
+            return isIntegrated && approvedPermissions.isEmpty
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
+            return false
+        }
+    }
+    
     /// Pushes the entire local entry history into Apple Health.
     public func syncAllData() async throws {
         let entries = try await fetchAllEntries()

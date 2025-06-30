@@ -17,10 +17,22 @@ struct IntegrationListItemView: View {
         VStack {
             Spacer()
             HStack(spacing: .spacingSM) {
-                Image(item.type.iconAsset)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 42, height: 44)
+                
+                ZStack(alignment: .topTrailing) {
+                    // Main Health icon
+                    Image(item.type.iconAsset)
+                        .resizable()
+                        .frame(width: 42, height: 44)
+                    
+                    // Top-right exclamation badge for outOfSync
+                    if item.isOutOfSync  {
+                        AppIconView(icon: AppAssets.exclamationMark, size: IconSize(width: 20, height: 20))
+                            .foregroundColor(theme.actionPrimary)
+                            .offset(x: 12, y: -10)
+                    }
+                }
+                .frame(width: 42, height: 44)
+                .padding(.top, .spacingXS)
 
                 Text(item.type.displayName)
                     .fontOpenSans(.body2)
@@ -46,6 +58,15 @@ struct IntegrationListItemView: View {
 #Preview {
     List {
         Section {
+            IntegrationListItemView(
+                item: IntegrationItem(
+                    type: .appleHealth,
+                    isSelected: true,
+                    isOutOfSync: true
+                ),
+                onTap: {}
+            )
+            .listRowInsets()
             IntegrationListItemView(
                 item: IntegrationItem(
                     type: .appleHealth,

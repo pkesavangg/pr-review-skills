@@ -14,7 +14,7 @@ struct HealthKitIntegrationListItemView: View {
 
     var body: some View {
         IntegrationListItemView(
-            item: IntegrationItem(type: .appleHealth, isSelected: hkStore.isIntegrated)
+            item: IntegrationItem(type: .appleHealth, isSelected: hkStore.isIntegrated, isOutOfSync: hkStore.isOutOfSync)
         ) {
             hkStore.handleRowTap()
         }
