@@ -72,7 +72,7 @@ class MyAccountsViewModel @Inject constructor(
         if (state.value.hasReachedMaxAccounts) {
             handleIntent(MyAccountsIntent.ShowMaxAccountsAlert)
         } else {
-            navigateTo(AppRoute.Auth.Login)
+            navigateTo(AppRoute.Auth.Login(account?.email))
         }
     }
 

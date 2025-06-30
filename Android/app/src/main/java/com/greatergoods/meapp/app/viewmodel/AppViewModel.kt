@@ -17,6 +17,7 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -128,12 +129,12 @@ constructor(
     private suspend fun checkLoginStatus(): Boolean =
         try {
             // Check active account first
-            accountService.checkLoginStatusForActiveAccount()
+            val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount()
             // Then check other logged-in accounts
-            accountService.checkLoginStatusForLoggedInAccounts()
+            val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
 
             AppLog.d(TAG, "Checked login status for all accounts")
-            true
+            isActiveAccountChecked && isLoggedInAccountsChecked
         } catch (e: Exception) {
             AppLog.e(TAG, "Error checking login status", e.toString())
             false

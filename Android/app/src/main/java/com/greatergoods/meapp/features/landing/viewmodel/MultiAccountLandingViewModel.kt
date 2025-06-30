@@ -97,7 +97,7 @@ class MultiAccountLandingViewModel @Inject constructor(
             if (state.value.hasReachedMaxAccounts && account == null) {
                 handleIntent(MultiAccountLandingIntent.ShowMaxLimitReachedAlert)
             } else {
-                navigationService.navigateTo(AppRoute.Auth.Login)
+                navigationService.navigateTo(AppRoute.Auth.Login(account?.email))
             }
         }
     }

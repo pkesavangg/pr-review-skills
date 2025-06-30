@@ -30,6 +30,7 @@ import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
@@ -630,10 +631,6 @@ constructor(
                 return false
             }
 
-            // Log the token before making the API call
-            userDataStore.getData().accounts[activeAccount.id]
-            // Update tokens in TokenManager for active account BEFORE making the API call
-
             AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
             val accountInfo = accountRepository.getAccountInAPI(activeAccount.id)
 
@@ -643,7 +640,7 @@ constructor(
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Active account login status check failed", e.toString())
-            throw e
+            false
         }
     }
 
@@ -665,8 +662,6 @@ constructor(
                 AppLog.d(TAG, "No non-active logged-in accounts found")
                 return true
             }
-
-            var allAccountsValid = true
 
             for (account in loggedInAccounts) {
                 try {
@@ -700,13 +695,11 @@ constructor(
 
                     // Clear tokens for this account
                     userDataStore.removeAccount(account.id)
-
-                    allAccountsValid = false
                 }
             }
 
-            AppLog.d(TAG, "Logged-in accounts status check completed. All valid: $allAccountsValid")
-            allAccountsValid
+            AppLog.d(TAG, "Logged-in accounts status check completed.")
+            true
         } catch (e: Exception) {
             AppLog.e(TAG, "Logged-in accounts status check failed", e.toString())
             false
