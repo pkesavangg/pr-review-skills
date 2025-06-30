@@ -292,6 +292,7 @@ struct AlertStrings {
         static let deleteButton = "Delete"
         static let cancelButton = "Cancel"
     }
+    
     struct EditProfileExitAlert {
         static let title = "Confirm"
         static let message = "You have unsaved changes. Are you sure you want to exit?"
@@ -322,6 +323,7 @@ struct AlertStrings {
         static let title = "Delete Your Scale"
         static let message = "Are you sure you want to delete this scale? This action cannot be undone."
         static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
     }
     
     struct GoalExitAlert {

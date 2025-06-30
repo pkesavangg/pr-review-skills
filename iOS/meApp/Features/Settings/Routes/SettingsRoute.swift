@@ -13,7 +13,7 @@ enum SettingsRoute: Routable {
     case editProfile
     case changePassword
     case scaleSettings(scale: Device, scaleType: ScaleType)  
-    case addEditScales, integrations, changePassword, editProfile, goal, weightless, messages, appPermissions, help, myAccounts
+    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts
 
     var body: some View {
         switch self {

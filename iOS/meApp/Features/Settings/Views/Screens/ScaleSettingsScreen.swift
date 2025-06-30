@@ -53,7 +53,7 @@ struct ScaleSettingsScreen: View {
     private func scaleStatusBannerSection() -> some View {
         Section {
             ScaleStatusBanner(type: .weightOnly {})
-                .settingsRowInsets()
+                .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -61,19 +61,19 @@ struct ScaleSettingsScreen: View {
     
     private func deleteScaleSection() -> some View {
         Section {
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.deleteScale,
-                    canShowChevron: false,
+                    chevronType: .none,
                     isDestructive: true,
                     onTap: {
                         scaleStore.handleScaleDelete(scaleId: scale.id) {
-                            router.navigateBack(to: .addAndEditScales)
+                            router.navigateBack(to: .addEditScales)
                         }
                     }
                 )
             )
-            .settingsRowInsets()
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
