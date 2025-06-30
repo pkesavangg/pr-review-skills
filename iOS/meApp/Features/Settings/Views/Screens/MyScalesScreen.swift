@@ -53,6 +53,7 @@ struct MyScalesScreen: View {
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
+                            onCustomIconTap: { scaleStore.openHelp() },
                             maxLength: 4,
                             allowWholeNumbers: true
                         ),
@@ -86,8 +87,35 @@ struct MyScalesScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
                 
-                
+                if !scaleStore.scales.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        
+                        Text(lang.myScales)
+                            .fontOpenSans(.heading4)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.leading)
+                            .padding(.horizontal, .spacingSM)
+                        
+                        ForEach(scaleStore.scales, id: \.id) { scale in
+                            ScaleItemView(
+                                scaleIcon: Image(AppAssets.meLogoDark),
+                                modelNumber: scale.sku ?? "----",
+                                scaleName: scale.deviceName ?? lang.unknownScale,
+                                status: .connected,
+                                onTap: {
+                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: .bluetoothR4)) // TODO: Add action to define scaleType
+                                }
+                            )
+                            .padding(.horizontal, .spacingSM)
+                            
+                            Divider()
+                        }
+                    }
+                }
             }
+        }
+        .onAppear{
+            scaleStore.fetchScales()
         }
         .onDisappear {
             scaleStore.resetForm()
