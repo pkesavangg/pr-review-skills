@@ -72,7 +72,7 @@ class ScaleStore: ObservableObject {
     @Published var wifiPasswordValidationForm = WifiPasswordValidationForm()
     @Published var wifiConnectionState: ConnectionState = .loading
     @Published var connectedWifiNetwork: String? = nil
-    @Published var wifiNetworks: [String] = ["greatergoods1", "great2542", "ggtesting"] // TODO: eplace with actual wifi Networks
+    @Published var wifiNetworks: [String] = ["greatergoods1", "great2542", "ggtesting"] // TODO: replace with actual wifi Networks
     var isFormValid: Bool { wifiPasswordValidationForm.isValid }
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self

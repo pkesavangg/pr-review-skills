@@ -32,8 +32,6 @@ struct WifiCredentialsView: View {
                     .onAppear {
                         store.connectToWifiNetwork(wifiName: wifiName)
                     }
-                    .onChange(of: store.wifiConnectionState) { oldState, newState in
-                    }
             } else {
                 mainForm
             }
