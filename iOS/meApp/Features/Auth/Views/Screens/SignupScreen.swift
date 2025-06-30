@@ -10,9 +10,10 @@ import SwiftUI
 struct SignupScreen: View {
     @StateObject var signupStore = SignupStore()
     @Environment(\.appTheme) private var theme
+    @Environment(\.dismiss) var dismiss
     @EnvironmentObject var router: Router<AuthRoute>
     var commonLang = CommonStrings.self
-    
+    var isFromAccountSwitching: Bool = false
     private var stepViews: [AnyView] {
         [
             AnyView(
@@ -42,6 +43,7 @@ struct SignupScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
+                title: isFromAccountSwitching ? commonLang.signUp.capitalized : "",
                 leadingContent: {
                     AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
                         .foregroundColor(theme.statusIconPrimary)
@@ -55,9 +57,10 @@ struct SignupScreen: View {
                     }
                 },
                 onLeadingTap: {
-                    signupStore.handleExit(router: router)
+                    signupStore.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
-                onTrailingTap: {}
+                onTrailingTap: {},
+                canShowPresentationIndicator: isFromAccountSwitching
             )
             
             ProgressBarView(progress: signupStore.progressValue)
@@ -75,7 +78,12 @@ struct SignupScreen: View {
             
         }
         .onAppear {
-            signupStore.onSignupSuccess = { router.navigateBack() }
+            signupStore.isFromAccountSwitching = isFromAccountSwitching
+            if isFromAccountSwitching {
+                signupStore.dismissAction = dismiss
+            } else {
+                signupStore.onSignupSuccess = { router.navigateBack() }
+            }
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)

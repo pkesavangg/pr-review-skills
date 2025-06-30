@@ -35,7 +35,7 @@ struct TestingCommonButtonsView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
                 //Filled Primary buttons
-                ButtonView(text: "connect button", type: .filledPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: false, action: {})
                 ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: false, action: {})
                 ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: true, action: {})
                 ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: true, action: {})

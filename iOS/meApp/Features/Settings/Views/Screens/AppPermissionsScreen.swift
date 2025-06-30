@@ -61,7 +61,7 @@ struct AppPermissionsScreen: View {
                                     .foregroundColor(theme.statusIconPrimary)
                 )
             ))
-            .settingsRowInsets()
+            .listRowInsets()
             
             // BT powered on
             ActionListItemView(config: ActionListItemConfig(
@@ -71,7 +71,7 @@ struct AppPermissionsScreen: View {
                                     .foregroundColor(theme.statusIconPrimary)
                 )
             ))
-            .settingsRowInsets()
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -86,7 +86,7 @@ struct AppPermissionsScreen: View {
                                     .foregroundColor(theme.statusIconPrimary)
                 )
             ))
-            .settingsRowInsets()
+            .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: lang.locationAccessNotAuthorized,
@@ -95,7 +95,7 @@ struct AppPermissionsScreen: View {
                                     .foregroundColor(theme.statusIconPrimary)
                 )
             ))
-            .settingsRowInsets()
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -110,7 +110,7 @@ struct AppPermissionsScreen: View {
                                     .foregroundColor(theme.statusIconPrimary)
                 )
             ))
-            .settingsRowInsets()
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
@@ -125,7 +125,7 @@ struct AppPermissionsScreen: View {
                                     .foregroundColor(theme.statusIconPrimary)
                 )
             ))
-            .settingsRowInsets()
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)

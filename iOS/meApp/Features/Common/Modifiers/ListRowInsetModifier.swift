@@ -6,9 +6,9 @@
 //
 import SwiftUI
 
-// MARK: - Settings Row Inset Modifier
+// MARK: - List Row Inset Modifier
 /// A view modifier that applies custom insets to a settings row.
-struct SettingsRowInsetModifier: ViewModifier {
+struct ListRowInsetModifier: ViewModifier {
     let top: CGFloat
     let bottom: CGFloat
     let leading: CGFloat

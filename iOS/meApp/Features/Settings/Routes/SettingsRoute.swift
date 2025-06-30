@@ -10,12 +10,12 @@ import SwiftUI
 
 // MARK: - Settings Route
 enum SettingsRoute: Routable {
-    case addEditScales, integrations, changePassword, editProfile, goal, weightless, messages, appPermissions, help
+    case addEditScales, integrations, changePassword, editProfile, goal, weightless, messages, appPermissions, help, myAccounts
 
     var body: some View {
         switch self {
         case .integrations:
-            EmptyView() // TODO: Implement IntegrationsScreen
+            IntegrationsScreen()
         case .changePassword:
             ChangePasswordScreen()
         case .addEditScales:
@@ -32,6 +32,8 @@ enum SettingsRoute: Routable {
             AppPermissionsScreen()
         case .help:
             HelpScreen()
+        case .myAccounts:
+            MyAccountsScreen()
         }
     }
 }

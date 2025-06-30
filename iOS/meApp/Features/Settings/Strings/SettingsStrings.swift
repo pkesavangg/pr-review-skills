@@ -45,6 +45,8 @@ struct SettingsStrings {
 
     // Account Actions
     static let logOut = "Log Out"
+    static let logOutAllAccount = "Log Out of All Accounts"
+    static let switchAccounts = "Switch Accounts"
     static let deleteAccount = "Delete Account"
 }
 

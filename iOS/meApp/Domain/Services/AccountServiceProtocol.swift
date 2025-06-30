@@ -23,7 +23,8 @@ protocol AccountServiceProtocol {
 
     /// Logs out the account with the specified ID.
     /// - Parameter accountId: The ID of the account to log out. If nil, logs out the currently active account.
-    func logOut(accountId: String?) async throws
+    /// - Parameter isAutoLogout: Indicates if this is an automatic logout (e.g., due to inactivity).
+    func logOut(accountId: String?, isAutoLogout: Bool) async throws
 
     /// Deletes the currently active account.
     func deleteAccount() async throws
@@ -144,7 +145,7 @@ protocol AccountServiceProtocol {
     func clearOfflineData(for account: Account) async throws
 
     /// Deletes all accounts stored locally on the device.
-    func deleteAllAccountsLocally() async throws
+    func logOutAllAccounts() async throws
     
     /// Syncs all unsynced accounts with the backend.
     /// - Note: This should be called on app launch to ensure all local changes are synchronized.
