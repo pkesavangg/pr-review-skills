@@ -17,6 +17,7 @@ import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
@@ -46,6 +47,7 @@ class AccountService
         private val userDataStore: UserDataStore,
         private val appNavigationService: IAppNavigationService,
         private val userSettingsRepository: IUserSettingsRepository,
+         private val goalRepository: IGoalRepository,
     ) : BaseService(connectivityObserver, dialogQueueService),
         IAccountService {
         companion object {
