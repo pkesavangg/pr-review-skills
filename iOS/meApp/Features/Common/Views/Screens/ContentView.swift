@@ -28,8 +28,8 @@ struct ContentView: View {
         .onChange(of: colorScheme, { oldValue, newValue in
             themeManager.syncWithSystemColorScheme(newValue)
         })
-        .task {
-            await viewModel.performAppInitialization()
+        .onAppear {
+            viewModel.performAppInitialization()
             themeManager.syncWithSystemColorScheme(colorScheme)
         }
     }

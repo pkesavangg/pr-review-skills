@@ -13,4 +13,6 @@ struct LandingScreenStrings {
     static let health = "health"
     static let learnMore = "learn more"
     static let signUp = "sign up"
+    static let logInToExistingAccount = "LOG IN TO EXISTING ACCOUNT"
+    static let createNewAccount = "CREATE NEW ACCOUNT"
 }

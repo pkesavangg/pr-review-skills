@@ -142,6 +142,7 @@ dependencies {
     // modules
     implementation(project(":notification"))
     implementation(project(":app:healthconnect"))
+    implementation(project(":app:appsync"))
 
     // Play Store Review
     implementation(libs.play.review)

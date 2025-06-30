@@ -20,6 +20,7 @@ class SettingsStore: ObservableObject {
     @Injector var feedService: FeedService
     
     var theme = Theme.shared
+    let kvStore = KvStorageService.shared
     
     @Published var activeAccount: Account?
     
@@ -41,6 +42,8 @@ class SettingsStore: ObservableObject {
     private let loaderLang = LoaderStrings.self
     private let legalURLs = AppConstants.LegalURLs.self
     
+    private let hasSeenAddMultipleAccountsModalKey = "hasSeenAddMultipleAccountsModal"
+    
     let tag = "SettingsStore"
     
     // MARK: - In-App Browser State
@@ -61,6 +64,9 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Message Indicators
     @Published var hasUnreadMessages: Bool = true
+    
+    // MARK: - Log Out All Accounts
+    @Published var canShowLogOutAllItems = false
     
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
@@ -106,6 +112,13 @@ class SettingsStore: ObservableObject {
                 self?.syncSettingsStates()
             }
             .store(in: &accountService.cancellables)
+        
+        accountService.$allAccounts
+            .sink { [weak self] allAccounts in
+                self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn == true }.count > 1
+            }
+            .store(in: &accountService.cancellables)
+        
         self.populateWeightlessFormIfNeeded()
         
         // Listen to theme appearance changes so SettingsScreen refreshes immediately
@@ -135,8 +148,25 @@ class SettingsStore: ObservableObject {
             title: logoutAlert.title,
             message: logoutAlert.message,
             buttons: [
-                AlertButtonModel(title: logoutAlert.logoutButton, type: .primary) { _ in
+                AlertButtonModel(title: logoutAlert.logoutButton, type: .danger) { _ in
                     self.logout()
+                },
+                AlertButtonModel(title: logoutAlert.cancelButton, type: .secondary) { _ in
+                    
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    func handleLogoutForAllAccounts() {
+        let logoutAlert = alertLang.LogoutAllAccountAlert
+        let alert = AlertModel(
+            title: logoutAlert.title,
+            message: logoutAlert.message,
+            buttons: [
+                AlertButtonModel(title: logoutAlert.logoutButton, type: .primary) { _ in
+                    self.logoutAllAccounts()
                 },
                 AlertButtonModel(title: logoutAlert.cancelButton, type: .secondary) { _ in
                     
@@ -171,6 +201,18 @@ class SettingsStore: ObservableObject {
                 try await accountService.logOut()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Logout failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    private func logoutAllAccounts() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut ))
+            do {
+                try await accountService.logOutAllAccounts()
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Logout all failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
         }
@@ -984,6 +1026,44 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
             }
             notificationService.dismissLoader()
+        }
+    }
+    
+    // MARK: - Multiple Accounts Educational Modal
+    /// Presents the *Add Multiple Accounts* educational modal if the user has only one account and has not seen the modal before.
+    func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>) {
+        // Ensure we have exactly one account logged in
+        guard accountService.allAccounts.count == 1 else { return }
+
+        // Check persistent flag – bail if user has already seen the modal
+        let flagKey = hasSeenAddMultipleAccountsModalKey
+        let hasSeen = (kvStore.getValue(forKey: flagKey) as? Bool) ?? false
+        guard !hasSeen else { return }
+
+        // We need an initial to render inside the icon cluster
+        guard let initialChar = activeAccount?.firstName?.first else { return }
+        let initial = String(initialChar)
+
+        // Set the flag immediately to avoid repeated triggers
+        kvStore.setValue(true, forKey: flagKey)
+
+        // Delay presentation by 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            let modalView = AddMultipleAccountsModalView(
+                initial: initial,
+                onClose: {
+                    self.notificationService.dismissModal()
+                },
+                onAddAccount: {
+                    self.notificationService.dismissModal()
+                    router.navigate(to: .myAccounts)
+                }
+            )
+
+            // Present the modal – disable tap-to-dismiss backdrop to force explicit action
+            self.notificationService.showModal(
+                ModalData(presentedView: AnyView(modalView), backdropDismiss: false)
+            )
         }
     }
 }
