@@ -12,6 +12,11 @@ import SwiftUI
 enum SettingsRoute: Routable {
     case editProfile
     case changePassword
+    case scaleModes
+    case displayMetrics
+    case scaleNameScreen(scaleName: String)
+    case users
+    case scaleBluetoothScreen(scale: Device)  
     case scaleSettings(scale: Device, scaleType: ScaleType)  
     case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts
 
@@ -25,6 +30,16 @@ enum SettingsRoute: Routable {
             MyScalesScreen()
         case .scaleSettings(let scale, let scaleType):
             ScaleSettingsScreen(scale: scale, scaleType: scaleType)
+        case .scaleModes:
+            ScaleModesScreen()
+        case .displayMetrics:
+            DisplayMetricsScreen()
+        case .scaleNameScreen(let scaleName):
+            ScaleNameScreen(scaleName: scaleName)
+        case .users:
+            UsersScreen()
+        case .scaleBluetoothScreen(let scale):
+            ScaleBluetoothScreen(scale: scale)
         case .editProfile:
             EditProfileScreen()
         case .goal:

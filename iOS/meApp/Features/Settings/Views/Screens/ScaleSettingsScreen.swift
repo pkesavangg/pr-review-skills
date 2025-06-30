@@ -33,11 +33,22 @@ struct ScaleSettingsScreen: View {
                     scaleStatusBannerSection()
                 }
                 
+                settingsSection()
+                
+                if scaleType == .bluetoothR4 {
+                    connectionSection()
+                }
+                
+                supportSection()
                 deleteScaleSection()
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
         }
+        .inAppBrowser(
+            url: scaleStore.presentingBrowserURL,
+            isPresented: scaleStore.isBrowserPresented
+        )
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
     }
@@ -49,16 +60,14 @@ struct ScaleSettingsScreen: View {
             .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
     }
-    
     private func scaleStatusBannerSection() -> some View {
         Section {
             ScaleStatusBanner(type: .weightOnly {})
-                .listRowInsets()
         }
+        .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }
-    
     private func deleteScaleSection() -> some View {
         Section {
             ActionListItemView(
@@ -73,8 +82,112 @@ struct ScaleSettingsScreen: View {
                     }
                 )
             )
-            .listRowInsets()
         }
+        .listRowInsets()
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func settingsSection() -> some View {
+        Section(header: SectionHeader(title: lang.settingsSectionHeader)) {
+            if scaleType == .bluetoothR4 {
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.mode,
+                        value: scaleStore.modeValue.rawValue,
+                        onTap: {
+                            router.navigate(to: .scaleModes)
+                        }
+                    )
+                )
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.displayMetrics,
+                        value: scaleStore.displayMetricsValue,
+                        onTap: { router.navigate(to: .displayMetrics) }
+                    )
+                )
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.users,
+                        value: scaleStore.usersValue,
+                        onTap: { router.navigate(to: .users) }
+                    )
+                )
+            }
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.scaleName,
+                    value: scale.deviceName,
+                    onTap: { router.navigate(to: .scaleNameScreen(scaleName: scale.deviceName ?? MyScaleStrings.unknownScale)) }
+                )
+            )
+        }
+        .listRowInsets()
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func connectionSection() -> some View {
+        Section(header: SectionHeader(title: lang.connectionSectionHeader)) {
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.bluetooth,
+                    value: scaleStore.bluetoothValue,
+                    onTap: { router.navigate(to: .scaleBluetoothScreen(scale: scale)) }
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.wifi,
+                    value: scaleStore.wifiValue,
+                    onTap: { scaleStore.wifiTapped() }
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.wifiMacAddress,
+                    value: scaleStore.wifiMacAddressValue,
+                    onTap: { scaleStore.wifiMacAddressTapped() }
+                )
+            )
+        }
+        .listRowInsets()
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtility)
+    }
+    
+    private func supportSection() -> some View {
+        Section(header: SectionHeader(title: lang.supportSectionHeader)) {
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.scaleType,
+                    value: scaleStore.scaleTypeValue,
+                    onTap: { scaleStore.scaleTypeTapped() }
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.sku.uppercased(),
+                    value: scaleStore.skuValue,
+                    chevronType: .none
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.datePaired,
+                    value: scaleStore.datePairedValue,
+                    chevronType: .none
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.productGuide,
+                    onTap: { scaleStore.openProductGuide(for: scaleStore.skuValue) }
+                )
+            )
+        }
+        .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtility)
     }

@@ -295,7 +295,7 @@ struct SettingsScreen: View {
     
     private func supportSection() -> some View {
         Section(header:
-                sectionHeader(title: settingsLang.supportSettings)
+                SectionHeader(title: settingsLang.supportSettings)
         ) {
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.helpAndCustomerService,
@@ -387,6 +387,7 @@ struct SettingsScreen: View {
             .padding(.bottom, .spacingXS)
             .padding(.leading, -16)
     }
+    
 }
 
 #Preview {

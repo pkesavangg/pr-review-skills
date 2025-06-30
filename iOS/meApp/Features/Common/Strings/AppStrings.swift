@@ -39,6 +39,8 @@ struct CommonStrings {
     static let date = "Date"
     static let weight = "Weight"
     static let resources = "Resources"
+    static let heartRateLabel = "Heart Rate: "
+    static let update = "Update"
     static let appVersion = "App Version"
     static let yes = "Yes"
     static let no = "No"
@@ -477,6 +479,7 @@ struct AppAssets {
     static let exclamationMark = "exclamationMark"
     static let scale0412 = "0412"
     static let weightOnlyMode = "weightOnlyMode"
+    static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
     static let  skuNumberSticker = "skuNumberSticker"
     static let userProfile = "userProfile"
     // Newly added from image

@@ -30,36 +30,89 @@ class ScaleStore: ObservableObject {
     @Published var showErrorToast: ToastModel? = nil
     @Published var showNicknameAlert: Bool = false
     @Published var nicknameInput: String = ""
-
-    // Dependencies
-    @Injector var scaleService: ScaleService
-    @Injector var notificationService: NotificationHelperService
-
-    let alertLang = AlertStrings.self
+    
+    // In-App Browser State
+    @Published var showTermsBrowser: Bool = false
+    @Published var browserURL: URL? = nil
+    
+    // Settings/detail values for UI (replace with computed or fetched values later)
+    @Published var modeValue: ScaleModes = .weightOnly 
+    @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
+    @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
+    @Published var bluetoothValue: String = "Connected" // TODO: Replace with actual BT status
+    @Published var wifiValue: String = "greatergoods1" // TODO: Replace with actual Wi-Fi SSID
+    @Published var wifiMacAddressValue: String = "" // TODO: Replace with actual Wi-Fi MAC address
+    @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi" // TODO: Replace with actual scale type
+    @Published var skuValue: String = "0412" // TODO: Replace with actual SKU
+    @Published var datePairedValue: String = "June 2, 2025" // TODO: Replace with actual date paired
+    
+    // Display Metrics State
+    @Published var progressMetrics: [ProgressMetricItem] = [
+        ProgressMetricItem(id: "goalProgress", label: ScaleModesStrings.goalProgress, isOn: true),
+        ProgressMetricItem(id: "dailyAverage", label: ScaleModesStrings.dailyAverage, isOn: true),
+        ProgressMetricItem(id: "weeklyAverage", label: ScaleModesStrings.weeklyAverage, isOn: true),
+        ProgressMetricItem(id: "monthlyAverage", label: ScaleModesStrings.monthlyAverage, isOn: true),
+    ]
+    
+    // Banner States
+    @Published var showWeightOnlyBanner: Bool = false
+    @Published var showWeightOnlyInfo: Bool = false
+    @Published var showHeartRateBanner: Bool = false
+    
+    // Metrics State
+    @Published var metrics: [BodyMetricItem] = BodyMetrics.config.keys
+        .filter { $0 != .weight }
+        .map { BodyMetricItem(id: $0, isOn: true) }
+    
+    // User Management State
+    @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
+    @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
     
     private var cancellables = Set<AnyCancellable>()
-
+    private let legalURLs = AppConstants.LegalURLs.self
+    
+    // MARK: - In-App Browser Presentation Binding
+    var isBrowserPresented: Binding<Bool> {
+        Binding(
+            get: { self.showTermsBrowser },
+            set: { newValue in
+                if !newValue {
+                    self.showTermsBrowser = false
+                    self.browserURL = nil
+                }
+            }
+        )
+    }
+    var presentingBrowserURL: URL {
+        browserURL ?? legalURLs.greaterGoodsWebsite
+    }
+    
+    // MARK: - Initialization
+    @Injector var scaleService: ScaleService
+    @Injector var notificationService: NotificationHelperService
+    let alertLang = AlertStrings.self
+    
     init() {
         wireForm()
         fetchScales()
     }
-
+    
     private func wireForm() {
         addScaleForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }
-
+    
     func resetForm() {
         addScaleForm = AddScaleForm()
         cancellables.removeAll()
         wireForm()
     }
-
+    
     func getError() -> String? {
         addScaleForm.getError(for: .modelNumber)
     }
-
+    
     // MARK: - List & CRUD
     func fetchScales() {
         isLoading = true
@@ -80,7 +133,7 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     // MARK: - Scale Detail Actions
     func loadScale(_ scale: Device) async {
         self.scale = scale
@@ -89,7 +142,7 @@ class ScaleStore: ObservableObject {
         await getDeviceInfo()
         await getConnectedWifiSSID()
     }
-
+    
     func getDeviceInfo() async {
         guard let scale = scale else { return }
         isLoading = true
@@ -108,16 +161,16 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     func getConnectedWifiSSID() async {
         connectedWifiSSID = scale?.wifiMac
     }
-
+    
     func changeNickname() {
         showNicknameAlert = true
         nicknameInput = scale?.nickname ?? ""
     }
-
+    
     func saveNickname() async {
         guard let scale = scale else { return }
         isLoading = true
@@ -132,7 +185,7 @@ class ScaleStore: ObservableObject {
         }
         showNicknameAlert = false
     }
-
+    
     func deleteScale(scaleId: String, onSuccess: @escaping () -> Void) async {
         isLoading = true
         defer { isLoading = false }
@@ -152,7 +205,7 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     func handleScaleDelete(scaleId: String, onSuccess: @escaping () -> Void) {
         let alert = AlertModel(
             title: alertLang.DeleteScaleAlert.title,
@@ -168,6 +221,53 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
+    func bluetoothTapped() {
+        // TODO: Implement bluetoothTapped action
+    }
+    func wifiTapped() {
+        // TODO: Implement wifiTapped action
+    }
+    func wifiMacAddressTapped() {
+        // TODO: Implement wifiMacAddressTapped action
+    }
+    func scaleTypeTapped() {
+        // TODO: Implement scaleTypeTapped action
+    }
+    func handleSave() {
+        // TODO: Implement save button action
+    }
+    
+    func handleHelp() {
+        // TODO: Implement help button action
+    }
+    func saveUsers() {
+        // TODO: Implement save users logic
+    }
+    func deleteCurrentUser() {
+        // TODO: Implement delete current user logic
+    }
+    func deleteOtherUser(at index: Int) {
+        // TODO: Implement delete other user logic
+    }
+    
+    // MARK: - Product Guide URL helper & Browser Presentation
+    func productGuideURL(for sku: String) -> URL {
+        guard !sku.isEmpty else { return legalURLs.notFound }
+        return (AppConstants.LegalURLs.serviceBase.appendingPathComponent(sku)) // Use type-safe base
+    }
+    func openProductGuide(for sku: String) {
+        browserURL = productGuideURL(for: sku)
+        showTermsBrowser = true
+    }
+    
+    func openBIAModel(){
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(BIAInfoModalView(){
+                   self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
+    }
     
     func openHelp() {
         notificationService.showModal(ModalData(
@@ -176,5 +276,27 @@ class ScaleStore: ObservableObject {
             }),
             backdropDismiss: true
         ))
+    }
+    
+    // MARK: - Display Metrics Functions
+    
+    /// Saves the display metrics configuration
+    func saveDisplayMetrics() {
+        // TODO: Implement saveDisplayMetrics functionality
+        // - Save the current state of metrics and extraToggles
+    }
+    
+    /// Updates the weight-only mode setting
+    func updateWeightOnlyMode() {
+        // TODO: Implement updateWeightOnlyMode functionality
+        // - Toggle weight-only mode on/off
+        // - Update scale configuration
+    }
+    
+    /// Updates the heart rate monitoring setting
+    func updateHeartRate() {
+        // TODO: Implement updateHeartRate functionality
+        // - Toggle heart rate monitoring on/off
+        // - Update scale configuration
     }
 }
