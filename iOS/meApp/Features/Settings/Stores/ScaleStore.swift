@@ -19,6 +19,7 @@ class ScaleStore: ObservableObject {
     @Published var addScaleForm = AddScaleForm()
     
     @Injector var scaleService: ScaleService
+    @Injector var notificationService: NotificationHelperService
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -67,5 +68,14 @@ class ScaleStore: ObservableObject {
     func removeScale(_ scale: Device) async throws {
         try await scaleService.deleteDevice(scale.id, showToast: true)
         _ = await fetchScales()
+    }
+    
+    func openHelp() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(ModelNumberHelpModalView(){
+                self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
     }
 }
