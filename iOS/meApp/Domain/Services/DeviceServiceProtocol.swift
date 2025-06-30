@@ -11,19 +11,19 @@ protocol DeviceServiceProtocol {
 
     /// Fetches the currently connected scales (by broadcastId).
     /// - Returns: A dictionary of broadcastId to device details.
-    func getConnectedDevices() -> [String: Any]
+    func getConnectedDevices() async -> [String: Any]
 
     /// Updates the connection status of a scale device.
     /// - Parameters:
     ///   - device: The device details (type erased for protocol).
     ///   - isConnected: Whether the device is connected.
-    func updateConnectedDevices(device: Any, isConnected: Bool)
+    func updateConnectedDevices(device: Any, isConnected: Bool) async
 
     /// Updates the WiFi configuration status of a connected scale.
     /// - Parameters:
     ///   - broadcastId: The broadcast ID of the scale.
     ///   - isConfigured: Whether WiFi is configured.
-    func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool)
+    func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async
 
     /// Synchronizes all scales (local and remote) and updates state.
     /// - Parameter tempDevice: Optionally, a temporary device to sync.

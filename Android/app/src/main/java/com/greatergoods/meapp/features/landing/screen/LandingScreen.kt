@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -30,11 +31,15 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
+import android.app.Activity
 
 @Composable
 fun LandingScreen() {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val activity = context as? Activity
+
     Box(
         modifier =
             Modifier
