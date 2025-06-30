@@ -46,7 +46,7 @@ final class HealthKitStore: ObservableObject {
         Task {
             do {
                 let result = try await self.integrationService.getStoredIntegrationData()
-                isIntegrated = ((result?.isIntegrated) != nil)
+                isIntegrated = result?.isIntegrated ?? false
             } catch  {
                 logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
             }
@@ -163,7 +163,6 @@ final class HealthKitStore: ObservableObject {
                 notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
             }
-            self.dismissModal()
         }
     }
     
