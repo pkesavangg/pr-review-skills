@@ -36,6 +36,7 @@ class ScaleStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
 
     let alertLang = AlertStrings.self
+    
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -166,5 +167,14 @@ class ScaleStore: ObservableObject {
             ]
         )
         notificationService.showAlert(alert)
+    }
+    
+    func openHelp() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(ModelNumberHelpModalView(){
+                self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
     }
 }
