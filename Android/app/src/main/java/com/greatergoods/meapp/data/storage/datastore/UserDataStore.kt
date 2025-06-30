@@ -12,6 +12,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import android.content.Context
+import android.util.Log
 
 /**
  * Extension property to provide UserPreferences DataStore instance from Context.
@@ -53,6 +54,7 @@ class UserDataStore @Inject constructor(
      * Emits a Flow of the current active UserAccount, or null if none is active.
      */
     val currentAccountFlow: Flow<UserAccount?> = dataFlow.map {
+        Log.d("UserDataStore", "currentAccountFlow: ${it.accountsMap.values}")
         it.accountsMap.values.firstOrNull { account -> account.isActive }
     }
 
@@ -120,7 +122,7 @@ class UserDataStore @Inject constructor(
                 isActive = isActive,
                 refreshToken = refreshToken,
                 accessToken = accessToken,
-                expiresAt = expiresAt
+                expiresAt = expiresAt,
             )
             return
         }
@@ -141,7 +143,6 @@ class UserDataStore @Inject constructor(
 
         updateData { updated }
     }
-
 
     /**
      * Updates the sync timestamp for a specific account.
@@ -247,13 +248,57 @@ class UserDataStore @Inject constructor(
     }
 
     /**
-     * Logs out the current account by removing it from UserDataStore.
+     * Logs out the current account by setting its isActive status to false.
+     * Only affects the currently active account.
      */
     suspend fun logoutCurrentAccount() {
         val current = getData()
+        val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
+        
+        if (currentActiveAccount != null) {
+            val updated = current.toBuilder().apply {
+                putAccounts(
+                    currentActiveAccount.key,
+                    currentActiveAccount.value.toBuilder().setIsActive(false).build()
+                )
+            }.build()
+            updateData { updated }
+        }
+    }
+
+    /**
+     * Removes the current active account from the DataStore completely.
+     * This permanently deletes the account and all its data.
+     */
+    suspend fun removeCurrentAccount() {
+        val current = getData()
+        val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
+        
+        if (currentActiveAccount != null) {
+            val updated = current.toBuilder().apply {
+                removeAccounts(currentActiveAccount.key)
+            }.build()
+            updateData { updated }
+        }
+    }
+
+    /**
+     * Logs out all accounts by clearing their tokens and setting isActive to false.
+     * This removes all authentication data while keeping the account records.
+     */
+    suspend fun logoutAllAccounts() {
+        val current = getData()
         val updated = current.toBuilder().apply {
             accountsMap.forEach { (id, account) ->
-                putAccounts(id, account.toBuilder().setIsActive(false).build())
+                putAccounts(
+                    id,
+                    account.toBuilder()
+                        .setAccessToken("")
+                        .setRefreshToken("")
+                        .setExpiresAt("")
+                        .setIsActive(false)
+                        .build()
+                )
             }
         }.build()
         updateData { updated }
@@ -282,6 +327,29 @@ class UserDataStore @Inject constructor(
         val current = getData()
         val updated = current.toBuilder().apply {
             removeAccounts(accountId)
+        }.build()
+        updateData { updated }
+    }
+
+    /**
+     * Clears the tokens for a specific account without removing the account.
+     * @param accountId The account ID whose tokens should be cleared.
+     */
+    suspend fun clearAccountTokens(accountId: String) {
+        val current = getData()
+        val updated = current.toBuilder().apply {
+            val userAccount = accountsMap[accountId]
+            if (userAccount != null) {
+                putAccounts(
+                    accountId,
+                    userAccount.toBuilder()
+                        .setAccessToken("")
+                        .setRefreshToken("")
+                        .setExpiresAt("")
+                        .setIsActive(false)
+                        .build(),
+                )
+            }
         }.build()
         updateData { updated }
     }

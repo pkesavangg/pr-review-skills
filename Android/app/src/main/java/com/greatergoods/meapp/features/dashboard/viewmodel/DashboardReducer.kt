@@ -16,7 +16,6 @@ data class DashboardState(
     val isLoading: Boolean = false,
     val dayWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
     val monthWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
-    val totalEntries: List<ScaleEntry> = emptyList(),
 ) : IReducer.State
 
 /**
@@ -27,7 +26,6 @@ sealed interface DashboardIntent : IReducer.Intent {
     data class SetDayWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
     data class SetMonthWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
     data class SetIsLoading(val isLoading: Boolean) : DashboardIntent
-    data class AddEntries(val entries: List<ScaleEntry>) : DashboardIntent
 }
 
 /**
@@ -38,7 +36,6 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
         is DashboardIntent.SetDayWiseEntries -> state.copy(dayWiseEntries = intent.entries)
         is DashboardIntent.SetMonthWiseEntries -> state.copy(monthWiseEntries = intent.entries)
         is DashboardIntent.SetIsLoading -> state.copy(isLoading = intent.isLoading)
-        is DashboardIntent.AddEntries -> state.copy(totalEntries = state.totalEntries + intent.entries)
         DashboardIntent.LoadEntries -> state.copy(isLoading = true)
     }
 }

@@ -10,11 +10,21 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryFormControls
+import java.time.Instant
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object EntryHelper {
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM-dd")
+        .withZone(ZoneId.systemDefault())
+
+    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+        .withZone(ZoneId.systemDefault())
+
+    fun FormControl<String>.toDoubleSafe(default: Double = 0.0): Double = this.value.toDoubleOrNull() ?: default
+
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
     fun EntryFormControls.toScaleEntry(weightMode: String): ScaleEntry {
@@ -26,7 +36,7 @@ object EntryHelper {
                 entryTimestamp = DateTimeConverter.timestampToIso(weightDateTime.dateTime.value.getTimestamp()), // Assuming DateTimeValue has .timestamp: Long
                 serverTimestamp = null,
                 opTimestamp = null,
-                unit = "lb", // or whatever is relevant
+                unit = weightMode, // or whatever is relevant
                 operationType = OperationType.CREATE.name, // or appropriate value
                 deviceType = "scale", // or from context
                 deviceId = "TODO", // from current device
@@ -37,11 +47,11 @@ object EntryHelper {
         val scaleEntry =
             BodyScaleEntryEntity(
                 id = 0L, // Will be set by DB
-                weight = weightDateTime.weight.toIntSafe(),
-                bodyFat = generalMetrics.bodyFat.toIntSafe(),
-                muscleMass = generalMetrics.muscleMass.toIntSafe(),
-                water = generalMetrics.bodyWater.toIntSafe(),
-                bmi = generalMetrics.bodyMassIndex.toIntSafe(),
+                weight = weightDateTime.weight.toDoubleSafe() / 10,
+                bodyFat = generalMetrics.bodyFat.toDoubleSafe() / 10,
+                muscleMass = generalMetrics.muscleMass.toDoubleSafe() / 10,
+                water = generalMetrics.bodyWater.toDoubleSafe() / 10,
+                bmi = generalMetrics.bodyMassIndex.toDoubleSafe() / 10,
                 source = "manual", // or "bluetooth", "cloud", etc.
             )
 
@@ -49,14 +59,14 @@ object EntryHelper {
             r4ScaleMetrics?.let {
                 BodyScaleEntryMetricEntity(
                     id = 0L,
-                    bmr = it.bmr.toIntSafe(),
+                    bmr = it.bmr.toDoubleSafe(),
                     metabolicAge = it.metabolicAge.toIntSafe(),
-                    proteinPercent = it.protein.toIntSafe(),
+                    proteinPercent = it.protein.toDoubleSafe() / 10,
                     pulse = it.heartRate.toIntSafe(),
-                    skeletalMusclePercent = it.skeletalMuscles.toIntSafe(),
-                    subcutaneousFatPercent = it.subcutaneousFat.toIntSafe(),
-                    visceralFatLevel = it.visceralFat.toIntSafe(),
-                    boneMass = it.boneMass.toIntSafe(),
+                    skeletalMusclePercent = it.skeletalMuscles.toDoubleSafe() / 10,
+                    subcutaneousFatPercent = it.subcutaneousFat.toDoubleSafe() / 10,
+                    visceralFatLevel = it.visceralFat.toDoubleSafe() / 10,
+                    boneMass = it.boneMass.toDoubleSafe() / 10,
                     impedance = 0, // You didn’t provide this in form controls – use 0 or calculate if needed
                 )
             }
@@ -82,13 +92,24 @@ object EntryHelper {
                 }
             }
 
-        fun Double?.rounded(): Double? = this?.let { String.format("%.2f", it).toDouble() }
 
         return this.copy(
             entryTimestamp = monthYear,
-            avgWeight = avgWeight?.div(10.0).rounded(),
-            change = change?.div(10.0).rounded(),
+            avgWeight = avgWeight.rounded(),
+            change = change.rounded(),
             // entryCount is already Int? so no need to change
         )
+    }
+
+    fun Double?.rounded(): Double? = this?.let { String.format("%.2f", it).toDouble() }
+
+    fun ScaleEntry.getDate(): String {
+        val instant = Instant.parse(entry.entryTimestamp)
+        return dateFormatter.format(instant)
+    }
+
+    fun ScaleEntry.getTime(): String {
+        val instant = Instant.parse(entry.entryTimestamp)
+        return timeFormatter.format(instant)
     }
 }

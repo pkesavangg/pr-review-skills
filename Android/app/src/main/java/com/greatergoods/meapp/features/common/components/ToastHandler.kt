@@ -45,7 +45,7 @@ fun ToastHandler(
     val toastWidthPx = screenWidthPx * 0.8f
     val dragState =
         remember {
-            AnchoredDraggableState<DragAnchors>(
+            AnchoredDraggableState(
                 initialValue = DragAnchors.Center,
                 positionalThreshold = { toastWidthPx * 0.25f },
                 velocityThreshold = { 100f },
@@ -131,4 +131,5 @@ enum class DragAnchors {
     Center,
     Left,
     Right,
+    End,
 }

@@ -38,25 +38,25 @@ object EntryScreenStrings {
     const val HEART_RATE_LABEL = "heart rate"
 
     /** Label for the bone mass input field. */
-    const val BONE_MASS_LABEL = "bone mass"
+    const val BONE_MASS_LABEL = "bone mass %"
 
     /** Label for the visceral fat input field. */
-    const val VISCERAL_FAT_LABEL = "visceral fat"
+    const val VISCERAL_FAT_LABEL = "visceral fat lv."
 
     /** Label for the subcutaneous fat input field. */
-    const val SUBCUTANEOUS_FAT_LABEL = "subcutaneous fat"
+    const val SUBCUTANEOUS_FAT_LABEL = "subcutaneous fat %"
 
     /** Label for the protein input field. */
-    const val PROTEIN_LABEL = "protein"
+    const val PROTEIN_LABEL = "protein %"
 
     /** Label for the skeletal muscles input field. */
-    const val SKELETAL_MUSCLES_LABEL = "skeletal muscles"
+    const val SKELETAL_MUSCLES_LABEL = "skeletal muscles %"
 
     /** Label for the BMR input field. */
     const val BMR_LABEL = "bmr"
 
     /** Label for the metabolic age input field. */
-    const val METABOLIC_AGE_LABEL = "age"
+    const val METABOLIC_AGE_LABEL = "metabolic age"
 
     /** Title for the metrics section card. */
     const val METRICS_SECTION_TITLE = "Body Metrics"

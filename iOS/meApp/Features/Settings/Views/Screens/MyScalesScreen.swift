@@ -53,6 +53,7 @@ struct MyScalesScreen: View {
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
+                            onCustomIconTap: { scaleStore.openHelp() },
                             maxLength: 4,
                             allowWholeNumbers: true
                         ),

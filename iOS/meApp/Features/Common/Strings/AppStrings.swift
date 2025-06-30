@@ -17,6 +17,7 @@ struct CommonStrings {
     static let save = "Save"
     static let skip = "Skip"
     static let logIn = "Log in"
+    static let signUp = "Sign up"
     static let complete = "Complete"
     static let edit = "Edit"
     static let dash = "dash"
@@ -27,7 +28,8 @@ struct CommonStrings {
     static let optional = "optional"
     static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
-    static let unitLbsFeet = "lbs & feet"
+    static let unitLbsFeet = "lbs & ft"
+    static let pickerLbs = "lbs & feet"
     static let on = "On"
     static let off = "Off"
     static let dark = "Dark"
@@ -39,6 +41,10 @@ struct CommonStrings {
     static let resources = "Resources"
     static let heartRateLabel = "Heart Rate: "
     static let update = "Update"
+    static let appVersion = "App Version"
+    static let yes = "Yes"
+    static let no = "No"
+    static let iOS = "iOS"
 }
 
 /// Constants for entry strings used in the app
@@ -63,12 +69,17 @@ struct ToastStrings {
     static let passwordResetSuccessMessage = { (email: String) in
         "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 10 minutes."
     }
+    static let forgotPassword = { (email: String) in
+        "Password reset link sent to \(email)."
+    }
     static let success = "Success!"
     static let entryAdded = "Entry added."
     static let errorSavingEntry = "Error saving new entry!"
     static let pleaseTryAgain = "Please try again."
     static let errorUpdatingProfile = "Error updating profile"
     static let profileSaved = "Profile saved successfully."
+    static let goalSaved = "Goal Saved."
+    static let errorSettingGoal = "Error setting new goal!"
     static let csvExported = ".CSV file sent. Please check your email."
     static let passwordUpdated = "Password updated."
     static let errorUpdatingPassword = "Error updating password."
@@ -85,6 +96,12 @@ struct ToastStrings {
     static let unableToUpdateAccountSettings = "Unable to update your account settings at this time. Please try again later."
     static let heightUpdated = "Your height has been updated."
     static let errorUpdatingHeight = "Error updating height."
+    static let switchingAccount = { (name: String) in
+        "Switched to \(name)."
+    }
+    static let weightHistorySynced = "Weight history successfully synced."
+    static let hkIntegrationRemoved = "Apple Health integration removed."
+    static let hkIntegrationSynced = "Apple Health is synced!"
 }
 
 /// Constants for help modal strings used in the app
@@ -93,6 +110,88 @@ struct HelpStrings {
     static let generalHelp = "We're here for you. Contact us and we'll be happy to help."
     static let viewGuide = "View Getting Started Guide"
 }
+
+struct HKIntegrationStrings {
+    static let healthAccess = "Health Access"
+    
+}
+
+/// Constants for Apple Health integration strings used in the app
+struct HKIntegrationHealthAccessStrings {
+    static let notConnected = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsNotAllowedSS,
+        title: "Integrate Apple Health",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        buttonTitle: "CONNECT"
+    )
+    
+    static let permissionsAllowed = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsAllowedSS,
+        title: "Integrate Apple Health",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        buttonTitle: "CONNECT"
+    )
+    
+    static let integrationComplete = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkIntegrationCompleteSS,
+        title: "Integration Complete",
+        description: nil,
+        buttonTitle: "FINISH",
+        attributedParts: (
+            prefix: "Manage settings anytime by opening Apple Health and going to ",
+            highlight: "Profile → Privacy → Apps → Weight Gurus."
+        )
+    )
+
+    static let integrationFailed = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsNotAllowedSS,
+        title: "Integration Failed",
+        description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. Then, come back to Weight Gurus and finish connecting.",
+        buttonTitle: "OPEN APPLE HEALTH"
+    )
+    
+    static let userConflict = HKIntegrationHealthAccessContent(
+        imageName: AppAssets.hkPermissionsAllowedSS,
+        title: "User Conflict",
+        description: "Another user has already connected to Apple Health on this device. Please ask them to log in to their account and disconnect the integration.",
+        buttonTitle: "EXIT"
+    )
+}
+
+struct HKIntegrationModalStrings {
+    
+    static let outOfSync = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Apple Health is Out of Sync",
+        message: nil,
+        primaryButtonTitle: "OPEN APPLE HEALTH",
+        secondaryButtonTitle: "REMOVE INTEGRATION",
+        attributedParts: (
+            prefix: "Enable settings in Apple Health by navigating to ",
+            highlight: "Profile → Privacy → Apps → Weight Gurus",
+            suffix: ". Or remove the integration in Weight Gurus."
+        )
+    )
+
+    
+    static let finishAdding = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Finish Adding Apple Health",
+        message: "Weight Gurus permissions have been turned on in Apple Health. Connect to complete set up.",
+        primaryButtonTitle: "CONNECT",
+        secondaryButtonTitle: nil
+    )
+    
+    static let addIntegration = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Add Apple Health Integration",
+        message: "It looks like you’re using Weight Gurus on a new device. To continue syncing with Apple Health, please reconnect.",
+        primaryButtonTitle: "CONNECT",
+        secondaryButtonTitle: nil
+    )
+}
+
+
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
@@ -107,7 +206,7 @@ struct FormErrorMessages {
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "passwords do not match"
     static let bothPasswordsMatch = "both passwords must match"
-    static let valueShouldBeEqual = "value should not be equal to current weight"
+    static let valueShouldNotBeEqual = "value should not be equal to current weight"
     static let minWeightKg = "value should be greater than 0 kg"
     static let minWeightLb = "value should be greater than 0 lbs"
     static let maxWeightKg = "value should be less than 450 kg"
@@ -132,6 +231,7 @@ struct InputFieldLabels {
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
     static let zipCode = "zipcode"
+    static let birthday = "birthday"
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
     }
@@ -140,15 +240,15 @@ struct InputFieldLabels {
     }
     static let date = "Date"
     static let bmi = "bmi"
-    static let bodyFat = "body fat %"
-    static let muscleMass = "muscle mass %"
-    static let bodyWater = "body water %"
+    static let bodyFat = "body fat (%)"
+    static let muscleMass = "muscle mass (%)"
+    static let bodyWater = "body water (%)"
     static let heartRate = "heart rate (bpm)"
-    static let boneMass = "bone mass %"
+    static let boneMass = "bone mass (%)"
     static let visceralFat = "visceral fat (Lv.)"
-    static let subcutaneousFat = "subcutaneous fat %"
-    static let protein = "protein %"
-    static let skeletalMuscles = "skeletal muscles %"
+    static let subcutaneousFat = "subcutaneous fat (%)"
+    static let protein = "protein (%)"
+    static let skeletalMuscles = "skeletal muscles (%)"
     static let basalMetabolicRate = "basal metabolic rate (kcal)"
     static let metabolicAge = "metabolic age (yrs)"
 }
@@ -158,35 +258,43 @@ struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let goBackButton = "Go back"
+        static let exitButton = "Yes, exit"
     }
-
+    
     struct ResetPasswordAlert {
         static let passwordResetTitle = "Password Reset"
         static let enterEmailMessage = "Enter your email below."
     }
-
+    
     struct ManualEntryExitAlert {
         static let title = "Your entry has not been saved!"
         static let message = "Are you sure you want to exit?"
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
-
+    
     struct LogoutAlert {
         static let title = "Log Out"
         static let message = "Are you sure you want to log out?"
         static let logoutButton = "Log Out"
         static let cancelButton = "Cancel"
     }
-
+    
+    struct LogoutAllAccountAlert {
+        static let title = "Log Out All Accounts"
+        static let message = "Are you sure you want to log out of all accounts?"
+        static let logoutButton = "Log Out"
+        static let cancelButton = "Cancel"
+    }
+    
     struct DeleteAccountAlert {
         static let title = "Delete Your Account"
         static let message = "Are you sure you want to delete your account? This action cannot be undone."
         static let deleteButton = "Delete"
         static let cancelButton = "Cancel"
     }
+    
     struct EditProfileExitAlert {
         static let title = "Confirm"
         static let message = "You have unsaved changes. Are you sure you want to exit?"
@@ -225,6 +333,75 @@ struct AlertStrings {
         static let message = "Wi-Fi settings will not be updated."
         static let goBackButton = "Go Back"
         static let exitButton = "Exit"
+    }
+    
+    struct GoalExitAlert {
+        static let title = "Are you sure you want to leave?"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
+    
+    struct ForgotPasswordAlert {
+        static let title = "Forgot your Password?"
+        static let message: (String) -> String = { email in
+            return "Send a password reset link to \(email)"
+        }
+        static let send = "send"
+        static let cancel = "Cancel"
+    }
+    
+    struct MaxUsersAlert {
+        static let title = "Maximum Users Reached"
+        static let message = "Please swipe left to remove any unused accounts before attempting to add a new one."
+        static let logInAndRemoveMessage = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
+        static let okButton = "OK"
+    }
+    
+    struct LoginExitAlert {
+        static let title = "Confirm"
+        static let message = "Are you sure you want to leave?"
+        static let goBackButton = "Go Back"
+        static let yesExitButton = "Yes, Exit"
+    }
+    
+    struct DeleteUserAlert {
+        static let title: (String) -> String = { name in
+            return "Remove \(name)?"
+        }
+        static let message: (String) -> String = { name in
+            return "Are you sure you want to remove \(name) from this device?"
+        }
+        static let removeButton = "Remove"
+        static let cancelButton = "Cancel"
+    }
+    
+    struct ExpiredUserLogOutAlert {
+        static let title: (String) -> String = { name in
+            return "\(name) was logged out"
+        }
+        static let message = "Please log back in to continue."
+        static let okButton = "OK"
+    }
+    
+    struct SyncWeightHistoryAlert {
+        static let title = "Sync Weight History"
+        static let message = "Do you want to sync all entries to Apple Health? You cannot do this later without reconnecting."
+        static let syncButton = "Sync"
+        static let cancelButton = "Cancel"
+    }
+    
+    struct HKOutOfSyncAlert {
+        static let title = "Apple Health Out of Sync"
+        static let message = "Enable app permissions in Apple Health or remove the integration in Weight Gurus."
+        static let closeButton = "CLOSE"
+    }
+    
+    struct HKRemoveAlert {
+        static let title = "Are you sure?"
+        static let message = "The integration will be removed.  To fully disconnect, ensure Weight Gurus is disabled in the Apple Health App."
+        static let removeButton = "Remove"
+        static let cancelButton = "Cancel"
     }
 }
 
@@ -279,10 +456,13 @@ struct AppAssets {
     static let history = "history"
     static let historyFill = "historyFill"
     static let appSync = "appSync"
+    static let bluetooth = "bluetooth"
+    static let btWifi = "btWifi"
     static let chevronUp = "chevronUp"
     static let chevronDown = "chevronDown"
     static let chevronRight = "chevronRight"
     static let chevronLeft = "chevronLeft"
+    static let chevronUpDown = "chevronUpDown"
     static let bmiIcon = "bmi"
     static let bodyFatIcon = "bodyFat"
     static let muscleIcon = "muscle"
@@ -296,14 +476,31 @@ struct AppAssets {
     static let bmrIcon = "bmr"
     static let ageIcon = "metabolicAge"
     static let emptyStateIcon = "emptyStateIcon"
+    static let checkMarkCircle = "checkMarkCircle"
+    static let circleOutline = "circleOutline"
+    static let circleCheckFilled = "circleCheckFilled"
     static let wifi = "wifi"
+    static let trash = "trash"
     static let filledCloseCircle = "filledCloseCircle"
     static let filledTickCircle = "filledTickCircle"
-    static let bluetooth = "bluetooth"
     static let exclamationMark = "exclamationMark"
     static let scale0412 = "0412"
     static let weightOnlyMode = "weightOnlyMode"
     static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
-    static let trash = "trash"
+    static let  skuNumberSticker = "skuNumberSticker"
+    static let userProfile = "userProfile"
+    // Newly added from image
+    static let exclamationDanger = "exclamationDanger"
+    static let hkIntegrationCompleteSS = "hkIntegrationCompleteSS"
+    static let hkPermissionsAllowedSS = "hkPermissionsAllowedSS"
+    static let hkPermissionsNotAllowedSS = "hkPermissionsNotAllowedSS"
+    static let fitbitLogoSmall = "fitbitLogoSmall"
+    static let fitbitLogoLarge = "fitbitLogoLarge"
+    static let hkLogoLarge = "hkLogoLarge"
+    static let hkLogoSmall = "hkLogoSmall"
+    static let myFitnessLogoSmall = "myFitnessLogoSmall"
+    static let myFitnessLogoLarge = "myFitnessLogoLarge"
+    static let ggLogoSmall = "ggLogoSmall"
+    static let ggLogoLarge = "ggLogoLarge"
 }
 

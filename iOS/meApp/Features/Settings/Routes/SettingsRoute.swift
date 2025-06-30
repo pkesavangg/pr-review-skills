@@ -12,23 +12,23 @@ import SwiftUI
 enum SettingsRoute: Routable {
     case editProfile
     case changePassword
-    case addAndEditScales
-    case scaleSettings(scale: Device, scaleType: ScaleType)
     case scaleModes
     case displayMetrics
     case scaleNameScreen(scaleName: String)
     case users
-    case scaleBluetoothScreen(scale: Device)
     case wifi
-    case wifiCredentials(wifiName: String)
-    
+    case wifiCredentials(wifiName: String)    
+    case scaleBluetoothScreen(scale: Device)  
+    case scaleSettings(scale: Device, scaleType: ScaleType)  
+    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts
+
     var body: some View {
         switch self {
-        case .editProfile:
-            EditProfileScreen()
+        case .integrations:
+            IntegrationsScreen()
         case .changePassword:
             ChangePasswordScreen()
-        case .addAndEditScales:
+        case .addEditScales:
             MyScalesScreen()
         case .scaleSettings(let scale, let scaleType):
             ScaleSettingsScreen(scale: scale, scaleType: scaleType)
@@ -46,6 +46,21 @@ enum SettingsRoute: Routable {
             WifiScreen()
         case .wifiCredentials(let wifiName):
             WifiCredentialsView(wifiName: wifiName)
+        case .editProfile:
+            EditProfileScreen()
+        case .goal:
+            GoalSettingScreen()
+        case .weightless:
+            WeightlessScreen()
+        case .messages:
+            EmptyView() // TODO: Implement MessagesScreen
+        case .appPermissions:
+            AppPermissionsScreen()
+        case .help:
+            HelpScreen()
+        case .myAccounts:
+            MyAccountsScreen()
         }
     }
 }
+

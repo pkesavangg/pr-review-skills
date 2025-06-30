@@ -396,7 +396,7 @@ interface EntryDao {
           AVG(bsem.boneMass) AS boneMass,
           AVG(bsem.impedance) AS impedance,
           MAX(e.unit) AS unit
-        FROM entry AS e
+        FROM entry_view AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
         WHERE e.accountId = :accountId
@@ -435,7 +435,7 @@ interface EntryDao {
           bsem.boneMass,
           bsem.impedance,
           e.unit
-        FROM entry AS e
+        FROM entry_view AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
         WHERE e.accountId = :accountId
@@ -499,35 +499,102 @@ interface EntryDao {
      */
     @Query(
         """
-        SELECT
-          strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS period,
-          e.entryTimestamp,
-          bse.weight,
-          bse.bodyFat,
-          bse.muscleMass,
-          bse.water,
-          bse.bmi,
-          bsem.bmr,
-          bsem.metabolicAge,
-          bsem.proteinPercent,
-          bsem.pulse,
-          bsem.skeletalMusclePercent,
-          bsem.subcutaneousFatPercent,
-          bsem.visceralFatLevel,
-          bsem.boneMass,
-          bsem.impedance,
-          e.unit
-        FROM entry AS e
-        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
-        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
-        WHERE e.accountId = :accountId
-          AND e.entryTimestamp IN (
-            SELECT MAX(entryTimestamp)
-            FROM entry
-            WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp))
-          )
-        ORDER BY period DESC
+WITH daily_entries AS (
+  SELECT
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS day,
+    e.entryTimestamp,
+    e.unit,
+    bse.weight,
+    bse.bodyFat,
+    bse.muscleMass,
+    bse.water,
+    bse.bmi,
+    bsem.bmr,
+    bsem.metabolicAge,
+    bsem.proteinPercent,
+    bsem.pulse,
+    bsem.skeletalMusclePercent,
+    bsem.subcutaneousFatPercent,
+    bsem.visceralFatLevel,
+    bsem.boneMass,
+    bsem.impedance
+  FROM entry_view e
+  LEFT JOIN body_scale_entry bse ON e.id = bse.id
+  LEFT JOIN body_scale_entry_metric bsem ON e.id = bsem.id
+  WHERE e.accountId = :accountId
+),
+distinct_days AS (
+  SELECT DISTINCT day FROM daily_entries
+)
+SELECT
+  d.day AS period,
+  -- Get the latest unit and entryTimestamp for that day
+  (SELECT unit FROM daily_entries
+   WHERE day = d.day AND unit IS NOT NULL
+   ORDER BY entryTimestamp DESC LIMIT 1) AS unit,
+
+  (SELECT entryTimestamp FROM daily_entries
+   WHERE day = d.day
+   ORDER BY entryTimestamp DESC LIMIT 1) AS entryTimestamp,
+
+  -- For each metric, get the latest valid value for that day
+  (SELECT weight FROM daily_entries
+   WHERE day = d.day AND weight IS NOT NULL AND weight > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS weight,
+
+  (SELECT bodyFat FROM daily_entries
+   WHERE day = d.day AND bodyFat IS NOT NULL AND bodyFat > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS bodyFat,
+
+  (SELECT muscleMass FROM daily_entries
+   WHERE day = d.day AND muscleMass IS NOT NULL AND muscleMass > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS muscleMass,
+
+  (SELECT water FROM daily_entries
+   WHERE day = d.day AND water IS NOT NULL AND water > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS water,
+
+  (SELECT bmi FROM daily_entries
+   WHERE day = d.day AND bmi IS NOT NULL AND bmi > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS bmi,
+
+  (SELECT bmr FROM daily_entries
+   WHERE day = d.day AND bmr IS NOT NULL AND bmr > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS bmr,
+
+  (SELECT metabolicAge FROM daily_entries
+   WHERE day = d.day AND metabolicAge IS NOT NULL AND metabolicAge > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS metabolicAge,
+
+  (SELECT proteinPercent FROM daily_entries
+   WHERE day = d.day AND proteinPercent IS NOT NULL AND proteinPercent > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS proteinPercent,
+
+  (SELECT pulse FROM daily_entries
+   WHERE day = d.day AND pulse IS NOT NULL AND pulse > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS pulse,
+
+  (SELECT skeletalMusclePercent FROM daily_entries
+   WHERE day = d.day AND skeletalMusclePercent IS NOT NULL AND skeletalMusclePercent > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS skeletalMusclePercent,
+
+  (SELECT subcutaneousFatPercent FROM daily_entries
+   WHERE day = d.day AND subcutaneousFatPercent IS NOT NULL AND subcutaneousFatPercent > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS subcutaneousFatPercent,
+
+  (SELECT visceralFatLevel FROM daily_entries
+   WHERE day = d.day AND visceralFatLevel IS NOT NULL AND visceralFatLevel > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS visceralFatLevel,
+
+  (SELECT boneMass FROM daily_entries
+   WHERE day = d.day AND boneMass IS NOT NULL AND boneMass > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS boneMass,
+
+  (SELECT impedance FROM daily_entries
+   WHERE day = d.day AND impedance IS NOT NULL AND impedance > 0
+   ORDER BY entryTimestamp DESC LIMIT 1) AS impedance
+FROM distinct_days d
+ORDER BY d.day DESC
     """,
     )
     fun getDaywiseBodyScaleLatestWithJoin(

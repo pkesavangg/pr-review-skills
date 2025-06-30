@@ -9,6 +9,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -19,12 +21,15 @@ import com.greatergoods.meapp.features.history.viewmodel.HistoryIntent
 import com.greatergoods.meapp.features.history.viewmodel.HistoryState
 import com.greatergoods.meapp.features.history.viewmodel.HistoryViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryScreen() {
     val viewModel: HistoryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
     val isRefreshing = state.isLoading
+    val coroutineScope = rememberCoroutineScope()
     HistoryScreenContent(
         state = state,
         isRefreshing = isRefreshing,
@@ -42,6 +47,8 @@ fun HistoryScreenContent(
     onRefresh: (() -> Unit)? = null,
     handleIntent: (HistoryIntent) -> Unit,
 ) {
+    val navBackStack = LocalNavBackStack.current
+    val coroutineScope = rememberCoroutineScope()
     AppScaffold(
         title = HistoryScreenStrings.Title,
         isRefreshing = state.isLoading,
@@ -61,7 +68,11 @@ fun HistoryScreenContent(
                     HistoryList(
                         items = state.historyItems,
                         onItemClick = { item ->
-                            println("Clicked: ${item.entryTimestamp}")
+                            if (item.entryTimestamp != null) {
+                                coroutineScope.launch {
+                                    navBackStack.addRoute(AppRoute.MonthDetails(item.entryTimestamp))
+                                }
+                            }
                         },
                     )
                 }

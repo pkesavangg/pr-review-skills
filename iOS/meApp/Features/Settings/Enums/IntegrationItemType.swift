@@ -1,0 +1,33 @@
+//  IntegrationType.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 26/06/25.
+//
+
+import Foundation
+
+/// Supported integration providers shown in Integrations settings.
+/// Extend this enum when new integrations are added.
+enum IntegrationItemType: CaseIterable {
+    case appleHealth
+    case fitbit
+    case myFitnessPal
+
+    /// Localized display name for UI.
+    var displayName: String {
+        switch self {
+        case .appleHealth:  return IntegrationsStrings.appleHealth
+        case .fitbit:       return IntegrationsStrings.fitbit
+        case .myFitnessPal: return IntegrationsStrings.myFitnessPal
+        }
+    }
+
+    /// Asset name of logo icon.
+    var iconAsset: String {
+        switch self {
+        case .appleHealth:  return AppAssets.hkLogoSmall
+        case .fitbit:       return AppAssets.fitbitLogoSmall
+        case .myFitnessPal: return AppAssets.myFitnessLogoSmall
+        }
+    }
+} 

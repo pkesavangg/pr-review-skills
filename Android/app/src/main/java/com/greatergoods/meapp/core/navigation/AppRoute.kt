@@ -44,6 +44,11 @@ sealed class AppRoute : NavKey {
         data object AppSync : Main()
     }
 
+    @Serializable
+    data class MonthDetails(
+        val month: String,
+    ) : AppRoute()
+
     /**
      * Authentication-related navigation routes.
      */
@@ -60,6 +65,23 @@ sealed class AppRoute : NavKey {
         data object Signup : Auth()
 
         @Serializable
-        data object UserList : Auth()
+        data object MultiAccountLanding : Auth()
+    }
+
+    /**
+     * Profile-related navigation routes.
+     */
+    @Serializable
+    sealed class AccountSettings : AppRoute() {
+        @Serializable
+        data object ChangePassword : AccountSettings()
+
+        @Serializable
+        data object Profile : AccountSettings()
+
+        @Serializable
+        data object MyAccounts : AccountSettings()
     }
 }
+
+

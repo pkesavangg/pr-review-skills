@@ -16,6 +16,7 @@ import Combine
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var accountService: AccountService
+    @Injector var logger: LoggerService
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     
@@ -35,8 +36,11 @@ final class SignupStore: ObservableObject {
     @Published var selectedHeightCm: [String] = ["1", "7", "8"]  // Default 178cm
     @Published var showHeightInchesPicker = false
     @Published var showHeightCmPicker = false
+
+    @Published var isFromAccountSwitching: Bool = false
     
     var onSignupSuccess: (() -> Void)?
+    var dismissAction: DismissAction?
     
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
@@ -44,8 +48,11 @@ final class SignupStore: ObservableObject {
     private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
     
+    private let tag = "SignupStore"
+    
     init() {
         setupFormObservers()
+        self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
         updateHeightPickerValues(from: Int(signupForm.height.value))
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
     }
@@ -152,10 +159,14 @@ final class SignupStore: ObservableObject {
         signupForm.getError(for: control)
     }
     
-    func handleExit(router: Router<AuthRoute>) {
-        // If the form is not dirty, simply navigate back else show an alert
+    func handleExit(router: Router<AuthRoute>? = nil) {
+        // If the form is not dirty, dismiss the signup screen
         if !signupForm.isDirty {
-            router.navigateBack()
+            if isFromAccountSwitching {
+                dismissAction?()
+            } else {
+                router?.navigateBack()
+            }
             return
         }
         let alert = AlertModel(
@@ -163,9 +174,14 @@ final class SignupStore: ObservableObject {
             message: alertLang.SignupExitAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.SignupExitAlert.exitButton, type: .primary) { _ in
-                    router.navigateBack()
+                    if self.isFromAccountSwitching {
+                        self.dismissAction?()
+                    } else {
+                        router?.navigateBack()
+                        self.resetForm()
+                    }
                 },
-                AlertButtonModel(title: alertLang.SignupExitAlert.returnButton, type: .secondary) { _ in
+                AlertButtonModel(title: alertLang.SignupExitAlert.goBackButton, type: .secondary) { _ in
                 }
             ]
         )
@@ -198,9 +214,18 @@ final class SignupStore: ObservableObject {
             if let goal = goal {
                 let _ = try await accountService.createGoal(goal)
             }
-            onSignupSuccess?()
+            if isFromAccountSwitching {
+                dismissAction?()
+            } else {
+                onSignupSuccess?()
+            }
             resetForm()
         } catch {
+            logger.log(level: .error, tag: tag, message: "Signup Error: \(error)")
+            if case AccountError.maxAccountsReached = error {
+                showMaxUserAccountsAlert()
+                return
+            }
             handleSignupError(error)
         }
         notificationService.dismissLoader()
@@ -305,7 +330,6 @@ final class SignupStore: ObservableObject {
     
     private func updateWeightValidators(isMetric: Bool) {
         let maxWeight = isMetric ? 450.0 : 999.0
-
         // Remove old validator
         signupForm.currentWeight.removeValidator(ofType: .maxValue)
         signupForm.goalWeight.removeValidator(ofType: .maxValue)
@@ -344,5 +368,19 @@ final class SignupStore: ObservableObject {
 
         // Ensure the primary action button reflects the current (reset) state.
         updateNextButtonState()
+    }
+    
+    /// Presents an alert informing the user that the maximum number of accounts
+    /// has been reached.
+    private func showMaxUserAccountsAlert() {
+        let alertLang = alertLang.MaxUsersAlert
+        let alert = AlertModel(
+            title: alertLang.title,
+            message: isFromAccountSwitching ? alertLang.message : alertLang.logInAndRemoveMessage,
+            buttons: [
+                AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 }

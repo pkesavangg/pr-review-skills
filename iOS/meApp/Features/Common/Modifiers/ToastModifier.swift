@@ -166,6 +166,9 @@ struct ToastModifier: ViewModifier {
                 let newToastItem = (id: UUID(), toast: toast)
                 activeToasts.append(newToastItem)
                 
+                // Notify about active toast count change
+                toast.onActiveCountChanged?(activeToasts.count)
+                
                 // Setup auto-dismiss timer
                 timer?.cancel()
                 let newTimer = DispatchSource.makeTimerSource()
@@ -185,17 +188,23 @@ struct ToastModifier: ViewModifier {
     }
     
     private func removeToast(id: UUID) {
-        if let toast = activeToasts.first(where: { $0.id == id })?.toast {
-            toast.onDismiss?()
-        }
+        let toastToRemove = activeToasts.first(where: { $0.id == id })?.toast
+        toastToRemove?.onDismiss?()
+        
         withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
             activeToasts.removeAll { $0.id == id }
+            
+            // Notify about active toast count change - use the removed toast's callback
+            // This ensures we always have a callback even when count goes to 0
+            toastToRemove?.onActiveCountChanged?(activeToasts.count)
+            
             // Reset offset and dragging state after toast is removed
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 offset = .zero
                 isDragging = false
             }
         }
+        
         if id == activeToasts.first?.id {
             timer?.cancel()
             timer = nil

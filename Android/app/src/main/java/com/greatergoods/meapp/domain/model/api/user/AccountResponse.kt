@@ -1,9 +1,9 @@
 package com.greatergoods.meapp.domain.model.api.user
 
 data class AccountResponse(
-    val accessToken: String,
-    val refreshToken: String,
-    val expiresAt: String,
+    val accessToken: String?,
+    val refreshToken: String?,
+    val expiresAt: String?,
     val account: AccountInfo
 )
 

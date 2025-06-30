@@ -6,6 +6,7 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 @HiltViewModel
 class HistoryViewModel
@@ -24,6 +25,13 @@ constructor(
                 resync()
             }
 
+            is HistoryIntent.getHistory -> {
+                viewModelScope.launch {
+                    entryService.monthDetails(intent.start).collect {
+                    }
+                }
+            }
+
             else -> null
         }
     }
@@ -36,7 +44,6 @@ constructor(
             }
         }
     }
-
 
     private fun loadHistory() {
         viewModelScope.launch {
@@ -56,5 +63,4 @@ constructor(
             entryService.syncOperations()
         }
     }
-
 }

@@ -11,8 +11,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SettingsSection
@@ -26,6 +29,13 @@ import com.greatergoods.meapp.features.settings.viewmodel.SettingsState
 import com.greatergoods.meapp.features.settings.viewmodel.SettingsViewModel
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.launch
+
+// TODO: A new folder 'screens' will be created under 'settings' for MyAccountsScreen, MaxAccountsReachedDialog, and RemoveAccountDialog.
+// TODO: MyAccountsScreen and related dialogs/popups will be implemented in a new 'screens' folder under 'settings'.
+// This follows the feature-based structure and keeps My Accounts logic modular and maintainable.
+// TODO: Navigation to MyAccountsScreen will be added to the settings list.
+// MyAccountsScreen will be implemented in a new file under 'screens'.
 
 @Composable
 fun SettingsScreen() {
@@ -40,6 +50,8 @@ fun SettingsScreenContent(
     state: SettingsState,
     handleIntent: (SettingsIntent) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val backStack = LocalNavBackStack.current
     AppScaffold(title = SettingsScreenStrings.Title) {
         Column(
             modifier =
@@ -48,7 +60,8 @@ fun SettingsScreenContent(
                     .verticalScroll(rememberScrollState())
                     .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
         ) {
-            UserProfileSection(state.account) {}
+            UserProfileSection(state.account) {
+            }
             Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
             // Account Settings Section
             SettingsSection(
@@ -66,11 +79,25 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.ExportData,
                             type = SettingsItemType.None,
-                            onClick = { },
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ExportData)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ChangePassword,
-                            onClick = { },
+                            onClick = {
+                                coroutineScope.launch {
+                                    backStack.addRoute(AppRoute.AccountSettings.ChangePassword)
+                                }
+                            },
+                        ),
+                        SettingsItem(
+                            title = SettingsScreenStrings.UserProfile,
+                            onClick = {
+                                coroutineScope.launch {
+                                    backStack.addRoute(AppRoute.AccountSettings.Profile)
+                                }
+                            },
                         ),
                     ),
             )
@@ -86,13 +113,23 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.BiologicalSex,
-                            type = SettingsItemType.Dropdown("Female"),
-                            onClick = { },
+                            type =
+                                SettingsItemType.Dropdown(
+                                    state.account?.gender?.replaceFirstChar { it.uppercase() }
+                                        ?: SettingsScreenStrings.NotSet,
+                                ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowBiologicalSexModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ActivityLevel,
-                            type = SettingsItemType.Dropdown("Athlete"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(
+                                state.account?.activityLevel?.replaceFirstChar { it.uppercase() } ?: SettingsScreenStrings.NotSet
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Height,
@@ -101,8 +138,16 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UnitType,
-                            type = SettingsItemType.Dropdown("lbs & feet"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(
+                                when (state.account?.weightUnit?.value) {
+                                    "kg" -> "kg & cm"
+                                    "lb" -> "lbs & feet"
+                                    else -> SettingsScreenStrings.NotSet
+                                }
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Weightless,
@@ -143,22 +188,28 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.HelpCustomerService,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {},
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.PrivacyPolicy,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenPrivacyPolicy)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.TermsOfService,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenTermsOfService)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.GreaterGoodsDotCom,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenGreaterGoodsWebsite)
+                            },
                         ),
                     ),
             )
@@ -170,7 +221,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.SwitchAccounts,
                             type = SettingsItemType.None,
-                            onClick = { },
+                            onClick = {
+                                handleIntent(SettingsIntent.SwitchAccount)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.LogOut,
@@ -195,6 +248,6 @@ fun SettingsScreenContent(
 @Composable
 fun SettingsScreenPreview() {
     MeAppTheme {
-        SettingsScreenContent(SettingsState(), {  })
+        SettingsScreenContent(SettingsState(), { })
     }
 }

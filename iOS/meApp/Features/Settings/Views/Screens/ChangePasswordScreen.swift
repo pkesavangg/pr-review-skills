@@ -28,8 +28,18 @@ struct ChangePasswordScreen: View {
             // Header
             NavbarHeaderView(
                 title: screenLang.title,
-                leadingContent: { Image(AppAssets.xmark) },
-                trailingContent: { EmptyView() },
+                leadingContent: { Image(AppAssets.chevronLeft) },
+                trailingContent: {
+                    ButtonView(
+                        text: commonLang.save,
+                        type: .inlineTextPrimary,
+                        size: .small,
+                        // Disable when no changes or invalid.
+                        isDisabled: (!settingsStore.changePasswordForm.isDirty || (settingsStore.changePasswordForm.isDirty && settingsStore.changePasswordForm.isInvalid))
+                    ) {
+                        hideKeyboard()
+                        settingsStore.savePassword(router: router)
+                    } },
                 onLeadingTap: { settingsStore.handleChangePasswordExit(router: router) },
                 onTrailingTap: {},
                 canShowBorder: true
@@ -78,26 +88,17 @@ struct ChangePasswordScreen: View {
                     ) {
                         focusedField = nil
                     }
-
-                    // Save Button
-                    HStack {
-                        ButtonView(text: commonLang.save,
-                                   type: .filledPrimary,
-                                   size: .large,
-                                   isDisabled: (!settingsStore.changePasswordForm.isDirty || (settingsStore.changePasswordForm.isDirty && settingsStore.changePasswordForm.isInvalid))) {
-                            hideKeyboard()
-                            settingsStore.savePassword(router: router)
-                        }
-                        .padding(.top, .spacingXL)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
+                }               
+                
+                ButtonView(text: screenLang.forgotPassword, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                    settingsStore.showForgotPasswordAlert()
                 }
-                .padding(.vertical, .spacingLG)
-                .padding(.bottom, .spacingXL)
             }
             .scrollDismissesKeyboard(.interactively)
             .padding(.horizontal, .spacingSM)
             .navigationBarHidden(true)
+            .padding(.vertical, .spacingLG)
+            .padding(.bottom, .spacingXL)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
     }

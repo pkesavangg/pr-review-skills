@@ -305,6 +305,15 @@ class ScaleStore: ObservableObject {
     func openBIAModel(){
         notificationService.showModal(ModalData(
             presentedView: AnyView(BIAInfoModalView(){
+                   self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
+    }
+    
+    func openHelp() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(ModelNumberHelpModalView(){
                 self.notificationService.dismissModal()
             }),
             backdropDismiss: true
