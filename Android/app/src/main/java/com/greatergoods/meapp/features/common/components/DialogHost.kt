@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.common.components
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
 
@@ -10,6 +11,7 @@ enum class DialogType {
     HeightPicker,
     HelpPopup,
     PasswordReset,
+    RadioGroupPicker
 }
 
 @Composable
@@ -45,6 +47,27 @@ fun DialogHost() {
                 )
             }
 
+            DialogType.RadioGroupPicker -> {
+                // Custom dialog for radio group picker
+                val config = dialog.params["config"] as? RadioGroupModalConfig<*>
+                val onConfirm = dialog.params["onConfirm"] as? (Any?) -> Unit
+                val onCancel = dialog.params["onCancel"] as? (() -> Unit)
+
+                if (config != null) {
+                    AppRadioGroupModal(
+                        config = config as RadioGroupModalConfig<Any>,
+                        onCancel = {
+                            onCancel?.invoke()
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                        onOk = { selectedValue ->
+                            onConfirm?.invoke(selectedValue)
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                    )
+                }
+            }
+
             DialogType.PasswordReset -> {
                 val email = dialog.params["email"] as? String ?: ""
                 PasswordResetModal(
@@ -54,11 +77,6 @@ fun DialogHost() {
                         dialogQueueViewModel.dismissCurrent()
                     },
                 )
-            }
-
-            else -> {
-                // Default dialog handling
-                // This can be a placeholder or a default dialog implementation
             }
         }
     }

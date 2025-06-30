@@ -24,7 +24,6 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                     Text(segment.rawValue.uppercased())
                         .fontWeight(.bold)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
-                        .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .padding(.horizontal, 12)
                         .background(

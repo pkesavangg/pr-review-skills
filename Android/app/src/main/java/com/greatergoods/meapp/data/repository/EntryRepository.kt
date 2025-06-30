@@ -1,6 +1,7 @@
 // data/repository/EntryRepository.kt
 package com.greatergoods.meapp.data.repository
 
+import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter.isValidIsoTimestamp
 import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.api.OperationsResponse
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
@@ -9,17 +10,12 @@ import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.repository.IEntryRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Repository implementation for managing entries.
@@ -34,7 +30,10 @@ class EntryRepository @Inject constructor(
      * Inserts a single entry.
      */
     override suspend fun insert(entry: Entry): Long {
-        return entryDao.insert(entry)
+        return if (isValidIsoTimestamp(entry.entry.entryTimestamp))
+            entryDao.insert(entry)
+        else
+            -1
     }
 
     /**
@@ -47,7 +46,10 @@ class EntryRepository @Inject constructor(
     /**
      * Inserts a list of entries.
      */
-    override suspend fun insert(entries: List<Entry>) = entryDao.insert(entries)
+    override suspend fun insert(entries: List<Entry>) {
+        val validEntries = entries.filter { isValidIsoTimestamp(it.entry.entryTimestamp) }
+        entryDao.insert(validEntries)
+    }
 
     /**
      * Marks an entry as deleted.
@@ -108,12 +110,6 @@ class EntryRepository @Inject constructor(
         val endDate = calendar.timeInMillis.toString()
         calendar.add(Calendar.DAY_OF_YEAR, -days)
         val startDate = calendar.timeInMillis.toString()
-        CoroutineScope(IO).launch {
-            Log.d(
-                "EntryRepository",
-                "startDate: ${entryDao.getEntriesByTimeRange(accountId, startDate, endDate).first()}",
-            )
-        }
         return entryDao.getEntriesByTimeRange(accountId, startDate, endDate).map { flow ->
             flow.map { it.toEntry() }
         }
@@ -193,7 +189,7 @@ class EntryRepository @Inject constructor(
      * @param month The month in YYYY-MM format
      * @return Flow of list of entries for the specified month
      */
-    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry?>> =
+    override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>> =
         entryDao.getMonthDetail(accountId, month).map { views ->
             views.map { it.toEntry() }
         }
@@ -204,7 +200,6 @@ class EntryRepository @Inject constructor(
      * @return Flow of list of all monthly aggregated data
      */
     override fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> {
-        Log.d("CHECKING", "Monthly history size: ${accountId}")
         return entryDao.getMonthlyHistory(accountId)
     }
 

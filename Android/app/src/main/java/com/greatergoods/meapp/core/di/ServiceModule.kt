@@ -2,26 +2,37 @@ package com.greatergoods.meapp.core.di
 
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
-import com.greatergoods.meapp.core.service.AccountAuthService
-import com.greatergoods.meapp.core.service.AppEventService
+import com.greatergoods.meapp.core.service.AccountService
+import com.greatergoods.meapp.core.service.AppNavigationService
+import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DeviceInfoService
-import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
+import com.greatergoods.meapp.core.service.OfflineHandlerService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
+import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
-import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
+import com.greatergoods.meapp.data.services.ExportService
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IIntegrationService
+import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
+import com.greatergoods.meapp.features.common.service.DialogUtility
 import com.greatergoods.notification.NotificationService
 import dagger.Module
 import dagger.Provides
@@ -38,31 +49,36 @@ import android.content.Context
 @InstallIn(SingletonComponent::class)
 object ServiceModule {
     /**
-     * Provides a singleton instance of [IAccountAuthService].
-     * @param accountAuthService The implementation of AccountAuthService.
-     * @return [IAccountAuthService] instance.
+     * Provides a singleton instance of [IAccountService].
+     * @param accountService The implementation of AccountService.
+     * @return [IAccountService] instance.
      */
     @Provides
     @Singleton
-    fun provideAccountAuthService(
+    fun provideAccountService(
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
         tokenManager: ITokenManager,
-        dialogQueueService: IDialogQueueService
-    ): IAccountAuthService = AccountAuthService(
-        accountRepository,
-        connectivityObserver,
-        tokenManager,
-        dialogQueueService,
-    )
+        dialogQueueService: IDialogQueueService,
+        userDataStore: UserDataStore,
+        appEventService: IAppNavigationService,
+    ): IAccountService =
+        AccountService(
+            accountRepository,
+            connectivityObserver,
+            tokenManager,
+            dialogQueueService,
+            userDataStore,
+            appEventService,
+        )
 
     /**
-     * Provides a singleton instance of [IAppEventService].
-     * @return [AppEventService] instance.
+     * Provides a singleton instance of [IAppNavigationService].
+     * @return [AppNavigationService] instance.
      */
     @Provides
     @Singleton
-    fun provideAppEventService(): IAppEventService = AppEventService()
+    fun provideAppEventService(): IAppNavigationService = AppNavigationService()
 
     /**
      * Provides a singleton instance of [GGNotificationManager] for notification operations.
@@ -93,15 +109,24 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogQueueService(): IDialogQueueService {
-        return DialogQueueService()
+    fun provideDialogQueueService(): IDialogQueueService = DialogQueueService()
+
+    /**
+     * Provides a singleton instance of [IDialogUtility] for common dialog operations.
+     * @param dialogQueueService The dialog queue service dependency.
+     * @return [DialogUtility] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility {
+        return DialogUtility(dialogQueueService)
     }
 
     @Provides
     @Singleton
     fun provideEntryService(
-        entryRepository: com.greatergoods.meapp.domain.repository.IEntryRepository,
-        accountRepository: IAccountRepository
+        entryRepository: IEntryRepository,
+        accountRepository: IAccountRepository,
     ): IEntryService = EntryService(entryRepository, accountRepository)
 
     @Provides
@@ -109,8 +134,19 @@ object ServiceModule {
     fun provideDeviceInfoService(
         @ApplicationContext context: Context,
         deviceInfoRepository: IDeviceInfoRepository,
-        fcmDataStore: FcmDataStore,
-    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, fcmDataStore)
+        connectivityObserver: IConnectivityObserver,
+        offlineHandlerService: IOfflineHandlerService,
+        appRepository: IAppRepository,
+        accountRepository: IAccountRepository,
+    ): IDeviceInfoService =
+        DeviceInfoService(
+            context,
+            deviceInfoRepository,
+            connectivityObserver,
+            offlineHandlerService,
+            appRepository,
+            accountRepository,
+        )
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
@@ -124,4 +160,47 @@ object ServiceModule {
         integrationRepository: IIntegrationRepository,
         dialogQueueService: DialogQueueService,
     ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
+
+    /**
+     * Provides the export service implementation.
+     */
+    @Provides
+    @Singleton
+    fun provideExportService(
+        exportAPI: IExportAPI,
+        accountService: IAccountService,
+        dialogQueueService: IDialogQueueService
+    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
+
+    /**
+     * Provides the offline handler service implementation.
+     * Handles offline data synchronization and biological sex updates.
+     */
+    @Provides
+    @Singleton
+    fun provideOfflineHandlerService(
+        accountRepository: IAccountRepository,
+        bodyCompositionRepository: IBodyCompositionRepository,
+        connectivityObserver: IConnectivityObserver,
+    ): IOfflineHandlerService = OfflineHandlerService(
+        accountRepository,
+        bodyCompositionRepository,
+        connectivityObserver,
+    )
+
+    /**
+     * Provides the body composition service implementation.
+     * Handles activity level, weight unit, and height updates with offline support.
+     */
+    @Provides
+    @Singleton
+    fun provideBodyCompositionService(
+        bodyCompositionRepository: IBodyCompositionRepository,
+        connectivityObserver: IConnectivityObserver,
+        dialogQueueService: IDialogQueueService
+    ): IBodyCompositionService = BodyCompositionService(
+        bodyCompositionRepository,
+        connectivityObserver,
+        dialogQueueService
+    )
 }

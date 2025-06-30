@@ -1,16 +1,22 @@
 package com.greatergoods.meapp.data.api
 
 import StreakRequest
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.NotificationSettingsRequest
+import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
+import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.dashboard.DashboardMetricsRequest
 import com.greatergoods.meapp.domain.model.api.dashboard.DashboardTypeRequest
 import com.greatergoods.meapp.domain.model.api.metrics.BodyCompRequest
 import com.greatergoods.meapp.domain.model.api.metrics.WeightlessRequest
+import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.PUT
 
 interface IUserAPI {
     companion object {
@@ -22,15 +28,13 @@ interface IUserAPI {
         private const val STREAK = "streak"
         private const val DASHBOARD_TYPE = "dashboard-type"
         private const val DASHBOARD_METRICS = "dashboard-metrics"
+        private const val PASSWORD = "password"
     }
 
     @POST(ACCOUNT)
     suspend fun createAccount(
         @Body request: CreateAccountRequest,
     ): LoginResponse
-
-    @GET(ACCOUNT)
-    suspend fun getAccount(): AccountResponse
 
     @PATCH(ACCOUNT + PROFILE)
     suspend fun updateProfile(
@@ -69,4 +73,14 @@ interface IUserAPI {
 
     @DELETE(ACCOUNT)
     suspend fun deleteAccount(): Unit
+
+    /**
+     * Changes user password.
+     * @param request ChangePasswordRequest containing old and new passwords.
+     * @return Response indicating success or failure.
+     */
+    @PUT(ACCOUNT + PASSWORD)
+    suspend fun changePassword(
+        @Body request: ChangePasswordRequest,
+    ): ChangePasswordResponse
 }

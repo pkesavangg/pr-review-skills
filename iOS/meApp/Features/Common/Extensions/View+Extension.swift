@@ -101,6 +101,9 @@ extension View {
         options: [[T]],
         displayValue: @escaping (T) -> String,
         pickerType: PickerType = .default,
+        allowTapOutside: Bool = true,
+        title: String? = nil,
+        showCancel: Bool = false,
         onUpdate: @escaping ([T]) -> Void
     ) -> some View {
         modifier(
@@ -110,7 +113,10 @@ extension View {
                 options: options,
                 displayValue: displayValue,
                 pickerType: pickerType,
-                onUpdate: onUpdate
+                onUpdate: onUpdate,
+                title: title,
+                showCancel: showCancel,
+                allowTapOutside: allowTapOutside
             )
         )
     }
@@ -147,8 +153,48 @@ extension View {
     }
     
     /// Applies a modifier to set the row insets for settings views.
+    /// - Parameters:
+    ///   - top: Top inset (default is 11).
+    ///   - bottom: Bottom inset (default is 11).
+    ///   - leading: Leading inset (default is .spacingSM).
+    ///   - trailing: Trailing inset (default is .spacingSM).
     /// - Returns: A view with modified row insets suitable for settings.
-    func settingsRowInsets() -> some View {
-        self.modifier(SettingsRowInsetModifier())
+    func listRowInsets(
+        top: CGFloat = 0,
+        bottom: CGFloat = 0,
+        leading: CGFloat = .spacingSM,
+        trailing: CGFloat = .spacingSM
+    ) -> some View {
+        self.modifier(
+            ListRowInsetModifier(
+                top: top,
+                bottom: bottom,
+                leading: leading,
+                trailing: trailing
+            )
+        )
+    }
+    
+    /// Applies a swipeable modifier to the view with customizable button width and buttons.
+    /// - Parameters:
+    ///  - buttonWidth: The width of each swipeable button (default is 72).
+    ///  - buttons: An array of `SwipeButton` configurations for the swipeable actions.
+    ///  - itemID: The unique identifier for the row.
+    ///  - openItemID: A binding to the currently opened row identifier to ensure only one row is open at a time.
+    ///  - Returns: A view with swipeable actions applied.
+    func swipeableActions(
+        buttonWidth: CGFloat = 72,
+        buttons: [SwipeButton],
+        itemID: UUID,
+        openItemID: Binding<UUID?>? = nil
+    ) -> some View {
+        self.modifier(
+            SwipeableModifier(
+                swipeButtons: buttons,
+                buttonWidth: buttonWidth,
+                itemID: itemID,
+                openItemID: openItemID
+            )
+        )
     }
 }

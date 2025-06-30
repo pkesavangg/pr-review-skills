@@ -38,6 +38,7 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 fun AppScaffold(
     title: String?,
     modifier: Modifier = Modifier,
+    borderColor: Color = colorScheme.utility,
     containerColor: Color = colorScheme.secondaryBackground,
     appBarColor: Color = colorScheme.primaryBackground,
     actions: (@Composable () -> Unit)? = null,
@@ -50,13 +51,15 @@ fun AppScaffold(
         modifier = modifier
             .fillMaxSize(),
         topBar = {
-            if (title != null || navigationIcon != null || actions != null)
+            if (title != null || navigationIcon != null || actions != null) {
                 AppBar(
                     title = title,
                     navigationIcon = navigationIcon,
                     actions = actions,
+                    borderColor = borderColor,
                     containerColor = appBarColor,
                 )
+            }
         },
         containerColor = appBarColor
     ) { innerPadding ->

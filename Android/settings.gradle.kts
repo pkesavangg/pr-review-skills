@@ -23,3 +23,5 @@ rootProject.name = "Me App"
 include(":app")
 include(":notification")
 include(":app:healthconnect")
+include(":app:wificonnect")
+include(":app:appsync")

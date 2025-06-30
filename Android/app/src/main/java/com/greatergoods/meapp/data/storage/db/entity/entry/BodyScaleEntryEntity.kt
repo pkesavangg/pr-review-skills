@@ -22,10 +22,10 @@ import androidx.room.PrimaryKey
 data class BodyScaleEntryEntity(
     @PrimaryKey
     val id: Long,
-    val weight: Int,
-    val bodyFat: Int?,
-    val muscleMass: Int?,
-    val water: Int?,
-    val bmi: Int?,
+    val weight: Double,
+    val bodyFat: Double?,
+    val muscleMass: Double?,
+    val water: Double?,
+    val bmi: Double?,
     val source: String?,
 )

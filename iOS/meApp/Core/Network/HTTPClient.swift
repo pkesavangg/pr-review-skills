@@ -80,12 +80,13 @@ final class HTTPClient {
         }
         
         do {
-            return try await performRequest(request)
+
+           return try await performRequest(request)
         } catch {
             if let networkError = error as? HTTPError {
                 switch networkError {
-                case .statusCode(let code):
-                    if code == HTTPStatusCode.unauthorized.rawValue && needsAuth && !skipTokenCheck {
+                case HTTPError.unauthorized:
+                    if  needsAuth && !skipTokenCheck {
                         let account = try await getAccount(accountId)
                         let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
                         var newRequest = request

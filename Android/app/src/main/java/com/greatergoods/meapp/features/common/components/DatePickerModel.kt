@@ -60,7 +60,7 @@ fun DatePickerDialogContent(
                     type = ButtonType.InlineTextPrimary,
                     size = ButtonSize.Small,
                 )
-                Spacer(Modifier.height(MeTheme.spacing.xs))
+                Spacer(Modifier.height(MeTheme.spacing.md))
             }
         },
         dismissButton = {

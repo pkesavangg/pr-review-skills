@@ -66,6 +66,12 @@ object AppButtonDefaults {
             ButtonType.SecondaryFilled ->
                 if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
 
+            ButtonType.PrimaryOutlined ->
+                if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
+
+            ButtonType.SecondaryOutlined ->
+                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
+
             else -> Color.Transparent
         }
 
