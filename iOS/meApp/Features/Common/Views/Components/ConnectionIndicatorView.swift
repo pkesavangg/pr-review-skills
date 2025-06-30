@@ -10,37 +10,51 @@ import SwiftUI
 struct ConnectionIndicatorView: View {
     let image: String
     let isFailure: Bool
+    var showPulsingCircle: Bool = true
+
     @State private var pulse = false
     @Environment(\.appTheme) var theme
-    
+
+    var shouldPulse: Bool {
+        showPulsingCircle && !isFailure
+    }
+
     var body: some View {
         ZStack(alignment: .center) {
-            Circle()
-                .fill(isFailure ? theme.statusIconLoadingError : theme.statusIconLoading)
-                .frame(width: pulse ? 172 : 100, height: pulse ? 172 : 100)
-                .scaleEffect(pulse ? 1.15 : 1.0)
-                .opacity(pulse ? 0.7 : 1.0)
-                .animation(
-                    .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
-                    value: pulse
-                )
-            
+            if shouldPulse {
+                Circle()
+                    .fill(theme.statusIconLoading)
+                    .frame(width: pulse ? 172 : 100, height: pulse ? 172 : 100)
+                    .scaleEffect(pulse ? 1.15 : 1.0)
+                    .opacity(pulse ? 0.7 : 1.0)
+                    .animation(
+                        .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                        value: pulse
+                    )
+            }
+
             Circle()
                 .fill(isFailure ? theme.statusError : theme.brandWgPrimary)
                 .frame(width: 89, height: 89)
-            
+
             Image(image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 59, height: 59)
                 .foregroundColor(theme.backgroundPrimary)
         }
-        .frame(width: 172, height: 172)
+        .frame(width: shouldPulse ? 172 : 89, height: shouldPulse ? 172 : 89)
         .onAppear {
-            pulse = true
+            if shouldPulse {
+                pulse = true
+            }
+        }
+        .onChange(of: shouldPulse) { _, newValue in
+            pulse = newValue
         }
     }
 }
+
 
 #Preview {
     ConnectionIndicatorView(image: AppAssets.wifi, isFailure: true)

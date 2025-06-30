@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct WifiScreen:View {
     @EnvironmentObject var router: Router<SettingsRoute>
@@ -48,14 +49,13 @@ struct WifiScreen:View {
     }
     
     private func wifiListView() -> some View {
-        // Example data
-        let connectedWifiNetwork: String? = nil  // "greatergoods1"
-        // TODO: Replace with real connection state
+        // Use values from scaleStore
+        let connectedWifiNetwork = scaleStore.connectedWifiNetwork
         let wifiNetworks: [String]
         if connectedWifiNetwork != nil {
-            wifiNetworks = ["great2542", "ggtesting"] // Exclude the connected network if it's in the list, if needed
+            wifiNetworks = scaleStore.wifiNetworks.filter { $0 != connectedWifiNetwork }
         } else {
-            wifiNetworks = ["greatergoods1", "great2542", "ggtesting"]
+            wifiNetworks = scaleStore.wifiNetworks
         }
         
         return Group {
@@ -79,7 +79,7 @@ struct WifiScreen:View {
                                 .foregroundColor(theme.actionPrimary),
                             rowHeight: 48,
                             onTap: {
-                                router.navigate(to: .wifiCredentials)
+                                router.navigate(to: .wifiCredentials(wifiName: connectedWifiNetwork ?? ""))
                             },
                             verticalPadding: .zero
                         )
@@ -121,7 +121,7 @@ struct WifiScreen:View {
             }
         }
     }
-
+    
     /// Helper function for the network list with dividers
     @ViewBuilder
     private func wifiNetworksListView(networks: [String]) -> some View {
@@ -134,7 +134,7 @@ struct WifiScreen:View {
                         .foregroundColor(theme.actionPrimary),
                     rowHeight: 48,
                     onTap: {
-                        router.navigate(to: .wifiCredentials)
+                        router.navigate(to: .wifiCredentials(wifiName: network))
                     },
                     verticalPadding: .zero
                 )
@@ -155,24 +155,3 @@ struct WifiScreen:View {
     WifiScreen()
 }
 
-
-struct WifiScreenStrings{
-    static let title = "Wi-Fi Setup"
-    static let gatheringNetworks = "Gathering Networks"
-    static let refresh = "Refresh"
-    static let multipleNetworksInfo = "If you have multiple Wi-Fi networks, pick the 2.4 GHz network closest to your scale."
-    static let  continueNetworkPrompt = "Continue or choose a different 2.4 GHz Wi-Fi network."
-    static let connectedNetwork = "Connected Network"
-    static let availableNetworks = "Available Networks"
-}
-
-
-struct WifiCredentialsScreen: View {
-    var body: some View {
-        Text("Hello, World!")
-    }
-}
-
-#Preview{
-    WifiCredentialsScreen()
-}

@@ -21,39 +21,39 @@ struct SetupLoaderView: View {
         }
     }
 
-    var shouldAnimate: Bool {
+    func shouldAnimateDot(at index: Int) -> Bool {
         connectionState == .loading
     }
 
     var body: some View {
         VStack(spacing: 15) {
             ForEach(0..<5, id: \.self) { index in
-                switch (connectionState, index) {
-                case (.success, 2):
-                    AppIconView(icon: AppAssets.filledTickCircle, size: IconSize(width: 30, height: 30))
-                        .foregroundColor(theme.statusSuccess)
-
-                case (.failure, 2):
-                    AppIconView(icon: AppAssets.filledCloseCircle, size: IconSize(width: 30, height: 30))
-                        .foregroundColor(theme.statusError)
-
-                default:
+                if (connectionState == .success || connectionState == .failure), index == 2 {
+                    AppIconView(
+                        icon: connectionState == .success ? AppAssets.filledTickCircle : AppAssets.filledCloseCircle,
+                        size: IconSize(width: 30, height: 30)
+                    )
+                    .foregroundColor(
+                        connectionState == .success ? theme.statusSuccess : theme.statusError
+                    )
+                } else {
                     Circle()
                         .fill(dotColor)
                         .frame(width: 10, height: 10)
-                        .scaleEffect(connectionState == .loading ? viewModel.dotScales[index] : 1.0)
+                        .scaleEffect(shouldAnimateDot(at: index) ? viewModel.dotScales[index] : 1.0)
                         .animation(
-                            shouldAnimate ?
+                            shouldAnimateDot(at: index) ?
                             .easeInOut(duration: 0.6)
                                 .repeatForever(autoreverses: true)
                                 .delay(Double(index) * 0.15)
                             : .default,
-                            value: viewModel.dotScales[index]
+                            value: shouldAnimateDot(at: index) ? viewModel.dotScales[index] : 1.0
                         )
                 }
             }
         }
         .onAppear {
+            viewModel.connectionState = connectionState
             viewModel.startAnimation()
         }
     }

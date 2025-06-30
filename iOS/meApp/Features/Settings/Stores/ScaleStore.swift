@@ -36,7 +36,7 @@ class ScaleStore: ObservableObject {
     @Published var browserURL: URL? = nil
     
     // Settings/detail values for UI (replace with computed or fetched values later)
-    @Published var modeValue: ScaleModes = .weightOnly 
+    @Published var modeValue: ScaleModes = .weightOnly
     @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
     @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
     @Published var bluetoothValue: String = "Connected" // TODO: Replace with actual BT status
@@ -68,7 +68,12 @@ class ScaleStore: ObservableObject {
     @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
     @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
     @Published var isWifiLoading = false
-    
+    @Published var showPassword: Bool = false
+    @Published var wifiPasswordValidationForm = WifiPasswordValidationForm()
+    @Published var wifiConnectionState: ConnectionState = .loading
+    @Published var connectedWifiNetwork: String? = nil
+    @Published var wifiNetworks: [String] = ["greatergoods1", "great2542", "ggtesting"] // TODO: eplace with actual wifi Networks
+    var isFormValid: Bool { wifiPasswordValidationForm.isValid }
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self
     
@@ -96,6 +101,13 @@ class ScaleStore: ObservableObject {
     init() {
         wireForm()
         fetchScales()
+    }
+    
+    var passwordError: String? { wifiPasswordValidationForm.getError(for: wifiPasswordValidationForm.password) }
+    
+    func setPasswordTouched() {
+        wifiPasswordValidationForm.password.markAsDirty()
+        objectWillChange.send()
     }
     
     private func wireForm() {
@@ -222,6 +234,38 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
+    
+    func handleWifiCredentialsExit(onExit: @escaping () -> Void) {
+        let alert = AlertModel(
+            title: alertLang.ConnectWifiNetwork.title,
+            message: alertLang.ConnectWifiNetwork.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.ConnectWifiNetwork.goBackButton, type: .secondary) { _ in
+                    // Do nothing, just dismiss alert
+                },
+                AlertButtonModel(title: alertLang.ConnectWifiNetwork.exitButton, type: .primary) { _ in
+                    onExit()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    func connectToWifiNetwork(wifiName: String) {
+           wifiConnectionState = .loading
+           // Simulate async connection (replace with your real logic)
+           DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
+               // Simulate success or failure randomly
+               let didSucceed = Bool.random()
+               DispatchQueue.main.async {
+                   // Add a slight delay for loader polish
+                   DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                       self.wifiConnectionState = didSucceed ? .success : .failure
+                   }
+               }
+           }
+       }
+    
     func bluetoothTapped() {
         // TODO: Implement bluetoothTapped action
     }

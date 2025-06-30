@@ -219,6 +219,13 @@ struct AlertStrings {
         static let deleteButton = "Delete"
         static let cancelButton = "Cancel"
     }
+    
+    struct ConnectWifiNetwork {
+        static let title = "Are you sure you want to exit?"
+        static let message = "Wi-Fi settings will not be updated."
+        static let goBackButton = "Go Back"
+        static let exitButton = "Exit"
+    }
 }
 
 struct LoaderStrings {
