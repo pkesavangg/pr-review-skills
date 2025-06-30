@@ -355,27 +355,21 @@ class UserDataStore @Inject constructor(
     }
 
     /**
-     * Gets whether the account switch info modal has been shown for a specific account.
-     * @param accountId The account ID to check.
-     * @return True if the modal has been shown, false otherwise.
+     * Gets whether the account switch info modal has been shown for this device (any account).
+     * @return True if the modal has been shown for this device, false otherwise.
      */
-    suspend fun hasShownAccountSwitchInfoModal(accountId: String): Boolean =
-        getData().accountsMap[accountId]?.hasShownAccountSwitchInfoModal ?: false
+    suspend fun hasShownAccountSwitchInfoModalForDevice(): Boolean =
+        getData().hasShownAccountSwitchInfoModalForDevice
 
     /**
-     * Sets whether the account switch info modal has been shown for a specific account.
-     * @param accountId The account ID to update.
+     * Sets whether the account switch info modal has been shown for this device (any account).
      * @param hasShown Whether the modal has been shown.
      */
-    suspend fun setAccountSwitchInfoModalShown(accountId: String, hasShown: Boolean) {
+    suspend fun setAccountSwitchInfoModalShownForDevice(hasShown: Boolean) {
         val current = getData()
-        val updated = current.toBuilder().apply {
-            val account = accountsMap[accountId]?.toBuilder()
-                ?.setHasShownAccountSwitchInfoModal(hasShown)
-            if (account != null) {
-                putAccounts(accountId, account.build())
-            }
-        }.build()
+        val updated = current.toBuilder()
+            .setHasShownAccountSwitchInfoModalForDevice(hasShown)
+            .build()
         updateData { updated }
     }
 }
