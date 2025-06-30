@@ -43,7 +43,7 @@ class MyAccountsViewModel @Inject constructor(
             }
 
             is MyAccountsIntent.CreateAccount -> {
-                goToSignup()
+                goToSignUp()
             }
 
             is MyAccountsIntent.SelectAccount -> {
@@ -76,7 +76,7 @@ class MyAccountsViewModel @Inject constructor(
         }
     }
 
-    private fun goToSignup() {
+    private fun goToSignUp() {
         if (state.value.hasReachedMaxAccounts) {
             handleIntent(MyAccountsIntent.ShowMaxAccountsAlert)
         } else {
@@ -87,8 +87,12 @@ class MyAccountsViewModel @Inject constructor(
     private fun onAccountSelect(account: Account) {
         if (!account.isActiveAccount) {
             viewModelScope.launch {
-                accountService.switchAccount(account, true)
-                navigationService.replaceStack(AppRoute.Init.Loading)
+                try {
+                    accountService.switchAccount(account, true)
+                    navigationService.replaceStack(AppRoute.Init.Loading)
+                } catch (e: Exception) {
+                    AppLog.e("onAccountSelect", "Failed to switch account: ${e.message}")
+                }
             }
         }
     }

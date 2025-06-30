@@ -36,7 +36,7 @@ class DialogUtility @Inject constructor(
             message = message,
             dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
             onDismiss = onDismiss,
-            alertPriority = 10 // High priority for account-related alerts
+            alertPriority = 10, // High priority for account-related alerts
         )
 
         dialogQueueService.enqueue(alert)
@@ -48,11 +48,14 @@ class DialogUtility @Inject constructor(
     ) {
 
         val alert = DialogModel.Alert(
-            title = AppPopupStrings.MaxAccountReachedAlert.Title,
-            message = AppPopupStrings.MaxAccountReachedAlert.Title,
-            dismissText = AppPopupStrings.MaxAccountReachedAlert.ConfirmButton,
-            onDismiss = onDismiss,
-            alertPriority = 10 // High priority for account-related alerts
+            title = AppPopupStrings.BackgroundLoggedOutAlert.Title(username),
+            message = AppPopupStrings.BackgroundLoggedOutAlert.Message,
+            dismissText = AppPopupStrings.BackgroundLoggedOutAlert.ConfirmButton,
+            onDismiss = {
+                onDismiss?.let { it() }
+                dialogQueueService.dismissCurrent()
+            },
+            alertPriority = 10, // High priority for account-related alerts
         )
 
         dialogQueueService.enqueue(alert)

@@ -31,7 +31,8 @@ object AppPopupStrings {
     }
 
     object BackgroundLoggedOutAlert {
-        const val Title = "Please log back in to continue."
+        fun Title(username: String) = "$username was logged out"
+        const val Message = "Please log back in to continue."
         const val ConfirmButton = "OK"
     }
 }

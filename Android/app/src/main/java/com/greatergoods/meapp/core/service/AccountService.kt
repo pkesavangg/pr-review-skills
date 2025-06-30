@@ -183,7 +183,6 @@ constructor(
     override suspend fun logout(accountId: String, fcmToken: String?): Boolean =
         try {
             val isActiveAccount = getCurrentAccount()?.id == accountId
-
             // Try to logout on API if network is available
             if (isNetworkAvailable()) {
                 try {
@@ -193,7 +192,6 @@ constructor(
                     // Continue with local logout even if API fails
                 }
             }
-
             // Always perform local logout regardless of network status
             if (isActiveAccount) {
                 accountRepository.deactivateAllAccountsInDB()
@@ -339,31 +337,6 @@ constructor(
     }
 
     /**
-     * Removes an account.
-     * @param accountId ID of the account to remove
-     * @return true if account was removed successfully
-     */
-    override suspend fun removeAccount(accountId: String): Boolean =
-        try {
-            val account = activeAccountFlow.first()
-            if (account?.id == accountId) {
-                // If removing active account, switch to another account first
-                val otherAccounts = loggedInAccountsFlow.first().filter { it.id != accountId }
-                if (otherAccounts.isNotEmpty()) {
-                    switchAccount(otherAccounts.first())
-                }
-            }
-            accountRepository.removeAccountInDB(accountId)
-            AppLog.d(TAG, "Account removed successfully: $accountId")
-            appNavigationService.emitAuthEvent(AuthState.AccountRemoved(accountId))
-            true
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Account removal failed", e.toString())
-            appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Account removal failed"))
-            false
-        }
-
-    /**
      * Switches to a different account.
      * @param account Account to switch to
      * @return true if switch was successful
@@ -411,56 +384,6 @@ constructor(
      */
     override suspend fun getCurrentAccount(): Account? = activeAccountFlow.first()
     override suspend fun getLoggedInAccounts(): List<Account> = loggedInAccountsFlow.first()
-
-    /**
-     * Checks if the current session is valid.
-     * @return true if session is valid, false otherwise
-     */
-    override suspend fun isSessionValid(): Boolean {
-        val account = getCurrentAccount() ?: return false
-        if (!account.isLoggedIn) return false
-
-        // Check token expiration
-        account.expiresAt?.let { expiresAt ->
-            val expirationDate = Date(expiresAt.toLong())
-            if (expirationDate.before(Date())) {
-                // Token expired, try to refresh
-                return try {
-                    refreshSession()
-                    true
-                } catch (e: Exception) {
-                    false
-                }
-            }
-        }
-        return true
-    }
-
-    /**
-     * Refreshes the current session.
-     * @return true if refresh was successful
-     */
-    override suspend fun refreshSession(): Boolean {
-        if (!isNetworkAvailable()) {
-            AppLog.e(TAG, "No network connection available")
-            appNavigationService.emitAuthEvent(AuthState.Error("No network connection available"))
-            return false
-        }
-
-        return try {
-            getCurrentAccount() ?: return false
-            // If you have a refreshTokenInAPI method, use it here to refresh tokens
-            // val refreshedToken = accountRepository.refreshTokenInAPI(...)
-            // Optionally update tokens in TokenManager
-            // tokenManager.setTokens(refreshedToken)
-            AppLog.d(TAG, "Session refreshed successfully")
-            true
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Session refresh failed", e.toString())
-            appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Session refresh failed"))
-            false
-        }
-    }
 
     /**
      * Updates the account's tokens.
@@ -720,7 +643,7 @@ constructor(
             true
         } catch (e: Exception) {
             AppLog.e(TAG, "Active account login status check failed", e.toString())
-            false
+            throw e
         }
     }
 
@@ -795,30 +718,30 @@ constructor(
      * Marks account as expired, removes from storage, and triggers unauthorized logout event.
      * @param accountId The ID of the account to logout
      */
-    suspend fun handleUnauthorizedLogout(accountId: String?) {
+    override suspend fun handleUnauthorizedLogout(accountId: String?): Account? {
         if (accountId.isNullOrEmpty()) {
             AppLog.w(TAG, "No account ID available for unauthorized logout")
-            return
+            return null
         }
 
-        try {
+        return try {
             AppLog.d(TAG, "Handling unauthorized logout for account: $accountId")
             val account = getCurrentAccount()
-            // Mark account as expired in database
-            accountRepository.markAccountExpired(accountId)
+            return if (account?.isActiveAccount == true && accountId == account.id) {
+                // Mark account as expired in database
+                accountRepository.markAccountExpired(accountId)
 
-            // Clear account tokens from DataStore
-            userDataStore.clearAccountTokens(accountId)
+                // Clear account tokens from DataStore
+                userDataStore.clearAccountTokens(accountId)
 
-            // Get account name for the alert
-            val username = account.firstName
-
-            // Emit unauthorized logout event
-            appNavigationService.emitAuthEvent(AuthState.UnauthorizedLogout(accountId, username))
-
-            AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
+                AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
+                account
+            } else {
+                null
+            }
         } catch (e: Exception) {
             AppLog.e(TAG, "Error during unauthorized logout for account: $accountId", e.toString())
+            null
         }
     }
 

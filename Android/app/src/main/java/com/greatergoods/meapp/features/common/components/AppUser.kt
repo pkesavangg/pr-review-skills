@@ -69,7 +69,7 @@ fun AppUser(
         AppProfileAvatar(
             text = account.firstName,
             isActive = account.isActiveAccount,
-            enabled = account.isLoggedIn,
+            enabled = account.isLoggedIn && !account.isExpired,
             modifier = Modifier.alpha(avatarAlpha),
         )
 
