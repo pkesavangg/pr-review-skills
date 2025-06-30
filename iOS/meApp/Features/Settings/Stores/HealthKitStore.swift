@@ -198,4 +198,17 @@ final class HealthKitStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
+    
+    /// Presents an *Apple Health Out of Sync* alert.
+    func showHKOutOfSyncAlert() {
+        let lang = alertLang.HKOutOfSyncAlert
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.closeButton, type: .primary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
 }

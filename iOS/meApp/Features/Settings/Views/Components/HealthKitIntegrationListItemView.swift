@@ -14,10 +14,17 @@ struct HealthKitIntegrationListItemView: View {
 
     var body: some View {
         IntegrationListItemView(
-            item: IntegrationItem(type: .appleHealth, isSelected: hkStore.isIntegrated, isOutOfSync: hkStore.isOutOfSync)
-        ) {
-            hkStore.handleRowTap()
-        }
+            item: IntegrationItem(
+                type: .appleHealth,
+                isSelected: hkStore.isIntegrated,
+                isOutOfSync: hkStore.isOutOfSync
+            ),
+            onTap: { hkStore.handleRowTap() },
+            onBadgeTap: {
+                // Show *Out of Sync* alert when the warning badge is tapped.
+                hkStore.showHKOutOfSyncAlert()
+            }
+        )
         // Present the Health-Access flow
         .sheet(item: $hkStore.activeState) { state in
             HKIntegrationHealthAccessView(
