@@ -348,7 +348,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
               let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
         }
-        let deviceId = getDeviceId()
+        let deviceId = DeviceInfoHelper.getDeviceId()
         do {
             let _ = try await integrationApiRepo.createHealthIntegration(
                 deviceId: deviceId,
@@ -634,7 +634,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// - Throws: An error if the deletion fails or if the account is not found.
     /// - Returns: The updated account after deletion.
     func deleteHealthIntegration(_ type: IntegrationType) async throws {
-        let deviceId = getDeviceId()
+        let deviceId = DeviceInfoHelper.getDeviceId()
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
