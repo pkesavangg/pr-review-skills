@@ -3,6 +3,8 @@ package com.greatergoods.meapp.features.settings.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.domain.enum.AccountSettingsAction
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -12,6 +14,7 @@ import com.greatergoods.meapp.domain.services.BodyCompUpdateType
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -39,6 +42,7 @@ constructor(
     private val accountService: IAccountService,
     private val exportService: IExportService,
     private val bodyCompositionService: IBodyCompositionService,
+    private val userDataStore: UserDataStore,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
@@ -47,6 +51,7 @@ constructor(
 
     init {
         getUserProfile()
+        showAccountSwitchInfoModal()
     }
 
     fun getUserProfile() {
@@ -424,10 +429,49 @@ constructor(
         }
     }
 
+    fun onDeleteAccountClick() {
+        AppLog.d("SettingsViewModel", "Delete account clicked")
+        // TODO: Show delete account confirmation dialog
+    }
+
     fun onSwitchAccountClick() {
-        viewModelScope.launch {
-            navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts)
-        }
+        navigateTo(AppRoute.AccountSettings.MyAccounts)
         AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
+    }
+
+    private fun showAccountSwitchInfoModal() {
+        viewModelScope.launch {
+            val hasShown = userDataStore.hasShownAccountSwitchInfoModalForDevice()
+            if (hasShown) return@launch
+            val activeAccount = accountService.getCurrentAccount()
+            dialogQueueService.enqueue(
+                DialogModel.Custom(
+                    contentKey = DialogType.AccountSwitchInfoPopup,
+                    params = mapOf(
+                        "userInitial" to (activeAccount?.firstName?.firstOrNull()?.toString() ?: "U"),
+                        "onAddAccount" to {
+                            onAccountSwitchInfoDismiss()
+                            navigateTo(AppRoute.AccountSettings.MyAccounts)
+                        },
+                    ),
+                    onDismiss = {
+                        onAccountSwitchInfoDismiss()
+                    },
+                ),
+            )
+        }
+    }
+
+    fun navigateTo(route: AppRoute) {
+        viewModelScope.launch {
+            navigationService.navigateTo(route)
+        }
+    }
+
+    fun onAccountSwitchInfoDismiss() {
+        viewModelScope.launch {
+            userDataStore.setAccountSwitchInfoModalShownForDevice(true)
+            dialogQueueService.dismissCurrent()
+        }
     }
 }
