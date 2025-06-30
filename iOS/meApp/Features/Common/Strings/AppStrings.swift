@@ -210,6 +210,13 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+    
+    struct DeleteScaleAlert {
+        static let title = "Delete Your Scale"
+        static let message = "Are you sure you want to delete this scale? This action cannot be undone."
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -285,6 +292,8 @@ struct AppAssets {
     static let filledTickCircle = "filledTickCircle"
     static let bluetooth = "bluetooth"
     static let exclamationMark = "exclamationMark"
+    static let scale0412 = "0412"
+    static let weightOnlyMode = "weightOnlyMode"
     static let  skuNumberSticker = "skuNumberSticker"
 }
 

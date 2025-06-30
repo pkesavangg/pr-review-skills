@@ -103,7 +103,7 @@ struct MyScalesScreen: View {
                                 scaleName: scale.deviceName ?? lang.unknownScale,
                                 status: .connected,
                                 onTap: {
-                                    // TODO: Add Action
+                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: .bluetoothR4)) // TODO: Add action to define scaleType
                                 }
                             )
                             .padding(.horizontal, .spacingSM)
@@ -113,6 +113,9 @@ struct MyScalesScreen: View {
                     }
                 }
             }
+        }
+        .onAppear{
+            scaleStore.fetchScales()
         }
         .onDisappear {
             scaleStore.resetForm()
