@@ -67,6 +67,8 @@ sealed interface SettingsIntent : IReducer.Intent {
     object ShowHeightModal : SettingsIntent
     object ShowWeightlessModal : SettingsIntent
     object ShowStreakModal : SettingsIntent
+    object goalSettingModal : SettingsIntent
+
 }
 
 /**

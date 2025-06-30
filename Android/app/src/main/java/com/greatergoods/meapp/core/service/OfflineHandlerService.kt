@@ -14,6 +14,8 @@ import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
+import com.greatergoods.meapp.domain.repository.IGoalRepository
+import com.greatergoods.meapp.domain.model.api.goal.GoalRequest
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,6 +33,7 @@ class OfflineHandlerService
         private val bodyCompositionRepository: IBodyCompositionRepository,
         private val notificationRepository: INotificationRepository,
         private val userSettingsRepository: IUserSettingsRepository,
+         private val goalRepository: IGoalRepository,
         private val connectivityObserver: IConnectivityObserver,
     ) : IOfflineHandlerService {
         companion object {

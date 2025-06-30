@@ -36,4 +36,10 @@ data class Account(
     // Notification settings
     val entryNotificationsEnabled: Boolean? = false,
     val showWeightInNotifications: Boolean? = false,
+    // Goal settings
+    val goalType: String? = null,              // 'lose', 'gain', 'maintain'
+    val goalWeight: Double? = null,            // target weight
+    val initialWeight: Double = 0.0,         // initial weight when goal was set
+    val metPreviousGoal: Boolean? = null,      // whether previous goal was met
+    val goalPercent: Double = 0.0             // calculated goal completion percentage
 )

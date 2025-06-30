@@ -112,8 +112,9 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.GoalSetting,
-                            type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.goalSettingModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.BiologicalSex,

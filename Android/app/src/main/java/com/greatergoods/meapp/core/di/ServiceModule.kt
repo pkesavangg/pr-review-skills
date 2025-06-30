@@ -6,6 +6,7 @@ import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppNavigationService
 import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DeviceInfoService
+import com.greatergoods.meapp.core.service.GoalService
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.NotificationService
@@ -24,6 +25,7 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
+import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
@@ -33,6 +35,7 @@ import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
+import com.greatergoods.meapp.domain.services.IGoalService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
@@ -69,6 +72,7 @@ object ServiceModule {
         userDataStore: UserDataStore,
         appNavigationService: IAppNavigationService,
         userSettingsRepository: IUserSettingsRepository,
+        goalRepository: IGoalRepository,
     ): IAccountService =
         AccountService(
             accountRepository,
@@ -78,6 +82,7 @@ object ServiceModule {
             userDataStore,
             appNavigationService,
             userSettingsRepository,
+            goalRepository
         )
 
     /**
@@ -185,12 +190,14 @@ object ServiceModule {
         bodyCompositionRepository: IBodyCompositionRepository,
         notificationRepository: INotificationRepository,
         userSettingsRepository: IUserSettingsRepository,
+        goalRepository: IGoalRepository,
         connectivityObserver: IConnectivityObserver,
     ): IOfflineHandlerService = OfflineHandlerService(
         accountRepository,
         bodyCompositionRepository,
         notificationRepository,
         userSettingsRepository,
+        goalRepository,
         connectivityObserver,
     )
 
@@ -230,4 +237,16 @@ object ServiceModule {
         userSettingsRepository: IUserSettingsRepository,
         connectivityObserver: IConnectivityObserver
     ): IUserSettingsService = UserSettingsService(userSettingsRepository, connectivityObserver)
+
+    /**
+     * Provides the goal service implementation.
+     * Handles goal management, percentage calculation, and goal completion alerts.
+     */
+    @Provides
+    @Singleton
+    fun provideGoalService(
+        goalRepository: IGoalRepository,
+        connectivityObserver: IConnectivityObserver,
+        dialogQueueService: IDialogQueueService
+    ): IGoalService = GoalService(goalRepository, connectivityObserver, dialogQueueService)
 }

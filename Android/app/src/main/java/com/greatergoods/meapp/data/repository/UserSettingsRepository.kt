@@ -33,9 +33,8 @@ class UserSettingsRepository @Inject constructor(
             val weightlessSettingsEntity = WeightlessSettingsEntity(
                 accountId = account.account.id,
                 isWeightlessOn = weightlessRequest.isWeightlessOn,
-                weightlessTimestamp = weightlessRequest.weightlessTimestamp ?: System.currentTimeMillis()
-                    .toString(),
-                weightlessWeight = weightlessRequest.weightlessWeight ?: 0.0f,
+                weightlessTimestamp = weightlessRequest.weightlessTimestamp ,
+                weightlessWeight = weightlessRequest.weightlessWeight,
                 isSynced = true,
             )
             accountDao.updateWeightlessSettings(weightlessSettingsEntity)

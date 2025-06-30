@@ -10,6 +10,7 @@ import com.greatergoods.meapp.features.addScale.screens.ChooseScaleScreen
 import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.changePassword.ChangePasswordScreen
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
+import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
@@ -49,6 +50,7 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
     entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
     entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
+    entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.helpEntries() {

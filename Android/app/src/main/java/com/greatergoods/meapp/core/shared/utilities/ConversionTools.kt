@@ -89,7 +89,7 @@ object ConversionTools {
      * @return Weight in stored format
      */
     fun convertKgToStored(kgs: Double): Double {
-        return round((kgs * KG_TO_LBS_FACTOR) * 10) / 10.0
+        return round((kgs * KG_TO_LBS_FACTOR) * 10) / 10
     }
 
     /**

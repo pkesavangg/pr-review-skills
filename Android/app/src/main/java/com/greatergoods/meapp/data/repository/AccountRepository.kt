@@ -8,6 +8,7 @@ import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
 import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
@@ -169,6 +170,18 @@ class AccountRepository
                     isSynced = true,
                 )
             accountDao.insertWeightlessSettings(weightlessSettings)
+        val goalEntity = GoalSettingsEntity(
+            accountId = account.id,
+            goalType = account.goalType ?: "maintain",
+            weight = account.initialWeight.toFloat(),
+            goalWeight = account.goalWeight.toString(),
+            goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
+            isSynced = true
+        )
+        accountDao.insertGoalSettings(goalEntity)
+        AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
+        return account
+    }
 
             AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
             return account

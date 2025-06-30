@@ -90,6 +90,9 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data object ChooseScale : AccountSettings()
+
+        @Serializable
+        data object Goal : AccountSettings()
     }
 
     /**

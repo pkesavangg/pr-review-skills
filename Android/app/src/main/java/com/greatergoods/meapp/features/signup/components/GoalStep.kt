@@ -37,13 +37,15 @@ import com.greatergoods.meapp.theme.MeTheme
  */
 @Composable
 fun GoalStep(
+    title: String = SignupStrings.goalStepTitle,
+    subtitle: String = SignupStrings.goalStepSubtitle,
     goalTypeControl: FormControl<String>,
     currentWeightControl: FormControl<String>,
     goalWeightControl: FormControl<String>,
     useMetricControl: FormControl<Boolean>,
     onMetricToggle: (Boolean) -> Unit = {},
     onNext: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    showCurrentWeightForMaintain: Boolean = true, // Default true for signup process
 ) {
     val currentWeightFocusRequester = remember { FocusRequester() }
     val goalWeightFocusRequester = remember { FocusRequester() }
@@ -61,8 +63,8 @@ fun GoalStep(
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
-        AppText(SignupStrings.goalStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
+        AppText(title, TextType.Title, spacing = MeTheme.spacing.xs)
+        AppText(subtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround,
@@ -85,15 +87,24 @@ fun GoalStep(
         Spacer(modifier = Modifier.padding(vertical = MeTheme.spacing.sm))
 
         // Weight Inputs with dynamic labels
-        AppInput(
-            formControl = currentWeightControl,
-            type = AppInputType.BODY_COMP,
-            label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
-            imeAction = ImeAction.Next,
-            nextFocusRequester = goalWeightFocusRequester,
-            modifier = Modifier.focusRequester(currentWeightFocusRequester),
-            enabled = goalTypeControl.value == GoalType.LOSE_GAIN.value,
-        )
+        // Show current weight input based on goal type and configuration
+        val shouldShowCurrentWeight = if (goalTypeControl.value == GoalType.MAINTAIN.value) {
+            showCurrentWeightForMaintain
+        } else {
+            true // Always show for lose/gain
+        }
+
+        if (shouldShowCurrentWeight) {
+            AppInput(
+                formControl = currentWeightControl,
+                type = AppInputType.BODY_COMP,
+                label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
+                imeAction = ImeAction.Next,
+                nextFocusRequester = goalWeightFocusRequester,
+                modifier = Modifier.focusRequester(currentWeightFocusRequester),
+                enabled = goalTypeControl.value == GoalType.LOSE_GAIN.value,
+            )
+        }
 
         AppInput(
             formControl = goalWeightControl,
@@ -101,7 +112,12 @@ fun GoalStep(
             label = SignupStrings.goalStepGoalWeightDynamic.format(weightUnit),
             imeAction = ImeAction.Next,
             onImeAction = onNext,
-            modifier = Modifier.focusRequester(goalWeightFocusRequester),
+            modifier = if (shouldShowCurrentWeight) {
+                Modifier.focusRequester(goalWeightFocusRequester)
+            } else {
+                // If current weight is hidden, goal weight becomes the first input
+                Modifier.focusRequester(currentWeightFocusRequester)
+            },
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
         // Metric Toggle Section

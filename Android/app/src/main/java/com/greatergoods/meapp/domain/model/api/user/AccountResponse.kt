@@ -31,6 +31,8 @@ data class AccountInfo(
     val goalType: String?,
     val goalWeight: Float?,
     val initialWeight: Float?,
+     val metPreviousGoal: Boolean? = null,      // whether previous goal was met
+    val goalPercent: Int = 0,
     val shouldSendEntryNotifications: Boolean,
     val shouldSendWeightInEntryNotifications: Boolean
 )

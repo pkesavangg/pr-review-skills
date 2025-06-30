@@ -5,6 +5,7 @@ import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
+import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.IUserAPI
@@ -14,6 +15,7 @@ import com.greatergoods.meapp.data.repository.AppRepository
 import com.greatergoods.meapp.data.repository.BodyCompositionRepository
 import com.greatergoods.meapp.data.repository.DeviceInfoRepository
 import com.greatergoods.meapp.data.repository.EntryRepository
+import com.greatergoods.meapp.data.repository.GoalRepository
 import com.greatergoods.meapp.data.repository.HealthConnectRepository
 import com.greatergoods.meapp.data.repository.IntegrationRepository
 import com.greatergoods.meapp.data.repository.LogRepository
@@ -30,6 +32,7 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
+import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
@@ -114,4 +117,12 @@ object RepositoryModule {
         userSettingsAPI: IUserSettingsAPI,
         accountDao: AccountDao,
     ): IUserSettingsRepository = UserSettingsRepository(userSettingsAPI, accountDao)
+
+    @Provides
+    @Singleton
+    fun provideGoalRepository(
+        goalAPI: IGoalAPI,
+        accountDao: AccountDao,
+        accountRepository: IAccountRepository,
+    ): IGoalRepository = GoalRepository(goalAPI, accountDao, accountRepository)
 }

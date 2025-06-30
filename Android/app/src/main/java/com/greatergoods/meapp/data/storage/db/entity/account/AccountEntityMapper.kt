@@ -104,7 +104,11 @@ object AccountEntityMapper {
                 ?.filterNot { it.isBlank() },
             // Map notification settings
             entryNotificationsEnabled = accountWithRelations.notificationSettings?.entryNotificationsEnabled ?: false,
-            showWeightInNotifications = accountWithRelations.notificationSettings?.showWeightInNotifications ?: false
+            showWeightInNotifications = accountWithRelations.notificationSettings?.showWeightInNotifications ?: false,
+            goalType = accountWithRelations.goalSettings?.goalType,
+            initialWeight = accountWithRelations.goalSettings?.weight?.toDouble() ?: 0.0,
+            goalWeight = accountWithRelations.goalSettings?.goalWeight?.toDouble() ?: 0.0,
+            goalPercent = accountWithRelations.goalSettings?.goalPercent?.toDouble() ?: 0.0,
         )
     }
 }
