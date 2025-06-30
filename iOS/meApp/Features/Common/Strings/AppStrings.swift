@@ -502,5 +502,7 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+    static let streak = "streak"
+    static let longestStreak = "longestStreak"
 }
 
