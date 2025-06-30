@@ -32,6 +32,12 @@ final class HealthKitStore: ObservableObject {
     @Injector private var logger: LoggerService
     
     var cancellables: Set<AnyCancellable> = []
+    let wgTotalPermissionsCount = 5
+    
+    /// Retains the Combine subscription for app-active notifications specifically used
+    /// when we need to re-check HealthKit permissions after the user is redirected to
+    /// the Apple Health app.
+    private var foregroundObserver: AnyCancellable? = nil
     
     let alertLang = AlertStrings.self
     let tag = "HealthKitStore"
@@ -62,7 +68,19 @@ final class HealthKitStore: ObservableObject {
         if isIntegrated {
             showHKRemoveAlert()
             return
-        } else {
+        }
+        
+        // Determine the correct modal to present based on existing HealthKit permissions.
+        let permissionCount = healthKitService.getApprovedPermissionList().count
+        // According to WG: 5 permissions granted ⇒ show *Permissions Allowed* flow,
+        // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
+        // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
+        switch permissionCount {
+        case wgTotalPermissionsCount...:
+            activeState = .permissionsAllowed
+        case 1..<wgTotalPermissionsCount:
+            activeState = .integrationComplete
+        default:
             activeState = .permissionsNotAllowed
         }
     }
@@ -71,19 +89,32 @@ final class HealthKitStore: ObservableObject {
     /// Maps UI states to store actions.
     /// - Parameter state: Current `AppleHealthIntegrationState` presented.
     func handlePrimaryAction(for state: AppleHealthIntegrationState) {
-        switch state {
-        case .permissionsNotAllowed:
-            requestAuthorization()
-        case .integrationComplete:
-            finishIntegrationFlow()
-        case .integrationFailed:
-            healthKitService.openAppleHealth()
-            break
-        case .permissionsAllowed:
-            // Not used in current flow – treat same as `.permissionsNotAllowed`.
-            requestAuthorization()
-        case .userConflict:
-            dismissModal()
+        Task {
+            switch state {
+            case .permissionsNotAllowed:
+                requestAuthorization()
+            case .integrationComplete:
+                let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
+                if wasPreviouslyIntegrated {
+                    requestAuthorization()
+                } else {
+                    finishIntegrationFlow()
+                }
+            case .integrationFailed:
+                // Open Apple Health so the user can adjust permissions, then
+                // listen for the app to return to foreground to re-evaluate.
+                observeForegroundForPermissionChanges()
+                healthKitService.openAppleHealth()
+            case .permissionsAllowed:
+                let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
+                if wasPreviouslyIntegrated {
+                    requestAuthorization()
+                } else {
+                    finishIntegrationFlow()
+                }
+            case .userConflict:
+                dismissModal()
+            }
         }
     }
     
@@ -99,9 +130,14 @@ final class HealthKitStore: ObservableObject {
         Task {
             // notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
             do {
+                let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
                 let success = try await healthKitService.integrate(turnOn: true)
                 if success {
-                    activeState = .integrationComplete
+                    if !wasPreviouslyIntegrated {
+                        activeState = .integrationComplete
+                    } else {
+                        finishIntegrationFlow()
+                    }
                 } else {
                     activeState = .integrationFailed
                 }
@@ -121,6 +157,7 @@ final class HealthKitStore: ObservableObject {
     /// Presents *Sync Weight History* alert if needed, otherwise shows toast and ends flow.
     private func finishIntegrationFlow() {
         Task {
+            // Persist the integration if it hasn't been stored yet (e.g. user had partial permissions).
             self.dismissModal()
             do {
                 let count = try await entryService.getEntryCount()
@@ -210,5 +247,47 @@ final class HealthKitStore: ObservableObject {
             ]
         )
         notificationService.showAlert(alert)
+    }
+    
+    private func wasPreviouslyIntegrated() async -> Bool {
+        var wasPreviouslyIntegrated = false
+        do {
+            if let info = try await integrationService.getStoredIntegrationData() {
+                // If a record exists for HealthKit, user had integrated before.
+                wasPreviouslyIntegrated = info.type == .healthKit && !info.isIntegrated
+            }
+        } catch {
+            // Non-fatal – default to *initial* integration path.
+        }
+        return wasPreviouslyIntegrated
+    }
+    
+    // MARK: - Permission change observer when opening Apple Health
+    
+    /// Sets up a temporary observer that fires when the app becomes active again
+    /// (i.e. user returns from the Apple Health app). At that point we re-evaluate
+    /// granted permissions and, if at least one permission is now granted, advance
+    /// the flow to `.integrationComplete`.
+    private func observeForegroundForPermissionChanges() {
+        // Avoid duplicating the observer.
+        if foregroundObserver != nil { return }
+        
+        foregroundObserver = NotificationCenter.default
+            .publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // Check again on main actor.
+                Task { @MainActor in
+                    let permissionsGranted = self.healthKitService.getApprovedPermissionList().count
+                    if permissionsGranted > 0 {
+                        self.activeState = .integrationComplete
+                        // Remove observer once done.
+                    } else {
+                        self.activeState = nil
+                    }
+                    self.foregroundObserver?.cancel()
+                    self.foregroundObserver = nil
+                }
+            }
     }
 }

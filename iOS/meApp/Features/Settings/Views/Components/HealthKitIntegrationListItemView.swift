@@ -29,7 +29,7 @@ struct HealthKitIntegrationListItemView: View {
         .sheet(item: $hkStore.activeState) { state in
             HKIntegrationHealthAccessView(
                 state: state,
-                onDismiss: { hkStore.dismissModal() },
+                onDismiss: { hkStore.activeState = nil },
                 primaryAction: { hkStore.handlePrimaryAction(for: state) }
             )
         }
