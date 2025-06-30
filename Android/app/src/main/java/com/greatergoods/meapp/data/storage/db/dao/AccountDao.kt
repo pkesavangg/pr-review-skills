@@ -58,10 +58,19 @@ interface AccountDao {
     @Query("UPDATE account SET isActiveAccount = 0 WHERE accountId != :accountId")
     suspend fun deactivateOtherAccounts(accountId: String)
 
+    @Query("UPDATE account SET isActiveAccount = 0")
+    suspend fun deactivateAllAccounts()
+
+    @Query("UPDATE account SET isActiveAccount = 1 WHERE accountId = :accountId")
+    suspend fun activateAccount(accountId: String)
+
+    @Query("UPDATE account SET lastActiveTime = :timestamp WHERE accountId = :accountId")
+    suspend fun updateLastActiveTime(accountId: String, timestamp: String)
+
     @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0 WHERE accountId = :accountId")
     suspend fun logoutAccount(accountId: String)
 
-    @Query("UPDATE account SET isLoggedIn = 0")
+    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0")
     suspend fun logoutAllAccounts()
 
     @Query("UPDATE account SET isSynced = :isSynced WHERE accountId = :accountId")
@@ -117,12 +126,26 @@ interface AccountDao {
     suspend fun updateIntegrationsSettings(settings: IntegrationsSettingsEntity)
 
     // Sync Operations
+    @Transaction
     @Query("SELECT * FROM account WHERE isSynced = 0")
     fun getUnsyncedAccounts(): Flow<List<AccountEntity>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM weight_comp_settings WHERE isSynced = 0
+        ) OR isSynced = 0
+    """)
+    fun getUnsyncedBodyCompAccounts(): Flow<List<Account>>
 
     @Query("UPDATE account SET isSynced = 1")
     suspend fun markAllAccountsSynced()
 
     @Query("UPDATE account SET isSynced = 1 WHERE accountId = :accountId")
     suspend fun markAccountSynced(accountId: String)
+
+    // Account Expiration Management
+    @Query("UPDATE account SET isExpired = 1, isLoggedIn = 0, isActiveAccount = 0, expiresAt = '' WHERE accountId = :accountId")
+    suspend fun markAccountExpired(accountId: String)
 }

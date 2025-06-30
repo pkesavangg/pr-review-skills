@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.helper.form
 
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import java.util.Calendar
 
@@ -28,7 +29,7 @@ object ValidationMessages {
     const val FUTURE_TIME = "date must not be in the future"
     const val SKU = "model number invalid"
     const val REQUIRED = "must not leave blank"
-    const val PASSWORD_MISMATCH = "passwords mismatch"
+    const val PASSWORD_MISMATCH = "both passwords must match"
     const val NO_WHITESPACE = "must not leave blank"
     const val INVALID_WEIGHT = "invalid weight"
     const val KG_RANGE = "weight must be between 0kg and 450 kg"
@@ -51,7 +52,7 @@ object FormValidations {
     ): Validator<String> =
         { value ->
             if (value.length < length) {
-                ValidationError(ValidationType.MIN_LENGTH, "$fieldName must be at least $length characters long")
+                ValidationError(ValidationType.MIN_LENGTH, "Password must be $length characters long")
             } else {
                 null
             }
@@ -154,11 +155,9 @@ object FormValidations {
             }
         }
 
-    fun weightValidator(unitType: String): Validator<String> =
+    fun weightValidator(unitType: WeightUnit = WeightUnit.LB): Validator<String> =
         { value ->
-            if (value.isBlank()) {
-                ValidationError(ValidationType.REQUIRED, ValidationMessages.INVALID_WEIGHT)
-            } else {
+            if (value.isNotBlank()) {
                 val decimalValue =
                     if (value.length > 1) {
                         value.dropLast(1) + "." + value.takeLast(1)
@@ -169,7 +168,7 @@ object FormValidations {
                 if (v == null) {
                     ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_WEIGHT)
                 } else {
-                    if (unitType == "kg") {
+                    if (unitType == WeightUnit.KG) {
                         when {
                             v <= AppValidatorConfig.WeightKg.MIN || v > AppValidatorConfig.WeightKg.MAX ->
                                 ValidationError(
@@ -191,6 +190,8 @@ object FormValidations {
                         }
                     }
                 }
+            } else {
+                null
             }
         }
 
@@ -200,9 +201,7 @@ object FormValidations {
         allowDecimal: Boolean = true,
     ): Validator<String> =
         { value ->
-            if (value.isBlank()) {
-                ValidationError(ValidationType.REQUIRED, ValidationMessages.REQUIRED)
-            } else {
+            if (value.isNotBlank()) {
                 val decimalValue =
                     if (allowDecimal) {
                         if (value.length > 1) value.dropLast(1) + "." + value.takeLast(1) else "0." + value
@@ -230,27 +229,29 @@ object FormValidations {
                         else -> null
                     }
                 }
+            } else {
+                null
             }
         }
 
-
-                /**
+    /**
      * This validator is specifically for confirm password field to check against password field
      */
-    fun confirmPasswordMatch(
-        formGroup: () -> FormGroup<SignupFormControls>
-    ): Validator<String> = { confirmPasswordValue ->
-        val form = formGroup()
-        val passwordValue = form.controls.password.value
+    fun confirmPasswordMatch(formGroup: () -> FormGroup<SignupFormControls>): Validator<String> =
+        { confirmPasswordValue ->
+            val form = formGroup()
+            val passwordValue = form.controls.password.value
 
-        // Only show mismatch error if both fields have values and they don't match
-        if (confirmPasswordValue.isNotEmpty() && passwordValue.isNotEmpty() && confirmPasswordValue != passwordValue) {
-            ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
-        } else {
-            null
+            // Only show mismatch error if both fields have values and they don't match
+            if (confirmPasswordValue.isNotEmpty() &&
+                passwordValue.isNotEmpty() &&
+                confirmPasswordValue != passwordValue
+            ) {
+                ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
+            } else {
+                null
+            }
         }
-    }
-
 
     fun noWhitespace(): Validator<String> =
         { value ->

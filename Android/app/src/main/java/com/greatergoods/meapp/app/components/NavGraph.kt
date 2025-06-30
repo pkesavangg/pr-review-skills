@@ -4,12 +4,16 @@ import androidx.navigation3.runtime.EntryProviderBuilder
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.features.MyAccounts.screen.MyAccountsScreen
 import com.greatergoods.meapp.features.appSync.AppSync
+import com.greatergoods.meapp.features.changePassword.ChangePasswordScreen
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
-import com.greatergoods.meapp.features.landing.LandingScreen
+import com.greatergoods.meapp.features.landing.screen.LandingScreen
+import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.manualEntry.EntryScreen
+import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 import com.greatergoods.meapp.features.signup.SignupScreen
 
@@ -21,6 +25,7 @@ fun EntryProviderBuilder<NavKey>.authEntries() {
     entry<AppRoute.Auth.Landing> { LandingScreen() }
     entry<AppRoute.Auth.Login> { LoginScreen() }
     entry<AppRoute.Auth.Signup> { SignupScreen() }
+    entry<AppRoute.Auth.MultiAccountLanding>{ MultiAccountLandingScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {
@@ -29,4 +34,10 @@ fun EntryProviderBuilder<NavKey>.topLevelEntries() {
     entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
     entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
     entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
+}
+
+fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
+    entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
+    entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
+    entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
 }

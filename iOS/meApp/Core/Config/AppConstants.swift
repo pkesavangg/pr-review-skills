@@ -22,4 +22,9 @@ struct AppConstants {
         static let phoneNumber = "1-866-991-8494"
         static let email = "info@greatergoods.com"
     }
+    /// Constants related to product support URLs
+    struct Product {
+        /// Base URL for product manuals (e.g. https://www.greatergoods.com/0412)
+        static let baseURL = "https://www.greatergoods.com"
+    }
 }

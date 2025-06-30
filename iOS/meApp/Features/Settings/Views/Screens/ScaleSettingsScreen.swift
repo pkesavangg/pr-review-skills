@@ -70,14 +70,14 @@ struct ScaleSettingsScreen: View {
     }
     private func deleteScaleSection() -> some View {
         Section {
-            SettingsListItem(
-                config: SettingsItemConfig(
+            ActionListItemView(
+                config: ActionListItemConfig(
                     title: lang.deleteScale,
-                    canShowChevron: false,
+                    chevronType: .none,
                     isDestructive: true,
                     onTap: {
                         scaleStore.handleScaleDelete(scaleId: scale.id) {
-                            router.navigateBack(to: .addAndEditScales)
+                            router.navigateBack(to: .addEditScales)
                         }
                     }
                 )

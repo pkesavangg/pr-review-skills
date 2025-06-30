@@ -92,6 +92,8 @@ class ScaleStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     let alertLang = AlertStrings.self
     
+    private var cancellables = Set<AnyCancellable>()
+
     init() {
         wireForm()
         fetchScales()
@@ -263,6 +265,15 @@ class ScaleStore: ObservableObject {
     func openBIAModel(){
         notificationService.showModal(ModalData(
             presentedView: AnyView(BIAInfoModalView(){
+                   self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
+    }
+    
+    func openHelp() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(ModelNumberHelpModalView(){
                 self.notificationService.dismissModal()
             }),
             backdropDismiss: true

@@ -1,20 +1,27 @@
 package com.greatergoods.meapp.features.historyDetail.viewmodel
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.historyDetail.components.HistoryDetailItemModel
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class HistoryDetailViewModel @Inject constructor(
+@HiltViewModel(
+    assistedFactory = HistoryDetailViewModel.Factory::class
+)
+class HistoryDetailViewModel @AssistedInject constructor(
     private val entryService: IEntryService,
-    savedStateHandle: SavedStateHandle,
+    @Assisted val month: String,
 ) : BaseIntentViewModel<HistoryDetailState, HistoryDetailIntent>(HistoryDetailReducer()) {
-    private val month: String = checkNotNull(savedStateHandle["month"]) { "month parameter is required" }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(month: String): HistoryDetailViewModel
+    }
 
     override fun provideInitialState(): HistoryDetailState = HistoryDetailState()
 
@@ -22,29 +29,24 @@ class HistoryDetailViewModel @Inject constructor(
         loadHistoryDetail()
     }
 
-    fun loadHistoryDetail() {
+    private fun loadHistoryDetail() {
         viewModelScope.launch {
-            handleIntent(HistoryDetailIntent.LoadHistoryDetail(month))
-
-            // TODO: Load history from repository/service
-            // For now, just set a sample list
-            val sampleItems = listOf(
-                HistoryDetailItemModel(
-                    date = "Dec 16",
-                    time = "2:10 PM",
-                    weight = "149.2",
-                ),
-                HistoryDetailItemModel(
-                    date = "Dec 10",
-                    time = "2:10 PM",
-                    weight = "148.7",
-                ),
-            )
-            handleIntent(HistoryDetailIntent.SetHistoryItems(month, sampleItems))
+            entryService.monthDetails(month).collect {
+                handleIntent(HistoryDetailIntent.SetHistoryItems(month, it.filterIsInstance<ScaleEntry>()))
+            }
         }
     }
 
     override fun handleIntent(intent: HistoryDetailIntent) {
         super.handleIntent(intent)
+        when (intent) {
+            is HistoryDetailIntent.Refresh -> {
+                viewModelScope.launch {
+                    entryService.syncOperations()
+                }
+            }
+
+            else -> Unit
+        }
     }
 }

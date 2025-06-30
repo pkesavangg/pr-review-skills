@@ -1,9 +1,9 @@
 package com.greatergoods.meapp.features.dashboard.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,61 +13,119 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
+import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
 import com.greatergoods.meapp.features.common.components.chart.GraphView
-import com.greatergoods.meapp.features.common.enum.GraphSegment
+import com.greatergoods.meapp.features.common.enums.GraphSegment
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
+import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
+import com.greatergoods.meapp.features.historyDetail.modal.Metric
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun HistoryGraph(state: DashboardState) {
+fun HistoryGraph(
+    state: DashboardState,
+    selectedMetric: Metric? = null,
+    onSelected: (List<PeriodBodyScaleSummary>) -> Unit
+) {
     var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
-    var graphLines by remember {
-        mutableStateOf(state.dayWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints())
+
+    var subText: String? by remember { mutableStateOf(null) }
+
+    fun getWeightGraphPoints(segment: GraphSegment): GraphLine {
+        return when (segment) {
+            GraphSegment.YEAR, GraphSegment.TOTAL -> {
+                state.monthWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
+            }
+
+            GraphSegment.MONTH, GraphSegment.WEEK -> {
+                state.dayWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
+            }
+        }
     }
 
+    var entries by remember(state.dayWiseEntries, state.monthWiseEntries) {
+        mutableStateOf(state.dayWiseEntries)
+    }
+
+    var graphLines by remember(entries) {
+        mutableStateOf(getWeightGraphPoints(selectedSegment))
+    }
+
+    var labelData by remember {
+        mutableStateOf("")
+    }
     Column(
         modifier =
             Modifier
                 .background(MeTheme.colorScheme.primaryBackground),
     ) {
-        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-        Text(
-            text =
-                buildAnnotatedString {
-                    append("000.0")
-                    withStyle(
-                        style =
-                            SpanStyle(
-                                fontSize = MeTheme.typography.subHeading2.fontSize,
-                                color = MeTheme.colorScheme.textSubheading,
-                            ),
-                    ) {
-                        append(" lbs")
-                    }
-                },
-            modifier = Modifier.padding(
-                horizontal = MeTheme.spacing.sm,
-            ),
-            style = MeTheme.typography.heading1,
-            color = MeTheme.colorScheme.textBody,
-        )
+
+        Column(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.x3s)) {
+            Box(
+                modifier = Modifier
+                    .height(22.dp),
+                contentAlignment = Alignment.TopStart,
+            ) {
+
+                if (subText != null) {
+                    Text(
+                        text = selectedSegment.name.lowercase().plus(" average"),
+                        style = MeTheme.typography.subHeading1,
+                        color = MeTheme.colorScheme.textSubheading,
+                    )
+                }
+            }
+            Text(
+                text = labelData.ifBlank { "No data" },
+                style = MeTheme.typography.heading2,
+                lineHeight = 0.sp,
+                color = MeTheme.colorScheme.textBody,
+
+                )
+            Box(
+                modifier = Modifier
+                    .height(18.dp),
+                contentAlignment = Alignment.TopStart,
+            ) {
+                if (subText != null) {
+                    Text(
+                        text = subText!!,
+                        style = MeTheme.typography.subHeading2,
+                        color = MeTheme.colorScheme.textSubheading,
+                    )
+                }
+            }
+        }
         GraphView(
             modifier =
                 Modifier
-                    .fillMaxHeight(0.5f)
                     .fillMaxWidth(),
             segment = selectedSegment,
+            secondaryGraphLines = if (selectedMetric != null) entries.toGraphPoints(selectedMetric.key) else null,
             graphLines = listOf(graphLines),
-            selectedData = null,
-            onSelected = {
+            onScroll = {
+                subText = it
+            },
+            onMetricUpdate = { grahpoints ->
+                val timeStamps = grahpoints.map { it.x.value.toLong() }
+                val filteredEntries =
+                    entries.filter { DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps }
+                onSelected(
+                    filteredEntries,
+                )
+            },
+            onLabelUpdate = {
+                labelData = it
             },
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
@@ -77,18 +135,14 @@ fun HistoryGraph(state: DashboardState) {
             key = GraphSegment::name,
             onSelected = { segment ->
                 selectedSegment = segment
-                graphLines =
-                    when (segment) {
-                        GraphSegment.YEAR, GraphSegment.TOTAL -> {
-                            state.monthWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
-                        }
+                entries = when (segment) {
+                    GraphSegment.YEAR, GraphSegment.TOTAL -> state.monthWiseEntries
+                    GraphSegment.MONTH, GraphSegment.WEEK -> state.dayWiseEntries
+                }
+                graphLines = getWeightGraphPoints(segment)
 
-                        GraphSegment.MONTH, GraphSegment.WEEK -> {
-                            state.dayWiseEntries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
-                        }
-                    }
             },
-            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
@@ -102,6 +156,6 @@ private fun HistoryGraphPreview() {
         HistoryGraph(
             state =
                 DashboardState(),
-        )
+        ) {}
     }
 }

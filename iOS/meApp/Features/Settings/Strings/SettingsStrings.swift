@@ -17,6 +17,7 @@ struct SettingsStrings {
     static let integrations = "Integrations"
     static let exportData = "Export Data"
     static let changePassword = "Change Password"
+    static let userProfile = "User Profile"
 
     // Profile Settings
     static let profileSettings = "Profile Settings"
@@ -44,6 +45,8 @@ struct SettingsStrings {
 
     // Account Actions
     static let logOut = "Log Out"
+    static let logOutAllAccount = "Log Out of All Accounts"
+    static let switchAccounts = "Switch Accounts"
     static let deleteAccount = "Delete Account"
 }
 

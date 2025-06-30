@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.features.signup
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -12,7 +14,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
@@ -34,6 +38,7 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Main signup screen with horizontal pager navigation
@@ -42,8 +47,11 @@ import kotlinx.coroutines.delay
 fun SignupScreen(viewModel: SignupViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val backStack = LocalNavBackStack.current
+    val coroutineScope = rememberCoroutineScope()
     SignupScreenContent(state, viewModel::handleIntent) {
-        backStack.removeLast()
+        coroutineScope.launch {
+            backStack.removeLast()
+        }
     }
 }
 
@@ -53,6 +61,7 @@ fun SignupScreenContent(
     handleIntent: (SignupIntent) -> Unit,
     onBack: () -> Unit,
 ) {
+
     val windowSize = LocalWindowInfo.current.containerSize
     val isTablet =
         with(LocalDensity.current) {
@@ -76,17 +85,28 @@ fun SignupScreenContent(
         }
     }
 
+    val handleBack = {
+        if (state.form.isDirty) {
+            handleIntent(SignupIntent.OnRequestBack)
+        } else {
+            onBack()
+        }
+    }
+
+    BackHandler {
+        handleBack()
+    }
+
     AppScaffold(
         title = "",
         containerColor = MeTheme.colorScheme.secondaryBackground,
         appBarColor = MeTheme.colorScheme.secondaryBackground,
-        navigationIcon = { AppIconButton(AppIcons.Default.Close) {
-            if (state.form.isDirty) {
-                handleIntent(SignupIntent.OnRequestBack)
-            } else {
-                onBack()
+        navigationIcon = {
+            AppIconButton(AppIcons.Default.Close) {
+                handleBack()
             }
-        } },
+        },
+        borderColor = Color.Transparent,
         actions = { AppIconButton(AppIcons.Outlined.Help) { handleIntent.invoke(SignupIntent.OpenHelpModal) } },
     ) {
         Column(
@@ -111,12 +131,13 @@ fun SignupScreenContent(
                     onBack = { handleIntent(SignupIntent.Back) },
                     onSkip = { handleIntent(SignupIntent.Skip) },
                     onUrlOpen = { handleIntent(SignupIntent.OpenURL(it)) },
+                    onMetricToggle = { handleIntent(SignupIntent.ToggleMetric(it)) },
                 )
+                Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
             }
         }
     }
 }
-
 
 @PreviewTheme
 @Composable
@@ -126,7 +147,7 @@ fun PreviewSignupScreen() {
             SignupState(
                 form = FormGroup(SignupFormControls.create()),
             ),
-            {}
+            {},
         ) {}
     }
 }

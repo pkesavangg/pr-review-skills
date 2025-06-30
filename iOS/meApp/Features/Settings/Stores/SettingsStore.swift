@@ -17,7 +17,10 @@ class SettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
+    @Injector var feedService: FeedService
+    
     var theme = Theme.shared
+    let kvStore = KvStorageService.shared
     
     @Published var activeAccount: Account?
     
@@ -27,6 +30,8 @@ class SettingsStore: ObservableObject {
     @Published var changePasswordForm = ChangePasswordForm()
     // Weightless-mode form
     @Published var weightlessForm = WeightlessForm()
+    // Goal-setting form
+    @Published var goalForm = GoalForm()
     
     var cancellables = Set<AnyCancellable>()
     
@@ -36,6 +41,8 @@ class SettingsStore: ObservableObject {
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
     private let legalURLs = AppConstants.LegalURLs.self
+    
+    private let hasSeenAddMultipleAccountsModalKey = "hasSeenAddMultipleAccountsModal"
     
     let tag = "SettingsStore"
     
@@ -47,6 +54,19 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Weightless Page State
     @Published var showWeightLessPage: Bool = false
+    // MARK: - Goal Page State
+    @Published var showGoalPage: Bool = false
+    @Published var selectedSegment: GoalTypeSegment = .loseGain
+    @Published var latestWeight: Int = 0
+    
+    // MARK: - Toggle States
+    @Published var streaksEnabled: Bool = true
+    
+    // MARK: - Message Indicators
+    @Published var hasUnreadMessages: Bool = true
+    
+    // MARK: - Log Out All Accounts
+    @Published var canShowLogOutAllItems = false
     
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
@@ -77,7 +97,7 @@ class SettingsStore: ObservableObject {
     @Published var showHeightInchesPicker: Bool = false
     /// Controls the presentation of the metric picker sheet.
     @Published var showHeightCmPicker: Bool = false
-
+    
     /// Shared picker options
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
@@ -89,8 +109,37 @@ class SettingsStore: ObservableObject {
                 self?.populateEditFormIfNeeded()
                 self?.populateWeightlessFormIfNeeded()
                 self?.syncHeightPickers()
+                self?.syncSettingsStates()
             }
             .store(in: &accountService.cancellables)
+        
+        accountService.$allAccounts
+            .sink { [weak self] allAccounts in
+                self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn == true }.count > 1
+            }
+            .store(in: &accountService.cancellables)
+        
+        self.populateWeightlessFormIfNeeded()
+        
+        // Listen to theme appearance changes so SettingsScreen refreshes immediately
+        Theme.shared.$appearanceMode
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                // Broadcast a manual change so any computed properties that depend on Theme refresh
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
+    
+    /// Syncs local settings states with account data
+    private func syncSettingsStates() {
+        guard let account = activeAccount else { return }
+        
+        // Sync streaks enabled state
+        streaksEnabled = account.streaksSettings?.isStreakOn ?? true
+        
+        // TODO: Sync hasUnreadMessages from message service
+        hasUnreadMessages = feedService.getUnreadFeedCount() > 0
     }
     
     func handleLogout() {
@@ -99,8 +148,25 @@ class SettingsStore: ObservableObject {
             title: logoutAlert.title,
             message: logoutAlert.message,
             buttons: [
-                AlertButtonModel(title: logoutAlert.logoutButton, type: .primary) { _ in
+                AlertButtonModel(title: logoutAlert.logoutButton, type: .danger) { _ in
                     self.logout()
+                },
+                AlertButtonModel(title: logoutAlert.cancelButton, type: .secondary) { _ in
+                    
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    func handleLogoutForAllAccounts() {
+        let logoutAlert = alertLang.LogoutAllAccountAlert
+        let alert = AlertModel(
+            title: logoutAlert.title,
+            message: logoutAlert.message,
+            buttons: [
+                AlertButtonModel(title: logoutAlert.logoutButton, type: .primary) { _ in
+                    self.logoutAllAccounts()
                 },
                 AlertButtonModel(title: logoutAlert.cancelButton, type: .secondary) { _ in
                     
@@ -140,6 +206,18 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    private func logoutAllAccounts() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut ))
+            do {
+                try await accountService.logOutAllAccounts()
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Logout all failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
     private func deleteAccount() {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingAccount ))
@@ -162,10 +240,6 @@ class SettingsStore: ObservableObject {
     func openTerms() {
         browserURL = legalURLs.termsOfService
         showTermsBrowser = true
-    }
-    
-    func openHelp() {
-        // TODO: Need to handle this
     }
     
     func openGreaterGoods() {
@@ -217,7 +291,7 @@ class SettingsStore: ObservableObject {
             return "\(cm) cm"
         case .lb: // Imperial preference – show feet & inches
             let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            return "\(feet[0])′ \(feet[1])″"  // → 5′ 8″
+            return "\(feet[0])' \(feet[1])"  // → 5'8
         case .none:
             return ""
         }
@@ -240,7 +314,7 @@ class SettingsStore: ObservableObject {
             return commonLang.off
         }
         if settings.shouldSendEntryNotifications {
-            return settings.shouldSendWeightInEntryNotifications ? "w/ Weight" : commonLang.on
+            return settings.shouldSendWeightInEntryNotifications ? "\(commonLang.on) w/ Weight" : "\(commonLang.on) w/o Weight"
         } else {
             return commonLang.off
         }
@@ -257,6 +331,20 @@ class SettingsStore: ObservableObject {
         case .system:
             return commonLang.system
         }
+    }
+    
+    var isGoalFormValid: Bool {
+        guard goalForm.isDirty else { return false }
+        
+        if goalForm.goalType.value == GoalTypeSegment.losegainValue {
+            return !goalForm.isInvalid
+        } else {
+            return !goalForm.goalWeight.isInvalid
+        }
+    }
+    
+    var isWeightLessFormValid: Bool {
+        !(!weightlessForm.isDirty || (weightlessForm.isDirty && (weightlessForm.isOn.value ? weightlessForm.isInvalid : false)))
     }
     
     // MARK: - Handle export
@@ -280,8 +368,8 @@ class SettingsStore: ObservableObject {
     func handleEditProfileExit(router: Router<SettingsRoute>) {
         // If the form is not dirty, simply navigate back else show an alert
         if !editProfileForm.isDirty {
-            resetEditProfileForm() // Reset form to pristine state
             router.navigateBack()
+            resetEditProfileForm() // Reset form to pristine state
             return
         }
         let alert = AlertModel(
@@ -384,8 +472,8 @@ class SettingsStore: ObservableObject {
     
     func handleChangePasswordExit(router: Router<SettingsRoute>) {
         if !changePasswordForm.isDirty {
-            resetChangePasswordForm()
             router.navigateBack()
+            resetChangePasswordForm()
             return
         }
         
@@ -552,6 +640,7 @@ class SettingsStore: ObservableObject {
         guard let account = activeAccount else { return }
         guard account.streaksSettings?.isStreakOn != isOn else { return }
         
+        streaksEnabled = isOn // Update local state immediately
         let timestamp = DateTimeTools.getCurrentDatetimeIsoString()
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
@@ -560,6 +649,7 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.streakSettingUpdated))
                 logger.log(level: .info, tag: tag, message: "Streak status updated to \(isOn)")
             } catch {
+                streaksEnabled = !isOn // Revert on failure
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
                 logger.log(level: .error, tag: tag, message: "Streak status update failed:", data: error.localizedDescription)
             }
@@ -597,18 +687,58 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    // MARK: - Weightless Helpers
-    /// Persists weightless mode changes.
-    /// - Parameters:
-    ///   - isOn: Whether weightless mode is enabled.
-    ///   - storedWeight: Anchor weight in *stored units* (tenths-of-lbs).
-    ///   - onSuccess: optional completion handler after successful save.
-    func updateWeightlessMode(isOn: Bool, storedWeight: Int, dismiss: DismissAction) {
+    // MARK: - Weightless Helpers (Navigation Variant)
+    /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
+    func handleWeightlessExit(router: Router<SettingsRoute>) {
+        if !weightlessForm.isDirty {
+            router.navigateBack()
+            resetWeightlessForm()
+            return
+        }
+        let alert = AlertModel(
+            title: alertLang.WeightLessExitAlert.title,
+            message: alertLang.WeightLessExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
+                    self.resetWeightlessForm()
+                    router.navigateBack()
+                },
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Saves Weightless settings when presented via navigation push (not sheet).
+    func saveWeightless(router: Router<SettingsRoute>) {
+        // Run validation first.
+        weightlessForm.validate()
+        
+        guard weightlessForm.isDirty, isWeightLessFormValid else { return }
+        if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
+        
+        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let storedWeight: Int = {
+            if let val = Double(weightlessForm.weight.value) {
+                return ConversionTools.convertDisplayToStored(val, isMetric: unit == .kg)
+            }
+            return 0
+        }()
+        
+        self.updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight) {
+            router.navigateBack()
+        }
+    }
+    
+    /// Helper that handles the networking for updating weightless and executes `onSuccess` on completion.
+    private func updateWeightlessMode(isOn: Bool, storedWeight: Int, onSuccess: @escaping () -> Void) {
         guard let account = activeAccount else { return }
         let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
         let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
-        if currentOn == isOn && currentWeightStored == storedWeight { return }
-        
+        if currentOn == isOn && currentWeightStored == storedWeight {
+            onSuccess()
+            return
+        }
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -616,7 +746,7 @@ class SettingsStore: ObservableObject {
                 _ = try await accountService.updateWeightless(isWeightlessOn: isOn, weightlessTimestamp: timestamp, weightlessWeight: Double(storedWeight))
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
-                dismiss() // Dismiss the view after successful save
+                onSuccess()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
                 logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
@@ -643,64 +773,18 @@ class SettingsStore: ObservableObject {
             ? ConversionTools.convertStoredToKg(Int(storedWeight))
             : ConversionTools.convertStoredToLbs(Int(storedWeight))
             
-            weightlessForm.weight.value = String(format: "%.1f", display)
+            weightlessForm.weight.value = account.weightlessSettings?.isWeightlessOn ?? false ? String(format: "%.1f", display) : ""
             weightlessForm.weight.markAsPristine()
         }
         let maxWeight = account.weightSettings?.weightUnit ?? .lb == .kg ? 450.0 : 999.0
-
+        
         // Remove old validator
         weightlessForm.weight.removeValidator(ofType: .maxValue)
-
+        
         // Add new validator
         let validator = Validator.maxValue(maxWeight)
         weightlessForm.weight.addValidator(validator)
         weightlessForm.validate()
-    }
-    
-    /// Handles the exit action from the Weightless screen. Shows an alert if there are unsaved changes.
-    func handleWeightlessExit(dismiss: DismissAction) {
-        if !weightlessForm.isDirty {
-            resetWeightlessForm()
-            dismiss()
-            return
-        }
-        
-        let alert = AlertModel(
-            title: alertLang.WeightLessExitAlert.title,
-            message: alertLang.WeightLessExitAlert.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
-                    self.resetWeightlessForm()
-                    dismiss()
-                },
-                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-    
-    /// Validates and saves Weightless settings to the server.
-    func saveWeightless(dismiss: DismissAction)  {
-        // Run validation first.
-        weightlessForm.validate()
-        
-        // No changes – simply dismiss.
-        guard weightlessForm.isDirty else {
-            return
-        }
-        
-        // If toggle is on, ensure the weight field is valid.
-        if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
-        
-        // Convert display value to stored tenths-of-lbs (server format).
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
-        let storedWeight: Int = {
-            if let val = Double(weightlessForm.weight.value) {
-                return ConversionTools.convertDisplayToStored(val, isMetric: unit == .kg)
-            }
-            return 0
-        }()
-        updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight, dismiss: dismiss)
     }
     
     /// Resets the Weightless form to a pristine state.
@@ -708,7 +792,7 @@ class SettingsStore: ObservableObject {
         weightlessForm = WeightlessForm()
         populateWeightlessFormIfNeeded()
     }
-
+    
     // MARK: - Height Helpers
     /// Syncs the picker selections with the currently stored height.
     private func syncHeightPickers() {
@@ -719,7 +803,7 @@ class SettingsStore: ObservableObject {
         selectedHeightInches = selections.inches
         selectedHeightCm     = selections.cm
     }
-
+    
     /// Presents the correct picker sheet based on the user's current unit preference.
     func showHeightPicker() {
         if activeAccount?.weightSettings?.weightUnit == .kg {
@@ -728,7 +812,7 @@ class SettingsStore: ObservableObject {
             showHeightInchesPicker = true
         }
     }
-
+    
     /// Converts the chosen picker values to stored format and persists via `updateBodyComp`.
     /// - Parameters:
     ///   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
@@ -744,15 +828,15 @@ class SettingsStore: ObservableObject {
             let totalInches = (feet * 12) + inches
             storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
         }
-
+        
         // Persist change only if it differs
         guard let account = activeAccount,
               let currentStoredStr = account.weightSettings?.height,
               let currentStoredDouble = Double(currentStoredStr) else { return }
-
+        
         let currentStored = Int(round(currentStoredDouble))
         guard currentStored != storedHeight else { return }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             let bodyComp = BodyComp(
@@ -769,6 +853,217 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Height update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+        }
+    }
+    
+    // MARK: - Goal Form Helpers
+    /// Populates the Goal settings form with existing account goal values *once* (when the form is pristine).
+    func populateGoalFormIfNeeded() {
+        guard let account = activeAccount else { return }
+        
+        // Skip if user has already started editing.
+        guard !goalForm.isDirty else { return }
+        
+        // Goal type
+        if let gType = account.goalSettings?.goalType {
+            goalForm.goalType.value = gType == .maintain ? GoalType.maintain.rawValue : GoalTypeSegment.losegainValue
+            goalForm.goalType.markAsPristine()
+        }
+        Task {
+            do {
+                let latestEntry = try await entryService.getLatestEntry()
+                if let latestWeight = latestEntry?.scaleEntry?.weight {
+                    self.latestWeight = latestWeight
+                    let unit = account.weightSettings?.weightUnit ?? .lb
+                    let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(latestWeight)) : ConversionTools.convertStoredToLbs(Int(latestWeight))
+                    goalForm.currentWeight.value = String(format: "%.1f", display)
+                    goalForm.currentWeight.markAsPristine()
+                }
+                
+                if let goalW = account.goalSettings?.goalWeight {
+                    let unit = account.weightSettings?.weightUnit ?? .lb
+                    let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
+                    goalForm.goalWeight.value = String(format: "%.1f", display)
+                    goalForm.goalWeight.markAsPristine()
+                }
+                
+                // Update max-value validator according to unit.
+                updateGoalWeightValidators()
+                goalForm.validate()
+            } catch {}
+        }
+        
+    }
+    
+    /// Updates the max-weight validator whenever the preferred unit changes.
+    private func updateGoalWeightValidators() {
+        let isMetric = (activeAccount?.weightSettings?.weightUnit ?? .lb) == .kg
+        let maxWeight = isMetric ? 450.0 : 999.0
+        
+        [goalForm.currentWeight, goalForm.goalWeight].forEach { ctrl in
+            ctrl.removeValidator(ofType: .maxValue)
+            let validator = Validator.maxValue(maxWeight)
+            ctrl.addValidator(validator)
+        }
+    }
+    
+    /// Variant of `handleGoalExit` for navigation push presentation.
+    func handleGoalExit(router: Router<SettingsRoute>) {
+        if !goalForm.isDirty {
+            router.navigateBack()
+            resetGoalForm()
+            return
+        }
+        let alert = AlertModel(
+            title: alertLang.GoalExitAlert.title,
+            message: alertLang.GoalExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.GoalExitAlert.exitButton, type: .primary) { _ in
+                    self.resetGoalForm()
+                    router.navigateBack()
+                },
+                AlertButtonModel(title: alertLang.GoalExitAlert.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Saves Goal when presented via navigation push.
+    func saveGoal(router: Router<SettingsRoute>) {
+        goalForm.validate()
+        guard goalForm.isDirty, isGoalFormValid else { return }
+        
+        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let isMetric = unit == .kg
+        let convert = { (valString: String) -> Int in
+            let val = Double(valString) ?? 0.0
+            return ConversionTools.convertDisplayToStored(val, isMetric: isMetric)
+        }
+        let goalTypeValue = goalForm.goalType.value
+        let currentDisplay = goalForm.currentWeight.value
+        let targetDisplay  = goalForm.goalWeight.value
+        let goalStored    = convert(targetDisplay)
+        let initialStored: Int = {
+            if goalTypeValue == GoalType.maintain.rawValue {
+                return goalStored
+            } else {
+                return convert(currentDisplay)
+            }
+        }()
+        let goalPayload: Goal
+        if goalTypeValue == GoalType.maintain.rawValue {
+            goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: self.latestWeight, goalType: .maintain)
+        } else {
+            let derivedType: GoalType = goalStored > initialStored ? .gain : .lose
+            goalPayload = Goal(type: derivedType, goalWeight: goalStored, initialWeight: initialStored, goalType: derivedType)
+        }
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.saving))
+            do {
+                _ = try await accountService.createGoal(goalPayload)
+                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
+                logger.log(level: .info, tag: tag, message: "Goal updated successfully")
+                resetGoalForm()
+                router.navigateBack()
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.errorSettingGoal, message: toastLang.pleaseTryAgain))
+                logger.log(level: .error, tag: tag, message: "Goal update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    /// Resets to pristine state and re-sync with account.
+    private func resetGoalForm() {
+        goalForm = GoalForm()
+        populateGoalFormIfNeeded()
+    }
+    
+    /// Current notification preference derived from account settings.
+    var notificationPreference: NotificationPreference {
+        let settings = activeAccount?.notificationSettings
+        if settings?.shouldSendEntryNotifications == true {
+            return settings?.shouldSendWeightInEntryNotifications == true ? .enableWithWeight : .enable
+        }
+        return .disable
+    }
+    
+    // MARK: - Forgot Password Helpers
+    
+    func showForgotPasswordAlert() {
+        let email = activeAccount?.email ?? ""
+        let alert = AlertModel(
+            title: alertLang.ForgotPasswordAlert.title,
+            message: alertLang.ForgotPasswordAlert.message(email),
+            buttons: [
+                AlertButtonModel(title: alertLang.ForgotPasswordAlert.send, type: .primary) { _ in
+                    self.sendForgotPasswordEmail()
+                },
+                AlertButtonModel(title: alertLang.ForgotPasswordAlert.cancel, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    func sendForgotPasswordEmail() {
+        guard let email = activeAccount?.email else { return }
+
+        let trimmedEmail = removeWhiteSpace(email)
+        guard !trimmedEmail.isEmpty else { return }
+
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                try await accountService.requestPasswordReset(email: trimmedEmail)
+                notificationService.showToast(
+                    ToastModel(
+                        title: toastLang.success,
+                        message: toastLang.forgotPassword(trimmedEmail)
+                    )
+                )
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Error: \(error)")
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    // MARK: - Multiple Accounts Educational Modal
+    /// Presents the *Add Multiple Accounts* educational modal if the user has only one account and has not seen the modal before.
+    func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>) {
+        // Ensure we have exactly one account logged in
+        guard accountService.allAccounts.count == 1 else { return }
+
+        // Check persistent flag – bail if user has already seen the modal
+        let flagKey = hasSeenAddMultipleAccountsModalKey
+        let hasSeen = (kvStore.getValue(forKey: flagKey) as? Bool) ?? false
+        guard !hasSeen else { return }
+
+        // We need an initial to render inside the icon cluster
+        guard let initialChar = activeAccount?.firstName?.first else { return }
+        let initial = String(initialChar)
+
+        // Set the flag immediately to avoid repeated triggers
+        kvStore.setValue(true, forKey: flagKey)
+
+        // Delay presentation by 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            let modalView = AddMultipleAccountsModalView(
+                initial: initial,
+                onClose: {
+                    self.notificationService.dismissModal()
+                },
+                onAddAccount: {
+                    self.notificationService.dismissModal()
+                    router.navigate(to: .myAccounts)
+                }
+            )
+
+            // Present the modal – disable tap-to-dismiss backdrop to force explicit action
+            self.notificationService.showModal(
+                ModalData(presentedView: AnyView(modalView), backdropDismiss: false)
+            )
         }
     }
 }

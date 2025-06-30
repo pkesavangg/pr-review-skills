@@ -1,13 +1,28 @@
 package com.greatergoods.meapp.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
+import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
+import com.greatergoods.meapp.domain.model.common.ActivityLevel
+import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.domain.services.BodyCompUpdateType
+import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IBodyCompositionService
+import com.greatergoods.meapp.domain.services.IExportService
+import com.greatergoods.meapp.features.common.components.RadioButtonOption
+import com.greatergoods.meapp.features.common.components.showRadioGroupModal
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.export.strings.ExportStrings
+import com.greatergoods.meapp.features.settings.strings.RadioGroupModalStrings
 import com.greatergoods.meapp.features.settings.strings.SettingsScreenStrings
+import com.greatergoods.meapp.features.signup.model.Gender
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
 
 /**
@@ -15,170 +30,390 @@ import javax.inject.Inject
  *
  * (Add service dependencies as needed.)
  */
+// TODO: MyAccountsViewModel will be implemented in a new file under 'viewmodel' if needed.
+// MyAccountsScreen will use AccountService.loggedInAccountsFlow for account data.
 @HiltViewModel
 class SettingsViewModel
-    @Inject
-    constructor(
-        private val authService: IAccountAuthService,
-    ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
-            SettingsReducer(),
-        ) {
-        override fun provideInitialState(): SettingsState = SettingsState()
+@Inject
+constructor(
+    private val accountService: IAccountService,
+    private val exportService: IExportService,
+    private val bodyCompositionService: IBodyCompositionService,
+) : BaseIntentViewModel<SettingsState, SettingsIntent>(
+    SettingsReducer(),
+) {
+    override fun provideInitialState(): SettingsState = SettingsState()
+    private val TAG = "SettingsViewModel"
 
-        init {
-            getUserProfile()
-        }
+    init {
+        getUserProfile()
+    }
 
-        fun getUserProfile() {
-            viewModelScope.launch {
-                authService.activeAccountFlow.collect {
-                    handleIntent(SettingsIntent.updateAccount(it))
-                }
+    fun getUserProfile() {
+        viewModelScope.launch {
+            accountService.activeAccountFlow.collect {
+                handleIntent(SettingsIntent.UpdateAccount(it))
             }
         }
+    }
 
-        override fun handleIntent(intent: SettingsIntent) {
-            super.handleIntent(intent)
-            when (intent) {
-                is SettingsIntent.updateAccount -> {
-                    _state.value = _state.value.copy(account = intent.account)
-                }
+    override fun handleIntent(intent: SettingsIntent) {
+        super.handleIntent(intent)
+        when (intent) {
+            is SettingsIntent.UpdateAccount -> {
+                _state.value = _state.value.copy(account = intent.account)
+            }
 
-                is SettingsIntent.Logout -> {
-                    onLogOutClick()
-                }
+            is SettingsIntent.ExportData -> {
+                onExportDataClick()
+            }
 
-                else -> {}
+            is SettingsIntent.Logout -> {
+                onLogOutClick()
+            }
+
+            is SettingsIntent.SwitchAccount -> {
+                onSwitchAccountClick()
+            }
+
+            is SettingsIntent.ShowBiologicalSexModal -> {
+                onBiologicalSexClick()
+            }
+
+            is SettingsIntent.ShowActivityLevelModal -> {
+                onActivityLevelClick()
+            }
+
+            is SettingsIntent.ShowUnitTypeModal -> {
+                onUnitTypeClick()
+            }
+
+            else -> {}
+        }
+    }
+
+    fun onExportDataClick() {
+        AppLog.d("TAG", "Export data clicked")
+
+        // Show confirmation dialog
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title = ExportStrings.ExportDialogTitle,
+                message = ExportStrings.ExportDialogMessage,
+                confirmText = ExportStrings.SendButton,
+                cancelText = ExportStrings.CancelButton,
+                onConfirm = {
+                    performExport()
+                    dialogQueueService.dismissCurrent()
+                },
+                onCancel = {
+                    AppLog.d("TAG", "User cancelled export")
+                    dialogQueueService.dismissCurrent()
+                },
+            ),
+        )
+    }
+
+    /**
+     * Performs the actual export operation with loading and error handling.
+     */
+    private fun performExport() {
+        AppLog.i("TAG", ExportStrings.ExportStarted)
+
+        // Show loading spinner
+        dialogQueueService.showLoader(
+            message = ExportStrings.LoaderMessage,
+        )
+
+        viewModelScope.launch {
+            try {
+                exportService.exportCsvWithPrompt()
+                AppLog.i(TAG, ExportStrings.ExportCompleted)
+            } catch (e: HttpException) {
+                AppLog.e(TAG, ExportStrings.ExportFailed, e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
             }
         }
+    }
 
-        fun onEditProfileClick() {
-            AppLog.d("SettingsViewModel", "Edit profile clicked")
-            // TODO: Navigate to edit profile screen
+    /**
+     * Shows the biological sex selection modal.
+     */
+    private fun showBiologicalSexModal() {
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.BiologicalSex,
+            options = listOf(
+                RadioButtonOption(Gender.MALE.value, RadioGroupModalStrings.BiologicalSex.Male),
+                RadioButtonOption(Gender.FEMALE.value, RadioGroupModalStrings.BiologicalSex.Female),
+            ),
+            selectedItem = state.value.account?.gender,
+            onConfirm = { selectedSex ->
+                AppLog.d("SettingsViewModel", "Biological sex modal onConfirm called with: $selectedSex")
+                selectedSex?.let { gender ->
+                    onBiologicalSexUpdate(gender)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Biological sex selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Updates the biological sex via the offline handler service.
+     * Follows the same pattern as Angular onSexSelectionChange method.
+     */
+    private fun onBiologicalSexUpdate(gender: String) {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for biological sex update")
+            return
+        }
+        if (currentAccount.gender == gender) {
+            AppLog.d(TAG, "Gender is already set to $gender, no update needed")
+            return
         }
 
-        fun onAddEditScalesClick() {
-            AppLog.d("SettingsViewModel", "Add/Edit scales clicked")
-            // TODO: Navigate to scales screen
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating biological sex...")
+        viewModelScope.launch {
+            try {
+                val updatedCurrentProfile = ProfileUpdateRequest(
+                    id = currentAccount.id,
+                    firstName = currentAccount.firstName,
+                    lastName = currentAccount.lastName,
+                    email = currentAccount.email,
+                    dob = currentAccount.dob,
+                    gender = gender,
+                    zipcode = currentAccount.zipcode,
+                )
+                // Use offline handler service similar to Angular implementation
+                accountService.updateProfile(updatedCurrentProfile)
+                AppLog.i(TAG, "Successfully updated biological sex")
+            } catch (e: Exception) {
+                val accountID = currentAccount.id
+                val updatedAccount = PartialAccount(
+                    firstName = currentAccount.firstName,
+                    lastName = currentAccount.lastName,
+                    dob = currentAccount.dob,
+                    gender = gender,
+                    zipcode = currentAccount.zipcode,
+                    email = currentAccount.email,
+                    isActiveAccount = true,
+                    isSynced = false,
+                )
+                accountService.updateProfileInDB(accountID, updatedAccount)
+                AppLog.e(TAG, "Error updating biological sex", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
         }
+    }
 
-        fun onIntegrationsClick() {
-            AppLog.d("SettingsViewModel", "Integrations clicked")
-            // TODO: Navigate to integrations screen
-        }
 
-        fun onExportDataClick() {
-            AppLog.d("SettingsViewModel", "Export data clicked")
-            // TODO: Show export data dialog
-        }
+    /**
+     * Shows the activity level selection modal.
+     */
+    private fun showActivityLevelModal() {
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.ActivityLevel,
+            options = listOf(
+                RadioButtonOption(ActivityLevel.NORMAL.name.lowercase(), RadioGroupModalStrings.ActivityLevel.Normal),
+                RadioButtonOption(ActivityLevel.ATHLETE.name.lowercase(), RadioGroupModalStrings.ActivityLevel.Athlete),
+            ),
+            selectedItem = state.value.account?.activityLevel,
+            onConfirm = { selectedActivityLevel ->
+                selectedActivityLevel?.let { activityLevel ->
+                    onActivityLevelUpdate(activityLevel)
+                }
+            },
+            onCancel = {
+            },
+        )
+    }
 
-        fun onChangePasswordClick() {
-            AppLog.d("SettingsViewModel", "Change password clicked")
-            // TODO: Navigate to change password screen
-        }
+    /**
+     * Updates the activity level via the body composition service.
+     * Follows the same pattern as Angular onActivitySelectionChange method.
+     */
+    private fun onActivityLevelUpdate(activityLevel: String) {
+        // Show loading dialog
+        val currentAccount = state.value.account
 
-        fun onGoalSettingClick() {
-            AppLog.d("SettingsViewModel", "Goal setting clicked")
-            // TODO: Navigate to goal setting screen
+        dialogQueueService.showLoader("Updating activity level...")
+        viewModelScope.launch {
+            try {
+                val bodyComposition = BodyCompUpdateRequest(
+                    height = currentAccount?.height ?: 1700,
+                    activityLevel = activityLevel,
+                    weightUnit = currentAccount?.weightUnit?.value ?: "lb"
+                )
+                bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
+                AppLog.i(TAG, "Successfully updated activity level")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating activity level", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
         }
+    }
 
-        fun onBiologicalSexClick() {
-            AppLog.d("SettingsViewModel", "Biological sex clicked")
-            // TODO: Show biological sex dialog
-        }
+    /**
+     * Shows the unit type selection modal.
+     */
+    private fun showUnitTypeModal() {
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.UnitType,
+            options = listOf(
+                RadioButtonOption(WeightUnit.LB.value, RadioGroupModalStrings.UnitType.Imperial),
+                RadioButtonOption(WeightUnit.KG.value, RadioGroupModalStrings.UnitType.Metric),
+            ),
+            selectedItem = state.value.account?.weightUnit?.value,
+            onConfirm = { selectedUnitType ->
+                selectedUnitType?.let { unitType ->
+                    onUnitTypeUpdate(unitType)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Unit type selection cancelled")
+            },
+        )
+    }
 
-        fun onActivityLevelClick() {
-            AppLog.d("SettingsViewModel", "Activity level clicked")
-            // TODO: Show activity level dialog
+    /**
+     * Updates the unit type via the body composition service.
+     * Follows the same pattern as Angular onUnitSelectionChange method.
+     */
+    private fun onUnitTypeUpdate(unitTypeValue: String) {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for unit type update")
+            return
         }
+        val newWeightUnit = when (unitTypeValue) {
+            WeightUnit.KG.value -> WeightUnit.KG
+            WeightUnit.LB.value -> WeightUnit.LB
+            else -> {
+                return
+            }
+        }
+        if (currentAccount.weightUnit == newWeightUnit) {
+            return
+        }
+        dialogQueueService.showLoader("Updating unit type...")
+        viewModelScope.launch {
+            try {
+                val bodyComposition = BodyCompUpdateRequest(
+                    height = currentAccount.height ?: 1700,
+                    activityLevel = currentAccount.activityLevel ?: "normal",
+                    weightUnit = newWeightUnit.value
+                )
+                bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
+                AppLog.i(TAG, "Successfully updated unit type")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating unit type", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
 
-        fun onHeightClick() {
-            AppLog.d("SettingsViewModel", "Height clicked")
-            // TODO: Show height dialog
+    private fun logout() {
+        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
+        viewModelScope.launch {
+            try {
+                val account = state.value.account
+                if (account != null) {
+                    accountService.logout(account.id, account.fcmToken)
+                }
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
         }
+    }
 
-        fun onUnitTypeClick() {
-            AppLog.d("SettingsViewModel", "Unit type clicked")
-            // TODO: Show unit type dialog
-        }
 
-        fun onWeightlessClick() {
-            AppLog.d("SettingsViewModel", "Weightless clicked")
-            // TODO: Toggle weightless mode
-        }
+    fun onBiologicalSexClick() {
+        AppLog.d("SettingsViewModel", "Biological sex clicked")
+        showBiologicalSexModal()
+    }
 
-        fun onNotificationsClick() {
-            AppLog.d("SettingsViewModel", "Notifications clicked")
-            // TODO: Navigate to notifications settings
-        }
+    fun onActivityLevelClick() {
+        AppLog.d("SettingsViewModel", "Activity level clicked")
+        showActivityLevelModal()
+    }
 
-        fun onMessagesClick() {
-            AppLog.d("SettingsViewModel", "Messages clicked")
-            // TODO: Navigate to messages settings
-        }
+    fun onUnitTypeClick() {
+        AppLog.d("SettingsViewModel", "Unit type clicked")
+        showUnitTypeModal()
+    }
 
-        fun onAppPermissionsClick() {
-            AppLog.d("SettingsViewModel", "App permissions clicked")
-            // TODO: Navigate to app permissions screen
-        }
+    fun onGoalSettingClick() {
+        AppLog.d("SettingsViewModel", "Goal setting clicked")
+        // TODO: Navigate to goal setting screen
+    }
 
-        fun onHelpClick() {
-            AppLog.d("SettingsViewModel", "Help clicked")
-            // TODO: Navigate to help screen
-        }
+    fun onWeightlessClick() {
+        AppLog.d("SettingsViewModel", "Weightless clicked")
+        // TODO: Toggle weightless mode
+    }
 
-        fun onPrivacyPolicyClick() {
-            AppLog.d("SettingsViewModel", "Privacy policy clicked")
-            // TODO: Open privacy policy in browser
-        }
+    fun onNotificationsClick() {
+        AppLog.d("SettingsViewModel", "Notifications clicked")
+        // TODO: Navigate to notifications settings
+    }
 
-        fun onTermsOfServiceClick() {
-            AppLog.d("SettingsViewModel", "Terms of service clicked")
-            // TODO: Open terms of service in browser
-        }
+    fun onMessagesClick() {
+        AppLog.d("SettingsViewModel", "Messages clicked")
+        // TODO: Navigate to messages settings
+    }
 
-        fun onGreaterGoodsClick() {
-            AppLog.d("SettingsViewModel", "GreaterGoods.com clicked")
-            // TODO: Open GreaterGoods.com in browser
+    fun onAppPermissionsClick() {
+        AppLog.d("SettingsViewModel", "App permissions clicked")
+        // TODO: Navigate to app permissions screen
+    }
+
+    fun onHelpClick() {
+        AppLog.d("SettingsViewModel", "Help clicked")
+        // TODO: Navigate to help screen
+    }
+
+    fun onDeleteAccountClick() {
+        AppLog.d("SettingsViewModel", "Delete account clicked")
+        // TODO: Show delete account confirmation dialog
+    }
+
+    fun onSwitchAccountClick() {
+        viewModelScope.launch {
+            navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts)
         }
+        AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
+    }
 
     /*
      * Show a confirmation dialog before logging out.
      */
-        private fun onLogOutClick() {
-            val logoutModalString = SettingsScreenStrings.LogoutDialog
-            dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    logoutModalString.Title,
-                    logoutModalString.Body,
-                    logoutModalString.Confirm,
-                    logoutModalString.Cancel,
-                    onDismiss = {},
-                    onConfirm = {
-                        logout()
-                    },
-                ),
-            )
-        }
-
-        private fun logout() {
-            dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
-            viewModelScope.launch {
-                try {
-                    val account = state.value.account
-                    if (account != null) {
-                        authService.logout(account.id)
-                    }
-                } catch (e: Exception) {
-                    AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
-                } finally {
-                    dialogQueueService.dismissLoader()
-                }
-            }
-        }
-
-        fun onDeleteAccountClick() {
-            AppLog.d("SettingsViewModel", "Delete account clicked")
-            // TODO: Show delete account confirmation dialog
-        }
+    private fun onLogOutClick() {
+        val logoutModalString = SettingsScreenStrings.LogoutDialog
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                logoutModalString.Title,
+                logoutModalString.Body,
+                logoutModalString.Confirm,
+                logoutModalString.Cancel,
+                onDismiss = {},
+                onConfirm = {
+                    logout()
+                },
+            ),
+        )
     }
+}

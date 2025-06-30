@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.service.InvalidIntegrationAlert
 import com.greatergoods.meapp.core.shared.utilities.browser.ChromeTabState
-import java.util.Locale
 import android.util.Log
 import android.widget.Toast
 
@@ -121,7 +120,12 @@ private fun getProviderDisplayName(provider: String): String =
         "mfPal" -> "MyFitnessPal"
         "googleFit" -> "Google Fit"
         "uArmor" -> "Under Armour"
-        else -> provider.capitalize(Locale.ROOT)
+        else ->
+            provider.replaceFirstChar(
+                transform = {
+                    it.uppercase()
+                },
+            )
     }
 
 @Composable

@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.historyDetail.viewmodel
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
-import com.greatergoods.meapp.features.historyDetail.components.HistoryDetailItemModel
+import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 
 /**
  * UI state for the history detail feature, holding loading state, error, and data.
@@ -10,20 +10,21 @@ data class HistoryDetailState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val month: String = "",
-    val historyItems: List<HistoryDetailItemModel> = emptyList(),
+    val historyItems: List<ScaleEntry> = emptyList(),
 ) : IReducer.State
 
 /**
  * Intent for history detail actions, such as loading and refreshing history.
  */
 sealed interface HistoryDetailIntent : IReducer.Intent {
+    data object Refresh : HistoryDetailIntent
     data class LoadHistoryDetail(val month: String) : HistoryDetailIntent
     object Retry : HistoryDetailIntent
     data class SetError(val message: String) : HistoryDetailIntent
     object ClearError : HistoryDetailIntent
     data class SetHistoryItems(
         val month: String,
-        val items: List<HistoryDetailItemModel>,
+        val items: List<ScaleEntry>,
     ) : HistoryDetailIntent
 }
 
@@ -46,6 +47,8 @@ class HistoryDetailReducer : IReducer<HistoryDetailState, HistoryDetailIntent> {
                     isLoading = false,
                     errorMessage = null,
                 )
+
             HistoryDetailIntent.Retry -> state.copy(isLoading = true)
+            else -> state
         }
 }

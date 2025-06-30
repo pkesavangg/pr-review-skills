@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.login.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -19,13 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppInput
@@ -57,12 +58,14 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 fun LoginScreen() {
     val viewmodel: LoginViewModel = hiltViewModel()
     val state by viewmodel.state.collectAsState()
+    BackHandler {
+        viewmodel.handleIntent(LoginIntent.OnBack)
+    }
     LoginContent(state, viewmodel::handleIntent)
 }
 
 @Composable
 private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit) {
-    val backStack = LocalNavBackStack.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -72,13 +75,14 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
     AppScaffold(
         title = null,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { backStack.removeLast() }
+            AppIconButton(AppIcons.Default.Close) { handleIntent(LoginIntent.OnBack) }
         },
         actions = {
             AppIconButton(AppIcons.Outlined.Help) { handleIntent(LoginIntent.OpenHelpModal) }
         },
         containerColor = colorScheme.secondaryBackground,
-        appBarColor = colorScheme.secondaryBackground
+        appBarColor = colorScheme.secondaryBackground,
+        borderColor = Color.Transparent,
     ) { scaffoldModifier ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

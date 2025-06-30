@@ -10,7 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.greatergoods.meapp.app.MeApp
-import com.greatergoods.meapp.core.service.IAppEventService
+import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.repository.AppRepository
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
      * Injected service for handling app-level navigation events.
      */
     @Inject
-    lateinit var eventService: IAppEventService
+    lateinit var eventService: IAppNavigationService
 
     /**
      * Called when the activity is starting. Sets up Compose content and handles navigation intents.
