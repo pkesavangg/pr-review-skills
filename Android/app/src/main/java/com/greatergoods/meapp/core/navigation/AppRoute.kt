@@ -93,16 +93,11 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data object Goal : AccountSettings()
+
+        @Serializable
+        data object HelpScreen : AccountSettings()
     }
 
-    /**
-     * Help-related navigation routes.
-     */
-    @Serializable
-    sealed class Help : AppRoute() {
-        @Serializable
-        data object HelpScreen : Help()
-    }
 }
 
 

@@ -110,7 +110,6 @@ class GoalRepository @Inject constructor(
     }
 
 
-
     /**
      * Gets the current goal for the active account.
      * @return Current goal or null if no goal is set

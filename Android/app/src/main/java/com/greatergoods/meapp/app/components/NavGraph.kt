@@ -51,8 +51,6 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
     entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
     entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
+     entry<AppRoute.Help.HelpScreen> { HelpScreen() }
 }
 
-fun EntryProviderBuilder<NavKey>.helpEntries() {
-    entry<AppRoute.Help.HelpScreen> { HelpScreen() }
-}
