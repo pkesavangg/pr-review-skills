@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
@@ -87,16 +86,6 @@ fun LandingScreen() {
                     }
                 },
             )
-            AppButton(
-                "Start AppSync Scan"
-
-            ) {
-
-                coroutineScope.launch {
-                    val result = startAppSyncScan(context)
-                    // Handle result
-                }
-            }
         }
         // Footer
         Column(

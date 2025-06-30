@@ -59,15 +59,22 @@ object AppSyncFs003Interpreter {
             return null
         }
 
-        // Create and return the final result
+        // Create and return the final result using the factory pattern
         return createResult(measurements, errorsFound)
     }
 
     /**
-     * Decodes Hamming-encoded data from the bit array.
+     * Decodes Hamming-encoded data from the raw bit array.
      *
-     * @param bits Raw bit array from detector
-     * @return Pair of decoded data array and error flags array
+     * The FS003 protocol uses Hamming codes for error detection and correction.
+     * This function processes the raw bits in blocks of [AppSyncConstants.HAMMING_BLOCK_SIZE]
+     * and uses the [AppSyncHammingDecoder] to extract the actual data values
+     * while correcting any transmission errors.
+     *
+     * @param bits Raw bit array from the native detector
+     * @return Pair containing:
+     *         - Decoded data array with actual measurement values
+     *         - Error flags array indicating which blocks had errors
      */
     private fun decodeHammingData(bits: IntArray): Pair<IntArray, IntArray> {
         val data = IntArray(AppSyncConstants.DATA_ARRAY_SIZE)
@@ -76,9 +83,11 @@ object AppSyncFs003Interpreter {
         var dataIndex = 0
         var bitIndex = 0
 
+        // Process bits in Hamming code blocks
         while (dataIndex < AppSyncConstants.DATA_ARRAY_SIZE &&
             bitIndex + AppSyncConstants.HAMMING_BLOCK_SIZE <= bits.size
         ) {
+            // Build Hamming code from consecutive bits
             var hammingCode = 0
             for (k in 0 until AppSyncConstants.HAMMING_BLOCK_SIZE) {
                 val bitValue = if (bitIndex < bits.size && bits[bitIndex] == 1) 1 else 0
@@ -86,6 +95,7 @@ object AppSyncFs003Interpreter {
                 bitIndex++
             }
 
+            // Decode the Hamming code and store result
             data[dataIndex] = AppSyncHammingDecoder.extractData(hammingCode)
             errorsFound[dataIndex] = if (AppSyncHammingDecoder.wasErrorFoundInLastCorrection()) 1 else 0
             dataIndex++
@@ -95,11 +105,16 @@ object AppSyncFs003Interpreter {
     }
 
     /**
-     * Extracts measurement values from decoded data.
+     * Extracts all measurement values from the decoded data array.
      *
-     * @param data Decoded data array
-     * @param errorsFound Error flags array
-     * @return MeasurementData object with all extracted values
+     * This function coordinates the extraction of all measurement types from
+     * the decoded data array. Each measurement type has its own extraction
+     * function that handles the specific bit patterns and conversion formulas
+     * defined by the FS003 protocol.
+     *
+     * @param data Decoded data array containing raw measurement values
+     * @param errorsFound Array indicating which data blocks had transmission errors
+     * @return [MeasurementData] object containing all extracted measurement values
      */
     private fun extractMeasurements(
         data: IntArray,
@@ -115,18 +130,31 @@ object AppSyncFs003Interpreter {
     }
 
     /**
-     * Extracts weight value from data array.
+     * Extracts weight value from the decoded data array.
+     *
+     * Weight is stored across multiple data positions in the FS003 protocol.
+     * This function assembles the weight value by combining bits from positions
+     * 0, 1, and 2 using specific shift operations and applies the protocol's
+     * conversion formula.
+     *
+     * @param data Decoded data array
+     * @param errorsFound Array indicating transmission errors
+     * @return [MeasurementValue] containing the weight in kilograms or null if invalid
      */
     private fun extractWeight(
         data: IntArray,
         errorsFound: IntArray,
     ): MeasurementValue {
+        // Assemble weight from multiple data positions
         var weight = data[2]
         weight = weight or (data[1] shl AppSyncConstants.WEIGHT_SHIFT_1)
         weight = weight or (data[0] shl AppSyncConstants.WEIGHT_SHIFT_2)
         weight = weight ushr AppSyncConstants.WEIGHT_RIGHT_SHIFT
 
+        // Convert to actual weight value using protocol divisor
         val value = weight * 1f / AppSyncConstants.WEIGHT_DIVISOR
+
+        // Count errors from all weight-related data positions
         val errors = errorsFound[1] + errorsFound[2] + errorsFound[0]
 
         return MeasurementValue(
@@ -136,12 +164,21 @@ object AppSyncFs003Interpreter {
     }
 
     /**
-     * Extracts fat percentage from data array.
+     * Extracts body fat percentage from the decoded data array.
+     *
+     * Body fat is stored across multiple data positions and includes special
+     * handling for invalid values. The extraction process involves bit shifting,
+     * masking, and validation against protocol-specific constants.
+     *
+     * @param data Decoded data array
+     * @param errorsFound Array indicating transmission errors
+     * @return [MeasurementValue] containing the body fat percentage or null if invalid
      */
     private fun extractFat(
         data: IntArray,
         errorsFound: IntArray,
     ): MeasurementValue {
+        // Assemble fat value from multiple data positions
         var fat = data[5]
         fat = fat or (data[4] shl AppSyncConstants.FAT_SHIFT_1)
         fat = fat or (data[3] shl AppSyncConstants.FAT_SHIFT_2)
@@ -149,11 +186,13 @@ object AppSyncFs003Interpreter {
         fat = fat ushr AppSyncConstants.FAT_RIGHT_SHIFT
         fat = fat and AppSyncConstants.FAT_MASK
 
+        // Convert to percentage and handle invalid values
         var value = fat * 1f / AppSyncConstants.FAT_DIVISOR
         if (fat == AppSyncConstants.FAT_INVALID_VALUE || fat == 0) {
             value = -1f
         }
 
+        // Count errors from all fat-related data positions
         val errors = errorsFound[2] + errorsFound[3] + errorsFound[4] + errorsFound[5]
 
         return MeasurementValue(
@@ -163,23 +202,34 @@ object AppSyncFs003Interpreter {
     }
 
     /**
-     * Extracts muscle percentage from data array.
+     * Extracts muscle percentage from the decoded data array.
+     *
+     * Muscle percentage uses a base value plus an offset from the protocol data.
+     * The extraction process involves bit shifting, masking, and validation
+     * against protocol-specific constants.
+     *
+     * @param data Decoded data array
+     * @param errorsFound Array indicating transmission errors
+     * @return [MeasurementValue] containing the muscle percentage or null if invalid
      */
     private fun extractMuscle(
         data: IntArray,
         errorsFound: IntArray,
     ): MeasurementValue {
+        // Assemble muscle value from multiple data positions
         var muscle = data[7]
         muscle = muscle or (data[6] shl AppSyncConstants.MUSCLE_SHIFT_1)
         muscle = muscle or (data[5] shl AppSyncConstants.MUSCLE_SHIFT_2)
         muscle = muscle ushr AppSyncConstants.MUSCLE_RIGHT_SHIFT
         muscle = muscle and AppSyncConstants.MUSCLE_MASK
 
+        // Convert to percentage using base value and divisor
         var value = AppSyncConstants.MUSCLE_BASE_VALUE + muscle * 1f / AppSyncConstants.MUSCLE_DIVISOR
         if (muscle == AppSyncConstants.MUSCLE_INVALID_VALUE || muscle == 0) {
             value = -1f
         }
 
+        // Count errors from all muscle-related data positions
         val errors = errorsFound[7] + errorsFound[6] + errorsFound[5]
 
         return MeasurementValue(
@@ -189,22 +239,33 @@ object AppSyncFs003Interpreter {
     }
 
     /**
-     * Extracts water percentage from data array.
+     * Extracts water percentage from the decoded data array.
+     *
+     * Water percentage uses a base value plus an offset from the protocol data.
+     * The extraction process involves bit shifting, masking, and validation
+     * against protocol-specific constants.
+     *
+     * @param data Decoded data array
+     * @param errorsFound Array indicating transmission errors
+     * @return [MeasurementValue] containing the water percentage or null if invalid
      */
     private fun extractWater(
         data: IntArray,
         errorsFound: IntArray,
     ): MeasurementValue {
+        // Assemble water value from multiple data positions
         var water = data[9] shr AppSyncConstants.WATER_RIGHT_SHIFT_1
         water = water or (data[8] shl AppSyncConstants.WATER_SHIFT_1)
         water = water or (data[7] shl AppSyncConstants.WATER_SHIFT_2)
         water = water and AppSyncConstants.WATER_MASK
 
+        // Convert to percentage using base value and divisor
         var value = AppSyncConstants.WATER_BASE_VALUE + water.toFloat() / AppSyncConstants.WATER_DIVISOR
         if (water == AppSyncConstants.WATER_INVALID_VALUE || water == 0) {
             value = -1f
         }
 
+        // Count errors from all water-related data positions
         val errors = errorsFound[9] + errorsFound[8] + errorsFound[7]
 
         return MeasurementValue(
@@ -214,12 +275,21 @@ object AppSyncFs003Interpreter {
     }
 
     /**
-     * Extracts measurement mode from data array.
+     * Extracts measurement mode from the decoded data array.
+     *
+     * The measurement mode indicates the type of measurement being performed
+     * (e.g., "kg", "lb", etc.). This is stored as a string value rather than
+     * a numeric value.
+     *
+     * @param data Decoded data array
+     * @param errorsFound Array indicating transmission errors
+     * @return [MeasurementValue] containing the mode string or null if invalid
      */
     private fun extractMode(
         data: IntArray,
         errorsFound: IntArray,
     ): MeasurementValue {
+        // Extract mode bits and look up corresponding string
         val unit = data[9] and AppSyncConstants.MODE_MASK
         val modeStr = AppSyncConstants.Modes.VALID_MODES.getOrNull(unit)
         val errors = errorsFound[9]
@@ -232,7 +302,14 @@ object AppSyncFs003Interpreter {
     }
 
     /**
-     * Checks if the scan result is invalid.
+     * Checks if the scan result represents an invalid measurement.
+     *
+     * This function validates the extracted measurements against known
+     * invalid patterns. An invalid scan typically has zero weight and
+     * negative values for body composition measurements.
+     *
+     * @param measurements The extracted measurement data
+     * @return true if the scan is invalid, false otherwise
      */
     private fun isInvalidScan(measurements: MeasurementData): Boolean =
         measurements.weight.value == 0.0f &&
@@ -241,7 +318,16 @@ object AppSyncFs003Interpreter {
             measurements.water.value == -1f
 
     /**
-     * Creates AppSyncResult from measurement data.
+     * Creates the final [AppSyncResult] from extracted measurement data using the factory pattern.
+     *
+     * This function assembles all the extracted measurements and error counts
+     * into the final result object using [AppSyncResultFactory.createSuccessResult()].
+     * It includes special handling for certain invalid scan patterns and sets
+     * appropriate default values.
+     *
+     * @param measurements The extracted measurement data
+     * @param errorsFound Array indicating transmission errors
+     * @return Complete [AppSyncResult] object ready for delivery
      */
     private fun createResult(
         measurements: MeasurementData,
@@ -249,7 +335,7 @@ object AppSyncFs003Interpreter {
     ): AppSyncResult {
         var totalErrors = errorsFound.sum()
 
-        // Special case for invalid scans
+        // Special case for invalid scans - set maximum error count
         if (measurements.weight.value == 0.0f &&
             measurements.fat.value == 0.0f &&
             measurements.muscle.value == 14.9f
@@ -257,7 +343,8 @@ object AppSyncFs003Interpreter {
             totalErrors = AppSyncConstants.MAX_ERRORS_FOR_INVALID_SCAN
         }
 
-        return AppSyncResult(
+        // Use the factory pattern to create the result object
+        return AppSyncResultFactory.createSuccessResult(
             weight = measurements.weight.value,
             fat = measurements.fat.value,
             muscle = measurements.muscle.value,
@@ -270,13 +357,18 @@ object AppSyncFs003Interpreter {
             modeErrors = measurements.mode.errors,
             errors = totalErrors,
             zoom = AppSyncConstants.DEFAULT_ZOOM,
-            canceled = false,
-            manual = false,
         )
     }
 
     /**
-     * Data class to hold measurement values and their error counts.
+     * Data class to hold measurement values and their associated metadata.
+     *
+     * This class encapsulates a single measurement value along with its
+     * error count and optional string representation (for modes).
+     *
+     * @param value The numeric measurement value, or null if invalid
+     * @param stringValue Optional string representation (used for modes)
+     * @param errors Number of transmission errors detected for this measurement
      */
     private data class MeasurementValue(
         val value: Float?,
@@ -285,7 +377,16 @@ object AppSyncFs003Interpreter {
     )
 
     /**
-     * Data class to hold all measurement data.
+     * Data class to hold all extracted measurement data.
+     *
+     * This class groups together all the individual measurement values
+     * extracted from the FS003 protocol data for easier processing.
+     *
+     * @param weight Weight measurement in kilograms
+     * @param fat Body fat percentage
+     * @param muscle Muscle percentage
+     * @param water Water percentage
+     * @param mode Measurement mode (e.g., "kg", "lb")
      */
     private data class MeasurementData(
         val weight: MeasurementValue,
