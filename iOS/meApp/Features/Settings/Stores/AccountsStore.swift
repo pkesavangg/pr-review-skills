@@ -27,8 +27,11 @@ class AccountsStore: ObservableObject {
     
     @Published var activeAccount: Account?
     @Published var accounts: [Account] = []
+    @Published var userItems: [UserItemInfo] = []
     
     @Published var canShowLoginScreen = false
+    /// Holds the email to prefill in `LoginScreen` when opening from account switching flow.
+    @Published var emailForLogin: String? = nil
     @Published var canShowAccountSignupScreen = false
     
     private let tag = "AccountsStore"
@@ -41,18 +44,44 @@ class AccountsStore: ObservableObject {
             }
             .store(in: &accountService.cancellables)
         
+        // Watch allAccounts and update both `accounts` and `userItems`
         accountService.$allAccounts
             .sink { [weak self] allAccounts in
-                self?.accounts = allAccounts
+                guard let self = self else { return }
+
+                self.accounts = allAccounts.filter { $0.isLoggedIn == true }
+                
+                let sorted = self.accounts.sorted {
+                    let lhs = DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast
+                    let rhs = DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast
+                    return lhs > rhs
+                }
+
+                self.userItems = sorted.map {
+                    UserItemInfo(
+                        accountID: $0.accountId,
+                        name: $0.firstName?.isEmpty == false ? $0.firstName! : $0.email,
+                        email: $0.email,
+                        isSelected: $0.isActiveAccount ?? false,
+                        isExpired: $0.isExpired ?? false,
+                        canShowSelection: true
+                    )
+                }
             }
             .store(in: &accountService.cancellables)
     }
     
-    func handleLoginCTA() {
-        if accounts.count >= appConstants.Account.maxAccounts {
+    /// Triggers display of `LoginScreen`. Pass the email to pre-fill if available.
+    /// - Parameter email: Optional email address to prefill in the login form.
+    /// - Parameter isUserExpired: Indicates if the user account is expired.
+    func handleLoginCTA(email: String? = nil, isUserExpired: Bool = false) {
+        // If the user is expired, allow login with the same email.
+        // If the user modifies the email and the account limit has been reached, show the max accounts alert.
+        if accounts.count >= appConstants.Account.maxAccounts && !isUserExpired {
             showMaxUserAccountsAlert()
             return
         }
+        emailForLogin = email
         canShowLoginScreen = true
     }
     
@@ -90,6 +119,12 @@ class AccountsStore: ObservableObject {
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(account.firstName ?? "")))
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch active account", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet:
+                    notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+                default:
+                    notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
+                }
             }
             notificationService.dismissLoader()
         }

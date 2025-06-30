@@ -12,6 +12,7 @@ struct UserListItemView: View {
     @Environment(\.appTheme) private var theme
     
     let user: UserItemInfo
+    var openItemID: Binding<UUID?>? // Optional binding to track open item for swipeable actions
     var iconSize: CGFloat = 32
     var onTap: ((String, Bool) -> Void)
     var onDelete: ((String) -> Void)? = nil // optional deletion trigger
@@ -22,19 +23,22 @@ struct UserListItemView: View {
             .onTapGesture {
                 onTap(user.accountID, user.isExpired)
             }
-            .swipeableActions(buttons:
-                                user.isSelected || user.isExpired || onDelete == nil ? [] : [
-                                    SwipeButton(
-                                        tint: theme.textError,
-                                        action: { onDelete?(user.accountID) },
-                                        label: {
-                                            AnyView(
-                                                AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
-                                                    .foregroundColor(theme.backgroundPrimary)
-                                            )
-                                        }
-                                    )
-                                ]
+            .swipeableActions(
+                buttons:
+                    !user.canShowSelection || onDelete == nil ? [] : [
+                        SwipeButton(
+                            tint: theme.textError,
+                            action: { onDelete?(user.accountID) },
+                            label: {
+                                AnyView(
+                                    AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
+                                        .foregroundColor(theme.backgroundPrimary)
+                                )
+                            }
+                        )
+                    ],
+                itemID: user.id,
+                openItemID: openItemID
             )
     }
     
@@ -67,7 +71,9 @@ struct UserListItemView: View {
             Spacer()
             if user.isExpired {
                 ButtonView(text: CommonStrings.logIn, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                    onTap(user.accountID, user.isExpired)
+                    if openItemID?.wrappedValue != user.id {
+                        onTap(user.accountID, user.isExpired)
+                    }
                 }
             } else if user.canShowSelection {
                 AppIconView(icon: user.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline, size: IconSize(width: 24, height: 24))
@@ -94,12 +100,14 @@ struct AccountListView: View {
     
     @State private var showDeleteAlert = false
     @State private var userToDelete: UserItemInfo?
+    @State private var openItemID: UUID? = nil
     
     var body: some View {
         List {
             ForEach(accounts) { account in
                 UserListItemView(
                     user: account,
+                    openItemID: $openItemID, // Binding to track open item and closes the other open item
                     onTap: { _, isFromLogin in
                         print("\(account.name) tapped", isFromLogin)
                     },

@@ -12,6 +12,8 @@ import SwiftUI
 struct SwipeableModifier: ViewModifier {
     let swipeButtons: [SwipeButton]
     let buttonWidth: CGFloat
+    let itemID: UUID
+    var openItemID: Binding<UUID?>?
     
     @State private var offsetX: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
@@ -56,12 +58,25 @@ struct SwipeableModifier: ViewModifier {
                             let totalWidth = CGFloat(swipeButtons.count) * buttonWidth
                             let threshold = -totalWidth / 2
                             withAnimation {
-                                offsetX = value.translation.width < threshold ? -totalWidth : 0
+                                if value.translation.width < threshold {
+                                    offsetX = -totalWidth
+                                    openItemID?.wrappedValue = itemID // mark this row as opened (only if single-open behavior is desired)
+                                } else {
+                                    offsetX = 0
+                                    if openItemID?.wrappedValue == itemID { openItemID?.wrappedValue = nil }
+                                }
                             }
                         }
                 )
         }
         .clipped()
+        // Close if a different item becomes open (only in single-open mode)
+        .onChange(of: openItemID?.wrappedValue) { newValue in
+            guard let newValue else { return }
+            if newValue != itemID && offsetX != 0 {
+                withAnimation { offsetX = 0 }
+            }
+        }
         .onChange(of: swipeButtons.count) {
             if swipeButtons.count == 0 { offsetX = 0 }
         }

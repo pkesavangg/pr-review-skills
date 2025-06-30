@@ -54,6 +54,16 @@ struct SettingsScreen: View {
             }
             .onAppear {
                 tabViewModel.showTabBar = true
+                // Ensure this is the actively selected tab before evaluating modal presentation
+                if tabViewModel.selectedTab == .settings {
+                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                }
+            }
+            // Re-evaluate modal presentation whenever the selected tab changes.
+            .onChange(of: tabViewModel.selectedTab) {
+                if tabViewModel.selectedTab == .settings {
+                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                }
             }
         }
         .environmentObject(router)
@@ -157,6 +167,10 @@ struct SettingsScreen: View {
                 size: 36,
                 style: .fill
             )
+            .onLongPressGesture {
+                tabViewModel.showTabBar = false
+                router.navigate(to: .myAccounts)
+            }
             Text(settingsStore.profileName)
                 .fontOpenSans(.heading3)
                 .foregroundColor(theme.textHeading)
@@ -173,7 +187,10 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales,
                 onTap: {router.navigate(to:.addEditScales)}))
                 .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations, onTap: {
+                tabViewModel.showTabBar = false
+                router.navigate(to: .integrations)
+            }))
                 .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
                 settingsStore.handleExport()

@@ -13,27 +13,7 @@ struct MyAccountsScreen: View {
     @EnvironmentObject private var router: Router<SettingsRoute>
     @EnvironmentObject private var settingsStore: SettingsStore
     @StateObject private var accountsStore = AccountsStore()
-    
-    /// Transforms `Account` models from `AccountsStore` into immutable `UserItemInfo` models used by the list.
-    private var userItems: [UserItemInfo] {
-        // Sort accounts by `lastActiveTime` (latest first) before transforming.
-        let sortedAccounts = accountsStore.accounts.sorted { lhs, rhs in
-            let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
-            let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
-            return lhsDate > rhsDate
-        }
-
-        return sortedAccounts.map { account in
-            UserItemInfo(
-                accountID: account.accountId,
-                name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
-                email: account.email,
-                isSelected: account.isActiveAccount ?? false,
-                isExpired: account.isExpired ?? false,
-                canShowSelection: true
-            )
-        }
-    }
+    @State private var openItemID: UUID? = nil
     
     private let strings = MyAccountsStrings.self
     
@@ -58,7 +38,7 @@ struct MyAccountsScreen: View {
             }
         }
         .sheet(isPresented: $accountsStore.canShowLoginScreen, content: {
-            LoginScreen(isFromAccountSwitching: true)
+            LoginScreen(prefilledEmail: accountsStore.emailForLogin, isFromAccountSwitching: true)
                 .interactiveDismissDisabled()
         })
         .sheet(isPresented: $accountsStore.canShowAccountSignupScreen, content: {
@@ -71,14 +51,15 @@ struct MyAccountsScreen: View {
     // MARK: Account List
     @ViewBuilder
     private var accountList: some View {
-        if userItems.count > 1 {
+        if accountsStore.userItems.count > 1 {
             Section {
-                ForEach(userItems) { account in
+                ForEach(accountsStore.userItems) { account in
                     UserListItemView(
                         user: account,
+                        openItemID: $openItemID,
                         onTap: { id, isExpired in
                             if isExpired {
-                                accountsStore.handleLoginCTA()
+                                accountsStore.handleLoginCTA(email: account.email, isUserExpired: true)
                             } else {
                                 accountsStore.switchActiveAccount(to: id)
                             }
