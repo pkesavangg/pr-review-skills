@@ -59,7 +59,7 @@ sealed class AppRoute : NavKey {
         data object Landing : Auth()
 
         @Serializable
-        data object Login : Auth()
+        data class Login(val email: String? = null) : Auth()
 
         @Serializable
         data object Signup : Auth()

@@ -29,4 +29,10 @@ object AppPopupStrings {
         const val ConfirmButton = "Remove"
         const val Loader = "Removing Account..."
     }
+
+    object BackgroundLoggedOutAlert {
+        fun Title(username: String) = "$username was logged out"
+        const val Message = "Please log back in to continue."
+        const val ConfirmButton = "OK"
+    }
 }

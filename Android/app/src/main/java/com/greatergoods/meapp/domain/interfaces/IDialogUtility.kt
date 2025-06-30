@@ -6,7 +6,7 @@ package com.greatergoods.meapp.domain.interfaces
 interface IDialogUtility {
     /**
      * Shows a max account reached alert dialog.
-     * 
+     *
      * @param isFromLanding Whether the alert is shown from the landing screen
      * @param onDismiss Optional callback when the dialog is dismissed
      */
@@ -14,4 +14,9 @@ interface IDialogUtility {
         isFromLanding: Boolean = false,
         onDismiss: (() -> Unit)? = null
     )
-} 
+
+    fun showAccountLoggedOutAlert(
+        username: String,
+        onDismiss: (() -> Unit)? = null
+    )
+}

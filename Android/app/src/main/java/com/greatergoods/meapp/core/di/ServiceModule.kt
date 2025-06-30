@@ -61,7 +61,7 @@ object ServiceModule {
         tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
         userDataStore: UserDataStore,
-        appEventService: IAppNavigationService,
+        appNavigationService: IAppNavigationService,
     ): IAccountService =
         AccountService(
             accountRepository,
@@ -69,7 +69,7 @@ object ServiceModule {
             tokenManager,
             dialogQueueService,
             userDataStore,
-            appEventService,
+            appNavigationService,
         )
 
     /**
@@ -201,6 +201,6 @@ object ServiceModule {
     ): IBodyCompositionService = BodyCompositionService(
         bodyCompositionRepository,
         connectivityObserver,
-        dialogQueueService
+        dialogQueueService,
     )
 }

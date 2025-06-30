@@ -14,6 +14,7 @@ object ToastStrings {
             const val Header = "Success!"
             const val Message = "Your profile saved successfully"
         }
+
         object ChangePasswordSuccess {
             const val Header = "Success!"
             const val Message = "Password updated."
@@ -47,13 +48,19 @@ object ToastStrings {
                 "If the problem continues, contact customer service."
             const val MessageNotAuth = "Your session has expired. Please log in again."
             const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
-            const val MessageServError = "Unable to reach the Greater Goods servers. The issue is probably on our end. " +
-                "Try again later, but if the problem continues, contact customer service."
+            const val MessageServError =
+                "Unable to reach the Greater Goods servers. The issue is probably on our end. " +
+                    "Try again later, but if the problem continues, contact customer service."
         }
+
         object ChangePasswordError {
             const val Header = "Password Change Error"
             const val Message = "Error updating password. Please try again. " +
                 "If the problem continues, contact customer service."
+        }
+
+        object NetworkError {
+            const val Message = "Unable to find a network connection at this time. Please try again later."
         }
     }
 }
