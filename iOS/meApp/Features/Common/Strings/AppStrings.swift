@@ -37,6 +37,8 @@ struct CommonStrings {
     static let date = "Date"
     static let weight = "Weight"
     static let resources = "Resources"
+    static let heartRateLabel = "Heart Rate: "
+    static let update = "Update"
 }
 
 /// Constants for entry strings used in the app
@@ -295,5 +297,6 @@ struct AppAssets {
     static let scale0412 = "0412"
     static let weightOnlyMode = "weightOnlyMode"
     static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
+    static let trash = "trash"
 }
 

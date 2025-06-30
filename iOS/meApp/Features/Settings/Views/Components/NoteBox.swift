@@ -7,27 +7,56 @@
 
 import SwiftUI
 
-struct NoteBox: View {
-    let title: String
-    let content: String
+struct NoteBox<Content: View>: View {
+    let content: Content
     @Environment(\.appTheme) private var theme
-    
+
+    init(
+        @ViewBuilder content: () -> Content
+    ) {
+        self.content = content()
+    }
+
     var body: some View {
-        Text("**\(title)** \(content)")
-            .fontOpenSans(.body3)
-            .foregroundColor(theme.textBody)
-            .multilineTextAlignment(.leading)
-            .padding(.spacingSM)
-            .frame(maxWidth: .infinity, alignment: .leading) 
-            .background(theme.backgroundPrimary)
-            .cornerRadius(.radiusSM)
+        HStack(alignment: .top, spacing: .spacingSM) {
+            content
+        }
+        .padding(.spacingSM)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.backgroundPrimary)
+        .cornerRadius(.radiusSM)
     }
 }
 
-#Preview(){
-    VStack{
-        NoteBox(title: "NOTE:", content: "Other scale users can temporarily enable All Body Metrics for one session via their app.")
-        NoteBox(title: "NOTE:", content: "If you have certain medical conditions —like implanted medical devices or you are pregnant — you should not use All Body Metrics Mode without first consulting your doctor.")
+#Preview() {
+    VStack(spacing: 12) {
+        NoteBox {
+            HStack {
+                Text("Weight Only: On")
+                    .fontOpenSans(.body2)
+                    .foregroundColor(.black)
+            }
+        }
+        NoteBox {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("**A user has Weight Only Mode on** Only weight and BMI will be collected. You can temporarily enable All Body Metrics and/or review users from scale settings.")
+                    .fontOpenSans(.body3)
+                    .foregroundColor(.black)
+            }
+        }
+        NoteBox {
+            HStack {
+                Text("Heart Rate: OFF")
+                    .fontOpenSans(.body2)
+                    .foregroundColor(.black)
+                Spacer()                
+            }
+        }
+        NoteBox {
+            Text("**NOTE:** If you have certain medical conditions — like implanted medical devices or you are pregnant — you should not use All Body Metrics Mode without first consulting your doctor.")
+                .fontOpenSans(.body3)
+                .foregroundColor(.black)
+        }
     }
     .padding(.spacingSM)
 }

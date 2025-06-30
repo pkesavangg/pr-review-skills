@@ -39,13 +39,34 @@ class ScaleStore: ObservableObject {
     @Published var modeValue: ScaleModes = .weightOnly 
     @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
     @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
-    @Published var scaleNameValue: String = "AccuCheck Verve..." // TODO: Replace with actual scale name
     @Published var bluetoothValue: String = "Connected" // TODO: Replace with actual BT status
     @Published var wifiValue: String = "greatergoods1" // TODO: Replace with actual Wi-Fi SSID
     @Published var wifiMacAddressValue: String = "" // TODO: Replace with actual Wi-Fi MAC address
     @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi" // TODO: Replace with actual scale type
     @Published var skuValue: String = "0412" // TODO: Replace with actual SKU
     @Published var datePairedValue: String = "June 2, 2025" // TODO: Replace with actual date paired
+    
+    // Display Metrics State
+    @Published var progressMetrics: [ProgressMetricItem] = [
+        ProgressMetricItem(id: "goalProgress", label: ScaleModesStrings.goalProgress, isOn: true),
+        ProgressMetricItem(id: "dailyAverage", label: ScaleModesStrings.dailyAverage, isOn: true),
+        ProgressMetricItem(id: "weeklyAverage", label: ScaleModesStrings.weeklyAverage, isOn: true),
+        ProgressMetricItem(id: "monthlyAverage", label: ScaleModesStrings.monthlyAverage, isOn: true),
+    ]
+    
+    // Banner States
+    @Published var showWeightOnlyBanner: Bool = false
+    @Published var showWeightOnlyInfo: Bool = false
+    @Published var showHeartRateBanner: Bool = false
+    
+    // Metrics State
+    @Published var metrics: [BodyMetricItem] = BodyMetrics.config.keys
+        .filter { $0 != .weight }
+        .map { BodyMetricItem(id: $0, isOn: true) }
+    
+    // User Management State
+    @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
+    @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
     
     private var cancellables = Set<AnyCancellable>()
     private let legalURLs = AppConstants.LegalURLs.self
@@ -200,12 +221,6 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    func usersTapped() {
-        // TODO: Implement usersTapped action
-    }
-    func scaleNameTapped() {
-        // TODO: Implement scaleNameTapped action
-    }
     func bluetoothTapped() {
         // TODO: Implement bluetoothTapped action
     }
@@ -225,6 +240,15 @@ class ScaleStore: ObservableObject {
     func handleHelp() {
         // TODO: Implement help button action
     }
+    func saveUsers() {
+        // TODO: Implement save users logic
+    }
+    func deleteCurrentUser() {
+        // TODO: Implement delete current user logic
+    }
+    func deleteOtherUser(at index: Int) {
+        // TODO: Implement delete other user logic
+    }
     
     // MARK: - Product Guide URL helper & Browser Presentation
     func productGuideURL(for sku: String) -> URL {
@@ -243,5 +267,27 @@ class ScaleStore: ObservableObject {
             }),
             backdropDismiss: true
         ))
+    }
+    
+    // MARK: - Display Metrics Functions
+    
+    /// Saves the display metrics configuration
+    func saveDisplayMetrics() {
+        // TODO: Implement saveDisplayMetrics functionality
+        // - Save the current state of metrics and extraToggles
+    }
+    
+    /// Updates the weight-only mode setting
+    func updateWeightOnlyMode() {
+        // TODO: Implement updateWeightOnlyMode functionality
+        // - Toggle weight-only mode on/off
+        // - Update scale configuration
+    }
+    
+    /// Updates the heart rate monitoring setting
+    func updateHeartRate() {
+        // TODO: Implement updateHeartRate functionality
+        // - Toggle heart rate monitoring on/off
+        // - Update scale configuration
     }
 }
