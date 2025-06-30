@@ -37,10 +37,7 @@ struct ConnectionIndicatorView: View {
                 .fill(isFailure ? theme.statusError : theme.brandWgPrimary)
                 .frame(width: 89, height: 89)
 
-            Image(image)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 59, height: 59)
+            AppIconView(icon: image, size: IconSize(width: 59, height: 59))
                 .foregroundColor(theme.backgroundPrimary)
         }
         .frame(width: shouldPulse ? 172 : 89, height: shouldPulse ? 172 : 89)
