@@ -638,7 +638,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId)
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
         }
         do {
             try await integrationApiRepo.deleteHealthIntegration(deviceId: deviceId)

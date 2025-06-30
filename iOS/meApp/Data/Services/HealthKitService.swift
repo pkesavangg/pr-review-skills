@@ -37,10 +37,13 @@ public final class HealthKitService: HealthKitServiceProtocol {
         if turnOn {
             let isAvailable = hkPackage.available();
             if !isAvailable {
-                // TODO: Handle case where HealthKit is not available
                 return false
             }
-            let _ = await hkPackage.requestAuthorization()
+            let authorizationResult = await hkPackage.requestAuthorization()
+            if !authorizationResult {
+                logger.log(level: .error, tag: tag, message: "HealthKit authorization failed.")
+                return false
+            }
             let permissions = getApprovedPermissionList()
             if permissions.isEmpty {
                 return false

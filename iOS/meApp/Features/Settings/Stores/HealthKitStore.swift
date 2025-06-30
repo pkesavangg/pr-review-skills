@@ -231,6 +231,7 @@ final class HealthKitStore: ObservableObject {
                 try await healthKitService.clearHealthKit()
                 getLocalStoredData()
             } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to clear HealthKit data", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
         }
@@ -257,7 +258,7 @@ final class HealthKitStore: ObservableObject {
                 wasPreviouslyIntegrated = info.type == .healthKit && !info.isIntegrated
             }
         } catch {
-            // Non-fatal – default to *initial* integration path.
+            logger.log(level: .error, tag: tag, message: "Falied to check if user previously integrated", data: error.localizedDescription)
         }
         return wasPreviouslyIntegrated
     }
