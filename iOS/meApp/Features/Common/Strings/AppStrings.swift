@@ -514,5 +514,21 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+
+    // MARK: - Scale images (AppSync & others)
+    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
+    // AppSync series
+    static let scale0341 = "0341"
+    static let scale0342 = "0342"
+    static let scale0343 = "0343"
+    static let scale0345 = "0345"
+    static let scale0346 = "0346"
+    static let scale0347 = "0347"
+    static let scale0358 = "0358"
+    static let scale0359 = "0359"
+    static let scale0364 = "0364"
+    static let scale0369 = "0369"
+    static let scale0370 = "0370"
+    static let scale0371 = "0371"
 }
 

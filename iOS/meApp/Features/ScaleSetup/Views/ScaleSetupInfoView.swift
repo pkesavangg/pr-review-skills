@@ -11,10 +11,9 @@ struct ScaleSetupInfoView: View {
 
     /// The SKU that identifies the scale model (e.g., "0397").
     let sku: String
-    var onClick: (() -> Void)?
+    var onClick: (() -> Void)? = nil
     /// Lazy lookup for all copy & assets needed for this SKU.
     private var content: ScaleSetupInfoContent { ScaleSetupStrings.info(for: sku) }
-    
 
     var body: some View {
         VStack(spacing: .spacingLG) {
@@ -31,7 +30,7 @@ struct ScaleSetupInfoView: View {
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
                 
-                Text(content.subtitle)
+                Text(content.scaleName)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
                 
@@ -55,8 +54,8 @@ struct ScaleSetupInfoView: View {
 
 
 #Preview(body: {
-    ScaleSetupInfoView(sku: "0396") {
+    ScaleSetupInfoView(sku: "0343") {
         print("Button clicked")
     }
-        .padding(.horizontal)
+    .padding(.horizontal)
 })
