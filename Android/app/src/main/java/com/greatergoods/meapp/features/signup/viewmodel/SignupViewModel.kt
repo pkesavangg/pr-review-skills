@@ -118,7 +118,7 @@ constructor(
                                 .trim(),
                         "password" to signupData.password,
                         "dob" to DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
-                        "height" to HeightInput.convertHeightInputToStored(controls.height.value),
+                        "height" to controls.height.value.toStoredHeight(),
 
                         )
 
