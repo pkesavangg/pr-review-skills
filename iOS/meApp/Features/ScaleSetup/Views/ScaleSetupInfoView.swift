@@ -16,39 +16,45 @@ struct ScaleSetupInfoView: View {
     private var content: ScaleSetupInfoContent { ScaleSetupStrings.info(for: sku) }
 
     var body: some View {
-        VStack(spacing: .spacingLG) {
-            VStack(spacing: .spacingXS) {
-                Image(content.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 180, height: 180)
-                    .cornerRadius(.radiusLG)
-                    .dropShadow(DropShadow.glowBlack)
-                    .padding(.bottom, .spacingLG)
-                
-                Text(content.title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                
-                Text(content.scaleName)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
-                
-            }
-            .padding(.horizontal, .spacingLG)
-            
-            Text(content.description)
-                .fontOpenSans(.body2)
-                .multilineTextAlignment(.leading)
-                .foregroundColor(theme.textBody)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack {
+                    VStack(spacing: .spacingLG) {
+                        VStack(spacing: .spacingXS) {
+                            Image(content.imageName)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 180, height: 180)
+                                .cornerRadius(.radiusLG)
+                                .dropShadow(DropShadow.glowBlack)
+                                .padding(.bottom, .spacingLG)
 
-            if let buttonTitle = content.buttonTitle {
-                ButtonView(text: buttonTitle, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                    onClick?()
+                            Text(content.title)
+                                .fontOpenSans(.heading4)
+                                .foregroundColor(theme.textHeading)
+
+                            Text(content.scaleName)
+                                .fontOpenSans(.body2)
+                                .foregroundColor(theme.textBody)
+                        }
+                        .padding(.horizontal, .spacingLG)
+
+                        Text(content.description)
+                            .fontOpenSans(.body2)
+                            .multilineTextAlignment(.leading)
+                            .foregroundColor(theme.textBody)
+
+                        if let buttonTitle = content.buttonTitle {
+                            ButtonView(text: buttonTitle, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                                onClick?()
+                            }
+                        }
+                    }
+                    .frame(minHeight: geometry.size.height)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 
