@@ -6,7 +6,6 @@ import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
-import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
@@ -99,7 +98,22 @@ class AccountService
                 appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
                 savedAccount
             } catch (e: Exception) {
-                handleSignupError(e as HttpException)
+                if (e is HttpException) {
+                    val signupError = SignupStrings.Error
+                    val errorMessage =
+                        when (e.code()) {
+                            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> signupError.MessageNotAuth
+                            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> signupError.MessageNoConn
+                            HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
+                            else -> signupError.MessageGeneric
+                        }
+                    val errorHeader =
+                        when (e.code()) {
+                            HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
+                            else -> signupError.Header
+                        }
+                    showErrorToast(errorHeader, errorMessage)
+                }
                 AppLog.e(TAG, "Account creation failed", e.toString())
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Account creation failed"))
                 null
@@ -128,13 +142,33 @@ class AccountService
                     ),
                 )
                 AppLog.d(TAG, "Password changed successfully")
-                showSuccessToast(AuthAction.CHANGE_PASSWORD)
+                showSuccessToast(
+                    ToastStrings.Success.ChangePasswordSuccess.Header,
+                    ToastStrings.Success.ChangePasswordSuccess.Message,
+                )
+
                 // Password change typically invalidates existing tokens, but we'll keep using current session
                 // unless the API specifically returns new tokens
                 true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Password change failed", e.toString())
-                showErrorToast(AuthAction.CHANGE_PASSWORD, e as? HttpException)
+                if (e is HttpException) {
+                    val header = ToastStrings.Error.ChangePasswordError.Header
+                    val msg =
+                        when (e.code()) {
+                            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                                ToastStrings.Error.UpdateProfileError.MessageNoConn
+
+                            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                                ToastStrings.Error.UpdateProfileError.MessageServError
+
+                            HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
+                                ToastStrings.Error.UpdateProfileError.MessageNotAuth
+
+                            else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
+                        }
+                    showErrorToast(header, msg)
+                }
                 false
             }
         }
@@ -276,7 +310,19 @@ class AccountService
                 appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
                 savedAccount
             } catch (e: HttpException) {
-                showErrorToast(AuthAction.LOGIN, e)
+                val header = ToastStrings.Error.LoginError.Header
+                val msg =
+                    when (e.code()) {
+                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                            ToastStrings.Error.LoginError.MessageNoConn
+
+                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                            ToastStrings.Error.LoginError.MessageServError
+
+                        HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
+                        else -> ToastStrings.Error.LoginError.MessageGeneric
+                    }
+                showErrorToast(header, msg)
                 AppLog.e(TAG, "Login failed", e.toString())
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
                 null
@@ -377,17 +423,26 @@ class AccountService
                 val response = this.accountRepository.resetPasswordInAPI(email)
                 if (response.isSuccessful) {
                     AppLog.d(TAG, "Successfully reset password")
-                    showSuccessToast(AuthAction.RESET_PASSWORD, email)
+                    showSuccessToast(
+                        ToastStrings.Success.ResetPasswordSuccess.Header,
+                        ToastStrings.Success.ResetPasswordSuccess.Message(email),
+                    )
                 } else {
                     AppLog.e(
                         TAG,
                         "Failed to reset password: ${response.code()} - ${response.message()}",
                     )
-                    showErrorToast(AuthAction.RESET_PASSWORD, HttpException(response))
+                    showErrorToast(
+                        ToastStrings.Error.ResetPasswordError.Header,
+                        ToastStrings.Error.ResetPasswordError.Message,
+                    )
                 }
             } catch (e: HttpException) {
                 AppLog.e(TAG, "Failed to reset password", e.toString())
-                showErrorToast(AuthAction.RESET_PASSWORD, e)
+                showErrorToast(
+                    ToastStrings.Error.ResetPasswordError.Header,
+                    ToastStrings.Error.ResetPasswordError.Message,
+                )
             }
         }
 
@@ -446,10 +501,28 @@ class AccountService
                     )
                 AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
                 savedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
-                showSuccessToast(AuthAction.UPDATE_PROFILE)
+                showSuccessToast(
+                    ToastStrings.Success.UpdateProfileSuccess.Header,
+                    ToastStrings.Success.UpdateProfileSuccess.Message,
+                )
+
                 savedAccount
             } catch (e: HttpException) {
-                showErrorToast(AuthAction.UPDATE_PROFILE, e)
+                val header = ToastStrings.Error.UpdateProfileError.Header
+                val msg =
+                    when (e.code()) {
+                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION,
+                        -> ToastStrings.Error.UpdateProfileError.MessageNoConn
+
+                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR,
+                        -> ToastStrings.Error.UpdateProfileError.MessageServError
+
+                        HttpErrorConfig.ResponseCode.UNAUTHORIZED,
+                        -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
+
+                        else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
+                    }
+                showErrorToast(header, msg)
                 AppLog.e(TAG, "Profile update failed", e.toString())
                 throw e
             }
@@ -484,106 +557,6 @@ class AccountService
             }
 
         // endregion
-
-        /**
-         * Shows an account-specific success toast for the given AuthAction.
-         */
-        private fun showSuccessToast(
-            action: AuthAction,
-            data: String? = null,
-        ) {
-            val (title, message) =
-                when (action) {
-                    AuthAction.RESET_PASSWORD ->
-                        ToastStrings.Success.ResetPasswordSuccess.Header to
-                            ToastStrings.Success.ResetPasswordSuccess.Message(data ?: "")
-
-                    AuthAction.UPDATE_PROFILE ->
-                        ToastStrings.Success.UpdateProfileSuccess.Header to
-                            ToastStrings.Success.UpdateProfileSuccess.Message
-
-                    AuthAction.CHANGE_PASSWORD ->
-                        ToastStrings.Success.ChangePasswordSuccess.Header to
-                            ToastStrings.Success.ChangePasswordSuccess.Message
-
-                    else -> "" to ""
-                }
-            showSuccessToast(title, message)
-        }
-
-        /**
-         * Shows an account-specific error toast for the given AuthAction and HttpException.
-         */
-        private fun showErrorToast(
-            action: AuthAction,
-            error: HttpException?,
-        ) {
-            val (title, message) =
-                when (action) {
-                    AuthAction.LOGIN -> {
-                        val header = ToastStrings.Error.LoginError.Header
-                        val msg =
-                            when (error?.code()) {
-                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.LoginError.MessageNoConn
-                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.LoginError.MessageServError
-                                HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
-                                else -> ToastStrings.Error.LoginError.MessageGeneric
-                            }
-                        header to msg
-                    }
-
-                    AuthAction.RESET_PASSWORD ->
-                        ToastStrings.Error.ResetPasswordError.Header to ToastStrings.Error.ResetPasswordError.Message
-
-                    AuthAction.UPDATE_PROFILE -> {
-                        val header = ToastStrings.Error.UpdateProfileError.Header
-                        val msg =
-                            when (error?.code()) {
-                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.UpdateProfileError.MessageNoConn
-                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-                                HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
-                                else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
-                            }
-                        header to msg
-                    }
-
-                    AuthAction.CHANGE_PASSWORD -> {
-                        val header = ToastStrings.Error.ChangePasswordError.Header
-                        val msg =
-                            when (error?.code()) {
-                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.UpdateProfileError.MessageNoConn
-                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-                                HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
-                                else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
-                            }
-                        header to msg
-                    }
-
-                    else -> "" to ""
-                }
-            showErrorToast(title, message)
-        }
-
-        /**
-         * Handles signup errors by displaying appropriate error messages based on the HTTP status code.
-         * @param error The HttpException containing the error details
-         */
-        private fun handleSignupError(error: HttpException) {
-            val signupError = SignupStrings.Error
-            val errorMessage =
-                when (error.code()) {
-                    HttpErrorConfig.ResponseCode.UNAUTHORIZED -> signupError.MessageNotAuth
-                    HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> signupError.MessageNoConn
-                    HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
-                    else -> signupError.MessageGeneric
-                }
-            val errorHeader =
-                when (error.code()) {
-                    HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
-                    else -> signupError.Header
-                }
-            showErrorToast(errorHeader, errorMessage)
-        }
 
         /**
          * Updates the user's tokens for the given account ID.
