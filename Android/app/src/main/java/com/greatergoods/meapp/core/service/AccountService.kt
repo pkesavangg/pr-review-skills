@@ -21,7 +21,6 @@ import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
-import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import kotlinx.coroutines.flow.Flow
@@ -41,22 +40,18 @@ class AccountService
     @Inject
     constructor(
         private val accountRepository: IAccountRepository,
-        private val connectivityObserver: IConnectivityObserver,
+        connectivityObserver: IConnectivityObserver,
         private val tokenManager: ITokenManager,
-        private val dialogQueueService: IDialogQueueService,
+        dialogQueueService: IDialogQueueService,
         private val userDataStore: UserDataStore,
         private val appNavigationService: IAppNavigationService,
         private val userSettingsRepository: IUserSettingsRepository,
-    ) : IAccountService {
+    ) : BaseService(connectivityObserver, dialogQueueService),
+        IAccountService {
         companion object {
             private const val MAX_ACCOUNTS = 10
             private const val TAG = "AccountService"
         }
-
-        /**
-         * Checks if network is available using the connectivity observer
-         */
-        private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
 
         // region Public Properties
 
@@ -75,14 +70,7 @@ class AccountService
          * Flow emitting the list of all logged-in accounts, with the active account first.
          */
         override val loggedInAccountsFlow: Flow<List<Account>> =
-            accountRepository.getLoggedInAccountsFromDB().map { accounts ->
-                val active = accounts.find { it.isActiveAccount }
-                val others =
-                    accounts
-                        .filter { !it.isActiveAccount }
-                        .sortedByDescending { it.lastActiveTime?.toLongOrNull() ?: 0L }
-                listOfNotNull(active) + others
-            }
+            accountRepository.getLoggedInAccountsFromDB().map { it.sortedActiveFirst() }
 
         /**
          * Flow indicating whether the maximum number of accounts has been reached.
@@ -158,20 +146,14 @@ class AccountService
          */
         override suspend fun checkLoginStatusForActiveAccount(): Boolean {
             return try {
-                if (!isNetworkAvailable()) {
-                    AppLog.w(TAG, "No network available for active account status check")
-                    return false // Assume valid if no network
-                }
-
+                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
                 val activeAccount = getCurrentAccount()
                 if (activeAccount == null) {
                     AppLog.d(TAG, "No active account found")
                     return false
                 }
-
                 AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
                 val accountInfo = accountRepository.getAccountInAPI(activeAccount.id)
-
                 // Update account data with API response
                 accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
                 val weightlessSetting =
@@ -183,7 +165,6 @@ class AccountService
                         isSynced = true,
                     )
                 userSettingsRepository.updateWeightlessInDB(weightlessSetting)
-
                 AppLog.d(TAG, "Active account login status check successful")
                 true
             } catch (e: Exception) {
@@ -200,41 +181,28 @@ class AccountService
          */
         override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean {
             return try {
-                if (!isNetworkAvailable()) {
-                    AppLog.w(TAG, "No network available for logged-in accounts status check")
-                    return true // Assume valid if no network
-                }
-
+                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
                 val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
                 if (loggedInAccounts.isEmpty()) {
                     AppLog.d(TAG, "No non-active logged-in accounts found")
                     return true
                 }
-
                 for (account in loggedInAccounts) {
                     try {
                         AppLog.d(TAG, "Checking login status for account: ${account.id}")
-
-                        // Update tokens in TokenManager for this account BEFORE making the API call
                         updateUserTokens(account.id)
-
                         val accountInfo = accountRepository.getAccountInAPI(account.id)
-
                         // Update account data with API response
                         accountRepository.updateAccountFromAPI(account.id, accountInfo)
-
                         AppLog.d(TAG, "Account ${account.id} login status check successful")
                     } catch (e: Exception) {
                         AppLog.e(TAG, "Account ${account.id} login status check failed", e.toString())
-
                         // Mark account as expired in database
                         accountRepository.markAccountExpired(account.id)
-
                         // Clear tokens for this account
                         userDataStore.removeAccount(account.id)
                     }
                 }
-
                 AppLog.d(TAG, "Logged-in accounts status check completed.")
                 true
             } catch (e: Exception) {
@@ -253,7 +221,7 @@ class AccountService
          * Gets the list of all logged-in accounts, with the active account first.
          * @return List of accounts
          */
-        override suspend fun getLoggedInAccounts(): List<Account> = loggedInAccountsFlow.first()
+        override suspend fun getLoggedInAccounts(): List<Account> = loggedInAccountsFlow.first().sortedActiveFirst()
 
         /**
          * Handles unauthorized logout when token refresh fails.
@@ -432,24 +400,18 @@ class AccountService
         override suspend fun switchAccount(
             account: Account,
             showToast: Boolean,
-        ): Boolean {
+        ): Boolean =
             try {
-                // Check network availability for account switching
-                if (!isNetworkAvailable()) {
-                    showNetworkErrorAndThrow()
-                }
-
-                // Update tokens in TokenManager for the switched account
+                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
                 updateUserTokens(account.id)
                 AppLog.d(TAG, "Successfully switched to account: ${account.email}")
                 appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
-                return true
+                true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Failed to switch account", e.toString())
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
-                return false
+                false
             }
-        }
 
         /**
          * Updates the user's profile information with offline support.
@@ -523,7 +485,10 @@ class AccountService
 
         // endregion
 
-        fun showSuccessToast(
+        /**
+         * Shows an account-specific success toast for the given AuthAction.
+         */
+        private fun showSuccessToast(
             action: AuthAction,
             data: String? = null,
         ) {
@@ -543,17 +508,13 @@ class AccountService
 
                     else -> "" to ""
                 }
-
-            val successToast =
-                Toast(
-                    title = title,
-                    message = message,
-                    action = null,
-                )
-            dialogQueueService.showToast(successToast)
+            showSuccessToast(title, message)
         }
 
-        fun showErrorToast(
+        /**
+         * Shows an account-specific error toast for the given AuthAction and HttpException.
+         */
+        private fun showErrorToast(
             action: AuthAction,
             error: HttpException?,
         ) {
@@ -561,75 +522,46 @@ class AccountService
                 when (action) {
                     AuthAction.LOGIN -> {
                         val header = ToastStrings.Error.LoginError.Header
-                        val message =
+                        val msg =
                             when (error?.code()) {
-                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
-                                    ToastStrings.Error.LoginError.MessageNoConn
-
-                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
-                                    ToastStrings.Error.LoginError.MessageServError
-
-                                HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
-                                    ToastStrings.Error.LoginError.MessageNotAuth
-
-                                else ->
-                                    ToastStrings.Error.LoginError.MessageGeneric
+                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.LoginError.MessageNoConn
+                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.LoginError.MessageServError
+                                HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
+                                else -> ToastStrings.Error.LoginError.MessageGeneric
                             }
-                        header to message
+                        header to msg
                     }
 
                     AuthAction.RESET_PASSWORD ->
-                        ToastStrings.Error.ResetPasswordError.Header to
-                            ToastStrings.Error.ResetPasswordError.Message
+                        ToastStrings.Error.ResetPasswordError.Header to ToastStrings.Error.ResetPasswordError.Message
 
                     AuthAction.UPDATE_PROFILE -> {
                         val header = ToastStrings.Error.UpdateProfileError.Header
-                        val message =
+                        val msg =
                             when (error?.code()) {
-                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
-                                    ToastStrings.Error.UpdateProfileError.MessageNoConn
-
-                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
-                                    ToastStrings.Error.UpdateProfileError.MessageServError
-
-                                HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
-                                    ToastStrings.Error.UpdateProfileError.MessageNotAuth
-
-                                else ->
-                                    ToastStrings.Error.UpdateProfileError.MessageGeneric
+                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.UpdateProfileError.MessageNoConn
+                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
+                                HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
+                                else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
                             }
-                        header to message
+                        header to msg
                     }
 
                     AuthAction.CHANGE_PASSWORD -> {
                         val header = ToastStrings.Error.ChangePasswordError.Header
-                        val message =
+                        val msg =
                             when (error?.code()) {
-                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
-                                    ToastStrings.Error.UpdateProfileError.MessageNoConn
-
-                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
-                                    ToastStrings.Error.UpdateProfileError.MessageServError
-
-                                HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
-                                    ToastStrings.Error.UpdateProfileError.MessageNotAuth
-
-                                else ->
-                                    ToastStrings.Error.UpdateProfileError.MessageGeneric
+                                HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.UpdateProfileError.MessageNoConn
+                                HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
+                                HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
+                                else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
                             }
-                        header to message
+                        header to msg
                     }
 
                     else -> "" to ""
                 }
-
-            val errorToast =
-                Toast(
-                    title = title,
-                    message = message,
-                    action = null,
-                )
-            dialogQueueService.showToast(errorToast)
+            showErrorToast(title, message)
         }
 
         /**
@@ -650,30 +582,7 @@ class AccountService
                     HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
                     else -> signupError.Header
                 }
-            val errorToast =
-                Toast(
-                    message = errorMessage,
-                    title = errorHeader,
-                    action = null,
-                )
-            dialogQueueService.showToast(
-                errorToast,
-            )
-        }
-
-        /**
-         * Shows network error toast and throws exception for network-dependent operations.
-         * @throws Exception with network error message
-         */
-        private fun showNetworkErrorAndThrow() {
-            dialogQueueService.showToast(
-                Toast(
-                    title = null,
-                    message = ToastStrings.Error.NetworkError.Message,
-                    action = null,
-                ),
-            )
-            throw Exception("No network connection available")
+            showErrorToast(errorHeader, errorMessage)
         }
 
         /**
@@ -765,5 +674,17 @@ class AccountService
                 ),
             )
             return savedAccount
+        }
+
+        /**
+         * Extension function to sort accounts: active account first, then others by lastActiveTime descending.
+         */
+        private fun List<Account>.sortedActiveFirst(): List<Account> {
+            val active = this.find { it.isActiveAccount }
+            val others =
+                this
+                    .filter { !it.isActiveAccount }
+                    .sortedByDescending { it.lastActiveTime?.toLongOrNull() ?: 0L }
+            return listOfNotNull(active) + others
         }
     }
