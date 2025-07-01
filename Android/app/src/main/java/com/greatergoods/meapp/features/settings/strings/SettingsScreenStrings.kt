@@ -59,8 +59,14 @@ object SettingsScreenStrings {
         const val Message = "Your profile has been updated successfully."
     }
     object LogoutDialog {
-        const val Title = "Log out"
-        const val Body = "Are you sure you want to log out?"
+        object Logout {
+            const val Title = "Log out"
+            const val Body = "Are you sure you want to log out?"
+        }
+        object LogoutAll {
+            const val Title = "Log Out of All Accounts"
+            const val Body = "Are you sure you want to log out of all accounts?"
+        }
         const val Confirm = "Log out"
         const val Cancel = "Cancel"
     }

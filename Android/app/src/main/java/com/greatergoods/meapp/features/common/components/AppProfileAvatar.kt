@@ -53,20 +53,18 @@ fun AppProfileAvatar(
         isActive -> MeTheme.colorScheme.inverseAction
         else -> MeTheme.colorScheme.primaryAction
     }
-    when {
+    val borderModifier = when {
         !isActive && enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
         !isActive && !enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimaryDisabled, CircleShape)
         else -> Modifier
     }
-    when {
-        !enabled -> MeTheme.colorScheme.iconPrimaryDisabled
-        else -> MeTheme.colorScheme.iconPrimary
-    }
+
     if (!isInfoIcon) {
         // Default single avatar
         Box(
             modifier = modifier
                 .size(size)
+                .then(borderModifier)
                 .clip(CircleShape)
                 .background(backgroundColor),
             contentAlignment = Alignment.Center,

@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
-import com.greatergoods.meapp.domain.enum.AccountSettingsAction
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -80,7 +79,7 @@ constructor(
             }
 
             is SettingsIntent.LogoutAllAccounts -> {
-                onLogoutAllAccounts()
+                onLogOutClick(true)
             }
 
             is SettingsIntent.SwitchAccount -> {
@@ -223,7 +222,6 @@ constructor(
         }
     }
 
-
     /**
      * Shows the activity level selection modal.
      */
@@ -260,7 +258,7 @@ constructor(
                 val bodyComposition = BodyCompUpdateRequest(
                     height = currentAccount?.height ?: 1700,
                     activityLevel = activityLevel,
-                    weightUnit = currentAccount?.weightUnit?.value ?: "lb"
+                    weightUnit = currentAccount?.weightUnit?.value ?: "lb",
                 )
                 bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
                 AppLog.i(TAG, "Successfully updated activity level")
@@ -322,7 +320,7 @@ constructor(
                 val bodyComposition = BodyCompUpdateRequest(
                     height = currentAccount.height ?: 1700,
                     activityLevel = currentAccount.activityLevel ?: "normal",
-                    weightUnit = newWeightUnit.value
+                    weightUnit = newWeightUnit.value,
                 )
                 bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
                 AppLog.i(TAG, "Successfully updated unit type")
@@ -334,7 +332,6 @@ constructor(
             }
         }
     }
-
 
     fun onBiologicalSexClick() {
         AppLog.d("SettingsViewModel", "Biological sex clicked")
@@ -384,17 +381,26 @@ constructor(
     /*
      * Show a confirmation dialog before logging out.
      */
-    private fun onLogOutClick() {
+    private fun onLogOutClick(isLogoutAll: Boolean = false) {
         val logoutModalString = SettingsScreenStrings.LogoutDialog
+        val title =
+            if (isLogoutAll) SettingsScreenStrings.LogoutDialog.LogoutAll.Title else SettingsScreenStrings.LogoutDialog.Logout.Title
+        val body =
+            if (isLogoutAll) SettingsScreenStrings.LogoutDialog.LogoutAll.Body else SettingsScreenStrings.LogoutDialog.Logout.Body
+
         dialogQueueService.enqueue(
             DialogModel.Confirm(
-                logoutModalString.Title,
-                logoutModalString.Body,
+                title,
+                body,
                 logoutModalString.Confirm,
                 logoutModalString.Cancel,
                 onDismiss = {},
                 onConfirm = {
-                    logout()
+                    if (isLogoutAll) {
+                        onLogoutAllAccounts()
+                    } else {
+                        logout()
+                    }
                 },
             ),
         )

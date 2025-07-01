@@ -126,7 +126,7 @@ class AccountRepository @Inject constructor(
             height = account.height ?: 1700, // Default height if not set
             activityLevel = account.activityLevel ?: "normal", // Default activity level
             weightUnit = account.weightUnit?.value ?: "lb", // Default weight unit
-            isSynced = true // New account data is already synced
+            isSynced = true, // New account data is already synced
         )
         accountDao.insertWeightCompSettings(weightCompSettings)
         // Insert StreaksSettings entity with data from account
@@ -134,7 +134,7 @@ class AccountRepository @Inject constructor(
             accountId = account.id,
             isStreakOn = account.isStreakOn ?: false,
             streakTimestamp = System.currentTimeMillis().toString(),
-            isSynced = true
+            isSynced = true,
         )
         accountDao.insertStreaksSettings(streaksSettings)
         AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
@@ -308,10 +308,6 @@ class AccountRepository @Inject constructor(
             dob = accountInfo.dob,
             gender = accountInfo.gender,
             zipcode = accountInfo.zipcode,
-            isSynced = true,
-            isLoggedIn = true,
-            isActiveAccount = true,
-            isExpired = false,
         )
 
         // Update account entity in database
