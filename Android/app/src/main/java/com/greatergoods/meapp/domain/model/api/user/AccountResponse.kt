@@ -23,15 +23,15 @@ data class AccountInfo(
     val dob: String,
     val weightlessBodyFat: Float?,
     val weightlessMuscle: Float?,
-    val weightlessTimestamp: String,
-    val weightlessWeight: Float,
+    val weightlessTimestamp: String?,
+    val weightlessWeight: Float?,
     val isStreakOn: Boolean,
     val dashboardType: String,
     val dashboardMetrics: List<String>,
     val goalType: String?,
     val goalWeight: Float?,
     val initialWeight: Float?,
-     val metPreviousGoal: Boolean? = null,      // whether previous goal was met
+    val metPreviousGoal: Boolean = false,      // whether previous goal was met
     val goalPercent: Int = 0,
     val shouldSendEntryNotifications: Boolean,
     val shouldSendWeightInEntryNotifications: Boolean

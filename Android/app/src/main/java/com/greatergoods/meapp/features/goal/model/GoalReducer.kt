@@ -48,31 +48,19 @@ data class GoalFormControls(
 /**
  * State for Goal screen, including form group and UI state.
  * @property form The form group containing goal controls.
- * @property goalType The selected goal type (Maintain or LoseGain).
  * @property isLoading Whether the goal update process is ongoing.
  * @property error Error message to display, if any.
- * @property weightUnit The weight unit to display (kg or lbs).
- * @property isMetric Whether the user prefers metric units.
- * @property goalPercent Current goal completion percentage.
- * @property showMetPreviousGoal Whether to show the "met previous goal" option.
- * @property account The current account with goal information.
+ * @property account The current account with all goal information and weight conversions via AccountHelper.
  * @property latestWeight The latest weight reading for milestone display.
- * @property metPreviousGoal Whether the user met their previous goal.
  */
 data class GoalState(
     val form: FormGroup<GoalFormControls>,
-    val goalType: GoalType = GoalType.MAINTAIN,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val weightUnit: String = "lbs",
-    val isMetric: Boolean = false,
-    val goalPercent: Double? = null,
-    val showMetPreviousGoal: Boolean = false,
     val account: Account? = null,
     val latestWeight: Double? = null,
-    val metPreviousGoal: Boolean = false,
-    val hasToggleChanged: Boolean = false,
-) : IReducer.State
+
+    ) : IReducer.State
 
 /**
  * Intents for Goal screen actions.
@@ -161,11 +149,11 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
                     listOf(FormValidations.weightValidator())
                 }
 
-                // For maintain goal, current weight input is disabled, so no required validation
+                // For maintain goal, current weight input is hidden, so no validation needed
                 val currentWeightValidators = if (intent.goalType == GoalType.LOSE_GAIN) {
                     listOf(FormValidations.required(), FormValidations.weightValidator())
                 } else {
-                    listOf(FormValidations.weightValidator()) // No required validation for disabled field
+                    emptyList() // No validation for hidden field in maintain mode
                 }
 
                 val updatedGoalTypeControl = FormControl.create(
@@ -192,8 +180,6 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
 
                 state.copy(
                     form = updatedForm,
-                    goalType = intent.goalType,
-                    hasToggleChanged = true,
                 )
             }
 
@@ -226,7 +212,9 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
             }
 
             is GoalIntent.UpdateAccount -> {
-                state.copy(account = intent.account)
+                state.copy(
+                    account = intent.account,
+                )
             }
 
             is GoalIntent.UpdateLatestWeight -> {
@@ -234,7 +222,7 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
             }
 
             is GoalIntent.ToggleMetPreviousGoal -> {
-                state.copy(metPreviousGoal = !state.metPreviousGoal)
+                state.copy()
             }
 
             is GoalIntent.ToggleMetric -> {
@@ -249,14 +237,8 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
                 )
                 val updatedForm = FormGroup(updatedControls)
 
-                // Update weight unit and metric flag
-                val weightUnit = if (intent.isMetric) "kg" else "lbs"
-
                 state.copy(
                     form = updatedForm,
-                    isMetric = intent.isMetric,
-                    weightUnit = weightUnit,
-                    hasToggleChanged = true,
                 )
             }
         }

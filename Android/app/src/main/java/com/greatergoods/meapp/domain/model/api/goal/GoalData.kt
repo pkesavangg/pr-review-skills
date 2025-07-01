@@ -4,7 +4,7 @@ package com.greatergoods.meapp.domain.model.api.goal
  * Request model for updating user goal settings.
  * Based on Angular Goal interface from goal.service.ts
  */
-data class GoalRequest(
+data class GoalData(
     /** The target weight for the goal */
     val goalWeight: Double,
 
@@ -13,9 +13,6 @@ data class GoalRequest(
 
     /** The type of goal: 'lose', 'gain', or 'maintain' */
     val type: String,
-
-    /** Legacy field for backward compatibility */
-    val goalType: String = type,
 
     /** Whether the previous goal was met (optional) */
     val metPreviousGoal: Boolean? = null

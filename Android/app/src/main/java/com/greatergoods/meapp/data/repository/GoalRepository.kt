@@ -4,7 +4,7 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
-import com.greatergoods.meapp.domain.model.api.goal.GoalRequest
+import com.greatergoods.meapp.domain.model.api.goal.GoalData
 import com.greatergoods.meapp.domain.model.goal.Goal
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
@@ -46,15 +46,15 @@ class GoalRepository @Inject constructor(
 
     /**
      * Updates the goal setting for the active account.
-     * @param goalRequest The goal setting to update
+     * @param goalData The goal setting to update
      * @return Updated account with new goal settings
      */
-    override suspend fun updateGoalSetting(goalRequest: GoalRequest): Account? {
+    override suspend fun updateGoalSetting(goalData: GoalData): Account? {
         return try {
             AppLog.d(TAG, "Updating goal setting online")
 
             // Call API to update goal
-            val response = goalAPI.updateGoal(goalRequest)
+            val response = goalAPI.updateGoal(goalData)
 
             // Update local database with synced status
             val activeAccount = accountRepository.getStoredActiveAccountFromDB().first()
@@ -83,7 +83,7 @@ class GoalRepository @Inject constructor(
      * @param request The goal setting request
      * @return Updated account with new goal settings
      */
-    override suspend fun updateGoalSettingOffline(request: GoalRequest): Account? {
+    override suspend fun updateGoalSettingOffline(request: GoalData): Account? {
         return try {
             AppLog.d(TAG, "Storing goal setting for offline sync")
 
@@ -118,12 +118,9 @@ class GoalRepository @Inject constructor(
         return try {
             val activeAccount = accountRepository.getStoredActiveAccountFromDB().first()
             activeAccount?.let { account ->
-                // TODO: Extract goal data from account or query goal settings from database
-                // This would require goal fields to be added to Account domain model
-                // or a separate query to get GoalSettingsEntity for the account
-
-                // Placeholder implementation
-                null
+                val goalWeight = account.goalWeight
+                val initialWeight = account.initialWeight
+                val goalType = account.goalType
             }
             null
         } catch (e: Exception) {
