@@ -10,7 +10,6 @@ import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
-import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
@@ -262,38 +261,16 @@ class AccountService
          * @param profileUpdateRequest The profile data to update
          * @return The updated account or null if update fails
          */
-        override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account? {
-            return try {
-                // Get current account from flow (reactive approach like Angular observables)
-                val currentAccount = activeAccountFlow.first()
-                if (currentAccount == null) {
-                    return null
-                }
-                // Call API to update profile
-                val response = accountRepository.updateProfile(profileUpdateRequest)
-                val updatedAccountInfo: AccountInfo = response.account
-                val savedAccount =
-                    updateProfileInDB(
-                        updatedAccountInfo.id,
-                        PartialAccount(
-                            firstName = updatedAccountInfo.firstName,
-                            lastName = updatedAccountInfo.lastName,
-                            dob = updatedAccountInfo.dob,
-                            gender = updatedAccountInfo.gender,
-                            zipcode = updatedAccountInfo.zipcode,
-                            email = updatedAccountInfo.email,
-                            isActiveAccount = true,
-                            isSynced = true, // Mark as synced since API call was successful
-                        ),
-                    )
-                AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
-                savedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
+        override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account? =
+            try {
+                val updatedAccount = accountRepository.updateProfile(profileUpdateRequest)
+                AppLog.i(TAG, "Profile updated successfully via API for account: \\${updatedAccount.id}")
+                updatedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
                 showSuccessToast(
                     ToastStrings.Success.UpdateProfileSuccess.Header,
                     ToastStrings.Success.UpdateProfileSuccess.Message,
                 )
-
-                savedAccount
+                updatedAccount
             } catch (e: HttpException) {
                 val header = ToastStrings.Error.UpdateProfileError.Header
                 val msg =
@@ -313,7 +290,6 @@ class AccountService
                 AppLog.e(TAG, "Profile update failed", e.toString())
                 throw e
             }
-        }
 
         /**
          * Checks login status for the active account by calling getAccount API.

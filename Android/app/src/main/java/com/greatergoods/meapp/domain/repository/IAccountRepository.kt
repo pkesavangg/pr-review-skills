@@ -5,7 +5,6 @@ import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.storage.Account.Account
@@ -69,7 +68,7 @@ interface IAccountRepository {
     /**
      * Updates profile via API and returns AccountResponse
      */
-    suspend fun updateProfile(profileData: ProfileUpdateRequest): AccountResponse
+    suspend fun updateProfile(profileData: ProfileUpdateRequest): Account
 
     /**
      * Refreshes the token via API and returns a Token.

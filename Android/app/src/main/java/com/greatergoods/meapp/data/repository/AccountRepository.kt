@@ -111,10 +111,31 @@ class AccountRepository
             authAPI.requestPasswordReset(PasswordResetRequest(email))
 
         /**
-         * Updates profile via API and returns AccountResponse.
+         * Updates profile via API and updates the local database with the new profile data.
+         * @param profileData The profile data to update
+         * @return The updated account from the database
          */
-        override suspend fun updateProfile(profileData: ProfileUpdateRequest): AccountResponse =
-            userAPI.updateProfile(profileData)
+        override suspend fun updateProfile(profileData: ProfileUpdateRequest): Account {
+            // Call API to update profile
+            val response = userAPI.updateProfile(profileData)
+            val updatedAccountInfo = response.account
+
+            // Update the account in the DB with the new info
+            val updatedAccount = updateAccountInDB(
+                updatedAccountInfo.id,
+                PartialAccount(
+                    firstName = updatedAccountInfo.firstName,
+                    lastName = updatedAccountInfo.lastName,
+                    dob = updatedAccountInfo.dob,
+                    gender = updatedAccountInfo.gender,
+                    zipcode = updatedAccountInfo.zipcode,
+                    email = updatedAccountInfo.email,
+                    isActiveAccount = true,
+                    isSynced = true
+                )
+            )
+            return updatedAccount
+        }
 
         // DB Operations
 

@@ -89,16 +89,16 @@ class OfflineHandlerService
                     val profileResponse = accountRepository.updateProfile(profileUpdateRequest)
                     val profileUpdate =
                         PartialAccount(
-                            firstName = profileResponse.account.firstName,
-                            lastName = profileResponse.account.lastName,
-                            email = profileResponse.account.email,
-                            dob = profileResponse.account.dob,
-                            gender = profileResponse.account.gender,
-                            zipcode = profileResponse.account.zipcode,
+                            firstName = profileResponse.firstName,
+                            lastName = profileResponse.lastName,
+                            email = profileResponse.email,
+                            dob = profileResponse.dob,
+                            gender = profileResponse.gender,
+                            zipcode = profileResponse.zipcode,
                             isSynced = true,
                         )
                     // Update account with profile response and mark as synced
-                    accountRepository.updateAccountInDB(profileResponse.account.id, profileUpdate)
+                    accountRepository.updateAccountInDB(profileResponse.id, profileUpdate)
                     AppLog.i(TAG, "Successfully synced profile data for account: ${account.id}")
                 } catch (e: Exception) {
                     AppLog.e(TAG, "Error syncing profile data for account ${account.id}", e.toString())
