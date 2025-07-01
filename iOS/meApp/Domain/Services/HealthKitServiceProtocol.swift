@@ -34,4 +34,9 @@ protocol HealthKitServiceProtocol {
 
     /// Clears all HealthKit data for the current user (if integrated).
     func clearHealthKit() async throws
+
+    /// Determines whether the app should present any Apple Health integration modal on launch.
+    /// - Returns: A `HKIntegrationModalState` value indicating which modal should be displayed,
+    ///            or `nil` when no modal is necessary.
+    func shouldShowHKIntegrationModal() async throws -> HKIntegrationModalState?
 }

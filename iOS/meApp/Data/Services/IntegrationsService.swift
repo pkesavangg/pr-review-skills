@@ -83,14 +83,16 @@ final class IntegrationsService: IntegrationServiceProtocol {
         return try localRepository.isIntegrationAlreadyUsed(accountId: accountId, type: type)
     }
     
-    func clearIntegrationStatus() async throws {
-        let accountId = try await getAccountId()
-        try localRepository.clearIntegrationStatus(accountId: accountId)
+    func clearIntegrationStatus(integrationType: IntegrationType) async throws {
+        let integrationInfo = IntegrationInfo(
+            type: integrationType,
+            isIntegrated: false
+        )
         do {
-            try await accountService.deleteHealthIntegration(.healthKit)
+            try await self.setStoredIntegrationData(integrationInfo)
+            try await accountService.deleteHealthIntegration(integrationType)
         } catch {
             logger.log(level: .error, tag: "IntegrationService", message: "Failed to update account integrations after clearing status: \(error.localizedDescription)")
         }
-        logger.log(level: .info, tag: "IntegrationService", message: "Successfully cleared integration status for account \(accountId)")
     }
 }

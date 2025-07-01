@@ -47,7 +47,7 @@ struct IntegrationListItemView: View {
                                 icon: AppAssets.exclamationMark,
                                 size: IconSize(width: 20, height: 20)
                             )
-                            .foregroundColor(theme.actionPrimary)
+                            .foregroundColor(theme.statusError)
                         }
                         .buttonStyle(.plain)
                         .offset(x: 12, y: -10)

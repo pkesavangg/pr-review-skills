@@ -226,10 +226,11 @@ final class HealthKitStore: ObservableObject {
     /// updates local status accordingly.
     private func clearIntegration() {
         Task {
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.removingIntegration))
             do {
                 try await healthKitService.clearHealthKit()
                 getLocalStoredData()
+                notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationRemoved))
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to clear HealthKit data", data: error.localizedDescription)
             }

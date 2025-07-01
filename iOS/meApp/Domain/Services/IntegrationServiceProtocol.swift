@@ -34,5 +34,7 @@ protocol IntegrationServiceProtocol {
     func isIntegrationAlreadyUsed(type: IntegrationType) async throws -> Bool
 
     /// Clears the integration status for the active account (e.g., on account deletion).
-    func clearIntegrationStatus() async throws
+    /// - Parameter integrationType: The integration type to clear.
+    ///  - Throws: An error if the operation fails.
+    func clearIntegrationStatus(integrationType: IntegrationType) async throws
 }
