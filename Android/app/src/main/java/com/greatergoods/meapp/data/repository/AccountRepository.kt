@@ -7,8 +7,8 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
-import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
@@ -145,8 +145,8 @@ class AccountRepository
                 NotificationSettingsEntity(
                     accountId = account.id,
                     isSynced = true,
-                    showWeightInNotifications = account.showWeightInNotifications ?: false,
-                    entryNotificationsEnabled = account.entryNotificationsEnabled ?: false,
+                    shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
+                    shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
                 )
             accountDao.insertNotificationSettings(notificationCompSettings)
 
@@ -182,10 +182,6 @@ class AccountRepository
         AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
         return account
     }
-
-            AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
-            return account
-        }
 
         /**
          * Updates an account in the database with partial data and returns the updated domain model.

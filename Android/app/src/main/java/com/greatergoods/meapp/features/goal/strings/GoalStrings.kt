@@ -9,25 +9,11 @@ object GoalStrings {
     const val Title = "Update Goal"
     const val Subtitle = "Choose to maintain or set a lose/gain goal."
 
-    // Form Labels
-    const val GoalTypeLabel = "Goal Type"
-    const val CurrentWeightLabel = "Current Weight (%s)"
-    const val GoalWeightLabel = "Goal Weight (%s)"
-
-    // Goal Type Options
-    const val MaintainGoal = "Maintain"
-    const val LoseGainGoal = "Lose / Gain"
-
-    // Goal Type Descriptions
-    const val MaintainDescription = "Maintain your current weight"
-    const val LoseGainDescription = "Set a target weight to lose or gain"
 
     // Button Labels
     const val SaveGoalButton = "Save"
-    const val CancelButton = "Cancel"
 
     // Status Messages
-    const val SaveSuccessMessage = "Goal saved successfully"
     const val SaveErrorMessage = "Failed to save goal"
     const val GoalMetTitle = "Congratulations!"
     const val GoalMetMessage = "You've reached your goal! Would you like to set a new goal or maintain your current weight?"
@@ -55,16 +41,18 @@ object GoalStrings {
 
     // Milestone Display
     const val GoalReached = "Goal Reached!"
-    const val ToGoal = "to "
+    const val To = " to "
+    const val Goal = " to goal"
     const val GoalWeight = "goal weight"
+    const val Current = "Current"
 
     // Toast Messages
     const val SuccessTitle = "Success!"
     const val SuccessMessage = "Goal Updated."
 
     // Unsaved Changes Dialog
-    const val UnsavedChangesTitle = "Unsaved Changes"
-    const val UnsavedChangesMessage = "You have unsaved changes. Do you want to save before leaving?"
-    const val SaveButton = "Save"
-    const val DiscardButton = "Discard"
+    const val UnsavedChangesTitle = "Confirm"
+    const val UnsavedChangesMessage = "Are you sure you want to leave?"
+    const val SaveButton = "Exit"
+    const val DiscardButton = "Return"
 }

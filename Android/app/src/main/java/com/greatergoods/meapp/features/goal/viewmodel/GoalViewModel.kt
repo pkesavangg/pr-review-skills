@@ -1,14 +1,17 @@
 package com.greatergoods.meapp.features.goal.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.model.goal.Goal
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IGoalService
+import com.greatergoods.meapp.features.common.helper.AccountHelper.convertDisplayWeightToStored
+import com.greatergoods.meapp.features.common.helper.AccountHelper.convertStoredWeightToDisplay
+import com.greatergoods.meapp.features.common.helper.AccountHelper.isMetricUnit
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
@@ -48,10 +51,6 @@ constructor(
         // Initialize with defaults since we'll load data in init block
         return GoalState(
             form = FormGroup(GoalFormControls.create()),
-            goalType = GoalType.MAINTAIN,
-            weightUnit = "lbs",
-            isMetric = false,
-            hasToggleChanged = false,
         )
     }
 
@@ -77,32 +76,25 @@ constructor(
     }
 
     private fun updateStateWithAccount(currentAccount: Account) {
-        val isMetric = currentAccount.weightUnit?.value == "kg"
+        val isMetric = currentAccount.isMetricUnit()
         val goalTypeString = currentAccount.goalType ?: GoalType.MAINTAIN.value
         val goalType = GoalType.entries.find { it.value == goalTypeString } ?: GoalType.MAINTAIN
 
         // Get current weights (these should be in stored format from database)
-        val initialWeight = currentAccount.initialWeight ?: 0.0
+        val initialWeight = currentAccount.initialWeight
         val goalWeight = currentAccount.goalWeight ?: 0.0
-        val metPreviousGoal = currentAccount.metPreviousGoal ?: false
-        val goalPercent = currentAccount.goalPercent
 
-        // Convert from stored format to display format
-        val displayCurrentWeight = ConversionTools.convertStoredToDisplay(initialWeight, isMetric)
-        val displayGoalWeight = ConversionTools.convertStoredToDisplay(goalWeight, isMetric)
+        // Calculate goal percentage using GoalService, just like Angular
+        val goalPercent = calculateGoalPercentage(currentAccount, state.value.latestWeight)
+        // Convert from stored format to display format using AccountHelper
+        val displayCurrentWeight = currentAccount.convertStoredWeightToDisplay(initialWeight)
+        val displayGoalWeight = currentAccount.convertStoredWeightToDisplay(goalWeight)
 
-        // Create form controls with proper initial values and validators
-        val goalWeightValidators = if (goalType == GoalType.LOSE_GAIN) {
-            listOf(FormValidations.required(), FormValidations.weightValidator())
-        } else {
-            listOf(FormValidations.weightValidator())
-        }
-
-        // For maintain goal, current weight input is disabled, so no required validation
+        // For maintain goal, current weight input is hidden, so no validation needed
         val currentWeightValidators = if (goalType == GoalType.LOSE_GAIN) {
             listOf(FormValidations.required(), FormValidations.weightValidator())
         } else {
-            listOf(FormValidations.weightValidator()) // No required validation for disabled field
+            emptyList() // No validation for hidden field in maintain mode
         }
 
         val formattedCurrentWeight = if (displayCurrentWeight > 0) {
@@ -110,13 +102,11 @@ constructor(
         } else {
             ""
         }
-
         val formattedGoalWeight = if (displayGoalWeight > 0) {
             String.format("%.1f", displayGoalWeight)
         } else {
             ""
         }
-
         val newState = GoalState(
             form = FormGroup(
                 GoalFormControls(
@@ -130,7 +120,7 @@ constructor(
                     ),
                     goalWeight = FormControl.create(
                         initialValue = formattedGoalWeight,
-                        validators = goalWeightValidators,
+                        validators = listOf(FormValidations.required(), FormValidations.weightValidator()),
                     ),
                     useMetric = FormControl.create(
                         initialValue = isMetric,
@@ -138,15 +128,8 @@ constructor(
                     ),
                 ),
             ),
-            goalType = goalType,
-            weightUnit = if (isMetric) "kg" else "lbs",
-            isMetric = isMetric,
-            goalPercent = goalPercent,
-            showMetPreviousGoal = metPreviousGoal,
             account = currentAccount,
             latestWeight = state.value.latestWeight, // Preserve existing latestWeight
-            metPreviousGoal = metPreviousGoal,
-            hasToggleChanged = false, // Initialize as false
         )
         _state.value = newState
     }
@@ -159,15 +142,11 @@ constructor(
         super.handleIntent(intent)
         when (intent) {
             is GoalIntent.Submit -> onSubmit()
-            is GoalIntent.ChangeGoalType -> onChangeGoalType(intent.goalType)
             is GoalIntent.OpenHelpModal -> openHelpModal()
             is GoalIntent.OnBack -> onBack()
             is GoalIntent.Success -> onSuccess()
             is GoalIntent.HandleGoalMet -> onHandleGoalMet(intent.setNewGoal)
             is GoalIntent.HandleGoalLeave -> onHandleGoalLeave(intent.updateGoal)
-            is GoalIntent.ToggleMetPreviousGoal -> {
-                AppLog.d(tag, "Toggling met previous goal flag")
-            }
             is GoalIntent.UpdateAccount,
             is GoalIntent.UpdateLatestWeight -> {
                 // These intents are handled by the reducer
@@ -176,17 +155,11 @@ constructor(
         }
     }
 
-    /**
-     * Handles goal type change.
-     */
-    private fun onChangeGoalType(goalType: GoalType) {
-        AppLog.d(tag, "Changing goal type to: $goalType")
-        handleIntent(GoalIntent.ChangeGoalType(goalType))
-    }
 
 
 
-    /**
+
+        /**
      * Handles the goal form submission. Validates the form, shows loading, and attempts to save.
      */
     private fun onSubmit() {
@@ -194,38 +167,34 @@ constructor(
             message = GoalStrings.LoaderMessage,
         )
 
+        val account = state.value.account ?: return
         val currentWeightDisplay = if(state.value.form.controls.currentWeight.value == "") 0.0 else state.value.form.controls.currentWeight.value.toDouble()
-        val goalWeightDisplay = state.value.form.controls.goalWeight.value
-        val goalType = state.value.goalType
-        val isMetric = state.value.isMetric
+        val goalWeightDisplay = state.value.form.controls.goalWeight.value.toDouble()
+        val goalType = state.value.form.controls.goalType.value
+
         AppLog.d(tag, "Goal settings: type=$goalType, current=$currentWeightDisplay, goal=$goalWeightDisplay")
+
         viewModelScope.launch {
             try {
-                // Convert form values directly like Angular implementation (both as strings from form)
-                val goalWeightStored = ConversionTools.convertDisplayToStored(
-                    display = goalWeightDisplay.toDouble(),
-                    isMetric = isMetric
-                ).toInt()
+                // Convert display weights to stored format using AccountHelper
+                val goalWeightStored = account.convertDisplayWeightToStored(goalWeightDisplay)
+                val currentWeightStored = account.convertDisplayWeightToStored(currentWeightDisplay)
 
-                val currentWeightStored = ConversionTools.convertDisplayToStored(
-                    display = currentWeightDisplay.toDouble(),
-                    isMetric = isMetric
-                ).toInt()
-
-                // Determine the specific goal type based on Angular logic
-                val specificGoalType = if (goalType == GoalType.MAINTAIN) {
+                // Determine specific goal type based on weight comparison
+                val specificGoalType = if (goalType == GoalType.MAINTAIN.value) {
                     "maintain"
                 } else {
-                    // For lose/gain, determine based on goal vs initial weight comparison
+                    // For lose/gain, determine based on goal vs current weight comparison
                     if (goalWeightStored <= currentWeightStored) "lose" else "gain"
                 }
 
                 goalService.updateGoal(
-                    goalWeight = goalWeightStored.toDouble(),
-                    initialWeight = currentWeightStored.toDouble(),
+                    goalWeight = goalWeightStored,
+                    initialWeight = currentWeightStored,
                     goalType = specificGoalType,
-                    wasMet = state.value.showMetPreviousGoal,
+                    wasMet = account.metPreviousGoal ?: false,
                 )
+
                 handleIntent(GoalIntent.Success)
                 AppLog.i(tag, "Goal settings saved successfully")
             } catch (e: Exception) {
@@ -255,7 +224,7 @@ constructor(
      * Handles back navigation with unsaved changes check.
      */
     private fun onBack() {
-        val hasChanges = state.value.form.isDirty || state.value.hasToggleChanged
+        val hasChanges = state.value.form.isDirty
 
         if (hasChanges) {
             dialogQueueService.enqueue(
@@ -265,11 +234,12 @@ constructor(
                     confirmText = GoalStrings.SaveButton,
                     cancelText = GoalStrings.DiscardButton,
                     onConfirm = {
-                        onSubmit()
+                        navigateBack()
+                        dialogQueueService.dismissCurrent()
                     },
                     onCancel = {
-                        navigateBack()
-                    },
+                    dialogQueueService.dismissCurrent()
+                               },
                 ),
             )
         } else {
@@ -298,18 +268,9 @@ constructor(
         AppLog.d(tag, "Goal met dialog response: setNewGoal=$setNewGoal")
         if (setNewGoal) {
             // Reset form for new goal with current metric preference
-            val currentMetric = state.value.isMetric
             val newFormControls = GoalFormControls.create()
-            val updatedUseMetricControl = FormControl.create(
-                initialValue = currentMetric,
-                validators = emptyList(),
-            )
-            val updatedControls = newFormControls.copy(useMetric = updatedUseMetricControl)
-
             val newState = state.value.copy(
-                form = FormGroup(updatedControls),
-                goalType = GoalType.LOSE_GAIN,
-                showMetPreviousGoal = true,
+                form = FormGroup(newFormControls),
             )
             _state.value = newState
         } else {
@@ -328,6 +289,32 @@ constructor(
             // In a full implementation, you would update the current weight based on the latest reading
             AppLog.i(tag, "User chose to update goal based on weight change")
         }
+    }
+
+    /**
+     * Calculates goal percentage using GoalService, following Angular implementation.
+     * @param account The account containing goal data
+     * @param latestWeight The latest weight entry to calculate against
+     * @return Calculated goal percentage or null if calculation not possible
+     */
+    private fun calculateGoalPercentage(account: Account, latestWeight: Double?): Double? {
+        // Only calculate for lose/gain goals, maintain goals don't have percentage
+        val goalType = account.goalType?.lowercase()
+        if (goalType == "maintain") return null
+
+        val initialWeight = account.initialWeight
+        val goalWeight = account.goalWeight ?: return null
+        val latest = latestWeight ?: return null
+
+        // Create a Goal object from account data to use with GoalService
+        val goal = Goal(
+            goalWeight = goalWeight,
+            initialWeight = initialWeight,
+            type = goalType ?: "maintain"
+        )
+
+        // Use GoalService to calculate percentage, just like Angular
+        return goalService.getPercentComplete(goal, latest)?.toDouble()
     }
 
     /**

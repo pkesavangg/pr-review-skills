@@ -32,9 +32,9 @@ class UserSettingsRepository @Inject constructor(
         activeAccount?.let { account ->
             val weightlessSettingsEntity = WeightlessSettingsEntity(
                 accountId = account.account.id,
-                isWeightlessOn = weightlessRequest.isWeightlessOn,
-                weightlessTimestamp = weightlessRequest.weightlessTimestamp,
-                weightlessWeight = weightlessRequest.weightlessWeight,
+                isWeightlessOn = weightlessRequest.isWeightlessOn ?: false, // Default to false if null
+                weightlessTimestamp = weightlessRequest.weightlessTimestamp ?: "0", // Default to "0" if null
+                weightlessWeight = weightlessRequest.weightlessWeight ?: 0.0f, // Default to 0.0 if null
                 isSynced = true,
             )
             accountDao.updateWeightlessSettings(weightlessSettingsEntity)
@@ -176,7 +176,7 @@ class UserSettingsRepository @Inject constructor(
             activeAccount?.let { account ->
                 val weightlessSettingsEntity = WeightlessSettingsEntity(
                     accountId = account.account.id,
-                    isWeightlessOn = request.isWeightlessOn,
+                    isWeightlessOn = request.isWeightlessOn ?: false, // Default to false if null
                     weightlessTimestamp = request.weightlessTimestamp ?: System.currentTimeMillis().toString(),
                     weightlessWeight = request.weightlessWeight?.toFloat() ?: 0.0f,
                     isSynced = false // Mark as unsynced for offline mode

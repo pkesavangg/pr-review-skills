@@ -18,7 +18,7 @@ import androidx.room.PrimaryKey
 data class NotificationSettingsEntity(
     @PrimaryKey
     val accountId: String,
-    val entryNotificationsEnabled: Boolean,
-    val showWeightInNotifications: Boolean,
+    val shouldSendEntryNotifications: Boolean,
+    val shouldSendWeightInEntryNotifications: Boolean,
     val isSynced: Boolean
 )

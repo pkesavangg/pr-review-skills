@@ -195,10 +195,10 @@ object ServiceModule {
     ): IOfflineHandlerService = OfflineHandlerService(
         accountRepository,
         bodyCompositionRepository,
-        notificationRepository,
         userSettingsRepository,
         goalRepository,
         connectivityObserver,
+        notificationRepository,
     )
 
     /**

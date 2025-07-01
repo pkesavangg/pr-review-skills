@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.data.api
 
-import com.greatergoods.meapp.domain.model.api.goal.GoalRequest
+import com.greatergoods.meapp.domain.model.api.goal.GoalData
 import com.greatergoods.meapp.domain.model.api.goal.GoalResponse
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -22,6 +22,6 @@ interface IGoalAPI {
      */
     @POST(ACCOUNT + GOAL)
     suspend fun updateGoal(
-        @Body request: GoalRequest,
+        @Body request: GoalData,
     ): GoalResponse
 }

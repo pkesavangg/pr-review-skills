@@ -41,11 +41,12 @@ interface IGoalService {
 
     /**
      * Calculates goal completion percentage.
+     * Based on Angular's getPercentComplete method - exact implementation.
      * @param goal The goal to calculate percentage for
-     * @param currentWeight Current weight to calculate against
+     * @param latest Latest weight entry to calculate against
      * @return Percentage completion (0-100) or null if calculation not possible
      */
-    fun getPercentComplete(goal: Goal, currentWeight: Double): Int?
+    fun getPercentComplete(goal: Goal, latest: Double): Int?
 
     /**
      * Checks if goal completion alert should be shown.
@@ -65,4 +66,21 @@ interface IGoalService {
      * @return Current goal or null
      */
     suspend fun getCurrentGoal(): Goal?
+
+    /**
+     * Creates a goal for a newly created account during signup.
+     * Converts display weights to stored format and determines the correct goal type.
+     *
+     * @param account The newly created account
+     * @param goalType The selected goal type from signup form
+     * @param currentWeight Current weight in display format
+     * @param goalWeight Goal weight in display format
+     * @return Updated account with goal settings or null if failed
+     */
+    suspend fun createGoalForSignup(
+        account: Account,
+        goalType: String,
+        currentWeight: Double,
+        goalWeight: Double
+    ): Account?
 }

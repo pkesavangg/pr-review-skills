@@ -316,8 +316,8 @@ class AccountService
                     WeightlessSettingsEntity(
                         accountId = accountInfo.id,
                         isWeightlessOn = accountInfo.isWeightlessOn,
-                        weightlessTimestamp = accountInfo.weightlessTimestamp,
-                        weightlessWeight = accountInfo.weightlessWeight,
+                        weightlessTimestamp = accountInfo.weightlessTimestamp ?: "0",
+                        weightlessWeight = accountInfo.weightlessWeight ?: 0.0f,
                         isSynced = true,
                     )
                 userSettingsRepository.updateWeightlessInDB(weightlessSetting)

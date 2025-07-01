@@ -34,8 +34,8 @@ data class Account(
     val dashboardMetrics: List<String>? = emptyList(),
 
     // Notification settings
-    val entryNotificationsEnabled: Boolean? = false,
-    val showWeightInNotifications: Boolean? = false,
+    val shouldSendEntryNotifications: Boolean? = false,
+    val shouldSendWeightInEntryNotifications: Boolean? = false,
     // Goal settings
     val goalType: String? = null,              // 'lose', 'gain', 'maintain'
     val goalWeight: Double? = null,            // target weight

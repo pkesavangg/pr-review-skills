@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.domain.repository
 
 import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
-import com.greatergoods.meapp.domain.model.api.goal.GoalRequest
+import com.greatergoods.meapp.domain.model.api.goal.GoalData
 import com.greatergoods.meapp.domain.model.goal.Goal
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 
@@ -19,10 +19,10 @@ interface IGoalRepository {
 
     /**
      * Updates the goal setting for the active account.
-     * @param goalRequest The goal setting to update
+     * @param goalData The goal setting to update
      * @return Updated account with new goal settings
      */
-    suspend fun updateGoalSetting(goalRequest: GoalRequest): Account?
+    suspend fun updateGoalSetting(goalData: GoalData): Account?
 
     /**
      * Updates goal setting offline (stores locally for later sync).
@@ -30,7 +30,7 @@ interface IGoalRepository {
      * @param request The goal setting request
      * @return Updated account with new goal settings
      */
-    suspend fun updateGoalSettingOffline(request: GoalRequest): Account?
+    suspend fun updateGoalSettingOffline(request: GoalData): Account?
 
     /**
      * Gets the current goal for the active account.
@@ -45,4 +45,11 @@ interface IGoalRepository {
      * @return Percentage completion (0-100) or null if calculation not possible
      */
     fun calculateGoalPercent(goal: Goal, currentWeight: Double): Int?
+
+    /**
+     * Gets accounts with unsynced goal settings changes.
+     * Used by offline handler service for syncing goal settings specifically.
+     * @return List of accounts with pending goal settings changes
+     */
+    suspend fun getUnsyncedGoalAccountsFromDB(): List<Account>
 }

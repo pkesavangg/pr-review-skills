@@ -3,12 +3,14 @@ package com.greatergoods.meapp.core.service
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
-import com.greatergoods.meapp.domain.model.api.goal.GoalRequest
+import com.greatergoods.meapp.domain.model.api.goal.GoalData
 import com.greatergoods.meapp.domain.model.goal.Goal
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.services.IGoalService
+import com.greatergoods.meapp.features.common.helper.AccountHelper.convertDisplayWeightToStored
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.signup.model.GoalType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,22 +65,21 @@ class GoalService @Inject constructor(
         return try {
             AppLog.d(TAG, "Updating goal: type=$goalType, goalWeight=$goalWeight, initialWeight=$initialWeight")
 
-            val goalRequest = GoalRequest(
+            val goalData = GoalData(
                 goalWeight = goalWeight,
                 initialWeight = initialWeight,
                 type = goalType,
-                goalType = goalType,
                 metPreviousGoal = if (wasMet) true else null
             )
 
             val updatedAccount = if (isNetworkAvailable()) {
                 // Online: Update via API and mark as synced in DB
                 AppLog.d(TAG, "Network available - updating goal online")
-                goalRepository.updateGoalSetting(goalRequest)
+                goalRepository.updateGoalSetting(goalData)
             } else {
                 // Offline: Store locally and mark as unsynced for later sync
                 AppLog.d(TAG, "Network unavailable - storing goal for offline sync")
-                goalRepository.updateGoalSettingOffline(goalRequest)
+                goalRepository.updateGoalSettingOffline(goalData)
             }
 
             // Update goal status flow
@@ -110,28 +111,30 @@ class GoalService @Inject constructor(
 
     /**
      * Calculates goal completion percentage.
-     * Based on Angular's getPercentComplete method.
+     * Based on Angular's getPercentComplete method - exact implementation.
      * @param goal The goal to calculate percentage for
-     * @param currentWeight Current weight to calculate against
+     * @param latest Latest weight entry to calculate against
      * @return Percentage completion (0-100) or null if calculation not possible
      */
-    override fun getPercentComplete(goal: Goal, currentWeight: Double): Int? {
-        val goalWeight = goal.goalWeight
-        val initialWeight = goal.initialWeight
+    override fun getPercentComplete(goal: Goal, latest: Double): Int? {
+        val goalWt = goal.goalWeight
 
-        return when (goal.type.lowercase()) {
+        if (latest <= 0.0) return null // No valid weight data
+
+        var percent = 0
+        when (goal.type.lowercase()) {
             "lose" -> {
-                val percent = (currentWeight - goalWeight) / (initialWeight - goalWeight)
-                val result = 100 - floor(percent * 100).toInt()
-                if (result < 0) 0 else result
+                percent = ((latest - goalWt) / (goal.initialWeight - goalWt) * 100).toInt()
+                percent = 100 - floor(percent.toDouble()).toInt()
             }
             "gain" -> {
-                val percent = (currentWeight - initialWeight) / (goalWeight - initialWeight)
-                val result = floor(percent * 100).toInt()
-                if (result < 0) 0 else result
+                percent = ((latest - goal.initialWeight) / (goalWt - goal.initialWeight) * 100).toInt()
+                percent = floor(percent.toDouble()).toInt()
             }
-            else -> null // Maintain goals don't have percentage
+            else -> return null // Maintain goals don't have percentage
         }
+
+        return if (percent < 0) 0 else percent
     }
 
     /**
@@ -229,5 +232,57 @@ class GoalService @Inject constructor(
                 }
             )
         )
+    }
+
+    /**
+     * Creates a goal for a newly created account during signup.
+     * Converts display weights to stored format and determines the correct goal type.
+     *
+     * @param account The newly created account
+     * @param goalType The selected goal type from signup form
+     * @param currentWeight Current weight in display format
+     * @param goalWeight Goal weight in display format
+     * @return Updated account with goal settings or null if failed
+     */
+    override suspend fun createGoalForSignup(
+        account: Account,
+        goalType: String,
+        currentWeight: Double,
+        goalWeight: Double
+    ): Account? {
+        return try {
+            AppLog.d(TAG, "Creating goal for signup: type=$goalType, current=$currentWeight, goal=$goalWeight")
+            val convertedCurrentWeight = account.convertDisplayWeightToStored(currentWeight)
+            val convertedGoalWeight = account.convertDisplayWeightToStored(goalWeight)
+
+            val (finalGoalType, finalGoalWeight, finalInitialWeight) = when (goalType) {
+                GoalType.MAINTAIN.value -> {
+                    Triple(GoalType.MAINTAIN.value, convertedGoalWeight, convertedGoalWeight)
+                }
+                else -> {
+                    val determinedGoalType = if (convertedGoalWeight > convertedCurrentWeight) {
+                        GoalType.GAIN.value
+                    } else {
+                        GoalType.LOSE.value
+                    }
+                    Triple(determinedGoalType, convertedGoalWeight, convertedCurrentWeight)
+                }
+            }
+
+            // Update the goal using the existing updateGoal method
+            val updatedAccount = updateGoal(
+                goalWeight = finalGoalWeight,
+                initialWeight = finalInitialWeight,
+                goalType = finalGoalType,
+                wasMet = false // New goals are never met initially
+            )
+
+            AppLog.i(TAG, "Goal created successfully for signup: type=$finalGoalType, goal=$finalGoalWeight, initial=$finalInitialWeight")
+            updatedAccount
+
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to create goal during signup", e.toString())
+            null
+        }
     }
 }

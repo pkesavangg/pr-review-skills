@@ -24,8 +24,8 @@ data class SettingsState(
      */
     val currentNotificationStatus: String
         get() = when {
-            account?.entryNotificationsEnabled == true && account.showWeightInNotifications == true -> "w/ weight"
-            account?.entryNotificationsEnabled == true -> "On"
+            account?.shouldSendEntryNotifications == true && account.shouldSendWeightInEntryNotifications == true -> "w/ weight"
+            account?.shouldSendEntryNotifications == true -> "On"
             else -> "Off"
         }
 }

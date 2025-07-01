@@ -128,7 +128,7 @@ constructor(
         viewModelScope.launch {
             try {
                 val weightlessWeight = if (isWeightlessOn) {
-                    ConversionTools.convertDisplayToStored(weightlessWeightDisplay.toDouble(), isMetric).toDouble()
+                    ConversionTools.convertDisplayToStored(weightlessWeightDisplay.toIntOrNull() ?: 0, isMetric).toDouble()
                 } else null
 
                 userSettingsService.toggleWeightlessSetting(

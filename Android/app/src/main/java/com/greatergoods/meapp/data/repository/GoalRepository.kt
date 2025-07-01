@@ -3,6 +3,7 @@ package com.greatergoods.meapp.data.repository
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
+import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
 import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
 import com.greatergoods.meapp.domain.model.api.goal.GoalData
 import com.greatergoods.meapp.domain.model.goal.Goal
@@ -151,6 +152,19 @@ class GoalRepository @Inject constructor(
                 if (result < 0) 0 else result
             }
             else -> null // Maintain goals don't have percentage
+        }
+    }
+
+    /**
+     * Gets accounts with unsynced goal settings changes.
+     * Used by offline handler service for syncing goal settings specifically.
+     * @return List of accounts with pending goal settings changes
+     */
+    override suspend fun getUnsyncedGoalAccountsFromDB(): List<Account> {
+            AppLog.d(TAG, "Getting unsynced goal accounts")
+            val unsyncedGoalAccounts = accountDao.getUnsyncedGoalAccounts().first()
+        return unsyncedGoalAccounts.map { accountWithRelations ->
+            AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
         }
     }
 }
