@@ -22,6 +22,7 @@ object AppIcons {
         val RightCaret = R.drawable.ic_right_caret
         val ChevronDown = R.drawable.ic_chevron_down
         val profile = R.drawable.ic_profile
+        val ModalNumber = R.drawable.modal_number
     }
 
     object Outlined {
@@ -35,7 +36,6 @@ object AppIcons {
         val History = R.drawable.ic_history_selected
         val Settings = R.drawable.ic_settings_selected
         val Close = R.drawable.ic_popup_close
-        val CloseDark = R.drawable.ic_popup_close_dark
         val CaretDown = R.drawable.ic_filled_caret_down
     }
 
