@@ -61,7 +61,7 @@ class MultiAccountLandingViewModel @Inject constructor(
     private fun onSelectAccount(account: Account) {
         viewModelScope.launch {
             accountService.switchAccount(account)
-            navigationService.replaceStack(AppRoute.Init.Loading)
+            navigationService.reInitialize()
         }
     }
 

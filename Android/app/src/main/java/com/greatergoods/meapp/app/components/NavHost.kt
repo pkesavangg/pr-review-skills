@@ -38,7 +38,7 @@ fun NavHost(
         appViewModel.navigationService.navigationIntent,
         topLevelBackStack,
     )
-    val backStack = topLevelBackStack.topLevelStacks.collectAsState()
+    topLevelBackStack.topLevelStacks.collectAsState()
     NavDisplay(
         modifier = Modifier.navigationBarsPadding(),
         entryDecorators =
@@ -87,8 +87,8 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
     NavDisplay(
         entryDecorators =
             listOf(
-                rememberSceneSetupNavEntryDecorator(),
                 rememberSavedStateNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
             ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {
@@ -98,6 +98,7 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
         },
         entryProvider =
             entryProvider {
+                entry<AppRoute.Init.Loading> { LoadingScreen() }
                 topLevelEntries()
                 accountSettingsEntries()
             },

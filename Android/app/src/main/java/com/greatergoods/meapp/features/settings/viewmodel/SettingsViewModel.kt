@@ -212,7 +212,6 @@ constructor(
         }
     }
 
-
     /**
      * Shows the activity level selection modal.
      */
@@ -249,7 +248,7 @@ constructor(
                 val bodyComposition = BodyCompUpdateRequest(
                     height = currentAccount?.height ?: 1700,
                     activityLevel = activityLevel,
-                    weightUnit = currentAccount?.weightUnit?.value ?: "lb"
+                    weightUnit = currentAccount?.weightUnit?.value ?: "lb",
                 )
                 bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
                 AppLog.i(TAG, "Successfully updated activity level")
@@ -311,7 +310,7 @@ constructor(
                 val bodyComposition = BodyCompUpdateRequest(
                     height = currentAccount.height ?: 1700,
                     activityLevel = currentAccount.activityLevel ?: "normal",
-                    weightUnit = newWeightUnit.value
+                    weightUnit = newWeightUnit.value,
                 )
                 bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
                 AppLog.i(TAG, "Successfully updated unit type")
@@ -331,6 +330,7 @@ constructor(
                 val account = state.value.account
                 if (account != null) {
                     accountService.logout(account.id, account.fcmToken)
+                    navigationService.reInitialize()
                 }
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
@@ -339,7 +339,6 @@ constructor(
             }
         }
     }
-
 
     fun onBiologicalSexClick() {
         AppLog.d("SettingsViewModel", "Biological sex clicked")

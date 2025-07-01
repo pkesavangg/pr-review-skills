@@ -72,7 +72,6 @@ fun AppUserList(
             ) {
                 AppDraggableActionItem(
                     iconId = AppIcons.Default.Delete,
-                    text = "Delete",
                     contentDescription = "Delete item",
                     backgroundColor = MeTheme.colorScheme.danger,
                 ) {

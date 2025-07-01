@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.features.login.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.services.IAccountService
@@ -19,6 +18,7 @@ import com.greatergoods.meapp.features.login.strings.LoginStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the Login screen. Handles form state, validation, login logic, and navigation.
@@ -144,13 +144,13 @@ constructor(
     private fun showMaxLimitReachedAlert() {
         dialogUtility.showMaxAccountAlert(
             isFromLanding = true,
-            onDismiss = {}
+            onDismiss = {},
         )
     }
 
     private fun navigateToDashboard() {
         viewModelScope.launch {
-            navigationService.replaceStack(AppRoute.Init.Loading)
+            navigationService.reInitialize()
 
         }
     }

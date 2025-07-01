@@ -6,6 +6,7 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.helper.form.FormControl
@@ -81,23 +82,27 @@ object EntryHelper {
         )
     }
 
-    fun HistoryMonth.process(): HistoryMonth {
-        val monthYear =
-            entryTimestamp?.let {
-                try {
-                    val zonedDateTime = ZonedDateTime.parse(it)
-                    DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH).format(zonedDateTime)
-                } catch (e: Exception) {
-                    it // fallback to original string if parsing fails
-                }
+    fun HistoryMonth.process(unit: WeightUnit?): HistoryMonth {
+        val monthYear = entryTimestamp?.let {
+            try {
+                val zonedDateTime = ZonedDateTime.parse(it)
+                DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH).format(zonedDateTime)
+            } catch (e: Exception) {
+                it // fallback to original string if parsing fails
             }
+        }
 
+        val conversionFactor = when (unit) {
+            WeightUnit.LB -> 1.0
+            WeightUnit.KG -> 0.453592
+            else -> 1.0
+        }
 
         return this.copy(
             entryTimestamp = monthYear,
-            avgWeight = avgWeight.rounded(),
-            change = change.rounded(),
-            // entryCount is already Int? so no need to change
+            avgWeight = avgWeight?.times(conversionFactor)?.rounded(),
+            change = change?.times(conversionFactor)?.rounded(),
+            unit = unit?.name,
         )
     }
 

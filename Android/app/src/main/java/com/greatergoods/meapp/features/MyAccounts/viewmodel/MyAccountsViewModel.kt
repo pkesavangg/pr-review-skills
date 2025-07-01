@@ -88,7 +88,7 @@ class MyAccountsViewModel @Inject constructor(
         if (!account.isActiveAccount) {
             viewModelScope.launch {
                 accountService.switchAccount(account, true)
-                navigationService.replaceStack(AppRoute.Init.Loading)
+                navigationService.reInitialize()
             }
         }
     }
