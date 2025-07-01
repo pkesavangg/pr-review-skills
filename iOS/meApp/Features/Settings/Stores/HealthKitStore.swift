@@ -70,6 +70,16 @@ final class HealthKitStore: ObservableObject {
             return
         }
         Task {
+            do {
+                let isAlreadyIntegrated = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
+                if isAlreadyIntegrated {
+                    activeState = .userConflict
+                    return
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to check if HealthKit integration already exists", data: error.localizedDescription)
+            }
+            
             let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
             if wasPreviouslyIntegrated {
                 // Determine the correct modal to present based on existing HealthKit permissions.
@@ -204,6 +214,10 @@ final class HealthKitStore: ObservableObject {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
             do {
                 try await healthKitService.syncAllData()
+                // After full sync, log the most recent entry to backend.
+                if let latestEntry = try await entryService.getLatestEntry() {
+                    await integrationService.logHealthEntry(entry: latestEntry)
+                }
                 notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
             } catch {
