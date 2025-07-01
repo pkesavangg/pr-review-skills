@@ -56,8 +56,11 @@ object AccountEntityMapper {
         weightlessTimestamp = null,
         weightlessWeight = null,
         isStreakOn = false,
+        streakTimestamp = null,
         dashboardType = null,
-        dashboardMetrics = null
+        dashboardMetrics = null,
+        entryNotificationsEnabled = false,
+        showWeightInNotifications = false
     )
 
     /**
@@ -95,9 +98,13 @@ object AccountEntityMapper {
             weightlessTimestamp = accountWithRelations.weightlessSettings?.weightlessTimestamp,
             weightlessWeight = accountWithRelations.weightlessSettings?.weightlessWeight,
             isStreakOn = accountWithRelations.streaksSettings?.isStreakOn ?: false,
+            streakTimestamp = accountWithRelations.streaksSettings?.streakTimestamp,
             dashboardType = accountWithRelations.dashboardSettings?.dashboardType,
             dashboardMetrics = accountWithRelations.dashboardSettings?.dashboardMetrics?.split(",")
-                ?.filterNot { it.isBlank() }
+                ?.filterNot { it.isBlank() },
+            // Map notification settings
+            entryNotificationsEnabled = accountWithRelations.notificationSettings?.entryNotificationsEnabled ?: false,
+            showWeightInNotifications = accountWithRelations.notificationSettings?.showWeightInNotifications ?: false
         )
     }
 }

@@ -11,6 +11,7 @@ object RadioGroupModalStrings {
         const val BiologicalSex = "Biological Sex"
         const val ActivityLevel = "Activity Level"
         const val UnitType = "Unit Type"
+        const val Notifications = "Notifications"
     }
 
     // Biological Sex Options
@@ -29,6 +30,13 @@ object RadioGroupModalStrings {
     object UnitType {
         const val Imperial = "lbs & feet"
         const val Metric = "kg & cm"
+    }
+
+    // Notification Options (following Angular pattern)
+    object Notifications {
+        const val On = "Enable notifications"
+        const val WithWeight = "Enable notifications & include weight"
+        const val Off = "Disable notifications"
     }
 
     // Appearance Options
