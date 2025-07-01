@@ -86,7 +86,7 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideAppEventService(): IAppNavigationService = AppNavigationService()
+    fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
 
     /**
      * Provides a singleton instance of [GGNotificationManager] for notification operations.
