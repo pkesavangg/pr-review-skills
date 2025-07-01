@@ -89,7 +89,7 @@ class MyAccountsViewModel @Inject constructor(
             viewModelScope.launch {
                 try {
                     accountService.switchAccount(account, true)
-                    navigationService.replaceStack(AppRoute.Init.Loading)
+                    navigationService.reInitialize()
                 } catch (e: Exception) {
                     AppLog.e("onAccountSelect", "Failed to switch account: ${e.message}")
                 }

@@ -5,7 +5,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -38,7 +37,6 @@ fun NavHost(
         appViewModel.navigationService.navigationIntent,
         topLevelBackStack,
     )
-    val backStack = topLevelBackStack.topLevelStacks.collectAsState()
     NavDisplay(
         modifier = Modifier.navigationBarsPadding(),
         entryDecorators =
@@ -89,6 +87,7 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
             listOf(
                 rememberSceneSetupNavEntryDecorator(),
                 rememberSavedStateNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
             ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {
@@ -98,6 +97,7 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
         },
         entryProvider =
             entryProvider {
+                entry<AppRoute.Init.Loading> { LoadingScreen() }
                 topLevelEntries()
                 accountSettingsEntries()
             },

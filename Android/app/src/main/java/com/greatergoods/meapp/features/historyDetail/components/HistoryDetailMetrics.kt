@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,6 +23,7 @@ import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
 import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper.getMetrics
 import com.greatergoods.meapp.features.historyDetail.modal.Metric
 import com.greatergoods.meapp.theme.MeTheme
+import android.util.Log
 
 @Composable
 internal fun MetricItem(

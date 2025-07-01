@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.features.login.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.services.IAccountService
@@ -158,13 +157,13 @@ class LoginViewModel @AssistedInject constructor(
     private fun showMaxLimitReachedAlert() {
         dialogUtility.showMaxAccountAlert(
             isFromLanding = true,
-            onDismiss = {}
+            onDismiss = {},
         )
     }
 
     private fun navigateToDashboard() {
         viewModelScope.launch {
-            navigationService.replaceStack(AppRoute.Init.Loading)
+            navigationService.reInitialize()
 
         }
     }

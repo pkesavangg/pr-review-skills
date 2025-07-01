@@ -2,11 +2,13 @@ package com.greatergoods.meapp.features.history.components
 
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * List of history items, using HistoryItem for each row.
@@ -22,6 +24,10 @@ fun HistoryList(
     LazyColumn(modifier = modifier) {
         items(items) { item ->
             HistoryItem(item = item, onClick = { onItemClick(item) })
+            HorizontalDivider(
+                thickness = MeTheme.spacing.x6s,
+                color = MeTheme.colorScheme.utility,
+            )
         }
     }
 }

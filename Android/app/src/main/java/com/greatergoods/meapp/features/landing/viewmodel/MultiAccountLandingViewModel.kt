@@ -63,7 +63,7 @@ class MultiAccountLandingViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 accountService.switchAccount(account)
-                navigationService.replaceStack(AppRoute.Init.Loading)
+                 navigationService.reInitialize()
             } catch (e: Exception) {
                 AppLog.e("MultiAccountLandingViewModel", "Failed to switch account: ${e.message}")
             }

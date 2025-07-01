@@ -709,6 +709,7 @@ constructor(
                 val account = state.value.account
                 if (account != null) {
                     accountService.logout(account.id, account.fcmToken)
+                    navigationService.reInitialize()
                 }
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
@@ -723,6 +724,7 @@ constructor(
         viewModelScope.launch {
             try {
                 accountService.logoutAll()
+                navigationService.reInitialize()
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out all accounts", e.toString())
             } finally {

@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
@@ -53,8 +55,11 @@ class EntryService @Inject constructor(
     private var initialWeight: Double? = null
 
     override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> {
-        return entryRepository.getMonthlyAverage(accountId ?: "").map { flow ->
-            flow.map { it.process() }
+        return combine(
+            entryRepository.getMonthlyAverage(accountId ?: ""),
+            accountRepository.getStoredActiveAccountFromDB().map { it?.weightUnit }.distinctUntilChanged(),
+        ) { months, unit ->
+            months.map { it.process(unit) }
         }
     }
 

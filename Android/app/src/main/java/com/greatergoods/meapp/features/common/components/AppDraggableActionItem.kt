@@ -6,11 +6,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -21,6 +20,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -38,7 +38,8 @@ import com.greatergoods.meapp.theme.MeTheme
  */
 @Composable
 fun AppDraggableActionItem(
-    iconId: Int,
+    iconId: Int? = null,
+    itemWidth: Dp = 56.dp,
     modifier: Modifier = Modifier,
     text: String? = null,
     contentDescription: String,
@@ -50,7 +51,7 @@ fun AppDraggableActionItem(
     Row(
         modifier =
             modifier
-                .width(56.dp)
+                .width(itemWidth)
                 .fillMaxHeight()
                 .background(backgroundColor)
                 .clip(shape)
@@ -58,19 +59,26 @@ fun AppDraggableActionItem(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onClick,
-                ).padding(horizontal = 12.dp, vertical = 8.dp)
-                .semantics { this.contentDescription = contentDescription }
-                ,
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .semantics { this.contentDescription = contentDescription },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        AppIcon(
-            id = iconId,
-            contentDescription = contentDescription, // handled by semantics
-            modifier = Modifier.size(20.dp),
-            type = AppIconType.Secondary,
-        )
+        if (iconId != null)
+            AppIcon(
+                id = iconId,
+                contentDescription = contentDescription, // handled by semantics
+                modifier = Modifier.size(20.dp),
+                type = AppIconType.Secondary,
+            )
         if (!text.isNullOrBlank()) {
+            Text(
+                text = text,
+                style = MeTheme.typography.button1,
+                color = MeTheme.colorScheme.inverseAction,
+            )
+
             if (content != null) {
                 content()
             }
