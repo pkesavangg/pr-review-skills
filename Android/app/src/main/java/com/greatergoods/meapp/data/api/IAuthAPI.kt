@@ -7,9 +7,8 @@ import com.greatergoods.meapp.domain.model.api.auth.LogoutRequest
 import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenResponse
+import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
-import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
-import com.greatergoods.meapp.domain.model.api.user.Token
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -45,7 +44,7 @@ interface IAuthAPI {
     @POST(ACCOUNT + LOGOUT)
     suspend fun logoutWithToken(
         @Body request: LogoutRequest,
-        @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String
+        @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String,
     )
 
     @POST(ACCOUNT + PASSWORD_RESET)
@@ -55,17 +54,17 @@ interface IAuthAPI {
 
     @POST(ACCOUNT)
     suspend fun createAccount(
-        @Body request: CreateAccountRequest
+        @Body request: SignupRequest,
     ): LoginResponse
 
     @GET(ACCOUNT)
     suspend fun getAccountWithToken(
-        @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String
+        @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String,
     ): AccountInfo
 
     @PUT(ACCOUNT + PASSWORD_UPDATE)
     suspend fun updatePassword(
-        @Body request: Map<String, String>
+        @Body request: Map<String, String>,
     ): Map<String, Any>
 
     @DELETE(ACCOUNT)

@@ -2,17 +2,14 @@ package com.greatergoods.meapp.data.api
 
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
-import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.dashboard.DashboardMetricsRequest
 import com.greatergoods.meapp.domain.model.api.dashboard.DashboardTypeRequest
 import com.greatergoods.meapp.domain.model.api.metrics.BodyCompRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
-import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.PATCH
-import retrofit2.http.POST
 import retrofit2.http.PUT
 
 interface IUserAPI {
@@ -25,11 +22,6 @@ interface IUserAPI {
         private const val DASHBOARD_METRICS = "dashboard-metrics"
         private const val PASSWORD = "password"
     }
-
-    @POST(ACCOUNT)
-    suspend fun createAccount(
-        @Body request: CreateAccountRequest,
-    ): LoginResponse
 
     @PATCH(ACCOUNT + PROFILE)
     suspend fun updateProfile(

@@ -3,9 +3,9 @@ package com.greatergoods.meapp.domain.repository
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
+import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.AccountResponse
-import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.storage.Account.Account
@@ -21,19 +21,25 @@ interface IAccountRepository {
     /**
      * Logs in via API and returns LoginResponse.
      */
-    suspend fun loginInAPI(email: String, password: String): LoginResponse
+    suspend fun loginInAPI(
+        email: String,
+        password: String,
+    ): LoginResponse
 
     /**
      * Signs up via API and returns LoginResponse.
      */
-    suspend fun signupInAPI(request: CreateAccountRequest): LoginResponse
+    suspend fun signup(request: SignupRequest): LoginResponse
 
     /**
      * Logs out via API for a specific account.
      * @param fcmToken Optional FCM token to unregister
      * @param accountId The account ID to logout
      */
-    suspend fun logoutInAPI(fcmToken: String?, accountId: String)
+    suspend fun logoutInAPI(
+        fcmToken: String?,
+        accountId: String,
+    )
 
     /**
      * Logs out in the database.
@@ -50,7 +56,10 @@ interface IAccountRepository {
     /**
      * Updates password via API and returns true if successful.
      */
-    suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): ChangePasswordResponse
+    suspend fun updatePasswordInAPI(
+        oldPassword: String,
+        newPassword: String,
+    ): ChangePasswordResponse
 
     /**
      * Requests password reset via API and returns true if successful.
@@ -68,25 +77,50 @@ interface IAccountRepository {
      * @param accountId The account ID to associate with the refreshed token (optional)
      * @return Token object with refreshed tokens
      */
-    suspend fun refreshTokenInAPI(refreshToken: String, accountId: String? = null): Token
+    suspend fun refreshTokenInAPI(
+        refreshToken: String,
+        accountId: String? = null,
+    ): Token
 
     // DB Operations
     suspend fun addAccountInDB(account: Account): Account
-    suspend fun updateAccountInDB(accountId: String, partialUpdate: PartialAccount): Account
+
+    suspend fun updateAccountInDB(
+        accountId: String,
+        partialUpdate: PartialAccount,
+    ): Account
+
     suspend fun logoutInDb(accountId: String)
+
     suspend fun logoutAllAccountsInDb()
+
     suspend fun removeAccountInDB(accountId: String)
+
     suspend fun removeAllAccountsInDB()
+
     suspend fun deactivateOtherAccountsInDB(accountId: String)
+
     suspend fun deactivateAllAccountsInDB()
+
     suspend fun activateAccountInDB(accountId: String)
+
     suspend fun updateTokensInDB(tokens: Map<String, String>)
+
     suspend fun updateLastActiveTimeInDB(accountId: String)
+
     suspend fun getSyncTimeStamp(): Flow<String>
+
     suspend fun updateSyncTimeStamp(timeStamp: String)
-    suspend fun updateAccountFromAPI(accountId: String, accountInfo: AccountInfo): Account
+
+    suspend fun updateAccountFromAPI(
+        accountId: String,
+        accountInfo: AccountInfo,
+    ): Account
+
     suspend fun markAccountExpired(accountId: String)
+
     fun getLoggedInAccountsFromDB(): Flow<List<Account>>
+
     fun getStoredActiveAccountFromDB(): Flow<Account?>
 
     /**
