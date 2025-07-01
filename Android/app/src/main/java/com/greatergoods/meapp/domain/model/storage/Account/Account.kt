@@ -31,7 +31,7 @@ data class Account(
     val isStreakOn: Boolean? =  false,
     val streakTimestamp: String? = null,       // nullable
     val dashboardType: String? = "Dashboard_4_metrics",
-    val dashboardMetrics: List<String>? = emptyList()
+    val dashboardMetrics: List<String>? = emptyList(),
 
     // Notification settings
     val entryNotificationsEnabled: Boolean? = false,

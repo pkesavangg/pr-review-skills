@@ -223,9 +223,7 @@ object ServiceModule {
         notificationRepository,
         connectivityObserver
     )
-     * Provides the user settings service implementation.
-     * Handles streak and weightless mode settings with offline support.
-     */
+
     @Provides
     @Singleton
     fun provideUserSettingsService(

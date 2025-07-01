@@ -18,7 +18,6 @@ import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IUserSettingsService
-import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
@@ -32,7 +31,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * ViewModel for the settings feature, managing state and handling settings intents.
