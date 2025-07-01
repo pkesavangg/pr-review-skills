@@ -216,18 +216,7 @@ class AccountService
                         AppLog.d(TAG, "Checking login status for account: ${account.id}")
 
                         // Update tokens in TokenManager for this account BEFORE making the API call
-                        val currentTokens = userDataStore.getData().accounts[account.id]
-                        if (currentTokens != null) {
-                            tokenManager.setTokens(
-                                Token(
-                                    accountId = account.id,
-                                    isActive = false,
-                                    accessToken = currentTokens.accessToken,
-                                    refreshToken = currentTokens.refreshToken,
-                                    expiresAt = currentTokens.expiresAt,
-                                ),
-                            )
-                        }
+                        updateUserTokens(account.id)
 
                         val accountInfo = accountRepository.getAccountInAPI(account.id)
 
@@ -450,26 +439,8 @@ class AccountService
                     showNetworkErrorAndThrow()
                 }
 
-                // Activate the target account
-                accountRepository.activateAccountInDB(account.id)
-                // Deactivate all other accounts
-                accountRepository.deactivateOtherAccountsInDB(account.id)
-                userDataStore.setActiveAccount(account.id)
-                // Update last active time
-                accountRepository.updateLastActiveTimeInDB(account.id)
                 // Update tokens in TokenManager for the switched account
-                val currentTokens = userDataStore.getData().accounts[account.id]
-                if (currentTokens != null) {
-                    tokenManager.setTokens(
-                        Token(
-                            accountId = account.id,
-                            isActive = true,
-                            accessToken = currentTokens.accessToken,
-                            refreshToken = currentTokens.refreshToken,
-                            expiresAt = currentTokens.expiresAt,
-                        ),
-                    )
-                }
+                updateUserTokens(account.id)
                 AppLog.d(TAG, "Successfully switched to account: ${account.email}")
                 appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
                 return true
@@ -705,6 +676,55 @@ class AccountService
             throw Exception("No network connection available")
         }
 
+        /**
+         * Updates the user's tokens for the given account ID.
+         * @param accountId The account ID to update tokens for
+         */
+        private suspend fun updateUserTokens(accountId: String) {
+            // Update tokens in TokenManager for the switched account
+            val currentTokens = userDataStore.getData().accounts[accountId]
+            setActiveAccountAndTokens(
+                accountId,
+                currentTokens?.let {
+                    Token(
+                        accountId = accountId,
+                        isActive = true,
+                        accessToken = it.accessToken,
+                        refreshToken = it.refreshToken,
+                        expiresAt = it.expiresAt,
+                    )
+                },
+            )
+        }
+
+        /**
+         * Helper to activate an account, set it as active in DB, update tokens, and set as active in UserDataStore and TokenManager.
+         * @param accountId The account ID to activate
+         * @param tokens The tokens to set as active (if not null)
+         */
+        private suspend fun setActiveAccountAndTokens(
+            accountId: String,
+            tokens: Token?,
+        ) {
+            accountRepository.activateAccountInDB(accountId)
+            accountRepository.deactivateOtherAccountsInDB(accountId)
+            userDataStore.setActiveAccount(accountId)
+            accountRepository.updateLastActiveTimeInDB(accountId)
+            tokens?.let { tokenManager.setTokens(it) }
+        }
+
+        /**
+         * Helper to set tokens for a non-active account (used for background API calls).
+         * @param accountId The account ID
+         * @param tokens The tokens to set (if not null)
+         */
+        private suspend fun setTokensForAccount(
+            accountId: String,
+            tokens: Token?,
+        ) {
+            tokens?.let { tokenManager.setTokens(it) }
+        }
+
         private suspend fun addAccount(loginResponse: LoginResponse): Account {
             val account = loginResponse.account
             val userAccount =
@@ -733,10 +753,9 @@ class AccountService
                     dashboardType = account.dashboardType,
                     dashboardMetrics = account.dashboardMetrics,
                 )
-            accountRepository.deactivateOtherAccountsInDB(account.id)
             val savedAccount = accountRepository.addAccountInDB(userAccount)
-            userDataStore.setActiveAccount(savedAccount.id)
-            tokenManager.setTokens(
+            setActiveAccountAndTokens(
+                savedAccount.id,
                 Token(
                     accountId = savedAccount.id,
                     isActive = true,
