@@ -69,19 +69,26 @@ final class HealthKitStore: ObservableObject {
             showHKRemoveAlert()
             return
         }
-        
-        // Determine the correct modal to present based on existing HealthKit permissions.
-        let permissionCount = healthKitService.getApprovedPermissionList().count
-        // According to WG: 5 permissions granted ⇒ show *Permissions Allowed* flow,
-        // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
-        // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
-        switch permissionCount {
-        case wgTotalPermissionsCount...:
-            activeState = .permissionsAllowed
-        case 1..<wgTotalPermissionsCount:
-            activeState = .integrationComplete
-        default:
-            activeState = .permissionsNotAllowed
+        Task {
+            let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
+            if wasPreviouslyIntegrated {
+                // Determine the correct modal to present based on existing HealthKit permissions.
+                let permissionCount = healthKitService.getApprovedPermissionList().count
+                // According to WG: 5 permissions granted ⇒ show *Permissions Allowed* flow,
+                // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
+                // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
+                switch permissionCount {
+                case wgTotalPermissionsCount...:
+                    activeState = .permissionsAllowed
+                case 1..<wgTotalPermissionsCount:
+                    activeState = .integrationComplete
+                default:
+                    activeState = .permissionsNotAllowed
+                }
+            } else {
+                // User has never integrated before, so show the *Permissions Not Allowed* modal.
+                activeState = .permissionsNotAllowed
+            }
         }
     }
     
