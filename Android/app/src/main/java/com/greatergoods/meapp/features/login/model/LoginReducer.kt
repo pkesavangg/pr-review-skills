@@ -15,10 +15,10 @@ data class LoginFormControls(
     val password: FormControl<String>,
 ) {
     companion object {
-        fun create() = LoginFormControls(
+        fun create(email: String = "") = LoginFormControls(
             email =
                 FormControl.create(
-                    initialValue = "",
+                    initialValue = email,
                     validators = listOf(
                         FormValidations.required(),
                         FormValidations.maxLength(100, LoginStrings.EmailLabel),

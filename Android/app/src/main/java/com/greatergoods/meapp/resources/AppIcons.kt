@@ -21,6 +21,7 @@ object AppIcons {
         val StampDark = R.drawable.gg_stamp_dark
         val RightCaret = R.drawable.ic_right_caret
         val ChevronDown = R.drawable.ic_chevron_down
+        val profile = R.drawable.ic_profile
     }
 
     object Outlined {

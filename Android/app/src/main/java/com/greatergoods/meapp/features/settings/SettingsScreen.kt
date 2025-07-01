@@ -216,8 +216,8 @@ fun SettingsScreenContent(
 
             // Log Out and Delete Account
             SettingsSection(
-                items =
-                    listOf(
+                items = buildList {
+                    add(
                         SettingsItem(
                             title = SettingsScreenStrings.SwitchAccounts,
                             type = SettingsItemType.None,
@@ -225,6 +225,8 @@ fun SettingsScreenContent(
                                 handleIntent(SettingsIntent.SwitchAccount)
                             },
                         ),
+                    )
+                    add(
                         SettingsItem(
                             title = SettingsScreenStrings.LogOut,
                             type = SettingsItemType.None,
@@ -232,13 +234,27 @@ fun SettingsScreenContent(
                                 handleIntent(SettingsIntent.Logout)
                             },
                         ),
+                    )
+                    if (state.hasMultipleAccounts) {
+                        add(
+                            SettingsItem(
+                                title = SettingsScreenStrings.LogoutAll,
+                                type = SettingsItemType.None,
+                                onClick = {
+                                    handleIntent(SettingsIntent.LogoutAllAccounts)
+                                },
+                            ),
+                        )
+                    }
+                    add(
                         SettingsItem(
                             title = SettingsScreenStrings.DeleteAccount,
                             type = SettingsItemType.None,
                             color = SettingColorType.Danger,
                             onClick = { },
                         ),
-                    ),
+                    )
+                },
             )
         }
     }

@@ -68,7 +68,7 @@ fun <T> AppDraggableList(
 
     val heightModifier by derivedStateOf {
         if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp) {
-            Modifier.height(measuredItemHeight * maxVisibleItems)
+            Modifier.height(measuredItemHeight * minOf(items.size, maxVisibleItems))
         } else {
             Modifier
         }
