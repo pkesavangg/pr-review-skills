@@ -21,10 +21,22 @@ struct MetricCardView: View {
 
     var body: some View {
         VStack(spacing: 1) {
-            Text(value)
-                .fontOpenSans(.heading4)
-                .fontWeight(.bold)
-                .foregroundColor(theme.textHeading)
+            HStack(spacing: 2) {
+                if let preLabel = preLabel {
+                    Text(preLabel)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                }
+                Text(value)
+                    .fontOpenSans(.heading4)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.textHeading)
+                if let unit = unit {
+                    Text(unit)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                }
+            }
             Text(label)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
@@ -39,6 +51,8 @@ struct MetricCardView: View {
 #Preview {
     VStack(spacing: 16) {
         MetricCardView(value: "24.5", label: "bmi", unit: nil, preLabel: nil,  metricType: .twelve)
+        MetricCardView(value: "18.3", label: "body fat", unit: "%", preLabel: nil, metricType: .four)
+        MetricCardView(value: "8", label: "visceral fat", unit: nil, preLabel: "Level", metricType: .twelve)
         MetricCardView(value: "1 day", label: "current streak", unit: nil, preLabel: nil, metricType: .four)
     }
     .padding()

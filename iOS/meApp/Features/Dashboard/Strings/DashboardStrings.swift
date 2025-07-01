@@ -10,7 +10,7 @@ import Foundation
 struct DashboardStrings {
     // Action buttons
     static let editDashboard = "Edit dashboard"
-    static let updateGoal = "update goal"
+    static let updateGoal = "Update Goal"
     static let metricInfo = "Metric info"
     static let saveChanges = "Save Changes"
     static let resetDashboard = "Reset Dashboard"
