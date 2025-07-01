@@ -155,7 +155,7 @@ object FormValidations {
             }
         }
 
-    fun weightValidator(unitType: WeightUnit = WeightUnit.LB): Validator<String> =
+    fun weightValidator(unitType: WeightUnit? = WeightUnit.LB): Validator<String> =
         { value ->
             if (value.isNotBlank()) {
                 val decimalValue =

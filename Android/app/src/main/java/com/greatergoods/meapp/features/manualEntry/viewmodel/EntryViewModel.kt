@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.manualEntry.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.helper.form.MultiFormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -11,11 +12,11 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.coroutines.resume
-import android.util.Log
 
 /**
  * ViewModel for the entry feature, managing state and handling entry intents.
@@ -27,15 +28,33 @@ class EntryViewModel
 @Inject
 constructor(
     private val entryService: IEntryService,
+    private val accountService: IAccountService,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
     reducer = EntryReducer(),
 ) {
     override fun provideInitialState(): EntryState =
         EntryState(
             form = MultiFormGroup.create(
-                forms = EntryForm.create(true),
+                forms = EntryForm.create(),
             ),
         )
+
+    init {
+        viewModelScope.launch {
+            val entryForm = EntryForm.create(
+                includeR4ScaleMetrics = true,
+                weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
+                height = accountService.activeAccountFlow.first()?.height,
+            )
+            handleIntent(
+                EntryIntent.UpdateForm(
+                    form = MultiFormGroup.create(
+                        forms = entryForm,
+                    ),
+                ),
+            )
+        }
+    }
 
     override fun handleIntent(intent: EntryIntent) {
         super.handleIntent(intent)
@@ -43,13 +62,8 @@ constructor(
             is EntryIntent.Save -> {
                 saveEntry()
             }
-        }
-    }
 
-    init {
-        _state.value.form.forms.weightDateTime.controls.weight.onValueChangeListener { new, old ->
-            Log.d("weight changed detection", "new: $new, old: $old")
-            _state.value.form.forms.generalMetrics.controls.bodyMassIndex.onValueChange(old)
+            else -> null
         }
     }
 
