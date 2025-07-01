@@ -5,11 +5,23 @@
 //  Created by Lakshmi Priya on 30/06/25.
 //
 
+//
+//  DashboardView.swift
+//  meApp
+//
+//  Created by Lakshmi Priya on 30/06/25.
+//
+
 import SwiftUI
 
 struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject var scale = DashboardStore()
+    let lang = DashboardStrings.self
+    @State private var isEditingDashboard = false
+    @State private var selectedEntry: Entry? = nil
+    @State private var selectedMetric: BodyMetric? = nil
+
     var body: some View {
         VStack {
             ScrollView(showsIndicators: false) {
@@ -37,35 +49,25 @@ struct DashboardScreen: View {
         }
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
+        .sheet(item: $selectedEntry) { entry in
+            ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
+        }
     }
 
     // MARK: - Metric Grid Section
     private func metricGridSection() -> some View {
-        let metrics: [(value: String, label: String, unit: String?, preLabel: String?)] = [
-            ("24.5", "bmi", nil, nil),
-            ("18.3", "body fat %", "%", nil),
-            ("41.6", "muscle %", "%", nil),
-            ("59.1", "water %", "%", nil),
-            ("80", "heart bpm", "bpm", nil),
-            ("4.4", "bone %", "%", nil),
-            ("8", "visceral fat", nil, "Lv."),
-            ("10.3", "sub fat %", "%", nil),
-            ("18.6", "protein %", "%", nil),
-            ("52.7", "skel muscle", "%", nil),
-            ("1862", "bmr kcal", "kcal", nil),
-            ("28", "met age", "yrs", nil)
-        ]
-
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
+        let columns = scale.metricGridColumns
+        let metricsToShow = scale.metricsToShow
 
         return LazyVGrid(columns: columns, spacing: 16) {
-            ForEach(Array(metrics.enumerated()), id: \.offset) { pair in
-                let item = pair.element
+            ForEach(metricsToShow.indices, id: \.self) { idx in
+                let item = metricsToShow[idx]
                 MetricCardView(
                     value: item.preLabel != nil ? "\(item.preLabel!) \(item.value)" : item.value,
                     label: item.label,
                     unit: item.unit,
-                    preLabel: item.preLabel
+                    preLabel: item.preLabel,
+                    metricType: scale.metricType
                 )
             }
         }
@@ -76,35 +78,26 @@ struct DashboardScreen: View {
     // MARK: - Goal Progress Section
     private func goalCardSection() -> some View {
         GoalProgressCardView(
-            delta: -13.2,
-            startWeight: 154.3,
-            goalWeight: 132.3,
-            unit: "lbs"
+            delta: scale.goalDelta,
+            startWeight: scale.goalStartWeight,
+            goalWeight: scale.goalGoalWeight,
+            unit: scale.goalUnit.rawValue
         )
         .padding(.horizontal, .spacingSM)
     }
 
     // MARK: - Streak and Loss Grid
     private func streakAndLossGrid() -> some View {
-        let items: [(icon: String?, value: String, label: String, iconColor: Color?)] = [
-            (AppAssets.streak, "1 day", "current streak", theme.statusStreak),
-            (AppAssets.longestStreak, "10 day", "longest streak", theme.statusStreak),
-            (nil, "-1", "lbs/week", nil),
-            (nil, "-10", "lbs/month", nil),
-            (nil, "-20", "lbs/year", nil),
-            (nil, "-30", "lbs/total", nil)
-        ]
-
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+        let columns = scale.streakColumns
 
         return LazyVGrid(columns: columns, spacing: 16) {
-            ForEach(Array(items.enumerated()), id: \.offset) { pair in
-                let item = pair.element
+            ForEach(scale.streakItems.indices, id: \.self) { idx in
+                let item = scale.streakItems[idx]
                 NoteBox(alignCenter: true) {
                     HStack(alignment: .center, spacing: 8) {
-                        if let icon = item.icon, let color = item.iconColor {
+                        if let icon = item.icon {
                             AppIconView(icon: icon, size: IconSize(width: 40, height: 40))
-                                .foregroundColor(color)
+                                .foregroundColor(theme.statusStreak)
                                 .padding(.trailing, 2)
                         }
                         VStack(alignment: .center, spacing: 2) {
@@ -125,18 +118,26 @@ struct DashboardScreen: View {
     // MARK: - Action Buttons
     private func actionButtonsSection() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
-            ButtonView(text: "Edit dashboard", type: .outlinedPrimary, size: .large, isDisabled: false, action: {})
-            ButtonView(text: "update goal", type: .textPrimary, size: .large, isDisabled: false, action: {})
-            ButtonView(text: "Metric info", type: .textPrimary, size: .large, isDisabled: false, action: {})
+            if isEditingDashboard {
+                ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: false, action: {
+                    isEditingDashboard = false
+                })
+                ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: false, action: {
+                    isEditingDashboard = false
+                })
+            } else {
+                ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: false, action: {
+                    isEditingDashboard = true
+                })
+                ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: false, action: {
+                    let entry = scale.createEntryForMetricInfo()
+                    selectedEntry = entry
+                    selectedMetric = .bmi
+                })
+            }
         }
         .padding(.top, .spacingSM)
         .padding(.bottom, .spacingLG)
     }
-}
-
-
-// MARK: - Dashboard Store
-/// A store to manage scale settings and actions, including details for a selected scale.
-
-class DashboardStore: ObservableObject {
 }
