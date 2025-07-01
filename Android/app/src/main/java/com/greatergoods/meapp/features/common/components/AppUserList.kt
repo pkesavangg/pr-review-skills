@@ -54,7 +54,7 @@ fun AppUserList(
             val targetCornerRadius = MeTheme.borderRadius.sm
             val shape =
                 when {
-                    accounts.size == 1 -> RoundedCornerShape(targetCornerRadius + 2.dp)
+                    accounts.size == 1 -> RoundedCornerShape(topEnd = targetCornerRadius + 2.dp , bottomEnd = targetCornerRadius + 2.dp)
                     index == 0 ->
                         RoundedCornerShape(
                             topEnd = targetCornerRadius + 2.dp,
@@ -105,21 +105,22 @@ fun AppUserList(
 
                 else -> RectangleShape
             }
-
-        Column {
-            AppUser(
-                account = item,
-                modifier = Modifier.clip(shape),
-                onAccountSelect = { onAccountSelect(item) },
-                onLoginRequest = { onLoginRequest(item) },
-                avatarAlpha = 1f - progress,
-                showAccountActivity = showAccountActivity,
-            )
-            if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
-                HorizontalDivider(
-                    color = MeTheme.colorScheme.utility,
-                    thickness = .5.dp,
+        Draggable {
+            Column {
+                AppUser(
+                    account = item,
+                    modifier = Modifier.clip(shape),
+                    onAccountSelect = { onAccountSelect(item) },
+                    onLoginRequest = { onLoginRequest(item) },
+                    avatarAlpha = 1f - progress,
+                    showAccountActivity = showAccountActivity,
                 )
+                if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
+                    HorizontalDivider(
+                        color = MeTheme.colorScheme.utility,
+                        thickness = .5.dp,
+                    )
+                }
             }
         }
     }

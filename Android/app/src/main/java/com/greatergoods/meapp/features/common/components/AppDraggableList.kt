@@ -23,65 +23,51 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
+import kotlin.math.min
+import android.util.Log
 
+// --- Constants ---
 object DragDefaults {
     const val POSITIONAL_THRESHOLD = 0.5f
     const val VELOCITY_THRESHOLD = 100f
 }
 
-enum class StaticPosition {
-    Top,
-    Bottom
-}
-
-/**
- * Scope for defining draggable and static content in a draggable list item.
- */
+// --- Scope Interface and Implementation ---
 interface DraggableListItemScope {
     @Composable
-    fun Draggable(content: @Composable () -> Unit)
+    fun Draggable(content: @Composable (progress: Float) -> Unit)
 
     @Composable
-    fun Static(position: StaticPosition = StaticPosition.Bottom, content: @Composable () -> Unit)
+    fun Static(content: @Composable () -> Unit)
 }
 
-private class DraggableListItemScopeImpl : DraggableListItemScope {
-    var staticPosition: StaticPosition = StaticPosition.Bottom
-    var draggableContent: (@Composable () -> Unit)? = null
-    var staticContent: (@Composable () -> Unit)? = null
+private class DraggableListItemScopeImpl<T>(val item: T, val index: Int) : DraggableListItemScope {
+    private var draggableBuilder: (@Composable (Float) -> Unit)? = null
+    private var staticBuilder: (@Composable () -> Unit)? = null
+    var initialized: Boolean by mutableStateOf(false)
+
+    fun buildDraggable(progress: Float): @Composable () -> Unit =
+        draggableBuilder?.let { { it(progress) } } ?: {
+            // Default fallback
+            Text("⚠️ No Draggable content defined for item at index $index")
+        }
+
+    fun buildStatic(): (@Composable () -> Unit)? = staticBuilder
 
     @Composable
-    override fun Draggable(
-        content: @Composable (() -> Unit)
-    ) {
-        draggableContent = content
+    override fun Draggable(content: @Composable (progress: Float) -> Unit) {
+        draggableBuilder = content
     }
 
     @Composable
-    override fun Static(
-        position: StaticPosition,
-        content: @Composable (() -> Unit)
-    ) {
-        staticPosition = position
-        staticContent = content
+    override fun Static(content: @Composable () -> Unit) {
+        staticBuilder = content
     }
+
+    fun hasContent(): Boolean = draggableBuilder != null || staticBuilder != null
 }
 
-/**
- * Displays a vertically scrollable, draggable list where each item can have a draggable and a static (undraggable) part.
- *
- * @param items The list of items to display.
- * @param modifier Modifier for the LazyColumn.
- * @param contentPadding Padding for the list content.
- * @param iconWidth The width of the action icon area.
- * @param itemContent Scoped composable lambda for rendering each item. Use Draggable { ... } and Static { ... } in the scope.
- * @param keySelector Lambda to provide a unique, stable key for each item.
- * @param trailingActions Composable lambda for rendering trailing actions for each item.
- * @param positionalThreshold Fraction of iconWidth to trigger open/close (default: 0.5f).
- * @param velocityThreshold Velocity threshold for swipe (default: 100f).
- * @param maxVisibleItems Maximum number of items to display in the viewport. If null, all items are displayed.
- * @param isItemDraggable Lambda to determine if an item is draggable.
- */
+// --- Main AppDraggableList Composable ---
 @Composable
 fun <T> AppDraggableList(
     items: List<T>,
@@ -91,7 +77,7 @@ fun <T> AppDraggableList(
     maxVisibleItems: Int? = null,
     isItemDraggable: (T) -> Boolean = { true },
     keySelector: (T) -> Any,
-    trailingActions: @Composable RowScope.(index: Int, item: T) -> Unit,
+    trailingActions: @Composable RowScope.(index: Int, item: T) -> Unit = { _, _ -> },
     positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
     velocityThreshold: Float = DragDefaults.VELOCITY_THRESHOLD,
     footerContent: @Composable (() -> Unit)? = null,
@@ -107,7 +93,7 @@ fun <T> AppDraggableList(
     val heightModifier by remember {
         derivedStateOf {
             if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp) {
-                Modifier.height(measuredItemHeight * minOf(items.size, maxVisibleItems))
+                Modifier.height(measuredItemHeight * min(items.size, maxVisibleItems))
             } else {
                 Modifier
             }
@@ -120,56 +106,52 @@ fun <T> AppDraggableList(
         modifier = modifier.then(heightModifier),
     ) {
         itemsIndexed(items, key = { _, item -> keySelector(item) }) { index, item ->
-            // Create a single scope instance that will be used to collect both contents
-            val scope = remember(item) { DraggableListItemScopeImpl() }
+            val scope = remember(item) { DraggableListItemScopeImpl(item, index) }
 
-            // If neither Draggable nor Static was called, treat the entire content as draggable
-            val noExplicitContent = scope.draggableContent == null && scope.staticContent == null
+            // Run composable scope initializer
+            if (!scope.initialized) {
+                scope.itemContent(item, 0f)
+                scope.initialized = true
 
-            if (scope.staticPosition == StaticPosition.Top) {
-                scope.staticContent?.invoke()
-            }
-            // Render draggable content (either explicit or fallback)
-            if (scope.draggableContent != null || noExplicitContent) {
-                AppDraggableListItem(
-                    actionContent = {
-                        trailingActions(index, item)
-                    },
-                    isDraggable = !lazyListState.isScrollInProgress && isItemDraggable(item),
-                    iconWidth = iconWidth,
-                    index = index,
-                    onActionOpened = { openedIdx ->
-                        if (openIndex != openedIdx) {
-                            openIndex = openedIdx
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                    },
-                    showAction = openIndex == index,
-                    positionalThreshold = positionalThreshold,
-                    velocityThreshold = velocityThreshold,
-                ) { progress ->
-
-                    if (index == 0 && !hasMeasured) {
-                        Box(
-                            modifier = Modifier.onGloballyPositioned { coordinates ->
-                                val height = with(density) { coordinates.size.height.toDp() }
-                                if (height > 0.dp) {
-                                    measuredItemHeight = height
-                                    hasMeasured = true
-                                }
-                            },
-                        ) {
-                            scope.draggableContent?.invoke()
-                        }
-                    } else {
-                        scope.draggableContent?.invoke()
-                    }
-                    scope.itemContent(item, progress)
+                if (!scope.hasContent()) {
+                    Log.w("AppDraggableList", "⚠️ No Draggable or Static scope defined for item at index $index")
                 }
             }
-            if (scope.staticPosition == StaticPosition.Bottom) {
-                scope.staticContent?.invoke()
+
+            AppDraggableListItem(
+                actionContent = { trailingActions(index, item) },
+                isDraggable = !lazyListState.isScrollInProgress && isItemDraggable(item),
+                iconWidth = iconWidth,
+                index = index,
+                onActionOpened = { openedIdx ->
+                    if (openIndex != openedIdx) {
+                        openIndex = openedIdx
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                },
+                showAction = openIndex == index,
+                positionalThreshold = positionalThreshold,
+                velocityThreshold = velocityThreshold,
+            ) { progress ->
+                val draggable = scope.buildDraggable(progress)
+                if (index == 0 && !hasMeasured) {
+                    Box(
+                        modifier = Modifier.onGloballyPositioned { coordinates ->
+                            val height = with(density) { coordinates.size.height.toDp() }
+                            if (height > 0.dp) {
+                                measuredItemHeight = height
+                                hasMeasured = true
+                            }
+                        },
+                    ) {
+                        draggable()
+                    }
+                } else {
+                    draggable()
+                }
             }
+
+            scope.buildStatic()?.invoke()
         }
 
         footerContent?.let {
@@ -179,8 +161,6 @@ fun <T> AppDraggableList(
         }
     }
 }
-
-// region: Previews
 
 @PreviewTheme
 @Composable
