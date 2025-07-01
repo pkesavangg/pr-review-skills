@@ -7,8 +7,10 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordRequest
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
@@ -129,6 +131,15 @@ class AccountRepository @Inject constructor(
             isSynced = true, // New account data is already synced
         )
         accountDao.insertWeightCompSettings(weightCompSettings)
+
+        val notificationCompSettings = NotificationSettingsEntity(
+            accountId = account.id,
+            isSynced = true,
+            showWeightInNotifications = account.showWeightInNotifications ?: false,
+            entryNotificationsEnabled = account.entryNotificationsEnabled ?: false,
+        )
+        accountDao.insertNotificationSettings(notificationCompSettings)
+
         // Insert StreaksSettings entity with data from account
         val streaksSettings = StreaksSettingsEntity(
             accountId = account.id,
@@ -137,6 +148,17 @@ class AccountRepository @Inject constructor(
             isSynced = true,
         )
         accountDao.insertStreaksSettings(streaksSettings)
+
+        // Insert WeightlessSettings entity with data from account
+        val weightlessSettings = WeightlessSettingsEntity(
+            accountId = account.id,
+            isWeightlessOn = account.isWeightlessOn ?: false,
+            weightlessTimestamp = System.currentTimeMillis().toString(),
+            weightlessWeight = account.weightlessWeight?.toFloat() ?: 0.0f,
+            isSynced = true
+        )
+        accountDao.insertWeightlessSettings(weightlessSettings)
+
         AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
         return account
     }

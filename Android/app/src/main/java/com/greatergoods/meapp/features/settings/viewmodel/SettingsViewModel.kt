@@ -2,9 +2,11 @@ package com.greatergoods.meapp.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.common.ActivityLevel
@@ -14,6 +16,9 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.domain.services.INotificationService
+import com.greatergoods.meapp.domain.services.IUserSettingsService
+import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -42,6 +47,8 @@ constructor(
     private val exportService: IExportService,
     private val bodyCompositionService: IBodyCompositionService,
     private val userDataStore: UserDataStore,
+    private val notificationService: INotificationService,
+    private val userSettingsService: IUserSettingsService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
@@ -67,7 +74,8 @@ constructor(
         super.handleIntent(intent)
         when (intent) {
             is SettingsIntent.UpdateAccount -> {
-                _state.value = _state.value.copy(account = intent.account)
+                val account = intent.account
+                _state.value = _state.value.copy(account = account)
             }
 
             is SettingsIntent.ExportData -> {
@@ -96,6 +104,22 @@ constructor(
 
             is SettingsIntent.ShowUnitTypeModal -> {
                 onUnitTypeClick()
+            }
+
+            is SettingsIntent.ShowNotificationsModal -> {
+                onNotificationsClick()
+            }
+
+            is SettingsIntent.ShowHeightModal -> {
+                onHeightClick()
+            }
+
+            is SettingsIntent.ShowWeightlessModal -> {
+                onWeightlessClick()
+            }
+
+            is SettingsIntent.ShowStreakModal -> {
+                onStreakClick()
             }
 
             else -> {}
@@ -348,6 +372,85 @@ constructor(
         showUnitTypeModal()
     }
 
+    fun onHeightClick() {
+        AppLog.d("SettingsViewModel", "Height clicked")
+        showHeightModal()
+    }
+
+    /**
+     * Shows the height picker modal.
+     * Uses metric (cm) or imperial (ft/in) based on user's weight unit preference.
+     */
+    private fun showHeightModal() {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for height update")
+            return
+        }
+
+        val currentHeightInput = HeightInput.fromStoredHeight(
+            storedHeight = currentAccount.height ?: 1700, // Default to 170cm (1700 in stored format)
+            isMetric = currentAccount.weightUnit?.value == "kg"
+        )
+
+        dialogQueueService.enqueue(
+            DialogModel.Custom(
+                contentKey = DialogType.HeightPicker,
+                params = mapOf("value" to currentHeightInput),
+                onConfirm = { selectedHeight ->
+                    if (selectedHeight is HeightInput) {
+                        onHeightUpdate(selectedHeight)
+                    }
+                },
+                onDismiss = {
+                    AppLog.d(TAG, "Height picker cancelled")
+                },
+            )
+        )
+    }
+
+
+
+    /**
+     * Updates the height via the body composition service.
+     * Follows the same pattern as Angular height update method.
+     */
+    private fun onHeightUpdate(heightInput: HeightInput) {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for height update")
+            return
+        }
+
+        // Convert HeightInput to stored format
+        val newStoredHeight = heightInput.toStoredHeight()
+
+        // Check if height actually changed
+        if (currentAccount.height == newStoredHeight) {
+            AppLog.d(TAG, "Height is already set to $newStoredHeight, no update needed")
+            return
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating height...")
+        viewModelScope.launch {
+            try {
+                val bodyComposition = BodyCompUpdateRequest(
+                    height = newStoredHeight,
+                    activityLevel = currentAccount.activityLevel ?: "normal",
+                    weightUnit = currentAccount.weightUnit?.value ?: "lb"
+                )
+                bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
+                AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating height", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
     fun onGoalSettingClick() {
         AppLog.d("SettingsViewModel", "Goal setting clicked")
         // TODO: Navigate to goal setting screen
@@ -355,12 +458,205 @@ constructor(
 
     fun onWeightlessClick() {
         AppLog.d("SettingsViewModel", "Weightless clicked")
-        // TODO: Toggle weightless mode
+        viewModelScope.launch {
+            navigationService.navigateTo(AppRoute.AccountSettings.Weightless)
+        }
+    }
+
+    fun onStreakClick() {
+        AppLog.d("SettingsViewModel", "Streak clicked")
+        showStreakModal()
+    }
+
+    /**
+     * Shows the weightless mode selection modal.
+     */
+    private fun showWeightlessModal() {
+        val currentAccount = state.value.account
+        val currentWeightlessStatus = currentAccount?.isWeightlessOn ?: false
+
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = "Weightless Mode",
+            options = listOf(
+                RadioButtonOption("true", "On"),
+                RadioButtonOption("false", "Off"),
+            ),
+            selectedItem = state.value.account?.isWeightlessOn ?: false,
+            onConfirm = { selectedWeightless ->
+                selectedWeightless?.let { weightlessValue ->
+                    val isWeightlessOn = weightlessValue.toString().toBoolean()
+                    onWeightlessUpdate(isWeightlessOn)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Weightless mode selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Updates the weightless mode via the user settings service.
+     */
+    private fun onWeightlessUpdate(isWeightlessOn: Boolean) {
+        val currentAccount = state.value.account
+        if (currentAccount?.isWeightlessOn == isWeightlessOn) {
+            AppLog.d(TAG, "Weightless mode is already set to $isWeightlessOn, no update needed")
+            return
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating weightless mode...")
+        viewModelScope.launch {
+            try {
+                userSettingsService.toggleWeightlessSetting(
+                    isWeightlessOn = isWeightlessOn,
+                    weightlessWeight = if (isWeightlessOn) currentAccount?.weightlessWeight?.toDouble() else null
+                )
+                AppLog.i(TAG, "Successfully updated weightless mode")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating weightless mode", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+    /**
+     * Shows the streak mode selection modal.
+     */
+    private fun showStreakModal() {
+        val currentAccount = state.value.account
+        val currentStreakStatus = currentAccount?.isStreakOn ?: false
+
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = "Streak Mode",
+            options = listOf(
+                RadioButtonOption(true, "On"),
+                RadioButtonOption(false, "Off"),
+            ),
+            selectedItem = state.value.account?.isStreakOn ?: false,
+            onConfirm = { selectedStreak ->
+                selectedStreak?.let { streakValue ->
+                    val isStreakOn = streakValue.toString().toBoolean()
+                    onStreakUpdate(isStreakOn)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Streak mode selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Updates the streak mode via the user settings service.
+     */
+    private fun onStreakUpdate(isStreakOn: Boolean) {
+        val currentAccount = state.value.account
+        if (currentAccount?.isStreakOn == isStreakOn) {
+            AppLog.d(TAG, "Streak mode is already set to $isStreakOn, no update needed")
+            return
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating streak mode...")
+        viewModelScope.launch {
+            try {
+                userSettingsService.toggleStreakSetting(isStreakOn = isStreakOn)
+                AppLog.i(TAG, "Successfully updated streak mode")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating streak mode", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
     }
 
     fun onNotificationsClick() {
         AppLog.d("SettingsViewModel", "Notifications clicked")
-        // TODO: Navigate to notifications settings
+        showNotificationsModal()
+    }
+
+    /**
+     * Shows the notifications selection modal.
+     * Follows the same pattern as Angular onNotifSelectionChange method.
+     * Uses reactive state property for selectedItem.
+     */
+    private fun showNotificationsModal() {
+        // Get current notification status from reactive state property
+        val currentNotificationStatus = state.value.currentNotificationStatus
+        AppLog.d(TAG, "Showing notifications modal with reactive status: $currentNotificationStatus")
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.Notifications,
+            options = listOf(
+                RadioButtonOption("On", RadioGroupModalStrings.Notifications.On),
+                RadioButtonOption("w/ weight", RadioGroupModalStrings.Notifications.WithWeight),
+                RadioButtonOption("Off", RadioGroupModalStrings.Notifications.Off),
+            ),
+            selectedItem = when {
+                state.value.account?.entryNotificationsEnabled == true && state.value.account?.showWeightInNotifications == true -> "w/ weight"
+                state.value.account?.entryNotificationsEnabled == true -> "On"
+                else -> "Off"
+            },
+            onConfirm = { selectedNotification ->
+                selectedNotification?.let { notificationOption ->
+                    onNotificationUpdate(notificationOption)
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Notification selection cancelled")
+            },
+        )
+    }
+
+
+
+    /**
+     * Converts notification option string to NotificationSettingsRequest following Angular pattern.
+     */
+    private fun getNotificationSettingsFromOption(option: String): NotificationSettingsRequest {
+        return when (option) {
+            "On" -> NotificationSettingsRequest(
+                shouldSendEntryNotifications = true,
+                shouldSendWeightInEntryNotifications = false
+            )
+            "w/ weight" -> NotificationSettingsRequest(
+                shouldSendEntryNotifications = true,
+                shouldSendWeightInEntryNotifications = true
+            )
+            else -> NotificationSettingsRequest(
+                shouldSendEntryNotifications = false,
+                shouldSendWeightInEntryNotifications = false
+            )
+        }
+    }
+
+    /**
+     * Updates the notification settings via the notification service.
+     * Follows the same pattern as Angular onNotifSelectionChange method.
+     * Relies on activeAccountFlow to automatically update the UI state.
+     */
+    private fun onNotificationUpdate(notificationOption: String) {
+        dialogQueueService.showLoader("Updating notification settings...")
+        viewModelScope.launch {
+            try {
+                val notificationSettings = getNotificationSettingsFromOption(notificationOption)
+                val updatedAccount = notificationService.updateNotificationSettings(notificationSettings)
+                if (updatedAccount != null) {
+                    AppLog.i(TAG, "Successfully updated notification settings - flow will update UI")
+                    // The activeAccountFlow will automatically emit the updated account and update the UI
+                } else {
+                    AppLog.e(TAG, "Notification settings update returned null account")
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating notification settings", e.toString())
+                // Error toast is shown by the service
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
     }
 
     fun onMessagesClick() {
@@ -480,6 +776,28 @@ constructor(
         viewModelScope.launch {
             userDataStore.setAccountSwitchInfoModalShownForDevice(true)
             dialogQueueService.dismissCurrent()
+        }
+    }
+
+    /**
+     * Formats the weightless display text for the settings screen.
+     * Converts stored weight to display format with proper unit.
+     * @return Formatted weightless display text
+     */
+    fun getWeightlessDisplayText(): String {
+        val account = state.value.account
+        return if (account?.isWeightlessOn == true) {
+            val weightlessWeight = account.weightlessWeight
+            if (weightlessWeight != null) {
+                val isMetric = account.weightUnit?.value == "kg"
+                val displayWeight = ConversionTools.convertStoredToDisplay(weightlessWeight.toDouble(), isMetric)
+                val formattedWeight = String.format("%.1f", displayWeight)
+                "On - $formattedWeight"
+            } else {
+                "On"
+            }
+        } else {
+            "Off"
         }
     }
 }

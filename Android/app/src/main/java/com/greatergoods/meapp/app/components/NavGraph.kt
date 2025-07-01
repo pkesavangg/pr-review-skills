@@ -16,6 +16,7 @@ import com.greatergoods.meapp.features.manualEntry.EntryScreen
 import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 import com.greatergoods.meapp.features.signup.SignupScreen
+import com.greatergoods.meapp.features.weightless.screen.WeightlessScreen
 
 /**
  * Registers the entries for the authentication screens.
@@ -42,4 +43,5 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
     entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
     entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
+    entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
 }

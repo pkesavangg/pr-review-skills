@@ -2,11 +2,18 @@ package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.metrics.StreakRequest
+import com.greatergoods.meapp.domain.model.api.metrics.WeightlessRequest
+import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
+import com.greatergoods.meapp.domain.repository.INotificationRepository
+import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +27,8 @@ import javax.inject.Singleton
 class OfflineHandlerService @Inject constructor(
     private val accountRepository: IAccountRepository,
     private val bodyCompositionRepository: IBodyCompositionRepository,
+    private val notificationRepository: INotificationRepository,
+    private val userSettingsRepository: IUserSettingsRepository,
     private val connectivityObserver: IConnectivityObserver,
 ) : IOfflineHandlerService {
 
@@ -43,6 +52,10 @@ class OfflineHandlerService @Inject constructor(
             syncProfileData()
             // Sync body composition data if there are unsynced body comp accounts
             syncBodyCompositionData()
+            // Sync notification settings if there are unsynced notification accounts
+            syncNotificationData()
+            // Sync user settings data if there are unsynced user settings accounts
+            syncUserSettingsData()
             AppLog.i(TAG, "Selective offline sync process completed")
         } catch (e: Exception) {
             AppLog.e(TAG, "Offline sync process failed", e.toString())
@@ -72,8 +85,17 @@ class OfflineHandlerService @Inject constructor(
                     zipcode = account.zipcode,
                 )
                 val profileResponse = accountRepository.updateProfileInAPI(profileUpdateRequest)
+                val profileUpdate = PartialAccount(
+                    firstName = profileResponse.account.firstName,
+                    lastName = profileResponse.account.lastName,
+                    email = profileResponse.account.email,
+                    dob = profileResponse.account.dob,
+                    gender = profileResponse.account.gender,
+                    zipcode = profileResponse.account.zipcode,
+                    isSynced = true,
+                )
                 // Update account with profile response and mark as synced
-                accountRepository.updateAccountFromAPI(account.id, profileResponse.account)
+                accountRepository.updateAccountInDB(profileResponse.account.id, profileUpdate)
                 AppLog.i(TAG, "Successfully synced profile data for account: ${account.id}")
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error syncing profile data for account ${account.id}", e.toString())
@@ -92,20 +114,19 @@ class OfflineHandlerService @Inject constructor(
         }
         for (account in unsyncedBodyCompAccounts) {
             try {
-                AppLog.d(TAG, "Syncing body composition data for account: ${account.id}")
                 // Sync body composition data (height, activity level, weight unit)
                 val bodyCompUpdateRequest = BodyCompUpdateRequest(
                     height = account.height ?: 1700,
                     activityLevel = account.activityLevel ?: "normal",
-                    weightUnit = account.weightUnit?.value ?:  "lb",
+                    weightUnit = account.weightUnit?.value ?: "lb",
                 )
                 val bodyCompResponse = bodyCompositionRepository.updateBodyCompInAPI(bodyCompUpdateRequest)
                 // Insert WeightCompSettings entity with data from account
                 val weightCompSettings = WeightCompSettingsEntity(
                     accountId = bodyCompResponse.account.id,
-                    height = bodyCompResponse.account.height ,
-                    activityLevel = bodyCompResponse.account.activityLevel ,
-                    weightUnit = bodyCompResponse.account.weightUnit ,
+                    height = bodyCompResponse.account.height,
+                    activityLevel = bodyCompResponse.account.activityLevel,
+                    weightUnit = bodyCompResponse.account.weightUnit,
                     isSynced = true
                 )
                 bodyCompositionRepository.updateBodyCompInDB(account.id, weightCompSettings)
@@ -116,4 +137,115 @@ class OfflineHandlerService @Inject constructor(
             }
         }
     }
-}
+
+    /**
+     * Syncs notification settings for accounts that have unsynced notification changes.
+     */
+    private suspend fun syncNotificationData() {
+        val unsyncedNotificationAccounts = notificationRepository.getUnsyncedNotificationAccountsFromDB()
+        if (unsyncedNotificationAccounts.isEmpty()) {
+            AppLog.d(TAG, "No unsynced notification accounts found")
+            return
+        }
+
+        for (account in unsyncedNotificationAccounts) {
+            try {
+                // Sync notification settings (entry notifications and weight in notifications)
+                val notificationSettingsRequest = NotificationSettingsRequest(
+                    shouldSendEntryNotifications = account.entryNotificationsEnabled ?: false,
+                    shouldSendWeightInEntryNotifications = account.showWeightInNotifications ?: false
+                )
+                val notificationResponse =
+                    notificationRepository.updateNotificationSettingsInAPI(notificationSettingsRequest)
+
+                // Create NotificationSettings entity with data from API response
+                val notificationSettings = NotificationSettingsEntity(
+                    accountId = notificationResponse.account.id,
+                    entryNotificationsEnabled = notificationResponse.account.shouldSendEntryNotifications,
+                    showWeightInNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
+                    isSynced = true
+                )
+                notificationRepository.updateNotificationSettingsInDB(account.id, notificationSettings)
+
+                AppLog.i(TAG, "Successfully synced notification settings for account: ${account.id}")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing notification settings for account ${account.id}", e.toString())
+            }
+        }
+    }
+        //  Syncs user settings data for accounts that have unsynced user settings changes.
+        private suspend fun syncUserSettingsData() {
+            AppLog.d(TAG, "Syncing user settings data")
+
+            try {
+                // Sync streak settings
+                syncStreakSettings()
+                // Sync weightless settings
+                syncWeightlessSettings()
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing user settings data", e.toString())
+            }
+        }
+
+        /**
+         * Syncs streak settings for accounts with unsynced changes.
+         */
+        private suspend fun syncStreakSettings() {
+            AppLog.d(TAG, "Syncing streak settings")
+            try {
+                val unsyncedAccounts = userSettingsRepository.getUnsyncedStreakAccountsFromDB()
+                if (unsyncedAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No unsynced streak settings found")
+                    return
+                }
+                AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced streak settings")
+                for (account in unsyncedAccounts) {
+                    try {
+                        AppLog.d(TAG, "Syncing streak settings for account: ${account.id}")
+                        val streakRequest = StreakRequest(
+                            isStreakOn = account.isStreakOn ?: false,
+                            streakTimestamp = account.streakTimestamp
+                        )
+                        userSettingsRepository.updateStreakSetting(streakRequest)
+                        AppLog.i(TAG, "Successfully synced streak settings for account: ${account.id}")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Failed to sync streak settings for account ${account.id}", e.toString())
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing streak settings", e.toString())
+            }
+        }
+
+        /**
+         * Syncs weightless settings for accounts with unsynced changes.
+         */
+        private suspend fun syncWeightlessSettings() {
+            try {
+                val unsyncedAccounts = userSettingsRepository.getUnsyncedWeightlessAccountsFromDB()
+
+                if (unsyncedAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No unsynced weightless settings found")
+                    return
+                }
+                AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced weightless settings")
+                for (account in unsyncedAccounts) {
+                    try {
+                        AppLog.d(TAG, "Syncing weightless settings for account: ${account.id}")
+                        val weightlessRequest = WeightlessRequest(
+                            isWeightlessOn = account.isWeightlessOn ?: false,
+                            weightlessTimestamp = account.weightlessTimestamp,
+                            weightlessWeight = account.weightlessWeight?.toDouble()
+                        )
+                        userSettingsRepository.updateWeightlessSetting(weightlessRequest)
+                        AppLog.i(TAG, "Successfully synced weightless settings for account: ${account.id}")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Failed to sync weightless settings for account ${account.id}", e.toString())
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing weightless settings", e.toString())
+            }
+        }
+    }
+

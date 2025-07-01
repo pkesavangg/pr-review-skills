@@ -16,7 +16,19 @@ data class SettingsState(
     val errorMessage: String? = null,
     val account: Account? = null,
     val hasMultipleAccounts: Boolean = false,
-) : IReducer.State
+) : IReducer.State {
+
+    /**
+     * Computed property that returns the current notification status as a formatted string.
+     * This is reactive and will update whenever the account state changes.
+     */
+    val currentNotificationStatus: String
+        get() = when {
+            account?.entryNotificationsEnabled == true && account.showWeightInNotifications == true -> "w/ weight"
+            account?.entryNotificationsEnabled == true -> "On"
+            else -> "Off"
+        }
+}
 
 /**
  * Intent for settings actions, such as loading and updating settings.
@@ -49,6 +61,10 @@ sealed interface SettingsIntent : IReducer.Intent {
     object ShowBiologicalSexModal : SettingsIntent
     object ShowActivityLevelModal : SettingsIntent
     object ShowUnitTypeModal : SettingsIntent
+    object ShowNotificationsModal : SettingsIntent
+    object ShowHeightModal : SettingsIntent
+    object ShowWeightlessModal : SettingsIntent
+    object ShowStreakModal : SettingsIntent
 }
 
 /**

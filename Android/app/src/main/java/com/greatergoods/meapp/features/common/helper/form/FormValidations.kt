@@ -37,9 +37,9 @@ object ValidationMessages {
 }
 
 object FormValidations {
-    fun required(): Validator<String> =
+    fun required(): Validator<Any> =
         { value ->
-            if (value.isBlank()) {
+            if (value.toString().isEmpty()) {
                 ValidationError(ValidationType.REQUIRED, ValidationMessages.REQUIRED)
             } else {
                 null

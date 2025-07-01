@@ -5,6 +5,10 @@ import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.PartialAccount
@@ -15,6 +19,7 @@ import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
@@ -30,7 +35,6 @@ import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
@@ -38,19 +42,20 @@ import android.util.Log
  */
 @Singleton
 class AccountService
-@Inject
-constructor(
-    private val accountRepository: IAccountRepository,
-    private val connectivityObserver: IConnectivityObserver,
-    private val tokenManager: ITokenManager,
-    private val dialogQueueService: IDialogQueueService,
-    private val userDataStore: UserDataStore,
-    private val appNavigationService: IAppNavigationService
-) : IAccountService {
-    companion object {
-        private const val MAX_ACCOUNTS = 10
-        private const val TAG = "AccountService"
-    }
+    @Inject
+    constructor(
+        private val accountRepository: IAccountRepository,
+        private val connectivityObserver: IConnectivityObserver,
+        private val tokenManager: ITokenManager,
+        private val dialogQueueService: IDialogQueueService,
+        private val userDataStore: UserDataStore,
+        private val appNavigationService: IAppNavigationService,
+        private val userSettingsRepository: IUserSettingsRepository
+    ) : IAccountService {
+        companion object {
+            private const val MAX_ACCOUNTS = 10
+            private const val TAG = "AccountService"
+        }
 
     /**
      * Safely parses a weight unit string to WeightUnit enum.
@@ -444,32 +449,32 @@ constructor(
             if (currentAccount == null) {
                 return null
             }
-            // Call API to update profile
-            val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
-            val updatedAccountInfo: AccountInfo = response.account
-            val savedAccount = updateProfileInDB(
-                updatedAccountInfo.id,
-                PartialAccount(
-                    firstName = updatedAccountInfo.firstName,
-                    lastName = updatedAccountInfo.lastName,
-                    dob = updatedAccountInfo.dob,
-                    gender = updatedAccountInfo.gender,
-                    zipcode = updatedAccountInfo.zipcode,
-                    email = updatedAccountInfo.email,
-                    isActiveAccount = true,
-                    isSynced = true,  // Mark as synced since API call was successful
-                ),
-            )
-            AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
-            savedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
-            showSuccessToast(AuthAction.UPDATE_PROFILE)
-            savedAccount
-        } catch (e: HttpException) {
-            showErrorToast(AuthAction.UPDATE_PROFILE, e)
-            AppLog.e(TAG, "Profile update failed", e.toString())
-            throw e
+                // Call API to update profile
+                val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
+                val updatedAccountInfo: AccountInfo = response.account
+                val savedAccount = updateProfileInDB(
+                    updatedAccountInfo.id,
+                    PartialAccount(
+                        firstName = updatedAccountInfo.firstName,
+                        lastName = updatedAccountInfo.lastName,
+                        dob = updatedAccountInfo.dob,
+                        gender = updatedAccountInfo.gender,
+                        zipcode = updatedAccountInfo.zipcode,
+                        email = updatedAccountInfo.email,
+                        isActiveAccount = true,
+                        isSynced = true,  // Mark as synced since API call was successful
+                    ),
+                )
+                AppLog.i(TAG, "Profile updated successfully via API for account: ${savedAccount.id}")
+                savedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
+                showSuccessToast(AuthAction.UPDATE_PROFILE)
+                savedAccount
+            } catch (e: HttpException) {
+                showErrorToast(AuthAction.UPDATE_PROFILE, e)
+                AppLog.e(TAG, "Profile update failed", e.toString())
+                throw e
+            }
         }
-    }
 
     override suspend fun changePassword(currentPassword: String, newPassword: String): Boolean {
         return try {
@@ -636,6 +641,15 @@ constructor(
 
             // Update account data with API response
             accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
+            val weightlessSetting = WeightlessSettingsEntity(
+                accountId = accountInfo.id,
+                isWeightlessOn = accountInfo.isWeightlessOn,
+                weightlessTimestamp = accountInfo.weightlessTimestamp,
+                weightlessWeight = accountInfo.weightlessWeight,
+                isSynced = true
+            )
+            userSettingsRepository.updateWeightlessInDB(weightlessSetting)
+
             AppLog.d(TAG, "Active account login status check successful")
             true
         } catch (e: Exception) {
