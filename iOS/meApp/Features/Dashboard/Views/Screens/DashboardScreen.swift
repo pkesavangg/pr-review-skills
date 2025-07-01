@@ -5,13 +5,6 @@
 //  Created by Lakshmi Priya on 30/06/25.
 //
 
-//
-//  DashboardView.swift
-//  meApp
-//
-//  Created by Lakshmi Priya on 30/06/25.
-//
-
 import SwiftUI
 
 struct DashboardScreen: View {
