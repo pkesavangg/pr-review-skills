@@ -5,7 +5,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -38,7 +37,6 @@ fun NavHost(
         appViewModel.navigationService.navigationIntent,
         topLevelBackStack,
     )
-    topLevelBackStack.topLevelStacks.collectAsState()
     NavDisplay(
         modifier = Modifier.navigationBarsPadding(),
         entryDecorators =
@@ -87,6 +85,7 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
     NavDisplay(
         entryDecorators =
             listOf(
+                rememberSceneSetupNavEntryDecorator(),
                 rememberSavedStateNavEntryDecorator(),
                 rememberViewModelStoreNavEntryDecorator(),
             ),
