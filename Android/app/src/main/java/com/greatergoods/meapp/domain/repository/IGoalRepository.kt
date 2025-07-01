@@ -33,13 +33,6 @@ interface IGoalRepository {
     suspend fun updateGoalSettingOffline(request: GoalRequest): Account?
 
     /**
-     * Gets accounts with unsynced goal settings changes.
-     * Used by offline handler service for syncing goal settings specifically.
-     * @return List of accounts with pending goal settings changes
-     */
-    suspend fun getUnsyncedGoalAccountsFromDB(): List<Account>
-
-    /**
      * Gets the current goal for the active account.
      * @return Current goal or null if no goal is set
      */

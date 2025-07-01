@@ -109,23 +109,7 @@ class GoalRepository @Inject constructor(
         }
     }
 
-    /**
-     * Gets accounts with unsynced goal settings changes.
-     * Used by offline handler service for syncing goal settings specifically.
-     * @return List of accounts with pending goal settings changes
-     */
-    override suspend fun getUnsyncedGoalAccountsFromDB(): List<Account> {
-        return try {
-            AppLog.d(TAG, "Getting accounts with unsynced goal settings")
-            // TODO: Query database for accounts with unsynced goal settings
-            // This would require a database query to find GoalSettingsEntity with isSynced = false
-            // and then map to Account objects
-            emptyList() // Placeholder
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to get unsynced goal accounts", e.toString())
-            emptyList()
-        }
-    }
+
 
     /**
      * Gets the current goal for the active account.
@@ -142,6 +126,7 @@ class GoalRepository @Inject constructor(
                 // Placeholder implementation
                 null
             }
+            null
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to get current goal", e.toString())
             null
