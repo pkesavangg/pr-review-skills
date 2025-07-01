@@ -16,28 +16,42 @@ import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginReducer
 import com.greatergoods.meapp.features.login.model.LoginState
 import com.greatergoods.meapp.features.login.strings.LoginStrings
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * ViewModel for the Login screen. Handles form state, validation, login logic, and navigation.
  * @property accountService Service for authentication.
  * @property customTabManager Service for opening URLs in custom tabs.
  */
-@HiltViewModel
-class LoginViewModel
-@Inject
-constructor(
+@HiltViewModel(
+    assistedFactory = LoginViewModel.Factory::class,
+)
+class LoginViewModel @AssistedInject constructor(
+    @Assisted val email: String? = null,
     private val accountService: IAccountService,
     private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<LoginState, LoginIntent>(
     reducer = LoginReducer(),
 ) {
+    @AssistedFactory
+    interface Factory {
+        fun create(email: String? = null): LoginViewModel
+    }
+
     override fun provideInitialState(): LoginState {
         return LoginState(
             form = FormGroup(LoginFormControls.create()),
         )
+    }
+
+    init {
+        if (email != null) {
+            state.value.form.controls.email.onValueChange(email)
+        }
     }
 
     /**

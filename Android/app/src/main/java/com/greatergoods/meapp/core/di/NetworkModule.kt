@@ -15,6 +15,7 @@ import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.network.qualifiers.RefreshClient
 import com.greatergoods.meapp.core.network.utility.LegacyNetworkConnectivityObserver
 import com.greatergoods.meapp.core.network.utility.NetworkConnectivityObserver
+import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.data.api.RefreshTokenAPI
 import dagger.Module
 import dagger.Provides
@@ -106,7 +107,10 @@ object NetworkModule {
      */
     @Provides
     @Singleton
-    fun provideResponseInterceptor(): ResponseInterceptor = ResponseInterceptor()
+    fun provideResponseInterceptor(appNavigationService: IAppNavigationService): ResponseInterceptor =
+        ResponseInterceptor(
+            appNavigationService,
+        )
 
     /**
      * Provides a basic OkHttpClient for token refresh (no authenticator).

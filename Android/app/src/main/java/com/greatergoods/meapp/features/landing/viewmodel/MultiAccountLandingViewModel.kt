@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.landing.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountService
@@ -60,8 +61,12 @@ class MultiAccountLandingViewModel @Inject constructor(
 
     private fun onSelectAccount(account: Account) {
         viewModelScope.launch {
-            accountService.switchAccount(account)
-            navigationService.replaceStack(AppRoute.Init.Loading)
+            try {
+                accountService.switchAccount(account)
+                navigationService.replaceStack(AppRoute.Init.Loading)
+            } catch (e: Exception) {
+                AppLog.e("MultiAccountLandingViewModel", "Failed to switch account: ${e.message}")
+            }
         }
     }
 
@@ -83,7 +88,7 @@ class MultiAccountLandingViewModel @Inject constructor(
     private fun showMaxLimitReachedDialog() {
         dialogUtility.showMaxAccountAlert(
             isFromLanding = true,
-            onDismiss = {}
+            onDismiss = {},
         )
     }
 
@@ -92,7 +97,7 @@ class MultiAccountLandingViewModel @Inject constructor(
             if (state.value.hasReachedMaxAccounts && account == null) {
                 handleIntent(MultiAccountLandingIntent.ShowMaxLimitReachedAlert)
             } else {
-                navigationService.navigateTo(AppRoute.Auth.Login)
+                navigationService.navigateTo(AppRoute.Auth.Login(account?.email))
             }
         }
     }
