@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.settings.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -12,6 +13,7 @@ import com.greatergoods.meapp.domain.services.BodyCompUpdateType
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
 import com.greatergoods.meapp.features.common.components.showRadioGroupModal
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -39,6 +41,7 @@ constructor(
     private val accountService: IAccountService,
     private val exportService: IExportService,
     private val bodyCompositionService: IBodyCompositionService,
+    private val userDataStore: UserDataStore,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
@@ -47,12 +50,15 @@ constructor(
 
     init {
         getUserProfile()
+        showAccountSwitchInfoModal()
     }
 
     fun getUserProfile() {
         viewModelScope.launch {
-            accountService.activeAccountFlow.collect {
-                handleIntent(SettingsIntent.UpdateAccount(it))
+            accountService.loggedInAccountsFlow.collect {
+                val account = accountService.getCurrentAccount()
+                val hasMultipleAccounts = it.size > 1
+                handleIntent(SettingsIntent.UpdateAccount(account, hasMultipleAccounts))
             }
         }
     }
@@ -70,6 +76,10 @@ constructor(
 
             is SettingsIntent.Logout -> {
                 onLogOutClick()
+            }
+
+            is SettingsIntent.LogoutAllAccounts -> {
+                onLogOutClick(true)
             }
 
             is SettingsIntent.SwitchAccount -> {
@@ -323,23 +333,6 @@ constructor(
         }
     }
 
-    private fun logout() {
-        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
-        viewModelScope.launch {
-            try {
-                val account = state.value.account
-                if (account != null) {
-                    accountService.logout(account.id, account.fcmToken)
-                    navigationService.reInitialize()
-                }
-            } catch (e: Exception) {
-                AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
-            } finally {
-                dialogQueueService.dismissLoader()
-            }
-        }
-    }
-
     fun onBiologicalSexClick() {
         AppLog.d("SettingsViewModel", "Biological sex clicked")
         showBiologicalSexModal()
@@ -385,34 +378,108 @@ constructor(
         // TODO: Navigate to help screen
     }
 
+    /*
+     * Show a confirmation dialog before logging out.
+     */
+    private fun onLogOutClick(isLogoutAll: Boolean = false) {
+        val logoutModalString = SettingsScreenStrings.LogoutDialog
+        val title =
+            if (isLogoutAll) SettingsScreenStrings.LogoutDialog.LogoutAll.Title else SettingsScreenStrings.LogoutDialog.Logout.Title
+        val body =
+            if (isLogoutAll) SettingsScreenStrings.LogoutDialog.LogoutAll.Body else SettingsScreenStrings.LogoutDialog.Logout.Body
+
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title,
+                body,
+                logoutModalString.Confirm,
+                logoutModalString.Cancel,
+                onDismiss = {},
+                onConfirm = {
+                    if (isLogoutAll) {
+                        onLogoutAllAccounts()
+                    } else {
+                        logout()
+                    }
+                },
+            ),
+        )
+    }
+
+    private fun logout() {
+        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOut)
+        viewModelScope.launch {
+            try {
+                val account = state.value.account
+                if (account != null) {
+                    accountService.logout(account.id, account.fcmToken)
+                    navigationService.reInitialize()
+                }
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+    private fun onLogoutAllAccounts() {
+        dialogQueueService.showLoader(SettingsScreenStrings.LoggingOutAll)
+        viewModelScope.launch {
+            try {
+                accountService.logoutAll()
+                navigationService.reInitialize()
+            } catch (e: Exception) {
+                AppLog.e("SettingsViewModel", "Failed to log out all accounts", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
     fun onDeleteAccountClick() {
         AppLog.d("SettingsViewModel", "Delete account clicked")
         // TODO: Show delete account confirmation dialog
     }
 
     fun onSwitchAccountClick() {
-        viewModelScope.launch {
-            navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts)
-        }
+        navigateTo(AppRoute.AccountSettings.MyAccounts)
         AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
     }
 
-    /*
-     * Show a confirmation dialog before logging out.
-     */
-    private fun onLogOutClick() {
-        val logoutModalString = SettingsScreenStrings.LogoutDialog
-        dialogQueueService.enqueue(
-            DialogModel.Confirm(
-                logoutModalString.Title,
-                logoutModalString.Body,
-                logoutModalString.Confirm,
-                logoutModalString.Cancel,
-                onDismiss = {},
-                onConfirm = {
-                    logout()
-                },
-            ),
-        )
+    private fun showAccountSwitchInfoModal() {
+        viewModelScope.launch {
+            val hasShown = userDataStore.hasShownAccountSwitchInfoModalForDevice()
+            if (hasShown) return@launch
+            val activeAccount = accountService.getCurrentAccount()
+            dialogQueueService.enqueue(
+                DialogModel.Custom(
+                    contentKey = DialogType.AccountSwitchInfoPopup,
+                    params = mapOf(
+                        "userInitial" to (activeAccount?.firstName?.firstOrNull()?.toString() ?: "U"),
+                        "onAddAccount" to {
+                            onAccountSwitchInfoDismiss()
+                            navigateTo(AppRoute.AccountSettings.MyAccounts)
+                        },
+                    ),
+                    onDismiss = {
+                        onAccountSwitchInfoDismiss()
+                    },
+                ),
+            )
+        }
+    }
+
+    fun navigateTo(route: AppRoute) {
+        viewModelScope.launch {
+            navigationService.navigateTo(route)
+        }
+    }
+
+    fun onAccountSwitchInfoDismiss() {
+        viewModelScope.launch {
+            userDataStore.setAccountSwitchInfoModalShownForDevice(true)
+            dialogQueueService.dismissCurrent()
+        }
     }
 }

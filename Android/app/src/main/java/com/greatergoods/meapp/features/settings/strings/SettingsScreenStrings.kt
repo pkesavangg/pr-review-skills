@@ -39,11 +39,13 @@ object SettingsScreenStrings {
     // Actions
     const val SwitchAccounts = "Switch Accounts"
     const val LogOut = "Log Out"
+    const val LogoutAll = "Log Out of All Accounts"
     const val DeleteAccount = "Delete Account"
     const val Edit = "EDIT"
 
     const val ProfileImage = "Profile Image"
     const val LoggingOut = "Logging out..."
+    const val LoggingOutAll = "Logging out all Accounts..."
 
     object Error {
         const val Header = "Profile Update Error"
@@ -57,8 +59,14 @@ object SettingsScreenStrings {
         const val Message = "Your profile has been updated successfully."
     }
     object LogoutDialog {
-        const val Title = "Log out"
-        const val Body = "Are you sure you want to log out?"
+        object Logout {
+            const val Title = "Log out"
+            const val Body = "Are you sure you want to log out?"
+        }
+        object LogoutAll {
+            const val Title = "Log Out of All Accounts"
+            const val Body = "Are you sure you want to log out of all accounts?"
+        }
         const val Confirm = "Log out"
         const val Cancel = "Cancel"
     }

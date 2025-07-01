@@ -23,9 +23,11 @@ import com.greatergoods.meapp.features.signup.SignupScreen
  */
 fun EntryProviderBuilder<NavKey>.authEntries() {
     entry<AppRoute.Auth.Landing> { LandingScreen() }
-    entry<AppRoute.Auth.Login> { LoginScreen() }
+    entry<AppRoute.Auth.Login> { credentials ->
+        LoginScreen(credentials.email)
+    }
     entry<AppRoute.Auth.Signup> { SignupScreen() }
-    entry<AppRoute.Auth.MultiAccountLanding>{ MultiAccountLandingScreen() }
+    entry<AppRoute.Auth.MultiAccountLanding> { MultiAccountLandingScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {

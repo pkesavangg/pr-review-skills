@@ -40,6 +40,7 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.historyDetail.viewmodel.HistoryDetailViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
@@ -55,8 +56,12 @@ import com.greatergoods.meapp.theme.MeTheme.typography
  * Login screen composable. Displays the login form, handles user input, and shows loading/error states.
  */
 @Composable
-fun LoginScreen() {
-    val viewmodel: LoginViewModel = hiltViewModel()
+fun LoginScreen( email: String? = null) {
+    val viewmodel: LoginViewModel = hiltViewModel<LoginViewModel, LoginViewModel.Factory>(
+        creationCallback = { factory ->
+            factory.create(email)
+        },
+    )
     val state by viewmodel.state.collectAsState()
     BackHandler {
         viewmodel.handleIntent(LoginIntent.OnBack)

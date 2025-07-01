@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
 typealias AsyncValidator<T> = suspend (T) -> ValidationError?
@@ -43,7 +44,7 @@ class FormControl<T> private constructor(
     private val _error = mutableStateOf<ValidationError?>(null)
     val error: ValidationError? get() = _error.value
     val errorMessage: String? get() = _error.value?.message
-    val isError: Boolean get() = _error.value != null
+    val isError: Boolean get() = _error.value != null && _error.value?.type != null
 
     private val _touched = mutableStateOf(false)
     val touched: Boolean get() = _touched.value
@@ -62,10 +63,17 @@ class FormControl<T> private constructor(
 
     private var onValueChangeCallback: OnValueChangeCallback<T>? = null
 
+    /**
+     * Sets a callback to be notified when the value changes
+     * @param callback The callback function that receives both old and new values
+     */
     fun onValueChangeListener(callback: OnValueChangeCallback<T>) {
         onValueChangeCallback = callback
     }
 
+    /**
+     * Updates the value and triggers validation
+     */
     fun onValueChange(newValue: T) {
         val oldValue = _value.value
         _value.value = newValue
@@ -74,34 +82,60 @@ class FormControl<T> private constructor(
         validate()
     }
 
+    /**
+     * Marks the control as touched and triggers validation
+     */
     fun onBlur() {
         _touched.value = true
         validate()
     }
 
+    /**
+     * Adds a synchronous validator to the control
+     */
     fun addValidator(validator: Validator<T>) {
         _validators.value = _validators.value + validator
         validate()
     }
 
-    fun addAsyncValidator(type: String, validator: AsyncValidator<T>, scope: CoroutineScope) {
+    /**
+     * Adds an asynchronous validator to the control
+     * @param type The type identifier for the async validator
+     * @param validator The async validator function
+     * @param scope The coroutine scope to run the validator in
+     */
+    fun addAsyncValidator(
+        type: String,
+        validator: AsyncValidator<T>,
+        scope: CoroutineScope,
+    ) {
         _asyncValidators.value = _asyncValidators.value + AsyncValidatorWrapper(type, validator, scope)
         validate()
     }
 
+    /**
+     * Removes a validator by type
+     */
     fun removeValidator(type: String) {
-        _validators.value = _validators.value.filter { it(value)?.type != type }
-        _asyncValidators.value = _asyncValidators.value.filter { it.type != type }
+        _validators.value =
+            _validators.value.filter { validator ->
+                validator(value)?.type != type
+            }
+        _asyncValidators.value =
+            _asyncValidators.value.filter { wrapper ->
+                wrapper.type != type
+            }
         validate()
     }
 
+    /**
+     * Validates the control using both sync and async validators
+     * @return true if validation passed synchronous checks
+     */
     fun validate(): Boolean {
         validationJob?.cancel()
 
-        // Clear error before validation
-        _error.value = null
-
-        // Run sync validators
+        // Run sync validators first
         for (validator in _validators.value) {
             val err = validator(value)
             if (err != null) {
@@ -111,45 +145,55 @@ class FormControl<T> private constructor(
             }
         }
 
-        // Run async validators
+        // If we have async validators, run them
         if (_asyncValidators.value.isNotEmpty()) {
             _pending.value = true
-            var pendingCount = _asyncValidators.value.size
 
+            // Launch each async validator in its own scope
             _asyncValidators.value.forEach { wrapper ->
-                validationJob = wrapper.scope.launch {
+                wrapper.scope.launch {
                     validationMutex.withLock {
                         val err = wrapper.validator(value)
-                        pendingCount--
-
                         if (err != null) {
                             _error.value = err
                             _pending.value = false
-                            return@withLock
+                            return@launch
                         }
-
-                        // Only set pending to false when all async validators are done
-                        if (pendingCount == 0) {
+                        // Only clear error if no other async validators have set an error
+                        if (_error.value == null) {
                             _pending.value = false
                         }
                     }
                 }
             }
         } else {
+            _error.value = null
             _pending.value = false
         }
-
-        return _error.value == null
+        return true
     }
 
+    /**
+     * Forces error display regardless of touched/dirty state
+     */
     fun forceShowError() {
         _touched.value = true
     }
 
+    /**
+     * Returns true if the current value passes all sync validators (regardless of touched/dirty state).
+     */
     fun isValueValid(): Boolean {
-        return _validators.value.all { it(value) == null }
+        for (validator in _validators.value) {
+            if (validator(value) != null) return false
+        }
+        return true
     }
 
+    /**
+     * Resets the control to its initial state
+     * @param newInitialValue Optional new initial value to set
+     */
     fun reset(newInitialValue: T? = null) {
         val valueToReset = newInitialValue ?: _initialValue
         _initialValue = valueToReset
@@ -162,11 +206,22 @@ class FormControl<T> private constructor(
     }
 
     companion object {
-        fun <T> create(initialValue: T, validators: List<Validator<T>> = emptyList()): FormControl<T> {
-            return FormControl(initialValue, validators)
-        }
+        /**
+         * Creates a new FormControl instance
+         */
+        fun <T> create(
+            initialValue: T,
+            validators: List<Validator<T>> = emptyList(),
+        ): FormControl<T> =
+            FormControl(
+                initialValue = initialValue,
+                validators = validators,
+            )
     }
 
+    /**
+     * Wrapper class to keep async validator, its type, and its scope together
+     */
     private data class AsyncValidatorWrapper<T>(
         val type: String,
         val validator: AsyncValidator<T>,
@@ -222,16 +277,16 @@ class FormGroup<T : Any>(
      * This checks all sync validators for each control, even if untouched.
      */
     val isValid: Boolean
-        get() = controls.toFormControlList().all { it.isValueValid() } && groupError == null
+        get() = controls.toList().all { it.isValueValid() } && groupError == null
 
     val isDirty: Boolean
-        get() = controls.toFormControlList().any { it.dirty }
+        get() = controls.toList().any { it.dirty }
 
     val isTouched: Boolean
-        get() = controls.toFormControlList().any { it.touched }
+        get() = controls.toList().any { it.touched }
 
     val isPending: Boolean
-        get() = controls.toFormControlList().any { it.pending }
+        get() = controls.toList().any { it.pending }
 
     /**
      * Returns a map of all form control values where the key is the field name
@@ -253,32 +308,30 @@ class FormGroup<T : Any>(
      * Validates all controls in the group and runs group-level validation
      */
     fun validate(): Boolean {
-        val controlList = controls.toFormControlList()
-        val fieldsValid = controlList.all { it.validate() } && controlList.all { it.error == null }
-
-        // Clear group error before validation
-        _groupError.value = null
+        val fieldsValid = controls.toList().all { it.validate() && it.error == null }
 
         for (validator in groupValidators) {
             val err = validator(controls)
+            Log.d("hello", "Group validator: $err")
             if (err != null) {
                 _groupError.value = err
                 return false
             }
         }
-
-        return fieldsValid
+        _groupError.value = null
+        return fieldsValid && groupError == null
     }
 
     /**
      * Forces error display for all controls in the group
      */
     fun forceShowAllErrors() {
-        controls.toFormControlList().forEach { it.forceShowError() }
+        controls.toList().forEach { it.forceShowError() }
     }
 
     /**
      * Resets all controls in the group to their initial state
+     * @param newValues Optional map of field names to new initial values
      */
     fun resetForm() {
         controls.javaClass.declaredFields.forEach { field ->
@@ -409,7 +462,7 @@ private fun <T : Any> T.toFormGroupList(): List<FormGroup<*>> =
     }
 
 // Extension for explicit control access
-private fun <T : Any> T.toFormControlList(): List<FormControl<*>> =
+private fun <T : Any> T.toList(): List<FormControl<*>> =
     javaClass.declaredFields.mapNotNull { field ->
         field.isAccessible = true
         field.get(this) as? FormControl<*>

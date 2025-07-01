@@ -29,4 +29,18 @@ object AppPopupStrings {
         const val ConfirmButton = "Remove"
         const val Loader = "Removing Account..."
     }
+
+    object BackgroundLoggedOutAlert {
+        fun Title(username: String) = "$username was logged out"
+        const val Message = "Please log back in to continue."
+        const val ConfirmButton = "OK"
+    }
+    
+    object AccountSwitchInfo {
+        const val Header = "NEW: Add Multiple Accounts"
+        const val Message =
+            "Switch between Weight Gurus accounts by pressing and holding the profile icon or selecting \"Switch Accounts\" in settings."
+        const val AddAccountButton = "ADD ACCOUNT"
+        const val CloseContentDescription = "Close"
+    }
 }
