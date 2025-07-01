@@ -5,7 +5,8 @@ import androidx.compose.ui.graphics.Color
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
 import com.greatergoods.meapp.features.common.enums.MetricKey
 import com.greatergoods.meapp.features.common.strings.MetricLabels
-import com.greatergoods.meapp.features.historyDetail.modal.Metric
+import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
+import com.greatergoods.meapp.features.historyDetail.modal.Stat
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
@@ -15,95 +16,156 @@ object MetricHelper {
         item: DashboardMetric,
         useShort: Boolean = false,
         filterNulls: Boolean = true,
-    ): List<Metric> {
-        val metrics = listOf(
-            metric(MetricLabels.getLabel(MetricKey.BMI, useShort), item.bmi, "", AppIcons.Metrics.Bmi, MetricKey.BMI),
-            metric(
-                MetricLabels.getLabel(MetricKey.BODY_FAT, useShort),
-                item.bodyFat?.toDouble()?.rounded(),
-                "%",
-                AppIcons.Metrics.BodyFat,
-                MetricKey.BODY_FAT,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.MUSCLE_MASS, useShort),
-                item.muscleMass?.toDouble()?.rounded(),
-                "%",
-                AppIcons.Metrics.MuscleMass,
-                MetricKey.MUSCLE_MASS,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.BODY_WATER, useShort),
-                item.bodyWater?.toDouble()?.rounded(),
-                "%",
-                AppIcons.Metrics.Water,
-                MetricKey.BODY_WATER,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.HEART_RATE, useShort),
-                item.heartRate,
-                "bpm",
-                AppIcons.Metrics.Pulse,
-                MetricKey.HEART_RATE,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.BONE_MASS, useShort),
-                item.boneMass?.toDouble()?.rounded(),
-                "%",
-                AppIcons.Metrics.BoneMass,
-                MetricKey.BONE_MASS,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.VISCERAL_FAT, useShort),
-                item.visceralFatLevel,
-                "Level",
-                AppIcons.Metrics.VisceralFat,
-                MetricKey.VISCERAL_FAT,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.SUBCUTANEOUS_FAT, useShort),
-                item.subcutaneousFatPercent?.toDouble()?.rounded(),
-                "%",
-                AppIcons.Metrics.SubcutaneousFat,
-                MetricKey.SUBCUTANEOUS_FAT,
+    ): List<Stat> {
+        val keysToUse = visibleKeys
+            ?.filter { it.isMetric() }
+            ?: DashboardKey.entries.filter { it.isMetric() }
 
-                ),
-            metric(
-                MetricLabels.getLabel(MetricKey.PROTEIN, useShort),
-                item.proteinPercent?.toDouble()?.rounded(),
-                "%",
-                AppIcons.Metrics.Protein,
-                MetricKey.PROTEIN,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.SKELETAL_MUSCLE, useShort),
-                item.skeletalMusclePercent?.toDouble()?.rounded(),
-                "%",
-                AppIcons.Metrics.MuscleMass,
-                MetricKey.SKELETAL_MUSCLE,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.BMR, useShort),
-                item.bmr?.toInt(),
-                "kcal",
-                AppIcons.Metrics.Bmr,
-                MetricKey.BMR,
-            ),
-            metric(
-                MetricLabels.getLabel(MetricKey.METABOLIC_AGE, useShort),
-                item.metabolicAge?.toInt(),
-                "yrs",
-                AppIcons.Metrics.MetabolicAge,
-                MetricKey.METABOLIC_AGE,
-            ),
-        )
+        return keysToUse.mapNotNull { key ->
+            when (key) {
+                DashboardKey.BMI -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.bmi,
+                    "",
+                    AppIcons.Metrics.Bmi,
+                    key,
+                )
 
-        return if (filterNulls) metrics.filter { it.value != null } else metrics
+                DashboardKey.BODY_FAT -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.bodyFat?.toDouble()?.rounded(),
+                    "%",
+                    AppIcons.Metrics.BodyFat,
+                    key,
+                )
+
+                DashboardKey.MUSCLE_MASS -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.muscleMass?.toDouble()?.rounded(),
+                    "%",
+                    AppIcons.Metrics.MuscleMass,
+                    key,
+                )
+
+                DashboardKey.BODY_WATER -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.bodyWater?.toDouble()?.rounded(),
+                    "%",
+                    AppIcons.Metrics.Water,
+                    key,
+                )
+
+                DashboardKey.HEART_RATE -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.heartRate,
+                    "bpm",
+                    AppIcons.Metrics.Pulse,
+                    key,
+                )
+
+                DashboardKey.BONE_MASS -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.boneMass?.toDouble()?.rounded(),
+                    "%",
+                    AppIcons.Metrics.BoneMass,
+                    key,
+                )
+
+                DashboardKey.VISCERAL_FAT -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.visceralFatLevel,
+                    "Level",
+                    AppIcons.Metrics.VisceralFat,
+                    key,
+                )
+
+                DashboardKey.SUBCUTANEOUS_FAT -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.subcutaneousFatPercent?.toDouble()?.rounded(),
+                    "%",
+                    AppIcons.Metrics.SubcutaneousFat,
+                    key,
+                )
+
+                DashboardKey.PROTEIN -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.proteinPercent?.toDouble()?.rounded(),
+                    "%",
+                    AppIcons.Metrics.Protein,
+                    key,
+                )
+
+                DashboardKey.SKELETAL_MUSCLE -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.skeletalMusclePercent?.toDouble()?.rounded(),
+                    "%",
+                    AppIcons.Metrics.MuscleMass,
+                    key,
+                )
+
+                DashboardKey.BMR -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.bmr?.toInt(),
+                    "kcal",
+                    AppIcons.Metrics.Bmr,
+                    key,
+                )
+
+                DashboardKey.METABOLIC_AGE -> stat(
+                    MetricLabels.getLabel(key, useShort),
+                    item.metabolicAge?.toInt(),
+                    "yrs",
+                    AppIcons.Metrics.MetabolicAge,
+                    key,
+                )
+
+                else -> null
+            }
+        }.let { metrics ->
+            if (filterNulls) metrics.filter { it.value != null } else metrics.map { it.copy(icon = null) }
+        }
     }
 
-    fun metric(label: String, value: Number?, unit: String, icon: Int, metricKey: MetricKey): Metric {
+    fun getMilestone(): List<Stat> {
+        return listOf(
+            Stat(
+                label = DashboardStatsStrings.CurrentStreak,
+                value = "1 day",
+                icon = AppIcons.Milestone.Bolt,
+                key = DashboardKey.CURRENT_STREAK,
+            ),
+            Stat(
+                label = DashboardStatsStrings.LongestStreak,
+                value = "1 day",
+                icon = AppIcons.Milestone.Streak,
+                key = DashboardKey.LONGEST_STREAK,
+            ),
+            Stat(
+                label = DashboardStatsStrings.LbsPerWeek,
+                value = "!",
+                key = DashboardKey.PER_WEEK,
+            ),
+            Stat(
+                label = DashboardStatsStrings.LbsPerMonth,
+                value = "!",
+                key = DashboardKey.PER_MONTH,
+            ),
+            Stat(
+                label = DashboardStatsStrings.LbsPerYear,
+                value = "1",
+                key = DashboardKey.PER_YEAR,
+            ),
+            Stat(
+                label = DashboardStatsStrings.LbsTotal,
+                value = "1",
+                key = DashboardKey.TOTAL_CHANGE,
+            ),
+        )
+    }
+
+    fun stat(label: String, value: Number?, unit: String, icon: Int, dashboardKey: DashboardKey): Stat {
         val calculatedValue = if (value == null || value == 0.0 || value == 0) null else value
-        return Metric(
+        return Stat(
             label = label,
             value = calculatedValue?.toString(),
             unit = unit,

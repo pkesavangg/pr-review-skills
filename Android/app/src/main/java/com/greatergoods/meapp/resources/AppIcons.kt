@@ -58,4 +58,9 @@ object AppIcons {
         val VisceralFat = R.drawable.ic_visceral_fat
         val BoneMass = R.drawable.ic_bone_mass
     }
+
+    object Milestone {
+        val Streak = R.drawable.streak
+        val Bolt = R.drawable.bolt
+    }
 }

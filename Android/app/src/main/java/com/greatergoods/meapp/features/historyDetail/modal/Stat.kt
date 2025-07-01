@@ -2,10 +2,10 @@ package com.greatergoods.meapp.features.historyDetail.modal
 
 import com.greatergoods.meapp.features.common.enums.MetricKey
 
-data class Metric(
+data class Stat(
     val label: String,
     val value: String?,
-    val unit: String,
-    val icon: Int,
-    val key: MetricKey
+    val unit: String = "",
+    val icon: Int? = null,
+    val key: DashboardKey
 )
