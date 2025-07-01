@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.common.viewmodel
 import androidx.lifecycle.ViewModel
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.shared.utilities.browser.ICustomTabManager
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

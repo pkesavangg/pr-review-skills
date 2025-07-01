@@ -17,7 +17,6 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -36,6 +35,7 @@ constructor(
     private val appNavigationService: IAppNavigationService,
     private val tokenManager: ITokenManager,
     private val accountService: IAccountService,
+    private val dialogUtility: IDialogUtility
 ) : BaseIntentViewModel<AppState, AppIntent>(
     reducer = AppReducer(),
 ) {
