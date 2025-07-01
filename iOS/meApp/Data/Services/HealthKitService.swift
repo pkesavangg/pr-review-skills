@@ -251,8 +251,13 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 if !approvedPermissions.isEmpty {
                     let storedIntegrationData = try await integrationService.getStoredIntegrationData()
                     if storedIntegrationData == nil {
-                        kvStore.setValue(true, forKey: scopedFinishKey)
-                        return .finishAdding
+                        // Ensure no other account on this device is already integrated with Apple Health
+                        let isUsedByAnotherAccount = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
+                        if !isUsedByAnotherAccount {
+                            // Another account is already integrated; skip showing the Finish Adding prompt
+                            kvStore.setValue(true, forKey: scopedFinishKey)
+                            return .finishAdding
+                        }
                     }
                 }
             }
@@ -271,8 +276,12 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 if isHealthKitOn {
                     let storedIntegrationData = try await integrationService.getStoredIntegrationData()
                     if storedIntegrationData == nil {
-                        kvStore.setValue(true, forKey: scopedAddKey)
-                        return .addIntegration
+                        let isUsedByAnotherAccount = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
+                        if !isUsedByAnotherAccount {
+                            // Another account is already integrated; skip showing the Add Integration prompt
+                            kvStore.setValue(true, forKey: scopedAddKey)
+                            return .addIntegration
+                        }
                     }
                 }
             }

@@ -201,7 +201,7 @@ final class HealthKitStore: ObservableObject {
     /// Performs the actual sync and shows success toast.
     private func performFullSync() {
         Task {
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
             do {
                 try await healthKitService.syncAllData()
                 notificationService.dismissLoader()
