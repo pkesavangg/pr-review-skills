@@ -31,7 +31,6 @@ constructor(
     init {
         handleIntent(DashboardIntent.LoadEntries)
         loadEntries()
-        observeAuthEvent()
     }
 
     override fun provideInitialState(): DashboardState = DashboardState()
@@ -39,28 +38,6 @@ constructor(
     /**
      * Observes authentication state changes and shows toast for account switches.
      */
-    private fun observeAuthEvent() {
-        viewModelScope.launch {
-            appNavigationService.authEvent.collect { authState ->
-                when (authState) {
-                    is AuthState.AccountSwitched -> {
-                        if (authState.showToast) {
-                            val accountName = authState.account.firstName
-                            dialogQueueService.showToast(
-                                Toast(
-                                    title = null,
-                                    message = ToastStrings.Success.AccountSwitchSuccess.Message(accountName),
-                                    action = null,
-                                ),
-                            )
-                        }
-                    }
-
-                    else -> {}
-                }
-            }
-        }
-    }
 
     /**
      * Loads entries and updates the state accordingly.

@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import android.util.Log
 
 /**
  * ViewModel for the entry feature, managing state and handling entry intents.
@@ -42,6 +43,13 @@ constructor(
             is EntryIntent.Save -> {
                 saveEntry()
             }
+        }
+    }
+
+    init {
+        _state.value.form.forms.weightDateTime.controls.weight.onValueChangeListener { new, old ->
+            Log.d("weight changed detection", "new: $new, old: $old")
+            _state.value.form.forms.generalMetrics.controls.bodyMassIndex.onValueChange(old)
         }
     }
 

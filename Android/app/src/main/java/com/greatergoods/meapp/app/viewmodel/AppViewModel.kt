@@ -13,7 +13,9 @@ import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.strings.ToastStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -101,6 +103,16 @@ constructor(
                     }
 
                     is AuthState.AccountSwitched -> {
+                        if (authState.showToast) {
+                            val accountName = authState.account.firstName
+                            dialogQueueService.showToast(
+                                Toast(
+                                    title = null,
+                                    message = ToastStrings.Success.AccountSwitchSuccess.Message(accountName),
+                                    action = null,
+                                ),
+                            )
+                        }
                         initLoadingData(authState.account)
                     }
 
@@ -163,6 +175,7 @@ constructor(
             val isLoginStatusChecked = checkLoginStatus()
             if (account != null && isLoginStatusChecked) {
                 entryService.updateAccountId(account.id)
+
                 deviceInfoService.updateDeviceInfo()
                 navigationService.autoLogin()
             } else {
