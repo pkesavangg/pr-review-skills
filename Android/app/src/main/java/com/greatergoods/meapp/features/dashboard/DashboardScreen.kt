@@ -4,7 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -21,11 +23,12 @@ import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.dashboard.components.DashboardMetrics
+import com.greatergoods.meapp.features.dashboard.components.DashboardStats
 import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardIntent
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
-import com.greatergoods.meapp.features.historyDetail.modal.Metric
+import com.greatergoods.meapp.features.historyDetail.modal.Stat
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -59,18 +62,36 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
     var metricData: List<PeriodBodyScaleSummary> by remember {
         mutableStateOf(listOf())
     }
-    var selectedMetric: Metric? by remember {
+    var selectedStat: Stat? by remember {
         mutableStateOf(null)
     }
     AppScaffold(title = null) {
 
         Column(modifier = Modifier.verticalScroll(scrollState)) {
-            HistoryGraph(state, selectedMetric) {
+            HistoryGraph(state, selectedStat) {
                 metricData = it
             }
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            DashboardMetrics(metricData = metricData, selectedMetric = selectedMetric) {
-                selectedMetric = it
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MeTheme.spacing.md),
+            ){
+                DashboardMetrics(
+                    metricData = metricData,
+                    visibleKeys = state.visibleKeys,
+                    selectedStat = selectedStat,
+                ) {
+                    selectedStat = it
+                }
+                DashboardStats(
+                    "",
+                    goalProgress = 50f,
+                    startWeight = "",
+                    goalWeight = "",
+                    lbsToGoalLabel = "",
+                    modifier = Modifier,
+                )
             }
         }
     }

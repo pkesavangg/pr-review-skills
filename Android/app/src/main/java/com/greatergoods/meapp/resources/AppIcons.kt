@@ -66,4 +66,8 @@ object AppIcons {
         val Wifi = R.drawable.ic_wifi
         val BluetoothWifi = R.drawable.ic_bluetooth_wifi
     }
+    object Milestone {
+        val Streak = R.drawable.streak
+        val Bolt = R.drawable.bolt
+    }
 }
