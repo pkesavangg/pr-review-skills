@@ -21,7 +21,7 @@ interface IAccountRepository {
     /**
      * Logs in via API and returns LoginResponse.
      */
-    suspend fun loginInAPI(
+    suspend fun login(
         email: String,
         password: String,
     ): LoginResponse
@@ -36,7 +36,7 @@ interface IAccountRepository {
      * @param fcmToken Optional FCM token to unregister
      * @param accountId The account ID to logout
      */
-    suspend fun logoutInAPI(
+    suspend fun logout(
         fcmToken: String?,
         accountId: String,
     )
@@ -51,12 +51,12 @@ interface IAccountRepository {
      * @param accountId The account ID to get info for
      * @return AccountInfo for the specified account
      */
-    suspend fun getAccountInAPI(accountId: String): AccountInfo
+    suspend fun getAccount(accountId: String): AccountInfo
 
     /**
      * Updates password via API and returns true if successful.
      */
-    suspend fun updatePasswordInAPI(
+    suspend fun updatePassword(
         oldPassword: String,
         newPassword: String,
     ): ChangePasswordResponse
@@ -64,12 +64,12 @@ interface IAccountRepository {
     /**
      * Requests password reset via API and returns true if successful.
      */
-    suspend fun resetPasswordInAPI(email: String): Response<Unit>
+    suspend fun resetPassword(email: String): Response<Unit>
 
     /**
      * Updates profile via API and returns AccountResponse
      */
-    suspend fun updateProfileInAPI(profileData: ProfileUpdateRequest): AccountResponse
+    suspend fun updateProfile(profileData: ProfileUpdateRequest): AccountResponse
 
     /**
      * Refreshes the token via API and returns a Token.
@@ -77,7 +77,7 @@ interface IAccountRepository {
      * @param accountId The account ID to associate with the refreshed token (optional)
      * @return Token object with refreshed tokens
      */
-    suspend fun refreshTokenInAPI(
+    suspend fun refreshToken(
         refreshToken: String,
         accountId: String? = null,
     ): Token

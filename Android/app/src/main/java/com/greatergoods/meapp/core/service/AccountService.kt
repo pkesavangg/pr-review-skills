@@ -77,9 +77,59 @@ class AccountService
         override val hasReachedMaxAccounts: Flow<Boolean> =
             loggedInAccountsFlow.map { it.size >= MAX_ACCOUNTS }
 
+        /**
+         * Gets the current active account.
+         * @return The active account or null if none
+         */
+        override suspend fun getCurrentAccount(): Account? = activeAccountFlow.first()
+
+        /**
+         * Gets the list of all logged-in accounts, with the active account first.
+         * @return List of accounts
+         */
+        override suspend fun getLoggedInAccounts(): List<Account> = loggedInAccountsFlow.first().sortedActiveFirst()
+
         // endregion
 
-        // region Public Functions (Alphabetical Order)
+        // region Public Functions
+
+        /**
+         * Logs in a user with email and password.
+         * @param email User's email
+         * @param password User's password
+         * @return The authenticated account or null if login fails
+         */
+        override suspend fun login(
+            email: String,
+            password: String,
+        ): Account? =
+            try {
+                val isExistingAccount = getLoggedInAccounts().any { it.email == email }
+                if (hasReachedMaxAccounts.first() && !isExistingAccount) {
+                    throw MaxAccountsReachedException()
+                }
+                val loginResponse = accountRepository.login(email, password)
+                val savedAccount = addAccount(loginResponse)
+                appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
+                savedAccount
+            } catch (e: HttpException) {
+                val header = ToastStrings.Error.LoginError.Header
+                val msg =
+                    when (e.code()) {
+                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
+                            ToastStrings.Error.LoginError.MessageNoConn
+
+                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
+                            ToastStrings.Error.LoginError.MessageServError
+
+                        HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
+                        else -> ToastStrings.Error.LoginError.MessageGeneric
+                    }
+                showErrorToast(header, msg)
+                AppLog.e(TAG, "Login failed", e.toString())
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
+                null
+            }
 
         /**
          * Adds a new account.
@@ -121,6 +171,38 @@ class AccountService
         }
 
         /**
+         * Resets the password for the given email address.
+         * @param email The email address to reset the password for
+         */
+        override suspend fun resetPassword(email: String) {
+            try {
+                val response = this.accountRepository.resetPassword(email)
+                if (response.isSuccessful) {
+                    AppLog.d(TAG, "Successfully reset password")
+                    showSuccessToast(
+                        ToastStrings.Success.ResetPasswordSuccess.Header,
+                        ToastStrings.Success.ResetPasswordSuccess.Message(email),
+                    )
+                } else {
+                    AppLog.e(
+                        TAG,
+                        "Failed to reset password: ${response.code()} - ${response.message()}",
+                    )
+                    showErrorToast(
+                        ToastStrings.Error.ResetPasswordError.Header,
+                        ToastStrings.Error.ResetPasswordError.Message,
+                    )
+                }
+            } catch (e: HttpException) {
+                AppLog.e(TAG, "Failed to reset password", e.toString())
+                showErrorToast(
+                    ToastStrings.Error.ResetPasswordError.Header,
+                    ToastStrings.Error.ResetPasswordError.Message,
+                )
+            }
+        }
+
+        /**
          * Changes the password for the current account.
          * @param currentPassword The current password
          * @param newPassword The new password to set
@@ -132,8 +214,8 @@ class AccountService
         ): Boolean {
             return try {
                 getCurrentAccount() ?: return false
-                val response = accountRepository.updatePasswordInAPI(currentPassword, newPassword)
-                tokenManager.setTokens(
+                val response = accountRepository.updatePassword(currentPassword, newPassword)
+                setTokensForAccount(
                     Token(
                         accountId = activeAccountFlow.first()?.id ?: "",
                         accessToken = response.accessToken,
@@ -174,301 +256,6 @@ class AccountService
         }
 
         /**
-         * Checks login status for the active account by calling getAccount API.
-         * Updates the account data in DB with the response and refreshes tokens if needed.
-         * @return true if account is still valid, false if expired
-         */
-        override suspend fun checkLoginStatusForActiveAccount(): Boolean {
-            return try {
-                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-                val activeAccount = getCurrentAccount()
-                if (activeAccount == null) {
-                    AppLog.d(TAG, "No active account found")
-                    return false
-                }
-                AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
-                val accountInfo = accountRepository.getAccountInAPI(activeAccount.id)
-                // Update account data with API response
-                accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
-                val weightlessSetting =
-                    WeightlessSettingsEntity(
-                        accountId = accountInfo.id,
-                        isWeightlessOn = accountInfo.isWeightlessOn,
-                        weightlessTimestamp = accountInfo.weightlessTimestamp,
-                        weightlessWeight = accountInfo.weightlessWeight,
-                        isSynced = true,
-                    )
-                userSettingsRepository.updateWeightlessInDB(weightlessSetting)
-                AppLog.d(TAG, "Active account login status check successful")
-                true
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Active account login status check failed", e.toString())
-                false
-            }
-        }
-
-        /**
-         * Checks login status for all logged-in accounts (non-active) by calling getAccount API.
-         * Updates account data in DB with responses and refreshes tokens if needed.
-         * For expired accounts, marks them as expired and clears tokens.
-         * @return true if all accounts are valid, false if any account is expired
-         */
-        override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean {
-            return try {
-                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-                val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
-                if (loggedInAccounts.isEmpty()) {
-                    AppLog.d(TAG, "No non-active logged-in accounts found")
-                    return true
-                }
-                for (account in loggedInAccounts) {
-                    try {
-                        AppLog.d(TAG, "Checking login status for account: ${account.id}")
-                        updateUserTokens(account.id)
-                        val accountInfo = accountRepository.getAccountInAPI(account.id)
-                        // Update account data with API response
-                        accountRepository.updateAccountFromAPI(account.id, accountInfo)
-                        AppLog.d(TAG, "Account ${account.id} login status check successful")
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "Account ${account.id} login status check failed", e.toString())
-                        // Mark account as expired in database
-                        accountRepository.markAccountExpired(account.id)
-                        // Clear tokens for this account
-                        userDataStore.removeAccount(account.id)
-                    }
-                }
-                AppLog.d(TAG, "Logged-in accounts status check completed.")
-                true
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Logged-in accounts status check failed", e.toString())
-                false
-            }
-        }
-
-        /**
-         * Gets the current active account.
-         * @return The active account or null if none
-         */
-        override suspend fun getCurrentAccount(): Account? = activeAccountFlow.first()
-
-        /**
-         * Gets the list of all logged-in accounts, with the active account first.
-         * @return List of accounts
-         */
-        override suspend fun getLoggedInAccounts(): List<Account> = loggedInAccountsFlow.first().sortedActiveFirst()
-
-        /**
-         * Handles unauthorized logout when token refresh fails.
-         * Marks account as expired, removes from storage, and triggers unauthorized logout event.
-         * @param accountId The ID of the account to logout
-         * @return The affected account or null if not found
-         */
-        override suspend fun handleUnauthorizedLogout(accountId: String?): Account? {
-            if (accountId.isNullOrEmpty()) {
-                AppLog.w(TAG, "No account ID available for unauthorized logout")
-                return null
-            }
-
-            return try {
-                AppLog.d(TAG, "Handling unauthorized logout for account: $accountId")
-                val account = getCurrentAccount()
-                return if (account?.isActiveAccount == true && accountId == account.id) {
-                    // Mark account as expired in database
-                    accountRepository.markAccountExpired(accountId)
-
-                    // Clear account tokens from DataStore
-                    userDataStore.clearAccountTokens(accountId)
-
-                    AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
-                    account
-                } else {
-                    null
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error during unauthorized logout for account: $accountId", e.toString())
-                null
-            }
-        }
-
-        /**
-         * Logs in a user with email and password.
-         * @param email User's email
-         * @param password User's password
-         * @return The authenticated account or null if login fails
-         */
-        override suspend fun login(
-            email: String,
-            password: String,
-        ): Account? =
-            try {
-                val isExistingAccount = getLoggedInAccounts().any { it.email == email }
-                if (hasReachedMaxAccounts.first() && !isExistingAccount) {
-                    throw MaxAccountsReachedException()
-                }
-                val loginResponse = accountRepository.loginInAPI(email, password)
-                val savedAccount = addAccount(loginResponse)
-                appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
-                savedAccount
-            } catch (e: HttpException) {
-                val header = ToastStrings.Error.LoginError.Header
-                val msg =
-                    when (e.code()) {
-                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
-                            ToastStrings.Error.LoginError.MessageNoConn
-
-                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
-                            ToastStrings.Error.LoginError.MessageServError
-
-                        HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
-                        else -> ToastStrings.Error.LoginError.MessageGeneric
-                    }
-                showErrorToast(header, msg)
-                AppLog.e(TAG, "Login failed", e.toString())
-                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
-                null
-            }
-
-        /**
-         * Logs out the current user.
-         * @param accountId ID of the account to log out
-         * @param fcmToken FCM token for push notifications (optional)
-         * @return true if logout was successful
-         */
-        override suspend fun logout(
-            accountId: String,
-            fcmToken: String?,
-        ): Boolean =
-            try {
-                val isActiveAccount = getCurrentAccount()?.id == accountId
-                // Try to logout on API if network is available
-                if (isNetworkAvailable()) {
-                    try {
-                        accountRepository.logoutInAPI(fcmToken ?: "", accountId)
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "API logout failed", e.toString())
-                        // Continue with local logout even if API fails
-                    }
-                }
-                // Always perform local logout regardless of network status
-                if (isActiveAccount) {
-                    accountRepository.deactivateAllAccountsInDB()
-                }
-
-                // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
-                accountRepository.logoutInDb(accountId)
-
-                // Clear tokens from DataStore and TokenManager
-                userDataStore.clearAccountTokens(accountId)
-                tokenManager.clearTokens()
-
-                AppLog.d(TAG, "Logout successful")
-                appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
-                true
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Logout failed", e.toString())
-                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
-                false
-            }
-
-        /**
-         * Logs out all users.
-         * @return true if all accounts were logged out successfully
-         */
-        override suspend fun logoutAll(): Boolean =
-            try {
-                val loggedInAccounts = loggedInAccountsFlow.first()
-
-                // Sort accounts to handle active account last
-                val sortedAccounts =
-                    loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
-
-                for (account in sortedAccounts) {
-                    try {
-                        // Try to logout on API if network is available
-                        if (isNetworkAvailable()) {
-                            try {
-                                accountRepository.logoutInAPI(account.fcmToken ?: "", account.id)
-                            } catch (e: Exception) {
-                                AppLog.e(
-                                    TAG,
-                                    "API logout failed for account ${account.id}",
-                                    e.toString(),
-                                )
-                                // Continue with local logout even if API fails
-                            }
-                        }
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "Failed to logout account ${account.id}", e.toString())
-                    }
-                }
-                // Clear all accounts from database
-                accountRepository.logoutAllAccountsInDb()
-                // Clear tokens
-                tokenManager.clearTokens()
-                AppLog.d(TAG, "All accounts logged out successfully")
-                appNavigationService.emitAuthEvent(AuthState.LoggedOut(true))
-                true
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Logout all failed", e.toString())
-                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
-                false
-            }
-
-        /**
-         * Resets the password for the given email address.
-         * @param email The email address to reset the password for
-         */
-        override suspend fun resetPassword(email: String) {
-            try {
-                val response = this.accountRepository.resetPasswordInAPI(email)
-                if (response.isSuccessful) {
-                    AppLog.d(TAG, "Successfully reset password")
-                    showSuccessToast(
-                        ToastStrings.Success.ResetPasswordSuccess.Header,
-                        ToastStrings.Success.ResetPasswordSuccess.Message(email),
-                    )
-                } else {
-                    AppLog.e(
-                        TAG,
-                        "Failed to reset password: ${response.code()} - ${response.message()}",
-                    )
-                    showErrorToast(
-                        ToastStrings.Error.ResetPasswordError.Header,
-                        ToastStrings.Error.ResetPasswordError.Message,
-                    )
-                }
-            } catch (e: HttpException) {
-                AppLog.e(TAG, "Failed to reset password", e.toString())
-                showErrorToast(
-                    ToastStrings.Error.ResetPasswordError.Header,
-                    ToastStrings.Error.ResetPasswordError.Message,
-                )
-            }
-        }
-
-        /**
-         * Switches to a different account.
-         * @param account Account to switch to
-         * @param showToast Whether to show a toast notification after switching (default: false)
-         * @return true if switch was successful
-         */
-        override suspend fun switchAccount(
-            account: Account,
-            showToast: Boolean,
-        ): Boolean =
-            try {
-                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-                updateUserTokens(account.id)
-                AppLog.d(TAG, "Successfully switched to account: ${account.email}")
-                appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
-                true
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Failed to switch account", e.toString())
-                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
-                false
-            }
-
-        /**
          * Updates the user's profile information with offline support.
          * If online, calls API and marks as synced. If offline, stores locally with isSynced = false.
          * Follows the same pattern as Angular account.service.ts updateProfile method.
@@ -483,7 +270,7 @@ class AccountService
                     return null
                 }
                 // Call API to update profile
-                val response = accountRepository.updateProfileInAPI(profileUpdateRequest)
+                val response = accountRepository.updateProfile(profileUpdateRequest)
                 val updatedAccountInfo: AccountInfo = response.account
                 val savedAccount =
                     updateProfileInDB(
@@ -527,6 +314,219 @@ class AccountService
                 throw e
             }
         }
+
+        /**
+         * Checks login status for the active account by calling getAccount API.
+         * Updates the account data in DB with the response and refreshes tokens if needed.
+         * @return true if account is still valid, false if expired
+         */
+        override suspend fun checkLoginStatusForActiveAccount(): Boolean {
+            return try {
+                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+                val activeAccount = getCurrentAccount()
+                if (activeAccount == null) {
+                    AppLog.d(TAG, "No active account found")
+                    return false
+                }
+                AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
+                val accountInfo = accountRepository.getAccount(activeAccount.id)
+                // Update account data with API response
+                accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
+                val weightlessSetting =
+                    WeightlessSettingsEntity(
+                        accountId = accountInfo.id,
+                        isWeightlessOn = accountInfo.isWeightlessOn,
+                        weightlessTimestamp = accountInfo.weightlessTimestamp,
+                        weightlessWeight = accountInfo.weightlessWeight,
+                        isSynced = true,
+                    )
+                userSettingsRepository.updateWeightlessInDB(weightlessSetting)
+                AppLog.d(TAG, "Active account login status check successful")
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Active account login status check failed", e.toString())
+                false
+            }
+        }
+
+        /**
+         * Checks login status for all logged-in accounts (non-active) by calling getAccount API.
+         * Updates account data in DB with responses and refreshes tokens if needed.
+         * For expired accounts, marks them as expired and clears tokens.
+         * @return true if all accounts are valid, false if any account is expired
+         */
+        override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean {
+            return try {
+                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+                val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
+                if (loggedInAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No non-active logged-in accounts found")
+                    return true
+                }
+                for (account in loggedInAccounts) {
+                    try {
+                        AppLog.d(TAG, "Checking login status for account: ${account.id}")
+                        updateUserTokens(account.id)
+                        val accountInfo = accountRepository.getAccount(account.id)
+                        // Update account data with API response
+                        accountRepository.updateAccountFromAPI(account.id, accountInfo)
+                        AppLog.d(TAG, "Account ${account.id} login status check successful")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Account ${account.id} login status check failed", e.toString())
+                        // Mark account as expired in database
+                        accountRepository.markAccountExpired(account.id)
+                        // Clear tokens for this account
+                        userDataStore.removeAccount(account.id)
+                    }
+                }
+                AppLog.d(TAG, "Logged-in accounts status check completed.")
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Logged-in accounts status check failed", e.toString())
+                false
+            }
+        }
+
+        /**
+         * Handles unauthorized logout when token refresh fails.
+         * Marks account as expired, removes from storage, and triggers unauthorized logout event.
+         * @param accountId The ID of the account to logout
+         * @return The affected account or null if not found
+         */
+        override suspend fun handleUnauthorizedLogout(accountId: String?): Account? {
+            if (accountId.isNullOrEmpty()) {
+                AppLog.w(TAG, "No account ID available for unauthorized logout")
+                return null
+            }
+
+            return try {
+                AppLog.d(TAG, "Handling unauthorized logout for account: $accountId")
+                val account = getCurrentAccount()
+                return if (account?.isActiveAccount == true && accountId == account.id) {
+                    // Mark account as expired in database
+                    accountRepository.markAccountExpired(accountId)
+
+                    // Clear account tokens from DataStore
+                    userDataStore.clearAccountTokens(accountId)
+
+                    AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
+                    account
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error during unauthorized logout for account: $accountId", e.toString())
+                null
+            }
+        }
+
+        /**
+         * Logs out the current user.
+         * @param accountId ID of the account to log out
+         * @param fcmToken FCM token for push notifications (optional)
+         * @return true if logout was successful
+         */
+        override suspend fun logout(
+            accountId: String,
+            fcmToken: String?,
+        ): Boolean =
+            try {
+                val isActiveAccount = getCurrentAccount()?.id == accountId
+                // Try to logout on API if network is available
+                if (isNetworkAvailable()) {
+                    try {
+                        accountRepository.logout(fcmToken ?: "", accountId)
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "API logout failed", e.toString())
+                        // Continue with local logout even if API fails
+                    }
+                }
+                // Always perform local logout regardless of network status
+                if (isActiveAccount) {
+                    accountRepository.deactivateAllAccountsInDB()
+                }
+
+                // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
+                accountRepository.logoutInDb(accountId)
+
+                // Clear tokens from DataStore and TokenManager
+                userDataStore.clearAccountTokens(accountId)
+                tokenManager.clearTokens()
+
+                AppLog.d(TAG, "Logout successful")
+                appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Logout failed", e.toString())
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
+                false
+            }
+
+        /**
+         * Logs out all users.
+         * @return true if all accounts were logged out successfully
+         */
+        override suspend fun logoutAll(): Boolean =
+            try {
+                val loggedInAccounts = loggedInAccountsFlow.first()
+
+                // Sort accounts to handle active account last
+                val sortedAccounts =
+                    loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
+
+                for (account in sortedAccounts) {
+                    try {
+                        // Try to logout on API if network is available
+                        if (isNetworkAvailable()) {
+                            try {
+                                accountRepository.logout(account.fcmToken ?: "", account.id)
+                            } catch (e: Exception) {
+                                AppLog.e(
+                                    TAG,
+                                    "API logout failed for account ${account.id}",
+                                    e.toString(),
+                                )
+                                // Continue with local logout even if API fails
+                            }
+                        }
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Failed to logout account ${account.id}", e.toString())
+                    }
+                }
+                // Clear all accounts from database
+                accountRepository.logoutAllAccountsInDb()
+                // Clear tokens
+                tokenManager.clearTokens()
+                AppLog.d(TAG, "All accounts logged out successfully")
+                appNavigationService.emitAuthEvent(AuthState.LoggedOut(true))
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Logout all failed", e.toString())
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
+                false
+            }
+
+        /**
+         * Switches to a different account.
+         * @param account Account to switch to
+         * @param showToast Whether to show a toast notification after switching (default: false)
+         * @return true if switch was successful
+         */
+        override suspend fun switchAccount(
+            account: Account,
+            showToast: Boolean,
+        ): Boolean =
+            try {
+                requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+                updateUserTokens(account.id)
+                AppLog.d(TAG, "Successfully switched to account: ${account.email}")
+                appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to switch account", e.toString())
+                appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
+                false
+            }
 
         /**
          * Updates the user's profile information in the local database only.
@@ -592,16 +592,16 @@ class AccountService
             accountRepository.deactivateOtherAccountsInDB(accountId)
             userDataStore.setActiveAccount(accountId)
             accountRepository.updateLastActiveTimeInDB(accountId)
-            tokens?.let { tokenManager.setTokens(it) }
+            tokens?.let { setTokensForAccount(it) }
         }
 
         /**
          * Helper to set tokens for a non-active account (used for background API calls).
-         * @param accountId The account ID
+         // * @param accountId The account ID
          * @param tokens The tokens to set (if not null)
          */
         private suspend fun setTokensForAccount(
-            accountId: String,
+            // accountId: String,
             tokens: Token?,
         ) {
             tokens?.let { tokenManager.setTokens(it) }

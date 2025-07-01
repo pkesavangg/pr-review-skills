@@ -56,7 +56,7 @@ class AccountRepository
         /**
          * Logs in via API and returns LoginResponse.
          */
-        override suspend fun loginInAPI(
+        override suspend fun login(
             email: String,
             password: String,
         ): LoginResponse = authAPI.login(LoginRequest(email, password))
@@ -71,7 +71,7 @@ class AccountRepository
          * @param fcmToken Optional FCM token to unregister
          * @param accountId The account ID to logout
          */
-        override suspend fun logoutInAPI(
+        override suspend fun logout(
             fcmToken: String?,
             accountId: String,
         ) {
@@ -90,12 +90,12 @@ class AccountRepository
          * @param accountId The account ID to get info for
          * @return AccountInfo for the specified account
          */
-        override suspend fun getAccountInAPI(accountId: String): AccountInfo = authAPI.getAccountWithToken(accountId)
+        override suspend fun getAccount(accountId: String): AccountInfo = authAPI.getAccountWithToken(accountId)
 
         /**
          * Updates password via API and returns true if successful.
          */
-        override suspend fun updatePasswordInAPI(
+        override suspend fun updatePassword(
             oldPassword: String,
             newPassword: String,
         ): ChangePasswordResponse {
@@ -107,13 +107,13 @@ class AccountRepository
         /**
          * Requests password reset via API and returns true if successful.
          */
-        override suspend fun resetPasswordInAPI(email: String): Response<Unit> =
+        override suspend fun resetPassword(email: String): Response<Unit> =
             authAPI.requestPasswordReset(PasswordResetRequest(email))
 
         /**
          * Updates profile via API and returns AccountResponse.
          */
-        override suspend fun updateProfileInAPI(profileData: ProfileUpdateRequest): AccountResponse =
+        override suspend fun updateProfile(profileData: ProfileUpdateRequest): AccountResponse =
             userAPI.updateProfile(profileData)
 
         // DB Operations
@@ -297,7 +297,7 @@ class AccountRepository
          * @param accountId The account ID to associate with the refreshed token
          * @return Token object with refreshed tokens
          */
-        override suspend fun refreshTokenInAPI(
+        override suspend fun refreshToken(
             refreshToken: String,
             accountId: String?,
         ): Token {
