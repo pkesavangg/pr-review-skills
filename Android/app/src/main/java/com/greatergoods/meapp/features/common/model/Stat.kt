@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.features.common.model
 
-import com.greatergoods.meapp.features.common.helper.DashboardKey
+import com.greatergoods.meapp.proto.DashboardKey
 
 data class Stat(
     val label: String,

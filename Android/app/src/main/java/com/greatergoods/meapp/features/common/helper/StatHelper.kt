@@ -8,8 +8,10 @@ import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.strings.MetricLabels
 import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
+import com.greatergoods.meapp.proto.DashboardKey
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
+import kotlin.collections.filter
 import kotlin.math.roundToInt
 
 /**
@@ -232,26 +234,3 @@ internal object StatMeta {
         val icon: Int? = null,
     )
 }
-
-enum class DashboardKey {
-    BMI,
-    BODY_FAT,
-    MUSCLE_MASS,
-    BODY_WATER,
-    HEART_RATE,
-    BONE_MASS,
-    VISCERAL_FAT,
-    SUBCUTANEOUS_FAT,
-    PROTEIN,
-    SKELETAL_MUSCLE,
-    BMR,
-    METABOLIC_AGE,
-    CURRENT_STREAK,
-    LONGEST_STREAK,
-    PER_WEEK,
-    PER_MONTH,
-    PER_YEAR,
-    TOTAL_CHANGE,
-    TO_GOAL
-}
-
