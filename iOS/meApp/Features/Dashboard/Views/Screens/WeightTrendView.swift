@@ -14,20 +14,28 @@ struct WeightTrendView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                VStack(alignment: .leading) {
-                    
-                    WeightDisplayView(
-                        weightText: String(format: "%05.1f", graphStore.selectedEntry?.weight ?? graphStore.displayWeight ?? 0),
-                        unitText: "lbs"
-                    )
-                    
-                    if let label = graphStore.weightLabel {
-                        Text(label)
+                HStack{
+                    VStack(alignment: .leading, spacing: .zero ) {
+                        Text("\(graphStore.selectedPeriod.rawValue) average")
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.textSubheading)
-                            .padding(.leading, 16)
-                            .padding(.top, 10)
+                            .padding(.leading, .spacingSM)
+                        
+                        WeightDisplayView(
+                            weightText: String(format: "%05.1f", graphStore.selectedEntry?.weight ?? graphStore.displayWeight ?? 0),
+                            unitText: "lbs"
+                        )
+                        
+                        if let label = graphStore.weightLabel {
+                            Text(label)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundColor(theme.textSubheading)
+                                .padding(.leading, .spacingSM)
+                                .padding(.top, .spacingXS)
+                        }
                     }
+                    
+                    Spacer()
                 }
                 .padding(.bottom, 8)
                 
@@ -42,9 +50,11 @@ struct WeightTrendView: View {
                         set: { graphStore.updateSelectedPeriod($0) }
                     )
                 )
+                .padding(.bottom, .spacingSM)
                 .padding(.top, 18)
                 .padding(.horizontal, 15)
             }
+            .padding(.top, .spacingLG)
             .background(theme.textInverse)
             .edgesIgnoringSafeArea(.all)
             .zIndex(1)
