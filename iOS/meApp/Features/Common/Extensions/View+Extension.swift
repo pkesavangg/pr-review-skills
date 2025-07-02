@@ -209,12 +209,16 @@ extension View {
     func editModeOverlay(
         isEditMode: Bool,
         isRemoved: Bool,
-        onToggleRemoval: @escaping () -> Void
+        onToggleRemoval: @escaping () -> Void,
+        isBeingDragged: Bool = false,
+        isDropTarget: Bool = false
     ) -> some View {
         modifier(EditModeOverlay(
             isEditMode: isEditMode,
             isRemoved: isRemoved,
-            onToggleRemoval: onToggleRemoval
+            onToggleRemoval: onToggleRemoval,
+            isBeingDragged: isBeingDragged,
+            isDropTarget: isDropTarget
         ))
     }
     

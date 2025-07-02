@@ -47,6 +47,15 @@ struct DashboardStrings {
     static let lbsMonth = "lbs/month"
     static let lbsYear = "lbs/year"
     static let lbsTotal = "lbs/total"
+
+    // Goal Card/Progress strings
+    static let goalTypeLabel = "Goal Type: %@"
+    static let plus  = "+"
+    static let minus  = "-"
+    static func loseGoalWeightLabel(_ unit: String) -> String{
+        return "\(unit) to goal"
+    }
+    static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
+           return "\(unit) to \(goalWeight) \(unit) goal weight"
+       }
 }
-
-
