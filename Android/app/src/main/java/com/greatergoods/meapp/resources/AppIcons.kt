@@ -22,7 +22,9 @@ object AppIcons {
         val RightCaret = R.drawable.ic_right_caret
         val ChevronDown = R.drawable.ic_chevron_down
         val profile = R.drawable.ic_profile
+        val Exclamation = R.drawable.ic_exclamation
         val ModalNumber = R.drawable.modal_number
+        val ScalePlaceholder = R.drawable.placeholder_scale
     }
 
     object Outlined {
@@ -57,5 +59,11 @@ object AppIcons {
         val SubcutaneousFat = R.drawable.ic_subcutaneous_fat
         val VisceralFat = R.drawable.ic_visceral_fat
         val BoneMass = R.drawable.ic_bone_mass
+    }
+
+    object Connection {
+        val Bluetooth = R.drawable.ic_bluetooth
+        val Wifi = R.drawable.ic_wifi
+        val BluetoothWifi = R.drawable.ic_bluetooth_wifi
     }
 }
