@@ -45,22 +45,22 @@ struct PermissionListView: View {
     /// - Parameter setupType: The high-level scale setup variant.
     init(setupType: SetupType) {
         // Determine configuration based on setup type.
-        let config: (Set<Category>, Set<Category>, String)
+        let config: (Set<Category>, String)
         self.setupType = setupType
         switch setupType {
         case .all:
-            config = (Set(Category.allCases), [.bluetooth, .location], "") // no header; will be ignored via nil below
+            config = (Set(Category.allCases), "") // no header; will be ignored via nil below
         case .appSync:
-            config = ([.camera], [.camera], PermissionsStrings.cameraPermissionDescription)
+            config = ([.camera], PermissionsStrings.cameraPermissionDescription)
         case .btWifi, .bluetooth:
-            config = ([.bluetooth], [.bluetooth], PermissionsStrings.bluetoothPermissionDescription)
+            config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription)
         case .wifi:
-            config = ([.location], [.location], PermissionsStrings.locationPermissionDescription)
+            config = ([.location], PermissionsStrings.locationPermissionDescription)
         }
 
         self.categories = config.0
-        self.requiredCategories = []
-        self.headerDescription = config.2.isEmpty ? nil : config.2
+        self.requiredCategories = [] // Initialize with no required categories to avoid showing red indicators when permissions are disabled
+        self.headerDescription = config.1.isEmpty ? nil : config.1
     }
     
     // MARK: Body
