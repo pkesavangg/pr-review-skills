@@ -17,7 +17,7 @@ protocol IntegrationRepositoryProtocol {
     ///   - accountId: The account/user ID.
     ///   - type: The integration type to check.
     /// - Returns: True if available, false if conflict.
-    func checkIfIntegrationIsAlreadyUsed(accountId: String, type: IntegrationType) async throws -> Bool
+    func isIntegrationAlreadyUsed(accountId: String, type: IntegrationType) async throws -> Bool
 
     /// Clears the integration status for the given account (e.g., on account deletion).
     /// - Parameter accountId: The account/user ID.

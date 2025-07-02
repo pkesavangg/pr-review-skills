@@ -16,6 +16,7 @@ struct HKIntegrationHealthAccessView: View {
     let state: AppleHealthIntegrationState
     let commonLang = CommonStrings.self
     let lang = HKIntegrationStrings.self
+    /// Executes when the sheet should be dismissed.
     let onDismiss: (() -> Void)?
     /// Action executed when the primary button (CONNECT / FINISH / OPEN APPLE HEALTH) is tapped.
     let primaryAction: () -> Void
@@ -48,6 +49,7 @@ struct HKIntegrationHealthAccessView: View {
                     }
                 },
                 onLeadingTap: {
+                    // Trigger the passed dismiss handler so the parent can clear `activeState`.
                     onDismiss?()
                 },
                 onTrailingTap: {},
