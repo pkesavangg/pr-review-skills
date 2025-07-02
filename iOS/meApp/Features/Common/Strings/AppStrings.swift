@@ -328,6 +328,13 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
     
+    struct ConnectWifiNetwork {
+        static let title = "Are you sure you want to exit?"
+        static let message = "Wi-Fi settings will not be updated."
+        static let goBackButton = "Go Back"
+        static let exitButton = "Exit"
+    }
+    
     struct GoalExitAlert {
         static let title = "Are you sure you want to leave?"
         static let message = "You have unsaved changes. Are you sure you want to exit?"
@@ -495,5 +502,11 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+    static let streak = "streak"
+    static let longestStreak = "longestStreak"
+    static let plusCircle = "plusCircle"
+    static let minusCircle = "minusCircle"
+    static let plusCircleDark = "plusCircleDark"
+    static let minusCircleDark = "minusCircleDark"
 }
 

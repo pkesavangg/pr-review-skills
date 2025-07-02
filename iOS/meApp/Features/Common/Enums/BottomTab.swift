@@ -46,23 +46,12 @@ enum BottomTab: String, CaseIterable {
     @ViewBuilder
     var view: some View {
         switch self {
-        case .dash: DashboardView()
+        case .dash: DashboardScreen()
         case .entry: ManualEntryScreen()
         case .history: HistoryListScreen()
         case .settings: SettingsScreen()
         case .appsync: AppSyncView()
         }
-    }
-}
-
-// TODO: Test Views need to replace with actual views
-struct DashboardView: View {
-    @Environment(\.appTheme) private var theme
-    var body: some View {
-        
-        WeightTrendView()
-          
-        Spacer()
     }
 }
 

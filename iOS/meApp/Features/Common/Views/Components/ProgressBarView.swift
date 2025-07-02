@@ -18,6 +18,8 @@ struct ProgressBarView: View {
     var rightLabel: String?
     /// Optional color for the progress bar (defaults to theme.actionPrimary)
     var progressBarColor: Color?
+    /// Optional color for the label foreground (defaults to theme.actionTertiaryDisabled)
+    var labelForegroundColor: Color?
     
     var body: some View {
         VStack(spacing: 8) {
@@ -34,13 +36,13 @@ struct ProgressBarView: View {
                     if let leftLabel = leftLabel {
                         Text(leftLabel)
                             .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.actionTertiaryDisabled)
+                            .foregroundColor(labelForegroundColor ?? theme.actionTertiaryDisabled)
                     }
                     Spacer()
                     if let rightLabel = rightLabel {
                         Text(rightLabel)
                             .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.actionTertiaryDisabled)
+                            .foregroundColor(labelForegroundColor ?? theme.actionTertiaryDisabled)
                     }
                 }
             }
@@ -55,8 +57,8 @@ struct CustomProgressBar_Previews: PreviewProvider {
             ProgressBarView(progress: 0.13, leftLabel: "000", rightLabel: "000")
             ProgressBarView(progress: 0.5, leftLabel: "025", rightLabel: "100", progressBarColor: .blue)
                 .previewLayout(.sizeThatFits)
-            ProgressBarView(progress: 0.33, leftLabel: "Label Only Left", rightLabel: nil)
-            ProgressBarView(progress: 0.8, leftLabel: nil, rightLabel: "Only Right")
+            ProgressBarView(progress: 0.33, leftLabel: "Label Only Left", rightLabel: nil, labelForegroundColor: .green)
+            ProgressBarView(progress: 0.8, leftLabel: nil, rightLabel: "Only Right", labelForegroundColor: .red)
             ProgressBarView(progress: 0.5)
         }
         .previewLayout(.sizeThatFits)
