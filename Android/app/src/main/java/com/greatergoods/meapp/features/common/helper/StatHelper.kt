@@ -6,12 +6,11 @@ import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
 import com.greatergoods.meapp.features.common.helper.StatMeta.statMetaMap
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.strings.MetricLabels
-import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
+import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.proto.DashboardKey
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
-import kotlin.collections.filter
 import kotlin.math.roundToInt
 
 /**
@@ -76,34 +75,34 @@ object StatHelper {
      */
     fun getMilestone(): List<Stat> = listOf(
         Stat(
-            label = DashboardStatsStrings.CurrentStreak,
+            label = DashboardString.MileStone.CurrentStreak,
             value = "1 day",
             icon = AppIcons.Milestone.Bolt,
             key = DashboardKey.CURRENT_STREAK,
         ),
         Stat(
-            label = DashboardStatsStrings.LongestStreak,
+            label = DashboardString.MileStone.LongestStreak,
             value = "1 day",
             icon = AppIcons.Milestone.Streak,
             key = DashboardKey.LONGEST_STREAK,
         ),
         Stat(
-            label = DashboardStatsStrings.LbsPerWeek,
+            label = DashboardString.MileStone.LbsPerWeek,
             value = "!",
             key = DashboardKey.PER_WEEK,
         ),
         Stat(
-            label = DashboardStatsStrings.LbsPerMonth,
+            label = DashboardString.MileStone.LbsPerMonth,
             value = "!",
             key = DashboardKey.PER_MONTH,
         ),
         Stat(
-            label = DashboardStatsStrings.LbsPerYear,
+            label = DashboardString.MileStone.LbsPerYear,
             value = "1",
             key = DashboardKey.PER_YEAR,
         ),
         Stat(
-            label = DashboardStatsStrings.LbsTotal,
+            label = DashboardString.MileStone.LbsTotal,
             value = "1",
             key = DashboardKey.TOTAL_CHANGE,
         ),

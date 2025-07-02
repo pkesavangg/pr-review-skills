@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.dashboard.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +30,7 @@ import com.greatergoods.meapp.theme.MeTheme
 @Composable
 fun DashboardMetrics(
     metricData: List<PeriodBodyScaleSummary>,
+    inEditMode: Boolean = false,
     visibleKeys: List<DashboardKey> = listOf(),
     selectedStat: Stat? = null,
     onMetricClick: (Stat?) -> Unit
@@ -41,6 +43,7 @@ fun DashboardMetrics(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
+        contentPadding = PaddingValues(MeTheme.spacing.sm),
         userScrollEnabled = false,
         modifier = Modifier
             .fillMaxWidth()
@@ -53,10 +56,11 @@ fun DashboardMetrics(
             key = { it.key },
         ) { metric ->
             val isSelected = selectedStat?.key == metric.key
-            StatCard(
+            AnimatedStatCard(
                 stat = metric,
+                inEditMode = inEditMode,
                 isSelected = isSelected,
-                onMetricClick = {
+                onClick = {
                     if (isSelected) {
                         onMetricClick(null)
                     } else

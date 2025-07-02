@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.dashboard.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
 import com.greatergoods.meapp.features.common.helper.StatHelper
+import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -33,18 +34,19 @@ import com.greatergoods.meapp.theme.MeTheme
  * Accepts startWeight, goalWeight, and currentWeight as Strings, and calculates progress internally.
  */
 @Composable
-fun DashboardStats(
+fun DashboardMilestone(
     startWeight: String,
     goalWeight: String,
     currentWeight: String,
     modifier: Modifier = Modifier,
+    inEditMode: Boolean = false
 ) {
     val start = startWeight.toFloatOrNull() ?: 0f
     val goal = goalWeight.toFloatOrNull() ?: 0f
     val current = currentWeight.toFloatOrNull() ?: 0f
 
     // Calculate lbsToGoal (difference between current and goal)
-    val lbsToGoal = (current - goal).let { if (it > 0) it else 0f }
+    val lbsToGoal = (goal - current).let { if (it > 0) it else 0f }
     val lbsToGoalText = String.format("%.1f", lbsToGoal)
 
     // Calculate progress: (start - current) / (start - goal)
@@ -58,7 +60,7 @@ fun DashboardStats(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = MeTheme.spacing.sm),
+                .padding(horizontal = MeTheme.spacing.sm),
             colors = CardDefaults.cardColors(containerColor = MeTheme.colorScheme.primaryBackground),
         ) {
             Column(
@@ -73,7 +75,7 @@ fun DashboardStats(
                     )
                     Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
                     Text(
-                        text = DashboardStatsStrings.LbsToGoal,
+                        text = DashboardString.MileStone.LbsToGoal,
                         style = MeTheme.typography.body2,
                         color = MeTheme.colorScheme.textSubheading,
                         modifier = Modifier.padding(bottom = 4.dp),
@@ -107,19 +109,21 @@ fun DashboardStats(
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(MeTheme.spacing.sm),
             userScrollEnabled = false,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(400.dp),
+                .heightIn(max = 400.dp),
             horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         ) {
             items(mileStones) {
-                StatCard(
+                AnimatedStatCard(
                     stat = it,
+                    isVisible = false,
+                    inEditMode = inEditMode,
                     isSelected = false,
-                    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
-                ) { }
+                )
             }
         }
     }
@@ -129,7 +133,7 @@ fun DashboardStats(
 @Composable
 private fun DashboardStatsPreview() {
     MeAppTheme {
-        DashboardStats(
+        DashboardMilestone(
             startWeight = "154.3",
             goalWeight = "132.3",
             currentWeight = "145.1",

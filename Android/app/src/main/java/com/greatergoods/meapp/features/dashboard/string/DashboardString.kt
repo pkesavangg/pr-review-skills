@@ -9,6 +9,14 @@ object DashboardString {
         const val appsync = "appsync"
     }
 
+    object ControlPanel {
+        const val EditDashboard = "Edit Dashboard"
+        const val UpdateGoal = "Update Goal"
+        const val MetricInfo = "Metric Info"
+        const val SaveChanges = "Save Changes"
+        const val ResetDashboard = "Reset Dashboard"
+    }
+
     object Metrics {
         const val Title = "Metrics"
         const val BmiLabel = "BMI"
@@ -28,5 +36,15 @@ object DashboardString {
         const val LevelUnit = " level"
         const val KcalUnit = " kcal"
         const val YearsUnit = " years"
+    }
+
+    object MileStone {
+        const val LbsToGoal = "lbs to goal"
+        const val CurrentStreak = "current streak"
+        const val LongestStreak = "longest streak"
+        const val LbsPerWeek = "lbs/week"
+        const val LbsPerMonth = "lbs/month"
+        const val LbsPerYear = "lbs/year"
+        const val LbsTotal = "lbs/total"
     }
 }

@@ -4,9 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -22,13 +20,14 @@ import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Stat
+import com.greatergoods.meapp.features.dashboard.components.DashboardControlPanel
 import com.greatergoods.meapp.features.dashboard.components.DashboardMetrics
-import com.greatergoods.meapp.features.dashboard.components.DashboardStats
+import com.greatergoods.meapp.features.dashboard.components.DashboardMilestone
 import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardIntent
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
-import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -65,31 +64,33 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
     var selectedStat: Stat? by remember {
         mutableStateOf(null)
     }
+    var inEditMode by remember {
+        mutableStateOf(false)
+    }
     AppScaffold(title = null) {
-
         Column(modifier = Modifier.verticalScroll(scrollState)) {
             HistoryGraph(state, selectedStat) {
                 metricData = it
             }
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MeTheme.spacing.md),
-            ){
-                DashboardMetrics(
-                    metricData = metricData,
-                    visibleKeys = state.visibleKeys,
-                    selectedStat = selectedStat,
-                ) {
-                    selectedStat = it
-                }
-                DashboardStats(
-                    startWeight = "100",
-                    goalWeight = "200",
-                    currentWeight = "150",
-                )
+            DashboardMetrics(
+                metricData = metricData,
+                inEditMode = inEditMode,
+                visibleKeys = state.visibleKeys,
+                selectedStat = selectedStat,
+            ) {
+                selectedStat = it
             }
+            DashboardMilestone(
+                startWeight = "100",
+                inEditMode = inEditMode,
+                goalWeight = "200",
+                currentWeight = "150",
+            )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+            DashboardControlPanel(inEditMode) {
+                inEditMode = it
+            }
+            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         }
     }
 }
