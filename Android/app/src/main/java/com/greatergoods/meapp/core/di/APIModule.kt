@@ -3,9 +3,13 @@ package com.greatergoods.meapp.core.di
 import com.greatergoods.meapp.core.network.HttpClient
 import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.api.IAuthAPI
+import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
+import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
+import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.IUserAPI
+import com.greatergoods.meapp.data.api.IUserSettingsAPI
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -42,6 +46,10 @@ class APIModule {
     @Singleton
     fun provideUserAPI(httpClient: HttpClient): IUserAPI = httpClient.createService(IUserAPI::class.java)
 
+    @Provides
+    @Singleton
+    fun provideUserSettingsAPI(httpClient: HttpClient): IUserSettingsAPI = httpClient.createService(IUserSettingsAPI::class.java)
+
     /**
      * Provides a singleton instance of [IDeviceAPI] using the provided [HttpClient].
      * @param httpClient The HTTP client for network operations.
@@ -56,4 +64,28 @@ class APIModule {
     fun provideIntegrationAPI(
         httpClient: HttpClient
     ): IIntegrationAPI = httpClient.createService(IIntegrationAPI::class.java)
+
+    @Provides
+    @Singleton
+    fun provideExportAPI(
+        httpClient: HttpClient
+    ): IExportAPI = httpClient.createService(IExportAPI::class.java)
+
+    /**
+     * Provides a singleton instance of [IBodyCompAPI] using the provided [HttpClient].
+     * @param httpClient The HTTP client for network operations.
+     * @return [IBodyCompAPI] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideBodyCompAPI(httpClient: HttpClient): IBodyCompAPI = httpClient.createService(IBodyCompAPI::class.java)
+
+    /**
+     * Provides a singleton instance of [INotificationAPI] using the provided [HttpClient].
+     * @param httpClient The HTTP client for network operations.
+     * @return [INotificationAPI] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideNotificationAPI(httpClient: HttpClient): INotificationAPI = httpClient.createService(INotificationAPI::class.java)
 }

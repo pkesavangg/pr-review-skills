@@ -5,7 +5,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.greatergoods.meapp.MainActivity
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.enum.NotificationChannel
-import com.greatergoods.meapp.domain.services.IDeviceInfoService
+import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.notification.NotificationService
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,7 +35,7 @@ class PushNotificationService : FirebaseMessagingService() {
     lateinit var notificationService: NotificationService
 
     @Inject
-    lateinit var deviceInfoService: IDeviceInfoService
+    lateinit var appRepository: IAppRepository
 
     /**
      * Called when a new FCM token is generated. Override to handle token updates.
@@ -61,13 +61,11 @@ class PushNotificationService : FirebaseMessagingService() {
     private suspend fun updateFcmToken(newToken: String) {
         try {
             // Get current token from device info service
-            val currentToken = deviceInfoService.getFcmToken()
-            
+            val currentToken = appRepository.getFcmToken()
+
             if (currentToken != newToken) {
+                appRepository.setFcmToken(newToken)
                 AppLog.d(TAG, "FCM token updated: $newToken")
-                
-                // Update device info on server with new token
-                deviceInfoService.updateDeviceInfo()
             }
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to check/update FCM token", e.toString())

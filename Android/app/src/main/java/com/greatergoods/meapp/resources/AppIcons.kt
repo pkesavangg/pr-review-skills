@@ -11,7 +11,7 @@ object AppIcons {
         val Banner = R.drawable.weight_gurus_banner
         val Logo = R.drawable.ic_logo_light
         val LogoDark = R.drawable.ic_logo_dark
-        val Plus = R.drawable.ic_plus
+        val Plus = R.drawable.ic_plus_outlined
         val Appsync = R.drawable.ic_appsync
         val Graph = R.drawable.ic_graph
         val History = R.drawable.ic_history
@@ -21,6 +21,7 @@ object AppIcons {
         val StampDark = R.drawable.gg_stamp_dark
         val RightCaret = R.drawable.ic_right_caret
         val ChevronDown = R.drawable.ic_chevron_down
+        val profile = R.drawable.ic_profile
     }
 
     object Outlined {

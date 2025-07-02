@@ -12,6 +12,7 @@ import com.greatergoods.meapp.theme.model.Spacing
 
 val SpacingToken =
     Spacing(
+        x6s = 0.5.dp,
         x3s = 4.dp, // Extra Small
         x2s = 6.dp, // Extra Small
         xs = 8.dp, // Extra Small

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.greatergoods.meapp.resources.AppIcons
@@ -50,13 +51,14 @@ object AppIconButtonDefaults {
 @Composable
 fun AppIconButton(
     @DrawableRes id: Int,
+    modifier: Modifier = Modifier,
     type: AppIconButtonType = AppIconButtonType.Primary,
     contentDescription: String? = null,
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val iconColor = AppIconButtonDefaults.contentColor(type, enabled)
-    IconButton(onClick = onClick, enabled = enabled) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
         Icon(
             painter = painterResource(id),
             contentDescription = contentDescription,
@@ -73,8 +75,10 @@ fun AppIconButtonPreview() {
     MeAppTheme {
         Column {
             AppIconButton(AppIcons.Default.Close) {}
-            AppIconButton(AppIcons.Default.Close, AppIconButtonType.Secondary) {}
-            AppIconButton(AppIcons.Default.Close, AppIconButtonType.Tertiary) {}
+            AppIconButton(AppIcons.Default.Close,
+                          modifier = Modifier,
+                          AppIconButtonType.Secondary) {}
+            AppIconButton(AppIcons.Default.Close, modifier = Modifier, AppIconButtonType.Tertiary) {}
         }
     }
 }

@@ -20,14 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppInput
@@ -41,8 +40,7 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
-import com.greatergoods.meapp.features.common.model.DialogModel
-import com.greatergoods.meapp.features.common.strings.AppPopupStrings
+import com.greatergoods.meapp.features.historyDetail.viewmodel.HistoryDetailViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
@@ -58,33 +56,21 @@ import com.greatergoods.meapp.theme.MeTheme.typography
  * Login screen composable. Displays the login form, handles user input, and shows loading/error states.
  */
 @Composable
-fun LoginScreen() {
-    val viewmodel: LoginViewModel = hiltViewModel()
+fun LoginScreen( email: String? = null) {
+    val viewmodel: LoginViewModel = hiltViewModel<LoginViewModel, LoginViewModel.Factory>(
+        creationCallback = { factory ->
+            factory.create(email)
+        },
+    )
     val state by viewmodel.state.collectAsState()
-    val backStack = LocalNavBackStack.current
-    LoginContent(state, viewmodel::handleIntent)
-
-    if (state.form.isDirty || state.form.isTouched) {
-        BackHandler {
-            viewmodel.dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    title = AppPopupStrings.UnsavedChanges.Title,
-                    message = AppPopupStrings.UnsavedChanges.Message,
-                    confirmText = AppPopupStrings.UnsavedChanges.Exit,
-                    cancelText = AppPopupStrings.UnsavedChanges.Return,
-                    onConfirm = {
-                        backStack.removeLast(AppRoute.Auth.Landing)
-                        state.form.resetForm()
-                    },
-                ),
-            )
-        }
+    BackHandler {
+        viewmodel.handleIntent(LoginIntent.OnBack)
     }
+    LoginContent(state, viewmodel::handleIntent)
 }
 
 @Composable
 private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit) {
-    val backStack = LocalNavBackStack.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -94,13 +80,14 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
     AppScaffold(
         title = null,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { backStack.removeLast() }
+            AppIconButton(AppIcons.Default.Close) { handleIntent(LoginIntent.OnBack) }
         },
         actions = {
             AppIconButton(AppIcons.Outlined.Help) { handleIntent(LoginIntent.OpenHelpModal) }
         },
         containerColor = colorScheme.secondaryBackground,
         appBarColor = colorScheme.secondaryBackground,
+        borderColor = Color.Transparent,
     ) { scaffoldModifier ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

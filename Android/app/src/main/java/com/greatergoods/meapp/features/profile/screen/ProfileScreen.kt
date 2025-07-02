@@ -1,0 +1,196 @@
+package com.greatergoods.meapp.features.profile.screen
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.common.components.AppButton
+import com.greatergoods.meapp.features.common.components.AppIconButton
+import com.greatergoods.meapp.features.common.components.AppInput
+import com.greatergoods.meapp.features.common.components.AppInputType
+import com.greatergoods.meapp.features.common.components.AppScaffold
+import com.greatergoods.meapp.features.common.components.AppStyledCard
+import com.greatergoods.meapp.features.common.components.AppText
+import com.greatergoods.meapp.features.common.components.ButtonSize
+import com.greatergoods.meapp.features.common.components.ButtonType
+import com.greatergoods.meapp.features.common.components.DateTimeInput
+import com.greatergoods.meapp.features.common.components.DateTimeInputMode
+import com.greatergoods.meapp.features.common.components.DateTimeValue
+import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.profile.model.ProfileFormControls
+import com.greatergoods.meapp.features.profile.model.ProfileIntent
+import com.greatergoods.meapp.features.profile.model.ProfileState
+import com.greatergoods.meapp.features.profile.strings.ProfileStrings
+import com.greatergoods.meapp.features.profile.viewmodel.ProfileViewModel
+import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import java.time.LocalDate
+import java.time.ZoneId
+
+/**
+ * Profile screen composable. Displays the profile form, handles user input, and shows loading/error states.
+ */
+@Composable
+fun ProfileScreen() {
+    val viewModel: ProfileViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsState()
+
+    ProfileContent(state, viewModel::handleIntent) {
+        viewModel.handleIntent(ProfileIntent.OnRequestBack)
+    }
+}
+
+@Composable
+private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) -> Unit,onBack: () -> Unit,) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val interactionSource = remember { MutableInteractionSource() }
+    // Focus requesters for proper focus management
+    val firstNameFocusRequester = remember { FocusRequester() }
+    val lastNameFocusRequester = remember { FocusRequester() }
+    val emailFocusRequester = remember { FocusRequester() }
+    val zipcodeFocusRequester = remember { FocusRequester() }
+    val birthdayFocusRequester = remember { FocusRequester() }
+    BackHandler {
+        onBack()
+    }
+    AppScaffold(
+        title = ProfileStrings.ScreenTitle,
+        navigationIcon = {
+            AppIconButton(AppIcons.Default.Close) { onBack() }
+        },
+        actions = {
+            AppButton(ProfileStrings.SaveButton, enabled = state.form.isValid && state.form.isDirty, type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {
+                handleIntent.invoke(ProfileIntent.Submit)
+            }
+        },
+        borderColor = colorScheme.utility,
+        containerColor = colorScheme.secondaryBackground,
+        appBarColor = colorScheme.secondaryBackground,
+        modifier = Modifier
+    ) { scaffoldModifier ->
+            AppStyledCard {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { focusManager.clearFocus() },
+                        ),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))
+                    // First Name Input
+                    AppInput(
+                        formControl = state.form.controls.firstName,
+                        label = ProfileStrings.FirstNameLabel,
+                        type = AppInputType.TEXT,
+                        showTrailingIcon = true,
+                        imeAction = ImeAction.Next,
+                        nextFocusRequester = lastNameFocusRequester,
+                        modifier = Modifier
+                            .semantics { contentType = ContentType.PersonFirstName }
+                            .focusRequester(firstNameFocusRequester),
+                    )
+                    // Last Name Input
+                    AppInput(
+                        formControl = state.form.controls.lastName,
+                        label = ProfileStrings.LastNameLabel,
+                        type = AppInputType.TEXT,
+                        showTrailingIcon = true,
+                        imeAction = ImeAction.Next,
+                        nextFocusRequester = emailFocusRequester,
+                        modifier = Modifier
+                            .semantics { contentType = ContentType.PersonLastName }
+                            .focusRequester(lastNameFocusRequester),
+                    )
+                    // Email Input
+                    AppInput(
+                        formControl = state.form.controls.email,
+                        label = ProfileStrings.EmailLabel,
+                        type = AppInputType.EMAIL,
+                        showTrailingIcon = true,
+                        imeAction = ImeAction.Next,
+                        nextFocusRequester = zipcodeFocusRequester,
+                        modifier = Modifier
+                            .semantics { contentType = ContentType.EmailAddress }
+                            .focusRequester(emailFocusRequester),
+                    )
+                    // Zipcode Input
+                    AppInput(
+                        formControl = state.form.controls.zipcode,
+                        label = ProfileStrings.ZipcodeLabel,
+                        type = AppInputType.TEXT,
+                        showTrailingIcon = true,
+                        imeAction = ImeAction.Next,
+                        nextFocusRequester = birthdayFocusRequester,
+                        modifier = Modifier
+                            .semantics { contentType = ContentType.PostalCode }
+                            .focusRequester(zipcodeFocusRequester),
+                    )
+                    AppText(ProfileStrings.BirthdayLabel, TextType.Title, spacing = MeTheme.spacing.sm)
+                    DateTimeInput(
+                        formControl = state.form.controls.birthday,
+                        mode = DateTimeInputMode.Date,
+                        modifier = Modifier.focusRequester(birthdayFocusRequester),
+                    )
+                }
+                Spacer(Modifier.height(MeTheme.spacing.md
+                ))
+            }
+    }
+}
+
+@PreviewTheme()
+@Composable
+fun ProfileScreenPreview() {
+    MeAppTheme {
+        val dummyProfileState = ProfileState(
+            form = FormGroup(
+                controls = ProfileFormControls.create(
+                    firstName = "fg",
+                    lastName = "gg",
+                    email = "renu5@gg.com",
+                    zipcode = "12345",
+                    birthday = DateTimeValue.Date(
+                        LocalDate
+                            .parse("2000-01-01")
+                            .atStartOfDay(ZoneId.systemDefault())
+                            .toInstant()
+                            .toEpochMilli(),
+                    )
+                ),
+            ),
+            isLoading = false,
+            error = null,
+        )
+        ProfileContent(
+            dummyProfileState,
+            handleIntent = {}
+        ) {}
+    }
+}

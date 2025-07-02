@@ -14,12 +14,33 @@ object AppPopupStrings {
         const val Exit = "Exit"
     }
 
-    object AppRemoveUserStrings {
-        const val RemoveUserTitle = "Remove %s?"
-        const val RemoveUserMessage = "Are you sure you want to remove %s from this device?"
-        const val RemoveButton = "Remove"
+    object MaxAccountReachedAlert {
+        const val Title = "Maximum Users Reached"
+
+        const val Message1 = "Please swipe left to remove any unused accounts before attempting to add a new one."
+        const val Message2 = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
+        const val ConfirmButton = "OK"
+    }
+
+    object RemoveAccountDialog {
+        const val Title = "Remove %s?"
+        const val Message = "Are you sure you want to remove %s from this device?"
         const val CancelButton = "Cancel"
-        const val NoAccountsMessage = "No accounts found"
-        const val DeleteAccount = "Delete Account"
+        const val ConfirmButton = "Remove"
+        const val Loader = "Removing Account..."
+    }
+
+    object BackgroundLoggedOutAlert {
+        fun Title(username: String) = "$username was logged out"
+        const val Message = "Please log back in to continue."
+        const val ConfirmButton = "OK"
+    }
+    
+    object AccountSwitchInfo {
+        const val Header = "NEW: Add Multiple Accounts"
+        const val Message =
+            "Switch between Weight Gurus accounts by pressing and holding the profile icon or selecting \"Switch Accounts\" in settings."
+        const val AddAccountButton = "ADD ACCOUNT"
+        const val CloseContentDescription = "Close"
     }
 }

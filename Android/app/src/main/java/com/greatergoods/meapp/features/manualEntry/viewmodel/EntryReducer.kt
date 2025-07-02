@@ -7,7 +7,7 @@ import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
-import kotlinx.coroutines.CoroutineScope
+import com.greatergoods.meapp.features.common.helper.form.MultiFormGroup
 import java.util.Calendar
 
 /**
@@ -45,10 +45,10 @@ data class R4ScaleMetricsFormControls(
 /**
  * Main entry form controls, composed of the three groups above
  */
-data class EntryFormControls(
-    val weightDateTime: WeightDateTimeFormControls,
-    val generalMetrics: GeneralMetricsFormControls,
-    val r4ScaleMetrics: R4ScaleMetricsFormControls? = null,
+data class EntryForm(
+    val weightDateTime: FormGroup<WeightDateTimeFormControls>,
+    val generalMetrics: FormGroup<GeneralMetricsFormControls>,
+    val r4ScaleMetrics: FormGroup<R4ScaleMetricsFormControls>? = null,
 ) {
 
     companion object {
@@ -57,77 +57,76 @@ data class EntryFormControls(
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
         val minute = calendar.get(Calendar.MINUTE)
         fun create(
-            scope: CoroutineScope,
             includeR4ScaleMetrics: Boolean = false,
             weightMode: WeightUnit = WeightUnit.LB,
-        ): EntryFormControls =
-            EntryFormControls(
-                weightDateTime =
-                    WeightDateTimeFormControls(
-                        weight =
-                            FormControl.create(
-                                initialValue = "",
-                                validators = listOf(
-                                    FormValidations.required(),
-                                    FormValidations.weightValidator(weightMode),
-                                ),
-                            ),
-                        dateTime =
-                            FormControl.create(
-                                initialValue = DateTimeValue.DateTime(currentTimeMillis, hour, minute),
-                                validators = emptyList(),
-                            ),
+        ): EntryForm {
+            val weightDateTime =
+                WeightDateTimeFormControls(
+                    weight = FormControl.create(
+                        "",
+                        listOf(
+                            FormValidations.weightValidator(weightMode),
+                            FormValidations.required(),
+                        ),
                     ),
-                generalMetrics =
-                    GeneralMetricsFormControls(
-                        bodyMassIndex = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                        bodyFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                        muscleMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                        bodyWater = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                        // Add more general metrics here if needed
+                    dateTime = FormControl.create(
+                        DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
+                        listOf(),
                     ),
-                r4ScaleMetrics =
-                    if (includeR4ScaleMetrics) {
-                        R4ScaleMetricsFormControls(
-                            heartRate = FormControl.create(
-                                "",
-                                listOf(
-                                    FormValidations.bodyCompValidator(
-                                        AppValidatorConfig.BodyComp.MIN, AppValidatorConfig.BodyComp.MAX, false,
-                                    ),
+                )
+            val generalMetrics =
+                GeneralMetricsFormControls(
+                    bodyMassIndex = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                    bodyFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                    muscleMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                    bodyWater = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                    // Add more general metrics here if needed
+                )
+            val r4ScaleMetrics =
+                if (includeR4ScaleMetrics) {
+                    R4ScaleMetricsFormControls(
+                        heartRate = FormControl.create(
+                            "",
+                            listOf(
+                                FormValidations.bodyCompValidator(
+                                    AppValidatorConfig.BodyComp.MIN, AppValidatorConfig.BodyComp.MAX, false,
                                 ),
                             ),
-                            boneMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                            visceralFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                            subcutaneousFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                            protein = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                            skeletalMuscles = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-                            bmr = FormControl.create(
-                                "",
-                                listOf(
-                                    FormValidations.bodyCompValidator(
-                                        AppValidatorConfig.BMR.MIN, AppValidatorConfig.BMR.MAX, false,
-                                    ),
+                        ),
+                        boneMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                        visceralFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                        subcutaneousFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                        protein = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                        skeletalMuscles = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+                        bmr = FormControl.create(
+                            "",
+                            listOf(
+                                FormValidations.bodyCompValidator(
+                                    AppValidatorConfig.BMR.MIN, AppValidatorConfig.BMR.MAX, false,
                                 ),
                             ),
-                            metabolicAge = FormControl.create(
-                                "",
-                                listOf(
-                                    FormValidations.bodyCompValidator(
-                                        AppValidatorConfig.MetabolicAge.MIN, AppValidatorConfig.MetabolicAge.MAX, false,
-                                    ),
+                        ),
+                        metabolicAge = FormControl.create(
+                            "",
+                            listOf(
+                                FormValidations.bodyCompValidator(
+                                    AppValidatorConfig.MetabolicAge.MIN, AppValidatorConfig.MetabolicAge.MAX, false,
                                 ),
                             ),
-                        )
-                    } else {
-                        null
-                    },
+                        ),
+                    )
+                } else null
+            return EntryForm(
+                weightDateTime = FormGroup(weightDateTime),
+                generalMetrics = FormGroup(generalMetrics),
+                r4ScaleMetrics = if (r4ScaleMetrics != null) FormGroup(r4ScaleMetrics) else null,
             )
+        }
     }
 }
 
 data class EntryState(
-    val form: FormGroup<EntryFormControls>,
+    val form: MultiFormGroup<EntryForm>,
     val weightMode: WeightUnit = WeightUnit.LB,
     val isLoading: Boolean = false,
 ) : IReducer.State

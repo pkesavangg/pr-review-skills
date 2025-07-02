@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 @Stable
 data class Spacing(
     val none: Dp = 0.dp,
+    val x6s: Dp, // XXXX Small
     val x3s: Dp, // XXX Small
     val x2s: Dp, // XX Small
     val xs: Dp, // Extra Small

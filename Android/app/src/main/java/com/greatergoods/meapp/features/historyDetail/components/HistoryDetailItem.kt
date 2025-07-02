@@ -21,16 +21,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppScaffold
+import com.greatergoods.meapp.features.common.components.DraggableListItemScope
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper.getMetrics
 import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
@@ -41,26 +42,28 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun HistoryDetailItem(
+fun DraggableListItemScope.HistoryDetailItem(
     item: ScaleEntry,
     modifier: Modifier = Modifier,
 ) {
+    val bodyMetric = fromScaleEntry(item)
     var isExpanded by remember { mutableStateOf(false) }
 
-    val backgroundColor =
-        if (isExpanded) MeTheme.colorScheme.textBody else Color.Transparent
-
-    Column(modifier = modifier.background(backgroundColor)) {
+    Draggable {
         HistoryDetailItemHeader(
             item = item,
-            canExpand = getMetrics(item).isNotEmpty(),
+            canExpand = getMetrics(bodyMetric).isNotEmpty(),
             isExpanded = isExpanded,
             onClick = {
                 isExpanded = !isExpanded
             },
         )
+    }
+
+    Static {
         AnimatedVisibility(
             visible = isExpanded,
+            modifier = modifier.fillMaxWidth(),
         ) {
             HistoryDetailItemDetails(
                 item = item,
@@ -73,14 +76,15 @@ fun HistoryDetailItem(
 }
 
 @Composable
-private fun HistoryDetailItemHeader(
+fun HistoryDetailItemHeader(
     item: ScaleEntry,
     canExpand: Boolean,
     isExpanded: Boolean,
     onClick: () -> Unit,
 ) {
     val rotation by animateFloatAsState(targetValue = if (isExpanded) -90f else 90f, label = "")
-
+    val backgroundColor =
+        if (isExpanded) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.secondaryBackground
     val textColor =
         if (isExpanded) MeTheme.colorScheme.primaryBackground else MeTheme.colorScheme.textBody
     val subTextColor =
@@ -90,6 +94,7 @@ private fun HistoryDetailItemHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .background(backgroundColor)
                 .clickable(enabled = canExpand, onClick = onClick)
                 .padding(MeTheme.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -155,17 +160,15 @@ private fun HistoryDetailItemHeader(
 
 @PreviewTheme
 @Composable
-private fun HistoryDetailItemPreview() {
+private fun DraggableListItemScope.HistoryDetailItemPreview() {
     MeAppTheme {
         AppScaffold("") {
-            Column {
-                HistoryDetailItem(
-                    item = sampleScaleEntry,
-                )
-                HistoryDetailItem(
-                    item = sampleScaleEntry,
-                )
-            }
+            HistoryDetailItem(
+                item = sampleScaleEntry,
+            )
+            HistoryDetailItem(
+                item = sampleScaleEntry,
+            )
         }
     }
 }

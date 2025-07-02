@@ -5,7 +5,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -21,7 +21,7 @@ import com.greatergoods.meapp.core.navigation.NavigationObserver
 import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
 import com.greatergoods.meapp.features.home.HomeScreen
 import com.greatergoods.meapp.features.loading.LoadingScreen
-import android.util.Log
+import kotlinx.coroutines.launch
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -32,12 +32,11 @@ fun NavHost(
     topLevelBackStack: TopLevelBackStack<NavKey>,
     appViewModel: AppViewModel,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     NavigationObserver(
         appViewModel.navigationService.navigationIntent,
         topLevelBackStack,
     )
-    val backStack = topLevelBackStack.topLevelStacks.collectAsState()
-    Log.i("CHECKING", "Top Level Back Stack: ${backStack.value}")
     NavDisplay(
         modifier = Modifier.navigationBarsPadding(),
         entryDecorators =
@@ -48,13 +47,16 @@ fun NavHost(
             ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
         onBack = {
-            topLevelBackStack.removeLast(AppRoute.App)
+            coroutineScope.launch {
+                topLevelBackStack.removeLast(AppRoute.App)
+            }
         },
         entryProvider =
             entryProvider {
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
                 entry<AppRoute.Home> { HomeScreen() }
                 authEntries()
+                accountSettingsEntries()
                 entry<AppRoute.MonthDetails> { entry ->
                     HistoryDetailScreen(entry.month)
                 }
@@ -79,20 +81,25 @@ fun NavHost(
 
 @Composable
 fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
+    val coroutineScope = rememberCoroutineScope()
     NavDisplay(
         entryDecorators =
             listOf(
                 rememberSceneSetupNavEntryDecorator(),
                 rememberSavedStateNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
             ),
         backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
         onBack = {
-            Log.i("CHECKING", "Top Level Back: ${topLevelBackStack.topLevelStacks.value}")
-            topLevelBackStack.removeLast(AppRoute.Home)
+            coroutineScope.launch {
+                topLevelBackStack.removeLast(AppRoute.Home)
+            }
         },
         entryProvider =
             entryProvider {
+                entry<AppRoute.Init.Loading> { LoadingScreen() }
                 topLevelEntries()
+                accountSettingsEntries()
             },
         transitionSpec = {
             // Slide in from right when navigating forward

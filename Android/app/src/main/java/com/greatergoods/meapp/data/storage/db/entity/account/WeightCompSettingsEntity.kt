@@ -18,7 +18,7 @@ import androidx.room.PrimaryKey
 data class WeightCompSettingsEntity(
     @PrimaryKey
     val accountId: String,
-    val height: String,
+    val height: Int,
     val activityLevel: String,
     val weightUnit: String,
     val isSynced: Boolean

@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
@@ -53,8 +55,11 @@ class EntryService @Inject constructor(
     private var initialWeight: Double? = null
 
     override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> {
-        return entryRepository.getMonthlyAverage(accountId ?: "").map { flow ->
-            flow.map { it.process() }
+        return combine(
+            entryRepository.getMonthlyAverage(accountId ?: ""),
+            accountRepository.getStoredActiveAccountFromDB().map { it?.weightUnit }.distinctUntilChanged(),
+        ) { months, unit ->
+            months.map { it.process(unit) }
         }
     }
 
@@ -271,38 +276,29 @@ class EntryService @Inject constructor(
         )
     }
 
-    private fun clearAllData() {
-        EntryServiceHelper.clearAllData(
-            setLatestEntry = { _latestEntry.value = it },
-            setLast7Days = { _last7Days.value = it ?: emptyList() },
-            setLast30Days = { _last30Days.value = it ?: emptyList() },
-            setProgress = { _progress.value = it },
-        )
-    }
-
     /**
      * Gets monthly averages of body scale data for an account using JOINs.
      */
-    override fun getMonthlyBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        entryRepository.getMonthlyBodyScaleAveragesWithJoin(accountId)
+    override fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getMonthlyBodyScaleAveragesWithJoin(this.accountId ?: "")
 
     /**
      * Gets the latest body scale entry for each month for an account using JOINs.
      */
-    override fun getMonthlyBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        entryRepository.getMonthlyBodyScaleLatestWithJoin(accountId)
+    override fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getMonthlyBodyScaleLatestWithJoin(this.accountId ?: "")
 
     /**
      * Gets daywise averages of body scale data for an account using JOINs.
      */
-    override fun getDaywiseBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        entryRepository.getDaywiseBodyScaleAveragesWithJoin(accountId)
+    override fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getDaywiseBodyScaleAveragesWithJoin(this.accountId ?: "")
 
     /**
      * Gets the latest body scale entry for each day for an account using JOINs.
      */
-    override fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        entryRepository.getDaywiseBodyScaleLatestWithJoin(accountId)
+    override fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+        entryRepository.getDaywiseBodyScaleLatestWithJoin(this.accountId ?: "")
 }
 
 enum class OperationType {
