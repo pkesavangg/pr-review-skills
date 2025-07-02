@@ -77,7 +77,7 @@ final class AppSyncSetupStore: ObservableObject {
         case .intro:
             return AnyView(ScaleSetupIntroView(scale: scaleItem))
         case .permissions:
-            return AnyView(PermissionListView(categories: [.camera]))
+            return AnyView(PermissionListView(setupType: .appSync))
         case .activateScale:
             let lang = AppSyncStrings.ActivateYourScaleViewStrings.self
             return AnyView(ScaleInstructionView(title: lang.title, description: lang.description))

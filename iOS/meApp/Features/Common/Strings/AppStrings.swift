@@ -582,5 +582,6 @@ struct AppAssets {
     static let minusCircle = "minusCircle"
     static let plusCircleDark = "plusCircleDark"
     static let minusCircleDark = "minusCircleDark"
+    static let minusCircleClear = "minusCircleClear"
 }
 

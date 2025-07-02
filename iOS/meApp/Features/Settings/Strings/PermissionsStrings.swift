@@ -17,4 +17,10 @@ struct PermissionsStrings {
     static let locationAccessNotAuthorized = "Location access not authorized"
     static let cameraAccessAuthorized    = "Camera access is authorized"
     static let notificationsEnabled      = "Notifications are enabled"
+
+    // Page header (Scale setup flows)
+    static let pageHeaderTitle = "Permission Settings"
+    static let cameraPermissionDescription = "Weight Gurus needs camera permissions to scan your scale."
+    static let bluetoothPermissionDescription = "Weight Gurus needs Bluetooth permissions to connect with your scale."
+    static let locationPermissionDescription = "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
 } 
