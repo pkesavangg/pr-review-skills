@@ -8,7 +8,7 @@
 import Foundation
 
 /// Information used to render a scale row.
-struct ScaleItemInfo: Identifiable {
+struct ScaleItemInfo: Identifiable, Sendable, Equatable {
     let id = UUID()
     let productName: String
     let sku: String

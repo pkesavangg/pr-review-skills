@@ -7,14 +7,15 @@
 
 import Foundation
 import SwiftData
+import Combine
 
 /// Service for managing paired scale devices, including sync, CRUD, and connection management.
 /// Handles local/remote sync, per-account operations, and robust error handling.
 @MainActor
-final class ScaleService: ScaleServiceProtocol {
+final class ScaleService: ObservableObject, ScaleServiceProtocol {
     static let shared = ScaleService()
     private let tag = "ScaleService"
-    
+
     @MainActor
     private lazy var remoteRepo: ScaleAPIRepository = {
         // Ensure this is always created on the main actor
@@ -25,15 +26,21 @@ final class ScaleService: ScaleServiceProtocol {
     private let localKVRepo: ScaleRepositoryLocal
     private let accountService: AccountServiceProtocol
     private let logger = LoggerService.shared
-    
+
+    // MARK: - Published State
+    @Published private(set) var scales: [Device] = []
+
     /// Default initializer that creates its own dependencies.
     init() {
         self.accountService = AccountService.shared
         self._apiRepository = ScaleAPIRepository()
         self.localRepository = ScaleRepository()
         self.localKVRepo = ScaleRepositoryLocal()
+
+        // Load initial scales from local storage
+        Task { await refreshScalesFromLocal() }
     }
-    
+
     /// Initializes the scale service with required dependencies.
     init(accountService: AccountServiceProtocol,
          apiRepository: ScaleAPIRepository,
@@ -43,8 +50,15 @@ final class ScaleService: ScaleServiceProtocol {
         self._apiRepository = apiRepository
         self.localRepository = localRepository
         self.localKVRepo = localKVRepo
+
+        // Load initial scales from local storage
+        Task { await refreshScalesFromLocal() }
     }
-    
+  
+    var scalesPublisher: AnyPublisher<[Device], Never> {
+        $scales.eraseToAnyPublisher()
+    }
+
     // MARK: - Helper
     @Sendable
     private func getAccountId() async throws -> String {
@@ -53,7 +67,7 @@ final class ScaleService: ScaleServiceProtocol {
         }
         return String(describing: account.id)
     }
-    
+
     // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)
     private func isDuplicateDevice(device: Device, remoteDTO: ScaleDTO) -> Bool {
         if let deviceBroadcastId = device.broadcastIdString, let remoteBroadcastId = remoteDTO.broadcastIdString, deviceBroadcastId == remoteBroadcastId { return true }
@@ -61,7 +75,7 @@ final class ScaleService: ScaleServiceProtocol {
         if let deviceSku = device.sku, let remoteSku = remoteDTO.sku, deviceSku == remoteSku { return true }
         return false
     }
-    
+
     // MARK: - Sync Logic
     /// Syncs all unsynced scales with the remote backend. Call this on app start or after network recovery.
     public func syncAllScalesWithRemote() async {
@@ -72,7 +86,7 @@ final class ScaleService: ScaleServiceProtocol {
             logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
             return
         }
-        
+
         // Get unsynced devices
         let unsynced: [Device]
         do {
@@ -81,7 +95,7 @@ final class ScaleService: ScaleServiceProtocol {
             logger.log(level: .error, tag: tag, message: "Failed to fetch unsynced devices: \(error.localizedDescription)")
             return
         }
-        
+
         for device in unsynced {
             let dto = device.toDTO()
             do {
@@ -113,7 +127,7 @@ final class ScaleService: ScaleServiceProtocol {
         let now = ISO8601DateFormatter().string(from: Date())
         try? await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: now)
     }
-    
+
     private func syncUnsyncedDevices() async {
         let accountId: String
         do {
@@ -122,7 +136,7 @@ final class ScaleService: ScaleServiceProtocol {
         let now = ISO8601DateFormatter().string(from: Date())
         try? await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: now)
     }
-    
+
     private func mergeRemoteScales(_ remoteScales: [ScaleDTO], accountId: String) async {
         do {
             let scaleDTOs = try await localRepository.listScales()
@@ -157,7 +171,7 @@ final class ScaleService: ScaleServiceProtocol {
             logger.log(level: .error, tag: tag, message: "Failed to fetch existing devices: \(error.localizedDescription)")
         }
     }
-    
+
     private func updateDeviceWithRemoteData(_ device: Device, remoteDTO: ScaleDTO) {
         device.nickname = remoteDTO.nickname
         device.deviceName = remoteDTO.name
@@ -175,7 +189,7 @@ final class ScaleService: ScaleServiceProtocol {
         device.token = remoteDTO.scaleToken
         device.isSynced = true
     }
-    
+
     // MARK: - DeviceServiceProtocol Implementation
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {
         let metaDataDTO = metaData.toDTO()
@@ -194,7 +208,7 @@ final class ScaleService: ScaleServiceProtocol {
             throw ScaleError.apiSyncFailed(error)
         }
     }
-    
+
     func updateScalePreference(_ preference: R4ScalePreference) async throws {
         let preferenceDTO = preference.toDTO()
         try await localRepository.patchScalePreference(preferenceDTO)
@@ -209,7 +223,7 @@ final class ScaleService: ScaleServiceProtocol {
             throw error
         }
     }
-    
+
     // MARK: - DeviceServiceProtocol Implementation
     func getDevices() async throws -> [Device] {
         let localDevices = try await localRepository.listScales()
@@ -265,13 +279,17 @@ final class ScaleService: ScaleServiceProtocol {
                     }
                 }
             }
-            return apiDevices.map { Device(from: $0) }
+            let devices = apiDevices.map { Device(from: $0) }
+            await MainActor.run { self.scales = devices }
+            return devices
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch from API, using local data: \(error.localizedDescription)")
-            return localDevices.map { Device(from: $0) }
+            let devices = localDevices.map { Device(from: $0) }
+            await MainActor.run { self.scales = devices }
+            return devices
         }
     }
-    
+
     nonisolated func getConnectedDevices() async -> [String: Any] {
         return await MainActor.run {
             let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isConnected == true })
@@ -297,7 +315,7 @@ final class ScaleService: ScaleServiceProtocol {
             }
         }
     }
-    
+
     nonisolated func updateConnectedDevices(device: Any, isConnected: Bool) async {
         await MainActor.run {
             guard let deviceDict = device as? [String: Any],
@@ -320,7 +338,7 @@ final class ScaleService: ScaleServiceProtocol {
             }
         }
     }
-    
+
     nonisolated func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
         await MainActor.run {
             let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastId == broadcastId })
@@ -338,7 +356,7 @@ final class ScaleService: ScaleServiceProtocol {
             }
         }
     }
-    
+
     func syncDevices(tempDevice: Device?) async throws {
         do {
             let apiScales = try await remoteRepo.listScales()
@@ -380,7 +398,7 @@ final class ScaleService: ScaleServiceProtocol {
             throw ScaleError.apiSyncFailed(error)
         }
     }
-    
+
     func createDevice(_ device: Device) async throws -> Device {
         let dto = device.toDTO()
         let existingDevices = try await localRepository.listScales()
@@ -398,13 +416,15 @@ final class ScaleService: ScaleServiceProtocol {
                 localDevice.isSynced = true
                 try await localRepository.updateDevice(localDevice)
             }
-            return Device(from: apiDTO)
+            let saved = Device(from: apiDTO)
+            await refreshScalesFromLocal()
+            return saved
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to sync new device to API")
             throw ScaleError.apiSyncFailed(error)
         }
     }
-    
+
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device {
         guard let _ = try? await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)
@@ -416,13 +436,15 @@ final class ScaleService: ScaleServiceProtocol {
                 localDevice.isSynced = true
                 try await localRepository.updateDevice(localDevice)
             }
-            return Device(from: apiDTO)
+            let updated = Device(from: apiDTO)
+            await refreshScalesFromLocal()
+            return updated
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to sync device edit to API")
             throw ScaleError.apiSyncFailed(error)
         }
     }
-    
+
     func deleteDevice(_ deviceId: String, showToast: Bool) async throws {
         guard let _ = try? await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)
@@ -433,6 +455,77 @@ final class ScaleService: ScaleServiceProtocol {
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to sync device deletion to API")
             throw ScaleError.apiSyncFailed(error)
+        }
+        await refreshScalesFromLocal()
+    }
+
+    func updateAllScalesStatus(_ scales: [Device]? = nil) async throws {
+        // Determine which device list to process. If none provided, fetch all scales from local storage.
+        let deviceList: [Device]
+        if let providedScales = scales {
+            deviceList = providedScales
+        } else {
+            // Fetch all locally stored scale managed objects
+            let descriptor = FetchDescriptor<Device>()
+            deviceList = try localRepository.context.fetch(descriptor)
+        }
+
+        // Fetch a map of currently connected devices keyed by broadcastIdString
+        let connectedDevices = await getConnectedDevices()
+
+        // Iterate over each scale and refresh its status fields
+        for device in deviceList {
+            // Reset flags before evaluation
+            device.isConnected = false
+            device.isWifiConfigured = false
+
+            // Ensure broadcastIdString is populated so that look-ups work reliably
+            if (device.broadcastIdString == nil || device.broadcastIdString?.isEmpty == true) {
+                if let bidStr = device.broadcastId, let bidInt = Int(bidStr) {
+                    let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "")
+                    let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource ?? .bluetooth,
+                                                                                      sku: device.sku ?? "")
+                    device.broadcastIdString = ProtocolConversionTools.convertIntToHex(bidInt, protocolType: protocolType)
+                }
+            }
+
+            // Update connection + Wi-Fi flags based on the connectedDevices map
+            if let bidString = device.broadcastIdString,
+               let connectedDetails = connectedDevices[bidString] as? [String: Any] {
+                device.isConnected = true
+                device.isWifiConfigured = (connectedDetails["isWifiConfigured"] as? Bool) ?? false
+            }
+
+            // Mark device as needing sync since local status changed
+            device.isSynced = false
+        }
+
+        // Persist the updates
+        do {
+            try localRepository.context.save()
+            await refreshScalesFromLocal()
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to save updated device statuses: \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    // MARK: - Public Convenience
+    /// Refreshes all scales status (connection, Wi-Fi, etc.) for every stored device.
+    public func updateScaleStatus() async {
+        try? await updateAllScalesStatus(nil)
+    }
+
+    // MARK: - Internal Helpers
+    private func refreshScalesFromLocal() async {
+        await MainActor.run {
+            do {
+                let descriptor = FetchDescriptor<Device>()
+                let devices = try localRepository.context.fetch(descriptor)
+                self.scales = devices
+            } catch {
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
+            }
         }
     }
 }

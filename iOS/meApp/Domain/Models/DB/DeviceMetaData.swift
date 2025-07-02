@@ -37,6 +37,17 @@ final class DeviceMetaData {
         self.latestVersion = dto.latestFirmwareVersion
     }
 
+    init(modelNumber: String? = nil, serialNumber: String? = nil, firmwareRevision: String? = nil, hardwareRevision: String? = nil, softwareRevision: String? = nil, manufacturerName: String? = nil, systemId: String? = nil, latestVersion: String? = nil) {
+        self.modelNumber = modelNumber
+        self.serialNumber = serialNumber
+        self.firmwareRevision = firmwareRevision
+        self.hardwareRevision = hardwareRevision
+        self.softwareRevision = softwareRevision
+        self.manufacturerName = manufacturerName
+        self.systemId = systemId
+        self.latestVersion = latestVersion
+    }
+
     func toDTO() -> ScaleMetaDataDTO {
         return ScaleMetaDataDTO(
             firmwareRevision: self.firmwareRevision,
