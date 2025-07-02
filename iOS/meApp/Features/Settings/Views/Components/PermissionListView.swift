@@ -84,8 +84,10 @@ struct PermissionListView: View {
         sectionView(
             title: PermissionsStrings.bluetooth,
             rows: [
-                (PermissionsStrings.bluetoothAccessAuthorized, viewModel.bluetoothAuthorized),
-                (PermissionsStrings.bluetoothTurnedOn, viewModel.bluetoothPoweredOn)
+                (viewModel.bluetoothAuthorized ? PermissionsStrings.bluetoothAccessAuthorized : PermissionsStrings.authorizeBluetoothAccess,
+                 viewModel.bluetoothAuthorized),
+                (viewModel.bluetoothPoweredOn ? PermissionsStrings.bluetoothTurnedOn : PermissionsStrings.turnOnBluetooth,
+                 viewModel.bluetoothPoweredOn)
             ],
             category: .bluetooth
         )
@@ -95,8 +97,10 @@ struct PermissionListView: View {
         sectionView(
             title: PermissionsStrings.location,
             rows: [
-                (PermissionsStrings.locationAccessEnabled, viewModel.locationServicesEnabled),
-                (PermissionsStrings.locationAccessNotAuthorized, viewModel.locationAuthorized)
+                (viewModel.locationServicesEnabled ? PermissionsStrings.locationAccessEnabled : PermissionsStrings.enableLocationServices,
+                 viewModel.locationServicesEnabled),
+                (viewModel.locationAuthorized ? PermissionsStrings.locationAccessAuthorized : PermissionsStrings.authorizeLocationAccess,
+                 viewModel.locationAuthorized)
             ],
             category: .location
         )
@@ -106,7 +110,8 @@ struct PermissionListView: View {
         sectionView(
             title: PermissionsStrings.camera,
             rows: [
-                (PermissionsStrings.cameraAccessAuthorized, viewModel.cameraAuthorized)
+                (viewModel.cameraAuthorized ? PermissionsStrings.cameraAccessAuthorized : PermissionsStrings.authorizeCameraAccess,
+                 viewModel.cameraAuthorized)
             ],
             category: .camera
         )
@@ -116,7 +121,8 @@ struct PermissionListView: View {
         sectionView(
             title: PermissionsStrings.notifications,
             rows: [
-                (PermissionsStrings.notificationsEnabled, viewModel.notificationsEnabled)
+                (viewModel.notificationsEnabled ? PermissionsStrings.notificationsEnabled : PermissionsStrings.enableNotifications,
+                 viewModel.notificationsEnabled)
             ],
             category: .notifications
         )

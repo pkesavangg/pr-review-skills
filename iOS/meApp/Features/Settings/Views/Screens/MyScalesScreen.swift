@@ -14,6 +14,13 @@ struct MyScalesScreen: View {
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
+
+    // Sheet presentation state
+    @State private var showScaleList: Bool = false
+
+    // Selected scale info – used to decide which setup flow to launch
+    @State private var selectedScaleInfo: ScaleItemInfo?
+    
     private var focusBinding: Binding<FocusField?> {
         Binding(
             get: { focusedField },
@@ -55,10 +62,11 @@ struct MyScalesScreen: View {
                             customIcon: AppAssets.helpCircle,
                             onCustomIconTap: { scaleStore.openHelp() },
                             maxLength: 4,
-                            allowWholeNumbers: true
+                            allowWholeNumbers: true,
+                            showPrefixZero: true
                         ),
                         value: Binding(
-                            get: { scaleStore.addScaleForm.modelNumber },
+                            get: { scaleStore.addScaleForm.modelNumberValue },
                             set: { scaleStore.addScaleForm.setModelNumber($0) }
                         ),
                         focusedField: focusBinding
@@ -70,7 +78,16 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: !scaleStore.addScaleForm.isValid,
                         action: {
-                            // TODO: ADD action
+                            // Fetch the corresponding scale and trigger setup flow sheet.
+                            if let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) {
+                                // Clear focus & reset form
+                                focusedField = nil
+                                hideKeyboard()
+
+                                selectedScaleInfo = scale
+                                // Optional: reset the form for next entry
+                                scaleStore.resetForm()
+                            }
                         }
                     )
                     .padding(.bottom, .spacingSM)
@@ -80,12 +97,37 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: false,
                         action: {
-                            // TODO: ADD action
+                            showScaleList = true
                         }
                     )
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
+                .sheet(isPresented: $showScaleList) {
+                    ChooseYourScaleView { scale in
+                        // Persist selection and rely on the sheet below to decide what to show.
+                        // Delay slightly so the ChooseYourScaleView sheet can dismiss first and avoid warning: "Attempt to present ... while a presentation is in progress.".
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            selectedScaleInfo = scale
+                        }
+                    }
+                }
+                // MARK: - Setup flow sheet driven by `selectedScaleInfo`
+                .sheet(item: $selectedScaleInfo) { scale in
+                    if scale.setupType == .appSync {
+                        AppSyncScreen(sku: scale.sku)
+                            .interactiveDismissDisabled(true)
+                    } else {
+                        // TODO: Handle other setup types
+                        VStack(spacing: .spacingMD) {
+                            Text("Setup flow coming soon")
+                                .fontOpenSans(.heading4)
+                            Text("Selected scale: \(scale.productName)")
+                                .fontOpenSans(.body2)
+                        }
+                        .padding()
+                    }
+                }
                 
                 if !scaleStore.scales.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
