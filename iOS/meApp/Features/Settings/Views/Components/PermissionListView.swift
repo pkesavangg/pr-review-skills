@@ -22,7 +22,6 @@ struct PermissionListView: View {
     // MARK: Dependencies
     @Environment(\.appTheme) private var theme
     @StateObject private var viewModel: PermissionsViewModel = PermissionsViewModel()
-    var isFromScaleSetup: Bool = false
     // MARK: Configuration
     private let categories: Set<Category>
     private let requiredCategories: Set<Category>
@@ -62,7 +61,6 @@ struct PermissionListView: View {
         self.categories = config.0
         self.requiredCategories = []
         self.headerDescription = config.2.isEmpty ? nil : config.2
-        self.isFromScaleSetup = true
     }
     
     // MARK: Body
