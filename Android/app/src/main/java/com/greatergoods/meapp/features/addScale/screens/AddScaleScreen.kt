@@ -5,8 +5,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,16 +30,18 @@ import com.greatergoods.meapp.features.addScale.reducer.AddScaleFormControls
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleState
 import com.greatergoods.meapp.features.addScale.strings.AddScaleScreenStrings
-import com.greatergoods.meapp.features.addScale.viewmodal.AddScaleViewModel
+import com.greatergoods.meapp.features.addScale.viewmodel.AddScaleViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.components.AppScaffold
+import com.greatergoods.meapp.features.common.components.AppScaleCard
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.ScaleList
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
@@ -76,63 +81,80 @@ fun AddScaleScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = { focusManager.clearFocus() },
                 ),
         ) {
-            AppText(
-                text = AddScaleScreenStrings.Title,
-                textType = TextType.Title,
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            AppText(
-                text = AddScaleScreenStrings.Subtitle,
-                textType = TextType.Body,
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-            AppInput(
-                formControl = modelNumberControl,
-                label = AddScaleScreenStrings.ModelNumberLabel,
-                type = AppInputType.NUMERIC_STRING,
-                imeAction = ImeAction.Done,
-                onImeAction = {
-                    // handle submit
-                    focusManager.clearFocus()
-                },
-                showTrailingIcon = true,
-                showTrailingIconAlways = true,
-                trailingIconId = AppIcons.Outlined.Help,
-                onTrailingAction = { handleIntent(AddScaleIntent.ShowHelp)},
+            Column(modifier = Modifier
+                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
+            ) {
+                AppText(
+                    text = AddScaleScreenStrings.Title,
+                    textType = TextType.Title,
+                )
+                Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+                AppText(
+                    text = AddScaleScreenStrings.Subtitle,
+                    textType = TextType.Body,
+                )
+                Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+                AppInput(
+                    formControl = modelNumberControl,
+                    label = AddScaleScreenStrings.ModelNumberLabel,
+                    type = AppInputType.NUMERIC_STRING,
+                    imeAction = ImeAction.Done,
+                    onImeAction = {
+                        // handle submit
+                        focusManager.clearFocus()
+                    },
+                    showTrailingIcon = true,
+                    showTrailingIconAlways = true,
+                    trailingIconId = AppIcons.Outlined.Help,
+                    onTrailingAction = { handleIntent(AddScaleIntent.ShowHelp) },
+                    modifier = Modifier
+                        .semantics { contentType = ContentType.PhoneNumber }
+                        .focusRequester(modelNumberFocusRequester),
+                )
+
+                Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+
+                AppButton(
+                    label = AddScaleScreenStrings.Submit,
+                    type = ButtonType.PrimaryFilled,
+                    size = ButtonSize.Large,
+                    enabled = state.form.isValid,
+                    onClick = { handleIntent(AddScaleIntent.Submit) },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+                Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+                AppButton(
+                    label = AddScaleScreenStrings.CantFindModelNumber,
+                    type = ButtonType.TextPrimary,
+                    onClick = { handleIntent(AddScaleIntent.OpenScaleChooser) },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+                Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+                AppText(
+                    text = AddScaleScreenStrings.MyScales,
+                    textType = TextType.Title,
+                )
+            }
+
+            Column(
                 modifier = Modifier
-                    .semantics { contentType = ContentType.PhoneNumber }
-                    .focusRequester(modelNumberFocusRequester),
-            )
-
-            Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-
-            AppButton(
-                label = AddScaleScreenStrings.Submit,
-                type = ButtonType.PrimaryFilled,
-                size = ButtonSize.Large,
-                enabled = state.form.isValid,
-                onClick = { handleIntent(AddScaleIntent.Submit) },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            AppButton(
-                label = AddScaleScreenStrings.CantFindModelNumber,
-                type = ButtonType.TextPrimary,
-                onClick = { },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-            AppText(
-                text = AddScaleScreenStrings.MyScales,
-                textType = TextType.Title,
-            )
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                state.savedScales.forEach { scale ->
+                    AppScaleCard(
+                        scale = scale,
+                        isSavedScale = true,
+                        onClick = {},
+                    )
+                }
+            }
         }
 
     }

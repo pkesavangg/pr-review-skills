@@ -12,3 +12,7 @@ object AddScaleScreenStrings {
     const val Submit = "SUBMIT"
     const val CantFindModelNumber = "CAN'T FIND YOUR MODEL NUMBER?"
 }
+
+object ChooseScaleStrings {
+    const val Header = "Choose Your Scale"
+}
