@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.model
 
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+import com.greatergoods.meapp.resources.AppIcons
 
 /**
  * Data class representing a scale's information.
@@ -15,7 +16,7 @@ import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 data class ScaleInfo(
     val productName: String,
     val sku: String,
-    val imgPath: String?,
+    val imgPath: Int?,
     val setupType: ScaleSetupType,
     val bodyComp: Boolean,
     val isConnected: Boolean? = null,

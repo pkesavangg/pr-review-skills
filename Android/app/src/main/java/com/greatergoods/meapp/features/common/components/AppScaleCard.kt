@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.ScaleInfo
 import com.greatergoods.meapp.features.common.strings.AppListStrings
+import com.greatergoods.meapp.features.common.helper.ScaleUtility
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -70,7 +71,7 @@ fun AppScaleCard(
         ) {
             // Placeholder image
             Image(
-                painter = painterResource(id = AppIcons.Default.ScalePlaceholder),
+                painter = painterResource(id = ScaleUtility.scaleImageResource(scale.sku) ?: AppIcons.Default.ScalePlaceholder),
                 contentDescription = null,
                 modifier = Modifier
                     .size(75.dp)
@@ -85,7 +86,7 @@ fun AppScaleCard(
                     textType = if (isSavedScale) TextType.ListTitle1 else TextType.ListTitle2
                 )
                 AppText(
-                    text = scale.productName,
+                    text = scale.productName.lowercase(),
                     textType = TextType.ListSubtitle,
                 )
                 if (isSavedScale) {
