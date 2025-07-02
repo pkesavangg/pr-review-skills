@@ -408,30 +408,10 @@ class AccountService
         ): Boolean =
             try {
                 val isActiveAccount = getCurrentAccount()?.id == accountId
-                // Try to logout on API if network is available
-                if (isNetworkAvailable()) {
-                    try {
-                        accountRepository.logout(fcmToken ?: "", accountId)
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "API logout failed", e.toString())
-                        // Continue with local logout even if API fails
-                    }
-                }
-                // Always perform local logout regardless of network status
-                if (isActiveAccount) {
-                    accountRepository.deactivateAllAccountsInDB()
-                }
-
-                // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
-                accountRepository.logoutInDb(accountId)
-
-                // Clear tokens from DataStore and TokenManager
-                userDataStore.clearAccountTokens(accountId)
-                tokenManager.clearTokens()
-
+                val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
                 AppLog.d(TAG, "Logout successful")
                 appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
-                true
+                result
             } catch (e: Exception) {
                 AppLog.e(TAG, "Logout failed", e.toString())
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
@@ -444,38 +424,10 @@ class AccountService
          */
         override suspend fun logoutAll(): Boolean =
             try {
-                val loggedInAccounts = loggedInAccountsFlow.first()
-
-                // Sort accounts to handle active account last
-                val sortedAccounts =
-                    loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
-
-                for (account in sortedAccounts) {
-                    try {
-                        // Try to logout on API if network is available
-                        if (isNetworkAvailable()) {
-                            try {
-                                accountRepository.logout(account.fcmToken ?: "", account.id)
-                            } catch (e: Exception) {
-                                AppLog.e(
-                                    TAG,
-                                    "API logout failed for account ${account.id}",
-                                    e.toString(),
-                                )
-                                // Continue with local logout even if API fails
-                            }
-                        }
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "Failed to logout account ${account.id}", e.toString())
-                    }
-                }
-                // Clear all accounts from database
-                accountRepository.logoutAllAccountsInDb()
-                // Clear tokens
-                tokenManager.clearTokens()
+                val result = accountRepository.logoutAllAccounts()
                 AppLog.d(TAG, "All accounts logged out successfully")
                 appNavigationService.emitAuthEvent(AuthState.LoggedOut(true))
-                true
+                result
             } catch (e: Exception) {
                 AppLog.e(TAG, "Logout all failed", e.toString())
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))

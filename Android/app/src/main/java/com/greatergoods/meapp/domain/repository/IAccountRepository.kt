@@ -128,4 +128,23 @@ interface IAccountRepository {
      * @return List of accounts that need to be synced
      */
     suspend fun getUnsyncedAccountsFromDB(): List<Account>
+
+    /**
+     * Logs out the account both remotely (API) and locally (DB, tokens).
+     * @param accountId The ID of the account to log out
+     * @param fcmToken The FCM token for push notifications (optional)
+     * @param isActiveAccount Whether this is the active account
+     * @return true if logout was successful, false otherwise
+     */
+    suspend fun logoutAccount(
+        accountId: String,
+        fcmToken: String?,
+        isActiveAccount: Boolean,
+    ): Boolean
+
+    /**
+     * Logs out all accounts both remotely (API) and locally (DB, tokens).
+     * @return true if all accounts were logged out successfully, false otherwise
+     */
+    suspend fun logoutAllAccounts(): Boolean
 }

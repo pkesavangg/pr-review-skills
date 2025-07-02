@@ -21,7 +21,6 @@ import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.storage.Account.Account
@@ -121,19 +120,20 @@ class AccountRepository
             val updatedAccountInfo = response.account
 
             // Update the account in the DB with the new info
-            val updatedAccount = updateAccountInDB(
-                updatedAccountInfo.id,
-                PartialAccount(
-                    firstName = updatedAccountInfo.firstName,
-                    lastName = updatedAccountInfo.lastName,
-                    dob = updatedAccountInfo.dob,
-                    gender = updatedAccountInfo.gender,
-                    zipcode = updatedAccountInfo.zipcode,
-                    email = updatedAccountInfo.email,
-                    isActiveAccount = true,
-                    isSynced = true
+            val updatedAccount =
+                updateAccountInDB(
+                    updatedAccountInfo.id,
+                    PartialAccount(
+                        firstName = updatedAccountInfo.firstName,
+                        lastName = updatedAccountInfo.lastName,
+                        dob = updatedAccountInfo.dob,
+                        gender = updatedAccountInfo.gender,
+                        zipcode = updatedAccountInfo.zipcode,
+                        email = updatedAccountInfo.email,
+                        isActiveAccount = true,
+                        isSynced = true,
+                    ),
                 )
-            )
             return updatedAccount
         }
 
@@ -400,5 +400,75 @@ class AccountRepository
         override suspend fun getUnsyncedAccountsFromDB(): List<Account> =
             accountDao.getUnsyncedAccounts().first().map { accountEntity ->
                 AccountEntityMapper.toDomain(accountEntity)
+            }
+
+        /**
+         * Logs out the account both remotely (API) and locally (DB, tokens).
+         * @param accountId The ID of the account to log out
+         * @param fcmToken The FCM token for push notifications (optional)
+         * @param isActiveAccount Whether this is the active account
+         * @return true if logout was successful, false otherwise
+         */
+        override suspend fun logoutAccount(
+            accountId: String,
+            fcmToken: String?,
+            isActiveAccount: Boolean,
+        ): Boolean =
+            try {
+                // Try to logout on API if network is available
+                var apiLogoutAttempted = false
+                try {
+                    // Assume network is available if API call does not throw
+                    authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
+                    apiLogoutAttempted = true
+                } catch (e: Exception) {
+                    AppLog.e(TAG, "API logout failed", e.toString())
+                    // Continue with local logout even if API fails
+                }
+                // Always perform local logout regardless of network status
+                if (isActiveAccount) {
+                    accountDao.deactivateAllAccounts()
+                }
+                // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
+                accountDao.logoutAccount(accountId)
+                // Clear tokens from DataStore and TokenManager
+                userDataStore.clearAccountTokens(accountId)
+                tokenManager.clearTokens()
+                AppLog.d(TAG, "Logout successful (API attempted: $apiLogoutAttempted)")
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "LogoutAccount failed", e.toString())
+                false
+            }
+
+        /**
+         * Logs out all accounts both remotely (API) and locally (DB, tokens).
+         * @return true if all accounts were logged out successfully, false otherwise
+         */
+        override suspend fun logoutAllAccounts(): Boolean =
+            try {
+                // Get all logged-in accounts
+                val loggedInAccounts = accountDao.getAllLoggedInAccounts().first()
+                // Sort accounts to handle active account last
+                val sortedAccounts = loggedInAccounts.sortedWith(compareByDescending { it.account.isActiveAccount })
+                for (accountData in sortedAccounts) {
+                    val account = accountData.account
+                    try {
+                        // Try to logout on API
+                        authAPI.logoutWithToken(LogoutRequest(account.fcmToken ?: ""), account.id)
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "API logout failed for account ${account.id}", e.toString())
+                        // Continue with local logout even if API fails
+                    }
+                }
+                // Clear all accounts from database
+                accountDao.logoutAllAccounts()
+                // Clear tokens
+                tokenManager.clearTokens()
+                AppLog.d(TAG, "All accounts logged out successfully")
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Logout all failed", e.toString())
+                false
             }
     }
