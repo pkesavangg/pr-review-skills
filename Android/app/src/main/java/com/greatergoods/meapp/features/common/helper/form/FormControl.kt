@@ -36,6 +36,7 @@ data class ValidationError(
 class FormControl<T> private constructor(
     initialValue: T,
     validators: List<Validator<T>> = emptyList(),
+    onValueChangeCallback: OnValueChangeCallback<T>? = null
 ) {
     private val _value = mutableStateOf(initialValue)
     val value: T get() = _value.value
@@ -61,7 +62,7 @@ class FormControl<T> private constructor(
     private val _validators = mutableStateOf(validators)
     private val _asyncValidators = mutableStateOf<List<AsyncValidatorWrapper<T>>>(emptyList())
 
-    private var onValueChangeCallback: OnValueChangeCallback<T>? = null
+    private var onValueChangeCallback: OnValueChangeCallback<T>? = onValueChangeCallback
 
     /**
      * Sets a callback to be notified when the value changes
@@ -212,10 +213,12 @@ class FormControl<T> private constructor(
         fun <T> create(
             initialValue: T,
             validators: List<Validator<T>> = emptyList(),
+            onValueChangeCallback: OnValueChangeCallback<T>? = null,
         ): FormControl<T> =
             FormControl(
                 initialValue = initialValue,
                 validators = validators,
+                onValueChangeCallback = onValueChangeCallback,
             )
     }
 

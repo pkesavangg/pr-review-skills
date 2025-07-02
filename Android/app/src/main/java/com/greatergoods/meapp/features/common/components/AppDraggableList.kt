@@ -29,6 +29,11 @@ object DragDefaults {
     const val VELOCITY_THRESHOLD = 100f
 }
 
+enum class StaticPosition {
+    Top,
+    Bottom
+}
+
 /**
  * Scope for defining draggable and static content in a draggable list item.
  */
@@ -37,20 +42,27 @@ interface DraggableListItemScope {
     fun Draggable(content: @Composable () -> Unit)
 
     @Composable
-    fun Static(content: @Composable () -> Unit)
+    fun Static(position: StaticPosition = StaticPosition.Bottom, content: @Composable () -> Unit)
 }
 
 private class DraggableListItemScopeImpl : DraggableListItemScope {
+    var staticPosition: StaticPosition = StaticPosition.Bottom
     var draggableContent: (@Composable () -> Unit)? = null
     var staticContent: (@Composable () -> Unit)? = null
 
     @Composable
-    override fun Draggable(content: @Composable () -> Unit) {
+    override fun Draggable(
+        content: @Composable (() -> Unit)
+    ) {
         draggableContent = content
     }
 
     @Composable
-    override fun Static(content: @Composable () -> Unit) {
+    override fun Static(
+        position: StaticPosition,
+        content: @Composable (() -> Unit)
+    ) {
+        staticPosition = position
         staticContent = content
     }
 }
@@ -92,11 +104,13 @@ fun <T> AppDraggableList(
     var measuredItemHeight by remember { mutableStateOf(0.dp) }
     var hasMeasured by remember { mutableStateOf(false) }
 
-    val heightModifier by derivedStateOf {
-        if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp) {
-            Modifier.height(measuredItemHeight * minOf(items.size, maxVisibleItems))
-        } else {
-            Modifier
+    val heightModifier by remember {
+        derivedStateOf {
+            if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp) {
+                Modifier.height(measuredItemHeight * minOf(items.size, maxVisibleItems))
+            } else {
+                Modifier
+            }
         }
     }
 
@@ -109,20 +123,14 @@ fun <T> AppDraggableList(
             // Create a single scope instance that will be used to collect both contents
             val scope = remember(item) { DraggableListItemScopeImpl() }
 
-            // Call itemContent once to populate both draggable and static content
-            scope.itemContent(item, 0f)
-
             // If neither Draggable nor Static was called, treat the entire content as draggable
-            val hasExplicitContent = scope.draggableContent != null || scope.staticContent != null
-            val fallbackScope = if (!hasExplicitContent) {
-                DraggableListItemScopeImpl().apply {
-                    draggableContent = { scope.itemContent(item, 0f) }
-                }
-            } else scope
+            val noExplicitContent = scope.draggableContent == null && scope.staticContent == null
 
+            if (scope.staticPosition == StaticPosition.Top) {
+                scope.staticContent?.invoke()
+            }
             // Render draggable content (either explicit or fallback)
-            val draggableContent = fallbackScope.draggableContent
-            if (draggableContent != null) {
+            if (scope.draggableContent != null || noExplicitContent) {
                 AppDraggableListItem(
                     actionContent = {
                         trailingActions(index, item)
@@ -151,14 +159,17 @@ fun <T> AppDraggableList(
                                 }
                             },
                         ) {
-                            fallbackScope.draggableContent?.invoke()
+                            scope.draggableContent?.invoke()
                         }
                     } else {
-                        fallbackScope.draggableContent?.invoke()
+                        scope.draggableContent?.invoke()
                     }
+                    scope.itemContent(item, progress)
                 }
             }
-            fallbackScope.staticContent?.invoke()
+            if (scope.staticPosition == StaticPosition.Bottom) {
+                scope.staticContent?.invoke()
+            }
         }
 
         footerContent?.let {
