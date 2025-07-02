@@ -16,10 +16,10 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageSummary
+import com.greatergoods.meapp.features.common.helper.DashboardKey
 import com.greatergoods.meapp.features.common.helper.StatHelper
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageSummary
 import com.greatergoods.meapp.features.common.model.Stat
-import com.greatergoods.meapp.proto.DashboardKey
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 

@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.features.common.model
 
-import com.greatergoods.meapp.features.common.enums.MetricKey
+import com.greatergoods.meapp.features.common.helper.DashboardKey
 
 data class Stat(
     val label: String,
