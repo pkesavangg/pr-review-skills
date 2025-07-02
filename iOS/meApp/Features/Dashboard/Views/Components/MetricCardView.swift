@@ -3,9 +3,10 @@ import SwiftUI
 struct MetricCardView: View {
     let value: String
     let label: String
-    let unit: String?
-    let preLabel: String?
     let metricType: DashboardMetricType
+    let isEditMode: Bool
+    let isRemoved: Bool
+    let onToggleRemoval: () -> Void
     @Environment(\.appTheme) private var theme
 
     static let twelveCardVerticalPadding: CGFloat = .spacingMD/2
@@ -22,20 +23,10 @@ struct MetricCardView: View {
     var body: some View {
         VStack(spacing: 1) {
             HStack(spacing: 2) {
-                if let preLabel = preLabel {
-                    Text(preLabel)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
-                }
                 Text(value)
                     .fontOpenSans(.heading4)
                     .fontWeight(.bold)
                     .foregroundColor(theme.textHeading)
-                if let unit = unit {
-                    Text(unit)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
-                }
             }
             Text(label)
                 .fontOpenSans(.subHeading2)
@@ -45,15 +36,20 @@ struct MetricCardView: View {
         .padding(.vertical, verticalPadding)
         .background(theme.backgroundPrimary)
         .cornerRadius(.radiusSM)
+        .editModeOverlay(
+            isEditMode: isEditMode,
+            isRemoved: isRemoved,
+            onToggleRemoval: onToggleRemoval
+        )
     }
 }
 
 #Preview {
     VStack(spacing: 16) {
-        MetricCardView(value: "24.5", label: "bmi", unit: nil, preLabel: nil,  metricType: .twelve)
-        MetricCardView(value: "18.3", label: "body fat", unit: "%", preLabel: nil, metricType: .four)
-        MetricCardView(value: "8", label: "visceral fat", unit: nil, preLabel: "Level", metricType: .twelve)
-        MetricCardView(value: "1 day", label: "current streak", unit: nil, preLabel: nil, metricType: .four)
+        MetricCardView(value: "24.5", label: "bmi", metricType: .twelve, isEditMode: false, isRemoved: false, onToggleRemoval: {})
+        MetricCardView(value: "18.3", label: "body fat",metricType: .four, isEditMode: false, isRemoved: false, onToggleRemoval: {})
+        MetricCardView(value: "8", label: "visceral fat", metricType: .twelve, isEditMode: true, isRemoved: false, onToggleRemoval: {})
+        MetricCardView(value: "41.6", label: "muscle", metricType: .four, isEditMode: true, isRemoved: true, onToggleRemoval: {})
     }
     .padding()
     .background(Color(.systemGroupedBackground))

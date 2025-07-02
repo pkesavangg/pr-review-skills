@@ -5,6 +5,7 @@ struct GoalProgressCardView: View {
     let startWeight: Double // e.g., 154.3
     let goalWeight: Double // e.g., 132.3
     let unit: String // e.g., "lbs"
+    let isRemoved: Bool // Whether the goal card is removed in edit mode
     
     @Environment(\.appTheme) private var theme
     
@@ -33,7 +34,7 @@ struct GoalProgressCardView: View {
                     progress: progress,
                     leftLabel: String(format: "%.1f %@", startWeight, unit),
                     rightLabel: String(format: "%.1f %@", goalWeight, unit),
-                    progressBarColor: theme.statusSuccess,
+                    progressBarColor: isRemoved ? theme.actionTertiary : theme.statusSuccess,
                     labelForegroundColor: theme.textSubheading
                 )
             }
@@ -46,7 +47,10 @@ struct GoalProgressCardView: View {
 }
 
 #Preview {
-    GoalProgressCardView(delta: -13.2, startWeight: 154.3, goalWeight: 132.3, unit: "lbs")
-        .padding()
-        .background(Color(.systemGroupedBackground))
+    VStack(spacing: 20) {
+        GoalProgressCardView(delta: -13.2, startWeight: 154.3, goalWeight: 132.3, unit: "lbs", isRemoved: false)
+        GoalProgressCardView(delta: -13.2, startWeight: 154.3, goalWeight: 132.3, unit: "lbs", isRemoved: true)
+    }
+    .padding()
+    .background(Color(.systemGroupedBackground))
 } 

@@ -11,33 +11,40 @@ struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject var scale = DashboardStore()
     let lang = DashboardStrings.self
-    @State private var isEditingDashboard = false
     @State private var selectedEntry: Entry? = nil
     @State private var selectedMetric: BodyMetric? = nil
 
     var body: some View {
-        VStack {
-            ScrollView(showsIndicators: false) {
-                NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false)
+        VStack(spacing: 0) {
 
+            NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false)
+                .zIndex(100)
+            
+            ScrollView(showsIndicators: false) {
                 WeightTrendView()
                     .frame(height: 490)
                     .padding(.top, .spacingLG)
 
-                metricGridSection()
+                let allContentRemoved = scale.metricsToShow.isEmpty && (!scale.isEditMode && scale.isGoalCardRemoved) && scale.streakItemsToShow.isEmpty
 
-                Divider()
-                    .foregroundColor(theme.statusUtility)
-                    .padding(.vertical, .spacingSM)
-                    .padding(.horizontal, .spacing2XL)
+                if !allContentRemoved {
+                    metricGridSection()
+                        .padding(.top,.spacingSM)
 
-                goalCardSection()
+                    if !scale.metricsToShow.isEmpty {
+                        Divider()
+                            .foregroundColor(theme.statusUtility)
+                            .padding(.vertical, .spacingSM)
+                            .padding(.horizontal, .spacing2XL)
+                    }
 
-                streakAndLossGrid()
-                    .padding(.vertical, .spacingSM)
-                    .padding(.horizontal, .spacingSM)
+                    goalCardSection()
+
+                    streakAndLossGrid()
+                }
 
                 actionButtonsSection()
+                    .padding(.top, allContentRemoved ? .spacing6XL : .spacingSM)
             }
         }
         .ignoresSafeArea(.all)
@@ -53,44 +60,35 @@ struct DashboardScreen: View {
         let metricsToShow = scale.metricsToShow
 
         return LazyVGrid(columns: columns, spacing: 16) {
-            ForEach(metricsToShow.indices, id: \.self) { idx in
-                let item = metricsToShow[idx]
+            ForEach(Array(metricsToShow.enumerated()), id: \.offset) { index, item in
                 MetricCardView(
                     value: item.preLabel != nil ? "\(item.preLabel!) \(item.value)" : item.value,
                     label: item.label,
-                    unit: item.unit,
-                    preLabel: item.preLabel,
-                    metricType: scale.metricType
+                    metricType: scale.metricType,
+                    isEditMode: scale.isEditMode,
+                    isRemoved: scale.isMetricRemovedInReorderedArray(at: index),
+                    onToggleRemoval: {
+                        scale.toggleMetricRemovalInReorderedArray(at: index)
+                    }
                 )
             }
         }
         .padding(.top, .spacing3XL)
         .padding(.horizontal, .spacingSM)
     }
-
-    // MARK: - Goal Progress Section
-    private func goalCardSection() -> some View {
-        GoalProgressCardView(
-            delta: scale.goalDelta,
-            startWeight: scale.goalStartWeight,
-            goalWeight: scale.goalGoalWeight,
-            unit: scale.goalUnit.rawValue
-        )
-        .padding(.horizontal, .spacingSM)
-    }
-
+    
     // MARK: - Streak and Loss Grid
     private func streakAndLossGrid() -> some View {
         let columns = scale.streakColumns
+        let streakItemsToShow = scale.streakItemsToShow
 
         return LazyVGrid(columns: columns, spacing: 16) {
-            ForEach(scale.streakItems.indices, id: \.self) { idx in
-                let item = scale.streakItems[idx]
+            ForEach(Array(streakItemsToShow.enumerated()), id: \.offset) { index, item in
                 NoteBox(alignCenter: true) {
                     HStack(alignment: .center, spacing: 8) {
                         if let icon = item.icon {
                             AppIconView(icon: icon, size: IconSize(width: 40, height: 40))
-                                .foregroundColor(theme.statusStreak)
+                                .foregroundColor(scale.isStreakRemovedInReorderedArray(at: index) ? theme.statusIconSecondary : theme.statusStreak)
                                 .padding(.trailing, 2)
                         }
                         VStack(alignment: .center, spacing: 2) {
@@ -104,23 +102,58 @@ struct DashboardScreen: View {
                         }
                     }
                 }
+                .editModeOverlay(
+                    isEditMode: scale.isEditMode,
+                    isRemoved: scale.isStreakRemovedInReorderedArray(at: index),
+                    onToggleRemoval: {
+                        scale.toggleStreakRemovalInReorderedArray(at: index)
+                    }
+                )
             }
         }
+        .padding(.bottom, .spacingSM)
+        .padding(.top, (!scale.isEditMode && scale.isGoalCardRemoved) ? 0 : .spacingSM)
+        .padding(.horizontal, .spacingSM)
+    }
+    
+    // MARK: - Goal Progress Section
+    private func goalCardSection() -> some View {
+        if !scale.isEditMode && scale.isGoalCardRemoved {
+            return AnyView(EmptyView())
+        }
+        
+        return AnyView(
+            GoalProgressCardView(
+                delta: scale.goalDelta,
+                startWeight: scale.goalStartWeight,
+                goalWeight: scale.goalGoalWeight,
+                unit: scale.goalUnit.rawValue,
+                isRemoved: scale.isGoalCardRemoved
+            )
+            .editModeOverlay(
+                isEditMode: scale.isEditMode,
+                isRemoved: scale.isGoalCardRemoved,
+                onToggleRemoval: {
+                    scale.toggleGoalCardRemoval()
+                }
+            )
+            .padding(.horizontal, .spacingSM)
+        )
     }
 
     // MARK: - Action Buttons
     private func actionButtonsSection() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
-            if isEditingDashboard {
+            if scale.isEditMode {
                 ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: false, action: {
-                    isEditingDashboard = false
+                    scale.saveChanges()
                 })
                 ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: false, action: {
-                    isEditingDashboard = false
+                    scale.resetDashboard()
                 })
             } else {
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: false, action: {
-                    isEditingDashboard = true
+                    scale.isEditMode.toggle()
                 })
                 ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: false, action: {})
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: false, action: {
@@ -130,7 +163,6 @@ struct DashboardScreen: View {
                 })
             }
         }
-        .padding(.top, .spacingSM)
         .padding(.bottom, .spacingLG)
     }
 }
