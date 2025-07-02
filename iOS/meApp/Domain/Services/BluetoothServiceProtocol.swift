@@ -40,6 +40,8 @@ protocol BluetoothServiceProtocol {
     var isSetupInProgress: Bool { get set }
 
     // MARK: - Lifecycle / Initialisation
+    /// Initializes the Bluetooth service.
+    func initialize()
 
     /// Stops all ongoing Bluetooth operations and scanning.
     func stopScan()

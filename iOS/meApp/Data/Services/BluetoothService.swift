@@ -65,7 +65,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var activeAccount: Account?
     private var isSmartScanStarted = false
     private var bluetoothScales: [Device] = []
-    private var dismissedScales: [String] = []
     private var skipDevices: [String] = []
     private var isWeightOnlyModeAlertDismissed = false
 
@@ -105,7 +104,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
            }
            .store(in: &cancellables)
 
-        // Subscribe to active account changes
+    }
+
+    func initialize() {
+            // Subscribe to active account changes
         accountService.$activeAccount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
