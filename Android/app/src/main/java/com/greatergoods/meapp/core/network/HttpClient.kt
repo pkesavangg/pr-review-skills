@@ -7,6 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 /**
  * Wrapper for Retrofit HTTP client, configured with a base URL and OkHttpClient.
  * Provides a method to create API service interfaces.
+ * Supports dynamic token management for different accounts.
  *
  * @property baseUrl The base URL for API requests.
  * @property retrofit The configured Retrofit instance.
@@ -31,4 +32,12 @@ class HttpClient(
      * @return An implementation of the service interface.
      */
     fun <T> createService(serviceClass: Class<T>): T = retrofit.create(serviceClass)
+
+    companion object {
+        /**
+         * Header key for specifying account ID in API requests.
+         * This allows the AuthTokenInterceptor to use the correct token for the specified account.
+         */
+        const val ACCOUNT_ID_HEADER = "X-Account-ID"
+    }
 }

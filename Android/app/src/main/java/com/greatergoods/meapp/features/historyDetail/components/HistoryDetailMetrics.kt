@@ -12,15 +12,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
 import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper.getMetrics
 import com.greatergoods.meapp.features.historyDetail.modal.Metric
 import com.greatergoods.meapp.theme.MeTheme
+import android.util.Log
 
 @Composable
 internal fun MetricItem(
@@ -64,7 +67,7 @@ internal fun MetricItem(
 fun HistoryDetailItemDetails(
     item: ScaleEntry,
 ) {
-    val metrics = getMetrics(item)
+    val metrics = getMetrics(fromScaleEntry(item))
     Column(
         modifier =
             Modifier

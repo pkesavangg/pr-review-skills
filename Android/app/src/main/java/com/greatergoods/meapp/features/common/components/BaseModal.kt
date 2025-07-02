@@ -68,7 +68,7 @@ fun BaseModal(
             body?.let {
                 Text(
                     text = body,
-                    style = MeTheme.typography.body3,
+                    style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                     modifier = Modifier.fillMaxWidth(),
                 )

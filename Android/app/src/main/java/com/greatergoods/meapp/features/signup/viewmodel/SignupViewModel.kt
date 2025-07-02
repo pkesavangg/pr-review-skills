@@ -1,11 +1,11 @@
 package com.greatergoods.meapp.features.signup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.common.WeightUnit
-import com.greatergoods.meapp.domain.services.IAccountAuthService
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
@@ -25,22 +25,22 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the Signup screen. Handles form state, validation, signup logic, and navigation.
- * @property accountAuthService Service for authentication.
+ * @property accountService Service for authentication.
  */
 @HiltViewModel
 class SignupViewModel
-@Inject
-constructor(
-    private val accountAuthService: IAccountAuthService,
-) : BaseIntentViewModel<SignupState, SignupIntent>(
-    reducer = SignupReducer(),
-) {
-    private val TAG = "SignupViewModel"
+    @Inject
+    constructor(
+        private val accountService: IAccountService,
+    ) : BaseIntentViewModel<SignupState, SignupIntent>(
+            reducer = SignupReducer(),
+        ) {
+        private val TAG = "SignupViewModel"
 
-    override fun provideInitialState(): SignupState =
-        SignupState(
-            form = FormGroup(SignupFormControls.create()),
-        )
+        override fun provideInitialState(): SignupState =
+            SignupState(
+                form = FormGroup(SignupFormControls.create()),
+            )
 
         override fun handleIntent(intent: SignupIntent) {
             when (intent) {
@@ -51,19 +51,19 @@ constructor(
                 else -> {}
             }
             super.handleIntent(intent)
-    }
-
-    /**
-     * Handles moving to the next step or submitting if on the last step.
-     */
-    fun onNext() {
-        if (state.value.isLastStep) {
-            AppLog.d(TAG, "Submitting signup form")
-            onSubmit()
-        } else {
-            AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
         }
-    }
+
+        /**
+         * Handles moving to the next step or submitting if on the last step.
+         */
+        fun onNext() {
+            if (state.value.isLastStep) {
+                AppLog.d(TAG, "Submitting signup form")
+                onSubmit()
+            } else {
+                AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
+            }
+        }
 
         /**
          * Handles the signup form submission. Validates the form, shows loading, and attempts signup.
@@ -108,20 +108,19 @@ constructor(
                 try {
                     // Create the basic account request (similar to newAccount in wgApp4-1)
                     val signupRequest =
-                        mutableMapOf<String, Any>(
-                            "email" to signupData.email.trim(),
-                            "firstName" to signupData.firstName.trim(),
-                            "lastName" to
-                                signupData.lastName.trim(),
-                            "gender" to signupData.sex,
-                            "zipcode" to
-                                signupData.zipcode
-                                    .trim(),
-                            "password" to signupData.password,
-                            "dob" to DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
-                            "height" to HeightInput.convertHeightInputToStored(controls.height.value),
-
-                            )
+                        SignupRequest(
+                            signupData.email.trim(),
+                            signupData.firstName.trim(),
+                            signupData.lastName.trim(),
+                            signupData.sex,
+                            signupData.zipcode
+                                .trim(),
+                            signupData.password,
+                            DateTimeValue.getDateFormatFromMilliseconds(
+                                controls.birthday.value.getTimestamp(),
+                            ),
+                            controls.height.value.toStoredHeight(),
+                        )
 
                     var goalData: Map<String, Any>? = null
                     if (!stateValue.goalSkipped) {
@@ -166,12 +165,12 @@ constructor(
                             }
 
                         // Add weight unit to account data for body composition update (always lbs)
-                        signupRequest["weightUnit"] = if (isMetric) WeightUnit.KG else WeightUnit.LB
+                        signupRequest.weightUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
                     }
-                    val account = accountAuthService.addAccount(signupRequest)
+                    val account = accountService.signup(signupRequest)
                     if (account != null) {
                         AppLog.i("SignupViewModel", "Account created successfully")
-                        navigationService.replaceStack(AppRoute.Init.Loading)
+                        navigationService.reInitialize()
                         AppLog.i("SignupViewModel", "Navigation to loading screen successful after signup")
                         handleIntent(SignupIntent.Success)
                     } else {

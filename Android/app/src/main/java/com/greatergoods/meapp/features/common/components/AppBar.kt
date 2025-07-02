@@ -12,6 +12,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,12 +38,22 @@ import com.greatergoods.meapp.theme.MeTheme.typography
 fun AppBar(
     modifier: Modifier = Modifier,
     title: String? = null,
+    borderColor: Color = colorScheme.utility,
     containerColor: Color = colorScheme.primaryBackground,
     navigationIcon: (@Composable (() -> Unit))? = null,
     actions: (@Composable (() -> Unit))? = null,
 ) {
     TopAppBar(
-        modifier = modifier,
+        modifier =
+            Modifier.drawBehind {
+                val borderSize = 1.dp.toPx()
+                drawLine(
+                    color = borderColor,
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = borderSize,
+                )
+            },
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = containerColor,

@@ -5,11 +5,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
+import com.greatergoods.meapp.features.settings.components.AccountSwitchInfoModal
 
 enum class DialogType {
     HeightPicker,
     HelpPopup,
     PasswordReset,
+    RadioGroupPicker,
+    AccountSwitchInfoPopup
 }
 
 @Composable
@@ -45,11 +48,48 @@ fun DialogHost() {
                 )
             }
 
+            DialogType.RadioGroupPicker -> {
+                // Custom dialog for radio group picker
+                val config = dialog.params["config"] as? RadioGroupModalConfig<*>
+                val onConfirm = dialog.params["onConfirm"] as? (Any?) -> Unit
+                val onCancel = dialog.params["onCancel"] as? (() -> Unit)
+
+                if (config != null) {
+                    AppRadioGroupModal(
+                        config = config as RadioGroupModalConfig<Any>,
+                        onCancel = {
+                            onCancel?.invoke()
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                        onOk = { selectedValue ->
+                            onConfirm?.invoke(selectedValue)
+                            dialogQueueViewModel.dismissCurrent()
+                        },
+                    )
+                }
+            }
+
             DialogType.PasswordReset -> {
                 val email = dialog.params["email"] as? String ?: ""
                 PasswordResetModal(
                     email = email,
                     onDismiss = {
+                        dialog.onDismiss?.let { it() }
+                        dialogQueueViewModel.dismissCurrent()
+                    },
+                )
+            }
+
+            DialogType.AccountSwitchInfoPopup -> {
+                val userInitial = dialog.params["userInitial"] as? String ?: "U"
+                val onAddAccount = dialog.params["onAddAccount"] as? (() -> Unit) ?: {}
+                AccountSwitchInfoModal(
+                    userInitial = userInitial,
+                    onAddAccount = {
+                        dialog.onDismiss?.let { it() }
+                        onAddAccount()
+                    },
+                    onClose = {
                         dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()
                     },

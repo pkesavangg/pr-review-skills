@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +20,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.domain.model.Account
+import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.strings.AppUserStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -52,17 +54,22 @@ fun AppUser(
             .fillMaxWidth()
             .background(colorScheme.primaryBackground, shape = shape)
             .clip(shape)
-            .padding(    start = spacing.sm,
-                         top = spacing.sm,
-                         bottom = spacing.sm,
-                         end = if (account.isLoggedIn) spacing.sm else 0.dp
+            .clickable(
+                enabled = account.isLoggedIn && !account.isExpired,
+                onClick = onAccountSelect,
+            )
+            .padding(
+                start = spacing.sm,
+                top = spacing.sm,
+                bottom = spacing.sm,
+                end = if (account.isLoggedIn && !account.isExpired) spacing.sm else 0.dp,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AppProfileAvatar(
             text = account.firstName,
             isActive = account.isActiveAccount,
-            enabled = account.isLoggedIn,
+            enabled = account.isLoggedIn && !account.isExpired,
             modifier = Modifier.alpha(avatarAlpha),
         )
 
@@ -71,7 +78,7 @@ fun AppUser(
         // User Info (Name and Email)
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${account.firstName} ${account.lastName}",
+                text = account.firstName,
                 style = typography.body2.copy(
                     color = colorScheme.textHeading,
                 ),
@@ -89,25 +96,24 @@ fun AppUser(
             )
         }
 
-        if (showAccountActivity) {
-            if (account.isLoggedIn) {
-                AppIcon(
-                    id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-                    contentDescription = "Select account",
-                    onClick = onAccountSelect,
-                    type = AppIconType.Primary,
-                    modifier = Modifier.size(24.dp),
-                )
-            } else {
-                AppButton(
-                    label = AppUserStrings.LogInButton,
-                    onClick = onLoginRequest,
-                    type = ButtonType.TextPrimary,
-                    size = ButtonSize.Small,
-                    textTransform = TextTransform.NONE
-                )
-            }
+        if (showAccountActivity && account.isLoggedIn && !account.isExpired) {
+            AppIcon(
+                id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
+                contentDescription = "Select account",
+                type = AppIconType.Primary,
+                modifier = Modifier.size(24.dp),
+            )
         }
+        if (account.isExpired) {
+            AppButton(
+                label = AppUserStrings.LogInButton,
+                onClick = onLoginRequest,
+                type = ButtonType.TextPrimary,
+                size = ButtonSize.Small,
+                textTransform = TextTransform.NONE,
+            )
+        }
+
     }
 }
 
@@ -128,6 +134,17 @@ fun AppUserPreview() {
                     isLoggedIn = true,
                     lastActiveTime = "2024-01-15T10:30:00.000Z",
                     zipcode = "12345",
+                    isSynced = true,
+                    isExpired = false,
+                    weightUnit = WeightUnit.LB,
+                    isWeightlessOn = true,
+                    height = 170,
+                    activityLevel = "Active",
+                    weightlessTimestamp = "2024-01-15T10:30:00.000Z",
+                    weightlessWeight = 65.5f,
+                    isStreakOn = true,
+                    dashboardType = "Dashboard4",
+                    dashboardMetrics = listOf("weight", "bmi", "bodyfat"),
                 ),
                 onAccountSelect = {},
                 onLoginRequest = {},
@@ -144,6 +161,17 @@ fun AppUserPreview() {
                     isLoggedIn = false,
                     lastActiveTime = "2024-01-15T10:30:00.000Z",
                     zipcode = "12345",
+                    isSynced = false,
+                    isExpired = true,
+                    weightUnit = null,
+                    isWeightlessOn = false,
+                    height = null,
+                    activityLevel = null,
+                    weightlessTimestamp = null,
+                    weightlessWeight = null,
+                    isStreakOn = false,
+                    dashboardType = null,
+                    dashboardMetrics = null,
                 ),
                 onAccountSelect = {},
                 onLoginRequest = {},

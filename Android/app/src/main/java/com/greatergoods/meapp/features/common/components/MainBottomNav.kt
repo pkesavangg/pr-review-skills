@@ -2,9 +2,11 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.BadgedBox
@@ -16,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +39,7 @@ import com.greatergoods.meapp.features.dashboard.enum.BOTTOM_NAV_ITEMS
 import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.launch
 
 /**
  * Stateless bottom navigation bar.
@@ -49,6 +53,7 @@ fun MainBottomNav(
     var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
     val topBackStack = LocalNavBackStack.current
     val backStack = topBackStack.getStackForTopLevel(AppRoute.Home)
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(backStack.lastOrNull()) {
         selectedItem =
@@ -60,7 +65,10 @@ fun MainBottomNav(
         containerColor = MeTheme.colorScheme.primaryBackground,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MeTheme.spacing.xs),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             BOTTOM_NAV_ITEMS.forEachIndexed { index, item ->
                 val isSelected = (selectedItem == item)
@@ -109,8 +117,15 @@ fun MainBottomNav(
                     },
                     selected = false,
                     onClick = {
-                        selectedItem = item
-                        topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+                        coroutineScope.launch {
+                            topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+                            val requiredItem = BOTTOM_NAV_ITEMS.find {
+                                it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
+                            }
+                            if (requiredItem != null && requiredItem != selectedItem) {
+                                selectedItem = requiredItem
+                            }
+                        }
                     },
                 )
             }

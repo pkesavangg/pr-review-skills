@@ -6,21 +6,26 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
+import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.historyDetail.components.HistoryDetailList
 import com.greatergoods.meapp.features.historyDetail.viewmodel.HistoryDetailIntent
 import com.greatergoods.meapp.features.historyDetail.viewmodel.HistoryDetailState
 import com.greatergoods.meapp.features.historyDetail.viewmodel.HistoryDetailViewModel
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryDetailScreen(monthKey: String) {
@@ -47,9 +52,18 @@ fun HistoryDetailScreenContent(
     onRefresh: (() -> Unit)? = null,
     handleIntent: (HistoryDetailIntent) -> Unit,
 ) {
+    val backStack = LocalNavBackStack.current
+    val scope = rememberCoroutineScope()
     AppScaffold(
         title = state.month,
         isRefreshing = state.isLoading,
+        navigationIcon = {
+            AppIconButton(AppIcons.Default.Close) {
+                scope.launch {
+                    backStack.removeLast()
+                }
+            }
+        },
         onRefresh = onRefresh,
     ) { modifier ->
         Box(modifier = modifier.fillMaxSize()) {
@@ -60,10 +74,9 @@ fun HistoryDetailScreenContent(
 
                 else -> {
                     HistoryDetailList(
-                        items = state.historyItems,
+                        historyDetails = state.historyItems,
                         onItemClick = { },
                         onItemDelete = { },
-                        modifier = Modifier,
                     )
                 }
             }
