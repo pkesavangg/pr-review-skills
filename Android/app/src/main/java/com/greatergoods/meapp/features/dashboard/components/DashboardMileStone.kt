@@ -108,19 +108,13 @@ private fun rememberMilestoneState(
         }
     }
 
-    val allMilestones = StatHelper.getMilestone(useShort = true, filterNulls = false)
+    val initialVisibleMilestones = StatHelper.getMilestone(
+        visibleKeys = if (milestoneKeys.isNotEmpty()) milestoneKeys else null,
+        useShort = true,
+        filterNulls = false
+    )
 
-    val initialVisibleMilestones = if (milestoneKeys.isNotEmpty()) {
-        allMilestones.filter { stat ->
-            when (stat.key) {
-                is DashboardKey.Milestone -> stat.key.key in milestoneKeys
-                is DashboardKey.Metric -> false
-            }
-        }
-    } else {
-        allMilestones
-    }
-
+    val allMilestones = StatHelper.getMilestone(visibleKeys = null, useShort = true, filterNulls = false)
     val initialHiddenMilestones = allMilestones.filter { it !in initialVisibleMilestones }
 
     var visibleMilestones by remember(initialVisibleMilestones) { mutableStateOf(initialVisibleMilestones) }

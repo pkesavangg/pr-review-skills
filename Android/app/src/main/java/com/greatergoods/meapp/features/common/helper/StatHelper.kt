@@ -94,12 +94,20 @@ object StatHelper {
     /**
      * Returns a list of milestone Stat objects.
      */
-    fun getMilestone(useShort: Boolean = false, filterNulls: Boolean = true): List<Stat> {
-        return milestoneValues.map { (key, value) ->
+    fun getMilestone(
+        visibleKeys: List<MilestoneKey>? = null,
+        useShort: Boolean = false,
+        filterNulls: Boolean = true
+    ): List<Stat> {
+        val keysToUse = (visibleKeys ?: MilestoneKey.entries)
+            .filter { it != MilestoneKey.UNRECOGNIZED && it != MilestoneKey.TO_GOAL }
+
+        val stats = keysToUse.map { key ->
+            val value = milestoneValues[key] ?: ""
             DashboardKey.Milestone(key).toStat(value, useShort)
-        }.let { stats ->
-            if (filterNulls) stats.filter { it.value != null } else stats
         }
+
+        return if (filterNulls) stats.filter { it.value != null } else stats
     }
 
     /**
