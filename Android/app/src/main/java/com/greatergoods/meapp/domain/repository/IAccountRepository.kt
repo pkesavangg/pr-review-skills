@@ -5,6 +5,7 @@ import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
+import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.storage.Account.Account
@@ -29,21 +30,6 @@ interface IAccountRepository {
      * Signs up via API and returns LoginResponse.
      */
     suspend fun signup(request: SignupRequest): LoginResponse
-
-    /**
-     * Logs out via API for a specific account.
-     * @param fcmToken Optional FCM token to unregister
-     * @param accountId The account ID to logout
-     */
-    suspend fun logout(
-        fcmToken: String?,
-        accountId: String,
-    )
-
-    /**
-     * Logs out in the database.
-     */
-    suspend fun logOutInDb(accountId: String)
 
     /**
      * Gets account info via API for a specific account and returns AccountResponse.
@@ -82,30 +68,24 @@ interface IAccountRepository {
     ): Token
 
     // DB Operations
-    suspend fun addAccountInDB(account: Account): Account
+    suspend fun addAccount(account: Account): Account
 
-    suspend fun updateAccountInDB(
+    suspend fun updateAccount(
         accountId: String,
         partialUpdate: PartialAccount,
     ): Account
 
-    suspend fun logoutInDb(accountId: String)
+    suspend fun deactivateOtherAccounts(accountId: String)
 
-    suspend fun logoutAllAccountsInDb()
+    suspend fun activateAccount(accountId: String)
 
-    suspend fun removeAccountInDB(accountId: String)
+    /**
+     * Updates tokens for the active account in the TokenManager.
+     * @param request The token update request containing all token fields
+     */
+    suspend fun updateTokens(request: AccountToken)
 
-    suspend fun removeAllAccountsInDB()
-
-    suspend fun deactivateOtherAccountsInDB(accountId: String)
-
-    suspend fun deactivateAllAccountsInDB()
-
-    suspend fun activateAccountInDB(accountId: String)
-
-    suspend fun updateTokensInDB(tokens: Map<String, String>)
-
-    suspend fun updateLastActiveTimeInDB(accountId: String)
+    suspend fun updateLastActiveTime(accountId: String)
 
     suspend fun getSyncTimeStamp(): Flow<String>
 

@@ -98,7 +98,7 @@ class OfflineHandlerService
                             isSynced = true,
                         )
                     // Update account with profile response and mark as synced
-                    accountRepository.updateAccountInDB(profileResponse.id, profileUpdate)
+                    accountRepository.updateAccount(profileResponse.id, profileUpdate)
                     AppLog.i(TAG, "Successfully synced profile data for account: ${account.id}")
                 } catch (e: Exception) {
                     AppLog.e(TAG, "Error syncing profile data for account ${account.id}", e.toString())

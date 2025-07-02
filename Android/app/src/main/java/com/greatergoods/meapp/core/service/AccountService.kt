@@ -11,6 +11,7 @@ import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
+import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
@@ -466,16 +467,16 @@ class AccountService
         override suspend fun updateProfileInDB(
             accountId: String,
             partialAccount: PartialAccount,
-        ): Account = accountRepository.updateAccountInDB(accountId, partialAccount)
+        ): Account = accountRepository.updateAccount(accountId, partialAccount)
 
         /**
          * Updates the account's tokens.
          * @param tokens New token data
          * @return true if update was successful
          */
-        override suspend fun updateTokens(tokens: Map<String, String>): Boolean =
+        override suspend fun updateTokens(tokens: AccountToken): Boolean =
             try {
-                accountRepository.updateTokensInDB(tokens)
+                accountRepository.updateTokens(tokens)
                 AppLog.d(TAG, "Tokens updated successfully")
                 appNavigationService.emitAuthEvent(AuthState.TokensUpdated)
                 true
@@ -517,10 +518,10 @@ class AccountService
             accountId: String,
             tokens: Token?,
         ) {
-            accountRepository.activateAccountInDB(accountId)
-            accountRepository.deactivateOtherAccountsInDB(accountId)
+            accountRepository.activateAccount(accountId)
+            accountRepository.deactivateOtherAccounts(accountId)
             userDataStore.setActiveAccount(accountId)
-            accountRepository.updateLastActiveTimeInDB(accountId)
+            accountRepository.updateLastActiveTime(accountId)
             tokens?.let { setTokensForAccount(it) }
         }
 
@@ -564,7 +565,7 @@ class AccountService
                     dashboardType = account.dashboardType,
                     dashboardMetrics = account.dashboardMetrics,
                 )
-            val savedAccount = accountRepository.addAccountInDB(userAccount)
+            val savedAccount = accountRepository.addAccount(userAccount)
             setActiveAccountAndTokens(
                 savedAccount.id,
                 Token(

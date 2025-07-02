@@ -2,6 +2,7 @@ package com.greatergoods.meapp.domain.services
 
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
+import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import kotlinx.coroutines.flow.Flow
@@ -149,7 +150,7 @@ interface IAccountService {
      * @param tokens Map of token values to update
      * @return true if update was successful, false otherwise
      */
-    suspend fun updateTokens(tokens: Map<String, String>): Boolean
+    suspend fun updateTokens(tokens: AccountToken): Boolean
 }
 
 /**

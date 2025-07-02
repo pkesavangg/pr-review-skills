@@ -27,73 +27,57 @@ import android.content.Context
  */
 @Singleton
 class DeviceInfoService
-@Inject
-constructor(
-    @ApplicationContext private val context: Context,
-    private val deviceInfoRepository: IDeviceInfoRepository,
-    private val connectivityObserver: IConnectivityObserver,
-    private val offlineHandlerService: IOfflineHandlerService,
-    private val appRepository: IAppRepository,
-    private val accountRepository: IAccountRepository
-) : IDeviceInfoService {
-
-    companion object {
-        private const val TAG = "DeviceInfoService"
-    }
-    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    init {
-        // Start monitoring network connectivity for auto-sync
-        startNetworkMonitoring()
-    }
-
-    /**
-     * Starts monitoring network connectivity to auto-sync when network becomes available.
-     */
-    private fun startNetworkMonitoring() {
-        serviceScope.launch {
-            connectivityObserver.observe()
-                .distinctUntilChanged()
-                .collect { networkState ->
-                    AppLog.d(TAG, "Network state changed: available=${!networkState.unAvailable}")
-
-                    // When network becomes available, check for pending sync
-                    if (networkState.available) {
-                        AppLog.d(TAG, "Network is available, checking for pending offline sync")
-                        offlineHandlerService.handleOfflineSync()
-                    }
-                }
+    @Inject
+    constructor(
+        @ApplicationContext private val context: Context,
+        private val deviceInfoRepository: IDeviceInfoRepository,
+        private val connectivityObserver: IConnectivityObserver,
+        private val offlineHandlerService: IOfflineHandlerService,
+        private val appRepository: IAppRepository,
+        private val accountRepository: IAccountRepository,
+    ) : IDeviceInfoService {
+        companion object {
+            private const val TAG = "DeviceInfoService"
         }
-    }
-    /**
-     * The current FCM token for this device (cached after retrieval).
-     */
-    private var fcmToken: String = ""
 
-    /**
-     * Returns a DeviceInfo object with local device and app information, including the FCM token if available.
-     * @return DeviceInfo with app and device details.
-     */
-    override fun getDeviceInfo(): DeviceInfo =
-        DeviceInfo(
-            appVersion = DeviceInfoUtil.getAppVersion(),
-            deviceManufacturer = DeviceInfoUtil.getManufacturer(),
-            deviceOSName = DeviceInfoUtil.getOSName(),
-            deviceOSVersion = DeviceInfoUtil.getOSVersion(),
-            deviceUUID = DeviceInfoUtil.getDeviceUUID(context),
-            deviceModel = DeviceInfoUtil.getModel(),
-            fcmToken = fcmToken,
-        )
+        private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    /**
-     * Updates the device info by fetching the latest FCM token from DataStore and sending device info to the API.
-     */
-    override suspend fun updateDeviceInfo() {
-        try {
-            fcmToken = getFcmToken()
-            AppLog.d(TAG, "Updating device info with FCM token: $fcmToken")
+        init {
+            // Start monitoring network connectivity for auto-sync
+            startNetworkMonitoring()
+        }
 
-            val deviceInfo = DeviceInfo(
+        /**
+         * Starts monitoring network connectivity to auto-sync when network becomes available.
+         */
+        private fun startNetworkMonitoring() {
+            serviceScope.launch {
+                connectivityObserver
+                    .observe()
+                    .distinctUntilChanged()
+                    .collect { networkState ->
+                        AppLog.d(TAG, "Network state changed: available=${!networkState.unAvailable}")
+
+                        // When network becomes available, check for pending sync
+                        if (networkState.available) {
+                            AppLog.d(TAG, "Network is available, checking for pending offline sync")
+                            offlineHandlerService.handleOfflineSync()
+                        }
+                    }
+            }
+        }
+
+        /**
+         * The current FCM token for this device (cached after retrieval).
+         */
+        private var fcmToken: String = ""
+
+        /**
+         * Returns a DeviceInfo object with local device and app information, including the FCM token if available.
+         * @return DeviceInfo with app and device details.
+         */
+        override fun getDeviceInfo(): DeviceInfo =
+            DeviceInfo(
                 appVersion = DeviceInfoUtil.getAppVersion(),
                 deviceManufacturer = DeviceInfoUtil.getManufacturer(),
                 deviceOSName = DeviceInfoUtil.getOSName(),
@@ -103,34 +87,52 @@ constructor(
                 fcmToken = fcmToken,
             )
 
-            deviceInfoRepository.updateDeviceInfo(deviceInfo)
+        /**
+         * Updates the device info by fetching the latest FCM token from DataStore and sending device info to the API.
+         */
+        override suspend fun updateDeviceInfo() {
+            try {
+                fcmToken = getFcmToken()
+                AppLog.d(TAG, "Updating device info with FCM token: $fcmToken")
 
-            // Update FCM token for the active account
-            val activeAccount = accountRepository.getStoredActiveAccountFromDB().first()
-            activeAccount?.let { account ->
-                val partialUpdate = PartialAccount(fcmToken = fcmToken)
-                accountRepository.updateAccountInDB(account.id, partialUpdate)
+                val deviceInfo =
+                    DeviceInfo(
+                        appVersion = DeviceInfoUtil.getAppVersion(),
+                        deviceManufacturer = DeviceInfoUtil.getManufacturer(),
+                        deviceOSName = DeviceInfoUtil.getOSName(),
+                        deviceOSVersion = DeviceInfoUtil.getOSVersion(),
+                        deviceUUID = DeviceInfoUtil.getDeviceUUID(context),
+                        deviceModel = DeviceInfoUtil.getModel(),
+                        fcmToken = fcmToken,
+                    )
+
+                deviceInfoRepository.updateDeviceInfo(deviceInfo)
+
+                // Update FCM token for the active account
+                val activeAccount = accountRepository.getStoredActiveAccountFromDB().first()
+                activeAccount?.let { account ->
+                    val partialUpdate = PartialAccount(fcmToken = fcmToken)
+                    accountRepository.updateAccount(account.id, partialUpdate)
+                }
+
+                AppLog.i(TAG, "Device info updated successfully", deviceInfo.toString())
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to update device info", e.toString())
+                throw e
             }
-
-            AppLog.i(TAG, "Device info updated successfully", deviceInfo.toString())
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to update device info", e.toString())
-            throw e
         }
-    }
 
-    /**
-     * Gets the FCM token from DataStore.
-     * @return The FCM token as a String.
-     */
-    override suspend fun getFcmToken(): String {
-        return try {
-            val token = appRepository.getFcmToken()
-            AppLog.d(TAG, "Retrieved FCM token from DataStore: $token")
-            token
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to get FCM token from DataStore", e.toString())
-            ""
-        }
+        /**
+         * Gets the FCM token from DataStore.
+         * @return The FCM token as a String.
+         */
+        override suspend fun getFcmToken(): String =
+            try {
+                val token = appRepository.getFcmToken()
+                AppLog.d(TAG, "Retrieved FCM token from DataStore: $token")
+                token
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to get FCM token from DataStore", e.toString())
+                ""
+            }
     }
-}

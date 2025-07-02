@@ -21,6 +21,7 @@ import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
+import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.storage.Account.Account
@@ -66,25 +67,6 @@ class AccountRepository
         override suspend fun signup(request: SignupRequest): LoginResponse = authAPI.createAccount(request)
 
         /**
-         * Logs out via API for a specific account.
-         * @param fcmToken Optional FCM token to unregister
-         * @param accountId The account ID to logout
-         */
-        override suspend fun logout(
-            fcmToken: String?,
-            accountId: String,
-        ) {
-            authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
-        }
-
-        /**
-         * Logs out in the database by updating the account status.
-         */
-        override suspend fun logOutInDb(accountId: String) {
-            accountDao.logoutAccount(accountId)
-        }
-
-        /**
          * Gets account info via API for a specific account and returns AccountResponse.
          * @param accountId The account ID to get info for
          * @return AccountInfo for the specified account
@@ -121,7 +103,7 @@ class AccountRepository
 
             // Update the account in the DB with the new info
             val updatedAccount =
-                updateAccountInDB(
+                updateAccount(
                     updatedAccountInfo.id,
                     PartialAccount(
                         firstName = updatedAccountInfo.firstName,
@@ -143,7 +125,7 @@ class AccountRepository
          * Adds an account to the database with all entity relations and returns the domain model.
          * Inserts the main account entity and all related settings entities.
          */
-        override suspend fun addAccountInDB(account: Account): Account {
+        override suspend fun addAccount(account: Account): Account {
             val accountEntity = AccountEntityMapper.toEntity(account)
             accountDao.insertAccount(accountEntity)
 
@@ -199,7 +181,7 @@ class AccountRepository
          * @param partialUpdate Partial account data to update
          * @return The updated account
          */
-        override suspend fun updateAccountInDB(
+        override suspend fun updateAccount(
             accountId: String,
             partialUpdate: PartialAccount,
         ): Account {
@@ -230,40 +212,6 @@ class AccountRepository
             return AccountEntityMapper.toDomain(updatedAccountEntity)
         }
 
-        override suspend fun logoutInDb(accountId: String) {
-            accountDao.logoutAccount(accountId)
-        }
-
-        override suspend fun logoutAllAccountsInDb() {
-            accountDao.logoutAllAccounts()
-        }
-
-        /**
-         * Removes an account from the database by ID.
-         */
-        override suspend fun removeAccountInDB(accountId: String) {
-            accountDao.deleteAccountById(accountId)
-            // Also clear tokens from TokenManager if this was the active account
-            val activeAccountId =
-                userDataStore
-                    .getData()
-                    .accountsMap.entries
-                    .firstOrNull { it.value.isActive }
-                    ?.key
-            if (accountId == activeAccountId) {
-                tokenManager.clearTokens()
-            }
-            userDataStore.removeAccount(accountId)
-        }
-
-        /**
-         * Removes all accounts from the database.
-         */
-        override suspend fun removeAllAccountsInDB() {
-            accountDao.removeAllAccounts()
-            tokenManager.clearTokens()
-        }
-
         /**
          * Gets the stored active account from the database as a Flow.
          */
@@ -275,18 +223,14 @@ class AccountRepository
         /**
          * Deactivates all accounts except the given account ID.
          */
-        override suspend fun deactivateOtherAccountsInDB(accountId: String) {
+        override suspend fun deactivateOtherAccounts(accountId: String) {
             accountDao.deactivateOtherAccounts(accountId)
-        }
-
-        override suspend fun deactivateAllAccountsInDB() {
-            accountDao.deactivateAllAccounts()
         }
 
         /**
          * Activates the specified account by setting it as the active account.
          */
-        override suspend fun activateAccountInDB(accountId: String) {
+        override suspend fun activateAccount(accountId: String) {
             accountDao.activateAccount(accountId)
         }
 
@@ -301,13 +245,13 @@ class AccountRepository
         /**
          * Updates tokens for the active account in the TokenManager.
          */
-        override suspend fun updateTokensInDB(tokens: Map<String, String>) {
+        override suspend fun updateTokens(request: AccountToken) {
             tokenManager.setTokens(
                 Token(
-                    accountId = tokens["accountId"] ?: "",
-                    accessToken = tokens["accessToken"],
-                    refreshToken = tokens["refreshToken"],
-                    expiresAt = tokens["expiresAt"],
+                    accountId = request.accountId,
+                    accessToken = request.accessToken,
+                    refreshToken = request.refreshToken,
+                    expiresAt = request.expiresAt,
                 ),
             )
         }
@@ -336,7 +280,7 @@ class AccountRepository
         /**
          * Updates the last active time for the account in the database.
          */
-        override suspend fun updateLastActiveTimeInDB(accountId: String) {
+        override suspend fun updateLastActiveTime(accountId: String) {
             val timestamp = System.currentTimeMillis().toString()
             accountDao.updateLastActiveTime(accountId, timestamp)
             AppLog.d(TAG, "Updated last active time for account: $accountId")
