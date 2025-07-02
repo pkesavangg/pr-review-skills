@@ -167,7 +167,8 @@ constructor(
                 ),
             )
             if (!dashboardKeysDatastore.hasVisibleKeys(account.id)) {
-                dashboardKeysDatastore.updateVisibleKeys(account.id)
+                dashboardKeysDatastore.updateVisibleMetricKeys(account.id)
+                dashboardKeysDatastore.getVisibleMilestoneKeys(account.id)
             }
             appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
             _isLoginFlow.emit(true)

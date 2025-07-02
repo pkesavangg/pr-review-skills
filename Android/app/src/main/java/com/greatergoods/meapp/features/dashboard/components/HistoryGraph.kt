@@ -25,6 +25,7 @@ import com.greatergoods.meapp.features.common.components.chart.GraphView
 import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
+import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
@@ -64,6 +65,11 @@ fun HistoryGraph(
     var labelData by remember {
         mutableStateOf("")
     }
+
+    val validMetricKey = if (selectedStat?.key is DashboardKey.Metric) {
+        selectedStat.key.key
+    } else null
+
     Column(
         modifier =
             Modifier
@@ -111,7 +117,7 @@ fun HistoryGraph(
                 Modifier
                     .fillMaxWidth(),
             segment = selectedSegment,
-            secondaryGraphLines = if (selectedStat != null) entries.toGraphPoints(selectedStat.key) else null,
+            secondaryGraphLines = validMetricKey?.let { entries.toGraphPoints(validMetricKey) },
             graphLines = listOf(graphLines),
             onScroll = {
                 subText = it

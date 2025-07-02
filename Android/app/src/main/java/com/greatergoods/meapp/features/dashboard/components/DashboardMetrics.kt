@@ -19,8 +19,8 @@ import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.helper.StatHelper
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageSummary
+import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
-import com.greatergoods.meapp.proto.DashboardKey
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -38,8 +38,17 @@ fun DashboardMetrics(
     // Get the latest summary from day-wise entries for metrics
     val latestSummary = averageSummary(metricData)
     val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
+
+    // Filter only metric keys and convert to MetricKey list
+    val metricKeys = visibleKeys.mapNotNull { key ->
+        when (key) {
+            is DashboardKey.Metric -> key.key
+            is DashboardKey.Milestone -> null
+        }
+    }
+
     val metrics =
-        StatHelper.getMetrics(dashboardMetric, visibleKeys = visibleKeys, useShort = true, filterNulls = false)
+        StatHelper.getMetrics(dashboardMetric, visibleKeys = metricKeys, useShort = true, filterNulls = false)
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -53,7 +62,12 @@ fun DashboardMetrics(
     ) {
         items(
             items = metrics,
-            key = { it.key },
+            key = { stat ->
+                when (stat.key) {
+                    is DashboardKey.Metric -> stat.key.key.name
+                    is DashboardKey.Milestone -> stat.key.key.name
+                }
+            },
         ) { metric ->
             val isSelected = selectedStat?.key == metric.key
             AnimatedStatCard(

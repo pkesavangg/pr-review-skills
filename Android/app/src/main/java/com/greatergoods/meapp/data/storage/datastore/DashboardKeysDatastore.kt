@@ -3,7 +3,8 @@ package com.greatergoods.meapp.data.storage.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
-import com.greatergoods.meapp.proto.DashboardKey
+import com.greatergoods.meapp.proto.MetricKey
+import com.greatergoods.meapp.proto.MilestoneKey
 import com.greatergoods.meapp.proto.VisibleKeys
 import com.greatergoods.meapp.proto.VisibleMetrics
 import kotlinx.coroutines.flow.Flow
@@ -21,7 +22,7 @@ val Context.dashboardKeysDataStore: DataStore<VisibleMetrics> by dataStore(
 )
 
 /**
- * DataStore for managing visible metrics per account.
+ * DataStore for managing visible metrics and milestones per account.
  *
  * @constructor Creates a VisibleMetricsDataStore with the given context.
  * @param context The application context.
@@ -46,40 +47,84 @@ class DashboardKeysDatastore(
      * @param accountId The account ID.
      * @return The list of visible metric keys, or empty if not set.
      */
-    suspend fun getVisibleKeys(accountId: String): List<DashboardKey> =
-        getData().accountMetricMap[accountId]?.visibleKeysList ?: emptyList()
+    suspend fun getVisibleMetricKeys(accountId: String): List<MetricKey> =
+        getData().accountMetricMap[accountId]?.visibleMetricKeysList ?: emptyList()
 
     /**
-     * Updates the visible keys for a specific account.
+     * Gets the list of visible milestone keys for a specific account.
+     * @param accountId The account ID.
+     * @return The list of visible milestone keys, or empty if not set.
+     */
+    suspend fun getVisibleMilestoneKeys(accountId: String): List<MilestoneKey> =
+        getData().accountMetricMap[accountId]?.visibleMilestoneKeysList ?: emptyList()
+
+    /**
+     * Updates the visible metric keys for a specific account.
      *
-     * - If the account does not exist and [keys] is empty, sets the default keys.
+     * - If the account does not exist and [keys] is empty, sets the default metric keys.
      * - If the account exists and [keys] is empty, sets the list to empty.
      * - Otherwise, sets the list to the provided [keys].
      *
      * @param accountId The account ID.
-     * @param keys The list of DashboardKey to set.
+     * @param keys The list of MetricKey to set.
      */
-    suspend fun updateVisibleKeys(accountId: String, keys: List<DashboardKey> = listOf()) {
+    suspend fun updateVisibleMetricKeys(accountId: String, keys: List<MetricKey> = listOf()) {
         updateData { current ->
             val accountExists = hasVisibleKeys(accountId)
             val toSet = when {
-                !accountExists && keys.isEmpty() -> defaultVisibleKeys()
+                !accountExists && keys.isEmpty() -> defaultMetricKeys()
                 else -> keys
             }
+            val currentVisibleKeys = current.accountMetricMap[accountId] ?: VisibleKeys.getDefaultInstance()
+            val updatedVisibleKeys = currentVisibleKeys.toBuilder()
+                .clearVisibleMetricKeys()
+                .addAllVisibleMetricKeys(toSet)
+                .build()
+
             current.toBuilder()
-                .putAccountMetricMap(
-                    accountId,
-                    VisibleKeys.newBuilder().addAllVisibleKeys(toSet).build(),
-                )
+                .putAccountMetricMap(accountId, updatedVisibleKeys)
                 .build()
         }
     }
 
     /**
-     * Returns the default list of visible metric keys (all except METRIC_KEY_UNSPECIFIED).
+     * Updates the visible milestone keys for a specific account.
+     *
+     * - If the account does not exist and [keys] is empty, sets the default milestone keys.
+     * - If the account exists and [keys] is empty, sets the list to empty.
+     * - Otherwise, sets the list to the provided [keys].
+     *
+     * @param accountId The account ID.
+     * @param keys The list of MilestoneKey to set.
      */
-    private fun defaultVisibleKeys(): List<DashboardKey> =
-        DashboardKey.entries.filter { it != DashboardKey.DASHBOARD_KEY_UNSPECIFIED }
+    suspend fun updateVisibleMilestoneKeys(accountId: String, keys: List<MilestoneKey> = listOf()) {
+        updateData { current ->
+            val accountExists = hasVisibleKeys(accountId)
+            val toSet = when {
+                !accountExists && keys.isEmpty() -> defaultMilestoneKeys()
+                else -> keys
+            }
+            val currentVisibleKeys = current.accountMetricMap[accountId] ?: VisibleKeys.getDefaultInstance()
+            val updatedVisibleKeys = currentVisibleKeys.toBuilder()
+                .clearVisibleMilestoneKeys()
+                .addAllVisibleMilestoneKeys(toSet)
+                .build()
+
+            current.toBuilder()
+                .putAccountMetricMap(accountId, updatedVisibleKeys)
+                .build()
+        }
+    }
+
+    /**
+     * Returns the default list of visible metric keys (all metric keys).
+     */
+    private fun defaultMetricKeys(): List<MetricKey> = MetricKey.entries
+
+    /**
+     * Returns the default list of visible milestone keys (all milestone keys).
+     */
+    private fun defaultMilestoneKeys(): List<MilestoneKey> = MilestoneKey.entries
 
     /**
      * Clears all visible metrics data (removes all accounts).
@@ -97,16 +142,34 @@ class DashboardKeysDatastore(
         getData().accountMetricMap.containsKey(accountId)
 
     /**
-     * Resets the visible keys for the given account to the default list.
+     * Resets the visible metric keys for the given account to the default list.
+     * @param accountId The account ID.
+     */
+    suspend fun resetVisibleMetricKeys(accountId: String) {
+        updateVisibleMetricKeys(accountId, defaultMetricKeys())
+    }
+
+    /**
+     * Resets the visible milestone keys for the given account to the default list.
+     * @param accountId The account ID.
+     */
+    suspend fun resetVisibleMilestoneKeys(accountId: String) {
+        updateVisibleMilestoneKeys(accountId, defaultMilestoneKeys())
+    }
+
+    /**
+     * Resets both visible metric and milestone keys for the given account to the default lists.
      * @param accountId The account ID.
      */
     suspend fun resetVisibleKeys(accountId: String) {
         updateData { current ->
+            val updatedVisibleKeys = VisibleKeys.newBuilder()
+                .addAllVisibleMetricKeys(defaultMetricKeys())
+                .addAllVisibleMilestoneKeys(defaultMilestoneKeys())
+                .build()
+
             current.toBuilder()
-                .putAccountMetricMap(
-                    accountId,
-                    VisibleKeys.newBuilder().addAllVisibleKeys(defaultVisibleKeys()).build(),
-                )
+                .putAccountMetricMap(accountId, updatedVisibleKeys)
                 .build()
         }
     }

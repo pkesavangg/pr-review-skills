@@ -5,11 +5,12 @@ import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.proto.DashboardKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
 
 /**
@@ -38,7 +39,7 @@ constructor(
 
     override fun handleIntent(intent: DashboardIntent) {
         when (intent) {
-            is DashboardIntent.UpdateVisibleMetrics -> updateVisibleMetrics(intent.metrics)
+            is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys)
             else -> null
         }
         super.handleIntent(intent)
@@ -46,15 +47,38 @@ constructor(
 
     private fun subscribeMetrics() {
         viewModelScope.launch {
-            dashboardService.getVisibleKeys().collect {
-                handleIntent(DashboardIntent.SetVisibleMetrics(it))
+            // Combine both metric and milestone keys into a single DashboardKey list
+            combine(
+                dashboardService.getVisibleMetricKeys(),
+                dashboardService.getVisibleMilestoneKeys()
+            ) { metricKeys, milestoneKeys ->
+                val combinedKeys = mutableListOf<DashboardKey>()
+                combinedKeys.addAll(metricKeys.map { DashboardKey.Metric(it) })
+                combinedKeys.addAll(milestoneKeys.map { DashboardKey.Milestone(it) })
+                combinedKeys
+            }.collect {
+                handleIntent(DashboardIntent.SetVisibleKeys(it))
             }
         }
     }
 
-    private fun updateVisibleMetrics(metrics: List<DashboardKey>) {
+    private fun updateVisibleKeys(keys: List<DashboardKey>) {
         viewModelScope.launch {
-            dashboardService.updateVisibleKeys(keys = metrics)
+            val metricKeys = keys.mapNotNull { key ->
+                when (key) {
+                    is DashboardKey.Metric -> key.key
+                    is DashboardKey.Milestone -> null
+                }
+            }
+            val milestoneKeys = keys.mapNotNull { key ->
+                when (key) {
+                    is DashboardKey.Metric -> null
+                    is DashboardKey.Milestone -> key.key
+                }
+            }
+
+            dashboardService.updateVisibleMetricKeys(keys = metricKeys)
+            dashboardService.updateVisibleMilestoneKeys(keys = milestoneKeys)
         }
     }
 
