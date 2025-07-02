@@ -81,7 +81,7 @@ fun <T> AppDraggableList(
     positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
     velocityThreshold: Float = DragDefaults.VELOCITY_THRESHOLD,
     footerContent: @Composable (() -> Unit)? = null,
-    itemContent: @Composable DraggableListItemScope.(item: T, progress: Float) -> Unit,
+    itemContent: @Composable DraggableListItemScope.(item: T) -> Unit,
 ) {
     val lazyListState = rememberLazyListState()
     var openIndex by remember { mutableStateOf<Int?>(null) }
@@ -110,7 +110,7 @@ fun <T> AppDraggableList(
 
             // Run composable scope initializer
             if (!scope.initialized) {
-                scope.itemContent(item, 0f)
+                scope.itemContent(item)
                 scope.initialized = true
 
                 if (!scope.hasContent()) {
@@ -133,7 +133,7 @@ fun <T> AppDraggableList(
                 positionalThreshold = positionalThreshold,
                 velocityThreshold = velocityThreshold,
             ) { progress ->
-                val draggable = scope.buildDraggable(progress)
+                val draggableContent = scope.buildDraggable(progress)
                 if (index == 0 && !hasMeasured) {
                     Box(
                         modifier = Modifier.onGloballyPositioned { coordinates ->
@@ -144,10 +144,10 @@ fun <T> AppDraggableList(
                             }
                         },
                     ) {
-                        draggable()
+                        draggableContent()
                     }
                 } else {
-                    draggable()
+                    draggableContent()
                 }
             }
 
@@ -169,9 +169,9 @@ private fun PreviewAppDraggableList() {
         val items = listOf("Item 1", "Item 2", "Item 3")
         AppDraggableList(
             items = items,
-            itemContent = { item, progress ->
+            itemContent = { item ->
                 Draggable {
-                    Text("Draggable: $item (progress: $progress)")
+                    Text("Draggable: $item")
                 }
                 Static {
                     Text("Static: $item")

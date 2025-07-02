@@ -3,9 +3,7 @@ package com.greatergoods.meapp.features.dashboard.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -14,7 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.greatergoods.meapp.features.common.components.AppIcon
-import com.greatergoods.meapp.features.historyDetail.modal.Stat
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
@@ -35,7 +33,13 @@ fun StatCard(
         ),
         onClick = { onMetricClick(stat) },
     ) {
-        Row {
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(vertical = MeTheme.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
             if (stat.icon != null) {
                 AppIcon(
                     id = stat.icon,
@@ -44,20 +48,25 @@ fun StatCard(
                 )
             }
             Column(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(vertical = MeTheme.spacing.sm),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = stat.value ?: "---",
+                    text = buildString {
+                        if (stat.valuePrefix != null) {
+                            append(stat.valuePrefix)
+                        }
+                        if (stat.value != null) {
+                            append(stat.value)
+                        } else {
+                            append("---")
+                        }
+                    },
                     style = MeTheme.typography.heading4,
                     color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textHeading,
                 )
-                Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
                 Text(
-                    text = stat.label.plus(stat.unit),
+                    text = stat.label.plus(" ").plus(stat.unit ?: "").lowercase(),
                     style = MeTheme.typography.subHeading2,
                     color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textSubheading,
                 )

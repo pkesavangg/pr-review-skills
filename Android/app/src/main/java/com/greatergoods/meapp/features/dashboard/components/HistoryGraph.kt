@@ -27,7 +27,7 @@ import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toGraphPoin
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
-import com.greatergoods.meapp.features.historyDetail.modal.Stat
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
