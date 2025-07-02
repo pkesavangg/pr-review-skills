@@ -33,12 +33,29 @@ interface IAccountService {
     val loggedInAccountsFlow: Flow<List<Account>>
 
     /**
+     * Logs in a user with the provided email and password.
+     * @param email User's email
+     * @param password User's password
+     * @return The authenticated [Account] or null if login fails
+     */
+    suspend fun login(
+        email: String,
+        password: String,
+    ): Account?
+
+    /**
      * Adds a new account using the provided request data.
      * @param request Map containing account creation data
      * @return The created [Account] or null if creation fails
      * @throws MaxAccountsReachedException if the maximum number of accounts is reached
      */
     suspend fun signup(request: SignupRequest): Account?
+
+    /**
+     * Resets the password for the given email address.
+     * @param email The email address to reset the password for
+     */
+    suspend fun resetPassword(email: String)
 
     /**
      * Changes the password for the current account.
@@ -50,6 +67,19 @@ interface IAccountService {
         currentPassword: String,
         newPassword: String,
     ): Boolean
+
+    /**
+     * Gets the currently active account, or null if none is active.
+     * @return The active [Account] or null
+     */
+    suspend fun getCurrentAccount(): Account?
+
+    /**
+     * Updates the user's profile information by calling the API and updating local data.
+     * @param profileUpdateRequest The profile data to update
+     * @return The updated [Account] or null if update fails
+     */
+    suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account?
 
     /**
      * Checks login status for the active account by calling the API and updating local data.
@@ -64,57 +94,10 @@ interface IAccountService {
     suspend fun checkLoginStatusForLoggedInAccounts(): Boolean
 
     /**
-     * Gets the currently active account, or null if none is active.
-     * @return The active [Account] or null
-     */
-    suspend fun getCurrentAccount(): Account?
-
-    /**
      * Gets the list of all logged-in accounts, with the active account first.
      * @return List of [Account]s
      */
     suspend fun getLoggedInAccounts(): List<Account>
-
-    /**
-     * Handles unauthorized logout when token refresh fails. Marks account as expired, removes from storage, and triggers unauthorized logout event.
-     * @param accountId The ID of the account to logout
-     * @return The affected [Account] or null if not found
-     */
-    suspend fun handleUnauthorizedLogout(accountId: String?): Account?
-
-    /**
-     * Logs in a user with the provided email and password.
-     * @param email User's email
-     * @param password User's password
-     * @return The authenticated [Account] or null if login fails
-     */
-    suspend fun login(
-        email: String,
-        password: String,
-    ): Account?
-
-    /**
-     * Logs out the specified account.
-     * @param accountId ID of the account to log out
-     * @param fcmToken FCM token for push notifications (optional)
-     * @return true if logout was successful, false otherwise
-     */
-    suspend fun logout(
-        accountId: String,
-        fcmToken: String?,
-    ): Boolean
-
-    /**
-     * Logs out all accounts from the device.
-     * @return true if all accounts were logged out successfully, false otherwise
-     */
-    suspend fun logoutAll(): Boolean
-
-    /**
-     * Resets the password for the given email address.
-     * @param email The email address to reset the password for
-     */
-    suspend fun resetPassword(email: String)
 
     /**
      * Switches to the specified account.
@@ -126,13 +109,6 @@ interface IAccountService {
         account: Account,
         showToast: Boolean = false,
     ): Boolean
-
-    /**
-     * Updates the user's profile information by calling the API and updating local data.
-     * @param profileUpdateRequest The profile data to update
-     * @return The updated [Account] or null if update fails
-     */
-    suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account?
 
     /**
      * Updates the user's profile information in the local database only.
@@ -151,6 +127,30 @@ interface IAccountService {
      * @return true if update was successful, false otherwise
      */
     suspend fun updateTokens(tokens: AccountToken): Boolean
+
+    /**
+     * Handles unauthorized logout when token refresh fails. Marks account as expired, removes from storage, and triggers unauthorized logout event.
+     * @param accountId The ID of the account to logout
+     * @return The affected [Account] or null if not found
+     */
+    suspend fun handleUnauthorizedLogout(accountId: String?): Account?
+
+    /**
+     * Logs out the specified account.
+     * @param accountId ID of the account to log out
+     * @param fcmToken FCM token for push notifications (optional)
+     * @return true if logout was successful, false otherwise
+     */
+    suspend fun logout(
+        accountId: String,
+        fcmToken: String?,
+    ): Boolean
+
+    /**
+     * Logs out all accounts from the device.
+     * @return true if all accounts were logged out successfully, false otherwise
+     */
+    suspend fun logoutAll(): Boolean
 }
 
 /**

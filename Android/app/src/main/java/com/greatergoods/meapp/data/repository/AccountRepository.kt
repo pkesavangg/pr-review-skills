@@ -25,6 +25,7 @@ import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
@@ -78,11 +79,20 @@ class AccountRepository
          * Updates password via API and returns true if successful.
          */
         override suspend fun updatePassword(
+            accountId: String,
             oldPassword: String,
             newPassword: String,
         ): ChangePasswordResponse {
             val request = ChangePasswordRequest(oldPassword, newPassword)
             val response = userAPI.changePassword(request)
+            setTokensForAccount(
+                Token(
+                    accountId = accountId,
+                    accessToken = response.accessToken,
+                    refreshToken = response.refreshToken,
+                    expiresAt = response.expiresAt,
+                ),
+            )
             return response
         }
 
@@ -424,4 +434,121 @@ class AccountRepository
                 AppLog.e(TAG, "Logout all failed", e.toString())
                 false
             }
+
+        /**
+         * Adds a new account from a LoginResponse, sets it as active, and updates tokens.
+         * @param loginResponse The login response containing account and token info
+         * @return The saved Account
+         */
+        override suspend fun addAccountFromLoginResponse(loginResponse: LoginResponse): Account {
+            val account = addAccountFromResponse(loginResponse)
+            setActiveAccountAndTokens(
+                account.id,
+                Token(
+                    accountId = account.id,
+                    isActive = true,
+                    accessToken = loginResponse.accessToken,
+                    refreshToken = loginResponse.refreshToken,
+                    expiresAt = loginResponse.expiresAt,
+                ),
+            )
+            return account
+        }
+
+        /**
+         * Updates the user's tokens for the given account ID.
+         * @param accountId The account ID to update tokens for
+         */
+        override suspend fun updateUserTokens(accountId: String) {
+            // Update tokens in TokenManager for the switched account
+            val currentTokens = userDataStore.getData().accounts[accountId]
+            setActiveAccountAndTokens(
+                accountId,
+                currentTokens?.let {
+                    Token(
+                        accountId = accountId,
+                        isActive = true,
+                        accessToken = it.accessToken,
+                        refreshToken = it.refreshToken,
+                        expiresAt = it.expiresAt,
+                    )
+                },
+            )
+        }
+
+        /**
+         * Clears the tokens for the given account ID.
+         */
+        override suspend fun clearAccountTokens(accountId: String) {
+            userDataStore.clearAccountTokens(accountId)
+        }
+
+        /**
+         * Removes the account with the given ID from the database.
+         */
+        override suspend fun removeAccount(accountId: String) {
+            userDataStore.clearAccountTokens(accountId)
+        }
+
+        /**
+         * Private helper to add an account from LoginResponse.account.
+         */
+        private suspend fun addAccountFromResponse(loginResponse: LoginResponse): Account {
+            val account = loginResponse.account
+            val userAccount =
+                Account(
+                    id = account.id,
+                    firstName = account.firstName,
+                    lastName = account.lastName,
+                    dob = account.dob,
+                    email = account.email,
+                    expiresAt = loginResponse.expiresAt,
+                    fcmToken = null,
+                    gender = account.gender,
+                    isActiveAccount = true,
+                    isLoggedIn = true,
+                    isExpired = false,
+                    isSynced = false,
+                    lastActiveTime = System.currentTimeMillis().toString(),
+                    zipcode = account.zipcode,
+                    weightUnit = WeightUnit.from(account.weightUnit),
+                    isWeightlessOn = account.isWeightlessOn,
+                    height = account.height,
+                    activityLevel = account.activityLevel,
+                    weightlessTimestamp = account.weightlessTimestamp,
+                    weightlessWeight = account.weightlessWeight,
+                    isStreakOn = account.isStreakOn,
+                    dashboardType = account.dashboardType,
+                    dashboardMetrics = account.dashboardMetrics,
+                )
+            return addAccount(userAccount)
+        }
+
+        /**
+         * Helper to activate an account, set it as active in DB, update tokens, and set as active in UserDataStore and TokenManager.
+         * @param accountId The account ID to activate
+         * @param tokens The tokens to set as active (if not null)
+         */
+        private suspend fun setActiveAccountAndTokens(
+            accountId: String,
+            tokens: Token?,
+        ) {
+            activateAccount(accountId)
+            deactivateOtherAccounts(accountId)
+            userDataStore.setActiveAccount(accountId)
+            updateLastActiveTime(accountId)
+            setTokensForAccount(tokens)
+        }
+
+        /**
+         * Helper to set tokens for a non-active account (used for background API calls).
+         // * @param accountId The account ID
+         * @param tokens The tokens to set (if not null)
+         */
+        private suspend fun setTokensForAccount(
+            // accountId: String,
+            tokens: Token?,
+        ) {
+            tokens?.let { tokenManager.setTokens(it) }
+        }
     }

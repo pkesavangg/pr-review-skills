@@ -42,6 +42,7 @@ interface IAccountRepository {
      * Updates password via API and returns true if successful.
      */
     suspend fun updatePassword(
+        accountId: String,
         oldPassword: String,
         newPassword: String,
     ): ChangePasswordResponse
@@ -127,4 +128,27 @@ interface IAccountRepository {
      * @return true if all accounts were logged out successfully, false otherwise
      */
     suspend fun logoutAllAccounts(): Boolean
+
+    /**
+     * Adds a new account from a LoginResponse, sets it as active, and updates tokens.
+     * @param loginResponse The login response containing account and token info
+     * @return The saved Account
+     */
+    suspend fun addAccountFromLoginResponse(loginResponse: LoginResponse): Account
+
+    /**
+     * Updates the user's tokens for the given account ID.
+     * @param accountId The account ID to update tokens for
+     */
+    suspend fun updateUserTokens(accountId: String)
+
+    /**
+     * Clears the tokens for the given account ID.
+     */
+    suspend fun clearAccountTokens(accountId: String)
+
+    /**
+     * Removes the account with the given ID from the database.
+     */
+    suspend fun removeAccount(accountId: String)
 }

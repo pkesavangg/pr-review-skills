@@ -1,19 +1,14 @@
 package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.config.HttpErrorConfig
-import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.PartialAccount
-import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import com.greatergoods.meapp.domain.model.api.user.Token
-import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IGoalRepository
@@ -27,7 +22,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
-import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,9 +35,7 @@ class AccountService
     constructor(
         private val accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
-        private val tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
-        private val userDataStore: UserDataStore,
         private val appNavigationService: IAppNavigationService,
         private val userSettingsRepository: IUserSettingsRepository,
          private val goalRepository: IGoalRepository,
@@ -111,7 +103,7 @@ class AccountService
                     throw MaxAccountsReachedException()
                 }
                 val loginResponse = accountRepository.login(email, password)
-                val savedAccount = addAccount(loginResponse)
+                val savedAccount = accountRepository.addAccountFromLoginResponse(loginResponse)
                 appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
                 savedAccount
             } catch (e: HttpException) {
@@ -146,7 +138,7 @@ class AccountService
             }
             return try {
                 val response = accountRepository.signup(request)
-                val savedAccount = addAccount(response)
+                val savedAccount = accountRepository.addAccountFromLoginResponse(response)
                 appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
                 savedAccount
             } catch (e: Exception) {
@@ -216,15 +208,9 @@ class AccountService
         ): Boolean {
             return try {
                 getCurrentAccount() ?: return false
-                val response = accountRepository.updatePassword(currentPassword, newPassword)
-                setTokensForAccount(
-                    Token(
-                        accountId = activeAccountFlow.first()?.id ?: "",
-                        accessToken = response.accessToken,
-                        refreshToken = response.refreshToken,
-                        expiresAt = response.expiresAt,
-                    ),
-                )
+                val response =
+                    accountRepository.updatePassword(activeAccountFlow.first()!!.id, currentPassword, newPassword)
+
                 AppLog.d(TAG, "Password changed successfully")
                 showSuccessToast(
                     ToastStrings.Success.ChangePasswordSuccess.Header,
@@ -345,7 +331,7 @@ class AccountService
                 for (account in loggedInAccounts) {
                     try {
                         AppLog.d(TAG, "Checking login status for account: ${account.id}")
-                        updateUserTokens(account.id)
+                        accountRepository.updateUserTokens(account.id)
                         val accountInfo = accountRepository.getAccount(account.id)
                         // Update account data with API response
                         accountRepository.updateAccountFromAPI(account.id, accountInfo)
@@ -355,7 +341,7 @@ class AccountService
                         // Mark account as expired in database
                         accountRepository.markAccountExpired(account.id)
                         // Clear tokens for this account
-                        userDataStore.removeAccount(account.id)
+                        accountRepository.removeAccount(account.id)
                     }
                 }
                 AppLog.d(TAG, "Logged-in accounts status check completed.")
@@ -386,7 +372,7 @@ class AccountService
                     accountRepository.markAccountExpired(accountId)
 
                     // Clear account tokens from DataStore
-                    userDataStore.clearAccountTokens(accountId)
+                    accountRepository.clearAccountTokens(accountId)
 
                     AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
                     account
@@ -449,7 +435,7 @@ class AccountService
         ): Boolean =
             try {
                 requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-                updateUserTokens(account.id)
+                accountRepository.updateUserTokens(account.id)
                 AppLog.d(TAG, "Successfully switched to account: ${account.email}")
                 appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
                 true
@@ -488,103 +474,6 @@ class AccountService
             }
 
         // endregion
-
-        /**
-         * Updates the user's tokens for the given account ID.
-         * @param accountId The account ID to update tokens for
-         */
-        private suspend fun updateUserTokens(accountId: String) {
-            // Update tokens in TokenManager for the switched account
-            val currentTokens = userDataStore.getData().accounts[accountId]
-            setActiveAccountAndTokens(
-                accountId,
-                currentTokens?.let {
-                    Token(
-                        accountId = accountId,
-                        isActive = true,
-                        accessToken = it.accessToken,
-                        refreshToken = it.refreshToken,
-                        expiresAt = it.expiresAt,
-                    )
-                },
-            )
-        }
-
-        /**
-         * Helper to activate an account, set it as active in DB, update tokens, and set as active in UserDataStore and TokenManager.
-         * @param accountId The account ID to activate
-         * @param tokens The tokens to set as active (if not null)
-         */
-        private suspend fun setActiveAccountAndTokens(
-            accountId: String,
-            tokens: Token?,
-        ) {
-            accountRepository.activateAccount(accountId)
-            accountRepository.deactivateOtherAccounts(accountId)
-            userDataStore.setActiveAccount(accountId)
-            accountRepository.updateLastActiveTime(accountId)
-            tokens?.let { setTokensForAccount(it) }
-        }
-
-        /**
-         * Helper to set tokens for a non-active account (used for background API calls).
-         // * @param accountId The account ID
-         * @param tokens The tokens to set (if not null)
-         */
-        private suspend fun setTokensForAccount(
-            // accountId: String,
-            tokens: Token?,
-        ) {
-            tokens?.let { tokenManager.setTokens(it) }
-        }
-
-        private suspend fun addAccount(loginResponse: LoginResponse): Account {
-            val account = loginResponse.account
-            val userAccount =
-                Account(
-                    id = account.id,
-                    firstName = account.firstName,
-                    lastName = account.lastName,
-                    dob = account.dob,
-                    email = account.email,
-                    expiresAt = loginResponse.expiresAt,
-                    fcmToken = null,
-                    gender = account.gender,
-                    isActiveAccount = true,
-                    isLoggedIn = true,
-                    isExpired = false,
-                    isSynced = false,
-                    lastActiveTime = Date().time.toString(),
-                    zipcode = account.zipcode,
-                    weightUnit = WeightUnit.from(account.weightUnit.lowercase()),
-                    isWeightlessOn = account.isWeightlessOn,
-                    height = account.height,
-                    activityLevel = account.activityLevel,
-                    weightlessTimestamp = account.weightlessTimestamp,
-                    weightlessWeight = account.weightlessWeight,
-                    isStreakOn = account.isStreakOn,
-                    dashboardType = account.dashboardType,
-                    dashboardMetrics = account.dashboardMetrics,
-                    goalType = account.goalType,
-                    initialWeight = account.initialWeight?.toDouble() ?: 0.0,
-                    goalWeight = account.goalWeight?.toDouble(),
-                    goalPercent = account.goalPercent.toDouble(),
-                    shouldSendEntryNotifications = account.shouldSendEntryNotifications,
-                    shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications,
-                )
-            val savedAccount = accountRepository.addAccount(userAccount)
-            setActiveAccountAndTokens(
-                savedAccount.id,
-                Token(
-                    accountId = savedAccount.id,
-                    isActive = true,
-                    accessToken = loginResponse.accessToken,
-                    refreshToken = loginResponse.refreshToken,
-                    expiresAt = loginResponse.expiresAt,
-                ),
-            )
-            return savedAccount
-        }
 
         /**
          * Extension function to sort accounts: active account first, then others by lastActiveTime descending.

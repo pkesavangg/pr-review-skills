@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppNavigationService
@@ -17,7 +16,6 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.data.services.ExportService
-import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
@@ -67,9 +65,7 @@ object ServiceModule {
     fun provideAccountService(
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
-        tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
-        userDataStore: UserDataStore,
         appNavigationService: IAppNavigationService,
         userSettingsRepository: IUserSettingsRepository,
         goalRepository: IGoalRepository,
@@ -77,9 +73,7 @@ object ServiceModule {
         AccountService(
             accountRepository,
             connectivityObserver,
-            tokenManager,
             dialogQueueService,
-            userDataStore,
             appNavigationService,
             userSettingsRepository,
             goalRepository
@@ -122,9 +116,7 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogQueueService(): IDialogQueueService {
-        return DialogQueueService()
-    }
+    fun provideDialogQueueService(): IDialogQueueService = DialogQueueService()
 
     /**
      * Provides a singleton instance of [IDialogUtility] for common dialog operations.
@@ -133,15 +125,14 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility {
-        return DialogUtility(dialogQueueService)
-    }
+    fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility =
+        DialogUtility(dialogQueueService)
 
     @Provides
     @Singleton
     fun provideEntryService(
         entryRepository: IEntryRepository,
-        accountRepository: IAccountRepository
+        accountRepository: IAccountRepository,
     ): IEntryService = EntryService(entryRepository, accountRepository)
 
     @Provides
@@ -152,8 +143,16 @@ object ServiceModule {
         connectivityObserver: IConnectivityObserver,
         offlineHandlerService: IOfflineHandlerService,
         appRepository: IAppRepository,
-        accountRepository: IAccountRepository
-    ): IDeviceInfoService = DeviceInfoService(context, deviceInfoRepository, connectivityObserver,offlineHandlerService,appRepository, accountRepository)
+        accountRepository: IAccountRepository,
+    ): IDeviceInfoService =
+        DeviceInfoService(
+            context,
+            deviceInfoRepository,
+            connectivityObserver,
+            offlineHandlerService,
+            appRepository,
+            accountRepository,
+        )
 
     /**
      * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
@@ -176,7 +175,7 @@ object ServiceModule {
     fun provideExportService(
         exportAPI: IExportAPI,
         accountService: IAccountService,
-        dialogQueueService: IDialogQueueService
+        dialogQueueService: IDialogQueueService,
     ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
 
     /**
@@ -210,12 +209,13 @@ object ServiceModule {
     fun provideBodyCompositionService(
         bodyCompositionRepository: IBodyCompositionRepository,
         connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService
-    ): IBodyCompositionService = BodyCompositionService(
-        bodyCompositionRepository,
-        connectivityObserver,
-        dialogQueueService,
-    )
+        dialogQueueService: IDialogQueueService,
+    ): IBodyCompositionService =
+        BodyCompositionService(
+            bodyCompositionRepository,
+            connectivityObserver,
+            dialogQueueService,
+        )
 
     /**
      * Provides the notification service implementation.
@@ -225,17 +225,18 @@ object ServiceModule {
     @Singleton
     fun provideNotificationService(
         notificationRepository: INotificationRepository,
-        connectivityObserver: IConnectivityObserver
-    ): INotificationService = NotificationService(
-        notificationRepository,
-        connectivityObserver
-    )
+        connectivityObserver: IConnectivityObserver,
+    ): INotificationService =
+        NotificationService(
+            notificationRepository,
+            connectivityObserver,
+        )
 
     @Provides
     @Singleton
     fun provideUserSettingsService(
         userSettingsRepository: IUserSettingsRepository,
-        connectivityObserver: IConnectivityObserver
+        connectivityObserver: IConnectivityObserver,
     ): IUserSettingsService = UserSettingsService(userSettingsRepository, connectivityObserver)
 
     /**
