@@ -79,7 +79,6 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             ){
                 DashboardMetrics(
                     metricData = metricData,
-                    visibleKeys = state.visibleKeys,
                     selectedStat = selectedStat,
                 ) {
                     selectedStat = it

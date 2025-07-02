@@ -6,7 +6,7 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricE
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.enums.GraphSegment
-import com.greatergoods.meapp.features.common.enums.MetricKey
+import com.greatergoods.meapp.features.common.helper.DashboardKey
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
@@ -65,24 +65,25 @@ object GraphUtil {
      * @param propertyName The property to extract (e.g., "weight").
      * @return [GraphLine] for the property.
      */
-    fun List<PeriodBodyScaleSummary>.toGraphPoints(metricKey: MetricKey): GraphLine {
-        val prop: KProperty1<PeriodBodyScaleSummary, *>? = when (metricKey) {
-            MetricKey.BMI -> PeriodBodyScaleSummary::bmi
-            MetricKey.BODY_FAT -> PeriodBodyScaleSummary::bodyFat
-            MetricKey.MUSCLE_MASS -> PeriodBodyScaleSummary::muscleMass
-            MetricKey.BODY_WATER -> PeriodBodyScaleSummary::water
-            MetricKey.HEART_RATE -> PeriodBodyScaleSummary::pulse
-            MetricKey.BONE_MASS -> PeriodBodyScaleSummary::boneMass
-            MetricKey.VISCERAL_FAT -> PeriodBodyScaleSummary::visceralFatLevel
-            MetricKey.SUBCUTANEOUS_FAT -> PeriodBodyScaleSummary::subcutaneousFatPercent
-            MetricKey.PROTEIN -> PeriodBodyScaleSummary::proteinPercent
-            MetricKey.SKELETAL_MUSCLE -> PeriodBodyScaleSummary::skeletalMusclePercent
-            MetricKey.BMR -> PeriodBodyScaleSummary::bmr
-            MetricKey.METABOLIC_AGE -> PeriodBodyScaleSummary::metabolicAge
+    fun List<PeriodBodyScaleSummary>.toGraphPoints(dashboardKey: DashboardKey): GraphLine {
+        val prop: KProperty1<PeriodBodyScaleSummary, *>? = when (dashboardKey) {
+            DashboardKey.BMI -> PeriodBodyScaleSummary::bmi
+            DashboardKey.BODY_FAT -> PeriodBodyScaleSummary::bodyFat
+            DashboardKey.MUSCLE_MASS -> PeriodBodyScaleSummary::muscleMass
+            DashboardKey.BODY_WATER -> PeriodBodyScaleSummary::water
+            DashboardKey.HEART_RATE -> PeriodBodyScaleSummary::pulse
+            DashboardKey.BONE_MASS -> PeriodBodyScaleSummary::boneMass
+            DashboardKey.VISCERAL_FAT -> PeriodBodyScaleSummary::visceralFatLevel
+            DashboardKey.SUBCUTANEOUS_FAT -> PeriodBodyScaleSummary::subcutaneousFatPercent
+            DashboardKey.PROTEIN -> PeriodBodyScaleSummary::proteinPercent
+            DashboardKey.SKELETAL_MUSCLE -> PeriodBodyScaleSummary::skeletalMusclePercent
+            DashboardKey.BMR -> PeriodBodyScaleSummary::bmr
+            DashboardKey.METABOLIC_AGE -> PeriodBodyScaleSummary::metabolicAge
+            else -> null
         }
 
         return GraphLine(
-            name = metricKey.name,
+            name = dashboardKey.name,
             points = this.mapNotNull { summary ->
                 val value = (prop?.get(summary) as? Number)?.toFloat()
                 value?.let {
