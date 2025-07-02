@@ -30,4 +30,15 @@ enum IntegrationItemType: CaseIterable {
         case .myFitnessPal: return AppAssets.myFitnessLogoSmall
         }
     }
-} 
+    
+    func oauthURL(accountId: String) -> String? {
+        switch self {
+        case .fitbit:
+            return AppConstants.OAuthURLs.fitbit(accountId: accountId)
+        case .myFitnessPal:
+            return AppConstants.OAuthURLs.mfPal(accountId: accountId)
+        default:
+            return nil
+        }
+    }
+}

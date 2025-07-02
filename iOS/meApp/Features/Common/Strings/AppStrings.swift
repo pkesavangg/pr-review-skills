@@ -10,6 +10,8 @@ import Foundation
 /// Constants for common strings used throughout the app
 struct CommonStrings {
     static let done = "Done"
+    static let ok = "OK"
+    static let retry = "Retry"
     static let cancel = "Cancel"
     static let submit = "Submit"
     static let next = "Next"
@@ -185,7 +187,7 @@ struct HKIntegrationModalStrings {
     static let addIntegration = HKIntegrationModalContent(
         imageName: AppAssets.hkLogoLarge,
         title: "Add Apple Health Integration",
-        message: "It looks like you’re using Weight Gurus on a new device. To continue syncing with Apple Health, please reconnect.",
+        message: "It looks like you're using Weight Gurus on a new device. To continue syncing with Apple Health, please reconnect.",
         primaryButtonTitle: "CONNECT",
         secondaryButtonTitle: nil
     )
@@ -403,6 +405,36 @@ struct AlertStrings {
         static let removeButton = "Remove"
         static let cancelButton = "Cancel"
     }
+    
+    // Alert shown when user attempts to disconnect a third-party integration (Fitbit / MyFitnessPal).
+    struct RemoveIntegrationAlert {
+        static let title = "Are you sure you want to turn off this integration?"
+        static let cancelButton = "Cancel"
+        static let removeButton = "Remove"
+    }
+
+    // Alert shown when integration add/remove fails.
+    struct IntegrationFailureAlert {
+        static let message = "Sorry, something went wrong. Try again?"
+    }
+
+    // Alert when in-app browser cannot open link.
+    struct LinkOpenErrorAlert {
+        static let title = "Something went wrong!"
+        static let message = "Copy this link and paste it into your web browser."
+        static let copyLinkButton = "Copy Link"
+        static let dismissButton = "Dismiss"
+    }
+
+    // Alert when integration is enabled but invalid.
+    struct ReIntegrateAlert {
+        static let disableButton: (String) -> String = { name in "Disable \(name)" }
+        static let disableAllButton = "Disable All"
+        static let okButton = "OK"
+        static let message: (String, Int) -> String = { name, count in
+            "Unable to connect to \(name)! You may need to re-enable \(count > 1 ? "these" : "this") integration by re-authorizing your account."
+        }
+    }
 }
 
 struct LoaderStrings {
@@ -415,6 +447,8 @@ struct LoaderStrings {
     static let sendingEmail = "Sending email..."
     static let sendingCsv = "Sending .CSV File..."
     static let loading = "Loading..."
+    static let removingIntegration = "Removing integration..."
+    static let syncing = "Syncing..."
 }
 
 struct URLStrings {
