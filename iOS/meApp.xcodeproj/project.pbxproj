@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		10575C022E15116D0093651D /* GGBluetoothSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 10575C012E15116D0093651D /* GGBluetoothSwiftPackage */; };
 		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
 		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
 		D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */; };
@@ -77,7 +78,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				105A6A5E2E129BAD006FA795 /* GGBluetoothSwiftPackage in Frameworks */,
+				10575C022E15116D0093651D /* GGBluetoothSwiftPackage in Frameworks */,
 				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
 				D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */,
 				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
@@ -152,6 +153,7 @@
 				481F096C2DF05C8D00799EAA /* FirebaseCore */,
 				481F096E2DF05C8D00799EAA /* FirebaseMessaging */,
 				D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */,
+				10575C012E15116D0093651D /* GGBluetoothSwiftPackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -238,6 +240,7 @@
 			packageReferences = (
 				481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
+				10575C002E1511500093651D /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -941,7 +944,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		105A5FE62E129883006FA795 /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */ = {
+		10575C002E1511500093651D /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage;
 		};
@@ -960,13 +963,18 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/dmdbrands/ggHealthKitPackage";
 			requirement = {
-				branch = main;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		10575C012E15116D0093651D /* GGBluetoothSwiftPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 10575C002E1511500093651D /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */;
+			productName = GGBluetoothSwiftPackage;
+		};
 		481F096C2DF05C8D00799EAA /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
