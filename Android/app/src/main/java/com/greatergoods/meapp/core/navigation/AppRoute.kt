@@ -84,6 +84,9 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data object Weightless : AccountSettings()
+        
+        @Serializable
+        data object AddEditScales : AccountSettings()
     }
 
     /**

@@ -43,6 +43,7 @@ sealed interface SettingsIntent : IReducer.Intent {
 
     object ClearError : SettingsIntent
 
+    object OpenAddScales: SettingsIntent
     object Logout : SettingsIntent
     object LogoutAllAccounts : SettingsIntent
     object SwitchAccount : SettingsIntent

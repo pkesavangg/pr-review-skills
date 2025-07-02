@@ -79,6 +79,10 @@ class SettingsViewModel
                     _state.value = _state.value.copy(account = account)
                 }
 
+                is SettingsIntent.OpenAddScales -> {
+                    navigateTo(AppRoute.AccountSettings.AddEditScales)
+                }
+
                 is SettingsIntent.ExportData -> {
                     onExportDataClick()
                 }

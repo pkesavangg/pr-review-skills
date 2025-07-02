@@ -72,7 +72,9 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.AddEditScales,
-                            onClick = { },
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.OpenAddScales)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Integrations,
