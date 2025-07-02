@@ -69,19 +69,36 @@ final class HealthKitStore: ObservableObject {
             showHKRemoveAlert()
             return
         }
-        
-        // Determine the correct modal to present based on existing HealthKit permissions.
-        let permissionCount = healthKitService.getApprovedPermissionList().count
-        // According to WG: 5 permissions granted ⇒ show *Permissions Allowed* flow,
-        // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
-        // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
-        switch permissionCount {
-        case wgTotalPermissionsCount...:
-            activeState = .permissionsAllowed
-        case 1..<wgTotalPermissionsCount:
-            activeState = .integrationComplete
-        default:
-            activeState = .permissionsNotAllowed
+        Task {
+            do {
+                let isAlreadyIntegrated = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
+                if isAlreadyIntegrated {
+                    activeState = .userConflict
+                    return
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to check if HealthKit integration already exists", data: error.localizedDescription)
+            }
+            
+            let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
+            if wasPreviouslyIntegrated {
+                // Determine the correct modal to present based on existing HealthKit permissions.
+                let permissionCount = healthKitService.getApprovedPermissionList().count
+                // According to WG: 5 permissions granted ⇒ show *Permissions Allowed* flow,
+                // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
+                // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
+                switch permissionCount {
+                case wgTotalPermissionsCount...:
+                    activeState = .permissionsAllowed
+                case 1..<wgTotalPermissionsCount:
+                    activeState = .integrationComplete
+                default:
+                    activeState = .permissionsNotAllowed
+                }
+            } else {
+                // User has never integrated before, so show the *Permissions Not Allowed* modal.
+                activeState = .permissionsNotAllowed
+            }
         }
     }
     
@@ -194,9 +211,13 @@ final class HealthKitStore: ObservableObject {
     /// Performs the actual sync and shows success toast.
     private func performFullSync() {
         Task {
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
             do {
                 try await healthKitService.syncAllData()
+                // After full sync, log the most recent entry to backend.
+                if let latestEntry = try await entryService.getLatestEntry() {
+                    await integrationService.logHealthEntry(entry: latestEntry)
+                }
                 notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
             } catch {
@@ -226,10 +247,11 @@ final class HealthKitStore: ObservableObject {
     /// updates local status accordingly.
     private func clearIntegration() {
         Task {
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.removingIntegration))
             do {
                 try await healthKitService.clearHealthKit()
                 getLocalStoredData()
+                notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationRemoved))
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to clear HealthKit data", data: error.localizedDescription)
             }

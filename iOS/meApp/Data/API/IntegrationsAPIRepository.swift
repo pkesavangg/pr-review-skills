@@ -57,18 +57,7 @@ final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
         bmi: Int?,
         data: [String: AnyCodable]
     ) async throws -> HealthIntegrationLogResponse {
-        struct LogRequest: Codable {
-            let type: String
-            let sentAt: String
-            let timestamp: String
-            let weight: Int?
-            let bodyFat: Int?
-            let muscleMass: Int?
-            let water: Int?
-            let bmi: Int?
-            let data: [String: AnyCodable]
-        }
-        let requestBody = LogRequest(
+        let requestBody = HealthLogRequest(
             type: type.rawValue,
             sentAt: sentAt,
             timestamp: timestamp,
