@@ -89,6 +89,7 @@ object StatHelper {
         MilestoneKey.PER_MONTH to "!",
         MilestoneKey.PER_YEAR to "1",
         MilestoneKey.TOTAL_CHANGE to "1",
+        MilestoneKey.TO_GOAL to "0.0",
     )
 
     /**
@@ -100,7 +101,7 @@ object StatHelper {
         filterNulls: Boolean = true
     ): List<Stat> {
         val keysToUse = (visibleKeys ?: MilestoneKey.entries)
-            .filter { it != MilestoneKey.UNRECOGNIZED && it != MilestoneKey.TO_GOAL }
+            .filter { it != MilestoneKey.UNRECOGNIZED }
 
         val stats = keysToUse.map { key ->
             val value = milestoneValues[key] ?: ""
@@ -220,6 +221,10 @@ internal object StatMeta {
         ),
         MilestoneKey.TOTAL_CHANGE to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsTotal },
+            unit = "lbs",
+        ),
+        MilestoneKey.TO_GOAL to StatMeta(
+            labelProvider = { _ -> DashboardString.MileStone.LbsToGoal },
             unit = "lbs",
         ),
     )
