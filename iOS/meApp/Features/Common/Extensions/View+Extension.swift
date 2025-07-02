@@ -197,4 +197,25 @@ extension View {
             )
         )
     }
+    
+    /// Applies a conditional wiggle animation to the view.
+    /// - Parameter shouldWiggle: If true, applies the wiggle animation.
+    /// - Returns: A view that conditionally wiggles based on the parameter.
+    func wiggling(_ shouldWiggle: Bool) -> some View {
+        modifier(WiggleModifier(shouldWiggle: shouldWiggle))
+    }
+    
+    /// Applies edit mode overlay with plus/minus circles
+    func editModeOverlay(
+        isEditMode: Bool,
+        isRemoved: Bool,
+        onToggleRemoval: @escaping () -> Void
+    ) -> some View {
+        modifier(EditModeOverlay(
+            isEditMode: isEditMode,
+            isRemoved: isRemoved,
+            onToggleRemoval: onToggleRemoval
+        ))
+    }
+    
 }

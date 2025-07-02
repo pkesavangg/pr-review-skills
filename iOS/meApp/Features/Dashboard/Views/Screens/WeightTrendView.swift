@@ -54,6 +54,7 @@ struct WeightTrendView: View {
                 .padding(.top, 18)
                 .padding(.horizontal, 15)
             }
+            .padding(.top, .spacingLG)
             .background(theme.textInverse)
             .edgesIgnoringSafeArea(.all)
             .zIndex(1)
