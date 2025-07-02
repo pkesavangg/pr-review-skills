@@ -25,6 +25,7 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageSummary
 import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
 import com.greatergoods.meapp.features.historyDetail.modal.Metric
+import com.greatergoods.meapp.proto.DashboardKey
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -74,13 +75,14 @@ private fun MetricItem(
 @Composable
 fun DashboardMetrics(
     metricData: List<PeriodBodyScaleSummary>,
+    visibleKeys: List<DashboardKey> = listOf(),
     selectedMetric: Metric? = null,
     onMetricClick: (Metric?) -> Unit
 ) {
     // Get the latest summary from day-wise entries for metrics
     val latestSummary = averageSummary(metricData)
     val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
-    val metrics = MetricHelper.getMetrics(dashboardMetric, useShort = true, filterNulls = false)
+    val metrics = MetricHelper.getMetrics(dashboardMetric, visibleKeys = visibleKeys , useShort = true, filterNulls = false)
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),

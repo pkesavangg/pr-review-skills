@@ -69,7 +69,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
                 metricData = it
             }
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            DashboardMetrics(metricData = metricData, selectedMetric = selectedMetric) {
+            DashboardMetrics(metricData = metricData, visibleKeys = state.visibleKeys, selectedMetric = selectedMetric) {
                 selectedMetric = it
             }
         }

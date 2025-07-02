@@ -10,11 +10,13 @@ import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.repository.AccountRepository
 import com.greatergoods.meapp.data.repository.AppRepository
 import com.greatergoods.meapp.data.repository.BodyCompositionRepository
+import com.greatergoods.meapp.data.repository.DashboardRepository
 import com.greatergoods.meapp.data.repository.DeviceInfoRepository
 import com.greatergoods.meapp.data.repository.EntryRepository
 import com.greatergoods.meapp.data.repository.HealthConnectRepository
 import com.greatergoods.meapp.data.repository.IntegrationRepository
 import com.greatergoods.meapp.data.repository.LogRepository
+import com.greatergoods.meapp.data.storage.datastore.DashboardKeysDatastore
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
@@ -24,6 +26,7 @@ import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
+import com.greatergoods.meapp.domain.repository.IDashboardRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
@@ -94,4 +97,11 @@ object RepositoryModule {
         accountDao: AccountDao,
         bodyCompAPI: IBodyCompAPI,
     ): IBodyCompositionRepository = BodyCompositionRepository(accountDao, bodyCompAPI)
+
+    @Provides
+    @Singleton
+    fun provideDashboardRepository(
+        dashboardKeysDatastore: DashboardKeysDatastore
+    ): IDashboardRepository =
+        DashboardRepository(dashboardKeysDatastore)
 }

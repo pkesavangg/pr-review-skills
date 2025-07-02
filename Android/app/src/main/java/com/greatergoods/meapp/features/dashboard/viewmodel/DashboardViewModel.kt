@@ -3,15 +3,14 @@ package com.greatergoods.meapp.features.dashboard.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
-import com.greatergoods.meapp.domain.services.AuthState
+import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.common.strings.ToastStrings
+import com.greatergoods.meapp.proto.DashboardKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -25,19 +24,39 @@ class DashboardViewModel
 constructor(
     private val entryService: IEntryService,
     private val appNavigationService: IAppNavigationService,
+    private val dashboardService: IDashboardService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
     reducer = DashboardReducer(),
 ) {
     init {
         handleIntent(DashboardIntent.LoadEntries)
         loadEntries()
+        subscribeMetrics()
     }
 
     override fun provideInitialState(): DashboardState = DashboardState()
 
-    /**
-     * Observes authentication state changes and shows toast for account switches.
-     */
+    override fun handleIntent(intent: DashboardIntent) {
+        when (intent) {
+            is DashboardIntent.UpdateVisibleMetrics -> updateVisibleMetrics(intent.metrics)
+            else -> null
+        }
+        super.handleIntent(intent)
+    }
+
+    private fun subscribeMetrics() {
+        viewModelScope.launch {
+            dashboardService.getVisibleKeys().collect {
+                handleIntent(DashboardIntent.SetVisibleMetrics(it))
+            }
+        }
+    }
+
+    private fun updateVisibleMetrics(metrics: List<DashboardKey>) {
+        viewModelScope.launch {
+            dashboardService.updateVisibleKeys(keys = metrics)
+        }
+    }
 
     /**
      * Loads entries and updates the state accordingly.

@@ -1,11 +1,11 @@
 package com.greatergoods.meapp.features.historyDetail.modal
 
-import com.greatergoods.meapp.features.common.enums.MetricKey
+import com.greatergoods.meapp.proto.DashboardKey
 
 data class Metric(
     val label: String,
     val value: String?,
     val unit: String,
     val icon: Int,
-    val key: MetricKey
+    val key: DashboardKey
 )
