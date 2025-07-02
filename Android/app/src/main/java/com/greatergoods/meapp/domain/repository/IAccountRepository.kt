@@ -24,12 +24,12 @@ interface IAccountRepository {
     suspend fun login(
         email: String,
         password: String,
-    ): LoginResponse
+    ): Account
 
     /**
      * Signs up via API and returns LoginResponse.
      */
-    suspend fun signup(request: SignupRequest): LoginResponse
+    suspend fun signup(request: SignupRequest): Account
 
     /**
      * Gets account info via API for a specific account and returns AccountResponse.
@@ -99,16 +99,16 @@ interface IAccountRepository {
 
     suspend fun markAccountExpired(accountId: String)
 
-    fun getLoggedInAccountsFromDB(): Flow<List<Account>>
+    fun getLoggedInAccounts(): Flow<List<Account>>
 
-    fun getStoredActiveAccountFromDB(): Flow<Account?>
+    fun getActiveAccount(): Flow<Account?>
 
     /**
      * Gets all accounts with unsynced data (isSynced = false) from the database.
      * Used by offline handler service to sync pending changes.
      * @return List of accounts that need to be synced
      */
-    suspend fun getUnsyncedAccountsFromDB(): List<Account>
+    suspend fun getUnsyncedAccounts(): List<Account>
 
     /**
      * Logs out the account both remotely (API) and locally (DB, tokens).

@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.domain.services
 
-import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -109,17 +108,6 @@ interface IAccountService {
         account: Account,
         showToast: Boolean = false,
     ): Boolean
-
-    /**
-     * Updates the user's profile information in the local database only.
-     * @param accountId The ID of the account to update
-     * @param partialAccount The partial account data to update
-     * @return The updated [Account]
-     */
-    suspend fun updateProfileInDB(
-        accountId: String,
-        partialAccount: PartialAccount,
-    ): Account
 
     /**
      * Updates the account's tokens in the local database.

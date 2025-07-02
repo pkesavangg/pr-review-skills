@@ -109,7 +109,7 @@ class DeviceInfoService
                 deviceInfoRepository.updateDeviceInfo(deviceInfo)
 
                 // Update FCM token for the active account
-                val activeAccount = accountRepository.getStoredActiveAccountFromDB().first()
+                val activeAccount = accountRepository.getActiveAccount().first()
                 activeAccount?.let { account ->
                     val partialUpdate = PartialAccount(fcmToken = fcmToken)
                     accountRepository.updateAccount(account.id, partialUpdate)

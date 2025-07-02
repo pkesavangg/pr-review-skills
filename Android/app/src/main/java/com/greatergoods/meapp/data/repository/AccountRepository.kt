@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.core.network.ITokenManager
+import com.greatergoods.meapp.core.network.utility.HttpErrorResponse
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IUserAPI
@@ -31,6 +32,7 @@ import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -61,12 +63,18 @@ class AccountRepository
         override suspend fun login(
             email: String,
             password: String,
-        ): LoginResponse = authAPI.login(LoginRequest(email, password))
+        ): Account {
+            val loginResponse = authAPI.login(LoginRequest(email, password))
+            return addAccountFromLoginResponse(loginResponse)
+        }
 
         /**
          * Signs up via API and returns LoginResponse.
          */
-        override suspend fun signup(request: SignupRequest): LoginResponse = authAPI.createAccount(request)
+        override suspend fun signup(request: SignupRequest): Account {
+            val loginResponse = authAPI.createAccount(request)
+            return addAccountFromLoginResponse(loginResponse)
+        }
 
         /**
          * Gets account info via API for a specific account and returns AccountResponse.
@@ -108,26 +116,45 @@ class AccountRepository
          * @return The updated account from the database
          */
         override suspend fun updateProfile(profileData: ProfileUpdateRequest): Account {
-            // Call API to update profile
-            val response = userAPI.updateProfile(profileData)
-            val updatedAccountInfo = response.account
+            try {
+                // Call API to update profile
+                val response = userAPI.updateProfile(profileData)
+                val updatedAccountInfo = response.account
 
-            // Update the account in the DB with the new info
-            val updatedAccount =
-                updateAccount(
-                    updatedAccountInfo.id,
-                    PartialAccount(
-                        firstName = updatedAccountInfo.firstName,
-                        lastName = updatedAccountInfo.lastName,
-                        dob = updatedAccountInfo.dob,
-                        gender = updatedAccountInfo.gender,
-                        zipcode = updatedAccountInfo.zipcode,
-                        email = updatedAccountInfo.email,
-                        isActiveAccount = true,
-                        isSynced = true,
-                    ),
-                )
-            return updatedAccount
+                // Update the account in the DB with the new info
+                val updatedAccount =
+                    updateAccount(
+                        updatedAccountInfo.id,
+                        PartialAccount(
+                            firstName = updatedAccountInfo.firstName,
+                            lastName = updatedAccountInfo.lastName,
+                            dob = updatedAccountInfo.dob,
+                            gender = updatedAccountInfo.gender,
+                            zipcode = updatedAccountInfo.zipcode,
+                            email = updatedAccountInfo.email,
+                            isActiveAccount = true,
+                            isSynced = true,
+                        ),
+                    )
+                return updatedAccount
+            } catch (e: HttpException) {
+                if (HttpErrorResponse.isNetworkError(e.code())) {
+                    updateAccount(
+                        profileData.id,
+                        PartialAccount(
+                            firstName = profileData.firstName,
+                            lastName = profileData.lastName,
+                            dob = profileData.dob,
+                            gender = profileData.gender,
+                            zipcode = profileData.zipcode,
+                            email = profileData.email,
+                            isActiveAccount = true,
+                            isSynced = false,
+                        ),
+                    )
+                }
+                throw e
+            }
         }
 
         // DB Operations
@@ -180,18 +207,19 @@ class AccountRepository
                     isSynced = true,
                 )
             accountDao.insertWeightlessSettings(weightlessSettings)
-        val goalEntity = GoalSettingsEntity(
-            accountId = account.id,
-            goalType = account.goalType ?: "maintain",
-            weight = account.initialWeight.toFloat(),
-            goalWeight = account.goalWeight.toString(),
-            goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
-            isSynced = true
-        )
-        accountDao.insertGoalSettings(goalEntity)
-        AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
-        return account
-    }
+            val goalEntity =
+                GoalSettingsEntity(
+                    accountId = account.id,
+                    goalType = account.goalType ?: "maintain",
+                    weight = account.initialWeight.toFloat(),
+                    goalWeight = account.goalWeight.toString(),
+                    goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
+                    isSynced = true,
+                )
+            accountDao.insertGoalSettings(goalEntity)
+            AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
+            return account
+        }
 
         /**
          * Updates an account in the database with partial data and returns the updated domain model.
@@ -234,7 +262,7 @@ class AccountRepository
         /**
          * Gets the stored active account from the database as a Flow.
          */
-        override fun getStoredActiveAccountFromDB(): Flow<Account?> =
+        override fun getActiveAccount(): Flow<Account?> =
             accountDao.getActiveAccount().map {
                 it?.toDomainAccount()
             }
@@ -256,7 +284,7 @@ class AccountRepository
         /**
          * Gets all logged-in accounts from the database as a Flow.
          */
-        override fun getLoggedInAccountsFromDB(): Flow<List<Account>> =
+        override fun getLoggedInAccounts(): Flow<List<Account>> =
             accountDao.getAllLoggedInAccounts().map { accounts ->
                 accounts.map { it.toDomainAccount() }
             }
@@ -360,7 +388,7 @@ class AccountRepository
          * Used by offline handler service to sync pending changes.
          * @return List of accounts that need to be synced
          */
-        override suspend fun getUnsyncedAccountsFromDB(): List<Account> =
+        override suspend fun getUnsyncedAccounts(): List<Account> =
             accountDao.getUnsyncedAccounts().first().map { accountEntity ->
                 AccountEntityMapper.toDomain(accountEntity)
             }

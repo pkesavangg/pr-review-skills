@@ -2,7 +2,7 @@ package com.greatergoods.meapp.domain.model.api.user
 
 data class
 ProfileUpdateRequest(
-    val id: String?,
+    val id: String,
     val email: String,
     val firstName: String,
     val lastName: String,
@@ -12,5 +12,5 @@ ProfileUpdateRequest(
     val height: Double? = null,
     val weight: Double? = null,
     val activityLevel: String? = null,
-    val weightUnit: String? = null
+    val weightUnit: String? = null,
 )

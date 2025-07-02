@@ -5,7 +5,6 @@ import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
-import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -38,7 +37,7 @@ class AccountService
         dialogQueueService: IDialogQueueService,
         private val appNavigationService: IAppNavigationService,
         private val userSettingsRepository: IUserSettingsRepository,
-         private val goalRepository: IGoalRepository,
+        private val goalRepository: IGoalRepository,
     ) : BaseService(connectivityObserver, dialogQueueService),
         IAccountService {
         companion object {
@@ -57,13 +56,13 @@ class AccountService
          * Flow emitting the currently active account, or null if none is active.
          */
         override val activeAccountFlow: Flow<Account?> =
-            accountRepository.getStoredActiveAccountFromDB()
+            accountRepository.getActiveAccount()
 
         /**
          * Flow emitting the list of all logged-in accounts, with the active account first.
          */
         override val loggedInAccountsFlow: Flow<List<Account>> =
-            accountRepository.getLoggedInAccountsFromDB().map { it.sortedActiveFirst() }
+            accountRepository.getLoggedInAccounts().map { it.sortedActiveFirst() }
 
         /**
          * Flow indicating whether the maximum number of accounts has been reached.
@@ -102,8 +101,7 @@ class AccountService
                 if (hasReachedMaxAccounts.first() && !isExistingAccount) {
                     throw MaxAccountsReachedException()
                 }
-                val loginResponse = accountRepository.login(email, password)
-                val savedAccount = accountRepository.addAccountFromLoginResponse(loginResponse)
+                val savedAccount = accountRepository.login(email, password)
                 appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
                 savedAccount
             } catch (e: HttpException) {
@@ -137,8 +135,7 @@ class AccountService
                 throw MaxAccountsReachedException()
             }
             return try {
-                val response = accountRepository.signup(request)
-                val savedAccount = accountRepository.addAccountFromLoginResponse(response)
+                val savedAccount = accountRepository.signup(request)
                 appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
                 savedAccount
             } catch (e: Exception) {
@@ -305,7 +302,7 @@ class AccountService
                         weightlessWeight = accountInfo.weightlessWeight ?: 0.0f,
                         isSynced = true,
                     )
-                userSettingsRepository.updateWeightlessInDB(weightlessSetting)
+                userSettingsRepository.updateWeightless(weightlessSetting)
                 AppLog.d(TAG, "Active account login status check successful")
                 true
             } catch (e: Exception) {
@@ -444,17 +441,6 @@ class AccountService
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
                 false
             }
-
-        /**
-         * Updates the user's profile information in the local database only.
-         * @param accountId The ID of the account to update
-         * @param partialAccount The partial account data to update
-         * @return The updated account
-         */
-        override suspend fun updateProfileInDB(
-            accountId: String,
-            partialAccount: PartialAccount,
-        ): Account = accountRepository.updateAccount(accountId, partialAccount)
 
         /**
          * Updates the account's tokens.

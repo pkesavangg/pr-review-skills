@@ -33,10 +33,9 @@ class OfflineHandlerService
         private val bodyCompositionRepository: IBodyCompositionRepository,
         private val notificationRepository: INotificationRepository,
         private val userSettingsRepository: IUserSettingsRepository,
-         private val goalRepository: IGoalRepository,
+        private val goalRepository: IGoalRepository,
         private val connectivityObserver: IConnectivityObserver,
     ) : IOfflineHandlerService {
-
         companion object {
             private const val TAG = "OfflineHandlerService"
         }
@@ -73,7 +72,7 @@ class OfflineHandlerService
          * Syncs profile data for accounts that have unsynced profile changes.
          */
         private suspend fun syncProfileData() {
-            val unsyncedAccounts = accountRepository.getUnsyncedAccountsFromDB()
+            val unsyncedAccounts = accountRepository.getUnsyncedAccounts()
             if (unsyncedAccounts.isEmpty()) {
                 AppLog.d(TAG, "No unsynced profile accounts found")
                 return
@@ -159,24 +158,26 @@ class OfflineHandlerService
                 return
             }
 
-        for (account in unsyncedNotificationAccounts) {
-            try {
-                // Sync notification settings (entry notifications and weight in notifications)
-                val notificationSettingsRequest = NotificationSettingsRequest(
-                    shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
-                    shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false
-                )
-                val notificationResponse =
-                    notificationRepository.updateNotificationSettingsInAPI(notificationSettingsRequest)
+            for (account in unsyncedNotificationAccounts) {
+                try {
+                    // Sync notification settings (entry notifications and weight in notifications)
+                    val notificationSettingsRequest =
+                        NotificationSettingsRequest(
+                            shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
+                            shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
+                        )
+                    val notificationResponse =
+                        notificationRepository.updateNotificationSettingsInAPI(notificationSettingsRequest)
 
-                // Create NotificationSettings entity with data from API response
-                val notificationSettings = NotificationSettingsEntity(
-                    accountId = notificationResponse.account.id,
-                    shouldSendEntryNotifications = notificationResponse.account.shouldSendEntryNotifications,
-                    shouldSendWeightInEntryNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
-                    isSynced = true
-                )
-                notificationRepository.updateNotificationSettingsInDB(account.id, notificationSettings)
+                    // Create NotificationSettings entity with data from API response
+                    val notificationSettings =
+                        NotificationSettingsEntity(
+                            accountId = notificationResponse.account.id,
+                            shouldSendEntryNotifications = notificationResponse.account.shouldSendEntryNotifications,
+                            shouldSendWeightInEntryNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
+                            isSynced = true,
+                        )
+                    notificationRepository.updateNotificationSettingsInDB(account.id, notificationSettings)
 
                     AppLog.i(TAG, "Successfully synced notification settings for account: ${account.id}")
                 } catch (e: Exception) {
@@ -185,97 +186,99 @@ class OfflineHandlerService
             }
         }
 
-
-    /**
-     * Syncs goal data for accounts that have unsynced goal changes.
-     */
-    private suspend fun syncGoalData() {
-        AppLog.d("TAG", "Syncing goal data")
-        try {
-            val unsyncedAccounts = goalRepository.getUnsyncedGoalAccountsFromDB()
-            if (unsyncedAccounts.isEmpty()) {
-                AppLog.d(TAG, "No unsynced goal settings found")
-                return
-            }
-            AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced goal settings")
-            for (account in unsyncedAccounts) {
-                try {
-                    AppLog.d(TAG, "Syncing goal settings for account: ${account.id}")
-                    val goalData = GoalData(
-                        goalWeight = account.goalWeight ?: 0.0,
-                        initialWeight = account.initialWeight,
-                        type = account.goalType ?: "maintain",
-                        metPreviousGoal = account.metPreviousGoal
-                    )
-                    goalRepository.updateGoalSetting(goalData)
-                    AppLog.i(TAG, "Successfully synced goal settings for account: ${account.id}")
-                } catch (e: Exception) {
-                    AppLog.e(TAG, "Failed to sync goal settings for account ${account.id}", e.toString())
+        /**
+         * Syncs goal data for accounts that have unsynced goal changes.
+         */
+        private suspend fun syncGoalData() {
+            AppLog.d("TAG", "Syncing goal data")
+            try {
+                val unsyncedAccounts = goalRepository.getUnsyncedGoalAccountsFromDB()
+                if (unsyncedAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No unsynced goal settings found")
+                    return
                 }
+                AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced goal settings")
+                for (account in unsyncedAccounts) {
+                    try {
+                        AppLog.d(TAG, "Syncing goal settings for account: ${account.id}")
+                        val goalData =
+                            GoalData(
+                                goalWeight = account.goalWeight ?: 0.0,
+                                initialWeight = account.initialWeight,
+                                type = account.goalType ?: "maintain",
+                                metPreviousGoal = account.metPreviousGoal,
+                            )
+                        goalRepository.updateGoalSetting(goalData)
+                        AppLog.i(TAG, "Successfully synced goal settings for account: ${account.id}")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Failed to sync goal settings for account ${account.id}", e.toString())
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing goal data", e.toString())
             }
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error syncing goal data", e.toString())
+        }
+
+        /**
+         * Syncs streak settings for accounts with unsynced changes.
+         */
+        private suspend fun syncStreakSettings() {
+            AppLog.d(TAG, "Syncing streak settings")
+            try {
+                val unsyncedAccounts = userSettingsRepository.getUnsyncedStreakAccountsFromDB()
+                if (unsyncedAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No unsynced streak settings found")
+                    return
+                }
+                AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced streak settings")
+                for (account in unsyncedAccounts) {
+                    try {
+                        AppLog.d(TAG, "Syncing streak settings for account: ${account.id}")
+                        val streakRequest =
+                            StreakRequest(
+                                isStreakOn = account.isStreakOn ?: false,
+                                streakTimestamp = account.streakTimestamp,
+                            )
+                        userSettingsRepository.updateStreakSetting(streakRequest)
+                        AppLog.i(TAG, "Successfully synced streak settings for account: ${account.id}")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Failed to sync streak settings for account ${account.id}", e.toString())
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing streak settings", e.toString())
+            }
+        }
+
+        /**
+         * Syncs weightless settings for accounts with unsynced changes.
+         */
+        private suspend fun syncWeightlessSettings() {
+            try {
+                val unsyncedAccounts = userSettingsRepository.getUnsyncedWeightlessAccountsFromDB()
+
+                if (unsyncedAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No unsynced weightless settings found")
+                    return
+                }
+                AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced weightless settings")
+                for (account in unsyncedAccounts) {
+                    try {
+                        AppLog.d(TAG, "Syncing weightless settings for account: ${account.id}")
+                        val weightlessRequest =
+                            WeightlessRequest(
+                                isWeightlessOn = account.isWeightlessOn ?: false,
+                                weightlessTimestamp = account.weightlessTimestamp,
+                                weightlessWeight = account.weightlessWeight?.toDouble(),
+                            )
+                        userSettingsRepository.updateWeightlessSetting(weightlessRequest)
+                        AppLog.i(TAG, "Successfully synced weightless settings for account: ${account.id}")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Failed to sync weightless settings for account ${account.id}", e.toString())
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error syncing weightless settings", e.toString())
+            }
         }
     }
-
-    /**
-     * Syncs streak settings for accounts with unsynced changes.
-     */
-    private suspend fun syncStreakSettings() {
-        AppLog.d(TAG, "Syncing streak settings")
-        try {
-            val unsyncedAccounts = userSettingsRepository.getUnsyncedStreakAccountsFromDB()
-            if (unsyncedAccounts.isEmpty()) {
-                AppLog.d(TAG, "No unsynced streak settings found")
-                return
-            }
-            AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced streak settings")
-            for (account in unsyncedAccounts) {
-                try {
-                    AppLog.d(TAG, "Syncing streak settings for account: ${account.id}")
-                    val streakRequest = StreakRequest(
-                        isStreakOn = account.isStreakOn ?: false,
-                        streakTimestamp = account.streakTimestamp
-                    )
-                    userSettingsRepository.updateStreakSetting(streakRequest)
-                    AppLog.i(TAG, "Successfully synced streak settings for account: ${account.id}")
-                } catch (e: Exception) {
-                    AppLog.e(TAG, "Failed to sync streak settings for account ${account.id}", e.toString())
-                }
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error syncing streak settings", e.toString())
-        }
-    }
-
-    /**
-     * Syncs weightless settings for accounts with unsynced changes.
-     */
-    private suspend fun syncWeightlessSettings() {
-        try {
-            val unsyncedAccounts = userSettingsRepository.getUnsyncedWeightlessAccountsFromDB()
-
-            if (unsyncedAccounts.isEmpty()) {
-                AppLog.d(TAG, "No unsynced weightless settings found")
-                return
-            }
-            AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced weightless settings")
-            for (account in unsyncedAccounts) {
-                try {
-                    AppLog.d(TAG, "Syncing weightless settings for account: ${account.id}")
-                    val weightlessRequest = WeightlessRequest(
-                        isWeightlessOn = account.isWeightlessOn ?: false,
-                        weightlessTimestamp = account.weightlessTimestamp,
-                        weightlessWeight = account.weightlessWeight?.toDouble()
-                    )
-                    userSettingsRepository.updateWeightlessSetting(weightlessRequest)
-                    AppLog.i(TAG, "Successfully synced weightless settings for account: ${account.id}")
-                } catch (e: Exception) {
-                    AppLog.e(TAG, "Failed to sync weightless settings for account ${account.id}", e.toString())
-                }
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error syncing weightless settings", e.toString())
-        }
-    }
-}
