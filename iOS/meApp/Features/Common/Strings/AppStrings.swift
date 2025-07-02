@@ -430,6 +430,7 @@ struct LoaderStrings {
     static let sendingCsv = "Sending .CSV File..."
     static let loading = "Loading..."
     static let removingIntegration = "Removing integration..."
+    static let syncing = "Syncing..."
 }
 
 struct URLStrings {

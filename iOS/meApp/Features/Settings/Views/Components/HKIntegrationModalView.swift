@@ -47,7 +47,7 @@ struct HKIntegrationModalView: View {
                     // Top-right exclamation badge for outOfSync
                     if state == .outOfSync {
                         AppIconView(icon: AppAssets.exclamationMark)
-                            .foregroundColor(theme.actionPrimary)
+                            .foregroundColor(theme.statusError)
                             .offset(x: 14, y: -12) // push slightly outside
                     }
                 }

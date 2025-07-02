@@ -7,6 +7,7 @@
 
 
 import Foundation
+import SwiftUI
 
 @MainActor
 class BottomTabBarViewModel: ObservableObject {
@@ -15,10 +16,25 @@ class BottomTabBarViewModel: ObservableObject {
     @Published var showSettingsBadge: Bool = false
     @Published var showAppSync: Bool = false
     @Published var showTabBar: Bool = true
+    /// Holds a pending navigation request to be performed by `SettingsScreen` once it appears.
+    /// This is set when the user taps *Connect* in the *Add Apple Health Integration* modal.
+    @Published var pendingSettingsNavigation: SettingsRoute? = nil
+    
+    // MARK: - Dependencies
+    @Injector private var healthKitService: HealthKitService
+    @Injector private var notificationService: NotificationHelperService
+    @Injector private var logger: LoggerService
+    
+    private let tag = "BottomTabBarViewModel"
     
     init() {
         self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
         // TODO: Update the app sync display based on the app sync scale defined in the paired scale list
+
+        // Perform Apple Health integration check on launch
+        Task { [weak self] in
+            await self?.checkAppleHealthIntegrationStatus()
+        }
     }
     
     // MARK: - Tab Deactivation Handling
@@ -57,5 +73,78 @@ class BottomTabBarViewModel: ObservableObject {
     
     func selectTab(_ tab: BottomTab) {
         selectedTab = tab
+    }
+
+    // MARK: - Apple Health Integration Prompt
+    /// Checks whether the user should be prompted to add Apple Health integration
+    /// and shows the modal if needed.
+    private func checkAppleHealthIntegrationStatus() async {
+        do {
+            if let modalState = try await healthKitService.shouldShowHKIntegrationModal() {
+                await MainActor.run { [weak self] in
+                    switch modalState {
+                    case .addIntegration, .finishAdding:
+                        self?.presentHKIntegrationModal(for: modalState)
+                    case .outOfSync:
+                        self?.presentHKIntegrationModal(for: .outOfSync)
+                    }
+                }
+            }
+        } catch {
+            // Silently ignore – logging is handled in `HealthKitService`
+        }
+    }
+
+    /// Presents the Apple Health Integration modal based on the given state.
+    private func presentHKIntegrationModal(for state: HKIntegrationModalState) {
+        // Configure actions based on modal state
+        let onPrimary: () -> Void
+        let onSecondary: (() -> Void)?
+
+        switch state {
+        case .addIntegration, .finishAdding:
+            onPrimary = { [weak self] in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                // Switch to Settings tab and queue navigation to the Integrations screen.
+                self.selectTab(.settings)
+                self.pendingSettingsNavigation = .integrations
+            }
+            onSecondary = nil
+
+        case .outOfSync:
+            onPrimary = { [weak self] in
+                guard let self else { return }
+                self.healthKitService.openAppleHealth()
+                self.notificationService.dismissModal()
+            }
+
+            onSecondary = { [weak self] in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                Task {
+                    self.notificationService.showLoader(LoaderModel(text: LoaderStrings.removingIntegration))
+                    do {
+                        try await self.healthKitService.clearHealthKit()
+                        self.notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationRemoved))
+                    } catch {
+                        self.logger.log(level: .error, tag: self.tag, message: "Failed to clear HealthKit data", data: error.localizedDescription)
+                    }
+                    self.notificationService.dismissLoader()
+                }
+            }
+        }
+
+        let modalView = HKIntegrationModalView(
+            state: state,
+            onClose: { [weak notificationService] in
+                notificationService?.dismissModal()
+            },
+            onPrimaryTap: onPrimary,
+            onSecondaryTap: onSecondary
+        )
+
+        let modalData = ModalData(presentedView: AnyView(modalView))
+        notificationService.showModal(modalData)
     }
 }
