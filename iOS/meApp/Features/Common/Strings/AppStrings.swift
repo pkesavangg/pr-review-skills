@@ -142,7 +142,7 @@ struct HKIntegrationHealthAccessStrings {
             highlight: "Profile → Privacy → Apps → Weight Gurus."
         )
     )
-
+    
     static let integrationFailed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integration Failed",
@@ -172,7 +172,7 @@ struct HKIntegrationModalStrings {
             suffix: ". Or remove the integration in Weight Gurus."
         )
     )
-
+    
     
     static let finishAdding = HKIntegrationModalContent(
         imageName: AppAssets.hkLogoLarge,
@@ -394,12 +394,12 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
         static let removeButton = "Remove"
     }
-
+    
     // Alert shown when integration add/remove fails.
     struct IntegrationFailureAlert {
         static let message = "Sorry, something went wrong. Try again?"
     }
-
+    
     // Alert when in-app browser cannot open link.
     struct LinkOpenErrorAlert {
         static let title = "Something went wrong!"
@@ -407,7 +407,7 @@ struct AlertStrings {
         static let copyLinkButton = "Copy Link"
         static let dismissButton = "Dismiss"
     }
-
+    
     // Alert when integration is enabled but invalid.
     struct ReIntegrateAlert {
         static let disableButton: (String) -> String = { name in "Disable \(name)" }
@@ -514,10 +514,9 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
-
-    // MARK: - Scale images (AppSync & others)
-    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
-    // AppSync series
+    
+    // MARK: - Scale images
+    // MARK: - AppSync series
     static let scale0341 = "0341"
     static let scale0342 = "0342"
     static let scale0343 = "0343"
@@ -530,5 +529,21 @@ struct AppAssets {
     static let scale0369 = "0369"
     static let scale0370 = "0370"
     static let scale0371 = "0371"
+    
+    // MARK: - Bluetooth series
+    static let scale0375 = "0375"
+    static let scale0376 = "0376"
+    static let scale0378 = "0378"
+    static let scale0380 = "0380"
+    static let scale0382 = "0382"
+    static let scale0383 = "0383"
+    
+    // MARK: - WiFi series
+    static let scale0384 = "0384"
+    static let scale0385 = "0385"
+    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
+    
+    // MARK: - Bluetooth wifi series
+    static let scale0412 = "0412"
 }
 

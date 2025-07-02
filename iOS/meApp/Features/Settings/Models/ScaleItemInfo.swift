@@ -12,7 +12,7 @@ struct ScaleItemInfo: Identifiable {
     let id = UUID()
     let productName: String
     let sku: String
-    let imgPath: String?  // Optional local asset name
+    let imgPath: String
     let setupType: ScaleSetupType // Underlying connectivity type
     let bodyComp: Bool    // Whether the scale supports body-composition
 }

@@ -9,11 +9,10 @@ import SwiftUI
 struct ScaleSetupInfoView: View {
     @Environment(\.appTheme) private var theme
 
-    /// The SKU that identifies the scale model (e.g., "0397").
-    let sku: String
+    /// Scale metadata retrieved from the central `SCALES` array.
+    let scale: ScaleItemInfo
     var onClick: (() -> Void)? = nil
-    /// Lazy lookup for all copy & assets needed for this SKU.
-    private var content: ScaleSetupInfoContent { ScaleSetupStrings.info(for: sku) }
+    let scaleSetupLang = ScaleSetupStrings.self
 
     var body: some View {
         GeometryReader { geometry in
@@ -21,7 +20,7 @@ struct ScaleSetupInfoView: View {
                 VStack {
                     VStack(spacing: .spacingLG) {
                         VStack(spacing: .spacingXS) {
-                            Image(content.imageName)
+                            Image(scale.imgPath)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 180, height: 180)
@@ -29,22 +28,22 @@ struct ScaleSetupInfoView: View {
                                 .dropShadow(DropShadow.glowBlack)
                                 .padding(.bottom, .spacingLG)
 
-                            Text(content.title)
+                            Text("Model \(scale.sku)")
                                 .fontOpenSans(.heading4)
                                 .foregroundColor(theme.textHeading)
 
-                            Text(content.scaleName)
+                            Text(scale.productName)
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textBody)
                         }
                         .padding(.horizontal, .spacingLG)
 
-                        Text(content.description)
+                        Text(scaleSetupLang.troubleSettingUp)
                             .fontOpenSans(.body2)
                             .multilineTextAlignment(.leading)
                             .foregroundColor(theme.textBody)
 
-                        if let buttonTitle = content.buttonTitle {
+                        if let buttonTitle = self.buttonTitle {
                             ButtonView(text: buttonTitle, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                                 onClick?()
                             }
@@ -56,11 +55,17 @@ struct ScaleSetupInfoView: View {
             }
         }
     }
+    
+    private var buttonTitle: String? {
+        return  [.espTouchWifi, .wifi].contains(scale.setupType)
+        ? scaleSetupLang.getScaleMacAddress
+        : nil
+    }
 }
 
 
 #Preview(body: {
-    ScaleSetupInfoView(sku: "0343") {
+    ScaleSetupInfoView(scale: SCALES[0]) {
         print("Button clicked")
     }
     .padding(.horizontal)
