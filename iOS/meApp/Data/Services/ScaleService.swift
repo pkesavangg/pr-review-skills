@@ -54,7 +54,7 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
         // Load initial scales from local storage
         Task { await refreshScalesFromLocal() }
     }
-  
+
     var scalesPublisher: AnyPublisher<[Device], Never> {
         $scales.eraseToAnyPublisher()
     }
@@ -139,8 +139,7 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
 
     private func mergeRemoteScales(_ remoteScales: [ScaleDTO], accountId: String) async {
         do {
-            let scaleDTOs = try await localRepository.listScales()
-            let existingDevices = scaleDTOs.map { Device(from: $0) }
+            let existingDevices = try await localRepository.listScales()
             for remoteDTO in remoteScales {
                 guard let deviceId = remoteDTO.id else { continue }
                 if let managedDevice = try? await localRepository.getDevice(deviceId) {
@@ -160,7 +159,7 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
                         let newDevice = Device(from: remoteDTO)
                         newDevice.isSynced = true
                         do {
-                            _ = try await localRepository.createScale(newDevice.toDTO())
+                            _ = try await localRepository.createScale(newDevice)
                         } catch {
                             logger.log(level: .error, tag: tag, message: "Failed to create new device from remote: \(error.localizedDescription)")
                         }
@@ -196,7 +195,7 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
         guard let _ = try? await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)
         }
-        try await localRepository.patchScaleMeta(deviceId, metaData: metaDataDTO)
+        try await localRepository.patchScaleMeta(deviceId, metaData: metaData)
         do {
             try await remoteRepo.patchScaleMeta(deviceId, metaData: metaDataDTO)
             if let device = try await localRepository.getDevice(deviceId) {
@@ -209,12 +208,12 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
         }
     }
 
-    func updateScalePreference(_ preference: R4ScalePreference) async throws {
+    func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
         let preferenceDTO = preference.toDTO()
-        try await localRepository.patchScalePreference(preferenceDTO)
+        try await localRepository.patchScalePreference(deviceId, preference)
         do {
             try await remoteRepo.patchScalePreference(preferenceDTO)
-            if let device = try await localRepository.getDevice(preference.id) {
+            if let device = try await localRepository.getDevice(deviceId) {
                 device.isSynced = true
                 try await localRepository.updateDevice(device)
             }
@@ -229,8 +228,29 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
         let localDevices = try await localRepository.listScales()
         do {
             let apiDevices = try await remoteRepo.listScales()
+            var updatedDevices: [Device] = []
+
             for dto in apiDevices {
-                if let deviceId = dto.id, let existingDevice = try? await localRepository.getDevice(deviceId) {
+                var deviceToUpdate: Device?
+
+                // First, try to find by ID
+                if let deviceId = dto.id {
+                    deviceToUpdate = try? await localRepository.getDevice(deviceId)
+                }
+
+                // If not found by ID, try to find by other identifiers
+                if deviceToUpdate == nil {
+                    deviceToUpdate = localDevices.first { localDevice in
+                        if let localBroadcastId = localDevice.broadcastIdString, let remoteBroadcastId = dto.broadcastIdString, localBroadcastId == remoteBroadcastId { return true }
+                        if let localMac = localDevice.mac, let remoteMac = dto.mac, localMac == remoteMac { return true }
+                        if let localSku = localDevice.sku, let remoteSku = dto.sku, localSku == remoteSku { return true }
+                        return false
+                    }
+                }
+
+                if let existingDevice = deviceToUpdate {
+                    // Update existing device
+                    existingDevice.id = dto.id ?? existingDevice.id
                     existingDevice.nickname = dto.nickname
                     existingDevice.deviceName = dto.name
                     existingDevice.deviceType = dto.type
@@ -247,46 +267,36 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
                     existingDevice.token = dto.scaleToken
                     existingDevice.isSynced = true
                     try? await localRepository.updateDevice(existingDevice)
+                    updatedDevices.append(existingDevice)
                 } else {
-                    let existingDevice = localDevices.first { localDevice in
-                        if let localBroadcastId = localDevice.broadcastIdString, let remoteBroadcastId = dto.broadcastIdString, localBroadcastId == remoteBroadcastId { return true }
-                        if let localMac = localDevice.mac, let remoteMac = dto.mac, localMac == remoteMac { return true }
-                        if let localSku = localDevice.sku, let remoteSku = dto.sku, localSku == remoteSku { return true }
-                        return false
-                    }
-                    if let existingDevice = existingDevice {
-                        if let deviceId = existingDevice.id, let deviceToUpdate = try? await localRepository.getDevice(deviceId) {
-                            deviceToUpdate.id = dto.id ?? deviceToUpdate.id
-                            deviceToUpdate.nickname = dto.nickname
-                            deviceToUpdate.deviceName = dto.name
-                            deviceToUpdate.deviceType = dto.type
-                            deviceToUpdate.isDeleted = dto.isDeleted
-                            deviceToUpdate.isConnected = dto.isConnected
-                            deviceToUpdate.isWifiConfigured = dto.isWifiConfigured
-                            deviceToUpdate.mac = dto.mac
-                            deviceToUpdate.sku = dto.sku
-                            deviceToUpdate.broadcastId = dto.broadcastId.map { String($0) }
-                            deviceToUpdate.broadcastIdString = dto.broadcastIdString
-                            deviceToUpdate.userNumber = dto.userNumber.map { String($0) }
-                            deviceToUpdate.protocolType = nil
-                            deviceToUpdate.createdAt = dto.createdAt
-                            deviceToUpdate.token = dto.scaleToken
-                            deviceToUpdate.isSynced = true
-                            try? await localRepository.updateDevice(deviceToUpdate)
-                        }
-                    } else {
-                        _ = try? await localRepository.createScale(dto)
-                    }
+                    // Create new device only if it doesn't exist
+                    let newDevice = Device(from: dto)
+                    newDevice.isSynced = true
+                    _ = try? await localRepository.createScale(newDevice)
+                    updatedDevices.append(newDevice)
                 }
             }
-            let devices = apiDevices.map { Device(from: $0) }
-            await MainActor.run { self.scales = devices }
-            return devices
+
+                         // Add any local devices that weren't in the API response
+             for localDevice in localDevices {
+                 let isInApiResponse = apiDevices.contains { dto in
+                     if let dtoId = dto.id, localDevice.id == dtoId { return true }
+                     if let localBroadcastId = localDevice.broadcastIdString, let dtoBroadcastId = dto.broadcastIdString, localBroadcastId == dtoBroadcastId { return true }
+                     if let localMac = localDevice.mac, let dtoMac = dto.mac, localMac == dtoMac { return true }
+                     if let localSku = localDevice.sku, let dtoSku = dto.sku, localSku == dtoSku { return true }
+                     return false
+                 }
+                 if !isInApiResponse {
+                     updatedDevices.append(localDevice)
+                 }
+             }
+
+            await MainActor.run { self.scales = updatedDevices }
+            return updatedDevices
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch from API, using local data: \(error.localizedDescription)")
-            let devices = localDevices.map { Device(from: $0) }
-            await MainActor.run { self.scales = devices }
-            return devices
+            await MainActor.run { self.scales = localDevices }
+            return localDevices
         }
     }
 
@@ -361,31 +371,45 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
         do {
             let apiScales = try await remoteRepo.listScales()
             var localScales = try await localRepository.listScales()
+
             for dto in apiScales {
-                if let deviceId = dto.id, let _ = try? await localRepository.getDevice(deviceId) { continue }
-                let existingDevice = localScales.first { localDevice in
-                    isDuplicateDevice(device: Device(from: localDevice), remoteDTO: dto)
+                // Skip if device already exists locally by ID
+                if let deviceId = dto.id, let _ = try? await localRepository.getDevice(deviceId) {
+                    continue
                 }
+
+                // Check for duplicates by other identifiers
+                let existingDevice = localScales.first { localDevice in
+                    isDuplicateDevice(device: localDevice, remoteDTO: dto)
+                }
+
                 if existingDevice == nil {
                     do {
-                        _ = try await localRepository.createScale(dto)
+                        let newDevice = Device(from: dto)
+                        newDevice.isSynced = true
+                        _ = try await localRepository.createScale(newDevice)
                         // Update localScales to include the new device for deduplication
-                        localScales.append(dto)
+                        localScales.append(newDevice)
                     } catch {
                         logger.log(level: .error, tag: tag, message: "Failed to create scale from API: \(error.localizedDescription)")
                         throw ScaleError.apiSyncFailed(error)
                     }
                 }
             }
+
             if let tempDevice = tempDevice {
-                let dto = tempDevice.toDTO()
+                // Check if temp device already exists
                 let existingDevice = localScales.first { localDevice in
-                    isDuplicateDevice(device: Device(from: localDevice), remoteDTO: dto)
+                    // Check by ID first
+                    if localDevice.id == tempDevice.id { return true }
+                    // Then check by other identifiers
+                    return isDuplicateDevice(device: localDevice, remoteDTO: tempDevice.toDTO())
                 }
+
                 if existingDevice == nil {
                     do {
-                        _ = try await localRepository.createScale(dto)
-                        localScales.append(dto)
+                        _ = try await localRepository.createScale(tempDevice)
+                        localScales.append(tempDevice)
                     } catch {
                         logger.log(level: .error, tag: tag, message: "Failed to create temp device: \(error.localizedDescription)")
                         throw ScaleError.apiSyncFailed(error)
@@ -402,17 +426,32 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
     func createDevice(_ device: Device) async throws -> Device {
         let dto = device.toDTO()
         let existingDevices = try await localRepository.listScales()
+
+        // Check for existing device more thoroughly
         let existingDevice = existingDevices.first { localDevice in
+            // Check by ID first
+            if localDevice.id == device.id { return true }
+            // Then check by other identifiers
             if let localBroadcastId = localDevice.broadcastIdString, let newBroadcastId = dto.broadcastIdString, localBroadcastId == newBroadcastId { return true }
             if let localMac = localDevice.mac, let newMac = dto.mac, localMac == newMac { return true }
             if let localSku = localDevice.sku, let newSku = dto.sku, localSku == newSku { return true }
             return false
         }
-        if let existingDevice = existingDevice { return Device(from: existingDevice) }
-        _ = try await localRepository.createScale(dto)
+
+        if let existingDevice = existingDevice {
+            logger.log(level: .info, tag: tag, message: "Device already exists, returning existing device: \(existingDevice.id)")
+            return existingDevice
+        }
+
+        // Create locally first
+        let createdDevice = try await localRepository.createScale(device)
+
+        // Then sync to API
         do {
             let apiDTO = try await remoteRepo.createScale(dto)
+            // Update local device with API response data
             if let localDevice = try await localRepository.getDevice(device.id) {
+                localDevice.id = apiDTO.id ?? localDevice.id
                 localDevice.isSynced = true
                 try await localRepository.updateDevice(localDevice)
             }
@@ -482,8 +521,8 @@ final class ScaleService: ObservableObject, ScaleServiceProtocol {
             // Ensure broadcastIdString is populated so that look-ups work reliably
             if (device.broadcastIdString == nil || device.broadcastIdString?.isEmpty == true) {
                 if let bidStr = device.broadcastId, let bidInt = Int(bidStr) {
-                    let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "")
-                    let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource ?? .bluetooth,
+                    let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "") ?? .bluetoothScale
+                    let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource,
                                                                                       sku: device.sku ?? "")
                     device.broadcastIdString = ProtocolConversionTools.convertIntToHex(bidInt, protocolType: protocolType)
                 }

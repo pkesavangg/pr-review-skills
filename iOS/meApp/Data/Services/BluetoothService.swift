@@ -113,7 +113,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
 
     private func handleScalesUpdate(_ scales: [Device]?) async {
-        guard let scales = scales else {
+      guard let scales = scales, !scales.isEmpty else {
             syncDevices([])
             bluetoothScales = []
             return
@@ -126,7 +126,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             .btWifiR4
         ]
         let filteredScales = scales.filter { scale in
-          allowedTypes.contains(ScaleSourceType(rawValue: (scale.bathScale?.scaleType)!)) || scale.sku == "0412"
+            if let scaleTypeRaw = scale.bathScale?.scaleType {
+              let scaleType = ScaleSourceType(rawValue: scaleTypeRaw) ?? .bluetoothScale
+                return allowedTypes.contains(scaleType) || scale.sku == "0412"
+            }
+            return scale.sku == "0412"
         }
         // Disconnect deleted scales
         await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)

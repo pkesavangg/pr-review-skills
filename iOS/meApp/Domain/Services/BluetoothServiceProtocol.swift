@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import GGBluetoothSwiftPackage
 
 
 /// Protocol defining the service interface for managing Bluetooth-enabled scales and related operations.

@@ -125,7 +125,7 @@ final class Device {
             password: dto.password.map { String($0) },
             isDeleted: dto.isDeleted,
             deviceName: dto.name,
-            deviceType: dto.type,
+            deviceType: "scale",
             broadcastId: dto.broadcastId.map { String($0) },
             broadcastIdString: dto.broadcastIdString,
             userNumber: dto.userNumber.map { String($0) },
@@ -137,7 +137,7 @@ final class Device {
             wifiMac: dto.metaData?.wifiMac,
             isWifiConfigured: dto.isWifiConfigured,
             token: dto.scaleToken,
-            bathScale: BathScale(scaleType: scaleType, bodyComp: bodyComp),
+            bathScale: BathScale(scaleType: dto.type, bodyComp: bodyComp),
             r4ScalePreference: dto.preference.map { R4ScalePreference(from: $0) },
             metaData: dto.metaData.map { DeviceMetaData(from: $0) }
         )
@@ -164,7 +164,7 @@ final class Device {
             preference: self.r4ScalePreference?.toDTO(),
             scaleToken: self.token,
             sku: self.sku,
-            type: self.deviceType,
+            type: self.bathScale?.scaleType,
             userId: self.accountId,
             userNumber: self.userNumber != nil ? Int(self.userNumber!) : nil
         )

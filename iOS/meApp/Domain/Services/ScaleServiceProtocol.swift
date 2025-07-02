@@ -24,7 +24,7 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
 
     /// Updates scale preference.
     /// - Parameter preference: The R4ScalePreference to update.
-    func updateScalePreference(_ preference: R4ScalePreference) async throws
+  func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws
 
     /// Updates the status of a scale.
     /// - Parameters:
