@@ -39,14 +39,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> {
         deviceDiscoveredSubject.eraseToAnyPublisher()
     }
-    var deviceInfoUpdatedPublisher: AnyPublisher<DeviceMetaData, Never> {
+    var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> {
         deviceInfoUpdatedSubject.eraseToAnyPublisher()
     }
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> {
         showWeightOnlyModeAlertSubject.eraseToAnyPublisher()
-    }
-    var modeUpdatingPublisher: AnyPublisher<R4ScalePreference, Never> {
-        modeUpdatingSubject.eraseToAnyPublisher()
     }
     var newEntryReceivedPublisher: AnyPublisher<Entry, Never> {
         newEntryReceivedSubject.eraseToAnyPublisher()
@@ -56,8 +53,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Subjects for Scale Discovery
     private let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     private let newEntryReceivedSubject = PassthroughSubject<Entry, Never>()
-    private let deviceInfoUpdatedSubject = PassthroughSubject<DeviceMetaData, Never>()
-    private let modeUpdatingSubject = PassthroughSubject<R4ScalePreference, Never>()
+    private let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
     private let showWeightOnlyModeAlertSubject = PassthroughSubject<Bool, Never>()
 
     // MARK: - Private Properties
@@ -465,7 +461,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
 
     func clearScaleDiscoveredInfo() {
-        dismissedScales.removeAll()
         skipDevices.removeAll()
     }
 
@@ -526,16 +521,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         case .DEVICE_INFO_UPDATE:
             await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
             let deviceDetails = data.data as! GGDeviceDetails
-            let metadata = DeviceMetaData(
-                modelNumber: deviceDetails.modelNumber,
-                serialNumber: deviceDetails.serialNumber,
-                firmwareRevision: deviceDetails.firmwareRevision,
-                hardwareRevision: deviceDetails.hardwareRevision,
-                softwareRevision: deviceDetails.softwareRevision,
-                manufacturerName: deviceDetails.manufacturerName,
-                systemId: deviceDetails.systemID,
-            )
-            deviceInfoUpdatedSubject.send(metadata)
+            let deviceInfo = DeviceInfo(sdk: deviceDetails)
+            deviceInfoUpdatedSubject.send(deviceInfo)
             if !isWeightOnlyModeAlertDismissed {
                 await checkCanShowWeightOnlyModeAlert()
             }
@@ -630,12 +617,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         if let weightEntry = entriesData as? GGWeightEntry {
             let entry = convertWeightEntry(weightEntry)
             try? await entryService.saveNewEntry(entry)
+            newEntryReceivedSubject.send(entry)
         } else if let entryList = entriesData as? GGEntryList {
             // Handle multiple entries
             let entries = entryList.list.compactMap { convertGGEntry($0) }
             for entry in entries {
                 try? await entryService.saveNewEntry(entry)
             }
+            newEntryReceivedSubject.send(entries[0])
         }
     }
 
@@ -714,7 +703,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             bodyFat: roundMetric(ggEntry.bodyFat),
             muscleMass: roundMetric(ggEntry.muscleMass),
             water: roundMetric(ggEntry.water),
-            bmi: roundMetric(ggEntry.bmi) ?? calculateBMI(weight: Double(ggEntry.weightInKg), heightCm: calculateHeightCm(account.weightSettings?.height)),
+            bmi: roundMetric(ggEntry.bmi) ?? ConversionTools.calculateBMI(weight: Double(ggEntry.weightInKg), height: calculateHeightCm(height: activeAccount.weightSettings?.height)),
             source: sourceType.rawValue
         )
         // Create BathScaleMetric with detailed metrics
@@ -791,7 +780,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func createScanData(from account: Account?) -> ScanData? {
         guard let account = account else { return nil }
         // Height: stored as string in tenths of inches, convert to cm
-        let heightCm = calculateHeightCm(account.weightSettings?.height)
+        let heightCm = calculateHeightCm(height: account.weightSettings?.height)
         // Age: calculate from dob (YYYY-MM-DD)
         let age = calculateAge(from: account.dob) ?? 30
         // Athlete: activityLevel == "athlete"

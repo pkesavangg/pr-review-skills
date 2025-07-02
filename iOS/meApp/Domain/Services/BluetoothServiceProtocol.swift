@@ -25,13 +25,10 @@ protocol BluetoothServiceProtocol {
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> { get }
 
     /// Publisher for device metadata updates.
-    var deviceInfoUpdatedPublisher: AnyPublisher<DeviceMetaData, Never> { get }
+    var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> { get }
 
     /// Publisher for weight-only mode alert visibility.
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { get }
-
-    /// Publisher for mode updates.
-    var modeUpdatingPublisher: AnyPublisher<R4ScalePreference, Never> { get }
 
     /// Publisher for new entry events.
     var newEntryReceivedPublisher: AnyPublisher<Entry, Never> { get }
