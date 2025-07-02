@@ -4,6 +4,7 @@ import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.storage.datastore.DashboardKeysDatastore
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
@@ -30,7 +31,6 @@ import retrofit2.HttpException
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
@@ -44,6 +44,7 @@ constructor(
     private val connectivityObserver: IConnectivityObserver,
     private val tokenManager: ITokenManager,
     private val dialogQueueService: IDialogQueueService,
+    private val dashboardKeysDatastore: DashboardKeysDatastore,
     private val userDataStore: UserDataStore,
     private val appNavigationService: IAppNavigationService
 ) : IAccountService {
@@ -165,6 +166,9 @@ constructor(
                     expiresAt = loginResponse.expiresAt,
                 ),
             )
+            if (!dashboardKeysDatastore.hasVisibleKeys(account.id)) {
+                dashboardKeysDatastore.updateVisibleKeys(account.id)
+            }
             appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
             _isLoginFlow.emit(true)
             savedAccount

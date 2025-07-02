@@ -6,11 +6,11 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricE
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.enums.GraphSegment
-import com.greatergoods.meapp.features.common.helper.DashboardKey
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
+import com.greatergoods.meapp.proto.DashboardKey
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
