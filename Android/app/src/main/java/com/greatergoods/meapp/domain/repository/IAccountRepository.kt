@@ -17,17 +17,18 @@ import retrofit2.Response
  * Provides methods for account authentication, management, and data synchronization.
  */
 interface IAccountRepository {
-    // API Operations
     /**
-     * Logs in via API and returns LoginResponse.
+     * Logs in via API and returns the authenticated Account.
+     * @param email User's email
+     * @param password User's password
+     * @return The authenticated Account
      */
-    suspend fun login(
-        email: String,
-        password: String,
-    ): Account
+    suspend fun login(email: String, password: String): Account
 
     /**
-     * Signs up via API and returns LoginResponse.
+     * Signs up via API and returns the created Account.
+     * @param request Signup request data
+     * @return The created Account
      */
     suspend fun signup(request: SignupRequest): Account
 
@@ -39,21 +40,25 @@ interface IAccountRepository {
     suspend fun getAccount(accountId: String): AccountInfo
 
     /**
-     * Updates password via API and returns true if successful.
+     * Changes the password for the specified account.
+     * @param accountId The account ID
+     * @param oldPassword The current password
+     * @param newPassword The new password to set
+     * @return ChangePasswordResponse with new tokens if successful
      */
-    suspend fun updatePassword(
-        accountId: String,
-        oldPassword: String,
-        newPassword: String,
-    ): ChangePasswordResponse
+    suspend fun updatePassword(accountId: String, oldPassword: String, newPassword: String): ChangePasswordResponse
 
     /**
-     * Requests password reset via API and returns true if successful.
+     * Requests password reset via API.
+     * @param email The email address to reset the password for
+     * @return API response
      */
     suspend fun resetPassword(email: String): Response<Unit>
 
     /**
-     * Updates profile via API and returns AccountResponse
+     * Updates the user's profile information via API and updates the local database.
+     * @param profileData The profile data to update
+     * @return The updated Account
      */
     suspend fun updateProfile(profileData: ProfileUpdateRequest): Account
 
@@ -68,16 +73,31 @@ interface IAccountRepository {
         accountId: String? = null,
     ): Token
 
-    // DB Operations
+    /**
+     * Adds an account to the database with all entity relations and returns the domain model.
+     * @param account The Account to add
+     * @return The added Account
+     */
     suspend fun addAccount(account: Account): Account
 
-    suspend fun updateAccount(
-        accountId: String,
-        partialUpdate: PartialAccount,
-    ): Account
+    /**
+     * Updates an account in the database with partial data and returns the updated domain model.
+     * @param accountId The ID of the account to update
+     * @param partialUpdate Partial account data to update
+     * @return The updated Account
+     */
+    suspend fun updateAccount(accountId: String, partialUpdate: PartialAccount): Account
 
+    /**
+     * Deactivates all accounts except the given account ID.
+     * @param accountId The account ID to keep active
+     */
     suspend fun deactivateOtherAccounts(accountId: String)
 
+    /**
+     * Activates the specified account by setting it as the active account.
+     * @param accountId The account ID to activate
+     */
     suspend fun activateAccount(accountId: String)
 
     /**
@@ -86,26 +106,52 @@ interface IAccountRepository {
      */
     suspend fun updateTokens(request: AccountToken)
 
+    /**
+     * Updates the last active time for the account in the database.
+     * @param accountId The account ID to update
+     */
     suspend fun updateLastActiveTime(accountId: String)
 
+    /**
+     * Gets the sync timestamp for the current account as a Flow.
+     * @return Flow emitting the sync timestamp
+     */
     suspend fun getSyncTimeStamp(): Flow<String>
 
+    /**
+     * Updates the sync timestamp for the current account.
+     * @param timeStamp The new sync timestamp
+     */
     suspend fun updateSyncTimeStamp(timeStamp: String)
 
-    suspend fun updateAccountFromAPI(
-        accountId: String,
-        accountInfo: AccountInfo,
-    ): Account
+    /**
+     * Updates the account from API response data and returns the updated Account.
+     * @param accountId The account ID to update
+     * @param accountInfo The API response data
+     * @return The updated Account
+     */
+    suspend fun updateAccountFromAPI(accountId: String, accountInfo: AccountInfo): Account
 
+    /**
+     * Marks the specified account as expired in the database.
+     * @param accountId The account ID to mark as expired
+     */
     suspend fun markAccountExpired(accountId: String)
 
+    /**
+     * Gets all logged-in accounts from the database as a Flow.
+     * @return Flow emitting the list of logged-in accounts
+     */
     fun getLoggedInAccounts(): Flow<List<Account>>
 
+    /**
+     * Gets the stored active account from the database as a Flow.
+     * @return Flow emitting the active account or null if none
+     */
     fun getActiveAccount(): Flow<Account?>
 
     /**
      * Gets all accounts with unsynced data (isSynced = false) from the database.
-     * Used by offline handler service to sync pending changes.
      * @return List of accounts that need to be synced
      */
     suspend fun getUnsyncedAccounts(): List<Account>
@@ -117,11 +163,7 @@ interface IAccountRepository {
      * @param isActiveAccount Whether this is the active account
      * @return true if logout was successful, false otherwise
      */
-    suspend fun logoutAccount(
-        accountId: String,
-        fcmToken: String?,
-        isActiveAccount: Boolean,
-    ): Boolean
+    suspend fun logoutAccount(accountId: String, fcmToken: String?, isActiveAccount: Boolean): Boolean
 
     /**
      * Logs out all accounts both remotely (API) and locally (DB, tokens).
@@ -144,11 +186,13 @@ interface IAccountRepository {
 
     /**
      * Clears the tokens for the given account ID.
+     * @param accountId The account ID whose tokens should be cleared
      */
     suspend fun clearAccountTokens(accountId: String)
 
     /**
      * Removes the account with the given ID from the database.
+     * @param accountId The account ID to remove
      */
     suspend fun removeAccount(accountId: String)
 }
