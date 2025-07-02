@@ -123,6 +123,10 @@ class SettingsViewModel
                     onStreakClick()
                 }
 
+                is SettingsIntent.OpenHelp -> {
+                    onHelpClick()
+                }
+
                 else -> {}
             }
         }
@@ -696,7 +700,7 @@ class SettingsViewModel
 
         fun onHelpClick() {
             AppLog.d("SettingsViewModel", "Help clicked")
-            // TODO: Navigate to help screen
+            navigateTo(AppRoute.Help.HelpScreen)
         }
 
     /*

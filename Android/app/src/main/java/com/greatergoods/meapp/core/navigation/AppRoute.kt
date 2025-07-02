@@ -85,6 +85,15 @@ sealed class AppRoute : NavKey {
         @Serializable
         data object Weightless : AccountSettings()
     }
+
+    /**
+     * Help-related navigation routes.
+     */
+    @Serializable
+    sealed class Help : AppRoute() {
+        @Serializable
+        data object HelpScreen : Help()
+    }
 }
 
 

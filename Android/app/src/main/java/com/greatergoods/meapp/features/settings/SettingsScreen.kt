@@ -212,7 +212,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.HelpCustomerService,
                             type = SettingsItemType.Action(),
-                            onClick = {},
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenHelp)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.PrivacyPolicy,

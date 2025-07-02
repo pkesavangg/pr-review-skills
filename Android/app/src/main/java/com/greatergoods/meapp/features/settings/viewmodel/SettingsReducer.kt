@@ -56,6 +56,7 @@ sealed interface SettingsIntent : IReducer.Intent {
     object OpenPrivacyPolicy : SettingsIntent
     object OpenTermsOfService : SettingsIntent
     object OpenGreaterGoodsWebsite : SettingsIntent
+    object OpenHelp : SettingsIntent
 
     // Modal Selection Intents
     object ShowBiologicalSexModal : SettingsIntent
