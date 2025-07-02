@@ -32,6 +32,7 @@ import com.greatergoods.meapp.features.signup.model.GoalType
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
+import kotlin.math.floor
 
 /**
  * Milestone display composable showing current goal progress similar to Angular milestone page.
@@ -52,8 +53,15 @@ fun GoalMilestoneDisplay(
         "gain" -> GoalType.GAIN
         else -> GoalType.LOSE_GAIN
     }
-    val goalPercent = account.goalPercent
     val weightlessWeight = account.weightlessWeight
+
+    // Calculate goal percentage using the same logic as GoalViewModel and GoalService
+    val goalPercent = calculateGoalPercentage(
+        goalType = goalType,
+        initialWeight = initialWeight,
+        goalWeight = goalWeight,
+        latestWeight = currentWeight
+    )
 
     // Compute display progress percentage following Angular stats-modal logic
     val displayProgressPercentage = GoalDisplayHelper.computeDisplayProgressPercentage(goalType, goalPercent)
@@ -86,6 +94,47 @@ fun GoalMilestoneDisplay(
             }
         }
     }
+}
+
+/**
+ * Calculates goal percentage using the same logic as GoalService.getPercentComplete.
+ * Based on Angular's getPercentComplete method - exact implementation.
+ * @param goalType The goal type
+ * @param initialWeight Initial weight in stored format
+ * @param goalWeight Goal weight in stored format
+ * @param latestWeight Latest weight in stored format
+ * @return Percentage completion (0-100) or null if calculation not possible
+ */
+private fun calculateGoalPercentage(
+    goalType: GoalType,
+    initialWeight: Double,
+    goalWeight: Double,
+    latestWeight: Double
+): Double? {
+    // Only calculate for lose/gain goals, maintain goals don't have percentage
+    if (goalType == GoalType.MAINTAIN) return null
+
+    if (latestWeight <= 0.0) return null // No valid weight data
+
+    var percent = 0
+    when (goalType) {
+        GoalType.LOSE -> {
+            percent = ((latestWeight - goalWeight) / (initialWeight - goalWeight) * 100).toInt()
+            percent = 100 - floor(percent.toDouble()).toInt()
+        }
+        GoalType.GAIN -> {
+            percent = ((latestWeight - initialWeight) / (goalWeight - initialWeight) * 100).toInt()
+            percent = floor(percent.toDouble()).toInt()
+        }
+        GoalType.LOSE_GAIN -> {
+            // For LOSE_GAIN, determine based on goal vs initial weight comparison
+            val actualGoalType = if (goalWeight <= initialWeight) GoalType.LOSE else GoalType.GAIN
+            return calculateGoalPercentage(actualGoalType, initialWeight, goalWeight, latestWeight)
+        }
+        else -> return null // Maintain goals don't have percentage
+    }
+
+    return if (percent < 0) 0.0 else percent.toDouble()
 }
 
 /**
@@ -146,19 +195,12 @@ private fun LoseGainGoalDisplay(
     progressPercentage: Double,
     weightlessWeight: Float?
 ) {
-    val isWeightlessOn = account.isWeightlessOn ?: false
     val weightUnit = account.getWeightUnitDisplay()
-
-    val displayCurrentWeight = if (isWeightlessOn && weightlessWeight != null) {
-        account.convertStoredWeightToDisplay(currentWeight - weightlessWeight)
-    } else {
-        account.convertStoredWeightToDisplay(currentWeight)
-    }
     val displayGoalWeight = account.convertStoredWeightToDisplay(goalWeight)
     val displayInitialWeight = account.convertStoredWeightToDisplay(initialWeight)
     val isLoseGoal = displayGoalWeight < displayInitialWeight
     val goalType = if(isLoseGoal) GoalType.LOSE else GoalType.GAIN
-    val toGoal = GoalDisplayHelper.computeGoal(displayCurrentWeight, displayGoalWeight, goalType)
+    val toGoal = GoalDisplayHelper.computeToGoal(goalWeight, initialWeight, goalType)
     AppStyledCard (
         modifier = Modifier.background(colorScheme.primaryBackground).padding(vertical = spacing.md).clip(shape = RoundedCornerShape(24.dp))
     ) {
@@ -169,7 +211,7 @@ private fun LoseGainGoalDisplay(
         ) {
             AppText(
                 textType = TextType.Title,
-                text = if (!toGoal.startsWith("-")) "+$toGoal" else "-$toGoal", // Always show negative for lose goal
+                text = if (toGoal.toString().startsWith('-')) "$toGoal" else "+$toGoal", // Always show negative for lose goal
                 color = colorScheme.textHeading,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.alignByBaseline()

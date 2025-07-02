@@ -14,7 +14,6 @@ data class GoalFormControls(
     val goalType: FormControl<String>,
     val currentWeight: FormControl<String>,
     val goalWeight: FormControl<String>,
-    val useMetric: FormControl<Boolean>,
 ) {
     companion object {
         fun create(goalType: GoalType = GoalType.LOSE_GAIN) = GoalFormControls(
@@ -36,11 +35,7 @@ data class GoalFormControls(
                     FormValidations.required(),
                     FormValidations.weightValidator(),
                 ),
-            ),
-            useMetric = FormControl.create(
-                initialValue = false,
-                validators = emptyList(),
-            ),
+            )
         )
     }
 }
@@ -114,11 +109,6 @@ sealed class GoalIntent : IReducer.Intent {
 
     /** Toggle met previous goal flag. */
     object ToggleMetPreviousGoal : GoalIntent()
-
-    /** Toggle metric units. */
-    data class ToggleMetric(
-        val isMetric: Boolean,
-    ) : GoalIntent()
 }
 
 /**
@@ -222,23 +212,6 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
 
             is GoalIntent.ToggleMetPreviousGoal -> {
                 state.copy()
-            }
-
-            is GoalIntent.ToggleMetric -> {
-                // Update the useMetric form control
-                val updatedUseMetricControl = FormControl.create(
-                    initialValue = intent.isMetric,
-                    validators = emptyList(),
-                )
-
-                val updatedControls = state.form.controls.copy(
-                    useMetric = updatedUseMetricControl,
-                )
-                val updatedForm = FormGroup(updatedControls)
-
-                state.copy(
-                    form = updatedForm,
-                )
             }
         }
 }

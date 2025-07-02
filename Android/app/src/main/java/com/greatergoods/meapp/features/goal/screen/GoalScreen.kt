@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.features.goal.screen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -56,7 +54,6 @@ fun GoalScreen() {
 private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val interactionSource = remember { MutableInteractionSource() }
     val scrollState = rememberScrollState()
     AppScaffold(
         title = GoalStrings.PageTitle,
@@ -68,7 +65,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
                 GoalStrings.SaveGoalButton,
                 type = ButtonType.InlineTextPrimary,
                 size = ButtonSize.Small,
-                enabled = state.form.isValid && (state.form.controls.currentWeight.touched || state.form.controls.goalWeight.touched),
+                enabled = state.form.isValid && state.form.isDirty,
             ) {
                 keyboardController?.hide()
                 handleIntent.invoke(GoalIntent.Submit)
@@ -99,10 +96,6 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
                 goalTypeControl = state.form.controls.goalType,
                 currentWeightControl = state.form.controls.currentWeight,
                 goalWeightControl = state.form.controls.goalWeight,
-                useMetricControl = state.form.controls.useMetric,
-                onMetricToggle = { isMetric ->
-                    handleIntent(GoalIntent.ToggleMetric(isMetric))
-                },
                 onGoalTypeChange = { goalType ->
                     handleIntent(GoalIntent.ChangeGoalType(goalType))
                 },
@@ -110,8 +103,8 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
                     keyboardController?.hide()
                     focusManager.clearFocus()
                 },
-                showCurrentWeightForMaintain = false, // Hide current weight for maintain in goal settings
-                showMetricToggle = false, // Hide metric toggle in goal settings screen
+                showCurrentWeightForMaintain = false,
+                showMetricToggle = false
             )
             Spacer(modifier = Modifier.padding(spacing.lg))
         }
@@ -140,9 +133,6 @@ fun GoalScreenPreview() {
                         initialValue = "140.0",
                         validators = emptyList(),
                     ),
-                    FormControl.create(
-                        initialValue = false
-                    )
                 ),
             ),
         )

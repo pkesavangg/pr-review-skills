@@ -122,10 +122,6 @@ constructor(
                         initialValue = formattedGoalWeight,
                         validators = listOf(FormValidations.required(), FormValidations.weightValidator()),
                     ),
-                    useMetric = FormControl.create(
-                        initialValue = isMetric,
-                        validators = emptyList(),
-                    ),
                 ),
             ),
             account = currentAccount,

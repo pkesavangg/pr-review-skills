@@ -42,7 +42,7 @@ fun GoalStep(
     goalTypeControl: FormControl<String>,
     currentWeightControl: FormControl<String>,
     goalWeightControl: FormControl<String>,
-    useMetricControl: FormControl<Boolean>,
+    useMetricControl: FormControl<Boolean>? = null,
     onMetricToggle: (Boolean) -> Unit = {},
     onGoalTypeChange: (GoalType) -> Unit = {}, // Callback for goal type changes
     onNext: () -> Unit = {},
@@ -52,7 +52,7 @@ fun GoalStep(
     val currentWeightFocusRequester = remember { FocusRequester() }
     val goalWeightFocusRequester = remember { FocusRequester() }
 
-    val isMetric = useMetricControl.value
+    val isMetric = useMetricControl?.value ?: false
     val weightUnit = if (isMetric) Metrics.KG.value else Metrics.LBS.value
 
     // Goal type options
@@ -136,7 +136,7 @@ fun GoalStep(
                 AppToggle(
                     checked = isMetric,
                     onCheckedChange = { newValue ->
-                        useMetricControl.onValueChange(newValue)
+                        useMetricControl?.onValueChange(newValue)
                         onMetricToggle(newValue)
                     }
                 )

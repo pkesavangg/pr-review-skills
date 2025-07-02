@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.goal.helper
 
+import android.util.Log
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.features.signup.model.GoalType
 import kotlin.math.abs
@@ -163,6 +164,7 @@ object GoalDisplayHelper {
      * Maintain goals always show 100% progress, other goals are capped at 100%.
      */
     fun computeDisplayProgressPercentage(goalType: GoalType, goalPercent: Double?): Double {
+        Log.d("goalpercent", goalPercent.toString())
         return if (goalType == GoalType.MAINTAIN) {
             100.0 // Maintain goals always show 100% progress
         } else {

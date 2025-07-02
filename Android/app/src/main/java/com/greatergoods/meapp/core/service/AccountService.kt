@@ -6,7 +6,6 @@ import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
-import com.greatergoods.meapp.domain.enum.AuthAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
@@ -566,6 +565,12 @@ class AccountService
                     isStreakOn = account.isStreakOn,
                     dashboardType = account.dashboardType,
                     dashboardMetrics = account.dashboardMetrics,
+                    goalType = account.goalType,
+                    initialWeight = account.initialWeight?.toDouble() ?: 0.0,
+                    goalWeight = account.goalWeight?.toDouble(),
+                    goalPercent = account.goalPercent.toDouble(),
+                    shouldSendEntryNotifications = account.shouldSendEntryNotifications,
+                    shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications,
                 )
             val savedAccount = accountRepository.addAccount(userAccount)
             setActiveAccountAndTokens(
