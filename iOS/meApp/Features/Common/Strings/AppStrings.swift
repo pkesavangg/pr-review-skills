@@ -436,6 +436,13 @@ struct AlertStrings {
             "Unable to connect to \(name)! You may need to re-enable \(count > 1 ? "these" : "this") integration by re-authorizing your account."
         }
     }
+    
+    struct ExitSetupAlert {
+        static let title = "Confirm"
+        static let message = "Are you sure you want to exit setup?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
 }
 
 struct LoaderStrings {

@@ -13,7 +13,7 @@ final class AppSyncSetupStore: ObservableObject {
     @Published var currentStepIndex: Int = 0 {
         didSet { currentStep = steps[currentStepIndex] }
     }
-    @Published private(set) var currentStep: AppSyncSetupStep = .info
+    @Published private(set) var currentStep: AppSyncSetupStep = .intro
     @Published var isNextEnabled: Bool = true // Reserved for future validation rules
 
     /// Ordered list of steps. Updated once `configure(with:)` is called.
@@ -53,7 +53,7 @@ final class AppSyncSetupStore: ObservableObject {
 
         // Reset navigation indices.
         currentStepIndex = 0
-        currentStep = steps.first ?? .info
+        currentStep = steps.first ?? .intro
     }
 
     // MARK: - Navigation helpers
@@ -74,8 +74,8 @@ final class AppSyncSetupStore: ObservableObject {
     // MARK: - Step → View mapping
     private func viewForStep(_ step: AppSyncSetupStep, scaleItem: ScaleItemInfo) -> AnyView {
         switch step {
-        case .info:
-            return AnyView(ScaleSetupInfoView(scale: scaleItem))
+        case .intro:
+            return AnyView(ScaleSetupIntroView(scale: scaleItem))
         case .permissions:
             return AnyView(PermissionListView(categories: [.camera]))
         case .activateScale:
@@ -101,15 +101,21 @@ final class AppSyncSetupStore: ObservableObject {
 
     /// Presents a confirmation alert before abandoning the setup flow.
     func handleExit() {
+        if currentStep == .finish {
+            self.dismissAction?()
+            return
+        }
+        
+        let alertLang = AlertStrings.ExitSetupAlert.self
         let alert = AlertModel(
-            title: AlertStrings.SignupExitAlert.title,
-            message: AlertStrings.SignupExitAlert.message,
+            title: alertLang.title,
+            message: alertLang.message,
             buttons: [
-                AlertButtonModel(title: AlertStrings.SignupExitAlert.exitButton, type: .primary) { [weak self] _ in
+                AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
                     guard let self else { return }
                     self.dismissAction?()
                 },
-                AlertButtonModel(title: AlertStrings.SignupExitAlert.goBackButton, type: .secondary) { _ in }
+                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
             ]
         )
         notificationService.showAlert(alert)

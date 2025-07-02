@@ -1,12 +1,12 @@
 //
-//  ScaleInfoStepView.swift
+//  ScaleSetupIntroView.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 01/07/25.
 //
 import SwiftUI
 
-struct ScaleSetupInfoView: View {
+struct ScaleSetupIntroView: View {
     @Environment(\.appTheme) private var theme
 
     /// Scale metadata retrieved from the central `SCALES` array.
@@ -65,7 +65,7 @@ struct ScaleSetupInfoView: View {
 
 
 #Preview(body: {
-    ScaleSetupInfoView(scale: SCALES[0]) {
+    ScaleSetupIntroView(scale: SCALES[0]) {
         print("Button clicked")
     }
     .padding(.horizontal)

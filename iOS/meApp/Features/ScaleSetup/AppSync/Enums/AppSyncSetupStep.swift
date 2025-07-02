@@ -3,7 +3,7 @@ import Foundation
 /// Represents each step in the AppSync scale-setup flow.
 enum AppSyncSetupStep: Int, CaseIterable {
     /// Introductory information about the scale (SKU, features, etc.).
-    case info = 0
+    case intro = 0
     /// Application permissions required for setup (Bluetooth / Location).
     case permissions
     /// Prompt the user to physically activate / power-on the scale.

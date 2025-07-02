@@ -67,7 +67,7 @@ struct AppSyncScreen: View {
             ButtonView(text: commonLang.back,
                        type: .inlineTextPrimary,
                        size: .small,
-                       isDisabled: setupStore.currentStepIndex == 0,
+                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .finish,
                        action: {
                 withAnimation {
                     hideKeyboard()
