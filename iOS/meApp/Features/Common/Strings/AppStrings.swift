@@ -47,6 +47,7 @@ struct CommonStrings {
     static let yes = "Yes"
     static let no = "No"
     static let iOS = "iOS"
+    static let finish = "Finish"
 }
 
 /// Constants for entry strings used in the app
@@ -518,7 +519,6 @@ struct AppAssets {
     static let filledCloseCircle = "filledCloseCircle"
     static let filledTickCircle = "filledTickCircle"
     static let exclamationMark = "exclamationMark"
-    static let scale0412 = "0412"
     static let weightOnlyMode = "weightOnlyMode"
     static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
     static let  skuNumberSticker = "skuNumberSticker"
@@ -536,6 +536,8 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+    static let checkMarkLarge = "checkMarkLarge"
+    static let appSyncTab = "appSyncTab"
     
     // MARK: - Scale images
     // MARK: - AppSync series

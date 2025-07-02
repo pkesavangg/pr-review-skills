@@ -28,7 +28,7 @@ struct ScaleSetupInfoView: View {
                                 .dropShadow(DropShadow.glowBlack)
                                 .padding(.bottom, .spacingLG)
 
-                            Text("Model \(scale.sku)")
+                            Text(scaleSetupLang.modelTitle(scale.sku))
                                 .fontOpenSans(.heading4)
                                 .foregroundColor(theme.textHeading)
 

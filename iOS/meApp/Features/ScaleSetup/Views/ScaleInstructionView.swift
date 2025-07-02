@@ -15,14 +15,17 @@ struct ScaleInstructionView: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: .spacingXS) {
-                Text(title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
+            HStack {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
 
-                Text(description)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
+                    Text(description)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                }
+                Spacer()
             }
             .padding(.top, .spacingLG)
         }
@@ -30,6 +33,6 @@ struct ScaleInstructionView: View {
 }
 
 #Preview {
-    ScaleInstructionView(title: "Sample title", description: "Sample description text used for previewing the generic instruction view.")
+    ScaleInstructionView(title: "Sample title", description: "Sample description")
         .environmentObject(Theme.shared)
 } 

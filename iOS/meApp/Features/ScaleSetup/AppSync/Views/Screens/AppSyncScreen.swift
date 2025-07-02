@@ -8,34 +8,24 @@
 import SwiftUI
 
 struct AppSyncScreen: View {
-    @StateObject private var setupStore = AppSyncSetupStore()
+    // MARK: - State & Environment
+    @StateObject private var setupStore: AppSyncSetupStore = .init()
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) var dismiss
+
+    // MARK: - Input
     let sku: String
     var commonLang = CommonStrings.self
-    var isFromAccountSwitching: Bool = false
+    let scaleSetupLang = ScaleSetupStrings.self
 
-    /// Lookup `ScaleItemInfo` for the provided SKU.
-    private var scaleItem: ScaleItemInfo { SCALES.first { $0.sku == sku }  ?? SCALES[0] }
 
-    private var stepViews: [AnyView] {
-        [
-            // 1. Scale info
-            AnyView(ScaleSetupInfoView(scale: scaleItem)),
-            // 2. Permissions
-            AnyView(PermissionListView(categories: [.camera])),
-            AnyView(ActivateYourScaleView()),
-            AnyView(AddInfoView()),   // addInfo
-            AnyView(TimeToWeighView()),   // timeToWeigh
-            AnyView(EmptyView()),   // appSync
-            AnyView(EmptyView())    // finish
-        ]
-    }
-    
+    // Directly retrieve the pre-built views from the store.
+    private var stepViews: [AnyView] { setupStore.stepViews }
+
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
-                title: "Scale Setup - \(sku)",
+                title: scaleSetupLang.setupHeader(sku),
                 leadingContent: {
                     AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
                         .foregroundColor(theme.statusIconPrimary)
@@ -66,6 +56,7 @@ struct AppSyncScreen: View {
         }
         .onAppear {
             setupStore.dismissAction = dismiss
+            setupStore.configure(with: sku)
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
@@ -86,7 +77,7 @@ struct AppSyncScreen: View {
             
             Spacer()
             
-            ButtonView(text: setupStore.currentStepIndex == setupStore.steps.count - 1 ? commonLang.complete : commonLang.next,
+            ButtonView(text: setupStore.currentStepIndex == setupStore.steps.count - 1 ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
@@ -101,5 +92,9 @@ struct AppSyncScreen: View {
 }
 
 #Preview {
-    AppSyncScreen(sku: "0343")
+    AppSyncScreen(sku: "0343") // Body-comp scale
+}
+
+#Preview {
+    AppSyncScreen(sku: "0342") // Non-body-comp scale
 }
