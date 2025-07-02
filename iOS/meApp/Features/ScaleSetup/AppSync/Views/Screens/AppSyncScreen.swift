@@ -1,5 +1,5 @@
 //
-//  AppsyncScreen.swift
+//  AppSyncScreen.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 01/07/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct AppsyncScreen: View {
+struct AppSyncScreen: View {
     @StateObject private var setupStore = AppSyncSetupStore()
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) var dismiss
@@ -24,10 +24,9 @@ struct AppsyncScreen: View {
             AnyView(ScaleSetupInfoView(scale: scaleItem)),
             // 2. Permissions
             AnyView(PermissionListView(categories: [.camera])),
-            // 3‒7. Placeholder views (to be implemented in follow-up tasks)
-            AnyView(EmptyView()),   // activateScale
-            AnyView(EmptyView()),   // addInfo
-            AnyView(EmptyView()),   // weighInTime
+            AnyView(ActivateYourScaleView()),
+            AnyView(AddInfoView()),   // addInfo
+            AnyView(TimeToWeighView()),   // timeToWeigh
             AnyView(EmptyView()),   // appSync
             AnyView(EmptyView())    // finish
         ]
@@ -102,5 +101,5 @@ struct AppsyncScreen: View {
 }
 
 #Preview {
-    AppsyncScreen(sku: "0343")
+    AppSyncScreen(sku: "0343")
 }

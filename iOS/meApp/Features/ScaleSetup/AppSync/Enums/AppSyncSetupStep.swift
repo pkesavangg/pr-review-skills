@@ -11,7 +11,7 @@ enum AppSyncSetupStep: Int, CaseIterable {
     /// Collect additional profile information if necessary.
     case addInfo
     /// Educate the user on when to weigh-in for best results.
-    case weighInTime
+    case timeToWeighIn
     /// The actual AppSync process / progress screen.
     case appSync
     /// Final success / completion screen.
