@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
 		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
-		D00DD6342E0E9F5700053D07 /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D00DD6332E0E9F5700053D07 /* ggHealthKitPackage */; };
+		D09DAD762E14F17800188753 /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D09DAD752E14F17800188753 /* ggHealthKitPackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,7 +78,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
-				D00DD6342E0E9F5700053D07 /* ggHealthKitPackage in Frameworks */,
+				D09DAD762E14F17800188753 /* ggHealthKitPackage in Frameworks */,
 				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -106,6 +106,7 @@
 				105A1F9C2DE585B800FBB764 /* meApp */,
 				105A1FAF2DE585BA00FBB764 /* meAppTests */,
 				105A1FB92DE585BA00FBB764 /* meAppUITests */,
+				D09DAD742E14F16D00188753 /* Frameworks */,
 				105A1F9B2DE585B800FBB764 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -118,6 +119,13 @@
 				105A1FB62DE585BA00FBB764 /* meAppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D09DAD742E14F16D00188753 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -142,7 +150,7 @@
 			packageProductDependencies = (
 				481F096C2DF05C8D00799EAA /* FirebaseCore */,
 				481F096E2DF05C8D00799EAA /* FirebaseMessaging */,
-				D00DD6332E0E9F5700053D07 /* ggHealthKitPackage */,
+				D09DAD752E14F17800188753 /* ggHealthKitPackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -960,8 +968,9 @@
 			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
 		};
-		D00DD6332E0E9F5700053D07 /* ggHealthKitPackage */ = {
+		D09DAD752E14F17800188753 /* ggHealthKitPackage */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = D00DD6322E0E9F5700053D07 /* XCLocalSwiftPackageReference "../../ggHealthKitPackage" */;
 			productName = ggHealthKitPackage;
 		};
 /* End XCSwiftPackageProductDependency section */
