@@ -119,12 +119,13 @@ class DashboardKeysDatastore(
     /**
      * Returns the default list of visible metric keys (all metric keys).
      */
-    private fun defaultMetricKeys(): List<MetricKey> = MetricKey.entries
+    private fun defaultMetricKeys(): List<MetricKey> = MetricKey.entries.filter { it != MetricKey.UNRECOGNIZED }
 
     /**
      * Returns the default list of visible milestone keys (all milestone keys).
      */
-    private fun defaultMilestoneKeys(): List<MilestoneKey> = MilestoneKey.entries
+    private fun defaultMilestoneKeys(): List<MilestoneKey> =
+        MilestoneKey.entries.filter { it != MilestoneKey.UNRECOGNIZED }
 
     /**
      * Clears all visible metrics data (removes all accounts).

@@ -67,6 +67,14 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
     var inEditMode by remember {
         mutableStateOf(false)
     }
+    var currentVisibleMetrics by remember {
+        mutableStateOf(listOf<Stat>())
+    }
+
+    var currentVisibleMilestones by remember {
+        mutableStateOf(listOf<Stat>())
+    }
+
     AppScaffold(title = null) {
         Column(modifier = Modifier.verticalScroll(scrollState)) {
             HistoryGraph(state, selectedStat) {
@@ -77,19 +85,35 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
                 inEditMode = inEditMode,
                 visibleKeys = state.visibleKeys,
                 selectedStat = selectedStat,
-            ) {
-                selectedStat = it
-            }
+                onMetricClick = { stat ->
+                    selectedStat = stat
+                },
+                onMetricsChanged = { visibleMetrics ->
+                    currentVisibleMetrics = visibleMetrics
+                },
+            )
             DashboardMilestone(
                 startWeight = "100",
-                inEditMode = inEditMode,
                 goalWeight = "200",
                 currentWeight = "150",
+                inEditMode = inEditMode,
+                visibleKeys = state.visibleKeys,
+                onMilestonesChanged = { visibleMilestones ->
+                    currentVisibleMilestones = visibleMilestones
+                },
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            DashboardControlPanel(inEditMode) {
-                inEditMode = it
-            }
+            DashboardControlPanel(
+                inEditMode = inEditMode,
+                onEditClick = { editMode ->
+                    if (!editMode && inEditMode) {
+                        // Save dashboard metrics and milestones when exiting edit mode
+                        val allVisibleKeys = currentVisibleMetrics.map { it.key } + currentVisibleMilestones.map { it.key }
+                        handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
+                    }
+                    inEditMode = editMode
+                },
+            )
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         }
     }

@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.dashboard.viewmodel
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.model.DashboardKey
+import com.greatergoods.meapp.features.common.model.Stat
 
 /**
  * UI state for the dashboard, holding loading state and entry summaries.
@@ -29,6 +30,7 @@ sealed interface DashboardIntent : IReducer.Intent {
     data class UpdateVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
     data class SetMonthWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
     data class SetIsLoading(val isLoading: Boolean) : DashboardIntent
+    data class SaveDashboardMetrics(val visibleMetrics: List<Stat>) : DashboardIntent
 }
 
 /**

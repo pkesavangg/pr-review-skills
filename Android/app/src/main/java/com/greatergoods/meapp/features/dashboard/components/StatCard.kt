@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.model.Stat
+import com.greatergoods.meapp.features.dashboard.strings.DashboardMetricsStrings
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
@@ -56,6 +58,7 @@ internal fun StatCard(
         shape = RoundedCornerShape(MeTheme.borderRadius.sm),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected && isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
+            disabledContainerColor = if (isSelected && isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
         ),
         enabled = enabled,
         onClick = { onMetricClick(stat) },
@@ -109,6 +112,7 @@ fun AnimatedStatCard(
     isSelected: Boolean? = false,
     isVisible: Boolean = true,
     modifier: Modifier = Modifier,
+    onBadgeClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
     // Wiggle animation
@@ -130,6 +134,7 @@ fun AnimatedStatCard(
                     contentColor = Color.Transparent,
                     modifier = Modifier
                         .size(24.dp)
+                        .clickable { onBadgeClick() }
                         .border(1.dp, MeTheme.colorScheme.iconPrimary, CircleShape),
                 ) {
                     Icon(
@@ -138,7 +143,7 @@ fun AnimatedStatCard(
                                 Icons.Default.Remove
                             else
                                 Icons.Default.Add,
-                        contentDescription = "Remove",
+                        contentDescription = if (isVisible) DashboardMetricsStrings.RemoveMetricDescription else DashboardMetricsStrings.AddMetricDescription,
                         tint = MeTheme.colorScheme.iconPrimary,
                         modifier = Modifier.size(14.dp),
                     )
@@ -152,7 +157,7 @@ fun AnimatedStatCard(
     ) {
         StatCard(
             stat = stat,
-            enabled = isSelected != null,
+            enabled = isSelected != null && !inEditMode,
             isVisible = isVisible,
             isSelected = isSelected ?: false,
             modifier = Modifier
