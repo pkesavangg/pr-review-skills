@@ -24,25 +24,40 @@ protocol BluetoothServiceProtocol {
     /// Publisher for unified device discovery events containing device, protocol type, and isNew flag.
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> { get }
 
+    /// Publisher for device metadata updates.
+    var deviceInfoUpdatedPublisher: AnyPublisher<DeviceMetaData, Never> { get }
+
+    /// Publisher for weight-only mode alert visibility.
+    var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { get }
+
+    /// Publisher for mode updates.
+    var modeUpdatingPublisher: AnyPublisher<R4ScalePreference, Never> { get }
+
+    /// Publisher for new entry events.
+    var newEntryReceivedPublisher: AnyPublisher<Entry, Never> { get }
+
+    /// Indicates whether a setup is currently in progress.
+    var isSetupInProgress: Bool { get set }
+
     // MARK: - Lifecycle / Initialisation
 
     /// Stops all ongoing Bluetooth operations and scanning.
-    func stopScan() async throws
+    func stopScan()
 
     /// Clears all devices from the underlying Bluetooth plugin / cache.
-    func clearDevices() async throws
+    func clearDevices()
 
     // MARK: - Scanning & Pairing
 
     /// Pauses the current smart scan without tearing down the session.
-    func pauseSmartScan() async
+    func pauseSmartScan()
 
     /// Resumes a previously paused smart scan.
     /// - Parameter clearOnlyPairing: When true, clears only pairing-mode devices before resuming.
-    func resumeSmartScan(clearOnlyPairing: Bool) async throws
+    func resumeSmartScan(clearOnlyPairing: Bool)
 
     /// Performs a dedicated scan intended for scale pairing.
-    func scanForPairing() async throws
+    func scanForPairing()
 
     // MARK: - Device Synchronisation
     /// Forces a re-sync of locally stored devices with the Bluetooth plugin and re-starts scanning.
@@ -50,24 +65,21 @@ protocol BluetoothServiceProtocol {
 
     /// Synchronises the provided device list with the Bluetooth plugin.
     /// - Parameter devices: The devices to sync. Passing an empty array clears the list.
-    func syncDevices(_ devices: [Device]) async throws
+    func syncDevices(_ devices: [Device])
 
     // MARK: - Device CRUD
     /// Adds a newly discovered scale to persistent storage and returns the saved model.
-    func addNewDevice(_ device: Device, scaleInfo: ScaleInfo, metaData: DeviceMetaData?) async throws -> Device
+    func addNewDevice(_ device: Device, metaData: DeviceMetaData?) async throws -> Device
 
     /// Deletes a scale from storage (and optionally from the physical device).
     /// - Parameters:
     ///   - device: The device to delete.
     ///   - disconnect: Whether to actively disconnect before deletion.
-    func deleteDevice(_ device: Device, disconnect: Bool) async throws -> UserDeletionResponseType
+    func deleteDevice(_ device: Device, disconnect: Bool) async throws -> UserDeletionResponse
 
     /// Disconnects the specified device without deleting it from storage.
     /// - Parameter broadcastId: The broadcast ID of the device to disconnect.
     func disconnectDevice(broadcastId: String) async throws
-
-    /// Deletes a scale on the device by broadcastId.
-    func deleteDevice(broadcastId: String, token: String, disconnect: Bool) async throws
 
     // MARK: - WiFi Configuration
     /// Retrieves the available Wi-Fi networks from the given device.
@@ -81,9 +93,6 @@ protocol BluetoothServiceProtocol {
 
     /// Retrieves the currently connected Wi-Fi SSID for an R4 scale.
     func getConnectedWifiSSID(broadcastId: String) async throws -> String
-
-    /// Updates the local cached Wi-Fi configured status for a device.
-    func updateWifiConfigStatus(broadcastId: String, isConfigured: Bool) async
 
     // MARK: - Settings & Firmware
     /// Updates a list of settings on the device.
@@ -100,11 +109,11 @@ protocol BluetoothServiceProtocol {
     func updateUserProfileForR4Scales() async throws -> Bool
 
     /// Updates account-specific preferences (display name, metrics, etc.) on the device.
-    func updateAccount(on device: Device, preference: R4ScalePreference) async throws -> UserCreationResponseType
+    func updateAccount(on device: Device, preference: R4ScalePreference) async throws -> UserCreationResponse
 
     // MARK: - Device Information
     /// Retrieves generic device information (model, serial, firmware, …).
-    func getDeviceInfo(for device: Device) async throws -> DeviceMetaData
+    func getDeviceInfo(for device: Device) async throws -> DeviceInfo
 
     /// Retrieves the Wi-Fi MAC address for an R4 scale.
     func getWifiMacAddress(for device: Device) async throws -> String

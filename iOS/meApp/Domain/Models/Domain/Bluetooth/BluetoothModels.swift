@@ -1,4 +1,5 @@
 import Foundation
+import GGBluetoothSwiftPackage
 
 // MARK: - Bluetooth Wrapper Models
 // These lightweight, `Sendable` value types are used by `BluetoothServiceProtocol` so that the
@@ -48,7 +49,16 @@ public enum DeviceSettingValue: Sendable, Equatable {
   case bool(Bool)
   case int(Int)
   case string(String)
+
+  public func toGGBTSettingValue() -> GGBTSettingValue {
+        switch self {
+        case .bool(let b): return .bool(b)
+        case .int(let i): return .int(i)
+        case .string(let s): return .string(s)
+        }
+    }
 }
+
 
 /// Enumeration describing which data set should be cleared on the scale.
 public enum DeviceClearType: String, Sendable, CaseIterable {
@@ -83,6 +93,174 @@ public struct DeviceUser: Sendable, Equatable {
     }
 }
 
+/// Wrapper for device information from the Bluetooth SDK
+public struct DeviceInfo: Sendable, Equatable, Codable {
+    public var manufacturerName: String?
+    public var modelNumber: String?
+    public var serialNumber: String?
+    public var firmwareRevision: String?
+    public var hardwareRevision: String?
+    public var softwareRevision: String?
+    public var systemID: String?
+    public var deviceName: String
+    public var broadcastId: String?
+    public var broadcastIdString: String
+    public var password: String?
+    public var macAddress: String
+    public var wifiMacAddress: String?
+    public var identifier: String
+    public var protocolType: String?
+    public var isWifiConfigured: Bool?
+    public var sessionImpedanceSwitchState: Bool?
+    public var impedanceSwitchState: Bool?
+    public var startAnimationState: Bool?
+    public var endAnimationState: Bool?
+    public var batteryLevel: Int?
+    public var userNumber: Int?
+    public var heartRateState: Bool?
+
+    public init(
+        manufacturerName: String? = nil,
+        modelNumber: String? = nil,
+        serialNumber: String? = nil,
+        firmwareRevision: String? = nil,
+        hardwareRevision: String? = nil,
+        softwareRevision: String? = nil,
+        systemID: String? = nil,
+        deviceName: String,
+        broadcastId: String? = nil,
+        broadcastIdString: String = "",
+        password: String? = nil,
+        macAddress: String = "",
+        wifiMacAddress: String? = nil,
+        identifier: String = "",
+        protocolType: String? = nil,
+        isWifiConfigured: Bool? = nil,
+        sessionImpedanceSwitchState: Bool? = nil,
+        impedanceSwitchState: Bool? = nil,
+        startAnimationState: Bool? = nil,
+        endAnimationState: Bool? = nil,
+        batteryLevel: Int? = nil,
+        userNumber: Int? = nil,
+        heartRateState: Bool? = nil
+    ) {
+        self.manufacturerName = manufacturerName
+        self.modelNumber = modelNumber
+        self.serialNumber = serialNumber
+        self.firmwareRevision = firmwareRevision
+        self.hardwareRevision = hardwareRevision
+        self.softwareRevision = softwareRevision
+        self.systemID = systemID
+        self.deviceName = deviceName
+        self.broadcastId = broadcastId
+        self.broadcastIdString = broadcastIdString
+        self.password = password
+        self.macAddress = macAddress
+        self.wifiMacAddress = wifiMacAddress
+        self.identifier = identifier
+        self.protocolType = protocolType
+        self.isWifiConfigured = isWifiConfigured
+        self.sessionImpedanceSwitchState = sessionImpedanceSwitchState
+        self.impedanceSwitchState = impedanceSwitchState
+        self.startAnimationState = startAnimationState
+        self.endAnimationState = endAnimationState
+        self.batteryLevel = batteryLevel
+        self.userNumber = userNumber
+        self.heartRateState = heartRateState
+    }
+
+    /// Conversion from SDK GGDeviceDetails
+    public init(sdk: GGDeviceDetails) {
+        self.manufacturerName = sdk.manufacturerName
+        self.modelNumber = sdk.modelNumber
+        self.serialNumber = sdk.serialNumber
+        self.firmwareRevision = sdk.firmwareRevision
+        self.hardwareRevision = sdk.hardwareRevision
+        self.softwareRevision = sdk.softwareRevision
+        self.systemID = sdk.systemID
+        self.deviceName = sdk.deviceName
+        self.broadcastId = sdk.broadcastId
+        self.broadcastIdString = sdk.broadcastIdString
+        self.password = sdk.password
+        self.macAddress = sdk.macAddress
+        self.wifiMacAddress = sdk.wifiMacAddress
+        self.identifier = sdk.identifier
+        self.protocolType = sdk.protocolType
+        self.isWifiConfigured = sdk.isWifiConfigured
+        self.sessionImpedanceSwitchState = sdk.sessionImpedanceSwitchState
+        self.impedanceSwitchState = sdk.impedanceSwitchState
+        self.startAnimationState = sdk.startAnimationState
+        self.endAnimationState = sdk.endAnimationState
+        self.batteryLevel = sdk.batteryLevel
+        self.userNumber = sdk.userNumber
+        self.heartRateState = sdk.heartRateState
+    }
+}
+
+/// Wrapper for user creation response types from the Bluetooth SDK
+public enum UserCreationResponse: String, Sendable, Codable, Equatable, CaseIterable {
+    case creationCompleted = "CREATION_COMPLETED"
+    case creationFailed = "CREATION_FAILED"
+    case inputDataError = "INPUT_DATA_ERROR"
+    case memoryFull = "MEMORY_FULL"
+    case duplicateUserError = "DUPLICATE_USER_ERROR"
+    case userSelectionInProgress = "USER_SELECTION_IN_PROGRESS"
+    case differentUser = "DIFFERENT_USER"
+    case notInPairingMode = "NOT_IN_PAIRING_MODE"
+
+    // Conversion from SDK type
+    public init(sdkType: UserCreationResponseType) {
+        switch sdkType {
+        case .CREATION_COMPLETED: self = .creationCompleted
+        case .CREATION_FAILED: self = .creationFailed
+        case .INPUT_DATA_ERROR: self = .inputDataError
+        case .MEMORY_FULL: self = .memoryFull
+        case .DUPLICATE_USER_ERROR: self = .duplicateUserError
+        case .USER_SELECTION_IN_PROGRESS: self = .userSelectionInProgress
+        case .DIFFERENT_USER: self = .differentUser
+        case .NOT_IN_PAIRING_MODE: self = .notInPairingMode
+        }
+    }
+
+    // Conversion to SDK type
+    public var sdkType: UserCreationResponseType {
+        switch self {
+        case .creationCompleted: return .CREATION_COMPLETED
+        case .creationFailed: return .CREATION_FAILED
+        case .inputDataError: return .INPUT_DATA_ERROR
+        case .memoryFull: return .MEMORY_FULL
+        case .duplicateUserError: return .DUPLICATE_USER_ERROR
+        case .userSelectionInProgress: return .USER_SELECTION_IN_PROGRESS
+        case .differentUser: return .DIFFERENT_USER
+        case .notInPairingMode: return .NOT_IN_PAIRING_MODE
+        }
+    }
+}
+
+/// Wrapper for user deletion response types from the Bluetooth SDK
+public enum UserDeletionResponse: String, Sendable, Codable, Equatable, CaseIterable {
+    case success = "SUCCESS"
+    case fail = "FAIL"
+    case exceptionEncountered = "EXCEPTION_ENCOUNTERED"
+
+    // Conversion from SDK type
+    public init(sdkType: UserDeletionResponseType) {
+        switch sdkType {
+        case .SUCCESS: self = .success
+        case .FAIL: self = .fail
+        case .EXCEPTION_ENCOUNTERED: self = .exceptionEncountered
+        }
+    }
+
+    // Conversion to SDK type
+    public var sdkType: UserDeletionResponseType {
+        switch self {
+        case .success: return .SUCCESS
+        case .fail: return .FAIL
+        case .exceptionEncountered: return .EXCEPTION_ENCOUNTERED
+        }
+    }
+}
 
 /// Scale type enumeration
 public enum BluetoothScaleType: String, Sendable, CaseIterable {
@@ -92,7 +270,6 @@ public enum BluetoothScaleType: String, Sendable, CaseIterable {
     case lcbtScale = "lcbtScale"
     case btWifiR4 = "btWifiR4"
 }
-
 
 /// Unified device discovery event
 ///
@@ -135,5 +312,9 @@ public struct DeviceDiscoveryEvent: Sendable, Equatable {
         self.isNew = isNew
     }
 }
+
+
+
+
 
 
