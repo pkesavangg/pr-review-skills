@@ -23,24 +23,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
-import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
+import com.greatergoods.meapp.features.common.helper.StatHelper
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Composable for displaying dashboard stats in a 2-column grid, matching Figma design.
  * All static text is referenced from DashboardStatsStrings.
+ * Accepts startWeight, goalWeight, and currentWeight as Strings, and calculates progress internally.
  */
 @Composable
 fun DashboardStats(
-    lbsToGoal: String,
-    lbsToGoalLabel: String,
-    goalProgress: Float,
     startWeight: String,
     goalWeight: String,
+    currentWeight: String,
     modifier: Modifier = Modifier,
 ) {
-    val mileStones = MetricHelper.getMilestone()
+    val start = startWeight.toFloatOrNull() ?: 0f
+    val goal = goalWeight.toFloatOrNull() ?: 0f
+    val current = currentWeight.toFloatOrNull() ?: 0f
+
+    // Calculate lbsToGoal (difference between current and goal)
+    val lbsToGoal = (current - goal).let { if (it > 0) it else 0f }
+    val lbsToGoalText = String.format("%.1f", lbsToGoal)
+
+    // Calculate progress: (start - current) / (start - goal)
+    val totalToLose = (start - goal).let { if (it != 0f) it else 1f } // avoid division by zero
+    val lost = (start - current).let { if (it > 0) it else 0f }
+    val goalProgress = (lost / totalToLose).coerceIn(0f, 1f)
+
+    val mileStones = StatHelper.getMilestone()
     Column(modifier = modifier) {
         // Top card: lbs to goal with progress bar
         Card(
@@ -55,13 +67,13 @@ fun DashboardStats(
             ) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = lbsToGoal,
+                        text = lbsToGoalText,
                         color = MeTheme.colorScheme.textHeading,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
                     Text(
-                        text = lbsToGoalLabel,
+                        text = DashboardStatsStrings.LbsToGoal,
                         style = MeTheme.typography.body2,
                         color = MeTheme.colorScheme.textSubheading,
                         modifier = Modifier.padding(bottom = 4.dp),
@@ -96,12 +108,18 @@ fun DashboardStats(
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             userScrollEnabled = false,
-                modifier = Modifier . fillMaxWidth ().height(400.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(400.dp),
             horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         ) {
             items(mileStones) {
-                StatCard(stat = it, isSelected = false) { }
+                StatCard(
+                    stat = it,
+                    isSelected = false,
+                    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+                ) { }
             }
         }
     }
@@ -112,11 +130,9 @@ fun DashboardStats(
 private fun DashboardStatsPreview() {
     MeAppTheme {
         DashboardStats(
-            lbsToGoal = "-13.2",
-            lbsToGoalLabel = DashboardStatsStrings.LbsToGoal,
-            goalProgress = 0.7f,
-            startWeight = "154.3 lbs",
-            goalWeight = "132.3 lbs",
+            startWeight = "154.3",
+            goalWeight = "132.3",
+            currentWeight = "145.1",
         )
     }
 }

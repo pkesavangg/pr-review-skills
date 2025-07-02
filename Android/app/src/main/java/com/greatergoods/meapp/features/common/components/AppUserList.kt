@@ -47,24 +47,25 @@ fun AppUserList(
         items = accounts,
         iconWidth = 56.dp,
         maxVisibleItems = maxVisibleItems,
-        isItemDraggable = {canRemoveAccount},
+        isItemDraggable = { canRemoveAccount },
         contentPadding = contentPadding,
         keySelector = { it.id },
         trailingActions = { index, item ->
             val targetCornerRadius = MeTheme.borderRadius.sm
             val shape =
                 when {
-                    accounts.size == 1 -> RoundedCornerShape(topEnd = targetCornerRadius + 2.dp , bottomEnd = targetCornerRadius + 2.dp)
+                    accounts.size == 1 -> RoundedCornerShape(
+                        topEnd = targetCornerRadius + 2.dp,
+                        bottomEnd = targetCornerRadius + 2.dp,
+                    )
                     index == 0 ->
                         RoundedCornerShape(
                             topEnd = targetCornerRadius + 2.dp,
                         )
-
                     index == accounts.size - 1 ->
                         RoundedCornerShape(
                             bottomEnd = targetCornerRadius + 2.dp,
                         )
-
                     else -> RectangleShape
                 }
             AppDraggableListActions(
@@ -80,32 +81,30 @@ fun AppUserList(
             }
         },
         footerContent = footerContent,
-    ) { item, progress ->
-        val isDragging = progress > 0f
-        val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.sm
-        val animatedCornerRadius by animateDpAsState(
-            targetValue = targetCornerRadius,
-            animationSpec = tween(durationMillis = 250),
-        )
-        val index = accounts.indexOf(item)
-        val shape =
-            when {
-                accounts.size == 1 -> RoundedCornerShape(animatedCornerRadius)
-                index == 0 ->
-                    RoundedCornerShape(
-                        topStart = animatedCornerRadius,
-                        topEnd = animatedCornerRadius,
-                    )
-
-                index == accounts.size - 1 ->
-                    RoundedCornerShape(
-                        bottomStart = animatedCornerRadius,
-                        bottomEnd = animatedCornerRadius,
-                    )
-
-                else -> RectangleShape
-            }
-        Draggable {
+    ) { item ->
+        Draggable { progress ->
+            val isDragging = progress > 0f
+            val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.sm
+            val animatedCornerRadius by animateDpAsState(
+                targetValue = targetCornerRadius,
+                animationSpec = tween(durationMillis = 250),
+            )
+            val index = accounts.indexOf(item)
+            val shape =
+                when {
+                    accounts.size == 1 -> RoundedCornerShape(animatedCornerRadius)
+                    index == 0 ->
+                        RoundedCornerShape(
+                            topStart = animatedCornerRadius,
+                            topEnd = animatedCornerRadius,
+                        )
+                    index == accounts.size - 1 ->
+                        RoundedCornerShape(
+                            bottomStart = animatedCornerRadius,
+                            bottomEnd = animatedCornerRadius,
+                        )
+                    else -> RectangleShape
+                }
             Column {
                 AppUser(
                     account = item,

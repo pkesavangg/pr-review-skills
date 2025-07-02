@@ -18,9 +18,9 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.components.AppIcon
-import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
-import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper.getMetrics
-import com.greatergoods.meapp.features.historyDetail.modal.Stat
+import com.greatergoods.meapp.features.common.helper.StatHelper
+import com.greatergoods.meapp.features.common.helper.StatHelper.getMetrics
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
@@ -30,7 +30,7 @@ internal fun MetricItem(
     index: Int,
     size: Int = 1,
 ) {
-    val bgColor = MetricHelper.getBgColor(index, size)
+    val bgColor = StatHelper.getBgColor(index, size)
     Row(
         modifier =
             modifier
@@ -47,7 +47,16 @@ internal fun MetricItem(
         )
         Row {
             Text(
-                text = stat.value.plus(stat.unit),
+                text = buildString {
+                    if (stat.valuePrefix != null) {
+                        append(stat.valuePrefix)
+                        append(" ")
+                    }
+                    append(stat.value)
+                    if (stat.unit != null) {
+                        append(stat.unit)
+                    }
+                },
                 style = MeTheme.typography.body2,
                 color = MeTheme.colorScheme.textBody,
             )

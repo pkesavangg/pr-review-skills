@@ -39,7 +39,7 @@ fun HistoryDetailList(
                 onItemDelete(item)
             }
         },
-    ) { item, _ ->
+    ) { item ->
         HistoryDetailItem(
             item = item,
         )

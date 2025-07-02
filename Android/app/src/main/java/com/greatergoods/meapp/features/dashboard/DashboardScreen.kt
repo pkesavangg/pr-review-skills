@@ -28,7 +28,7 @@ import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardIntent
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
-import com.greatergoods.meapp.features.historyDetail.modal.Stat
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -85,12 +85,9 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
                     selectedStat = it
                 }
                 DashboardStats(
-                    "",
-                    goalProgress = 50f,
-                    startWeight = "",
-                    goalWeight = "",
-                    lbsToGoalLabel = "",
-                    modifier = Modifier,
+                    startWeight = "100",
+                    goalWeight = "200",
+                    currentWeight = "150",
                 )
             }
         }
