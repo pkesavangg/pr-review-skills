@@ -13,6 +13,7 @@ import com.greatergoods.meapp.data.api.IUserSettingsAPI
 import com.greatergoods.meapp.data.repository.AccountRepository
 import com.greatergoods.meapp.data.repository.AppRepository
 import com.greatergoods.meapp.data.repository.BodyCompositionRepository
+import com.greatergoods.meapp.data.repository.DashboardRepository
 import com.greatergoods.meapp.data.repository.DeviceInfoRepository
 import com.greatergoods.meapp.data.repository.EntryRepository
 import com.greatergoods.meapp.data.repository.GoalRepository
@@ -21,6 +22,7 @@ import com.greatergoods.meapp.data.repository.IntegrationRepository
 import com.greatergoods.meapp.data.repository.LogRepository
 import com.greatergoods.meapp.data.repository.NotificationRepository
 import com.greatergoods.meapp.data.repository.UserSettingsRepository
+import com.greatergoods.meapp.data.storage.datastore.DashboardKeysDatastore
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
@@ -30,6 +32,7 @@ import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
+import com.greatergoods.meapp.domain.repository.IDashboardRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IGoalRepository
@@ -125,4 +128,8 @@ object RepositoryModule {
         accountDao: AccountDao,
         accountRepository: IAccountRepository,
     ): IGoalRepository = GoalRepository(goalAPI, accountDao, accountRepository)
+    fun provideDashboardRepository(
+        dashboardKeysDatastore: DashboardKeysDatastore
+    ): IDashboardRepository =
+        DashboardRepository(dashboardKeysDatastore)
 }

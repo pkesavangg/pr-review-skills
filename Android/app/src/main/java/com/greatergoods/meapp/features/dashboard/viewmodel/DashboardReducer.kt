@@ -2,7 +2,7 @@ package com.greatergoods.meapp.features.dashboard.viewmodel
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
+import com.greatergoods.meapp.proto.DashboardKey
 
 /**
  * UI state for the dashboard, holding loading state and entry summaries.
@@ -14,6 +14,7 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
  */
 data class DashboardState(
     val isLoading: Boolean = false,
+    val visibleKeys: List<DashboardKey> = emptyList(),
     val dayWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
     val monthWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
 ) : IReducer.State
@@ -24,6 +25,8 @@ data class DashboardState(
 sealed interface DashboardIntent : IReducer.Intent {
     object LoadEntries : DashboardIntent
     data class SetDayWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
+    data class SetVisibleMetrics(val metrics: List<DashboardKey>) : DashboardIntent
+    data class UpdateVisibleMetrics(val metrics: List<DashboardKey>) : DashboardIntent
     data class SetMonthWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
     data class SetIsLoading(val isLoading: Boolean) : DashboardIntent
 }
@@ -36,6 +39,8 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
         is DashboardIntent.SetDayWiseEntries -> state.copy(dayWiseEntries = intent.entries)
         is DashboardIntent.SetMonthWiseEntries -> state.copy(monthWiseEntries = intent.entries)
         is DashboardIntent.SetIsLoading -> state.copy(isLoading = intent.isLoading)
+        is DashboardIntent.SetVisibleMetrics -> state.copy(visibleKeys = intent.metrics)
         DashboardIntent.LoadEntries -> state.copy(isLoading = true)
+        else -> state
     }
 }

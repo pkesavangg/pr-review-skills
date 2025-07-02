@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.features.common.strings
 
-import com.greatergoods.meapp.features.common.helper.DashboardKey
+import com.greatergoods.meapp.proto.DashboardKey
 
 object MetricLabels {
     data class LabelPair(val full: String, val short: String? = null)
