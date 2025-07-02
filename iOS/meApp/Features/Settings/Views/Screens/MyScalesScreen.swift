@@ -25,7 +25,7 @@ struct MyScalesScreen: View {
             case .scaleList:
                 return "scaleList"
             case .setupFlow(let scale):
-                // Assuming SKU uniquely identifies a scale
+                // SKU uniquely identifies a scale
                 return scale.sku
             }
         }
