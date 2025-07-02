@@ -15,11 +15,23 @@ struct MyScalesScreen: View {
     
     @FocusState private var focusedField: FocusField?
 
-    // Sheet presentation state
-    @State private var showScaleList: Bool = false
+    // Consolidated sheet presentation state
+    private enum ActiveSheet: Identifiable {
+        case scaleList
+        case setupFlow(ScaleItemInfo)
 
-    // Selected scale info – used to decide which setup flow to launch
-    @State private var selectedScaleInfo: ScaleItemInfo?
+        var id: String {
+            switch self {
+            case .scaleList:
+                return "scaleList"
+            case .setupFlow(let scale):
+                // Assuming SKU uniquely identifies a scale
+                return scale.sku
+            }
+        }
+    }
+
+    @State private var activeSheet: ActiveSheet?
     
     private var focusBinding: Binding<FocusField?> {
         Binding(
@@ -84,7 +96,7 @@ struct MyScalesScreen: View {
                                 focusedField = nil
                                 hideKeyboard()
 
-                                selectedScaleInfo = scale
+                                activeSheet = .setupFlow(scale)
                                 // Optional: reset the form for next entry
                                 scaleStore.resetForm()
                             }
@@ -97,35 +109,35 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: false,
                         action: {
-                            showScaleList = true
+                            activeSheet = .scaleList
                         }
                     )
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
-                .sheet(isPresented: $showScaleList) {
-                    ChooseYourScaleView { scale in
-                        // Persist selection and rely on the sheet below to decide what to show.
-                        // Delay slightly so the ChooseYourScaleView sheet can dismiss first and avoid warning: "Attempt to present ... while a presentation is in progress.".
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                            selectedScaleInfo = scale
+                .sheet(item: $activeSheet) { sheet in
+                    switch sheet {
+                    case .scaleList:
+                        ChooseYourScaleView { scale in
+                            // Delay so the scale list sheet dismisses before presenting the next one
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                activeSheet = .setupFlow(scale)
+                            }
                         }
-                    }
-                }
-                // MARK: - Setup flow sheet driven by `selectedScaleInfo`
-                .sheet(item: $selectedScaleInfo) { scale in
-                    if scale.setupType == .appSync {
-                        AppSyncScreen(sku: scale.sku)
-                            .interactiveDismissDisabled(true)
-                    } else {
-                        // TODO: Handle other setup types
-                        VStack(spacing: .spacingMD) {
-                            Text("Setup flow coming soon")
-                                .fontOpenSans(.heading4)
-                            Text("Selected scale: \(scale.productName)")
-                                .fontOpenSans(.body2)
+                    case .setupFlow(let scale):
+                        if scale.setupType == .appSync {
+                            AppSyncScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
+                        } else {
+                            // TODO: Handle other setup types
+                            VStack(spacing: .spacingMD) {
+                                Text("Setup flow coming soon")
+                                    .fontOpenSans(.heading4)
+                                Text("Selected scale: \(scale.productName)")
+                                    .fontOpenSans(.body2)
+                            }
+                            .padding()
                         }
-                        .padding()
                     }
                 }
                 
