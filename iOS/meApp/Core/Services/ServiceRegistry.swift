@@ -28,12 +28,12 @@ class ServiceRegistry {
     @MainActor private func registerEssentialServices() {
         DependencyContainer.shared.register(AccountService.shared)
         DependencyContainer.shared.register(ScaleService.shared)
+        DependencyContainer.shared.register(EntryService.shared)
         DependencyContainer.shared.register(IntegrationsService.shared)
         DependencyContainer.shared.register(HealthKitService.shared)
         DependencyContainer.shared.register(KvStorageService.shared)
         DependencyContainer.shared.register(LoggerService.shared)
         DependencyContainer.shared.register(NotificationHelperService.shared)
-        DependencyContainer.shared.register(EntryService.shared)
         DependencyContainer.shared.register(PushNotificationService.shared)
         DependencyContainer.shared.register(FeedService.shared)
     }

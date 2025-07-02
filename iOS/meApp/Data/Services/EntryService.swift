@@ -39,6 +39,7 @@ final class EntryService: EntryServiceProtocol {
         try await localRepo.saveEntry(entry)
         // Broadcast change
         entrySaved.send(entry)
+
         await syncUnsyncedEntries()
     }
     
