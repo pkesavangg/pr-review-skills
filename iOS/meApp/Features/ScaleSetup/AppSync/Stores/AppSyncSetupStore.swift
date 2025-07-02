@@ -80,12 +80,12 @@ final class AppSyncSetupStore: ObservableObject {
             return AnyView(PermissionListView(setupType: .appSync))
         case .activateScale:
             let lang = AppSyncStrings.ActivateYourScaleViewStrings.self
-            return AnyView(ScaleInstructionView(title: lang.title, description: lang.description))
+            return AnyView(ScaleInstructionView(title: lang.title, description: lang.description, boldWords: lang.boldWords))
         case .addInfo:
             return AnyView(AddInfoView())
         case .timeToWeighIn:
             let lang = AppSyncStrings.WeighInTimeStrings.self
-            return AnyView(ScaleInstructionView(title: lang.title, description: lang.description))
+            return AnyView(ScaleInstructionView(title: lang.title, description: lang.description, boldWords: lang.boldWords))
         case .appSync:
             return AnyView(Text("AppSync")) // TODO: replace with actual AppSync progress screen
         case .finish:

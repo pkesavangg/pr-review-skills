@@ -17,11 +17,7 @@ struct AddInfoView: View {
                     Text(lang.title)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                    Text(lang.description.asAttributed(withBoldWords: ["UP", "DOWN", "SET"]))
-                        .foregroundColor(theme.textBody)
-                    
-                    Text(lang.description)
-                        .fontOpenSans(.body2)
+                    Text(lang.description.asAttributed(withBoldWords: lang.boldWords))
                         .foregroundColor(theme.textBody)
                 }
 

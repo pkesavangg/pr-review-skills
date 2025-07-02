@@ -12,6 +12,15 @@ struct ScaleInstructionView: View {
 
     let title: String
     let description: String
+    /// Words inside `description` that should be rendered in **bold**.
+    let boldWords: [String]
+
+    /// Convenience initializer keeping `boldWords` optional.
+    init(title: String, description: String, boldWords: [String] = []) {
+        self.title = title
+        self.description = description
+        self.boldWords = boldWords
+    }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -21,8 +30,7 @@ struct ScaleInstructionView: View {
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
 
-                    Text(description)
-                        .fontOpenSans(.body2)
+                    Text(description.asAttributed(withBoldWords: boldWords))
                         .foregroundColor(theme.textBody)
                 }
                 Spacer()
