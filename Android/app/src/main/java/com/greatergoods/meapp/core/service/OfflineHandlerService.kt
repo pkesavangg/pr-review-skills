@@ -36,6 +36,7 @@ class OfflineHandlerService
          private val goalRepository: IGoalRepository,
         private val connectivityObserver: IConnectivityObserver,
     ) : IOfflineHandlerService {
+
         companion object {
             private const val TAG = "OfflineHandlerService"
         }
@@ -58,8 +59,10 @@ class OfflineHandlerService
                 syncBodyCompositionData()
                 // Sync notification settings if there are unsynced notification accounts
                 syncNotificationData()
+                syncGoalData()
+                syncWeightlessSettings()
+                syncStreakSettings()
                 // Sync user settings data if there are unsynced user settings accounts
-                syncUserSettingsData()
                 AppLog.i(TAG, "Selective offline sync process completed")
             } catch (e: Exception) {
                 AppLog.e(TAG, "Offline sync process failed", e.toString())
@@ -181,13 +184,13 @@ class OfflineHandlerService
                 }
             }
         }
-    }
+
 
     /**
      * Syncs goal data for accounts that have unsynced goal changes.
      */
     private suspend fun syncGoalData() {
-        AppLog.d(TAG, "Syncing goal data")
+        AppLog.d("TAG", "Syncing goal data")
         try {
             val unsyncedAccounts = goalRepository.getUnsyncedGoalAccountsFromDB()
             if (unsyncedAccounts.isEmpty()) {

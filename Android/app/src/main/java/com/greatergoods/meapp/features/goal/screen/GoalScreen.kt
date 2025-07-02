@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIconButton
@@ -24,8 +25,6 @@ import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.helper.AccountHelper.getWeightUnitDisplay
-import com.greatergoods.meapp.features.common.helper.AccountHelper.isMetricUnit
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.goal.components.GoalMilestoneDisplay
@@ -69,7 +68,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
                 GoalStrings.SaveGoalButton,
                 type = ButtonType.InlineTextPrimary,
                 size = ButtonSize.Small,
-                enabled = state.form.isValid && (state.form.isDirty),
+                enabled = state.form.isValid && (state.form.controls.currentWeight.touched || state.form.controls.goalWeight.touched),
             ) {
                 keyboardController?.hide()
                 handleIntent.invoke(GoalIntent.Submit)
@@ -85,17 +84,17 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top,
         ) {
+            val canDisplayMilestone = state.account?.goalType != null && state.account.goalWeight != null && state.account.goalWeight > 0
             // Milestone Display Section - showing current goal progress
-            if (state.account?.goalType != null && state.account.goalWeight != null) {
+            if (canDisplayMilestone) {
                 GoalMilestoneDisplay(
                     account = state.account,
                     latestWeight = state.latestWeight,
                     modifier = Modifier.padding(bottom = spacing.md)
                 )
             }
-
+            Spacer(modifier = Modifier.padding(top = if(!canDisplayMilestone) spacing.md else 0.dp))
             GoalStep(
-                title = GoalStrings.Title,
                 subtitle = GoalStrings.Subtitle,
                 goalTypeControl = state.form.controls.goalType,
                 currentWeightControl = state.form.controls.currentWeight,

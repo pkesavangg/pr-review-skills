@@ -26,6 +26,7 @@ import com.greatergoods.meapp.features.common.helper.AccountHelper.convertStored
 import com.greatergoods.meapp.features.common.helper.AccountHelper.formatWeightForDisplay
 import com.greatergoods.meapp.features.common.helper.AccountHelper.getWeightUnitDisplay
 import com.greatergoods.meapp.features.goal.helper.GoalDisplayHelper
+import com.greatergoods.meapp.features.goal.helper.Weightless
 import com.greatergoods.meapp.features.goal.strings.GoalStrings
 import com.greatergoods.meapp.features.signup.model.GoalType
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -106,11 +107,13 @@ private fun MaintainGoalDisplay(
     } else {
         account.convertStoredWeightToDisplay(currentWeight)
     }
+    val weightless = Weightless(isWeightlessOn, weightlessWeight ?: 0.0f)
     val displayGoalWeight = account.convertStoredWeightToDisplay(goalWeight)
-    val distanceText = GoalDisplayHelper.computeGoal(displayCurrentWeight, displayGoalWeight, GoalType.MAINTAIN)
+    val distanceText = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight
+                                                       , GoalType.MAINTAIN, weightless)
 
     AppStyledCard (
-        modifier = Modifier.background(colorScheme.primaryBackground).padding(vertical = spacing.md).clip(shape = RoundedCornerShape(24.dp))
+        modifier = Modifier.clip(shape = RoundedCornerShape(24.dp)).background(colorScheme.primaryBackground).padding(vertical = spacing.md)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

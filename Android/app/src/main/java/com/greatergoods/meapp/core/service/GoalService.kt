@@ -195,7 +195,7 @@ class GoalService @Inject constructor(
      * Shows goal met alert dialog.
      * Based on Angular's showGoalMetAlert method.
      */
-    private suspend fun showGoalMetAlert() {
+    private  fun showGoalMetAlert() {
         dialogQueueService.enqueue(
             DialogModel.Confirm(
                 title = "Congratulations!",

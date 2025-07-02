@@ -59,7 +59,6 @@ data class GoalState(
     val error: String? = null,
     val account: Account? = null,
     val latestWeight: Double? = null,
-
     ) : IReducer.State
 
 /**
