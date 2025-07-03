@@ -9,7 +9,6 @@ import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.strings.MetricLabels
 import com.greatergoods.meapp.features.dashboard.string.DashboardString
-import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.proto.MetricKey
 import com.greatergoods.meapp.proto.MilestoneKey
@@ -31,7 +30,8 @@ object StatHelper {
             }
 
             is DashboardKey.Milestone -> {
-                milestoneStatMetaMap[key] ?: throw IllegalArgumentException("Unknown MilestoneKey: $key")
+                milestoneStatMetaMap[key]
+                    ?: throw IllegalArgumentException("Unknown MilestoneKey: $key")
             }
         }
 
@@ -86,10 +86,10 @@ object StatHelper {
     private val milestoneValues = mapOf(
         MilestoneKey.CURRENT_STREAK to "1 day",
         MilestoneKey.LONGEST_STREAK to "1 day",
-        MilestoneKey.PER_WEEK to "!",
-        MilestoneKey.PER_MONTH to "!",
-        MilestoneKey.PER_YEAR to "1",
-        MilestoneKey.TOTAL_CHANGE to "1",
+        MilestoneKey.PER_WEEK to "120",
+        MilestoneKey.PER_MONTH to "125",
+        MilestoneKey.PER_YEAR to "110",
+        MilestoneKey.TOTAL_CHANGE to "120",
         MilestoneKey.TO_GOAL to "0.0",
     )
 
@@ -163,7 +163,12 @@ internal object StatMeta {
             icon = AppIcons.Metrics.BoneMass,
         ),
         MetricKey.SUBCUTANEOUS_FAT to StatMeta(
-            labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.SUBCUTANEOUS_FAT, useShort) },
+            labelProvider = { useShort ->
+                MetricLabels.getLabel(
+                    MetricKey.SUBCUTANEOUS_FAT,
+                    useShort
+                )
+            },
             unit = "%",
             icon = AppIcons.Metrics.SubcutaneousFat,
         ),
@@ -173,7 +178,12 @@ internal object StatMeta {
             icon = AppIcons.Metrics.Protein,
         ),
         MetricKey.SKELETAL_MUSCLE to StatMeta(
-            labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.SKELETAL_MUSCLE, useShort) },
+            labelProvider = { useShort ->
+                MetricLabels.getLabel(
+                    MetricKey.SKELETAL_MUSCLE,
+                    useShort
+                )
+            },
             unit = "%",
             unitProvider = { useShort -> if (useShort) null else "%" },
             icon = AppIcons.Metrics.SkeletalMusclePercent,
@@ -184,7 +194,12 @@ internal object StatMeta {
             icon = AppIcons.Metrics.Bmr,
         ),
         MetricKey.METABOLIC_AGE to StatMeta(
-            labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.METABOLIC_AGE, useShort) },
+            labelProvider = { useShort ->
+                MetricLabels.getLabel(
+                    MetricKey.METABOLIC_AGE,
+                    useShort
+                )
+            },
             unit = "yrs",
             unitProvider = { useShort -> if (useShort) null else "yrs" },
             icon = AppIcons.Metrics.MetabolicAge,
@@ -210,19 +225,15 @@ internal object StatMeta {
         ),
         MilestoneKey.PER_WEEK to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsPerWeek },
-            unit = "lbs/week",
         ),
         MilestoneKey.PER_MONTH to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsPerMonth },
-            unit = "lbs/month",
         ),
         MilestoneKey.PER_YEAR to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsPerYear },
-            unit = "lbs/year",
         ),
         MilestoneKey.TOTAL_CHANGE to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsTotal },
-            unit = "lbs",
         ),
         MilestoneKey.TO_GOAL to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsToGoal },

@@ -93,7 +93,7 @@ private fun EntryScreenContent(
         ) {
             AppInput(
                 formControl = entryForm.weightDateTime.controls.weight,
-                label = EntryScreenStrings.WEIGHT_LABEL,
+                label = EntryScreenStrings.WEIGHT_LABEL.plus(" (${state.weightMode.label})"),
                 type = AppInputType.BODY_COMP,
                 imeAction = ImeAction.Next,
                 onImeAction = {

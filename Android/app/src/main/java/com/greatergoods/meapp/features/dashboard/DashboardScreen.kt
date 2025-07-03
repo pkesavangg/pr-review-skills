@@ -4,11 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -94,6 +94,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
                     currentVisibleMetrics = visibleMetrics
                 },
             )
+            HorizontalDivider(color = MeTheme.colorScheme.utility, modifier = Modifier.padding(horizontal = MeTheme.spacing.lg))
             DashboardMilestone(
                 startWeight = "100",
                 goalWeight = "200",
@@ -110,7 +111,8 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
                 onEditClick = { editMode ->
                     if (!editMode && inEditMode) {
                         // Save dashboard metrics and milestones when exiting edit mode
-                        val allVisibleKeys = currentVisibleMetrics.map { it.key } + currentVisibleMilestones.map { it.key }
+                        val allVisibleKeys =
+                            currentVisibleMetrics.map { it.key } + currentVisibleMilestones.map { it.key }
                         handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
                     }
                     inEditMode = editMode
