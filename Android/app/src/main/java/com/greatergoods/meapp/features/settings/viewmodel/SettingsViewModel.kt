@@ -5,10 +5,10 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.domain.enums.ActivityLevel
 import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import com.greatergoods.meapp.domain.model.common.ActivityLevel
 import com.greatergoods.meapp.domain.model.common.Gender
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.BodyCompUpdateType
@@ -810,8 +810,8 @@ class SettingsViewModel
             return if (account?.isWeightlessOn == true) {
                 val weightlessWeight = account.weightlessWeight
                 if (weightlessWeight != null) {
-                    val isMetric = account.weightUnit?.value == "kg"
-                    val displayWeight = ConversionTools.convertStoredToDisplay(weightlessWeight.toDouble(), isMetric)
+                    val displayWeight =
+                        ConversionTools.convertStoredToDisplay(weightlessWeight.toDouble(), account.isMetric)
                     val formattedWeight = String.format("%.1f", displayWeight)
                     "On - $formattedWeight"
                 } else {

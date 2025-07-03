@@ -19,9 +19,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
-import com.greatergoods.meapp.domain.model.common.DashboardType
+import com.greatergoods.meapp.domain.enums.DashboardType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.strings.EntryScreenStrings
 import com.greatergoods.meapp.features.manualEntry.viewmodel.GeneralMetricsFormControls
@@ -29,7 +30,6 @@ import com.greatergoods.meapp.features.manualEntry.viewmodel.R4ScaleMetricsFormC
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import androidx.compose.ui.focus.FocusRequester
 
 /**
  * Expandable card for metrics section, with animated expand/collapse, title, and optional subheading.
@@ -85,16 +85,30 @@ fun ExpandableMetricsCard(
         AnimatedVisibility(visible = expanded) {
             Column {
                 GeneralMetricsSection(
-                    generalMetrics, 
+                    generalMetrics,
                     dashboardType,
-                    nextFocusRequester = if (dashboardType != DashboardType.DASHBOARD_4_METRICS && r4ScaleMetrics != null) heartRateFocusRequester else null,
+                    nextFocusRequester =
+                        if (dashboardType != DashboardType.DASHBOARD_4_METRICS &&
+                            r4ScaleMetrics != null
+                        ) {
+                            heartRateFocusRequester
+                        } else {
+                            null
+                        },
                     onImeAction = if (dashboardType == DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
                 )
                 r4ScaleMetrics?.let { r4Controls ->
                     R4ScaleMetricsSection(
-                        r4Controls, 
+                        r4Controls,
                         onImeAction = if (dashboardType != DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
-                        heartRateFocusRequester = if (dashboardType != DashboardType.DASHBOARD_4_METRICS) heartRateFocusRequester else null,
+                        heartRateFocusRequester =
+                            if (dashboardType !=
+                                DashboardType.DASHBOARD_4_METRICS
+                            ) {
+                                heartRateFocusRequester
+                            } else {
+                                null
+                            },
                     )
                 }
             }
