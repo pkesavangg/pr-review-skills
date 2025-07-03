@@ -12,6 +12,8 @@ object RadioGroupModalStrings {
         const val ActivityLevel = "Activity Level"
         const val UnitType = "Unit Type"
         const val Notifications = "Notifications"
+        const val Weightless = "Weightless"
+        const val Appearance = "Appearance"
     }
 
     // Biological Sex Options
@@ -43,6 +45,6 @@ object RadioGroupModalStrings {
     object Appearance {
         const val Light = "Light"
         const val Dark = "Dark"
-        const val System = "System"
+        const val System = "System Settings"
     }
 }

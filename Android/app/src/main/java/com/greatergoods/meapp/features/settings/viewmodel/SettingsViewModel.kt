@@ -6,7 +6,6 @@ import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.enums.ActivityLevel
-import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -49,16 +48,17 @@ constructor(
     private val userDataStore: UserDataStore,
     private val notificationService: INotificationService,
     private val userSettingsService: IUserSettingsService,
-    private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
     override fun provideInitialState(): SettingsState = SettingsState()
+
     private val TAG = "SettingsViewModel"
 
     init {
         getUserProfile()
         showAccountSwitchInfoModal()
+        loadCurrentThemeMode()
     }
 
     fun getUserProfile() {
@@ -67,6 +67,22 @@ constructor(
                 val account = accountService.getCurrentAccount()
                 val hasMultipleAccounts = it.size > 1
                 handleIntent(SettingsIntent.UpdateAccount(account, hasMultipleAccounts))
+            }
+        }
+    }
+
+    /**
+     * Loads the current theme mode from the data store and updates the state.
+     */
+    private fun loadCurrentThemeMode() {
+        viewModelScope.launch {
+            userDataStore.currentThemeModeFlow.collect { themeMode ->
+                val displayString = when (themeMode) {
+                    com.greatergoods.meapp.proto.ThemeMode.LIGHT -> RadioGroupModalStrings.Appearance.Light
+                    com.greatergoods.meapp.proto.ThemeMode.DARK -> RadioGroupModalStrings.Appearance.Dark
+                    else -> RadioGroupModalStrings.Appearance.System
+                }
+                handleIntent(SettingsIntent.UpdateThemeMode(displayString))
             }
         }
     }
@@ -135,8 +151,8 @@ constructor(
                 onGoalSettingClick()
             }
 
-            is SettingsIntent.OpenHelp -> {
-                onHelpClick()
+            is SettingsIntent.ShowAppearanceModal -> {
+                onAppearanceClick()
             }
 
             else -> {}
@@ -546,6 +562,85 @@ constructor(
         }
     }
 
+    fun onAppearanceClick() {
+        AppLog.d("SettingsViewModel", "Appearance clicked")
+        showAppearanceModal()
+    }
+
+    /**
+     * Shows the appearance/theme mode selection modal.
+     */
+    private fun showAppearanceModal() {
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.Appearance,
+            options = listOf(
+                RadioButtonOption("LIGHT", RadioGroupModalStrings.Appearance.Light),
+                RadioButtonOption("DARK", RadioGroupModalStrings.Appearance.Dark),
+                RadioButtonOption("SYSTEM", RadioGroupModalStrings.Appearance.System),
+            ),
+            selectedItem = getCurrentThemeModeString(),
+            onConfirm = { selectedTheme ->
+                selectedTheme?.let { themeValue ->
+                    onAppearanceUpdate(themeValue.toString())
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Appearance selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Gets the current theme mode as a string for modal selection.
+     */
+    private fun getCurrentThemeModeString(): String {
+        return when (state.value.currentThemeMode) {
+            RadioGroupModalStrings.Appearance.Light -> "LIGHT"
+            RadioGroupModalStrings.Appearance.Dark -> "DARK"
+            else -> "SYSTEM"
+        }
+    }
+
+    /**
+     * Updates the appearance/theme mode via the user data store.
+     */
+    private fun onAppearanceUpdate(themeModeString: String) {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for appearance update")
+            return
+        }
+
+        // Convert string to ThemeMode enum
+        val themeMode = when (themeModeString) {
+            "LIGHT" -> com.greatergoods.meapp.proto.ThemeMode.LIGHT
+            "DARK" -> com.greatergoods.meapp.proto.ThemeMode.DARK
+            else -> com.greatergoods.meapp.proto.ThemeMode.SYSTEM
+        }
+
+        // Convert to display string
+        val displayString = when (themeModeString) {
+            "LIGHT" -> RadioGroupModalStrings.Appearance.Light
+            "DARK" -> RadioGroupModalStrings.Appearance.Dark
+            else -> RadioGroupModalStrings.Appearance.System
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating appearance...")
+        viewModelScope.launch {
+            try {
+                userDataStore.setThemeMode(currentAccount.id, themeMode)
+                handleIntent(SettingsIntent.UpdateThemeMode(displayString))
+                AppLog.i(TAG, "Successfully updated appearance to $displayString")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating appearance", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
     /**
      * Shows the streak mode selection modal.
      */
@@ -703,7 +798,6 @@ constructor(
     fun onHelpClick() {
         AppLog.d("SettingsViewModel", "Help clicked")
         // TODO: Navigate to help screen
-        navigateTo(AppRoute.AccountSettings.HelpScreen)
     }
 
     /*
@@ -741,6 +835,7 @@ constructor(
                 val account = state.value.account
                 if (account != null) {
                     accountService.logout(account.id, account.fcmToken)
+                    navigationService.reInitialize()
                 }
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out", e.toString())

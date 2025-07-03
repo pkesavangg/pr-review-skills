@@ -29,6 +29,7 @@ object SettingsScreenStrings {
     const val Messages = "Messages"
     const val Streaks = "Streaks"
     const val AppPermissions = "App Permissions"
+    const val Appearance = "Appearance"
 
     // Support
     const val Support = "Support"

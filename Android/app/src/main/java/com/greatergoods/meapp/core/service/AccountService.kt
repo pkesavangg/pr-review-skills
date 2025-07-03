@@ -16,6 +16,7 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
+import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -446,5 +447,25 @@ constructor(
                 .filter { !it.isActiveAccount }
                 .sortedByDescending { it.lastActiveTime?.toLongOrNull() ?: 0L }
         return listOfNotNull(active) + others
+    }
+
+    /**
+     * Gets the current theme mode for the active account as a flow.
+     * @return Flow of ThemeMode that emits changes
+     */
+    override val currentThemeModeFlow = accountRepository.currentThemeModeFlow
+
+    /**
+     * Sets the theme mode for the active account.
+     * @param themeMode The ThemeMode to set
+     */
+    override suspend fun setCurrentThemeMode(themeMode: ThemeMode) {
+        try {
+            accountRepository.setCurrentThemeMode(themeMode)
+            AppLog.d(TAG, "Successfully set theme mode to: $themeMode")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to set theme mode", e.toString())
+            appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to set theme mode"))
+        }
     }
 }

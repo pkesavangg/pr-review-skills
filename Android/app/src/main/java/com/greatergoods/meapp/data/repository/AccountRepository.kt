@@ -30,6 +30,7 @@ import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -559,5 +560,27 @@ constructor(
      */
     private suspend fun setTokensForAccount(tokens: Token?) {
         tokens?.let { tokenManager.setTokens(it) }
+    }
+
+    // Theme Mode Operations
+
+    /**
+     * Gets the current theme mode for the active account as a flow.
+     * @return Flow of ThemeMode that emits changes
+     */
+    override val currentThemeModeFlow = userDataStore.currentThemeModeFlow
+
+    /**
+     * Sets the theme mode for the active account.
+     * @param themeMode The ThemeMode to set
+     */
+    override suspend fun setCurrentThemeMode(themeMode: ThemeMode) {
+        val activeAccount = getActiveAccount().first()
+        if (activeAccount != null) {
+            userDataStore.setThemeMode(activeAccount.id, themeMode)
+            AppLog.d(TAG, "Set theme mode to $themeMode for account: ${activeAccount.id}")
+        } else {
+            AppLog.w(TAG, "No active account found, cannot set theme mode")
+        }
     }
 }

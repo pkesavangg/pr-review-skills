@@ -9,6 +9,7 @@ import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import retrofit2.Response
 
@@ -196,4 +197,17 @@ interface IAccountRepository {
      * @param accountId The account ID to remove
      */
     suspend fun removeAccount(accountId: String)
+
+    // Theme Mode Operations
+    /**
+     * Gets the current theme mode for the active account as a flow.
+     * @return Flow of ThemeMode that emits changes
+     */
+    val currentThemeModeFlow: Flow<ThemeMode>
+
+    /**
+     * Sets the theme mode for the active account.
+     * @param themeMode The ThemeMode to set
+     */
+    suspend fun setCurrentThemeMode(themeMode: ThemeMode)
 }
