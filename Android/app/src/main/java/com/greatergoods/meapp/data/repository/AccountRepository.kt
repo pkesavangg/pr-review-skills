@@ -173,7 +173,7 @@ class AccountRepository
                     accountId = account.id,
                     height = account.height ?: 1700, // Default height if not set
                     activityLevel = account.activityLevel ?: "normal", // Default activity level
-                    weightUnit = account.weightUnit?.value ?: "lb", // Default weight unit
+                    weightUnit = account.weightUnit.value, // Default weight unit
                     isSynced = true, // New account data is already synced
                 )
             accountDao.insertWeightCompSettings(weightCompSettings)

@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.components.AppStyledCard
@@ -27,7 +28,6 @@ import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.signup.model.GoalType
-import com.greatergoods.meapp.features.signup.model.Metrics
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -53,7 +53,7 @@ fun GoalStep(
     val goalWeightFocusRequester = remember { FocusRequester() }
 
     val isMetric = useMetricControl?.value ?: false
-    val weightUnit = if (isMetric) Metrics.KG.value else Metrics.LBS.value
+    val weightUnit = if (isMetric) WeightUnit.KG.label else WeightUnit.LB.label
 
     // Goal type options
     val goalTypeOptions =

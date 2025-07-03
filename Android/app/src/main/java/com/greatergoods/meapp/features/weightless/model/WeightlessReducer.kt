@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.weightless.model
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
@@ -12,15 +13,18 @@ data class WeightlessFormControls(
     val weightlessWeight: FormControl<String>,
 ) {
     companion object {
-        fun create() = WeightlessFormControls(
-            weightlessWeight = FormControl.create(
-                initialValue = "0.0",
-                validators = listOf(
-                    FormValidations.required(),
-                    FormValidations.weightValidator(),
-                ),
-            ),
-        )
+        fun create() =
+            WeightlessFormControls(
+                weightlessWeight =
+                    FormControl.create(
+                        initialValue = "0.0",
+                        validators =
+                            listOf(
+                                FormValidations.required(),
+                                FormValidations.weightValidator(),
+                            ),
+                    ),
+            )
     }
 }
 
@@ -40,7 +44,7 @@ data class WeightlessState(
     val hasToggleChanged: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val weightUnit: String = "lbs",
+    val weightUnit: WeightUnit = WeightUnit.LB,
     val isMetric: Boolean = false,
 ) : IReducer.State
 
@@ -97,19 +101,22 @@ class WeightlessReducer : IReducer<WeightlessState, WeightlessIntent> {
                 val newToggleValue = !state.isWeightlessOn
 
                 // Update weight control validators based on toggle state
-                val weightValidators = if (newToggleValue) {
-                    listOf(FormValidations.required(), FormValidations.weightValidator())
-                } else {
-                    listOf(FormValidations.weightValidator())
-                }
-                val updatedWeightControl = FormControl.create(
-                    initialValue = state.form.controls.weightlessWeight.value,
-                    validators = weightValidators,
-                )
+                val weightValidators =
+                    if (newToggleValue) {
+                        listOf(FormValidations.required(), FormValidations.weightValidator())
+                    } else {
+                        listOf(FormValidations.weightValidator())
+                    }
+                val updatedWeightControl =
+                    FormControl.create(
+                        initialValue = state.form.controls.weightlessWeight.value,
+                        validators = weightValidators,
+                    )
 
-                val updatedControls = state.form.controls.copy(
-                    weightlessWeight = updatedWeightControl,
-                )
+                val updatedControls =
+                    state.form.controls.copy(
+                        weightlessWeight = updatedWeightControl,
+                    )
                 val updatedForm = FormGroup(updatedControls)
                 state.copy(
                     form = updatedForm,

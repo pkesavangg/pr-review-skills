@@ -18,23 +18,32 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object EntryHelper {
-    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM-dd")
-        .withZone(ZoneId.systemDefault())
+    private val dateFormatter: DateTimeFormatter =
+        DateTimeFormatter
+            .ofPattern("MMM-dd")
+            .withZone(ZoneId.systemDefault())
 
-    private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
-        .withZone(ZoneId.systemDefault())
+    private val timeFormatter: DateTimeFormatter =
+        DateTimeFormatter
+            .ofPattern("hh:mm a")
+            .withZone(ZoneId.systemDefault())
 
     fun FormControl<String>.toDoubleSafe(default: Double = 0.0): Double = this.value.toDoubleOrNull() ?: default
 
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
-    fun EntryForm.toScaleEntry(weightMode: String): ScaleEntry {
+    fun EntryForm.toScaleEntry(weightMode: WeightUnit): ScaleEntry {
         System.currentTimeMillis()
         val entryEntity =
             EntryEntity(
                 id = 0L, // Let Room auto-generate
                 accountId = "TODO", // Replace with actual user/account ID
-                entryTimestamp = DateTimeConverter.timestampToIso(weightDateTime.controls.dateTime.value.getTimestamp()), // Assuming DateTimeValue has .timestamp: Long
+                entryTimestamp =
+                    DateTimeConverter.timestampToIso(
+                        weightDateTime.controls.dateTime.value
+                            .getTimestamp(),
+                    ),
+                // Assuming DateTimeValue has .timestamp: Long
                 serverTimestamp = null,
                 opTimestamp = null,
                 unit = weightMode, // or whatever is relevant
@@ -83,20 +92,22 @@ object EntryHelper {
     }
 
     fun HistoryMonth.process(unit: WeightUnit?): HistoryMonth {
-        val monthYear = entryTimestamp?.let {
-            try {
-                val zonedDateTime = ZonedDateTime.parse(it)
-                DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH).format(zonedDateTime)
-            } catch (e: Exception) {
-                it // fallback to original string if parsing fails
+        val monthYear =
+            entryTimestamp?.let {
+                try {
+                    val zonedDateTime = ZonedDateTime.parse(it)
+                    DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH).format(zonedDateTime)
+                } catch (e: Exception) {
+                    it // fallback to original string if parsing fails
+                }
             }
-        }
 
-        val conversionFactor = when (unit) {
-            WeightUnit.LB -> 1.0
-            WeightUnit.KG -> 0.453592
-            else -> 1.0
-        }
+        val conversionFactor =
+            when (unit) {
+                WeightUnit.LB -> 1.0
+                WeightUnit.KG -> 0.453592
+                else -> 1.0
+            }
 
         return this.copy(
             entryTimestamp = monthYear,

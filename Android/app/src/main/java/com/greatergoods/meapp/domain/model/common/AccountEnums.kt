@@ -9,9 +9,10 @@ enum class Gender {
 
 enum class WeightUnit(
     val value: String,
+    val label: String,
 ) {
-    KG("kg"),
-    LB("lb"),
+    KG("kg", "kg"),
+    LB("lb", "lbs"),
     ;
 
     companion object {
