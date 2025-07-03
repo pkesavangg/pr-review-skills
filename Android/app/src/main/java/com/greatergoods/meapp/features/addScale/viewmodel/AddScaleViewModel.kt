@@ -44,8 +44,8 @@ class AddScaleViewModel @Inject constructor(
                 navigateTo(AppRoute.AccountSettings.ChooseScale)
             }
 
-            is AddScaleIntent.ScaleSelected -> {
-                // TODO: Navigate to selected scale setup
+            is AddScaleIntent.OpenScaleSettings -> {
+                navigateTo(AppRoute.AccountSettings.ScaleSettings(intent.broadcastId))
             }
 
             else -> {}

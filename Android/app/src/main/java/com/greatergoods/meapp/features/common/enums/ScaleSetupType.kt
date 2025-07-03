@@ -1,8 +1,11 @@
 package com.greatergoods.meapp.features.common.enums
 
+import kotlinx.serialization.Serializable
+
 /**
  * Enum representing the setup type of a scale.
  */
+@Serializable
 enum class ScaleSetupType(val value: String) {
     /** WiFi setup type. */
     Wifi("wifi"),

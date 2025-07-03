@@ -45,6 +45,7 @@ sealed interface AddScaleIntent : IReducer.Intent {
     object Submit : AddScaleIntent
     data class SetSavedScales(val scales: List<Device>) : AddScaleIntent
     data class ScaleSelected(val sku: String) : AddScaleIntent
+    data class OpenScaleSettings(val broadcastId: String) : AddScaleIntent
 }
 
 /**
@@ -57,5 +58,6 @@ class AddScaleReducer : IReducer<AddScaleState, AddScaleIntent> {
         AddScaleIntent.OpenScaleChooser -> state.copy()
         is AddScaleIntent.SetSavedScales -> state.copy(savedScales = intent.scales.map { it.toScaleInfo() })
         is AddScaleIntent.ScaleSelected -> state.copy(selectedSku = intent.sku)
+        is AddScaleIntent.OpenScaleSettings -> state.copy(selectedSku = intent.broadcastId)
     }
 }

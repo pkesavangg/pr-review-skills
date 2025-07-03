@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.common.model
 
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
-import com.greatergoods.meapp.resources.AppIcons
+import kotlinx.serialization.Serializable
 
 /**
  * Data class representing a scale's information.
@@ -13,6 +13,7 @@ import com.greatergoods.meapp.resources.AppIcons
  * @property isWifiConfigured Whether the scale is WiFi configured.
  * @property broadcastId The broadcast ID of the scale.
  */
+@Serializable
 data class ScaleInfo(
     val productName: String,
     val sku: String,
@@ -23,20 +24,20 @@ data class ScaleInfo(
     val broadcastId: String? = null,
 )
 
-val SCALES = listOf(
-
-    ScaleInfo("Bluetooth Smart Scale", "0375", ScaleSetupType.Bluetooth, false),
-    ScaleInfo("Bluetooth Smart Scale", "0376", ScaleSetupType.Bluetooth, false),
-    ScaleInfo("Bluetooth Smart Scale", "0378", ScaleSetupType.Lcbt, true),
-    ScaleInfo("Bluetooth Smart Scale", "0380", ScaleSetupType.Bluetooth, false),
-    ScaleInfo("Bluetooth Smart Scale", "0382", ScaleSetupType.Bluetooth, true),
-    ScaleInfo("Bluetooth Scale", "0383", ScaleSetupType.Lcbt, true),
-    ScaleInfo("Wi-Fi Smart Scale", "0384", ScaleSetupType.EspTouchWifi, true),
-    ScaleInfo("Wi-Fi Smart Scale", "0385", ScaleSetupType.Wifi, true),
-    ScaleInfo("Wi-Fi Smart Scale", "0396", ScaleSetupType.Wifi, false),
-    ScaleInfo("Wi-Fi Smart Scale", "0397", ScaleSetupType.EspTouchWifi, false),
-    ScaleInfo("AccuCheck Verve Smart Scale", "0412", ScaleSetupType.BtWifiR4, true),
-)
+val SCALES =
+    listOf(
+        ScaleInfo("Bluetooth Smart Scale", "0375", ScaleSetupType.Bluetooth, false),
+        ScaleInfo("Bluetooth Smart Scale", "0376", ScaleSetupType.Bluetooth, false),
+        ScaleInfo("Bluetooth Smart Scale", "0378", ScaleSetupType.Lcbt, true),
+        ScaleInfo("Bluetooth Smart Scale", "0380", ScaleSetupType.Bluetooth, false),
+        ScaleInfo("Bluetooth Smart Scale", "0382", ScaleSetupType.Bluetooth, true),
+        ScaleInfo("Bluetooth Scale", "0383", ScaleSetupType.Lcbt, true),
+        ScaleInfo("Wi-Fi Smart Scale", "0384", ScaleSetupType.EspTouchWifi, true),
+        ScaleInfo("Wi-Fi Smart Scale", "0385", ScaleSetupType.Wifi, true),
+        ScaleInfo("Wi-Fi Smart Scale", "0396", ScaleSetupType.Wifi, false),
+        ScaleInfo("Wi-Fi Smart Scale", "0397", ScaleSetupType.EspTouchWifi, false),
+        ScaleInfo("AccuCheck Verve Smart Scale", "0412", ScaleSetupType.BtWifiR4, true),
+    )
 
 // TODO(): Add AppSync scales
 // ScaleInfo("AppSync Body Fat Scale", "0341", ScaleSetupType.Wifi, true),
