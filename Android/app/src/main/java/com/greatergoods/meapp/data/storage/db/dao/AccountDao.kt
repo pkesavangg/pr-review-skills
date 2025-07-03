@@ -28,6 +28,10 @@ interface AccountDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: AccountEntity)
 
+    /**
+     * Updates an account entity in the database.
+     * @param account The account entity to update
+     */
     @Update
     suspend fun updateAccount(account: AccountEntity)
 
@@ -45,6 +49,14 @@ interface AccountDao {
     @Transaction
     @Query("SELECT * FROM account WHERE accountId = :accountId")
     fun getAccount(accountId: String): Flow<Account?>
+
+    /**
+     * Gets just the AccountEntity by ID without relations.
+     * @param accountId The account ID to get
+     * @return The AccountEntity or null if not found
+     */
+    @Query("SELECT * FROM account WHERE accountId = :accountId")
+    suspend fun getAccountEntity(accountId: String): AccountEntity?
 
     @Transaction
     @Query("SELECT * FROM account WHERE isActiveAccount = 1")
@@ -142,39 +154,47 @@ interface AccountDao {
     fun getUnsyncedBodyCompAccounts(): Flow<List<Account>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM account
         WHERE accountId IN (
             SELECT accountId FROM notification_settings WHERE isSynced = 0
         ) OR isSynced = 0
-    """)
+    """,
+    )
     fun getUnsyncedNotificationAccounts(): Flow<List<Account>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM account
         WHERE accountId IN (
             SELECT accountId FROM streaks_settings WHERE isSynced = 0
         )
-    """)
+    """,
+    )
     fun getUnsyncedStreakAccounts(): Flow<List<Account>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM account
         WHERE accountId IN (
             SELECT accountId FROM weightless_settings WHERE isSynced = 0
         )
-    """)
+    """,
+    )
     fun getUnsyncedWeightlessAccounts(): Flow<List<Account>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM account
         WHERE accountId IN (
             SELECT accountId FROM goal_settings WHERE isSynced = 0
         )
-    """)
+    """,
+    )
     fun getUnsyncedGoalAccounts(): Flow<List<Account>>
 
     @Query("UPDATE account SET isSynced = 1")

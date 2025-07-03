@@ -232,29 +232,30 @@ class AccountRepository
             accountId: String,
             partialUpdate: PartialAccount,
         ): Account {
-            // Get current account from database
-            val currentAccountEntity =
-                accountDao.getAccount(accountId).first()
+            // Get current account entity from database by ID
+            val accountEntity =
+                accountDao.getAccountEntity(accountId)
                     ?: throw IllegalStateException("Account not found for ID: $accountId")
-            val currentAccount = currentAccountEntity.account
-            // Merge current account with partial update (only AccountEntity properties)
+
+            // Merge current account with partial update
             val updatedAccountEntity =
-                currentAccount.copy(
-                    firstName = partialUpdate.firstName ?: currentAccount.firstName,
-                    lastName = partialUpdate.lastName ?: currentAccount.lastName,
-                    dob = partialUpdate.dob ?: currentAccount.dob,
-                    email = partialUpdate.email ?: currentAccount.email,
-                    expiresAt = partialUpdate.expiresAt ?: currentAccount.expiresAt,
-                    fcmToken = partialUpdate.fcmToken ?: currentAccount.fcmToken,
-                    gender = partialUpdate.gender ?: currentAccount.gender,
-                    isActiveAccount = partialUpdate.isActiveAccount ?: currentAccount.isActiveAccount,
-                    isLoggedIn = partialUpdate.isLoggedIn ?: currentAccount.isLoggedIn,
-                    isExpired = partialUpdate.isExpired ?: currentAccount.isExpired,
-                    isSynced = partialUpdate.isSynced ?: currentAccount.isSynced,
-                    lastActiveTime = partialUpdate.lastActiveTime ?: currentAccount.lastActiveTime,
-                    zipcode = partialUpdate.zipcode ?: currentAccount.zipcode,
+                accountEntity.copy(
+                    firstName = partialUpdate.firstName ?: accountEntity.firstName,
+                    lastName = partialUpdate.lastName ?: accountEntity.lastName,
+                    dob = partialUpdate.dob ?: accountEntity.dob,
+                    email = partialUpdate.email ?: accountEntity.email,
+                    expiresAt = partialUpdate.expiresAt ?: accountEntity.expiresAt,
+                    fcmToken = partialUpdate.fcmToken ?: accountEntity.fcmToken,
+                    gender = partialUpdate.gender ?: accountEntity.gender,
+                    isActiveAccount = partialUpdate.isActiveAccount ?: accountEntity.isActiveAccount,
+                    isLoggedIn = partialUpdate.isLoggedIn ?: accountEntity.isLoggedIn,
+                    isExpired = partialUpdate.isExpired ?: accountEntity.isExpired,
+                    isSynced = partialUpdate.isSynced ?: accountEntity.isSynced,
+                    lastActiveTime = partialUpdate.lastActiveTime ?: accountEntity.lastActiveTime,
+                    zipcode = partialUpdate.zipcode ?: accountEntity.zipcode,
                 )
-            // Update account entity in database
+
+            // Update account entity in database using simple @Update
             accountDao.updateAccount(updatedAccountEntity)
             return AccountEntityMapper.toDomain(updatedAccountEntity)
         }
@@ -351,18 +352,13 @@ class AccountRepository
                 .map { it?.syncTimestamp ?: "" } // Return empty string if null
         }
 
-        override suspend fun updateAccountFromAPI(
+        override suspend fun updateAccountInfo(
             accountId: String,
             accountInfo: AccountInfo,
         ): Account {
-            // Get current account from database
-            val currentAccount =
-                accountDao.getAccount(accountId).first()
-                    ?: throw IllegalStateException("Account not found for accountId: $accountId")
-
-            // Update account entity with API response data
-            val updatedAccountEntity =
-                currentAccount.account.copy(
+            // Use updateAccount with only the profile fields from API response
+            val partialUpdate =
+                PartialAccount(
                     firstName = accountInfo.firstName,
                     lastName = accountInfo.lastName,
                     email = accountInfo.email,
@@ -371,11 +367,8 @@ class AccountRepository
                     zipcode = accountInfo.zipcode,
                 )
 
-            // Update account entity in database
-            accountDao.updateAccount(updatedAccountEntity)
-
             AppLog.d(TAG, "Updated account $accountId with API response data")
-            return AccountEntityMapper.toDomain(updatedAccountEntity)
+            return updateAccount(accountId, partialUpdate)
         }
 
         override suspend fun markAccountExpired(accountId: String) {
@@ -484,24 +477,11 @@ class AccountRepository
         }
 
         /**
-         * Updates the user's tokens for the given account ID.
-         * @param accountId The account ID to update tokens for
+         * Switches to a different account by setting it as active and updating tokens.
+         * @param accountId The account ID to switch to
          */
-        override suspend fun updateUserTokens(accountId: String) {
-            // Update tokens in TokenManager for the switched account
-            val currentTokens = userDataStore.getData().accounts[accountId]
-            setActiveAccountAndTokens(
-                accountId,
-                currentTokens?.let {
-                    Token(
-                        accountId = accountId,
-                        isActive = true,
-                        accessToken = it.accessToken,
-                        refreshToken = it.refreshToken,
-                        expiresAt = it.expiresAt,
-                    )
-                },
-            )
+        override suspend fun switchToAccount(accountId: String) {
+            setActiveAccountAndTokens(accountId, null)
         }
 
         /**
@@ -573,10 +553,7 @@ class AccountRepository
          // * @param accountId The account ID
          * @param tokens The tokens to set (if not null)
          */
-        private suspend fun setTokensForAccount(
-            // accountId: String,
-            tokens: Token?,
-        ) {
+        private suspend fun setTokensForAccount(tokens: Token?) {
             tokens?.let { tokenManager.setTokens(it) }
         }
     }

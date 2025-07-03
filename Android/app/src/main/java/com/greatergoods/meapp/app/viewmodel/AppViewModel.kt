@@ -37,7 +37,7 @@ class AppViewModel
         private val deviceInfoService: IDeviceInfoService,
         private val appNavigationService: IAppNavigationService,
         private val tokenManager: ITokenManager,
-            private val dashboardService: IDashboardService,
+        private val dashboardService: IDashboardService,
         private val accountService: IAccountService,
         private val dialogUtility: IDialogUtility,
     ) : BaseIntentViewModel<AppState, AppIntent>(
@@ -179,7 +179,7 @@ class AppViewModel
                     entryService.updateAccountId(account.id)
 
                     deviceInfoService.updateDeviceInfo()
-                        dashboardService.setAccountId(account.id)
+                    dashboardService.setAccountId(account.id)
                     navigationService.autoLogin()
                 } else {
                     routeToLandingOrApp()
