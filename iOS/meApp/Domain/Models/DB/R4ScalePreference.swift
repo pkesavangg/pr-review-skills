@@ -28,6 +28,7 @@ final class R4ScalePreference {
     var tzOffset: Int // Timezone offset
     var wifiFotaScheduleTime: Int // FOTA schedule time
     var updatedAt: String? // Last update timestamp
+    var isSynced: Bool = false // Flag to check if the preference is synced with the server
 
     init(from dto: R4ScalePreferenceDTO) {
         self.id = dto.scaleId ?? UUID().uuidString
@@ -38,7 +39,7 @@ final class R4ScalePreference {
         self.shouldMeasurePulse = dto.shouldMeasurePulse
         self.timeFormat = dto.timeFormat
         self.tzOffset = dto.tzOffset
-        self.wifiFotaScheduleTime = dto.wifiFotaScheduleTime ?? 0 
+        self.wifiFotaScheduleTime = dto.wifiFotaScheduleTime ?? 0
         self.updatedAt = dto.updatedAt
     }
 

@@ -19,7 +19,6 @@ import android.content.Context
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-
     /**
      * Provides a singleton instance of [AppDatabase].
      * @param context The application context.
@@ -56,9 +55,7 @@ object DatabaseModule {
      */
     @Provides
     @Singleton
-    fun provideEntryDao(
-        database: AppDatabase
-    ): EntryDao = database.entryDao()
+    fun provideEntryDao(database: AppDatabase): EntryDao = database.entryDao()
 
     /**
      * Provides a singleton instance of [LogDao].
@@ -67,7 +64,5 @@ object DatabaseModule {
      */
     @Provides
     @Singleton
-    fun provideLogDao(
-        database: AppDatabase
-    ): LogDao = database.logDao()
+    fun provideLogDao(database: AppDatabase): LogDao = database.logDao()
 }

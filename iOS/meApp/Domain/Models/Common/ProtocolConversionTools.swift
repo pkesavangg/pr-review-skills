@@ -5,7 +5,7 @@ final class ProtocolConversionTools {
     // MARK: - Constants
     private static let r4HexPadding = "000000000000"
     private static let standardHexPadding = "0000000"
-    
+
     // MARK: - Protocol Conversion
     /// Converts integer to hex string for protocol (R4 or other)
     static func convertIntToHex(_ value: Int, protocolType: ProtocolType) -> String {
@@ -28,4 +28,15 @@ final class ProtocolConversionTools {
         }
         return hexPairs.reversed().joined().uppercased()
     }
+
+    static func getProtocolTypeFromScaleType(scaleType: ScaleSourceType, sku: String) -> ProtocolType {
+      if scaleType == .btWifiR4 || sku == "0412" {
+        return .R4
+      } else if scaleType == .bluetooth {
+        return .A3
+      } else {
+        return .A6
+      }
+    }
+
 }
