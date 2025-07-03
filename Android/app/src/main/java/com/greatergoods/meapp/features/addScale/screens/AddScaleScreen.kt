@@ -81,6 +81,7 @@ fun AddScaleScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
@@ -144,8 +145,7 @@ fun AddScaleScreenContent(
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                    .fillMaxWidth(),
             ) {
                 state.savedScales.forEach { scale ->
                     AppScaleCard(
