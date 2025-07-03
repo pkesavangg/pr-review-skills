@@ -43,6 +43,12 @@ sealed class SettingsItemType {
     data class Custom(
         val content: @Composable () -> Unit,
     ) : SettingsItemType()
+
+    // Toggle (Switch) -> checked state and change handler
+    data class Toggle(
+        val checked: Boolean = false,
+        val onCheckedChange: (Boolean) -> Unit
+    ) : SettingsItemType()
 }
 
 data class SettingsItem(

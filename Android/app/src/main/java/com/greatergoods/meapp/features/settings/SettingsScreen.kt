@@ -191,12 +191,13 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Streaks,
-                            type = SettingsItemType.Dropdown(
-                                if (state.account?.isStreakOn == true) "On" else "Off",
+                            type = SettingsItemType.Toggle(
+                                checked = state.account?.isStreakOn == true,
+                                onCheckedChange = { checked ->
+                                    handleIntent.invoke(SettingsIntent.ToggleStreak(checked))
+                                }
                             ),
-                            onClick = {
-                                handleIntent.invoke(SettingsIntent.ShowStreakModal)
-                            },
+                            onClick = {}, // No-op, handled by the switch
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.AppPermissions,

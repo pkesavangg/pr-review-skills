@@ -191,6 +191,13 @@ private fun SettingsItemRow(
                         item.type.content()
                     }
 
+                    is SettingsItemType.Toggle -> {
+                        AppToggle(
+                            checked = item.type.checked,
+                            onCheckedChange = item.type.onCheckedChange
+                        )
+                    }
+
                     is SettingsItemType.None, is SettingsItemType.TextOnly -> {
                         // No icon
                     }

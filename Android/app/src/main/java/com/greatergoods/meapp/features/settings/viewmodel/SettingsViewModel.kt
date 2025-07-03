@@ -143,16 +143,16 @@ constructor(
                 onWeightlessClick()
             }
 
-            is SettingsIntent.ShowStreakModal -> {
-                onStreakClick()
-            }
-
             is SettingsIntent.goalSettingModal -> {
                 onGoalSettingClick()
             }
 
             is SettingsIntent.ShowAppearanceModal -> {
                 onAppearanceClick()
+            }
+
+            is SettingsIntent.ToggleStreak -> {
+                onStreakUpdate(intent.checked)
             }
 
             else -> {}
