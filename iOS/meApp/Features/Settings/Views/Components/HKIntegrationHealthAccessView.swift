@@ -26,7 +26,7 @@ struct HKIntegrationHealthAccessView: View {
         case .permissionsAllowed:
             return HKIntegrationHealthAccessStrings.permissionsAllowed
         case .permissionsNotAllowed:
-            return HKIntegrationHealthAccessStrings.notConnected // Reuse or create new if needed
+            return HKIntegrationHealthAccessStrings.notConnected
         case .integrationComplete:
             return HKIntegrationHealthAccessStrings.integrationComplete
         case .integrationFailed:
@@ -59,12 +59,11 @@ struct HKIntegrationHealthAccessView: View {
                 // Image
                 Image(content.imageName)
                     .resizable()
-                    .scaledToFit()
                     .frame(maxWidth: 190, maxHeight: 401)
                     .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
                     .overlay {
                         RoundedRectangle(cornerRadius: .radiusSM)
-                            .stroke(Color.black, lineWidth: 5)
+                            .stroke(theme.statusUtilitySecondary, lineWidth: 5)
                     }
                     .overlay {
                         if state == .integrationFailed  || state == .userConflict {

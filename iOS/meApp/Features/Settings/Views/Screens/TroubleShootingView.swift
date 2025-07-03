@@ -73,7 +73,7 @@ struct TroubleShootingView: View {
             ActionListItemView(config: ActionListItemConfig(title: lang.timezone, value: timezoneString, chevronType: .none))
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
     private func appTroubleshootingSection() -> some View {
@@ -88,7 +88,7 @@ struct TroubleShootingView: View {
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
     private func scaleTroubleshootingSection() -> some View {
@@ -97,7 +97,7 @@ struct TroubleShootingView: View {
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
     private func sectionHeader(title: String) -> some View {

@@ -152,7 +152,7 @@ struct PermissionListView: View {
         //  - Disabled & optional  ➜ utility / grey
         let colour: Color = {
             if isEnabled { return theme.actionPrimary }
-            return required ? theme.statusError : theme.statusUtility
+            return required ? theme.statusError : theme.statusUtilityPrimary
         }()
         
         return AnyView(

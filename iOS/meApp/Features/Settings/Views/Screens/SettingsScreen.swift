@@ -221,7 +221,7 @@ struct SettingsScreen: View {
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func profileSettingsSection() -> some View {
@@ -267,7 +267,7 @@ struct SettingsScreen: View {
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func appSettingsSection() -> some View {
@@ -301,7 +301,7 @@ struct SettingsScreen: View {
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func supportSection() -> some View {
@@ -342,7 +342,7 @@ struct SettingsScreen: View {
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func accountActionSection() -> some View {
@@ -387,7 +387,7 @@ struct SettingsScreen: View {
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func sectionHeader(title: String) -> some View {

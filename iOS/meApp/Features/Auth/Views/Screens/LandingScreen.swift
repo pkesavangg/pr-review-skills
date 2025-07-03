@@ -91,7 +91,7 @@ struct LandingScreen: View {
                                                     if index < landingStore.userItems.count - 1 {
                                                         Divider()
                                                             .frame(height: 0.5)
-                                                            .background(theme.statusUtility)
+                                                            .background(theme.statusUtilityPrimary)
                                                             .padding(.leading, 56)
                                                     }
                                                 }

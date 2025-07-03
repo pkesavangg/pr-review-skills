@@ -66,7 +66,7 @@ struct ScaleSettingsScreen: View {
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     private func deleteScaleSection() -> some View {
         Section {
@@ -85,7 +85,7 @@ struct ScaleSettingsScreen: View {
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func settingsSection() -> some View {
@@ -125,7 +125,7 @@ struct ScaleSettingsScreen: View {
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func connectionSection() -> some View {
@@ -154,7 +154,7 @@ struct ScaleSettingsScreen: View {
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func supportSection() -> some View {
@@ -189,6 +189,6 @@ struct ScaleSettingsScreen: View {
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 }

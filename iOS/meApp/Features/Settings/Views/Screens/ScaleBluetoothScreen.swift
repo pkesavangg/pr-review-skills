@@ -88,7 +88,7 @@ struct ScaleBluetoothScreen: View {
 
     private func divider() -> some View {
         Divider()
-            .foregroundColor(theme.statusUtility)
+            .foregroundColor(theme.statusUtilityPrimary)
     }
 
     private func sectionTitle(_ text: String) -> some View {
