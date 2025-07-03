@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.signup.model
 import com.greatergoods.meapp.domain.enums.GoalType
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.HeightInput
+import com.greatergoods.meapp.features.common.helper.form.AppValidatorConfig
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 import java.time.ZoneId.systemDefault
@@ -30,7 +31,7 @@ data class SignupData(
     val birthday: DateTimeValue =
         DateTimeValue.Date(
             LocalDate
-                .parse("2000-01-01")
+                .parse(AppValidatorConfig.DateOfBirth.DEFAULT_VALUE)
                 .atStartOfDay(systemDefault())
                 .toInstant()
                 .toEpochMilli(),
