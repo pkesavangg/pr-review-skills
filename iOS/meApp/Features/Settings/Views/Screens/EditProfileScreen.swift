@@ -143,6 +143,7 @@ struct EditProfileScreen: View {
                 if confirmed {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                         router.navigateBack()
+                        settingsStore.resetEditProfileForm()
                     }
                 }
                 return confirmed

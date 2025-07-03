@@ -121,6 +121,7 @@ struct GoalSettingScreen: View {
                 if confirmed {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                         router.navigateBack()
+                        settingsStore.resetGoalForm()
                     }
                 }
                 return confirmed

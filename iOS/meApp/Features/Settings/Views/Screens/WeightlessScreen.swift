@@ -91,6 +91,7 @@ struct WeightlessScreen: View {
                 if confirmed {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                         router.navigateBack()
+                        settingsStore.resetWeightlessForm()
                     }
                 }
                 return confirmed

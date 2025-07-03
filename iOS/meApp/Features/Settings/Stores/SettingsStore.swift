@@ -551,7 +551,6 @@ class SettingsStore: ObservableObject {
 
         return await withCheckedContinuation { continuation in
             presentChangePasswordExitAlert(onExit: {
-                self.resetChangePasswordForm()
                 continuation.resume(returning: true)
             }, onCancel: {
                 continuation.resume(returning: false)
@@ -603,7 +602,6 @@ class SettingsStore: ObservableObject {
 
         return await withCheckedContinuation { continuation in
             presentEditProfileExitAlert(onExit: {
-                self.resetEditProfileForm()
                 continuation.resume(returning: true)
             }, onCancel: {
                 continuation.resume(returning: false)
@@ -790,7 +788,6 @@ class SettingsStore: ObservableObject {
 
         return await withCheckedContinuation { continuation in
             presentWeightlessExitAlert(onExit: {
-                self.resetWeightlessForm()
                 continuation.resume(returning: true)
             }, onCancel: {
                 continuation.resume(returning: false)
@@ -1046,7 +1043,6 @@ class SettingsStore: ObservableObject {
 
         return await withCheckedContinuation { continuation in
             presentGoalExitAlert(onExit: {
-                self.resetGoalForm()
                 continuation.resume(returning: true)
             }, onCancel: {
                 continuation.resume(returning: false)
@@ -1100,7 +1096,7 @@ class SettingsStore: ObservableObject {
     }
     
     /// Resets to pristine state and re-sync with account.
-    private func resetGoalForm() {
+    func resetGoalForm() {
         goalForm = GoalForm()
         populateGoalFormIfNeeded()
     }

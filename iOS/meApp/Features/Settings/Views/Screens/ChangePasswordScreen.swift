@@ -114,6 +114,7 @@ struct ChangePasswordScreen: View {
                 if confirmed {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                         router.navigateBack()
+                        settingsStore.resetChangePasswordForm()
                     }
                 }
                 return confirmed
