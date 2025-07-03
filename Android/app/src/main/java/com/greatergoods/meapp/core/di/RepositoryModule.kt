@@ -128,6 +128,9 @@ object RepositoryModule {
         accountDao: AccountDao,
         accountRepository: IAccountRepository,
     ): IGoalRepository = GoalRepository(goalAPI, accountDao, accountRepository)
+
+    @Provides
+    @Singleton
     fun provideDashboardRepository(
         dashboardKeysDatastore: DashboardKeysDatastore
     ): IDashboardRepository =
