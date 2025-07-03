@@ -23,24 +23,11 @@ struct EditModeOverlay: ViewModifier {
     }
     
     var shouldShowCircleIcon: Bool {
-        // Show circle icon if:
-        // 1. We're in edit mode
-        // 2. The item is not currently being dragged (more stable check)
-        // 3. The item is not currently a drop target
         isEditMode && !isBeingDragged && !isDropTarget
     }
     
     var iconOpacity: Double {
-        // Use a more stable opacity calculation to prevent flickering
-        if !isEditMode {
-            return 0
-        }
-        
-        if isBeingDragged || isDropTarget {
-            return 0
-        }
-        
-        return 1
+        shouldShowCircleIcon ? 1 : 0
     }
     
     func body(content: Content) -> some View {
@@ -48,28 +35,30 @@ struct EditModeOverlay: ViewModifier {
             content
                 .opacity(isRemoved ? 0.75 : 1.0)
                 .wiggling(shouldWiggle)
-            
-            // Always render the icon, but fade it in/out
-            let iconName = isRemoved ?
-                (themeManager.isDarkMode ? AppAssets.plusCircleDark : AppAssets.plusCircle) :
-                (themeManager.isDarkMode ? AppAssets.minusCircleDark : AppAssets.minusCircle)
-            ThemedImage(name: iconName, isSingleMode: true)
-                .frame(width: 28, height: 28)
-                .offset(x: 5, y: -5)
-                .wiggling(shouldWiggle)
-                .opacity(iconOpacity)
-                .animation(.easeInOut(duration: 0.2), value: iconOpacity)
-                .allowsHitTesting(shouldShowCircleIcon)
-                .onTapGesture {
-                    onToggleRemoval()
-                }
+
+            if shouldShowCircleIcon {
+                let iconName = isRemoved ?
+                    (themeManager.isDarkMode ? AppAssets.plusCircleDark : AppAssets.plusCircle) :
+                    (themeManager.isDarkMode ? AppAssets.minusCircleDark : AppAssets.minusCircle)
+                
+                ThemedImage(name: iconName, isSingleMode: true)
+                    .frame(width: 28, height: 28)
+                    .offset(x: 5, y: -5)
+                    .wiggling(shouldWiggle)
+                    .opacity(iconOpacity)
+                    .animation(.easeInOut(duration: 0.2), value: iconOpacity)
+                    .allowsHitTesting(isEditMode)
+                    .zIndex(999)
+                    .onTapGesture {
+                        onToggleRemoval()
+                    }
+            }
         }
     }
 }
 
 #Preview {
     VStack(spacing: 20) {
-        // Normal state
         RoundedRectangle(cornerRadius: 8)
             .fill(Color.blue.opacity(0.2))
             .frame(width: 200, height: 100)

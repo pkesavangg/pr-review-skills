@@ -21,6 +21,11 @@ struct MyScalesScreen: View {
         )
     }
     
+    private func scaleIcon(for sku: String?) -> Image {
+        let imagePath = SCALES.first(where: { $0.sku == (sku ?? "") })?.imgPath ?? AppAssets.meLogoDark
+        return Image(imagePath)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
@@ -98,12 +103,12 @@ struct MyScalesScreen: View {
                         
                         ForEach(scaleStore.scales, id: \.id) { scale in
                             ScaleItemView(
-                                scaleIcon: Image(AppAssets.meLogoDark),
+                                scaleIcon: scaleIcon(for: scale.sku),
                                 modelNumber: scale.sku ?? "----",
                                 scaleName: scale.deviceName ?? lang.unknownScale,
                                 status: .connected,
                                 onTap: {
-                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: .bluetoothR4)) // TODO: Add action to define scaleType
+                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: .bluetoothR4))
                                 }
                             )
                             .padding(.horizontal, .spacingSM)

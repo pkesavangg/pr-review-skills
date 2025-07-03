@@ -42,7 +42,7 @@ struct MetricCardView: View {
                 .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
                 .foregroundColor(isDropTarget ? theme.actionSecondary : Color.clear)
         )
-
+        .contentShape(Rectangle())
         .onTapGesture {
             onTap()
         }

@@ -443,6 +443,13 @@ struct AlertStrings {
         static let exitButton = "Exit"
         static let returnButton = "Return"
     }
+    
+    struct ResetDashboardAlert {
+        static let title = "Are you sure?"
+        static let message = "Your dashboard display metrics will reset to default settings"
+        static let cancelButton = "Cancel"
+        static let resetButton = "Reset"
+    }
 }
 
 struct LoaderStrings {

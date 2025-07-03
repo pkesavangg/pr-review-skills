@@ -16,8 +16,8 @@ extension View {
         isDraggable: Bool = true,
         onDropTargetChanged: @escaping (Bool) -> Void
     ) -> some View {
-        Group {
-            if isDraggable {
+        if isDraggable {
+            AnyView(
                 self
                     .onDrag {
                         draggingItem.wrappedValue = item
@@ -32,9 +32,9 @@ extension View {
                             onDropTargetChanged: onDropTargetChanged
                         )
                     )
-            } else {
-                self
-            }
+            )
+        } else {
+            AnyView(self)
         }
     }
 }
@@ -80,27 +80,3 @@ struct ReorderDropDelegate<T: Identifiable & Equatable>: DropDelegate {
     }
 }
 
-// MARK: - Legacy DragDropModifier (for backward compatibility)
-struct DragDropModifier: ViewModifier {
-    let isEditMode: Bool
-    let label: String
-    let onDrop: (String, String) -> Bool
-    let onDropTargetChanged: (Bool) -> Void
-
-    func body(content: Content) -> some View {
-        if isEditMode {
-            content
-                .draggable(label)
-                .dropDestination(for: String.self) { droppedIds, _ in
-                    guard let draggedId = droppedIds.first else { return false }
-                    let result = onDrop(draggedId, label)
-                    onDropTargetChanged(false)
-                    return result
-                } isTargeted: { isTargeted in
-                    onDropTargetChanged(isTargeted)
-                }
-        } else {
-            content
-        }
-    }
-}

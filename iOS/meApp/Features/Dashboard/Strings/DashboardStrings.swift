@@ -16,6 +16,7 @@ struct DashboardStrings {
     static let resetDashboard = "Reset Dashboard"
 
     // Metrics labels, units, preLabels
+    static let weight = "weight"
     static let bmi = "bmi"
     static let bodyFat = "body fat %"
     static let bodyFatUnit = "%"

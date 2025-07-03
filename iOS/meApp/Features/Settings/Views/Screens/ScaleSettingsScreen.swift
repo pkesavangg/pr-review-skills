@@ -55,8 +55,12 @@ struct ScaleSettingsScreen: View {
     
     // MARK: - Sections as Functions
     private func scaleImageSection() -> some View {
-        Image(AppAssets.scale0412)
-            .frame(width: 370)
+        let sku = scale.sku ?? ""
+        let imagePath = SCALES.first(where: { $0.sku == sku })?.imgPath ?? AppAssets.scale0412 // fallback
+        return Image(imagePath)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 180, height: 180)
             .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
     }
