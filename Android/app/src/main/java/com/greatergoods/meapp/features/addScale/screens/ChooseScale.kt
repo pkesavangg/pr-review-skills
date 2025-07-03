@@ -30,7 +30,6 @@ fun ChooseScaleScreen(viewModel: AddScaleViewModel = hiltViewModel()) {
 @Composable
 fun ChooseScaleScreenContent(
     handleIntent: (AddScaleIntent) -> Unit = {},
-    enableScroll: Boolean = true
 ) {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()

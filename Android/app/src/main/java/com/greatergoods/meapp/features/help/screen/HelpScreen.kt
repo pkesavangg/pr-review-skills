@@ -82,7 +82,6 @@ private fun HelpContent(
                         }
                     }
                 },
-                enableScroll = false
             )
         }
     }

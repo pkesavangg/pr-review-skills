@@ -32,7 +32,6 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 fun ScaleList(
     onScaleSelected: (ScaleInfo) -> Unit,
     modifier: Modifier = Modifier,
-    enableScroll: Boolean = true,
 ) {
     var selectedType by remember { mutableStateOf(ScaleSegmentType.All) }
 
