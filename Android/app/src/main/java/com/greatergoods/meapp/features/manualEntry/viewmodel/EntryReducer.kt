@@ -161,6 +161,8 @@ sealed interface EntryIntent : IReducer.Intent {
     data class UpdateForm(
         val form: MultiFormGroup<EntryForm>,
     ) : EntryIntent
+
+    data class UpdateWeightUnit(val weightUnit: WeightUnit) : EntryIntent
 }
 
 /**
@@ -175,6 +177,12 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
             is EntryIntent.UpdateForm -> {
                 state.copy(
                     form = intent.form,
+                )
+            }
+
+            is EntryIntent.UpdateWeightUnit -> {
+                state.copy(
+                    weightMode = intent.weightUnit,
                 )
             }
 

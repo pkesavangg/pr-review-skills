@@ -30,7 +30,6 @@ object EntryHelper {
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
     fun EntryForm.toScaleEntry(weightMode: WeightUnit): ScaleEntry {
-        System.currentTimeMillis()
         val entryEntity =
             EntryEntity(
                 id = 0L, // Let Room auto-generate
@@ -101,11 +100,11 @@ object EntryHelper {
     }
 
     fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
-        // Example: implement your conversion logic here
-        if (from == to) return value
-        return when (from) {
-            WeightUnit.KG -> if (to == WeightUnit.LB) value * 2.20462 else value
-            WeightUnit.LB -> if (to == WeightUnit.KG) value / 2.20462 else value
+        return when {
+            from == to -> value
+            from == WeightUnit.KG && to == WeightUnit.LB -> value * 2.20462
+            from == WeightUnit.LB && to == WeightUnit.KG -> value / 2.20462
+            else -> value
         }
     }
 }
