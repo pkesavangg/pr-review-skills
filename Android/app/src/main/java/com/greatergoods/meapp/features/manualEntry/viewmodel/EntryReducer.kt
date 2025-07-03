@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.manualEntry.viewmodel
 
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.common.components.DateTimeValue
@@ -58,22 +59,9 @@ data class EntryForm(
         val minute = calendar.get(Calendar.MINUTE)
         fun create(
             includeR4ScaleMetrics: Boolean = false,
-            weightMode: WeightUnit = WeightUnit.LB,
+            weightUnit: WeightUnit? = WeightUnit.LB,
+            height: Int? = 0,
         ): EntryForm {
-            val weightDateTime =
-                WeightDateTimeFormControls(
-                    weight = FormControl.create(
-                        "",
-                        listOf(
-                            FormValidations.weightValidator(weightMode),
-                            FormValidations.required(),
-                        ),
-                    ),
-                    dateTime = FormControl.create(
-                        DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
-                        listOf(),
-                    ),
-                )
             val generalMetrics =
                 GeneralMetricsFormControls(
                     bodyMassIndex = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
@@ -81,6 +69,40 @@ data class EntryForm(
                     muscleMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
                     bodyWater = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
                     // Add more general metrics here if needed
+                )
+            val weightDateTime =
+                WeightDateTimeFormControls(
+                    weight = FormControl.create(
+                        "",
+                        listOf(
+                            FormValidations.weightValidator(weightUnit),
+                            FormValidations.required(),
+                        ),
+                        onValueChangeCallback = { _, new ->
+                            if (height != null) {
+                                val weight = when {
+                                    new.isBlank() -> 0.0
+                                    weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToLbs(new.toDouble())
+                                    else -> new.toDouble()
+                                }
+                                val height = ConversionTools.convertStoredHeightToCm(height)
+                                val bmi = ConversionTools.calculateBMI(weight, height)
+                                val bmiValue = when {
+                                    bmi <= 0.0 -> ""
+                                    bmi >= AppValidatorConfig.BodyComp.MAX * 10 -> AppValidatorConfig.BodyComp.MAX.times(
+                                        10,
+                                    ).toString()
+
+                                    else -> bmi.toString()
+                                }
+                                generalMetrics.bodyMassIndex.onValueChange(bmiValue)
+                            }
+                        },
+                    ),
+                    dateTime = FormControl.create(
+                        DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
+                        listOf(),
+                    ),
                 )
             val r4ScaleMetrics =
                 if (includeR4ScaleMetrics) {
@@ -136,6 +158,9 @@ data class EntryState(
  */
 sealed interface EntryIntent : IReducer.Intent {
     data object Save : EntryIntent
+    data class UpdateForm(
+        val form: MultiFormGroup<EntryForm>,
+    ) : EntryIntent
 }
 
 /**
@@ -145,5 +170,15 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
     override fun reduce(
         state: EntryState,
         intent: EntryIntent,
-    ): EntryState? = state
+    ): EntryState? {
+        return when (intent) {
+            is EntryIntent.UpdateForm -> {
+                state.copy(
+                    form = intent.form,
+                )
+            }
+
+            else -> state
+        }
+    }
 }

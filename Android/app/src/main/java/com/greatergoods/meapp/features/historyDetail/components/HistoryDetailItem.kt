@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
@@ -33,7 +34,7 @@ import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.DraggableListItemScope
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper.getMetrics
+import com.greatergoods.meapp.features.common.helper.StatHelper.getMetrics
 import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.getDate
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.getTime
@@ -136,7 +137,7 @@ fun HistoryDetailItemHeader(
                     textAlign = TextAlign.End,
                 )
                 Text(
-                    text = item.entry.unit ?: "lb",
+                    text = item.entry.unit.label,
                     style = MeTheme.typography.subHeading2,
                     color = subTextColor,
                     modifier = Modifier.padding(start = MeTheme.spacing.x2s),
@@ -173,41 +174,46 @@ private fun DraggableListItemScope.HistoryDetailItemPreview() {
     }
 }
 
-private val sampleScaleEntry = ScaleEntry(
-    entry = EntryEntity(
-        id = 478,
-        accountId = "4SWOWDAP9t2gS50MFp9HQS",
-        entryTimestamp = "2025-06-19T06:30:00.000Z",
-        serverTimestamp = "2025-06-19T10:29:13.914Z",
-        opTimestamp = null,
-        operationType = "create",
-        deviceType = "scale",
-        deviceId = "manual",
-        attempts = 0,
-        unit = "lb",
-        isSynced = true,
-    ),
-    scale = ScaleEntryWithMetrics(
-        scaleEntry = BodyScaleEntryEntity(
-            id = 478,
-            weight = 150.0,
-            bodyFat = 15.2,
-            muscleMass = 35.0,
-            water = 55.0,
-            bmi = 22.5,
-            source = "manual",
-        ),
-        scaleEntryMetric = BodyScaleEntryMetricEntity(
-            id = 478,
-            bmr = 1800.0,
-            metabolicAge = 28,
-            proteinPercent = 18.0,
-            pulse = 60,
-            skeletalMusclePercent = 52.7,
-            subcutaneousFatPercent = 10.3,
-            visceralFatLevel = 8.0,
-            boneMass = 4.4,
-            impedance = 500,
-        ),
-    ),
-)
+private val sampleScaleEntry =
+    ScaleEntry(
+        entry =
+            EntryEntity(
+                id = 478,
+                accountId = "4SWOWDAP9t2gS50MFp9HQS",
+                entryTimestamp = "2025-06-19T06:30:00.000Z",
+                serverTimestamp = "2025-06-19T10:29:13.914Z",
+                opTimestamp = null,
+                operationType = "create",
+                deviceType = "scale",
+                deviceId = "manual",
+                attempts = 0,
+                unit = WeightUnit.LB,
+                isSynced = true,
+            ),
+        scale =
+            ScaleEntryWithMetrics(
+                scaleEntry =
+                    BodyScaleEntryEntity(
+                        id = 478,
+                        weight = 150.0,
+                        bodyFat = 15.2,
+                        muscleMass = 35.0,
+                        water = 55.0,
+                        bmi = 22.5,
+                        source = "manual",
+                    ),
+                scaleEntryMetric =
+                    BodyScaleEntryMetricEntity(
+                        id = 478,
+                        bmr = 1800.0,
+                        metabolicAge = 28,
+                        proteinPercent = 18.0,
+                        pulse = 60,
+                        skeletalMusclePercent = 52.7,
+                        subcutaneousFatPercent = 10.3,
+                        visceralFatLevel = 8.0,
+                        boneMass = 4.4,
+                        impedance = 500,
+                    ),
+            ),
+    )

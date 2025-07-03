@@ -43,6 +43,8 @@ internal object LightColorToken {
     val inverse = ColorPalette.Neutral100 // #FFFFFF
     val inverseDisabled = ColorPalette.Neutral300 // 50% of #FFFFFF
     val inverseSecondary = ColorPalette.Neutral150 // #F6F4F1
+    val errorAction = ColorPalette.Red900 // #B3261E
+    val errorActionDisabled = ColorPalette.Red100 // #F5C0BD
 
     // Icon
     val iconPrimary = ColorPalette.Blue900 // #1565C0
@@ -96,6 +98,8 @@ internal object DarkColorToken {
     val inverse = ColorPalette.Neutral900 // #222D39
     val inverseDisabled = ColorPalette.Neutral850 // #50% of #222D39
     val inverseSecondary = ColorPalette.Neutral950 // #12161B
+    val errorAction = ColorPalette.Red500 // #F28B82
+    val errorActionDisabled = ColorPalette.Red950 // #5C1A16
 
     // Icon
     val iconPrimary = ColorPalette.Blue400 // #2B8AEB

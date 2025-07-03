@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.addScale.screens.ModelNumberHelpDialog
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
@@ -12,7 +13,8 @@ enum class DialogType {
     HelpPopup,
     PasswordReset,
     RadioGroupPicker,
-    AccountSwitchInfoPopup
+    AccountSwitchInfoPopup,
+    ModelNumberHelp
 }
 
 @Composable
@@ -89,6 +91,16 @@ fun DialogHost() {
                         dialog.onDismiss?.let { it() }
                         onAddAccount()
                     },
+                    onClose = {
+                        dialog.onDismiss?.let { it() }
+                        dialogQueueViewModel.dismissCurrent()
+                    },
+                )
+            }
+
+            DialogType.ModelNumberHelp -> {
+                ModelNumberHelpDialog(
+                    visible = true,
                     onClose = {
                         dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()

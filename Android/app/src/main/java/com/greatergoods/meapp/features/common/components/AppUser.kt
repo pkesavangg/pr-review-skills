@@ -22,7 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
-import com.greatergoods.meapp.features.common.strings.AppUserStrings
+import com.greatergoods.meapp.features.common.strings.AppListStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
@@ -106,7 +106,7 @@ fun AppUser(
         }
         if (account.isExpired) {
             AppButton(
-                label = AppUserStrings.LogInButton,
+                label = AppListStrings.LogInButton,
                 onClick = onLoginRequest,
                 type = ButtonType.TextPrimary,
                 size = ButtonSize.Small,
@@ -163,15 +163,15 @@ fun AppUserPreview() {
                     zipcode = "12345",
                     isSynced = false,
                     isExpired = true,
-                    weightUnit = null,
+                    weightUnit = WeightUnit.LB,
                     isWeightlessOn = false,
-                    height = null,
-                    activityLevel = null,
-                    weightlessTimestamp = null,
-                    weightlessWeight = null,
-                    isStreakOn = false,
-                    dashboardType = null,
-                    dashboardMetrics = null,
+                height = null,
+                activityLevel = null,
+                weightlessTimestamp = null,
+                weightlessWeight = null,
+                isStreakOn = false,
+                dashboardType = null,
+                dashboardMetrics = null,
                 ),
                 onAccountSelect = {},
                 onLoginRequest = {},

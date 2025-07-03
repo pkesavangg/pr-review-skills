@@ -14,6 +14,7 @@ import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.components.AppIconButton
@@ -101,7 +102,7 @@ fun HistoryDetailScreenPreview() {
                         deviceType = "scale",
                         deviceId = "manual",
                         attempts = 0,
-                        unit = "lb",
+                        unit = WeightUnit.LB,
                         isSynced = true,
                     ),
                     scale = ScaleEntryWithMetrics(
@@ -139,7 +140,7 @@ fun HistoryDetailScreenPreview() {
                         deviceType = "scale",
                         deviceId = "manual",
                         attempts = 0,
-                        unit = "kg",
+                        unit = WeightUnit.KG,
                         isSynced = true,
                     ),
                     scale = ScaleEntryWithMetrics(
