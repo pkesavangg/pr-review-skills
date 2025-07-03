@@ -55,7 +55,7 @@ object GraphUtil {
                                 value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
                                 label = entry.period,
                             ),
-                        y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight}"),
+                        y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight.rounded() ?: 0}"),
                     )
                 },
         )
@@ -213,8 +213,8 @@ object GraphUtil {
             val prefix = if (inWeightlessMode && average != null && average > 0) "+" else ""
 
             val label = if (average == null) null else Label(
-                value = average,
-                label = prefix + average.toString(),
+                value = average.toDouble().rounded() ?: 0.0,
+                label = prefix + average.toDouble().rounded().toString(),
             )
 
             line.name to label
