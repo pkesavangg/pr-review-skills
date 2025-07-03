@@ -10,6 +10,9 @@ struct PermissionsStrings {
     static let camera     = "Camera for App Sync Scales"
     static let notifications = "Notifications"
 
+    // Internet
+    static let internet       = "Internet"
+
     // Row titles / descriptions
     static let bluetoothAccessAuthorized = "Bluetooth access is authorized"
     static let bluetoothTurnedOn         = "Bluetooth is turned on"
@@ -17,6 +20,13 @@ struct PermissionsStrings {
     static let locationAccessNotAuthorized = "Location access not authorized"
     static let cameraAccessAuthorized    = "Camera access is authorized"
     static let notificationsEnabled      = "Notifications are enabled"
+
+    // Wi-Fi row prompt (Location section)
+    static let wifiEnablePrompt          = "Enable Wi-Fi to continue."
+
+    // Row titles / descriptions for Internet
+    static let internetNetworkConnected    = "Internet Network Connected."
+    static let internetNetworkDisconnected = "Internet Network Disconnected."
 
     // Page header (Scale setup flows)
     static let pageHeaderTitle = "Permission Settings"
