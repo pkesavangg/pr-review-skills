@@ -25,6 +25,7 @@ final class DeviceMetaData {
     var manufacturerName: String? // Manufacturer name
     var systemId: String? // Device MAC (A3 scales)
     var latestVersion: String? // Latest firmware version
+    var isSynced: Bool = false // Flag to check if the meta data is synced with the server
 
     init(from dto: ScaleMetaDataDTO, id: String? = nil) {
         self.modelNumber = dto.modelNumber

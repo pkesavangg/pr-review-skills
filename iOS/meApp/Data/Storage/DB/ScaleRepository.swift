@@ -3,8 +3,7 @@
 import Foundation
 import SwiftData
 
-/// Concrete implementation of ScaleRepositoryProtocol for local storage using SwiftData.
-/// Handles CRUD operations for Device (scale) entities in a thread-safe manner.
+/// Repository for managing Device entities in SwiftData storage.
 @MainActor
 final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
@@ -36,6 +35,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         }
         // Update only the properties that may change during sync
         managedDevice.isSynced = device.isSynced
+        managedDevice.hasServerID = device.hasServerID
         managedDevice.nickname = device.nickname
         managedDevice.deviceName = device.deviceName
         managedDevice.deviceType = device.deviceType
@@ -54,6 +54,8 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         managedDevice.createdAt = device.createdAt
         managedDevice.lastModified = device.lastModified
         managedDevice.token = device.token
+        managedDevice.metaData = device.metaData
+        managedDevice.r4ScalePreference = device.r4ScalePreference
         // Add more fields as needed
         try context.save()
     }
@@ -61,7 +63,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Gets all devices that haven't been synced with the API.
     /// - Returns: An array of unsynced devices.
     func getUnsyncedDevices() async throws -> [Device] {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isSynced == false })
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isSynced == false  })
         return try context.fetch(descriptor)
     }
 
@@ -87,19 +89,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             throw NSError(domain: "ScaleService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Device not found"])
         }
         if let nickname = properties["nickname"] as? String { device.nickname = nickname }
-        if let name = properties["name"] as? String { device.deviceName = name }
-        if let deviceType = properties["type"] as? String { device.deviceType = deviceType }
-        if let userId = properties["userId"] as? String { device.accountId = userId }
-        if let password = properties["password"] as? Int { device.password = String(password) }
-        if let broadcastId = properties["broadcastId"] as? Int { device.broadcastId = String(broadcastId) }
-        if let userNumber = properties["userNumber"] as? Int { device.userNumber = String(userNumber) }
-        if let isDeleted = properties["isDeleted"] as? Bool { device.isDeleted = isDeleted }
-        if let isConnected = properties["isConnected"] as? Bool { device.isConnected = isConnected }
-        if let isWifiConfigured = properties["isWifiConfigured"] as? Bool { device.isWifiConfigured = isWifiConfigured }
-        if let mac = properties["mac"] as? String { device.mac = mac }
-        if let sku = properties["sku"] as? String { device.sku = sku }
-        if let broadcastIdString = properties["broadcastIdString"] as? String { device.broadcastIdString = broadcastIdString }
-        if let createdAt = properties["createdAt"] as? String { device.createdAt = createdAt }
+
         device.isSynced = false
         try context.save()
         return device
@@ -123,6 +113,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
             device.metaData = metaData
+            device.metaData?.isSynced = false
             device.isSynced = false
             try context.save()
         }
@@ -134,8 +125,102 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
             device.r4ScalePreference = preference
+            device.r4ScalePreference?.isSynced = false
             device.isSynced = false
             try context.save()
         }
+    }
+
+    // MARK: - Replace-All Sync Methods
+
+            /// Replaces all local devices for the given account with fresh devices from server.
+    /// This implements the "replace-all" sync policy for clean, predictable state management.
+    /// Preserves unsynced local devices to avoid losing local changes.
+    /// - Parameters:
+    ///   - accountId: The account ID to filter devices by.
+    ///   - serverDevices: Array of fresh Device objects from the server.
+    ///   - preserveUnsynced: Array of unsynced local devices to preserve.
+    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [Device], preserveUnsynced unsyncedDevices: [Device]) async throws {
+        // Delete only synced devices for this account (preserve unsynced ones)
+        let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
+            $0.accountId == accountId && $0.isSynced == true
+        })
+        let syncedDevices = try context.fetch(syncedDescriptor)
+
+        for device in syncedDevices {
+            context.delete(device)
+        }
+
+        // Insert server devices, but skip any that conflict with unsynced local devices
+        for serverDevice in serverDevices {
+            let hasUnsyncedConflict = unsyncedDevices.contains { unsyncedDevice in
+                // Check for conflicts by ID or other identifiers
+                if unsyncedDevice.id == serverDevice.id { return true }
+                if let unsyncedBroadcastId = unsyncedDevice.broadcastIdString,
+                   let serverBroadcastId = serverDevice.broadcastIdString,
+                   unsyncedBroadcastId == serverBroadcastId { return true }
+                if let unsyncedMac = unsyncedDevice.mac,
+                   let serverMac = serverDevice.mac,
+                   unsyncedMac == serverMac { return true }
+                return false
+            }
+
+            // Only insert server device if it doesn't conflict with unsynced local changes
+            if !hasUnsyncedConflict {
+                serverDevice.isSynced = true // Mark as synced since they come from server
+                context.insert(serverDevice)
+            }
+        }
+
+        try context.save()
+    }
+
+    /// Legacy method for backward compatibility - replaces all devices without preserving unsynced.
+    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [Device]) async throws {
+        try await replaceAllDevicesForAccount(accountId, with: serverDevices, preserveUnsynced: [])
+    }
+
+    /// Marks a device as deleted locally (for server sync).
+    /// - Parameter deviceId: The ID of the device to mark as deleted.
+    func markDeviceAsDeleted(_ deviceId: String) async throws {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
+        guard let device = try context.fetch(descriptor).first else {
+            throw NSError(domain: "ScaleService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Device not found"])
+        }
+
+        device.isDeleted = true
+        device.isSynced = false
+        try context.save()
+    }
+
+    /// Gets all devices marked for deletion that need to be synced.
+    /// - Returns: An array of devices marked as deleted and unsynced.
+    func getDevicesMarkedForDeletion() async throws -> [Device] {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
+            $0.isDeleted == true && $0.isSynced == false
+        })
+        return try context.fetch(descriptor)
+    }
+
+    /// Permanently removes a device from local storage (after successful server deletion).
+    /// - Parameter deviceId: The ID of the device to permanently remove.
+    func permanentlyRemoveDevice(_ deviceId: String) async throws {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
+        if let device = try context.fetch(descriptor).first {
+            context.delete(device)
+            try context.save()
+        }
+    }
+
+    /// Checks if a device is purely local (never synced to server).
+    /// - Parameter deviceId: The ID of the device to check.
+    /// - Returns: True if the device is purely local, false otherwise.
+    func isDevicePurelyLocal(_ deviceId: String) async throws -> Bool {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
+        guard let device = try context.fetch(descriptor).first else {
+            return false
+        }
+        // A device is purely local if it has never been synced AND doesn't have a server ID
+        return device.isSynced == false && device.hasServerID == false
     }
 }

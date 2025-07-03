@@ -21,6 +21,7 @@
 /// | created_at            | string  | Date added                          |
 /// | last_modified         | integer | Last modified timestamp             |
 /// | is_synced             | boolean | Whether device is synced online     |
+/// | has_server_id         | boolean | Whether device has server-assigned ID |
 /// | is_connected          | boolean | If the scale is currently connected |
 /// | wifi_mac              | string  | Wifi MAC (R4 scales)                |
 /// | is_wifi_configured    | boolean | If WiFi is configured               |
@@ -48,6 +49,7 @@ final class Device {
     var createdAt: String? // Date added
     var lastModified: Int? // Last modified timestamp
     var isSynced: Bool? // Whether device is synced online
+    var hasServerID: Bool // Whether device has been assigned a server ID
     var isConnected: Bool? // If the scale is currently connected
     var wifiMac: String? // Wifi MAC (R4 scales)
     var isWifiConfigured: Bool? // If WiFi is configured
@@ -75,6 +77,7 @@ final class Device {
          createdAt: String? = nil,
          lastModified: Int? = nil,
          isSynced: Bool? = nil,
+         hasServerID: Bool = false,
          isConnected: Bool? = nil,
          wifiMac: String? = nil,
          isWifiConfigured: Bool? = nil,
@@ -99,6 +102,7 @@ final class Device {
         self.createdAt = createdAt
         self.lastModified = lastModified
         self.isSynced = isSynced
+        self.hasServerID = hasServerID
         self.isConnected = isConnected
         self.wifiMac = wifiMac
         self.isWifiConfigured = isWifiConfigured
@@ -133,6 +137,7 @@ final class Device {
             createdAt: dto.createdAt,
             lastModified: lastModified,
             isSynced: isSynced,
+            hasServerID: dto.id != nil, // True if DTO has server ID, false for local devices
             isConnected: dto.isConnected,
             wifiMac: dto.metaData?.wifiMac,
             isWifiConfigured: dto.isWifiConfigured,
@@ -171,5 +176,5 @@ final class Device {
     }
 }
 
-/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+/// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.
 extension Device: @unchecked Sendable {}
