@@ -119,7 +119,9 @@ struct GoalSettingScreen: View {
 
                 let confirmed = await settingsStore.confirmDiscardGoalChanges()
                 if confirmed {
-                    router.navigateBack()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        router.navigateBack()
+                    }
                 }
                 return confirmed
             }

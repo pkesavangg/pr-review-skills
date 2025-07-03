@@ -112,7 +112,9 @@ struct ChangePasswordScreen: View {
                 // Otherwise ask the user to confirm discarding changes.
                 let confirmed = await settingsStore.confirmDiscardPasswordChanges()
                 if confirmed {
-                    router.navigateBack()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        router.navigateBack()
+                    }
                 }
                 return confirmed
             }

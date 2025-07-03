@@ -89,7 +89,9 @@ struct WeightlessScreen: View {
                 // Otherwise ask for confirmation via SettingsStore.
                 let confirmed = await settingsStore.confirmDiscardWeightlessChanges()
                 if confirmed {
-                    router.navigateBack()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        router.navigateBack()
+                    }
                 }
                 return confirmed
             }

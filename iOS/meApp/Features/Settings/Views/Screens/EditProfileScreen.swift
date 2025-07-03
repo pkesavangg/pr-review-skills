@@ -141,7 +141,9 @@ struct EditProfileScreen: View {
                 // Otherwise ask for confirmation.
                 let confirmed = await settingsStore.confirmDiscardProfileChanges()
                 if confirmed {
-                    router.navigateBack()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        router.navigateBack()
+                    }
                 }
                 return confirmed
             }
