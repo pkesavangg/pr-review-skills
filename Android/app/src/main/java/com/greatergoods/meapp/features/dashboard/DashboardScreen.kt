@@ -69,37 +69,54 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
     var inEditMode by remember {
         mutableStateOf(false)
     }
+    var currentVisibleMetrics by remember {
+        mutableStateOf(listOf<Stat>())
+    }
+
+    var currentVisibleMilestones by remember {
+        mutableStateOf(listOf<Stat>())
+    }
+
     AppScaffold(title = null) {
         Column(modifier = Modifier.verticalScroll(scrollState)) {
             HistoryGraph(state, selectedStat) {
                 metricData = it
             }
+            DashboardMetrics(
+                metricData = metricData,
+                inEditMode = inEditMode,
+                visibleKeys = state.visibleKeys,
+                selectedStat = selectedStat,
+                onMetricClick = { stat ->
+                    selectedStat = stat
+                },
+                onMetricsChanged = { visibleMetrics ->
+                    currentVisibleMetrics = visibleMetrics
+                },
+            )
+            DashboardMilestone(
+                startWeight = "100",
+                goalWeight = "200",
+                currentWeight = "150",
+                inEditMode = inEditMode,
+                visibleKeys = state.visibleKeys,
+                onMilestonesChanged = { visibleMilestones ->
+                    currentVisibleMilestones = visibleMilestones
+                },
+            )
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MeTheme.spacing.md),
-            ) {
-                DashboardMetrics(
-                    metricData = metricData,
-                    inEditMode = inEditMode,
-                    visibleKeys = state.visibleKeys,
-                    selectedStat = selectedStat,
-                ) {
-                    selectedStat = it
-                }
-                DashboardMilestone(
-                    startWeight = "100",
-                    inEditMode = inEditMode,
-                    goalWeight = "200",
-                    currentWeight = "150",
-                )
-                Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-                DashboardControlPanel(inEditMode) {
-                    inEditMode = it
-                }
-                Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            }
+            DashboardControlPanel(
+                inEditMode = inEditMode,
+                onEditClick = { editMode ->
+                    if (!editMode && inEditMode) {
+                        // Save dashboard metrics and milestones when exiting edit mode
+                        val allVisibleKeys = currentVisibleMetrics.map { it.key } + currentVisibleMilestones.map { it.key }
+                        handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
+                    }
+                    inEditMode = editMode
+                },
+            )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         }
     }
 }

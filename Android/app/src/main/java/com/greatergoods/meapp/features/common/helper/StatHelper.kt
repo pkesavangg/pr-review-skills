@@ -91,17 +91,26 @@ object StatHelper {
         MilestoneKey.PER_MONTH to "!",
         MilestoneKey.PER_YEAR to "1",
         MilestoneKey.TOTAL_CHANGE to "1",
+        MilestoneKey.TO_GOAL to "0.0",
     )
 
     /**
      * Returns a list of milestone Stat objects.
      */
-    fun getMilestone(useShort: Boolean = false, filterNulls: Boolean = true): List<Stat> {
-        return milestoneValues.map { (key, value) ->
+    fun getMilestone(
+        visibleKeys: List<MilestoneKey>? = null,
+        useShort: Boolean = false,
+        filterNulls: Boolean = true
+    ): List<Stat> {
+        val keysToUse = (visibleKeys ?: MilestoneKey.entries)
+            .filter { it != MilestoneKey.UNRECOGNIZED }
+
+        val stats = keysToUse.map { key ->
+            val value = milestoneValues[key] ?: ""
             DashboardKey.Milestone(key).toStat(value, useShort)
-        }.let { stats ->
-            if (filterNulls) stats.filter { it.value != null } else stats
         }
+
+        return if (filterNulls) stats.filter { it.value != null } else stats
     }
 
     /**
@@ -214,6 +223,10 @@ internal object StatMeta {
         ),
         MilestoneKey.TOTAL_CHANGE to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsTotal },
+            unit = "lbs",
+        ),
+        MilestoneKey.TO_GOAL to StatMeta(
+            labelProvider = { _ -> DashboardString.MileStone.LbsToGoal },
             unit = "lbs",
         ),
     )
