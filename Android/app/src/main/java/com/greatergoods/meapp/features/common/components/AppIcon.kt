@@ -39,6 +39,7 @@ fun AppIcon(
     @DrawableRes id: Int,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    tintColor: Color? = null,
     type: AppIconType = AppIconType.Primary,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = {},
@@ -53,7 +54,7 @@ fun AppIcon(
                     },
                 enabled = enabled,
             ) { onClick?.invoke() }
-    val tintColor = AppIconDefaults.tintColor(type)
+    val tintColor = tintColor ?: AppIconDefaults.tintColor(type)
     Icon(
         painter = painterResource(id = id),
         contentDescription = contentDescription,

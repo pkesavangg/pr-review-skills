@@ -10,8 +10,7 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
  * Handles streak and weightless mode settings.
  */
 interface IUserSettingsRepository {
-
-    suspend fun updateWeightlessInDB(weightlessRequest: WeightlessSettingsEntity)
+    suspend fun updateWeightless(weightlessRequest: WeightlessSettingsEntity)
 
     /**
      * Updates the streak setting for the active account.

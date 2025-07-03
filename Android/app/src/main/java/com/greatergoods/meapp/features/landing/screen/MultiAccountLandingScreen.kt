@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.MyAccounts.strings.MyAccountsScreenStrings
 import com.greatergoods.meapp.features.common.components.AppButton
@@ -125,15 +126,15 @@ fun MultiAccountLandingScreenPreview() {
                         zipcode = "",
                         isSynced = true,
                         isExpired = false,
-                        weightUnit = null,
+                        weightUnit = WeightUnit.LB,
                         isWeightlessOn = false,
-                        height = 0,
-                        activityLevel = null,
-                        weightlessTimestamp = null,
-                        weightlessWeight = null,
-                        isStreakOn = false,
-                        dashboardType = null,
-                        dashboardMetrics = null,
+                    height = 0,
+                    activityLevel = null,
+                    weightlessTimestamp = null,
+                    weightlessWeight = null,
+                    isStreakOn = false,
+                    dashboardType = null,
+                    dashboardMetrics = null,
                     ),
                     Account(
                         id = "2",
@@ -148,7 +149,7 @@ fun MultiAccountLandingScreenPreview() {
                         zipcode = "",
                         isSynced = true,
                         isExpired = false,
-                        weightUnit = null,
+                        weightUnit = WeightUnit.LB,
                         isWeightlessOn = false,
                         height = 0,
                         activityLevel = null,
@@ -171,7 +172,7 @@ fun MultiAccountLandingScreenPreview() {
                         zipcode = "",
                         isSynced = true,
                         isExpired = false,
-                        weightUnit = null,
+                        weightUnit = WeightUnit.LB,
                         isWeightlessOn = false,
                         height = 0,
                         activityLevel = null,

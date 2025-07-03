@@ -35,12 +35,20 @@ object AppPopupStrings {
         const val Message = "Please log back in to continue."
         const val ConfirmButton = "OK"
     }
-    
+
     object AccountSwitchInfo {
         const val Header = "NEW: Add Multiple Accounts"
         const val Message =
             "Switch between Weight Gurus accounts by pressing and holding the profile icon or selecting \"Switch Accounts\" in settings."
         const val AddAccountButton = "ADD ACCOUNT"
         const val CloseContentDescription = "Close"
+    }
+
+    object ModelNumberHelpPopup {
+        const val Title = "Where to find your model number"
+        const val Message =
+            "Check the back of your scale for a sticker with your four-digit model number.\n\nFor example, if you have a 0375 Bluetooth Scale, the sticker will show the URL: greatergoods.com/0375"
+        const val CloseContentDescription = "Close"
+        const val ImageContentDescription = "Example sticker showing model number location on scale"
     }
 }

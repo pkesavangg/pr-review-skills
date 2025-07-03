@@ -24,8 +24,8 @@ data class SettingsState(
      */
     val currentNotificationStatus: String
         get() = when {
-            account?.entryNotificationsEnabled == true && account.showWeightInNotifications == true -> "w/ weight"
-            account?.entryNotificationsEnabled == true -> "On"
+            account?.shouldSendEntryNotifications == true && account.shouldSendWeightInEntryNotifications == true -> "w/ weight"
+            account?.shouldSendEntryNotifications == true -> "On"
             else -> "Off"
         }
 }
@@ -43,6 +43,7 @@ sealed interface SettingsIntent : IReducer.Intent {
 
     object ClearError : SettingsIntent
 
+    object OpenAddScales: SettingsIntent
     object Logout : SettingsIntent
     object LogoutAllAccounts : SettingsIntent
     object SwitchAccount : SettingsIntent
@@ -56,6 +57,7 @@ sealed interface SettingsIntent : IReducer.Intent {
     object OpenPrivacyPolicy : SettingsIntent
     object OpenTermsOfService : SettingsIntent
     object OpenGreaterGoodsWebsite : SettingsIntent
+    object OpenHelp : SettingsIntent
 
     // Modal Selection Intents
     object ShowBiologicalSexModal : SettingsIntent
@@ -65,6 +67,8 @@ sealed interface SettingsIntent : IReducer.Intent {
     object ShowHeightModal : SettingsIntent
     object ShowWeightlessModal : SettingsIntent
     object ShowStreakModal : SettingsIntent
+    object goalSettingModal : SettingsIntent
+
 }
 
 /**

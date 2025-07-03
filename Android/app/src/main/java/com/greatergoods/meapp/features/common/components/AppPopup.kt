@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.toUpperCase
 import com.greatergoods.meapp.features.common.enums.AppSpacing
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
-import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.LocalAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -35,6 +34,10 @@ sealed class AppPopupImageType {
 
     data class DefaultImage(
         val image: Int,
+    ) : AppPopupImageType()
+
+    data class CustomImage(
+        val image: @Composable () -> Unit,
     ) : AppPopupImageType()
 }
 
@@ -56,10 +59,10 @@ sealed class AppPopupImageType {
 @Composable
 fun AppPopup(
     visible: Boolean,
-    heading: String,
-    supportingText: String,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    heading: String? = null,
+    supportingText: String? = null,
+    onClose: () -> Unit,
     imageType: AppPopupImageType? = null,
     subHeading: String? = null,
     onPrimaryAction: (() -> Unit)? = null,
@@ -68,10 +71,10 @@ fun AppPopup(
     secondaryLabel: String = "",
     content: @Composable (() -> Unit)? = null,
 ) {
-    val themeMode = LocalAppTheme.current
+    LocalAppTheme.current
     Box {
         Column(
-            modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
+            modifier = Modifier.background(MeTheme.colorScheme.primaryBackground).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Image (if any)
@@ -97,6 +100,12 @@ fun AppPopup(
                             contentDescription = null,
                         )
                     }
+
+                    is AppPopupImageType.CustomImage -> {
+                        Spacer(Modifier.height(MeTheme.spacing.lg + MeTheme.spacing.md))
+                        imgType.image()
+                    }
+
                 }
             }
 
@@ -115,8 +124,13 @@ fun AppPopup(
                         textAlign = TextAlign.Center,
                     )
                 }
-                AppText(heading, TextType.Title, textAlign = TextAlign.Center)
-                AppText(supportingText, TextType.Body, textAlign = TextAlign.Center)
+                heading?.let {
+                    AppText(heading, TextType.Title, textAlign = TextAlign.Center)
+
+                }
+                supportingText?.let {
+                    AppText(supportingText, TextType.Body, textAlign = TextAlign.Center)
+                }
 
                 content?.let {
                     content()
@@ -141,7 +155,7 @@ fun AppPopup(
             contentAlignment = Alignment.Center,
         ) {
             AppIcon(
-                id = if (themeMode == ThemeMode.LIGHT) AppIcons.Filled.Close else AppIcons.Filled.CloseDark,
+                id = AppIcons.Filled.Close,
                 contentDescription = AppPopupStrings.LogoContentDescription,
                 modifier = Modifier.align(Alignment.TopEnd),
                 type = AppIconType.Default,

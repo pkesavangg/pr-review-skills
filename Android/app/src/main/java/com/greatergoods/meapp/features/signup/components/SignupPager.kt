@@ -110,6 +110,7 @@ fun SignupPager(
                                     goalWeightControl = formControls.goalWeight,
                                     useMetricControl = formControls.useMetric,
                                     onMetricToggle = onMetricToggle,
+                                    onGoalTypeChange = {}, // Empty callback for signup flow
                                     onNext = {
                                         focusManager.clearFocus()
                                         onNext()

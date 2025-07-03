@@ -11,7 +11,7 @@ data class ScaleApiEntry(
     val water: Double?,
     val bmi: Double?,
     val source: String?,
-    val unit: String?,
+    val unit: String? = null,
     val impedance: Int? = null,
     val pulse: Int? = null,
     val visceralFatLevel: Double? = null,
@@ -19,5 +19,5 @@ data class ScaleApiEntry(
     val proteinPercent: Double? = null,
     val skeletalMusclePercent: Double? = null,
     val bmr: Double? = null,
-    val metabolicAge: Int? = null
+    val metabolicAge: Int? = null,
 )

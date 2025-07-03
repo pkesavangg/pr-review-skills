@@ -61,8 +61,17 @@ object ConversionTools {
      * @param lbs Weight in pounds
      * @return Weight in stored format
      */
-    fun convertLbsToStored(lbs: Double): Double {
-        return round((lbs * STORED_TO_LBS_FACTOR) * 10) / 10.0
+    fun convertLbsToStored(lbs: Int): Double {
+        return round(lbs * STORED_TO_LBS_FACTOR) / 10.0
+    }
+
+    /**
+     * Converts kilograms to stored weight format.
+     * @param kgs Weight in kilograms
+     * @return Weight in stored format
+     */
+    fun convertKgToStored(kgs: Int): Double {
+        return round((kgs * 2.2046) * 10) / 10.0
     }
 
     /**
@@ -83,14 +92,7 @@ object ConversionTools {
         return round((display * KG_TO_LBS_FACTOR) * 10) / 10.0 * 10
     }
 
-    /**
-     * Converts kilograms to stored weight format.
-     * @param kgs Weight in kilograms
-     * @return Weight in stored format
-     */
-    fun convertKgToStored(kgs: Double): Double {
-        return round((kgs * KG_TO_LBS_FACTOR) * 10) / 10.0
-    }
+
 
     /**
      * Converts display weight to stored format based on unit preference.
@@ -100,12 +102,12 @@ object ConversionTools {
      * @return Weight in stored format
      */
     fun convertDisplayToStored(
-        display: Double,
+        display: Int,
         forceMetric: Boolean = false,
         isMetric: Boolean = false
     ): Double {
         return if (isMetric || forceMetric) {
-            convertKgToStored(display) * 10
+            convertKgToStored(display)
         } else {
             convertLbsToStored(display)
         }
