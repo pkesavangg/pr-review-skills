@@ -135,6 +135,10 @@ constructor(
                 onGoalSettingClick()
             }
 
+            is SettingsIntent.OpenHelp -> {
+                onHelpClick()
+            }
+
             else -> {}
         }
     }
@@ -699,6 +703,7 @@ constructor(
     fun onHelpClick() {
         AppLog.d("SettingsViewModel", "Help clicked")
         // TODO: Navigate to help screen
+        navigateTo(AppRoute.AccountSettings.HelpScreen)
     }
 
     /*

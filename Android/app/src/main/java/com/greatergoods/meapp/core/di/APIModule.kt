@@ -10,6 +10,7 @@ import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
+import com.greatergoods.meapp.data.api.ISupportAPI
 import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.api.IUserSettingsAPI
 import dagger.Module
@@ -104,4 +105,10 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideScaleAPI(httpClient: HttpClient): IDeviceAPI = httpClient.createService(IDeviceAPI::class.java)
+     * Provides the ISupportAPI implementation using Retrofit.
+     * Used for sending logs and other support-related operations.
+     */
+    @Provides
+    @Singleton
+    fun provideSupportAPI(httpClient: HttpClient): ISupportAPI = httpClient.createService(ISupportAPI::class.java)
 }

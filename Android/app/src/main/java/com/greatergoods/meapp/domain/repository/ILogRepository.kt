@@ -108,4 +108,20 @@ interface ILogRepository {
      * Clear all logs from the database
      */
     suspend fun clearLogs()
+
+    /**
+     * Sends logs to support for debugging purposes.
+     * Based on Angular http.service.ts sendLog() method.
+     */
+    suspend fun sendLogs()
+
+    /**
+     * Sends logs for the current active account only.
+     */
+    suspend fun sendLogsForCurrentAccount()
+
+    /**
+     * Clears all logs for the current active account only.
+     */
+    suspend fun clearLogsForCurrentAccount()
 }

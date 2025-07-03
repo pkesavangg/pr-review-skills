@@ -9,6 +9,7 @@ import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.api.IDeviceInfoAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
+import com.greatergoods.meapp.data.api.ISupportAPI
 import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.api.IUserSettingsAPI
 import com.greatergoods.meapp.data.repository.AccountRepository
@@ -45,6 +46,7 @@ import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
+import com.greatergoods.meapp.domain.services.IAccountService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -103,7 +105,11 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideLogRepository(logDao: LogDao): ILogRepository = LogRepository(logDao)
+    fun provideLogRepository(
+        logDao: LogDao,
+        supportAPI: ISupportAPI,
+        accountService: IAccountService,
+    ): ILogRepository = LogRepository(logDao, supportAPI, accountService)
 
     @Provides
     @Singleton

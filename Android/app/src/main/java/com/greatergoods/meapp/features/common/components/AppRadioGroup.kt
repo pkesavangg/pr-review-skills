@@ -47,7 +47,7 @@ fun <T> AppRadioGroup(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
         groupLabel?.let {
             Text(

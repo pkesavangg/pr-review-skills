@@ -35,5 +35,9 @@ class HelpReducer : IReducer<HelpState, HelpIntent> {
             is HelpIntent.Error -> {
                 state.copy(isLoading = false, error = intent.message)
             }
+
+            is HelpIntent.OpenDebugMenu -> {
+                state.copy(isLoading = false, error = null)
+            }
         }
 }

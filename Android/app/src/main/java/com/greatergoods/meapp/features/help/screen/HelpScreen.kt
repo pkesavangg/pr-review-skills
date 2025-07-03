@@ -12,6 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +49,7 @@ fun HelpScreen() {
         viewModel.handleIntent(HelpIntent.OnBack)
     }
 
-    HelpContent(viewModel::handleIntent)
+    HelpContent(viewModel, viewModel::handleIntent)
 }
 
 /**
@@ -52,13 +57,31 @@ fun HelpScreen() {
  */
 @Composable
 private fun HelpContent(
+    viewModel: HelpViewModel,
     handleIntent: (HelpIntent) -> Unit
 ) {
+
+    // Debug tap tracking (like Angular tryToOpenDebugModal)
+    var debugTaps by remember { mutableIntStateOf(0) }
+    LaunchedEffect(debugTaps) {
+        if (debugTaps > 0) {
+            delay(10000)
+            debugTaps = 0
+        }
+    }
     AppScaffold(
         title = HelpScreenStrings.Title,
+        enable = true,
         navigationIcon = {
             AppIconButton(AppIcons.Default.Close) {
                 handleIntent(HelpIntent.OnBack)
+            }
+        },
+        appBarOnclick = {
+            debugTaps++
+            if (debugTaps >= 5) {
+                viewModel.onOpenDebugMenu()
+                debugTaps = 0 // Reset after opening debug menu
             }
         },
     ) { scaffoldModifier ->
@@ -159,8 +182,8 @@ private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
 @Composable
 private fun HelpScreenPreview() {
     MeAppTheme {
-        HelpContent(
-            handleIntent = {},
-        )
+        // HelpContent(
+        //     handleIntent = {},
+        // )
     }
 }

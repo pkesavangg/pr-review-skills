@@ -206,4 +206,37 @@ interface AccountDao {
     // Account Expiration Management
     @Query("UPDATE account SET isExpired = 1, isActiveAccount = 0, expiresAt = '' WHERE accountId = :accountId")
     suspend fun markAccountExpired(accountId: String)
+
+    @Query("DELETE FROM weight_comp_settings  WHERE accountId = :accountId")
+    suspend fun deleteWeightCompSettingsByAccount(accountId: String)
+
+    @Query("DELETE FROM goal_settings WHERE accountId = :accountId")
+    suspend fun deleteGoalSettingsByAccount(accountId: String)
+
+    @Query("DELETE FROM streaks_settings WHERE accountId = :accountId")
+    suspend fun deleteStreaksSettingsByAccount(accountId: String)
+
+    @Query("DELETE FROM weightless_settings  WHERE accountId = :accountId")
+    suspend fun deleteWeightlessSettingsByAccount(accountId: String)
+
+    @Query("DELETE FROM notification_settings WHERE accountId = :accountId")
+    suspend fun deleteNotificationSettingsByAccount(accountId: String)
+
+    @Query("DELETE FROM dashboard_settings   WHERE accountId = :accountId")
+    suspend fun deleteDashboardSettingsByAccount(accountId: String)
+
+    @Query("DELETE FROM integrations_settings WHERE accountId = :accountId")
+    suspend fun deleteIntegrationsSettingsByAccount(accountId: String)
+
+    @Transaction
+    suspend fun deleteAllTables(accountId: String) {
+        deleteWeightCompSettingsByAccount(accountId)
+        deleteGoalSettingsByAccount(accountId)
+        deleteStreaksSettingsByAccount(accountId)
+        deleteWeightlessSettingsByAccount(accountId)
+        deleteNotificationSettingsByAccount(accountId)
+        deleteDashboardSettingsByAccount(accountId)
+        deleteIntegrationsSettingsByAccount(accountId)
+        deleteAccountById(accountId)
+    }
 }
