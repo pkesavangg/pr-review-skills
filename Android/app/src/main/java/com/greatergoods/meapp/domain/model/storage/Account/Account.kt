@@ -20,20 +20,24 @@ data class Account(
     val isSynced: Boolean = false,
     val lastActiveTime: String? = null,
     val zipcode: String,
-
     // Add other settings as needed, or use separate domain models
-    val weightUnit: WeightUnit?,
+    val weightUnit: WeightUnit,
     val isWeightlessOn: Boolean? = false,
     val height: Int?,
     val activityLevel: String?,
-    val weightlessTimestamp: String? = null,   // nullable
-    val weightlessWeight: Float? = null,       // nullable
-    val isStreakOn: Boolean? =  false,
-    val streakTimestamp: String? = null,       // nullable
+    val weightlessTimestamp: String? = null, // nullable
+    val weightlessWeight: Float? = null, // nullable
+    val isStreakOn: Boolean? = false,
+    val streakTimestamp: String? = null, // nullable
     val dashboardType: String? = "Dashboard_4_metrics",
     val dashboardMetrics: List<String>? = emptyList(),
-
     // Notification settings
-    val entryNotificationsEnabled: Boolean? = false,
-    val showWeightInNotifications: Boolean? = false
+    val shouldSendEntryNotifications: Boolean? = false,
+    val shouldSendWeightInEntryNotifications: Boolean? = false,
+    // Goal settings
+    val goalType: String? = null, // 'lose', 'gain', 'maintain'
+    val goalWeight: Double? = null, // target weight
+    val initialWeight: Double = 0.0, // initial weight when goal was set
+    val metPreviousGoal: Boolean? = null, // whether previous goal was met
+    val goalPercent: Double = 0.0, // calculated goal completion percentage
 )

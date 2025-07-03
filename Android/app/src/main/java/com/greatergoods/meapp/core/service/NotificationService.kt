@@ -48,8 +48,8 @@ class NotificationService @Inject constructor(
                 val response = notificationRepository.updateNotificationSettingsInAPI(notificationSettings)
                 val notificationEntity = NotificationSettingsEntity(
                     accountId = response.account.id,
-                    entryNotificationsEnabled = response.account.shouldSendEntryNotifications,
-                    showWeightInNotifications = response.account.shouldSendWeightInEntryNotifications,
+                    shouldSendEntryNotifications = response.account.shouldSendEntryNotifications,
+                    shouldSendWeightInEntryNotifications = response.account.shouldSendWeightInEntryNotifications,
                     isSynced = true
                 )
                 val updatedAccount = notificationRepository.updateNotificationSettingsInDB(activeAccount.id, notificationEntity)
@@ -58,8 +58,8 @@ class NotificationService @Inject constructor(
                 // Offline: Save to DB with isSynced = false for later sync
                 val notificationEntity = NotificationSettingsEntity(
                     accountId = activeAccount.id,
-                    entryNotificationsEnabled = notificationSettings.shouldSendEntryNotifications,
-                    showWeightInNotifications = notificationSettings.shouldSendWeightInEntryNotifications,
+                    shouldSendEntryNotifications = notificationSettings.shouldSendEntryNotifications,
+                    shouldSendWeightInEntryNotifications = notificationSettings.shouldSendWeightInEntryNotifications,
                     isSynced = false
                 )
                 val updatedAccount = notificationRepository.updateNotificationSettingsInDB(activeAccount.id, notificationEntity)

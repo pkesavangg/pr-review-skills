@@ -29,6 +29,9 @@ enum class TextType {
     Body,
     Link,
     SubHeading,
+    ListTitle1,
+    ListTitle2,
+    ListSubtitle,
 }
 
 object TextTypeDefaults {
@@ -64,8 +67,25 @@ object TextTypeDefaults {
             TextType.SubHeading ->
                 TextAppearance(
                     style = typography.body3,
-                    color = MeTheme.colorScheme.textSubheading,
+                    color = colorScheme.textSubheading,
                 )
+
+            TextType.ListTitle1 -> TextAppearance(
+                style = typography.heading5,
+                color = colorScheme.textHeading,
+            )
+
+            TextType.ListTitle2 -> TextAppearance(
+                style = typography.heading4,
+                color = colorScheme.textHeading,
+            )
+
+            TextType.ListSubtitle -> TextAppearance(
+                style = typography.subHeading2,
+                color = colorScheme.textSubheading,
+            )
+
+
         }
     }
 }

@@ -5,9 +5,9 @@ import SwiftUI
 @MainActor
 class PermissionsViewModel: ObservableObject {
     // MARK: Published Permission Flags
-    @Published var bluetoothAuthorized: Bool = true
-    @Published var bluetoothPoweredOn: Bool = true
-    @Published var locationServicesEnabled: Bool = true
+    @Published var bluetoothAuthorized: Bool = false
+    @Published var bluetoothPoweredOn: Bool = false
+    @Published var locationServicesEnabled: Bool = false
     @Published var locationAuthorized: Bool = false
     @Published var cameraAuthorized: Bool = true
     @Published var notificationsEnabled: Bool = true

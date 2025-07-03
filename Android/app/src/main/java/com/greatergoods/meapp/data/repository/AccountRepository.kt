@@ -1,12 +1,14 @@
 package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.core.network.ITokenManager
+import com.greatergoods.meapp.core.network.utility.HttpErrorResponse
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IUserAPI
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
+import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
@@ -21,14 +23,16 @@ import com.greatergoods.meapp.domain.model.api.auth.PasswordResetRequest
 import com.greatergoods.meapp.domain.model.api.auth.RefreshTokenRequest
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
+import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -59,30 +63,17 @@ class AccountRepository
         override suspend fun login(
             email: String,
             password: String,
-        ): LoginResponse = authAPI.login(LoginRequest(email, password))
+        ): Account {
+            val loginResponse = authAPI.login(LoginRequest(email, password))
+            return addAccountFromLoginResponse(loginResponse)
+        }
 
         /**
          * Signs up via API and returns LoginResponse.
          */
-        override suspend fun signup(request: SignupRequest): LoginResponse = authAPI.createAccount(request)
-
-        /**
-         * Logs out via API for a specific account.
-         * @param fcmToken Optional FCM token to unregister
-         * @param accountId The account ID to logout
-         */
-        override suspend fun logout(
-            fcmToken: String?,
-            accountId: String,
-        ) {
-            authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
-        }
-
-        /**
-         * Logs out in the database by updating the account status.
-         */
-        override suspend fun logOutInDb(accountId: String) {
-            accountDao.logoutAccount(accountId)
+        override suspend fun signup(request: SignupRequest): Account {
+            val loginResponse = authAPI.createAccount(request)
+            return addAccountFromLoginResponse(loginResponse)
         }
 
         /**
@@ -96,11 +87,20 @@ class AccountRepository
          * Updates password via API and returns true if successful.
          */
         override suspend fun updatePassword(
+            accountId: String,
             oldPassword: String,
             newPassword: String,
         ): ChangePasswordResponse {
             val request = ChangePasswordRequest(oldPassword, newPassword)
             val response = userAPI.changePassword(request)
+            setTokensForAccount(
+                Token(
+                    accountId = accountId,
+                    accessToken = response.accessToken,
+                    refreshToken = response.refreshToken,
+                    expiresAt = response.expiresAt,
+                ),
+            )
             return response
         }
 
@@ -116,25 +116,45 @@ class AccountRepository
          * @return The updated account from the database
          */
         override suspend fun updateProfile(profileData: ProfileUpdateRequest): Account {
-            // Call API to update profile
-            val response = userAPI.updateProfile(profileData)
-            val updatedAccountInfo = response.account
+            try {
+                // Call API to update profile
+                val response = userAPI.updateProfile(profileData)
+                val updatedAccountInfo = response.account
 
-            // Update the account in the DB with the new info
-            val updatedAccount = updateAccountInDB(
-                updatedAccountInfo.id,
-                PartialAccount(
-                    firstName = updatedAccountInfo.firstName,
-                    lastName = updatedAccountInfo.lastName,
-                    dob = updatedAccountInfo.dob,
-                    gender = updatedAccountInfo.gender,
-                    zipcode = updatedAccountInfo.zipcode,
-                    email = updatedAccountInfo.email,
-                    isActiveAccount = true,
-                    isSynced = true
-                )
-            )
-            return updatedAccount
+                // Update the account in the DB with the new info
+                val updatedAccount =
+                    updateAccount(
+                        updatedAccountInfo.id,
+                        PartialAccount(
+                            firstName = updatedAccountInfo.firstName,
+                            lastName = updatedAccountInfo.lastName,
+                            dob = updatedAccountInfo.dob,
+                            gender = updatedAccountInfo.gender,
+                            zipcode = updatedAccountInfo.zipcode,
+                            email = updatedAccountInfo.email,
+                            isActiveAccount = true,
+                            isSynced = true,
+                        ),
+                    )
+                return updatedAccount
+            } catch (e: HttpException) {
+                if (HttpErrorResponse.isNetworkError(e.code())) {
+                    updateAccount(
+                        profileData.id,
+                        PartialAccount(
+                            firstName = profileData.firstName,
+                            lastName = profileData.lastName,
+                            dob = profileData.dob,
+                            gender = profileData.gender,
+                            zipcode = profileData.zipcode,
+                            email = profileData.email,
+                            isActiveAccount = true,
+                            isSynced = false,
+                        ),
+                    )
+                }
+                throw e
+            }
         }
 
         // DB Operations
@@ -143,7 +163,7 @@ class AccountRepository
          * Adds an account to the database with all entity relations and returns the domain model.
          * Inserts the main account entity and all related settings entities.
          */
-        override suspend fun addAccountInDB(account: Account): Account {
+        override suspend fun addAccount(account: Account): Account {
             val accountEntity = AccountEntityMapper.toEntity(account)
             accountDao.insertAccount(accountEntity)
 
@@ -153,7 +173,7 @@ class AccountRepository
                     accountId = account.id,
                     height = account.height ?: 1700, // Default height if not set
                     activityLevel = account.activityLevel ?: "normal", // Default activity level
-                    weightUnit = account.weightUnit?.value ?: "lb", // Default weight unit
+                    weightUnit = account.weightUnit.value, // Default weight unit
                     isSynced = true, // New account data is already synced
                 )
             accountDao.insertWeightCompSettings(weightCompSettings)
@@ -162,8 +182,8 @@ class AccountRepository
                 NotificationSettingsEntity(
                     accountId = account.id,
                     isSynced = true,
-                    showWeightInNotifications = account.showWeightInNotifications ?: false,
-                    entryNotificationsEnabled = account.entryNotificationsEnabled ?: false,
+                    shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
+                    shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
                 )
             accountDao.insertNotificationSettings(notificationCompSettings)
 
@@ -187,7 +207,16 @@ class AccountRepository
                     isSynced = true,
                 )
             accountDao.insertWeightlessSettings(weightlessSettings)
-
+            val goalEntity =
+                GoalSettingsEntity(
+                    accountId = account.id,
+                    goalType = account.goalType ?: "maintain",
+                    weight = account.initialWeight.toFloat(),
+                    goalWeight = account.goalWeight.toString(),
+                    goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
+                    isSynced = true,
+                )
+            accountDao.insertGoalSettings(goalEntity)
             AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
             return account
         }
@@ -199,7 +228,7 @@ class AccountRepository
          * @param partialUpdate Partial account data to update
          * @return The updated account
          */
-        override suspend fun updateAccountInDB(
+        override suspend fun updateAccount(
             accountId: String,
             partialUpdate: PartialAccount,
         ): Account {
@@ -230,44 +259,10 @@ class AccountRepository
             return AccountEntityMapper.toDomain(updatedAccountEntity)
         }
 
-        override suspend fun logoutInDb(accountId: String) {
-            accountDao.logoutAccount(accountId)
-        }
-
-        override suspend fun logoutAllAccountsInDb() {
-            accountDao.logoutAllAccounts()
-        }
-
-        /**
-         * Removes an account from the database by ID.
-         */
-        override suspend fun removeAccountInDB(accountId: String) {
-            accountDao.deleteAccountById(accountId)
-            // Also clear tokens from TokenManager if this was the active account
-            val activeAccountId =
-                userDataStore
-                    .getData()
-                    .accountsMap.entries
-                    .firstOrNull { it.value.isActive }
-                    ?.key
-            if (accountId == activeAccountId) {
-                tokenManager.clearTokens()
-            }
-            userDataStore.removeAccount(accountId)
-        }
-
-        /**
-         * Removes all accounts from the database.
-         */
-        override suspend fun removeAllAccountsInDB() {
-            accountDao.removeAllAccounts()
-            tokenManager.clearTokens()
-        }
-
         /**
          * Gets the stored active account from the database as a Flow.
          */
-        override fun getStoredActiveAccountFromDB(): Flow<Account?> =
+        override fun getActiveAccount(): Flow<Account?> =
             accountDao.getActiveAccount().map {
                 it?.toDomainAccount()
             }
@@ -275,25 +270,21 @@ class AccountRepository
         /**
          * Deactivates all accounts except the given account ID.
          */
-        override suspend fun deactivateOtherAccountsInDB(accountId: String) {
+        override suspend fun deactivateOtherAccounts(accountId: String) {
             accountDao.deactivateOtherAccounts(accountId)
-        }
-
-        override suspend fun deactivateAllAccountsInDB() {
-            accountDao.deactivateAllAccounts()
         }
 
         /**
          * Activates the specified account by setting it as the active account.
          */
-        override suspend fun activateAccountInDB(accountId: String) {
+        override suspend fun activateAccount(accountId: String) {
             accountDao.activateAccount(accountId)
         }
 
         /**
          * Gets all logged-in accounts from the database as a Flow.
          */
-        override fun getLoggedInAccountsFromDB(): Flow<List<Account>> =
+        override fun getLoggedInAccounts(): Flow<List<Account>> =
             accountDao.getAllLoggedInAccounts().map { accounts ->
                 accounts.map { it.toDomainAccount() }
             }
@@ -301,13 +292,13 @@ class AccountRepository
         /**
          * Updates tokens for the active account in the TokenManager.
          */
-        override suspend fun updateTokensInDB(tokens: Map<String, String>) {
+        override suspend fun updateTokens(request: AccountToken) {
             tokenManager.setTokens(
                 Token(
-                    accountId = tokens["accountId"] ?: "",
-                    accessToken = tokens["accessToken"],
-                    refreshToken = tokens["refreshToken"],
-                    expiresAt = tokens["expiresAt"],
+                    accountId = request.accountId,
+                    accessToken = request.accessToken,
+                    refreshToken = request.refreshToken,
+                    expiresAt = request.expiresAt,
                 ),
             )
         }
@@ -336,7 +327,7 @@ class AccountRepository
         /**
          * Updates the last active time for the account in the database.
          */
-        override suspend fun updateLastActiveTimeInDB(accountId: String) {
+        override suspend fun updateLastActiveTime(accountId: String) {
             val timestamp = System.currentTimeMillis().toString()
             accountDao.updateLastActiveTime(accountId, timestamp)
             AppLog.d(TAG, "Updated last active time for account: $accountId")
@@ -397,8 +388,195 @@ class AccountRepository
          * Used by offline handler service to sync pending changes.
          * @return List of accounts that need to be synced
          */
-        override suspend fun getUnsyncedAccountsFromDB(): List<Account> =
+        override suspend fun getUnsyncedAccounts(): List<Account> =
             accountDao.getUnsyncedAccounts().first().map { accountEntity ->
                 AccountEntityMapper.toDomain(accountEntity)
             }
+
+        /**
+         * Logs out the account both remotely (API) and locally (DB, tokens).
+         * @param accountId The ID of the account to log out
+         * @param fcmToken The FCM token for push notifications (optional)
+         * @param isActiveAccount Whether this is the active account
+         * @return true if logout was successful, false otherwise
+         */
+        override suspend fun logoutAccount(
+            accountId: String,
+            fcmToken: String?,
+            isActiveAccount: Boolean,
+        ): Boolean =
+            try {
+                // Try to logout on API if network is available
+                var apiLogoutAttempted = false
+                try {
+                    // Assume network is available if API call does not throw
+                    authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
+                    apiLogoutAttempted = true
+                } catch (e: Exception) {
+                    AppLog.e(TAG, "API logout failed", e.toString())
+                    // Continue with local logout even if API fails
+                }
+                // Always perform local logout regardless of network status
+                if (isActiveAccount) {
+                    accountDao.deactivateAllAccounts()
+                }
+                // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
+                accountDao.logoutAccount(accountId)
+                // Clear tokens from DataStore and TokenManager
+                userDataStore.clearAccountTokens(accountId)
+                tokenManager.clearTokens()
+                AppLog.d(TAG, "Logout successful (API attempted: $apiLogoutAttempted)")
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "LogoutAccount failed", e.toString())
+                false
+            }
+
+        /**
+         * Logs out all accounts both remotely (API) and locally (DB, tokens).
+         * @return true if all accounts were logged out successfully, false otherwise
+         */
+        override suspend fun logoutAllAccounts(): Boolean =
+            try {
+                // Get all logged-in accounts
+                val loggedInAccounts = accountDao.getAllLoggedInAccounts().first()
+                // Sort accounts to handle active account last
+                val sortedAccounts = loggedInAccounts.sortedWith(compareByDescending { it.account.isActiveAccount })
+                for (accountData in sortedAccounts) {
+                    val account = accountData.account
+                    try {
+                        // Try to logout on API
+                        authAPI.logoutWithToken(LogoutRequest(account.fcmToken ?: ""), account.id)
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "API logout failed for account ${account.id}", e.toString())
+                        // Continue with local logout even if API fails
+                    }
+                }
+                // Clear all accounts from database
+                accountDao.logoutAllAccounts()
+                // Clear tokens
+                tokenManager.clearTokens()
+                AppLog.d(TAG, "All accounts logged out successfully")
+                true
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Logout all failed", e.toString())
+                false
+            }
+
+        /**
+         * Adds a new account from a LoginResponse, sets it as active, and updates tokens.
+         * @param loginResponse The login response containing account and token info
+         * @return The saved Account
+         */
+        override suspend fun addAccountFromLoginResponse(loginResponse: LoginResponse): Account {
+            val account = addAccountFromResponse(loginResponse)
+            setActiveAccountAndTokens(
+                account.id,
+                Token(
+                    accountId = account.id,
+                    isActive = true,
+                    accessToken = loginResponse.accessToken,
+                    refreshToken = loginResponse.refreshToken,
+                    expiresAt = loginResponse.expiresAt,
+                ),
+            )
+            return account
+        }
+
+        /**
+         * Updates the user's tokens for the given account ID.
+         * @param accountId The account ID to update tokens for
+         */
+        override suspend fun updateUserTokens(accountId: String) {
+            // Update tokens in TokenManager for the switched account
+            val currentTokens = userDataStore.getData().accounts[accountId]
+            setActiveAccountAndTokens(
+                accountId,
+                currentTokens?.let {
+                    Token(
+                        accountId = accountId,
+                        isActive = true,
+                        accessToken = it.accessToken,
+                        refreshToken = it.refreshToken,
+                        expiresAt = it.expiresAt,
+                    )
+                },
+            )
+        }
+
+        /**
+         * Clears the tokens for the given account ID.
+         */
+        override suspend fun clearAccountTokens(accountId: String) {
+            userDataStore.clearAccountTokens(accountId)
+        }
+
+        /**
+         * Removes the account with the given ID from the database.
+         */
+        override suspend fun removeAccount(accountId: String) {
+            userDataStore.clearAccountTokens(accountId)
+        }
+
+        /**
+         * Private helper to add an account from LoginResponse.account.
+         */
+        private suspend fun addAccountFromResponse(loginResponse: LoginResponse): Account {
+            val account = loginResponse.account
+            val userAccount =
+                Account(
+                    id = account.id,
+                    firstName = account.firstName,
+                    lastName = account.lastName,
+                    dob = account.dob,
+                    email = account.email,
+                    expiresAt = loginResponse.expiresAt,
+                    fcmToken = null,
+                    gender = account.gender,
+                    isActiveAccount = true,
+                    isLoggedIn = true,
+                    isExpired = false,
+                    isSynced = false,
+                    lastActiveTime = System.currentTimeMillis().toString(),
+                    zipcode = account.zipcode,
+                    weightUnit = WeightUnit.from(account.weightUnit),
+                    isWeightlessOn = account.isWeightlessOn,
+                    height = account.height,
+                    activityLevel = account.activityLevel,
+                    weightlessTimestamp = account.weightlessTimestamp,
+                    weightlessWeight = account.weightlessWeight,
+                    isStreakOn = account.isStreakOn,
+                    dashboardType = account.dashboardType,
+                    dashboardMetrics = account.dashboardMetrics,
+                )
+            return addAccount(userAccount)
+        }
+
+        /**
+         * Helper to activate an account, set it as active in DB, update tokens, and set as active in UserDataStore and TokenManager.
+         * @param accountId The account ID to activate
+         * @param tokens The tokens to set as active (if not null)
+         */
+        private suspend fun setActiveAccountAndTokens(
+            accountId: String,
+            tokens: Token?,
+        ) {
+            activateAccount(accountId)
+            deactivateOtherAccounts(accountId)
+            userDataStore.setActiveAccount(accountId)
+            updateLastActiveTime(accountId)
+            setTokensForAccount(tokens)
+        }
+
+        /**
+         * Helper to set tokens for a non-active account (used for background API calls).
+         // * @param accountId The account ID
+         * @param tokens The tokens to set (if not null)
+         */
+        private suspend fun setTokensForAccount(
+            // accountId: String,
+            tokens: Token?,
+        ) {
+            tokens?.let { tokenManager.setTokens(it) }
+        }
     }

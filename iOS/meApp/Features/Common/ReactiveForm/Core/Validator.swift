@@ -121,6 +121,11 @@ extension Validator where Value == String {
             return weight < maximum
         }
     }
+    
+    /// Validator that requires the control's value to match a known scale SKU.
+    public static let skuMatch = Validator(type: .skuMatch) { value in
+        SCALES.contains { $0.sku == value }
+    }
 }
 
 // MARK: - Integer Validators

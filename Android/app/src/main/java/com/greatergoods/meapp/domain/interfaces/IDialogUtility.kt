@@ -19,4 +19,8 @@ interface IDialogUtility {
         username: String,
         onDismiss: (() -> Unit)? = null
     )
+
+    fun showModelNumberHelpDialog(
+        onDismiss: (() -> Unit)? = null
+    )
 }
