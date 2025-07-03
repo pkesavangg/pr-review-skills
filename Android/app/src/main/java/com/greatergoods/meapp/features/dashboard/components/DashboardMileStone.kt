@@ -32,12 +32,10 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,32 +74,43 @@ fun DashboardMilestone(
     currentWeight: String,
     inEditMode: Boolean = false,
     visibleKeys: List<DashboardKey> = listOf(),
-    onMilestonesChanged: (List<Stat>) -> Unit = { },
+    onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
     modifier: Modifier = Modifier
 ) {
-    val milestoneState = rememberMilestoneState(
-        visibleKeys = visibleKeys,
-        inEditMode = inEditMode,
-    )
+    var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
 
-    // Notify parent when visible milestones change
-    LaunchedEffect(milestoneState.visibleMilestones) {
-        onMilestonesChanged(milestoneState.visibleMilestones)
+    val milestoneKeys = localVisibleKeys.mapNotNull { key ->
+        when (key) {
+            is DashboardKey.Milestone -> key.key
+            is DashboardKey.Metric -> null
+        }
+    }
+    val visibleMilestones = StatHelper.getMilestone(
+        visibleKeys = milestoneKeys,
+        filterNulls = false,
+    )
+    val allMilestones = StatHelper.getMilestone(visibleKeys = null, filterNulls = false)
+    val hiddenMilestones = allMilestones.filter { it !in visibleMilestones }
+
+    val onMilestoneMoved = { fromVisible: Boolean, toVisible: Boolean, milestone: Stat ->
+        val milestoneKey = milestone.key
+        if (fromVisible && !toVisible) {
+            val newKeys = localVisibleKeys.filterNot { it == milestoneKey }
+            localVisibleKeys = newKeys
+            onMilestonesChanged(newKeys)
+        } else if (!fromVisible && toVisible) {
+            val newKeys = localVisibleKeys + milestoneKey
+            localVisibleKeys = newKeys
+            onMilestonesChanged(newKeys)
+        }
     }
 
     Column(modifier = modifier) {
-        // Milestones grid
         DashboardMilestoneGrid(
-            visibleMilestones = milestoneState.visibleMilestones,
-            hiddenMilestones = milestoneState.hiddenMilestones,
+            visibleMilestones = visibleMilestones,
+            hiddenMilestones = hiddenMilestones,
             inEditMode = inEditMode,
-            onMilestoneMoved = { fromVisible, toVisible, milestone ->
-                if (fromVisible && !toVisible) {
-                    milestoneState.moveToHidden(milestone)
-                } else if (!fromVisible && toVisible) {
-                    milestoneState.moveToVisible(milestone)
-                }
-            },
+            onMilestoneMoved = onMilestoneMoved,
             startWeight = startWeight,
             goalWeight = goalWeight,
             currentWeight = currentWeight,
@@ -110,59 +119,6 @@ fun DashboardMilestone(
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 }
-
-/**
- * Internal state management for dashboard milestones.
- */
-@Composable
-private fun rememberMilestoneState(
-    visibleKeys: List<DashboardKey>,
-    inEditMode: Boolean
-): MilestoneState {
-    val milestoneKeys = visibleKeys.mapNotNull { key ->
-        when (key) {
-            is DashboardKey.Milestone -> key.key
-            is DashboardKey.Metric -> null
-        }
-    }
-
-    val initialVisibleMilestones = StatHelper.getMilestone(
-        visibleKeys = milestoneKeys,
-        useShort = true,
-        filterNulls = false,
-    )
-
-    val allMilestones = StatHelper.getMilestone(visibleKeys = null, useShort = true, filterNulls = false)
-    val initialHiddenMilestones = allMilestones.filter { it !in initialVisibleMilestones }
-
-    var visibleMilestones by remember(initialVisibleMilestones) { mutableStateOf(initialVisibleMilestones) }
-    var hiddenMilestones by remember(initialHiddenMilestones) { mutableStateOf(initialHiddenMilestones) }
-
-    return remember(visibleMilestones, hiddenMilestones) {
-        MilestoneState(
-            visibleMilestones = visibleMilestones,
-            hiddenMilestones = hiddenMilestones,
-            moveToHidden = { milestone ->
-                visibleMilestones = visibleMilestones.toMutableList().apply { remove(milestone) }
-                hiddenMilestones = hiddenMilestones.toMutableList().apply { add(milestone) }
-            },
-            moveToVisible = { milestone ->
-                hiddenMilestones = hiddenMilestones.toMutableList().apply { remove(milestone) }
-                visibleMilestones = visibleMilestones.toMutableList().apply { add(milestone) }
-            },
-        )
-    }
-}
-
-/**
- * Data class to hold milestone state and operations.
- */
-private data class MilestoneState(
-    val visibleMilestones: List<Stat>,
-    val hiddenMilestones: List<Stat>,
-    val moveToHidden: (Stat) -> Unit,
-    val moveToVisible: (Stat) -> Unit
-)
 
 /**
  * Grid layout for displaying dashboard milestones.

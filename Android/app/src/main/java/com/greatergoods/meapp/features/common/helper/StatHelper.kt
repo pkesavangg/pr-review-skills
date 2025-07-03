@@ -216,12 +216,10 @@ internal object StatMeta {
         MilestoneKey.CURRENT_STREAK to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.CurrentStreak },
             icon = AppIcons.Milestone.Bolt,
-            unit = "day",
         ),
         MilestoneKey.LONGEST_STREAK to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LongestStreak },
             icon = AppIcons.Milestone.Streak,
-            unit = "day",
         ),
         MilestoneKey.PER_WEEK to StatMeta(
             labelProvider = { _ -> DashboardString.MileStone.LbsPerWeek },

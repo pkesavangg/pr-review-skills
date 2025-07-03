@@ -6,13 +6,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,98 +43,56 @@ fun DashboardMetrics(
     visibleKeys: List<DashboardKey> = listOf(),
     selectedStat: Stat? = null,
     onMetricClick: (Stat?) -> Unit,
-    onMetricsChanged: (List<Stat>) -> Unit = { }
+    onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
-    val metricsState = rememberMetricsState(
-        metricData = metricData,
-        visibleKeys = visibleKeys,
-        inEditMode = inEditMode,
-    )
+    var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
 
-    // Notify parent when visible metrics change
-    LaunchedEffect(metricsState.visibleMetrics) {
-        onMetricsChanged(metricsState.visibleMetrics)
-    }
-
-    DashboardMetricsGrid(
-        visibleMetrics = metricsState.visibleMetrics,
-        hiddenMetrics = metricsState.hiddenMetrics,
-        inEditMode = inEditMode,
-        selectedStat = selectedStat,
-        onMetricClick = onMetricClick,
-        onMetricMoved = { fromVisible, toVisible, metric ->
-            if (fromVisible && !toVisible) {
-                metricsState.moveToHidden(metric)
-            } else if (!fromVisible && toVisible) {
-                metricsState.moveToVisible(metric)
-            }
-        },
-    )
-
-    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-}
-
-/**
- * Internal state management for dashboard metrics.
- */
-@Composable
-private fun rememberMetricsState(
-    metricData: List<PeriodBodyScaleSummary>,
-    visibleKeys: List<DashboardKey>,
-    inEditMode: Boolean
-): MetricsState {
     val latestSummary = averageSummary(metricData)
     val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
-
-    val metricKeys = visibleKeys.mapNotNull { key ->
+    val metricKeys = localVisibleKeys.mapNotNull { key ->
         when (key) {
             is DashboardKey.Metric -> key.key
             is DashboardKey.Milestone -> null
         }
     }
-
-    val initialVisibleMetrics = StatHelper.getMetrics(
+    val visibleMetrics = StatHelper.getMetrics(
         dashboardMetric,
         visibleKeys = metricKeys,
         useShort = true,
         filterNulls = false,
     )
-
-    val initialHiddenMetrics = StatHelper.getMetrics(
+    val allMetrics = StatHelper.getMetrics(
         dashboardMetric,
         visibleKeys = null,
         useShort = true,
         filterNulls = true,
-    ).filter { it !in initialVisibleMetrics }
+    )
+    val hiddenMetrics = allMetrics.filter { it !in visibleMetrics }
 
-    var visibleMetrics by remember(initialVisibleMetrics) { mutableStateOf(initialVisibleMetrics) }
-    var hiddenMetrics by remember(initialHiddenMetrics) { mutableStateOf(initialHiddenMetrics) }
-
-    return remember(visibleMetrics, hiddenMetrics) {
-        MetricsState(
-            visibleMetrics = visibleMetrics,
-            hiddenMetrics = hiddenMetrics,
-            moveToHidden = { metric ->
-                visibleMetrics = visibleMetrics.toMutableList().apply { remove(metric) }
-                hiddenMetrics = hiddenMetrics.toMutableList().apply { add(metric) }
-            },
-            moveToVisible = { metric ->
-                hiddenMetrics = hiddenMetrics.toMutableList().apply { remove(metric) }
-                visibleMetrics = visibleMetrics.toMutableList().apply { add(metric) }
-            },
-        )
+    val onMetricMoved = { fromVisible: Boolean, toVisible: Boolean, metric: Stat ->
+        val metricKey = metric.key
+        if (fromVisible && !toVisible) {
+            val newKeys = localVisibleKeys.filterNot { it == metricKey }
+            localVisibleKeys = newKeys
+            onMetricsChanged(newKeys)
+        } else if (!fromVisible && toVisible) {
+            val newKeys = localVisibleKeys + metricKey
+            localVisibleKeys = newKeys
+            onMetricsChanged(newKeys)
+        }
     }
-}
 
-/**
- * Data class to hold metrics state and operations.
- */
-private data class MetricsState(
-    val visibleMetrics: List<Stat>,
-    val hiddenMetrics: List<Stat>,
-    val moveToHidden: (Stat) -> Unit,
-    val moveToVisible: (Stat) -> Unit
-)
+    DashboardMetricsGrid(
+        visibleMetrics = visibleMetrics,
+        hiddenMetrics = hiddenMetrics,
+        inEditMode = inEditMode,
+        selectedStat = selectedStat,
+        onMetricClick = onMetricClick,
+        onMetricMoved = onMetricMoved,
+    )
+
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+}
 
 /**
  * Grid layout for displaying dashboard metrics.
@@ -194,18 +149,6 @@ private fun DashboardMetricsGrid(
                     onBadgeClick = {
                         onMetricMoved(false, true, metric)
                     },
-                )
-            }
-        }
-
-        // Divider if total visible items are odd
-        val totalVisibleItems = visibleMetrics.size + if (inEditMode) hiddenMetrics.size else 0
-        if (totalVisibleItems % 2 != 0) {
-            item {
-                HorizontalDivider(
-                    thickness = 0.5.dp,
-                    color = MeTheme.colorScheme.utility,
-                    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
                 )
             }
         }
