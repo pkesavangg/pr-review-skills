@@ -67,11 +67,12 @@ object RepositoryModule {
     fun provideAccountRepository(
         accountDao: AccountDao,
         userDataStore: UserDataStore,
+        dashboardKeysDatastore: DashboardKeysDatastore,
         tokenManager: ITokenManager,
         authAPI: IAuthAPI,
         userAPI: IUserAPI,
     ): IAccountRepository =
-        AccountRepository(accountDao, userDataStore, tokenManager, authAPI, userAPI)
+        AccountRepository(accountDao, userDataStore, dashboardKeysDatastore, tokenManager, authAPI, userAPI)
 
     @Provides
     @Singleton
