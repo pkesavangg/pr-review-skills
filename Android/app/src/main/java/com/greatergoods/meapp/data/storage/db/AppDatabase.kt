@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.greatergoods.meapp.data.storage.db.converter.DateConverter
 import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
+import com.greatergoods.meapp.data.storage.db.converter.WeightUnitConverter
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.data.storage.db.dao.EntryDao
@@ -59,13 +60,14 @@ import android.content.Context
     version = 4,
     exportSchema = false,
 )
-@TypeConverters(DateConverter::class, JsonConverter::class)
+@TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
 
     abstract fun deviceDao(): DeviceDao
 
     abstract fun entryDao(): EntryDao
+
     abstract fun logDao(): LogDao
 
     companion object {

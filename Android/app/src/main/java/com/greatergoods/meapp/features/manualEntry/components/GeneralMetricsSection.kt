@@ -10,7 +10,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
-import com.greatergoods.meapp.domain.model.common.DashboardType
+import com.greatergoods.meapp.domain.enums.DashboardType
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
@@ -29,7 +29,7 @@ import com.greatergoods.meapp.theme.MeTheme
  */
 @Composable
 fun GeneralMetricsSection(
-    controls: GeneralMetricsFormControls, 
+    controls: GeneralMetricsFormControls,
     isDashboardType: DashboardType,
     nextFocusRequester: FocusRequester? = null,
     onImeAction: (() -> Unit)? = null,
@@ -47,9 +47,10 @@ fun GeneralMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bodyFatFocusRequester,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(bmiFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(bmiFocusRequester),
         )
         AppInput(
             formControl = controls.bodyFat,
@@ -57,9 +58,10 @@ fun GeneralMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = muscleMassFocusRequester,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(bodyFatFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(bodyFatFocusRequester),
         )
         AppInput(
             formControl = controls.muscleMass,
@@ -67,9 +69,10 @@ fun GeneralMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bodyWaterFocusRequester,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(muscleMassFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(muscleMassFocusRequester),
         )
         AppInput(
             formControl = controls.bodyWater,
@@ -78,9 +81,10 @@ fun GeneralMetricsSection(
             imeAction = if (isLastSection) ImeAction.Done else ImeAction.Next,
             nextFocusRequester = if (!isLastSection) nextFocusRequester else null,
             onImeAction = if (isLastSection) onImeAction else null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(bodyWaterFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(bodyWaterFocusRequester),
         )
     }
 }
@@ -97,9 +101,9 @@ private fun GeneralMetricsSectionPreview() {
                 bodyWater = FormControl.create("", emptyList()),
             )
         GeneralMetricsSection(
-            controls, 
+            controls,
             DashboardType.DASHBOARD_12_METRICS,
-            onImeAction = {}
+            onImeAction = {},
         )
     }
 }

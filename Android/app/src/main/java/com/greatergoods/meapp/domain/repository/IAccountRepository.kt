@@ -89,6 +89,15 @@ interface IAccountRepository {
     suspend fun updateAccount(accountId: String, partialUpdate: PartialAccount): Account
 
     /**
+     * Updates account info by ID using the provided account entity.
+     * This method is used for updating account data from API responses.
+     * @param accountId The ID of the account to update
+     * @param accountInfo The account info from API response
+     * @return The updated Account
+     */
+    suspend fun updateAccountInfo(accountId: String, accountInfo: AccountInfo): Account
+
+    /**
      * Deactivates all accounts except the given account ID.
      * @param accountId The account ID to keep active
      */
@@ -123,14 +132,6 @@ interface IAccountRepository {
      * @param timeStamp The new sync timestamp
      */
     suspend fun updateSyncTimeStamp(timeStamp: String)
-
-    /**
-     * Updates the account from API response data and returns the updated Account.
-     * @param accountId The account ID to update
-     * @param accountInfo The API response data
-     * @return The updated Account
-     */
-    suspend fun updateAccountFromAPI(accountId: String, accountInfo: AccountInfo): Account
 
     /**
      * Marks the specified account as expired in the database.
@@ -179,10 +180,10 @@ interface IAccountRepository {
     suspend fun addAccountFromLoginResponse(loginResponse: LoginResponse): Account
 
     /**
-     * Updates the user's tokens for the given account ID.
-     * @param accountId The account ID to update tokens for
+     * Switches to a different account by setting it as active and updating tokens.
+     * @param accountId The account ID to switch to
      */
-    suspend fun updateUserTokens(accountId: String)
+    suspend fun switchToAccount(accountId: String)
 
     /**
      * Clears the tokens for the given account ID.

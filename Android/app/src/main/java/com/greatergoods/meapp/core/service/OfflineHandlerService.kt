@@ -127,7 +127,7 @@ class OfflineHandlerService
                         BodyCompUpdateRequest(
                             height = account.height ?: 1700,
                             activityLevel = account.activityLevel ?: "normal",
-                            weightUnit = account.weightUnit?.value ?: "lb",
+                            weightUnit = account.weightUnit.value,
                         )
                     val bodyCompResponse = bodyCompositionRepository.updateBodyCompInAPI(bodyCompUpdateRequest)
                     // Insert WeightCompSettings entity with data from account

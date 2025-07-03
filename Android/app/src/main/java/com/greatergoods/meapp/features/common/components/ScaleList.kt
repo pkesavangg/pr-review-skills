@@ -74,8 +74,7 @@ fun ScaleList(
     }
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
+            .fillMaxWidth(),
     ) {
         filteredScales.forEach { scale ->
             AppScaleCard(

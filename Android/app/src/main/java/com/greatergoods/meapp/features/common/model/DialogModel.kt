@@ -67,7 +67,7 @@ sealed class DialogModel(
     data class Custom(
         val contentKey: DialogType,
         val params: Map<String, Any?> = emptyMap(),
-        val onDismiss: (() -> Unit)?,
+        val onDismiss: (() -> Unit)? = null,
         val onConfirm: ((Any) -> Unit)? = null,
         val customPriority: Int = 1,
         val customDelayMillis: Long = 0L,
@@ -75,13 +75,12 @@ sealed class DialogModel(
 
     override fun compareTo(other: DialogModel): Int = this.priority.compareTo(other.priority)
 
-    fun updatePriority(priority: Int): DialogModel {
-        return when (this) {
+    fun updatePriority(priority: Int): DialogModel =
+        when (this) {
             is Alert -> this.copy(alertPriority = priority)
             is Confirm -> this.copy(confirmPriority = priority)
             is Custom -> this.copy(customPriority = priority)
         }
-    }
 }
 
 data class Toast(

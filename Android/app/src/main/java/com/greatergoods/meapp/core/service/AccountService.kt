@@ -271,7 +271,7 @@ class AccountService
                 AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
                 val accountInfo = accountRepository.getAccount(activeAccount.id)
                 // Update account data with API response
-                accountRepository.updateAccountFromAPI(activeAccount.id, accountInfo)
+                accountRepository.updateAccountInfo(activeAccount.id, accountInfo)
                 val weightlessSetting =
                     WeightlessSettingsEntity(
                         accountId = accountInfo.id,
@@ -306,10 +306,10 @@ class AccountService
                 for (account in loggedInAccounts) {
                     try {
                         AppLog.d(TAG, "Checking login status for account: ${account.id}")
-                        accountRepository.updateUserTokens(account.id)
+                        // Get account info from API and update tokens for background operations
                         val accountInfo = accountRepository.getAccount(account.id)
                         // Update account data with API response
-                        accountRepository.updateAccountFromAPI(account.id, accountInfo)
+                        accountRepository.updateAccountInfo(account.id, accountInfo)
                         AppLog.d(TAG, "Account ${account.id} login status check successful")
                     } catch (e: Exception) {
                         AppLog.e(TAG, "Account ${account.id} login status check failed", e.toString())
@@ -410,7 +410,8 @@ class AccountService
         ): Boolean =
             try {
                 requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-                accountRepository.updateUserTokens(account.id)
+                // Switch to the account using the repository method
+                accountRepository.switchToAccount(account.id)
                 AppLog.d(TAG, "Successfully switched to account: ${account.email}")
                 appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
                 true

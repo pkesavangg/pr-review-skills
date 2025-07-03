@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.components.AppProfileAvatar
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -64,15 +65,15 @@ fun UserProfileSectionPreview() {
                 isSynced = true,
                 lastActiveTime = "1234567890",
                 zipcode = "12345",
-                weightUnit = null,
+                weightUnit = WeightUnit.LB,
                 isWeightlessOn = false,
-                height = null,
-                activityLevel = null,
-                weightlessTimestamp = null,
-                weightlessWeight = null,
-                isStreakOn = false,
-                dashboardType = null,
-                dashboardMetrics = null
+            height = null,
+            activityLevel = null,
+            weightlessTimestamp = null,
+            weightlessWeight = null,
+            isStreakOn = false,
+            dashboardType = null,
+            dashboardMetrics = null
             ),
         ) { }
     }

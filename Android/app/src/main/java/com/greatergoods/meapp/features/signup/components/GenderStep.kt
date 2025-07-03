@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.domain.enums.Gender
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.CircularSelectButton
@@ -13,7 +14,6 @@ import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.composition.LocalCardAlignment
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
-import com.greatergoods.meapp.features.signup.model.Gender
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -43,12 +43,12 @@ fun GenderStep(
             CircularSelectButton(
                 text = SignupStrings.genderMale,
                 isSelected = genderControl.value.equals(Gender.MALE.name, ignoreCase = true),
-            ){ genderControl.onValueChange(Gender.MALE.value) }
+            ) { genderControl.onValueChange(Gender.MALE.value) }
 
             CircularSelectButton(
                 text = SignupStrings.genderFemale,
                 isSelected = genderControl.value.equals(Gender.FEMALE.name, ignoreCase = true),
-            ){ genderControl.onValueChange(Gender.FEMALE.value) }
+            ) { genderControl.onValueChange(Gender.FEMALE.value) }
         }
     }
 }
