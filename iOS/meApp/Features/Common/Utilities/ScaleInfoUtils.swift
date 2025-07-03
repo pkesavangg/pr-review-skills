@@ -25,7 +25,7 @@ class ScaleInfoUtils {
             updatedScale = ScaleItemInfo(
                 productName: scale.productName,
                 sku: scale.sku,
-                imgPath: resolveImagePath(for: scale.sku),
+                imgPath: resolveImagePath(for: scale.sku) ?? "",
                 setupType: scale.setupType,
                 bodyComp: scale.bodyComp
             )
@@ -97,7 +97,7 @@ class ScaleInfoUtils {
             scaleInfo = ScaleItemInfo(
                 productName: "Unknown Scale",
                 sku: "",
-                imgPath: nil,
+                imgPath: "",
                 setupType: .bluetooth,
                 bodyComp: false
             )

@@ -187,7 +187,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             do {
                 if let device = try localRepository.context.fetch(descriptor).first {
                     device.isConnected = isConnected
-                    device.isSynced = false
                     try localRepository.context.save()
                 } else {
                     logger.log(level: .error, tag: tag, message: "Device not found: \(deviceId)")
@@ -204,7 +203,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             do {
                 if let device = try localRepository.context.fetch(descriptor).first {
                     device.isWifiConfigured = isConfigured
-                    device.isSynced = false
                     try localRepository.context.save()
                 } else {
                     logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId)")
@@ -318,9 +316,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         if let providedScales = scales {
             deviceList = providedScales
         } else {
-            // Fetch all locally stored scale managed objects
-            let descriptor = FetchDescriptor<Device>()
-            deviceList = try localRepository.context.fetch(descriptor)
+          deviceList = try await localRepository.listScales().filter { $0.isDeleted != true }
         }
 
         // Fetch a map of currently connected devices keyed by broadcastIdString
@@ -348,9 +344,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 device.isConnected = true
                 device.isWifiConfigured = (connectedDetails["isWifiConfigured"] as? Bool) ?? false
             }
-
-            // Mark device as needing sync since local status changed
-            device.isSynced = false
         }
 
         // Persist the updates
@@ -371,14 +364,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     // MARK: - Internal Helpers
     private func refreshScalesFromLocal() async {
-        await MainActor.run {
-            do {
-                let descriptor = FetchDescriptor<Device>()
-                let devices = try localRepository.context.fetch(descriptor)
-                self.scales = devices
-            } catch {
-                self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
-            }
+        do {
+            self.scales = try await localRepository.listScales().filter { $0.isDeleted != true }
+        } catch {
+            self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
         }
     }
 
