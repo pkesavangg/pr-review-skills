@@ -5,6 +5,7 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.enums.GraphSegment
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
 import com.greatergoods.meapp.theme.MeTheme
@@ -27,6 +28,7 @@ import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
@@ -94,13 +96,13 @@ internal fun ChartHostSection(
                 endAxis =
                     VerticalAxis.rememberEnd(
                         valueFormatter =
-                            com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter { _, value, _ ->
+                            CartesianValueFormatter { _, value, _ ->
                                 value.roundToInt().toString()
                             },
-                        itemPlacer =
-                            VerticalAxis.ItemPlacer.step(
-                                step = { max?.let { it / 5 } },
-                            ),
+                        // itemPlacer =
+                        //     VerticalAxis.ItemPlacer.step(
+                        //         step = { max?.let { it / 5 } },
+                        //     ),
                         size = BaseAxis.Size.fixed(40.dp),
                         line =
                             rememberAxisLineComponent(
@@ -135,7 +137,7 @@ internal fun ChartHostSection(
                         }
                     },
                 getXStep = {
-                    com.greatergoods.meapp.features.common.helper.graph.GraphUtil.calculateXStep(
+                    GraphUtil.calculateXStep(
                         segment,
                         xLabels.map { it.value.toDouble() },
                     )
