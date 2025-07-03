@@ -22,13 +22,14 @@ import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Stat
+import com.greatergoods.meapp.features.dashboard.components.DashboardControlPanel
 import com.greatergoods.meapp.features.dashboard.components.DashboardMetrics
-import com.greatergoods.meapp.features.dashboard.components.DashboardStats
+import com.greatergoods.meapp.features.dashboard.components.DashboardMilestone
 import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardIntent
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
-import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -65,30 +66,57 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
     var selectedStat: Stat? by remember {
         mutableStateOf(null)
     }
-    AppScaffold(title = null) {
+    var inEditMode by remember {
+        mutableStateOf(false)
+    }
+    var currentVisibleMetrics by remember {
+        mutableStateOf(listOf<Stat>())
+    }
 
+    var currentVisibleMilestones by remember {
+        mutableStateOf(listOf<Stat>())
+    }
+
+    AppScaffold(title = null) {
         Column(modifier = Modifier.verticalScroll(scrollState)) {
             HistoryGraph(state, selectedStat) {
                 metricData = it
             }
+            DashboardMetrics(
+                metricData = metricData,
+                inEditMode = inEditMode,
+                visibleKeys = state.visibleKeys,
+                selectedStat = selectedStat,
+                onMetricClick = { stat ->
+                    selectedStat = stat
+                },
+                onMetricsChanged = { visibleMetrics ->
+                    currentVisibleMetrics = visibleMetrics
+                },
+            )
+            DashboardMilestone(
+                startWeight = "100",
+                goalWeight = "200",
+                currentWeight = "150",
+                inEditMode = inEditMode,
+                visibleKeys = state.visibleKeys,
+                onMilestonesChanged = { visibleMilestones ->
+                    currentVisibleMilestones = visibleMilestones
+                },
+            )
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MeTheme.spacing.md),
-            ){
-                DashboardMetrics(
-                    metricData = metricData,
-                    selectedStat = selectedStat,
-                ) {
-                    selectedStat = it
-                }
-                DashboardStats(
-                    startWeight = "100",
-                    goalWeight = "200",
-                    currentWeight = "150",
-                )
-            }
+            DashboardControlPanel(
+                inEditMode = inEditMode,
+                onEditClick = { editMode ->
+                    if (!editMode && inEditMode) {
+                        // Save dashboard metrics and milestones when exiting edit mode
+                        val allVisibleKeys = currentVisibleMetrics.map { it.key } + currentVisibleMilestones.map { it.key }
+                        handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
+                    }
+                    inEditMode = editMode
+                },
+            )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         }
     }
 }

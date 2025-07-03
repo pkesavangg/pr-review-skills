@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.dashboard.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,6 +12,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
@@ -18,53 +24,183 @@ import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.helper.StatHelper
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageSummary
+import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
-import com.greatergoods.meapp.proto.DashboardKey
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Composable for the dashboard metrics section that displays health metrics in a grid layout.
+ *
+ * @param metricData List of period body scale summaries for calculating metrics
+ * @param inEditMode Whether the dashboard is in edit mode
+ * @param visibleKeys List of currently visible dashboard keys
+ * @param selectedStat Currently selected stat for highlighting
+ * @param onMetricClick Callback when a metric is clicked
+ * @param onMetricsChanged Callback when visible metrics are changed (for save functionality)
  */
 @Composable
 fun DashboardMetrics(
     metricData: List<PeriodBodyScaleSummary>,
+    inEditMode: Boolean = false,
     visibleKeys: List<DashboardKey> = listOf(),
     selectedStat: Stat? = null,
-    onMetricClick: (Stat?) -> Unit
+    onMetricClick: (Stat?) -> Unit,
+    onMetricsChanged: (List<Stat>) -> Unit = { }
 ) {
-    // Get the latest summary from day-wise entries for metrics
+    val metricsState = rememberMetricsState(
+        metricData = metricData,
+        visibleKeys = visibleKeys,
+        inEditMode = inEditMode,
+    )
+
+    // Notify parent when visible metrics change
+    LaunchedEffect(metricsState.visibleMetrics) {
+        onMetricsChanged(metricsState.visibleMetrics)
+    }
+
+    DashboardMetricsGrid(
+        visibleMetrics = metricsState.visibleMetrics,
+        hiddenMetrics = metricsState.hiddenMetrics,
+        inEditMode = inEditMode,
+        selectedStat = selectedStat,
+        onMetricClick = onMetricClick,
+        onMetricMoved = { fromVisible, toVisible, metric ->
+            if (fromVisible && !toVisible) {
+                metricsState.moveToHidden(metric)
+            } else if (!fromVisible && toVisible) {
+                metricsState.moveToVisible(metric)
+            }
+        },
+    )
+
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+}
+
+/**
+ * Internal state management for dashboard metrics.
+ */
+@Composable
+private fun rememberMetricsState(
+    metricData: List<PeriodBodyScaleSummary>,
+    visibleKeys: List<DashboardKey>,
+    inEditMode: Boolean
+): MetricsState {
     val latestSummary = averageSummary(metricData)
     val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
-    val metrics =
-        StatHelper.getMetrics(dashboardMetric, visibleKeys = visibleKeys, useShort = true, filterNulls = false)
 
+    val metricKeys = visibleKeys.mapNotNull { key ->
+        when (key) {
+            is DashboardKey.Metric -> key.key
+            is DashboardKey.Milestone -> null
+        }
+    }
+
+    val initialVisibleMetrics = StatHelper.getMetrics(
+        dashboardMetric,
+        visibleKeys = metricKeys,
+        useShort = true,
+        filterNulls = false,
+    )
+
+    val initialHiddenMetrics = StatHelper.getMetrics(
+        dashboardMetric,
+        visibleKeys = null,
+        useShort = true,
+        filterNulls = true,
+    ).filter { it !in initialVisibleMetrics }
+
+    var visibleMetrics by remember(initialVisibleMetrics) { mutableStateOf(initialVisibleMetrics) }
+    var hiddenMetrics by remember(initialHiddenMetrics) { mutableStateOf(initialHiddenMetrics) }
+
+    return remember(visibleMetrics, hiddenMetrics) {
+        MetricsState(
+            visibleMetrics = visibleMetrics,
+            hiddenMetrics = hiddenMetrics,
+            moveToHidden = { metric ->
+                visibleMetrics = visibleMetrics.toMutableList().apply { remove(metric) }
+                hiddenMetrics = hiddenMetrics.toMutableList().apply { add(metric) }
+            },
+            moveToVisible = { metric ->
+                hiddenMetrics = hiddenMetrics.toMutableList().apply { remove(metric) }
+                visibleMetrics = visibleMetrics.toMutableList().apply { add(metric) }
+            },
+        )
+    }
+}
+
+/**
+ * Data class to hold metrics state and operations.
+ */
+private data class MetricsState(
+    val visibleMetrics: List<Stat>,
+    val hiddenMetrics: List<Stat>,
+    val moveToHidden: (Stat) -> Unit,
+    val moveToVisible: (Stat) -> Unit
+)
+
+/**
+ * Grid layout for displaying dashboard metrics.
+ */
+@Composable
+private fun DashboardMetricsGrid(
+    visibleMetrics: List<Stat>,
+    hiddenMetrics: List<Stat>,
+    inEditMode: Boolean,
+    selectedStat: Stat?,
+    onMetricClick: (Stat?) -> Unit,
+    onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
+) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
+        contentPadding = PaddingValues(MeTheme.spacing.sm),
         userScrollEnabled = false,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = 500.dp), // Constrain height
+            .heightIn(max = 500.dp),
         horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     ) {
+        // Visible metrics
         items(
-            items = metrics,
-            key = { it.key },
+            items = visibleMetrics,
+            key = { stat -> getMetricKey(stat, isVisible = true) },
         ) { metric ->
             val isSelected = selectedStat?.key == metric.key
-            StatCard(
+            AnimatedStatCard(
                 stat = metric,
+                inEditMode = inEditMode,
                 isSelected = isSelected,
-                onMetricClick = {
-                    if (isSelected) {
-                        onMetricClick(null)
-                    } else
-                        onMetricClick(metric)
+                onBadgeClick = {
+                    onMetricMoved(true, false, metric)
+                },
+                onClick = {
+                    onMetricClick(if (isSelected) null else metric)
                 },
             )
         }
-        if (metrics.size % 2 != 0) {
+
+        // Hidden metrics (only when in edit mode)
+        if (inEditMode) {
+            items(
+                items = hiddenMetrics,
+                key = { stat -> getMetricKey(stat, isVisible = false) },
+            ) { metric ->
+                AnimatedStatCard(
+                    stat = metric,
+                    isVisible = false,
+                    inEditMode = true,
+                    isSelected = null,
+                    onBadgeClick = {
+                        onMetricMoved(false, true, metric)
+                    },
+                )
+            }
+        }
+
+        // Divider if total visible items are odd
+        val totalVisibleItems = visibleMetrics.size + if (inEditMode) hiddenMetrics.size else 0
+        if (totalVisibleItems % 2 != 0) {
             item {
                 HorizontalDivider(
                     thickness = 0.5.dp,
@@ -74,7 +210,17 @@ fun DashboardMetrics(
             }
         }
     }
-    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+}
+
+/**
+ * Generates a unique key for metric items in the grid.
+ */
+private fun getMetricKey(stat: Stat, isVisible: Boolean): String {
+    val prefix = if (isVisible) "visible" else "hidden"
+    return when (stat.key) {
+        is DashboardKey.Metric -> "$prefix-${stat.key.key.name}"
+        is DashboardKey.Milestone -> "$prefix-${stat.key.key.name}"
+    }
 }
 
 @PreviewTheme
@@ -83,6 +229,7 @@ private fun DashboardMetricsPreview() {
     MeAppTheme {
         DashboardMetrics(
             metricData = listOf(),
+            onMetricClick = {},
         ) {}
     }
 }

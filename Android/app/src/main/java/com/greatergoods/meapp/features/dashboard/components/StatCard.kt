@@ -1,36 +1,66 @@
 package com.greatergoods.meapp.features.dashboard.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.model.Stat
+import com.greatergoods.meapp.features.dashboard.strings.DashboardMetricsStrings
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * Composable for displaying a single metric item in the dashboard metrics grid.
  */
 @Composable
-fun StatCard(
+internal fun StatCard(
     stat: Stat,
-    isSelected: Boolean,
+    enabled: Boolean = true,
+    isVisible: Boolean = true,
+    isSelected: Boolean = false,
     modifier: Modifier = Modifier,
     onMetricClick: (Stat) -> Unit
 ) {
+    val contentHorizonalAlignment = if (stat.icon == null) Alignment.CenterHorizontally else Alignment.Start
     Card(
         modifier = Modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .alpha(if (isVisible) 1f else 0.5f), // 50% opacity when not visible,
+        shape = RoundedCornerShape(MeTheme.borderRadius.sm),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
+            containerColor = if (isSelected && isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
+            disabledContainerColor = if (isSelected && isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
         ),
+        enabled = enabled,
         onClick = { onMetricClick(stat) },
     ) {
         Row(
@@ -49,7 +79,7 @@ fun StatCard(
             }
             Column(
                 verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
+                horizontalAlignment = contentHorizonalAlignment,
             ) {
                 Text(
                     text = buildString {
@@ -74,3 +104,67 @@ fun StatCard(
         }
     }
 }
+
+@Composable
+fun AnimatedStatCard(
+    stat: Stat,
+    inEditMode: Boolean,
+    isSelected: Boolean? = false,
+    isVisible: Boolean = true,
+    modifier: Modifier = Modifier,
+    onBadgeClick: () -> Unit = {},
+    onClick: () -> Unit = {}
+) {
+    // Wiggle animation
+    val infiniteTransition = rememberInfiniteTransition()
+    val wiggleAngle by infiniteTransition.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 100, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+    )
+
+    BadgedBox(
+        badge = {
+            if (inEditMode) {
+                Badge(
+                    containerColor = MeTheme.colorScheme.inverseAction,
+                    contentColor = Color.Transparent,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable { onBadgeClick() }
+                        .border(1.dp, MeTheme.colorScheme.iconPrimary, CircleShape),
+                ) {
+                    Icon(
+                        imageVector =
+                            if (isVisible)
+                                Icons.Default.Remove
+                            else
+                                Icons.Default.Add,
+                        contentDescription = if (isVisible) DashboardMetricsStrings.RemoveMetricDescription else DashboardMetricsStrings.AddMetricDescription,
+                        tint = MeTheme.colorScheme.iconPrimary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+        },
+        modifier = modifier
+            .graphicsLayer {
+                rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
+            },
+    ) {
+        StatCard(
+            stat = stat,
+            enabled = isSelected != null && !inEditMode,
+            isVisible = isVisible,
+            isSelected = isSelected ?: false,
+            modifier = Modifier
+                .padding(horizontal = MeTheme.spacing.sm),
+        ) {
+            onClick()
+        }
+    }
+}
+
