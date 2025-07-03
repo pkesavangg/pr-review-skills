@@ -15,7 +15,6 @@ import com.greatergoods.meapp.proto.MetricKey
 import com.greatergoods.meapp.proto.MilestoneKey
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
-import kotlin.collections.filter
 import kotlin.math.roundToInt
 
 /**
@@ -177,7 +176,7 @@ internal object StatMeta {
             labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.SKELETAL_MUSCLE, useShort) },
             unit = "%",
             unitProvider = { useShort -> if (useShort) null else "%" },
-            icon = AppIcons.Metrics.MuscleMass,
+            icon = AppIcons.Metrics.SkeletalMusclePercent,
         ),
         MetricKey.BMR to StatMeta(
             labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.BMR, useShort) },

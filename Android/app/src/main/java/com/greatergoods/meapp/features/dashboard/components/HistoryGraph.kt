@@ -77,20 +77,11 @@ fun HistoryGraph(
     ) {
 
         Column(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.x3s)) {
-            Box(
-                modifier = Modifier
-                    .height(22.dp),
-                contentAlignment = Alignment.TopStart,
-            ) {
-
-                if (subText != null) {
-                    Text(
-                        text = selectedSegment.name.lowercase().plus(" average"),
-                        style = MeTheme.typography.subHeading1,
-                        color = MeTheme.colorScheme.textSubheading,
-                    )
-                }
-            }
+            Text(
+                text = selectedSegment.name.lowercase().plus(" average"),
+                style = MeTheme.typography.subHeading1,
+                color = MeTheme.colorScheme.textSubheading,
+            )
             Text(
                 text = labelData.ifBlank { "---" },
                 style = MeTheme.typography.heading2,

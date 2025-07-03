@@ -57,7 +57,7 @@ object GraphUtil {
                                 value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
                                 label = entry.period,
                             ),
-                        y = Label(value = entry.weight, label = "${entry.weight} kg"),
+                        y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight} ${entry.unit}"),
                     )
                 },
         )

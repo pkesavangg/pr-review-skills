@@ -625,17 +625,23 @@ ORDER BY d.day DESC
             fl.period,
             fl.firstTimestamp,
             fl.lastTimestamp,
-            (SELECT weight FROM entries_with_period WHERE entryTimestamp = fl.firstTimestamp) AS firstWeight,
-            (SELECT weight FROM entries_with_period WHERE entryTimestamp = fl.lastTimestamp) AS lastWeight,
+            first_entry.weight AS firstWeight,
+            last_entry.weight AS lastWeight,
             (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
             (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
         FROM first_last fl
+        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
+        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
     )
     SELECT
         firstTimestamp AS entryTimestamp,
         avgWeight,
         entryCount,
-        lastWeight - firstWeight AS change
+        CASE
+            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
+            THEN lastWeight - firstWeight
+            ELSE NULL
+        END AS change
     FROM joined
     ORDER BY period DESC
     """,

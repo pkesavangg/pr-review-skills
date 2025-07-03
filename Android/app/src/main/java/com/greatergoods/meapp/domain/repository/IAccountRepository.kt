@@ -8,7 +8,9 @@ import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.features.goal.helper.Weightless
 import kotlinx.coroutines.flow.Flow
 import retrofit2.Response
 
@@ -196,4 +198,7 @@ interface IAccountRepository {
      * @param accountId The account ID to remove
      */
     suspend fun removeAccount(accountId: String)
+
+    fun getActiveAccountWeightUnitFlow(): Flow<WeightUnit?>
+    fun getActiveAccountWeightlessFlow(): Flow<Weightless>
 }

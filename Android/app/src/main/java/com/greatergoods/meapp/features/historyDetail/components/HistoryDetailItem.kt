@@ -3,7 +3,7 @@ package com.greatergoods.meapp.features.historyDetail.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
@@ -96,8 +97,14 @@ fun HistoryDetailItemHeader(
             Modifier
                 .fillMaxWidth()
                 .background(backgroundColor)
-                .clickable(enabled = canExpand, onClick = onClick)
-                .padding(MeTheme.spacing.sm),
+                .padding(MeTheme.spacing.sm)
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        if (canExpand) {
+                            onClick()
+                        }
+                    }
+                },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -131,7 +138,10 @@ fun HistoryDetailItemHeader(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(
-                    text = (item.scale.scaleEntry.weight).toString(),
+                    text = buildString {
+                        item.scale.scaleEntry.prefix?.let { append(it) }  // append prefix if not null
+                        append(item.scale.scaleEntry.weight.toString())        // always append value with sign
+                    },
                     style = MeTheme.typography.heading3,
                     color = textColor,
                     textAlign = TextAlign.End,
