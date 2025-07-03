@@ -9,6 +9,7 @@ struct GoalSettingScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var router: Router<SettingsRoute>
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
 
     @State private var focusedField: FocusField? = nil
 
@@ -108,6 +109,23 @@ struct GoalSettingScreen: View {
         .onAppear {
             settingsStore.populateGoalFormIfNeeded()
             settingsStore.selectedSegment = GoalTypeSegment.fromGoalType(settingsStore.goalForm.goalType.value)
+
+            registerDeactivation {
+                // Allow immediate tab switch when no changes.
+                if !settingsStore.goalForm.isDirty {
+                    router.navigateBack()
+                    return true
+                }
+
+                let confirmed = await settingsStore.confirmDiscardGoalChanges()
+                if confirmed {
+                    router.navigateBack()
+                }
+                return confirmed
+            }
+        }
+        .onDisappear {
+            registerDeactivation { true }
         }
         .navigationBarHidden(true)
     }

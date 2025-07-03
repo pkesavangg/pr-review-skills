@@ -365,28 +365,6 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Edit Profile Helpers
     
-    func handleEditProfileExit(router: Router<SettingsRoute>) {
-        // If the form is not dirty, simply navigate back else show an alert
-        if !editProfileForm.isDirty {
-            router.navigateBack()
-            resetEditProfileForm() // Reset form to pristine state
-            return
-        }
-        let alert = AlertModel(
-            title: alertLang.EditProfileExitAlert.title,
-            message: alertLang.EditProfileExitAlert.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.EditProfileExitAlert.exitButton, type: .primary) { _ in
-                    self.resetEditProfileForm() // Reset form to pristine state
-                    router.navigateBack()
-                },
-                AlertButtonModel(title: alertLang.EditProfileExitAlert.returnButton, type: .secondary) { _ in
-                }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-    
     /// Populates the form with existing profile data (only once, on first load).
     func populateEditFormIfNeeded() {
         guard let account = activeAccount else { return }
@@ -470,25 +448,39 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Change Password Helpers
     
-    func handleChangePasswordExit(router: Router<SettingsRoute>) {
-        if !changePasswordForm.isDirty {
-            router.navigateBack()
-            resetChangePasswordForm()
-            return
-        }
-        
+    /// Presents a Change-Password exit confirmation alert using shared strings.
+    /// - Parameters:
+    ///   - onExit:    Closure to execute when user confirms exiting.
+    ///   - onCancel:  Optional closure when user cancels.
+    private func presentChangePasswordExitAlert(onExit: @escaping () -> Void,
+                                                onCancel: (() -> Void)? = nil) {
         let alert = AlertModel(
             title: AlertStrings.ChangePasswordExitAlert.title,
             message: AlertStrings.ChangePasswordExitAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.ChangePasswordExitAlert.exitButton, type: .primary) { _ in
-                    self.resetChangePasswordForm()
-                    router.navigateBack()
+                    onExit()
                 },
-                AlertButtonModel(title: AlertStrings.ChangePasswordExitAlert.returnButton, type: .secondary) { _ in }
+                AlertButtonModel(title: AlertStrings.ChangePasswordExitAlert.returnButton, type: .secondary) { _ in
+                    onCancel?()
+                }
             ]
         )
         notificationService.showAlert(alert)
+    }
+
+    func handleChangePasswordExit(router: Router<SettingsRoute>) {
+        // If form is pristine just pop and bail.
+        guard changePasswordForm.isDirty else {
+            router.navigateBack()
+            resetChangePasswordForm()
+            return
+        }
+
+        presentChangePasswordExitAlert(onExit: {
+            self.resetChangePasswordForm()
+            router.navigateBack()
+        })
     }
     
     /// Persists the password change via `AccountService`.
@@ -551,6 +543,72 @@ class SettingsStore: ObservableObject {
     /// Resets the change-password form.
     func resetChangePasswordForm() {
         changePasswordForm = ChangePasswordForm()
+    }
+
+    func confirmDiscardPasswordChanges() async -> Bool {
+        // Fast-path: no changes → allow exit.
+        guard changePasswordForm.isDirty else { return true }
+
+        return await withCheckedContinuation { continuation in
+            presentChangePasswordExitAlert(onExit: {
+                self.resetChangePasswordForm()
+                continuation.resume(returning: true)
+            }, onCancel: {
+                continuation.resume(returning: false)
+            })
+        }
+    }
+    
+    // MARK: - Edit Profile Exit Helpers
+
+    /// Presents an Edit-Profile exit confirmation alert using shared strings.
+    /// - Parameters:
+    ///   - onExit:    Closure executed when the user confirms leaving.
+    ///   - onCancel:  Optional closure executed when the user cancels.
+    private func presentEditProfileExitAlert(onExit: @escaping () -> Void,
+                                             onCancel: (() -> Void)? = nil) {
+        let alert = AlertModel(
+            title: alertLang.EditProfileExitAlert.title,
+            message: alertLang.EditProfileExitAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.EditProfileExitAlert.exitButton, type: .primary) { _ in
+                    onExit()
+                },
+                AlertButtonModel(title: alertLang.EditProfileExitAlert.returnButton, type: .secondary) { _ in
+                    onCancel?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    func handleEditProfileExit(router: Router<SettingsRoute>) {
+        // Fast path: if form is pristine just pop the screen and bail.
+        guard editProfileForm.isDirty else {
+            router.navigateBack()
+            resetEditProfileForm()
+            return
+        }
+
+        presentEditProfileExitAlert(onExit: {
+            self.resetEditProfileForm()
+            router.navigateBack()
+        })
+    }
+    
+    /// Async variant used by tab-deactivation; returns a `Bool` indicating whether it is safe to leave.
+    func confirmDiscardProfileChanges() async -> Bool {
+        // Allow exit immediately when no changes.
+        guard editProfileForm.isDirty else { return true }
+
+        return await withCheckedContinuation { continuation in
+            presentEditProfileExitAlert(onExit: {
+                self.resetEditProfileForm()
+                continuation.resume(returning: true)
+            }, onCancel: {
+                continuation.resume(returning: false)
+            })
+        }
     }
     
     // MARK: - Weight Unit Helpers
@@ -687,36 +745,67 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    // MARK: - Weightless Helpers (Navigation Variant)
-    /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
-    func handleWeightlessExit(router: Router<SettingsRoute>) {
-        if !weightlessForm.isDirty {
-            router.navigateBack()
-            resetWeightlessForm()
-            return
-        }
+    // MARK: - Weightless Exit Helpers
+
+    /// Presents a Weightless exit confirmation alert using shared strings.
+    /// - Parameters:
+    ///   - onExit:    Closure executed when the user confirms leaving.
+    ///   - onCancel:  Optional closure executed when the user cancels.
+    private func presentWeightlessExitAlert(onExit: @escaping () -> Void,
+                                            onCancel: (() -> Void)? = nil) {
         let alert = AlertModel(
             title: alertLang.WeightLessExitAlert.title,
             message: alertLang.WeightLessExitAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.WeightLessExitAlert.exitButton, type: .primary) { _ in
-                    self.resetWeightlessForm()
-                    router.navigateBack()
+                    onExit()
                 },
-                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in }
+                AlertButtonModel(title: alertLang.WeightLessExitAlert.returnButton, type: .secondary) { _ in
+                    onCancel?()
+                }
             ]
         )
         notificationService.showAlert(alert)
     }
+
+    /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
+    func handleWeightlessExit(router: Router<SettingsRoute>) {
+        // Fast path: if form is pristine simply pop and bail.
+        guard weightlessForm.isDirty else {
+            router.navigateBack()
+            resetWeightlessForm()
+            return
+        }
+
+        presentWeightlessExitAlert(onExit: {
+            self.resetWeightlessForm()
+            router.navigateBack()
+        })
+    }
+
+    /// Async variant used by tab-deactivation; returns a Bool indicating whether it is safe to leave.
+    func confirmDiscardWeightlessChanges() async -> Bool {
+        // Allow immediate exit when there are no unsaved changes.
+        guard weightlessForm.isDirty else { return true }
+
+        return await withCheckedContinuation { continuation in
+            presentWeightlessExitAlert(onExit: {
+                self.resetWeightlessForm()
+                continuation.resume(returning: true)
+            }, onCancel: {
+                continuation.resume(returning: false)
+            })
+        }
+    }
     
     /// Saves Weightless settings when presented via navigation push (not sheet).
     func saveWeightless(router: Router<SettingsRoute>) {
-        // Run validation first.
+        // Validate form first.
         weightlessForm.validate()
-        
+
         guard weightlessForm.isDirty, isWeightLessFormValid else { return }
         if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
-        
+
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let storedWeight: Int = {
             if let val = Double(weightlessForm.weight.value) {
@@ -724,26 +813,32 @@ class SettingsStore: ObservableObject {
             }
             return 0
         }()
-        
-        self.updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight) {
+
+        updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight) {
             router.navigateBack()
         }
     }
-    
-    /// Helper that handles the networking for updating weightless and executes `onSuccess` on completion.
+
+    /// Handles the networking call for updating Weightless settings and executes `onSuccess` on completion.
     private func updateWeightlessMode(isOn: Bool, storedWeight: Int, onSuccess: @escaping () -> Void) {
         guard let account = activeAccount else { return }
+
         let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
         let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
         if currentOn == isOn && currentWeightStored == storedWeight {
             onSuccess()
             return
         }
+
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 let timestamp = DateTimeTools.getCurrentDatetimeIsoString()
-                _ = try await accountService.updateWeightless(isWeightlessOn: isOn, weightlessTimestamp: timestamp, weightlessWeight: Double(storedWeight))
+                _ = try await accountService.updateWeightless(
+                    isWeightlessOn: isOn,
+                    weightlessTimestamp: timestamp,
+                    weightlessWeight: Double(storedWeight)
+                )
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
                 onSuccess()
@@ -907,25 +1002,56 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Variant of `handleGoalExit` for navigation push presentation.
-    func handleGoalExit(router: Router<SettingsRoute>) {
-        if !goalForm.isDirty {
-            router.navigateBack()
-            resetGoalForm()
-            return
-        }
+    // MARK: - Goal Exit Helpers
+
+    /// Presents a Goal exit confirmation alert using shared strings.
+    /// - Parameters:
+    ///   - onExit:    Closure executed when the user confirms leaving.
+    ///   - onCancel:  Optional closure executed when the user cancels.
+    private func presentGoalExitAlert(onExit: @escaping () -> Void,
+                                      onCancel: (() -> Void)? = nil) {
         let alert = AlertModel(
             title: alertLang.GoalExitAlert.title,
             message: alertLang.GoalExitAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.GoalExitAlert.exitButton, type: .primary) { _ in
-                    self.resetGoalForm()
-                    router.navigateBack()
+                    onExit()
                 },
-                AlertButtonModel(title: alertLang.GoalExitAlert.returnButton, type: .secondary) { _ in }
+                AlertButtonModel(title: alertLang.GoalExitAlert.returnButton, type: .secondary) { _ in
+                    onCancel?()
+                }
             ]
         )
         notificationService.showAlert(alert)
+    }
+
+    /// Variant for navigation push presentation.
+    func handleGoalExit(router: Router<SettingsRoute>) {
+        // Fast path: if form is pristine simply pop.
+        guard goalForm.isDirty else {
+            router.navigateBack()
+            resetGoalForm()
+            return
+        }
+
+        presentGoalExitAlert(onExit: {
+            self.resetGoalForm()
+            router.navigateBack()
+        })
+    }
+
+    /// Async variant used by tab-deactivation; returns whether it is safe to leave.
+    func confirmDiscardGoalChanges() async -> Bool {
+        guard goalForm.isDirty else { return true }
+
+        return await withCheckedContinuation { continuation in
+            presentGoalExitAlert(onExit: {
+                self.resetGoalForm()
+                continuation.resume(returning: true)
+            }, onCancel: {
+                continuation.resume(returning: false)
+            })
+        }
     }
     
     /// Saves Goal when presented via navigation push.

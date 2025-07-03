@@ -35,6 +35,7 @@ struct HelpScreen: View {
                     Text("\(commonLang.appVersion) \(appVersion)")
                         .foregroundColor(theme.textBody)
                         .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.bottom)
                 }
                 .padding(.top, .spacingLG)
             }

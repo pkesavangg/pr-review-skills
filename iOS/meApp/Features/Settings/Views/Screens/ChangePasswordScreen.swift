@@ -16,6 +16,7 @@ struct ChangePasswordScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var settingsStore: SettingsStore
     @EnvironmentObject var router: Router<SettingsRoute>
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
 
     @State private var focusedField: FocusField? = nil
 
@@ -89,7 +90,7 @@ struct ChangePasswordScreen: View {
                         focusedField = nil
                     }
                 }               
-                
+                .padding(.top, .spacingXS)
                 ButtonView(text: screenLang.forgotPassword, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                     settingsStore.showForgotPasswordAlert()
                 }
@@ -101,6 +102,24 @@ struct ChangePasswordScreen: View {
             .padding(.bottom, .spacingXL)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onAppear {
+            registerDeactivation {
+                // If the form is pristine we can simply pop the screen and allow tab switch.
+                if !settingsStore.changePasswordForm.isDirty {
+                    router.navigateBack()
+                    return true
+                }
+                // Otherwise ask the user to confirm discarding changes.
+                let confirmed = await settingsStore.confirmDiscardPasswordChanges()
+                if confirmed {
+                    router.navigateBack()
+                }
+                return confirmed
+            }
+        }
+        .onDisappear {
+            registerDeactivation { true }
+        }
     }
 }
 
