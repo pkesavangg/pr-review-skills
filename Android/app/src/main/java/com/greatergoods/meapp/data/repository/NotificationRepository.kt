@@ -52,8 +52,8 @@ class NotificationRepository @Inject constructor(
         // Create updated settings with all fields
         val updatedNotificationSettings = NotificationSettingsEntity(
             accountId = accountId,
-            entryNotificationsEnabled = notificationSettings.entryNotificationsEnabled,
-            showWeightInNotifications = notificationSettings.showWeightInNotifications,
+            shouldSendEntryNotifications = notificationSettings.shouldSendEntryNotifications,
+            shouldSendWeightInEntryNotifications = notificationSettings.shouldSendWeightInEntryNotifications,
             isSynced = notificationSettings.isSynced
         )
         accountDao.updateNotificationSettings(updatedNotificationSettings)

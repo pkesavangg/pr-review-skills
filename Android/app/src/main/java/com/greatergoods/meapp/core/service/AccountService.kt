@@ -1,18 +1,13 @@
 package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.config.HttpErrorConfig
-import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
-import com.greatergoods.meapp.domain.model.PartialAccount
-import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
+import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import com.greatergoods.meapp.domain.model.api.user.Token
-import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
@@ -25,7 +20,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
-import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,9 +33,7 @@ class AccountService
     constructor(
         private val accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
-        private val tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
-        private val userDataStore: UserDataStore,
         private val appNavigationService: IAppNavigationService,
         private val userSettingsRepository: IUserSettingsRepository,
     ) : BaseService(connectivityObserver, dialogQueueService),
@@ -61,20 +53,18 @@ class AccountService
         /**
          * Flow emitting the currently active account, or null if none is active.
          */
-        override val activeAccountFlow: Flow<Account?> =
-            accountRepository.getStoredActiveAccountFromDB()
+        override val activeAccountFlow: Flow<Account?> = accountRepository.getActiveAccount()
 
         /**
          * Flow emitting the list of all logged-in accounts, with the active account first.
          */
         override val loggedInAccountsFlow: Flow<List<Account>> =
-            accountRepository.getLoggedInAccountsFromDB().map { it.sortedActiveFirst() }
+            accountRepository.getLoggedInAccounts().map { it.sortedActiveFirst() }
 
         /**
          * Flow indicating whether the maximum number of accounts has been reached.
          */
-        override val hasReachedMaxAccounts: Flow<Boolean> =
-            loggedInAccountsFlow.map { it.size >= MAX_ACCOUNTS }
+        override val hasReachedMaxAccounts: Flow<Boolean> = loggedInAccountsFlow.map { it.size >= MAX_ACCOUNTS }
 
         /**
          * Gets the current active account.
@@ -107,20 +97,15 @@ class AccountService
                 if (hasReachedMaxAccounts.first() && !isExistingAccount) {
                     throw MaxAccountsReachedException()
                 }
-                val loginResponse = accountRepository.login(email, password)
-                val savedAccount = addAccount(loginResponse)
+                val savedAccount = accountRepository.login(email, password)
                 appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
                 savedAccount
             } catch (e: HttpException) {
                 val header = ToastStrings.Error.LoginError.Header
                 val msg =
                     when (e.code()) {
-                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
-                            ToastStrings.Error.LoginError.MessageNoConn
-
-                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
-                            ToastStrings.Error.LoginError.MessageServError
-
+                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.LoginError.MessageNoConn
+                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.LoginError.MessageServError
                         HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
                         else -> ToastStrings.Error.LoginError.MessageGeneric
                     }
@@ -131,7 +116,7 @@ class AccountService
             }
 
         /**
-         * Adds a new account.
+         * Adds a new account using the provided request data.
          * @param request Account creation request data
          * @return The created account or null if creation fails
          * @throws MaxAccountsReachedException if the maximum number of accounts is reached
@@ -142,8 +127,7 @@ class AccountService
                 throw MaxAccountsReachedException()
             }
             return try {
-                val response = accountRepository.signup(request)
-                val savedAccount = addAccount(response)
+                val savedAccount = accountRepository.signup(request)
                 appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
                 savedAccount
             } catch (e: Exception) {
@@ -213,23 +197,13 @@ class AccountService
         ): Boolean {
             return try {
                 getCurrentAccount() ?: return false
-                val response = accountRepository.updatePassword(currentPassword, newPassword)
-                setTokensForAccount(
-                    Token(
-                        accountId = activeAccountFlow.first()?.id ?: "",
-                        accessToken = response.accessToken,
-                        refreshToken = response.refreshToken,
-                        expiresAt = response.expiresAt,
-                    ),
-                )
+                val response =
+                    accountRepository.updatePassword(activeAccountFlow.first()!!.id, currentPassword, newPassword)
                 AppLog.d(TAG, "Password changed successfully")
                 showSuccessToast(
                     ToastStrings.Success.ChangePasswordSuccess.Header,
                     ToastStrings.Success.ChangePasswordSuccess.Message,
                 )
-
-                // Password change typically invalidates existing tokens, but we'll keep using current session
-                // unless the API specifically returns new tokens
                 true
             } catch (e: Exception) {
                 AppLog.e(TAG, "Password change failed", e.toString())
@@ -237,15 +211,9 @@ class AccountService
                     val header = ToastStrings.Error.ChangePasswordError.Header
                     val msg =
                         when (e.code()) {
-                            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
-                                ToastStrings.Error.UpdateProfileError.MessageNoConn
-
-                            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
-                                ToastStrings.Error.UpdateProfileError.MessageServError
-
-                            HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
-                                ToastStrings.Error.UpdateProfileError.MessageNotAuth
-
+                            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.UpdateProfileError.MessageNoConn
+                            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
+                            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
                             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
                         }
                     showErrorToast(header, msg)
@@ -257,7 +225,6 @@ class AccountService
         /**
          * Updates the user's profile information with offline support.
          * If online, calls API and marks as synced. If offline, stores locally with isSynced = false.
-         * Follows the same pattern as Angular account.service.ts updateProfile method.
          * @param profileUpdateRequest The profile data to update
          * @return The updated account or null if update fails
          */
@@ -275,15 +242,9 @@ class AccountService
                 val header = ToastStrings.Error.UpdateProfileError.Header
                 val msg =
                     when (e.code()) {
-                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION,
-                        -> ToastStrings.Error.UpdateProfileError.MessageNoConn
-
-                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR,
-                        -> ToastStrings.Error.UpdateProfileError.MessageServError
-
-                        HttpErrorConfig.ResponseCode.UNAUTHORIZED,
-                        -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
-
+                        HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.UpdateProfileError.MessageNoConn
+                        HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
+                        HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
                         else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
                     }
                 showErrorToast(header, msg)
@@ -312,11 +273,11 @@ class AccountService
                     WeightlessSettingsEntity(
                         accountId = accountInfo.id,
                         isWeightlessOn = accountInfo.isWeightlessOn,
-                        weightlessTimestamp = accountInfo.weightlessTimestamp,
-                        weightlessWeight = accountInfo.weightlessWeight,
+                        weightlessTimestamp = accountInfo.weightlessTimestamp ?: "0",
+                        weightlessWeight = accountInfo.weightlessWeight ?: 0.0f,
                         isSynced = true,
                     )
-                userSettingsRepository.updateWeightlessInDB(weightlessSetting)
+                userSettingsRepository.updateWeightless(weightlessSetting)
                 AppLog.d(TAG, "Active account login status check successful")
                 true
             } catch (e: Exception) {
@@ -342,7 +303,7 @@ class AccountService
                 for (account in loggedInAccounts) {
                     try {
                         AppLog.d(TAG, "Checking login status for account: ${account.id}")
-                        updateUserTokens(account.id)
+                        accountRepository.updateUserTokens(account.id)
                         val accountInfo = accountRepository.getAccount(account.id)
                         // Update account data with API response
                         accountRepository.updateAccountFromAPI(account.id, accountInfo)
@@ -352,7 +313,7 @@ class AccountService
                         // Mark account as expired in database
                         accountRepository.markAccountExpired(account.id)
                         // Clear tokens for this account
-                        userDataStore.removeAccount(account.id)
+                        accountRepository.removeAccount(account.id)
                     }
                 }
                 AppLog.d(TAG, "Logged-in accounts status check completed.")
@@ -383,7 +344,7 @@ class AccountService
                     accountRepository.markAccountExpired(accountId)
 
                     // Clear account tokens from DataStore
-                    userDataStore.clearAccountTokens(accountId)
+                    accountRepository.clearAccountTokens(accountId)
 
                     AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
                     account
@@ -408,30 +369,10 @@ class AccountService
         ): Boolean =
             try {
                 val isActiveAccount = getCurrentAccount()?.id == accountId
-                // Try to logout on API if network is available
-                if (isNetworkAvailable()) {
-                    try {
-                        accountRepository.logout(fcmToken ?: "", accountId)
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "API logout failed", e.toString())
-                        // Continue with local logout even if API fails
-                    }
-                }
-                // Always perform local logout regardless of network status
-                if (isActiveAccount) {
-                    accountRepository.deactivateAllAccountsInDB()
-                }
-
-                // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
-                accountRepository.logoutInDb(accountId)
-
-                // Clear tokens from DataStore and TokenManager
-                userDataStore.clearAccountTokens(accountId)
-                tokenManager.clearTokens()
-
+                val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
                 AppLog.d(TAG, "Logout successful")
                 appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
-                true
+                result
             } catch (e: Exception) {
                 AppLog.e(TAG, "Logout failed", e.toString())
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
@@ -444,38 +385,10 @@ class AccountService
          */
         override suspend fun logoutAll(): Boolean =
             try {
-                val loggedInAccounts = loggedInAccountsFlow.first()
-
-                // Sort accounts to handle active account last
-                val sortedAccounts =
-                    loggedInAccounts.sortedWith(compareByDescending { it.isActiveAccount })
-
-                for (account in sortedAccounts) {
-                    try {
-                        // Try to logout on API if network is available
-                        if (isNetworkAvailable()) {
-                            try {
-                                accountRepository.logout(account.fcmToken ?: "", account.id)
-                            } catch (e: Exception) {
-                                AppLog.e(
-                                    TAG,
-                                    "API logout failed for account ${account.id}",
-                                    e.toString(),
-                                )
-                                // Continue with local logout even if API fails
-                            }
-                        }
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "Failed to logout account ${account.id}", e.toString())
-                    }
-                }
-                // Clear all accounts from database
-                accountRepository.logoutAllAccountsInDb()
-                // Clear tokens
-                tokenManager.clearTokens()
+                val result = accountRepository.logoutAllAccounts()
                 AppLog.d(TAG, "All accounts logged out successfully")
                 appNavigationService.emitAuthEvent(AuthState.LoggedOut(true))
-                true
+                result
             } catch (e: Exception) {
                 AppLog.e(TAG, "Logout all failed", e.toString())
                 appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
@@ -494,7 +407,7 @@ class AccountService
         ): Boolean =
             try {
                 requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-                updateUserTokens(account.id)
+                accountRepository.updateUserTokens(account.id)
                 AppLog.d(TAG, "Successfully switched to account: ${account.email}")
                 appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
                 true
@@ -505,24 +418,13 @@ class AccountService
             }
 
         /**
-         * Updates the user's profile information in the local database only.
-         * @param accountId The ID of the account to update
-         * @param partialAccount The partial account data to update
-         * @return The updated account
-         */
-        override suspend fun updateProfileInDB(
-            accountId: String,
-            partialAccount: PartialAccount,
-        ): Account = accountRepository.updateAccountInDB(accountId, partialAccount)
-
-        /**
          * Updates the account's tokens.
          * @param tokens New token data
          * @return true if update was successful
          */
-        override suspend fun updateTokens(tokens: Map<String, String>): Boolean =
+        override suspend fun updateTokens(tokens: AccountToken): Boolean =
             try {
-                accountRepository.updateTokensInDB(tokens)
+                accountRepository.updateTokens(tokens)
                 AppLog.d(TAG, "Tokens updated successfully")
                 appNavigationService.emitAuthEvent(AuthState.TokensUpdated)
                 true
@@ -533,97 +435,6 @@ class AccountService
             }
 
         // endregion
-
-        /**
-         * Updates the user's tokens for the given account ID.
-         * @param accountId The account ID to update tokens for
-         */
-        private suspend fun updateUserTokens(accountId: String) {
-            // Update tokens in TokenManager for the switched account
-            val currentTokens = userDataStore.getData().accounts[accountId]
-            setActiveAccountAndTokens(
-                accountId,
-                currentTokens?.let {
-                    Token(
-                        accountId = accountId,
-                        isActive = true,
-                        accessToken = it.accessToken,
-                        refreshToken = it.refreshToken,
-                        expiresAt = it.expiresAt,
-                    )
-                },
-            )
-        }
-
-        /**
-         * Helper to activate an account, set it as active in DB, update tokens, and set as active in UserDataStore and TokenManager.
-         * @param accountId The account ID to activate
-         * @param tokens The tokens to set as active (if not null)
-         */
-        private suspend fun setActiveAccountAndTokens(
-            accountId: String,
-            tokens: Token?,
-        ) {
-            accountRepository.activateAccountInDB(accountId)
-            accountRepository.deactivateOtherAccountsInDB(accountId)
-            userDataStore.setActiveAccount(accountId)
-            accountRepository.updateLastActiveTimeInDB(accountId)
-            tokens?.let { setTokensForAccount(it) }
-        }
-
-        /**
-         * Helper to set tokens for a non-active account (used for background API calls).
-         // * @param accountId The account ID
-         * @param tokens The tokens to set (if not null)
-         */
-        private suspend fun setTokensForAccount(
-            // accountId: String,
-            tokens: Token?,
-        ) {
-            tokens?.let { tokenManager.setTokens(it) }
-        }
-
-        private suspend fun addAccount(loginResponse: LoginResponse): Account {
-            val account = loginResponse.account
-            val userAccount =
-                Account(
-                    id = account.id,
-                    firstName = account.firstName,
-                    lastName = account.lastName,
-                    dob = account.dob,
-                    email = account.email,
-                    expiresAt = loginResponse.expiresAt,
-                    fcmToken = null,
-                    gender = account.gender,
-                    isActiveAccount = true,
-                    isLoggedIn = true,
-                    isExpired = false,
-                    isSynced = false,
-                    lastActiveTime = Date().time.toString(),
-                    zipcode = account.zipcode,
-                    weightUnit = WeightUnit.from(account.weightUnit.lowercase()),
-                    isWeightlessOn = account.isWeightlessOn,
-                    height = account.height,
-                    activityLevel = account.activityLevel,
-                    weightlessTimestamp = account.weightlessTimestamp,
-                    weightlessWeight = account.weightlessWeight,
-                    isStreakOn = account.isStreakOn,
-                    dashboardType = account.dashboardType,
-                    dashboardMetrics = account.dashboardMetrics,
-                )
-            val savedAccount = accountRepository.addAccountInDB(userAccount)
-            setActiveAccountAndTokens(
-                savedAccount.id,
-                Token(
-                    accountId = savedAccount.id,
-                    isActive = true,
-                    accessToken = loginResponse.accessToken,
-                    refreshToken = loginResponse.refreshToken,
-                    expiresAt = loginResponse.expiresAt,
-                ),
-            )
-            return savedAccount
-        }
 
         /**
          * Extension function to sort accounts: active account first, then others by lastActiveTime descending.

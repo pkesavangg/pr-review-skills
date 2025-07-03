@@ -11,11 +11,14 @@ import java.time.ZoneId.systemDefault
  *
  * @property value The string value used for API communication and storage
  */
-enum class Gender(val value: String) {
+enum class Gender(
+    val value: String,
+) {
     /** Male gender option */
     MALE("male"),
+
     /** Female gender option */
-    FEMALE("female")
+    FEMALE("female"),
 }
 
 /**
@@ -23,13 +26,16 @@ enum class Gender(val value: String) {
  *
  * @property value The string value used for API communication and storage
  */
-enum class GoalType(val value: String) {
+enum class GoalType(
+    val value: String,
+) {
     /** Maintain current weight */
     MAINTAIN("maintain"),
+
     /** Lose or gain weight */
     LOSE_GAIN("losegain"),
     LOSE("lose"),
-    GAIN("gain")
+    GAIN("gain"),
 }
 
 /**
@@ -43,11 +49,6 @@ enum class SignupStep {
     GOAL,
     EMAIL,
     PASSWORD,
-}
-
-enum class Metrics(val value: String){
-    LBS("lbs"),
-    KG("kg")
 }
 
 /**Add commentMore actions
@@ -74,5 +75,5 @@ data class SignupData(
     val password: String = "",
     val confirmPassword: String = "",
     val zipcode: String = "",
-    val unitMetric: Boolean = false
+    val unitMetric: Boolean = false,
 )

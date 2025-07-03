@@ -1,18 +1,19 @@
 package com.greatergoods.meapp.features.signup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IGoalService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.signup.model.GoalType
 import com.greatergoods.meapp.features.signup.model.SignupData
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import com.greatergoods.meapp.features.signup.model.SignupIntent
@@ -32,6 +33,7 @@ class SignupViewModel
     @Inject
     constructor(
         private val accountService: IAccountService,
+        private val goalService: IGoalService,
     ) : BaseIntentViewModel<SignupState, SignupIntent>(
             reducer = SignupReducer(),
         ) {
@@ -106,6 +108,8 @@ class SignupViewModel
             val signupData: SignupData = stateValue.form.getValuesAsType()
             viewModelScope.launch {
                 try {
+                    val isMetric = if (!stateValue.goalSkipped) signupData.unitMetric else false
+
                     // Create the basic account request (similar to newAccount in wgApp4-1)
                     val signupRequest =
                         SignupRequest(
@@ -116,68 +120,34 @@ class SignupViewModel
                             signupData.zipcode
                                 .trim(),
                             signupData.password,
-                            DateTimeValue.getDateFormatFromMilliseconds(
-                                controls.birthday.value.getTimestamp(),
-                            ),
+                            DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
                             controls.height.value.toStoredHeight(),
+                            if (isMetric) WeightUnit.KG else WeightUnit.LB,
                         )
-
-                    var goalData: Map<String, Any>? = null
-                    if (!stateValue.goalSkipped) {
-                        val goalType = signupData.goalType
-                        val currentWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0
-                        val goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0
-                        val isMetric = signupData.unitMetric
-                        // Use ConversionTools to convert display weights to stored format
-                        val convertedCurrentWeight =
-                            ConversionTools.convertDisplayToStored(
-                                display = currentWeight,
-                                isMetric = isMetric,
-                            )
-                        val convertedGoalWeight =
-                            ConversionTools.convertDisplayToStored(
-                                display = goalWeight,
-                                isMetric = isMetric,
-                            )
-                        goalData =
-                            if (goalType == GoalType.MAINTAIN.value) {
-                                // For maintain: both goalWeight and initialWeight are the same
-                                mapOf(
-                                    "type" to GoalType.MAINTAIN.value,
-                                    "goalWeight" to convertedGoalWeight,
-                                    "initialWeight" to convertedGoalWeight,
-                                )
-                            } else {
-                                // Determine gain vs lose based on weight comparison
-                                val determinedGoalType =
-                                    if (convertedGoalWeight >
-                                        convertedCurrentWeight
-                                    ) {
-                                        GoalType.GAIN.value
-                                    } else {
-                                        GoalType.LOSE.value
-                                    }
-                                mapOf(
-                                    "type" to determinedGoalType,
-                                    "goalWeight" to convertedGoalWeight,
-                                    "initialWeight" to convertedCurrentWeight,
-                                )
-                            }
-
-                        // Add weight unit to account data for body composition update (always lbs)
-                        signupRequest.weightUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
-                    }
                     val account = accountService.signup(signupRequest)
                     if (account != null) {
-                        AppLog.i("SignupViewModel", "Account created successfully")
-                        navigationService.reInitialize()
-                        AppLog.i("SignupViewModel", "Navigation to loading screen successful after signup")
+                        AppLog.i(TAG, "Account created successfully")
+
+                        // Create goal if not skipped - this will complete before proceeding to navigation
+                        if (!stateValue.goalSkipped) {
+                            AppLog.d(TAG, "Creating goal for new account...")
+                            goalService.createGoalForSignup(
+                                account = account,
+                                goalType = signupData.goalType,
+                                currentWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0,
+                                goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0,
+                            )
+                            AppLog.d(TAG, "Goal creation completed, proceeding to navigation")
+                        }
+
+                        navigationService.replaceStack(AppRoute.Init.Loading)
+                        AppLog.i(TAG, "Navigation to loading screen successful after signup")
                         handleIntent(SignupIntent.Success)
                     } else {
                         handleIntent(SignupIntent.Error("Something went wrong"))
                     }
                 } catch (e: Exception) {
-                    AppLog.e("SignupViewModel", "Signup failed", e.toString())
+                    AppLog.e(TAG, "Signup failed", e.toString())
                     handleIntent(SignupIntent.Error("Signup failed"))
                 } finally {
                     dialogQueueService.dismissLoader()
@@ -223,9 +193,9 @@ class SignupViewModel
             viewModelScope.launch {
                 try {
                     navigationService.navigateBack(topLevel = null)
-                    AppLog.d("SignupViewModel", "Successfully navigated back from signup")
+                    AppLog.d(TAG, "Successfully navigated back from signup")
                 } catch (e: Exception) {
-                    AppLog.e("SignupViewModel", "Failed to navigate back from signup", e.toString())
+                    AppLog.e(TAG, "Failed to navigate back from signup", e.toString())
                 }
             }
         }

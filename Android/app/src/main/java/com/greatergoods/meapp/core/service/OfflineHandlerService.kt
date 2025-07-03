@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.greatergoods.meapp.domain.model.PartialAccount
+import com.greatergoods.meapp.domain.model.api.goal.GoalData
 import com.greatergoods.meapp.domain.model.api.metrics.StreakRequest
 import com.greatergoods.meapp.domain.model.api.metrics.WeightlessRequest
 import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
@@ -12,6 +13,7 @@ import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
+import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
@@ -31,6 +33,7 @@ class OfflineHandlerService
         private val bodyCompositionRepository: IBodyCompositionRepository,
         private val notificationRepository: INotificationRepository,
         private val userSettingsRepository: IUserSettingsRepository,
+        private val goalRepository: IGoalRepository,
         private val connectivityObserver: IConnectivityObserver,
     ) : IOfflineHandlerService {
         companion object {
@@ -55,8 +58,10 @@ class OfflineHandlerService
                 syncBodyCompositionData()
                 // Sync notification settings if there are unsynced notification accounts
                 syncNotificationData()
+                syncGoalData()
+                syncWeightlessSettings()
+                syncStreakSettings()
                 // Sync user settings data if there are unsynced user settings accounts
-                syncUserSettingsData()
                 AppLog.i(TAG, "Selective offline sync process completed")
             } catch (e: Exception) {
                 AppLog.e(TAG, "Offline sync process failed", e.toString())
@@ -67,7 +72,7 @@ class OfflineHandlerService
          * Syncs profile data for accounts that have unsynced profile changes.
          */
         private suspend fun syncProfileData() {
-            val unsyncedAccounts = accountRepository.getUnsyncedAccountsFromDB()
+            val unsyncedAccounts = accountRepository.getUnsyncedAccounts()
             if (unsyncedAccounts.isEmpty()) {
                 AppLog.d(TAG, "No unsynced profile accounts found")
                 return
@@ -98,7 +103,7 @@ class OfflineHandlerService
                             isSynced = true,
                         )
                     // Update account with profile response and mark as synced
-                    accountRepository.updateAccountInDB(profileResponse.id, profileUpdate)
+                    accountRepository.updateAccount(profileResponse.id, profileUpdate)
                     AppLog.i(TAG, "Successfully synced profile data for account: ${account.id}")
                 } catch (e: Exception) {
                     AppLog.e(TAG, "Error syncing profile data for account ${account.id}", e.toString())
@@ -122,7 +127,7 @@ class OfflineHandlerService
                         BodyCompUpdateRequest(
                             height = account.height ?: 1700,
                             activityLevel = account.activityLevel ?: "normal",
-                            weightUnit = account.weightUnit?.value ?: "lb",
+                            weightUnit = account.weightUnit.value,
                         )
                     val bodyCompResponse = bodyCompositionRepository.updateBodyCompInAPI(bodyCompUpdateRequest)
                     // Insert WeightCompSettings entity with data from account
@@ -158,8 +163,8 @@ class OfflineHandlerService
                     // Sync notification settings (entry notifications and weight in notifications)
                     val notificationSettingsRequest =
                         NotificationSettingsRequest(
-                            shouldSendEntryNotifications = account.entryNotificationsEnabled ?: false,
-                            shouldSendWeightInEntryNotifications = account.showWeightInNotifications ?: false,
+                            shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
+                            shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
                         )
                     val notificationResponse =
                         notificationRepository.updateNotificationSettingsInAPI(notificationSettingsRequest)
@@ -168,8 +173,8 @@ class OfflineHandlerService
                     val notificationSettings =
                         NotificationSettingsEntity(
                             accountId = notificationResponse.account.id,
-                            entryNotificationsEnabled = notificationResponse.account.shouldSendEntryNotifications,
-                            showWeightInNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
+                            shouldSendEntryNotifications = notificationResponse.account.shouldSendEntryNotifications,
+                            shouldSendWeightInEntryNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
                             isSynced = true,
                         )
                     notificationRepository.updateNotificationSettingsInDB(account.id, notificationSettings)
@@ -181,17 +186,36 @@ class OfflineHandlerService
             }
         }
 
-        //  Syncs user settings data for accounts that have unsynced user settings changes.
-        private suspend fun syncUserSettingsData() {
-            AppLog.d(TAG, "Syncing user settings data")
-
+        /**
+         * Syncs goal data for accounts that have unsynced goal changes.
+         */
+        private suspend fun syncGoalData() {
+            AppLog.d("TAG", "Syncing goal data")
             try {
-                // Sync streak settings
-                syncStreakSettings()
-                // Sync weightless settings
-                syncWeightlessSettings()
+                val unsyncedAccounts = goalRepository.getUnsyncedGoalAccountsFromDB()
+                if (unsyncedAccounts.isEmpty()) {
+                    AppLog.d(TAG, "No unsynced goal settings found")
+                    return
+                }
+                AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced goal settings")
+                for (account in unsyncedAccounts) {
+                    try {
+                        AppLog.d(TAG, "Syncing goal settings for account: ${account.id}")
+                        val goalData =
+                            GoalData(
+                                goalWeight = account.goalWeight ?: 0.0,
+                                initialWeight = account.initialWeight,
+                                type = account.goalType ?: "maintain",
+                                metPreviousGoal = account.metPreviousGoal,
+                            )
+                        goalRepository.updateGoalSetting(goalData)
+                        AppLog.i(TAG, "Successfully synced goal settings for account: ${account.id}")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Failed to sync goal settings for account ${account.id}", e.toString())
+                    }
+                }
             } catch (e: Exception) {
-                AppLog.e(TAG, "Error syncing user settings data", e.toString())
+                AppLog.e(TAG, "Error syncing goal data", e.toString())
             }
         }
 

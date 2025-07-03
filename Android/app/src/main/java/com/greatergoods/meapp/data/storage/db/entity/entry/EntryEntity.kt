@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 
 /**
  * Entity class representing an entry in the database.
@@ -28,7 +29,6 @@ import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntity
 data class EntryEntity(
     @PrimaryKey(autoGenerate = true)
     override val id: Long = 0L,
-
     override val accountId: String,
     override val entryTimestamp: String,
     override val serverTimestamp: String? = null,
@@ -37,8 +37,8 @@ data class EntryEntity(
     override val deviceType: String,
     override val deviceId: String,
     override val attempts: Int = 0,
-    override val unit: String? = "lb",
-    override val isSynced: Boolean = false
+    override val unit: WeightUnit = WeightUnit.LB,
+    override val isSynced: Boolean = false,
 ) : BaseEntryEntity
 
 interface BaseEntryEntity {
@@ -51,6 +51,6 @@ interface BaseEntryEntity {
     val deviceType: String
     val deviceId: String
     val attempts: Int
-    val unit: String?
+    val unit: WeightUnit
     val isSynced: Boolean
 }

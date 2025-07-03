@@ -57,6 +57,7 @@ enum class AppInputType {
      * Typically accepts decimal values with specific validation rules.
      */
     BODY_COMP,
+    NUMERIC_STRING,
 }
 
 object AppInputDefaults {
@@ -76,9 +77,8 @@ object AppInputDefaults {
         when (type) {
             AppInputType.TEXT -> KeyboardType.Text
             AppInputType.EMAIL -> KeyboardType.Email
-            AppInputType.NUMBER, AppInputType.BODY_COMP,
+            AppInputType.NUMBER, AppInputType.BODY_COMP, AppInputType.NUMERIC_STRING
             -> KeyboardType.Number
-
             AppInputType.PASSWORD -> KeyboardType.Password
         }
 
@@ -174,9 +174,12 @@ fun <T> AppInput(
     showOutline: Boolean = false,
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
+    showTrailingIconAlways: Boolean = false,
+    trailingIconId: Int = AppIcons.Outlined.Close,
     onValueChange: ((T?) -> Unit)? = null,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: (() -> Unit)? = null,
+    onTrailingAction: (() -> Unit)? = null,
     nextFocusRequester: FocusRequester? = null,
 ) {
     val visualTransformation = AppInputDefaults.visualTransformation(type)
@@ -201,6 +204,9 @@ fun <T> AppInput(
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
             showTrailingIcon = showTrailingIcon,
+            showTrailingIconAlways = showTrailingIconAlways,
+            onTrailingAction = onTrailingAction,
+            trailingIconId = trailingIconId,
             onImeAction = onImeAction,
             nextFocusRequester = nextFocusRequester,
         )
@@ -223,6 +229,8 @@ fun <T> InputFieldBase(
     readOnly: Boolean = false,
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
+    showTrailingIconAlways: Boolean = false,
+    trailingIconId: Int = AppIcons.Outlined.Close,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     focusRequester: FocusRequester = remember { FocusRequester() },
@@ -232,6 +240,7 @@ fun <T> InputFieldBase(
     onNext: (() -> Unit)? = null,
     onValueChange: ((T?) -> Unit)? = null,
     onImeAction: (() -> Unit)? = null,
+    onTrailingAction: (() -> Unit)? = null,
     nextFocusRequester: FocusRequester? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -245,12 +254,10 @@ fun <T> InputFieldBase(
     val keyboardController = LocalSoftwareKeyboardController.current
     val isPassword = inputType == AppInputType.PASSWORD
     val showPasswordToggle = isPassword && showTrailingIcon
-    val showClearButton =
-        formControl?.value?.toString()?.isNotEmpty() == true &&
-            !isPassword &&
+    val showTrailingButton = showTrailingIcon && !isPassword &&
             enabled &&
             !readOnly &&
-            showTrailingIcon
+            (showTrailingIconAlways || formControl?.value?.toString()?.isNotEmpty() == true)
 
     val inputTextColor =
         when {
@@ -300,13 +307,13 @@ fun <T> InputFieldBase(
                 }
             }
 
-            showClearButton -> {
+            showTrailingButton -> {
                 @Composable {
                     AppIcon(
-                        AppIcons.Outlined.Close,
+                        trailingIconId,
                         contentDescription = "Clear",
                         type = iconColor,
-                        onClick = { clearValueAndNotify() },
+                        onClick = { onTrailingAction?.invoke() ?: clearValueAndNotify() },
                     )
                 }
             }

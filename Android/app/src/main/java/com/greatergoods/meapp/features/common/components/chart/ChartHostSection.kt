@@ -5,6 +5,7 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.enums.GraphSegment
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
 import com.greatergoods.meapp.theme.MeTheme
@@ -27,6 +28,7 @@ import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
@@ -53,94 +55,102 @@ internal fun ChartHostSection(
     decorations: Decoration,
 ) {
     key(segment) {
-        val secondaryLayer = rememberLineCartesianLayer(
-            lineProvider = LineCartesianLayer.LineProvider.series(
-                listOf(MeTheme.colorScheme.secondaryAction).map {
-                    LineCartesianLayer.rememberLine(
-                        fill = LineCartesianLayer.LineFill.single(fill(it)),
-                        stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
-                        pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
-                        pointProvider = LineCartesianLayer.PointProvider.single(
-                            point = LineCartesianLayer.Point(
-                                rememberShapeComponent(
-                                    fill(it),
-                                    CorneredShape.Pill,
-                                    strokeThickness = 2.dp,
-                                ),
+        val secondaryLayer =
+            rememberLineCartesianLayer(
+                lineProvider =
+                    LineCartesianLayer.LineProvider.series(
+                        listOf(MeTheme.colorScheme.secondaryAction).map {
+                            LineCartesianLayer.rememberLine(
+                                fill = LineCartesianLayer.LineFill.single(fill(it)),
+                                stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
+                                pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
+                                pointProvider =
+                                    LineCartesianLayer.PointProvider.single(
+                                        point =
+                                            LineCartesianLayer.Point(
+                                                rememberShapeComponent(
+                                                    fill(it),
+                                                    CorneredShape.Pill,
+                                                    strokeThickness = 2.dp,
+                                                ),
+                                            ),
+                                    ),
+                            )
+                        },
+                    ),
+                verticalAxisPosition = Axis.Position.Vertical.Start,
+                pointSpacing = pointSpacing(segment, 10.dp),
+            )
+        val bottomAxis = bottomAxis(segment, horizontalItemPlacer)
+        val primaryChart =
+            rememberCartesianChart(
+                primaryLayer,
+                secondaryLayer,
+                startAxis =
+                    VerticalAxis.rememberStart(
+                        label = null,
+                        line = null,
+                        guideline = null,
+                        tickLength = 0.dp,
+                    ),
+                endAxis =
+                    VerticalAxis.rememberEnd(
+                        valueFormatter =
+                            CartesianValueFormatter { _, value, _ ->
+                                value.roundToInt().toString()
+                            },
+                        // itemPlacer =
+                        //     VerticalAxis.ItemPlacer.step(
+                        //         step = { max?.let { it / 5 } },
+                        //     ),
+                        size = BaseAxis.Size.fixed(40.dp),
+                        line =
+                            rememberAxisLineComponent(
+                                fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+                                thickness = 1.dp,
                             ),
-                        ),
+                        guideline =
+                            rememberAxisLineComponent(
+                                fill = fill(MeTheme.colorScheme.utility),
+                                thickness = 1.dp,
+                            ),
+                        label =
+                            rememberTextComponent(
+                                color = MeTheme.colorScheme.textSubheading,
+                                margins = insets(horizontal = 10.dp),
+                            ),
+                        verticalLabelPosition = Position.Vertical.Center,
+                        tickLength = 0.dp,
+                    ),
+                bottomAxis = bottomAxis,
+                marker = emptyMarker(),
+                decorations = listOf(decorations),
+                markerVisibilityListener = markerListener,
+                persistentMarkers =
+                    key(markerIndex) {
+                        if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
+                            {
+                                defaultMarker at xLabels[markerIndex].value
+                            }
+                        } else {
+                            null
+                        }
+                    },
+                getXStep = {
+                    GraphUtil.calculateXStep(
+                        segment,
+                        xLabels.map { it.value.toDouble() },
                     )
                 },
-            ),
-            verticalAxisPosition = Axis.Position.Vertical.Start,
-            pointSpacing = pointSpacing(segment, 10.dp),
-        )
-        val bottomAxis = bottomAxis(segment, horizontalItemPlacer)
-        val primaryChart = rememberCartesianChart(
-            primaryLayer,
-            secondaryLayer,
-            startAxis =
-                VerticalAxis.rememberStart(
-                    label = null,
-                    line = null,
-                    guideline = null,
-                    tickLength = 0.dp,
-                ),
-            endAxis =
-                VerticalAxis.rememberEnd(
-                    valueFormatter =
-                        com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter { _, value, _ ->
-                            value.roundToInt().toString()
-                        },
-                    itemPlacer =
-                        VerticalAxis.ItemPlacer.step(
-                            step = { max?.let { it / 5 } },
-                        ),
-                    size = BaseAxis.Size.fixed(40.dp),
-                    line = rememberAxisLineComponent(
-                        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-                        thickness = 1.dp,
-                    ),
-                    guideline = rememberAxisLineComponent(
-                        fill = fill(MeTheme.colorScheme.utility),
-                        thickness = 1.dp,
-                    ),
-                    label = rememberTextComponent(
-                        color = MeTheme.colorScheme.textSubheading,
-                        margins = insets(horizontal = 10.dp),
-                    ),
-                    verticalLabelPosition = Position.Vertical.Center,
-                    tickLength = 0.dp,
-                ),
-            bottomAxis = bottomAxis,
-            marker = emptyMarker(),
-            decorations = listOf(decorations),
-            markerVisibilityListener = markerListener,
-            persistentMarkers = key(markerIndex) {
-                if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
-                    {
-                        defaultMarker at xLabels[markerIndex].value
-                    }
-                } else {
-                    null
-                }
-            },
-            getXStep = {
-                com.greatergoods.meapp.features.common.helper.graph.GraphUtil.calculateXStep(
-                    segment,
-                    xLabels.map { it.value.toDouble() },
-                )
-            },
-        )
+            )
         CartesianChartHost(
             chart = primaryChart,
             modelProducer = modelProducer,
             modifier =
-                modifier,
+            modifier,
             animationSpec = null,
             scrollState = scrollState,
             consumeMoveEvents = true,
         )
-
     }
 }
