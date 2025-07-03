@@ -20,6 +20,7 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
+import com.greatergoods.meapp.domain.model.storage.Device
 
 @Composable
 fun ChooseScaleScreen(viewModel: AddScaleViewModel = hiltViewModel()) {
@@ -46,8 +47,8 @@ fun ChooseScaleScreenContent(
         Column(modifier = Modifier.padding(vertical = spacing.md)
             .verticalScroll(rememberScrollState())) {
             ScaleList(
-                onScaleSelected = { scale ->
-                    handleIntent(AddScaleIntent.ScaleSelected(scale.sku))
+                onScaleSelected = { scaleInfo ->
+                    handleIntent(AddScaleIntent.ScaleSelected(scaleInfo.sku))
                 },
             )
         }

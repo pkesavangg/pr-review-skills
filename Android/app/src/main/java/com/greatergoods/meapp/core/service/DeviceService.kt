@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,7 +27,18 @@ class DeviceService @Inject constructor(
      * This is the main source of truth for scale data in the app.
      */
     private val _savedScales = MutableStateFlow<List<Device>>(emptyList())
+    
+    /**
+     * Flow containing the current list of saved scales, filtered to exclude AppSync scales.
+     * TODO: Include AppSync scales after AppSync support is implemented
+     */
     override val savedScales: Flow<List<Device>> = _savedScales.asStateFlow()
+        .map { devices ->
+            devices.filter { device ->
+                // Filter out AppSync scales for now
+                device.deviceType?.lowercase() != "appsync"
+            }
+        }
 
     /**
      * Current account ID for filtering devices.
