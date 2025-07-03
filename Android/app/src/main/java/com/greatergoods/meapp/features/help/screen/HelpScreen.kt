@@ -19,12 +19,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.config.AppConfig
-import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
-import com.greatergoods.meapp.features.addScale.screens.ChooseScaleContent
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.ScaleList
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.help.model.HelpIntent
 import com.greatergoods.meapp.features.help.strings.HelpScreenStrings
@@ -45,7 +44,7 @@ fun HelpScreen() {
         viewModel.handleIntent(HelpIntent.OnBack)
     }
 
-    HelpContent( viewModel::handleIntent)
+    HelpContent(viewModel::handleIntent)
 }
 
 /**
@@ -66,21 +65,16 @@ private fun HelpContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
         ) {
             // Body content based on selected segment
-            ContactUsContent ( handleIntent )
-            ChooseScaleContent(
-                handleIntent = { intent ->
-                    when (intent) {
-                        is AddScaleIntent.ScaleSelected -> {
-                            val url = "${AppConfig.PRODUCT_URL}/${intent.sku}"
-                            handleIntent(HelpIntent.OpenUrl(url))
-                        }
-                        else -> {
-                            // Handle other intents if needed
-                        }
-                    }
+            ContactUsContent(handleIntent)
+            Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.xl))
+            // Reuse ScaleList from ChooseScaleScreen
+            ScaleList(
+                onScaleSelected = { scale ->
+                    val url = "${AppConfig.PRODUCT_URL}/${scale.sku}"
+                    handleIntent(HelpIntent.OpenUrl(url))
                 },
             )
         }
@@ -96,49 +90,51 @@ private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
 
     Column(
         horizontalAlignment = Alignment.Start,
-        modifier = Modifier.fillMaxWidth().padding(start = MeTheme.spacing.sm,end = MeTheme.spacing.sm, top = MeTheme.spacing.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = MeTheme.spacing.sm, end = MeTheme.spacing.sm, top = MeTheme.spacing.md),
     ) {
         AppText(
             text = HelpScreenStrings.ContactSectionTitle,
             textType = TextType.Title,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(modifier = Modifier.padding(top=MeTheme.spacing.x3s))
+        Spacer(modifier = Modifier.padding(top = MeTheme.spacing.x3s))
         AppText(
             text = HelpScreenStrings.ContactSectionSubtitle,
             textType = TextType.Subtitle,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(modifier = Modifier.padding(bottom=MeTheme.spacing.md))
-            // Phone contact
-            val phoneNumber = HelpScreenStrings.Phone
-                AppText(
-                    text = phoneNumber,
-                    textType = TextType.Link,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.clickable(
-                        true,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_DIAL).apply {
-                                data = "tel:$phoneNumber".toUri()
-                            }
-                            context.startActivity(intent)
-                        }
-                    )
-                )
-        Spacer(modifier = Modifier.padding(bottom=MeTheme.spacing.sm))
-                AppText(
-                    text = HelpScreenStrings.Email,
-                    textType = TextType.Link,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.clickable(true) {
-                        val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = "mailto:${HelpScreenStrings.Email}".toUri()
-                        }
-                        context.startActivity(intent)
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
+        // Phone contact
+        val phoneNumber = HelpScreenStrings.Phone
+        AppText(
+            text = phoneNumber,
+            textType = TextType.Link,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.clickable(
+                true,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                        data = "tel:$phoneNumber".toUri()
                     }
-                )
-        Spacer(modifier = Modifier.padding(bottom=MeTheme.spacing.md))
+                    context.startActivity(intent)
+                },
+            ),
+        )
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
+        AppText(
+            text = HelpScreenStrings.Email,
+            textType = TextType.Link,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.clickable(true) {
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = "mailto:${HelpScreenStrings.Email}".toUri()
+                }
+                context.startActivity(intent)
+            },
+        )
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -158,7 +154,6 @@ private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
         )
     }
 }
-
 
 @PreviewTheme
 @Composable
