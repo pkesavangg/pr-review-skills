@@ -25,6 +25,7 @@ final class DeviceMetaData {
     var manufacturerName: String? // Manufacturer name
     var systemId: String? // Device MAC (A3 scales)
     var latestVersion: String? // Latest firmware version
+    var isSynced: Bool = false // Flag to check if the meta data is synced with the server
 
     init(from dto: ScaleMetaDataDTO, id: String? = nil) {
         self.modelNumber = dto.modelNumber
@@ -35,6 +36,17 @@ final class DeviceMetaData {
         self.manufacturerName = dto.manufacturerName
         self.systemId = dto.systemId
         self.latestVersion = dto.latestFirmwareVersion
+    }
+
+    init(modelNumber: String? = nil, serialNumber: String? = nil, firmwareRevision: String? = nil, hardwareRevision: String? = nil, softwareRevision: String? = nil, manufacturerName: String? = nil, systemId: String? = nil, latestVersion: String? = nil) {
+        self.modelNumber = modelNumber
+        self.serialNumber = serialNumber
+        self.firmwareRevision = firmwareRevision
+        self.hardwareRevision = hardwareRevision
+        self.softwareRevision = softwareRevision
+        self.manufacturerName = manufacturerName
+        self.systemId = systemId
+        self.latestVersion = latestVersion
     }
 
     func toDTO() -> ScaleMetaDataDTO {
