@@ -68,7 +68,6 @@ object ServiceModule {
         dialogQueueService: IDialogQueueService,
         appNavigationService: IAppNavigationService,
         userSettingsRepository: IUserSettingsRepository,
-        goalRepository: IGoalRepository,
     ): IAccountService =
         AccountService(
             accountRepository,
@@ -76,7 +75,6 @@ object ServiceModule {
             dialogQueueService,
             appNavigationService,
             userSettingsRepository,
-            goalRepository
         )
 
     /**
@@ -191,14 +189,15 @@ object ServiceModule {
         userSettingsRepository: IUserSettingsRepository,
         goalRepository: IGoalRepository,
         connectivityObserver: IConnectivityObserver,
-    ): IOfflineHandlerService = OfflineHandlerService(
-        accountRepository,
-        bodyCompositionRepository,
-        notificationRepository,
-        userSettingsRepository,
-        goalRepository,
-        connectivityObserver,
-    )
+    ): IOfflineHandlerService =
+        OfflineHandlerService(
+            accountRepository,
+            bodyCompositionRepository,
+            notificationRepository,
+            userSettingsRepository,
+            goalRepository,
+            connectivityObserver,
+        )
 
     /**
      * Provides the body composition service implementation.
@@ -248,6 +247,6 @@ object ServiceModule {
     fun provideGoalService(
         goalRepository: IGoalRepository,
         connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService
+        dialogQueueService: IDialogQueueService,
     ): IGoalService = GoalService(goalRepository, connectivityObserver, dialogQueueService)
 }

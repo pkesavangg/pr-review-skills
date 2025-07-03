@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
  * Based on Angular goal.service.ts functionality.
  */
 interface IGoalService {
-
     /**
      * Observable flow of the current goal status.
      * Similar to Angular's status BehaviorSubject.
@@ -29,7 +28,7 @@ interface IGoalService {
         goalWeight: Double,
         initialWeight: Double,
         goalType: String,
-        wasMet: Boolean = false
+        wasMet: Boolean = false,
     ): Account?
 
     /**
@@ -46,7 +45,10 @@ interface IGoalService {
      * @param latest Latest weight entry to calculate against
      * @return Percentage completion (0-100) or null if calculation not possible
      */
-    fun getPercentComplete(goal: Goal, latest: Double): Int?
+    fun getPercentComplete(
+        goal: Goal,
+        latest: Double,
+    ): Int?
 
     /**
      * Checks if goal completion alert should be shown.
@@ -81,6 +83,6 @@ interface IGoalService {
         account: Account,
         goalType: String,
         currentWeight: Double,
-        goalWeight: Double
+        goalWeight: Double,
     ): Account?
 }

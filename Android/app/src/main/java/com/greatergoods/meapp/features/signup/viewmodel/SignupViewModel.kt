@@ -30,19 +30,19 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SignupViewModel
-@Inject
-constructor(
-    private val accountService: IAccountService,
-    private val goalService: IGoalService,
-) : BaseIntentViewModel<SignupState, SignupIntent>(
-    reducer = SignupReducer(),
-) {
-    private val TAG = "SignupViewModel"
+    @Inject
+    constructor(
+        private val accountService: IAccountService,
+        private val goalService: IGoalService,
+    ) : BaseIntentViewModel<SignupState, SignupIntent>(
+            reducer = SignupReducer(),
+        ) {
+        private val TAG = "SignupViewModel"
 
-    override fun provideInitialState(): SignupState =
-        SignupState(
-            form = FormGroup(SignupFormControls.create()),
-        )
+        override fun provideInitialState(): SignupState =
+            SignupState(
+                form = FormGroup(SignupFormControls.create()),
+            )
 
         override fun handleIntent(intent: SignupIntent) {
             when (intent) {
@@ -53,19 +53,19 @@ constructor(
                 else -> {}
             }
             super.handleIntent(intent)
-    }
-
-    /**
-     * Handles moving to the next step or submitting if on the last step.
-     */
-    fun onNext() {
-        if (state.value.isLastStep) {
-            AppLog.d(TAG, "Submitting signup form")
-            onSubmit()
-        } else {
-            AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
         }
-    }
+
+        /**
+         * Handles moving to the next step or submitting if on the last step.
+         */
+        fun onNext() {
+            if (state.value.isLastStep) {
+                AppLog.d(TAG, "Submitting signup form")
+                onSubmit()
+            } else {
+                AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
+            }
+        }
 
         /**
          * Handles the signup form submission. Validates the form, shows loading, and attempts signup.
@@ -115,17 +115,15 @@ constructor(
                         SignupRequest(
                             signupData.email.trim(),
                             signupData.firstName.trim(),
-
-                                signupData.lastName.trim(),
+                            signupData.lastName.trim(),
                             signupData.sex,
-
-                                signupData.zipcode
-                                    .trim(),
+                            signupData.zipcode
+                                .trim(),
                             signupData.password,
                             DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
                             controls.height.value.toStoredHeight(),
-                            if (isMetric) WeightUnit.KG else WeightUnit.LB
-                            )
+                            if (isMetric) WeightUnit.KG else WeightUnit.LB,
+                        )
                     val account = accountService.signup(signupRequest)
                     if (account != null) {
                         AppLog.i(TAG, "Account created successfully")
@@ -137,7 +135,7 @@ constructor(
                                 account = account,
                                 goalType = signupData.goalType,
                                 currentWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0,
-                                goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0
+                                goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0,
                             )
                             AppLog.d(TAG, "Goal creation completed, proceeding to navigation")
                         }
@@ -156,8 +154,6 @@ constructor(
                 }
             }
         }
-
-
 
         /**
          * Opens the Help modal.
