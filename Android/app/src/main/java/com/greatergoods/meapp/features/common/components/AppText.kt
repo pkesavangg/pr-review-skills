@@ -60,7 +60,7 @@ object TextTypeDefaults {
 
             TextType.Link ->
                 TextAppearance(
-                    style = typography.link2,
+                    style = typography.link1,
                     color = colorScheme.primaryAction,
                 )
 

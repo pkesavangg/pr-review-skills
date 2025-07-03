@@ -18,6 +18,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.config.AppConfig
+import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
+import com.greatergoods.meapp.features.addScale.screens.ChooseScaleContent
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
@@ -29,7 +32,6 @@ import com.greatergoods.meapp.features.help.viewmodel.HelpViewModel
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import android.annotation.SuppressLint
 import android.content.Intent
 
 /**
@@ -67,24 +69,28 @@ private fun HelpContent(
                 .verticalScroll(rememberScrollState())
         ) {
             // Body content based on selected segment
-            ContactUsContent { handleIntent }
+            ContactUsContent ( handleIntent )
+            ChooseScaleContent(
+                handleIntent = { intent ->
+                    when (intent) {
+                        is AddScaleIntent.ScaleSelected -> {
+                            val url = "${AppConfig.PRODUCT_URL}/${intent.sku}"
+                            handleIntent(HelpIntent.OpenUrl(url))
+                        }
+                        else -> {
+                            // Handle other intents if needed
+                        }
+                    }
+                },
+                enableScroll = false
+            )
         }
     }
 }
 
 /**
- * Body content composable that displays content based on the selected segment.
- */
-@Composable
-private fun HelpBodyContent(
-    handleIntent: (HelpIntent) -> Unit
-) {
-}
-
-/**
  * Contact Us content composable.
  */
-@SuppressLint("UseKtx")
 @Composable
 private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
     val context = LocalContext.current
@@ -134,36 +140,26 @@ private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
                     }
                 )
         Spacer(modifier = Modifier.padding(bottom=MeTheme.spacing.md))
-        UserManualContent()
-    }
-}
-
-
-
-/**
- * User Manual content composable.
- */
-@Composable
-private fun UserManualContent() {
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        AppText(
-            text = HelpScreenStrings.UserManualSectionTitle,
-            textType = TextType.Title,
-        )
-
-        AppIconButton(AppIcons.Outlined.Help) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            AppText(
+                text = HelpScreenStrings.UserManualSectionTitle,
+                textType = TextType.Title,
+            )
+            AppIconButton(AppIcons.Outlined.Help) {
+                handleIntent(HelpIntent.ShowModelNumberHelpPopup)
+            }
         }
+        AppText(
+            text = HelpScreenStrings.UserManualSectionSubtitle,
+            textType = TextType.Subtitle,
+        )
     }
-    AppText(
-        text = HelpScreenStrings.UserManualSectionSubtitle,
-        textType = TextType.Subtitle
-    )
-
 }
+
 
 @PreviewTheme
 @Composable

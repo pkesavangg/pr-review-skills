@@ -6,6 +6,8 @@ import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.enums.ActivityLevel
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -40,18 +42,20 @@ import javax.inject.Inject
 // MyAccountsScreen will use AccountService.loggedInAccountsFlow for account data.
 @HiltViewModel
 class SettingsViewModel
-    @Inject
-    constructor(
-        private val accountService: IAccountService,
-        private val exportService: IExportService,
-        private val bodyCompositionService: IBodyCompositionService,
-        private val userDataStore: UserDataStore,
-        private val notificationService: INotificationService,
-        private val userSettingsService: IUserSettingsService,
-    ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
-            SettingsReducer(),
-        ) {
-        override fun provideInitialState(): SettingsState = SettingsState()
+@Inject
+constructor(
+    private val accountService: IAccountService,
+    private val exportService: IExportService,
+    private val bodyCompositionService: IBodyCompositionService,
+    private val userDataStore: UserDataStore,
+    private val notificationService: INotificationService,
+    private val userSettingsService: IUserSettingsService,
+    private val dialogUtility: IDialogUtility,
+) : BaseIntentViewModel<SettingsState, SettingsIntent>(
+    SettingsReducer(),
+) {
+    override fun provideInitialState(): SettingsState = SettingsState()
+    private val TAG = "SettingsViewModel"
 
         private val TAG = "SettingsViewModel"
 

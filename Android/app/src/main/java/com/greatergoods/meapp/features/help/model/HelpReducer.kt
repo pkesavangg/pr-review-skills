@@ -17,7 +17,14 @@ class HelpReducer : IReducer<HelpState, HelpIntent> {
         intent: HelpIntent,
     ): HelpState =
         when (intent) {
+            HelpIntent.ShowModelNumberHelpPopup -> {
+                state.copy(isLoading = false, error = null)
+            }
             is HelpIntent.OnBack -> {
+                state.copy(isLoading = false, error = null)
+            }
+
+            is HelpIntent.OpenDebugMenu -> {
                 state.copy(isLoading = false, error = null)
             }
 

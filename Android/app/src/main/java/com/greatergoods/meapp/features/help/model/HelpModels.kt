@@ -16,6 +16,8 @@ data class HelpState(
  */
 sealed class HelpIntent : IReducer.Intent {
     data object OnBack : HelpIntent()
+    data object ShowModelNumberHelpPopup: HelpIntent()
+    data object OpenDebugMenu : HelpIntent()
     data class OpenUrl(val url: String) : HelpIntent()
     data class Error(val message: String) : HelpIntent()
 }
