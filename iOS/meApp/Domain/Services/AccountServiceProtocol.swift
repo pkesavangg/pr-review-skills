@@ -84,11 +84,12 @@ protocol AccountServiceProtocol {
     ///   - Returns: The updated Account object.
     func updateDashboardType(type: DashboardType) async throws -> Account
 
-    /// Updates the integrations for the specified account.
+    /// Updates the integration settings for the specified account.
     /// - Parameters:
-    ///   - integrations: The new Integrations object.
-    ///   - Returns: The updated Account object.
-    func updateIntegrations(integrations: Integrations) async throws -> Account
+    ///  - integrationType: The type of integration to update.
+    ///  - preferences: A dictionary of preferences for the integration.
+    ///  - Returns: The updated Account object.
+    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable]) async throws -> Account
 
     /// Updates the notification settings for the specified account.
     /// - Parameters:

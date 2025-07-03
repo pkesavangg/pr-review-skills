@@ -12,7 +12,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import android.content.Context
-import android.util.Log
 
 /**
  * Extension property to provide UserPreferences DataStore instance from Context.
@@ -54,7 +53,6 @@ class UserDataStore @Inject constructor(
      * Emits a Flow of the current active UserAccount, or null if none is active.
      */
     val currentAccountFlow: Flow<UserAccount?> = dataFlow.map {
-        Log.d("UserDataStore", "currentAccountFlow: ${it.accountsMap.values}")
         it.accountsMap.values.firstOrNull { account -> account.isActive }
     }
 
@@ -254,7 +252,7 @@ class UserDataStore @Inject constructor(
     suspend fun logoutCurrentAccount() {
         val current = getData()
         val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
-        
+
         if (currentActiveAccount != null) {
             val updated = current.toBuilder().apply {
                 putAccounts(
@@ -273,7 +271,7 @@ class UserDataStore @Inject constructor(
     suspend fun removeCurrentAccount() {
         val current = getData()
         val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
-        
+
         if (currentActiveAccount != null) {
             val updated = current.toBuilder().apply {
                 removeAccounts(currentActiveAccount.key)

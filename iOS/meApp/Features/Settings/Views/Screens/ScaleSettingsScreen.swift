@@ -141,14 +141,14 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.wifi,
                     value: scaleStore.wifiValue,
-                    onTap: { scaleStore.wifiTapped() }
+                    onTap: { router.navigate(to: .wifi) }
                 )
             )
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.wifiMacAddress,
                     value: scaleStore.wifiMacAddressValue,
-                    onTap: { scaleStore.wifiMacAddressTapped() }
+                    onTap: { router.navigate(to: .wifiMacAddress) }
                 )
             )
         }

@@ -7,10 +7,12 @@ import com.greatergoods.meapp.features.common.helper.StatMeta.statMetaMap
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.strings.MetricLabels
 import com.greatergoods.meapp.features.dashboard.string.DashboardString
+import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.proto.DashboardKey
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
+import kotlin.collections.filter
 import kotlin.math.roundToInt
 
 /**

@@ -1,6 +1,7 @@
 import Foundation
 
 /// Protocol defining the service interface for managing HealthKit integration and data sync on iOS.
+@MainActor
 protocol HealthKitServiceProtocol {
     /// Integrates or de-integrates HealthKit for the current user.
     /// - Parameter turnOn: If true, enables integration; if false, disables it.
@@ -15,9 +16,16 @@ protocol HealthKitServiceProtocol {
     /// - Parameter entry: The entry to sync.
     func syncNewData(entry: Entry) async throws
 
-    /// Checks the HealthKit authorization status.
-    /// - Throws: An error if authorization is not granted.
-    func checkAuthStatus() async throws
+    /// Opens the Apple Health application. Useful for directing the user to Health app settings.
+    func openAppleHealth()
+
+    /// Checks whether the user has granted the required HealthKit permissions.
+    /// - Returns: `true` if authorization has been granted for at least one required permission, `false` otherwise.
+    func checkAuthorizationStatus() -> Bool
+
+    /// Retrieves the list of approved HealthKit permission identifiers.
+    /// - Returns: An array of permission identifiers that have been granted.
+    func getApprovedPermissionList() -> [String]
 
     /// Deletes a specific entry from HealthKit.
     /// - Parameter entry: The entry to delete.
@@ -26,4 +34,9 @@ protocol HealthKitServiceProtocol {
 
     /// Clears all HealthKit data for the current user (if integrated).
     func clearHealthKit() async throws
+
+    /// Determines whether the app should present any Apple Health integration modal on launch.
+    /// - Returns: A `HKIntegrationModalState` value indicating which modal should be displayed,
+    ///            or `nil` when no modal is necessary.
+    func shouldShowHKIntegrationModal() async throws -> HKIntegrationModalState?
 }

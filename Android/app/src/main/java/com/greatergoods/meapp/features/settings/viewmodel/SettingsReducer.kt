@@ -16,7 +16,19 @@ data class SettingsState(
     val errorMessage: String? = null,
     val account: Account? = null,
     val hasMultipleAccounts: Boolean = false,
-) : IReducer.State
+) : IReducer.State {
+
+    /**
+     * Computed property that returns the current notification status as a formatted string.
+     * This is reactive and will update whenever the account state changes.
+     */
+    val currentNotificationStatus: String
+        get() = when {
+            account?.shouldSendEntryNotifications == true && account.shouldSendWeightInEntryNotifications == true -> "w/ weight"
+            account?.shouldSendEntryNotifications == true -> "On"
+            else -> "Off"
+        }
+}
 
 /**
  * Intent for settings actions, such as loading and updating settings.
@@ -31,6 +43,7 @@ sealed interface SettingsIntent : IReducer.Intent {
 
     object ClearError : SettingsIntent
 
+    object OpenAddScales: SettingsIntent
     object Logout : SettingsIntent
     object LogoutAllAccounts : SettingsIntent
     object SwitchAccount : SettingsIntent
@@ -44,11 +57,18 @@ sealed interface SettingsIntent : IReducer.Intent {
     object OpenPrivacyPolicy : SettingsIntent
     object OpenTermsOfService : SettingsIntent
     object OpenGreaterGoodsWebsite : SettingsIntent
+    object OpenHelp : SettingsIntent
 
     // Modal Selection Intents
     object ShowBiologicalSexModal : SettingsIntent
     object ShowActivityLevelModal : SettingsIntent
     object ShowUnitTypeModal : SettingsIntent
+    object ShowNotificationsModal : SettingsIntent
+    object ShowHeightModal : SettingsIntent
+    object ShowWeightlessModal : SettingsIntent
+    object ShowStreakModal : SettingsIntent
+    object goalSettingModal : SettingsIntent
+
 }
 
 /**

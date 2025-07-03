@@ -15,19 +15,11 @@ struct ScaleManualListRowView: View {
     
     var body: some View {
         HStack(spacing: .spacingSM) {
-            // Image placeholder
-            Rectangle()
-                .fill(theme.statusUtility)
+            Image(scale.imgPath)
+                .resizable()
+                .scaledToFit()
                 .frame(width: 75, height: 75)
-                .overlay(
-                    // TODO: Replace with actual Scale image when available
-                    Image(AppAssets.meLogoDark)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(12)
-                )
-
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(scale.sku)
                     .fontOpenSans(.heading5)
                     .foregroundColor(theme.textHeading)
@@ -38,7 +30,6 @@ struct ScaleManualListRowView: View {
                 HStack(spacing: .spacingXS) {
                     AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconSecondary)
-
                     Text(connectivityText(for: scale.setupType))
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)

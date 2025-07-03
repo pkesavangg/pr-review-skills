@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.helper.form
 
 import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import java.util.Calendar
 
@@ -37,9 +38,9 @@ object ValidationMessages {
 }
 
 object FormValidations {
-    fun required(): Validator<String> =
+    fun required(): Validator<Any> =
         { value ->
-            if (value.isBlank()) {
+            if (value.toString().isEmpty()) {
                 ValidationError(ValidationType.REQUIRED, ValidationMessages.REQUIRED)
             } else {
                 null
@@ -146,14 +147,15 @@ object FormValidations {
             }
         }
 
-    fun skuValidator(): Validator<String> =
-        { value ->
-            if (!AppValidatorConfig.SKU.PATTERN.matches(value)) {
-                ValidationError(ValidationType.PATTERN, ValidationMessages.SKU)
-            } else {
-                null
-            }
+    fun skuValidator(): Validator<String> = { value ->
+        val sku = value.trim()
+        val skuExists = SCALES.any { it.sku == sku }
+        when {
+            sku.isBlank() -> ValidationError(ValidationType.REQUIRED, ValidationMessages.SKU)
+            skuExists -> null
+            else -> ValidationError(ValidationType.PATTERN, ValidationMessages.SKU)
         }
+    }
 
     fun weightValidator(unitType: WeightUnit? = WeightUnit.LB): Validator<String> =
         { value ->
