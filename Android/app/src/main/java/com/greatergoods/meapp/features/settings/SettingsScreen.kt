@@ -291,7 +291,7 @@ fun SettingsScreenContent(
                             title = SettingsScreenStrings.DeleteAccount,
                             type = SettingsItemType.None,
                             color = SettingColorType.Danger,
-                            onClick = { },
+                            onClick = { handleIntent(SettingsIntent.ConfirmDeleteAccount) },
                         ),
                     )
                 },

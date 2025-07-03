@@ -396,6 +396,23 @@ constructor(
         }
 
     /**
+     * Deletes the current user account from the server and local storage.
+     */
+    override suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean) {
+        try {
+            if(!isNetworkAvailable()){
+                return
+            }
+            accountRepository.deleteAccount(accountID, isActiveAccount)
+            appNavigationService.emitAuthEvent(AuthState.AccountDeleted(isActiveAccount))
+            AppLog.d(TAG, "Account deleted successfully")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Account deletion failed", e.toString())
+            throw e
+        }
+    }
+
+    /**
      * Switches to a different account.
      * @param account Account to switch to
      * @param showToast Whether to show a toast notification after switching (default: false)

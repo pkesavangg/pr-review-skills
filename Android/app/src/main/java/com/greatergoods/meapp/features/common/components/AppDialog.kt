@@ -12,6 +12,7 @@ fun AppDialog(
     body: String,
     confirmAction: ActionButton,
     modifier: Modifier = Modifier,
+    primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
     dismissAction: ActionButton? = null,
     properties: DialogProperties = DialogProperties(),
 ) {
@@ -21,6 +22,7 @@ fun AppDialog(
             modifier,
             title = title,
             body = body,
+            primaryActionType = primaryActionType,
             primaryAction = confirmAction,
             secondaryAction = dismissAction,
             onDismiss = dismissActionEvent,

@@ -507,6 +507,22 @@ constructor(
     }
 
     /**
+     * Deletes the current user account via API and clears local data.
+     */
+    override suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean) {
+        // Call API to delete account
+        if (isActiveAccount) {
+            userAPI.deleteAccount()
+            accountDao.logoutAccount(accountID)
+            accountDao.deactivateAllAccounts()
+        }
+        // Clear all tokens and local data
+        userDataStore.clearAccountTokens(accountID)
+        tokenManager.clearTokens()
+        AppLog.d(TAG, "Account deleted and local data cleared")
+    }
+
+    /**
      * Private helper to add an account from LoginResponse.account.
      */
     private suspend fun addAccountFromResponse(loginResponse: LoginResponse): Account {

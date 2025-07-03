@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
@@ -17,6 +18,7 @@ import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IUserSettingsService
+import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
@@ -155,8 +157,70 @@ constructor(
                 onStreakUpdate(intent.checked)
             }
 
+            is SettingsIntent.ConfirmDeleteAccount -> onConfirmDeleteAccount()
+
+            is SettingsIntent.DeleteAccount -> {
+                onDeleteAccount()
+            }
+
+            is SettingsIntent.OpenPrivacyPolicy -> {
+                openInAppBrowser(AppConfig.AppUrls.PrivacyPolicy)
+            }
+
+            is SettingsIntent.OpenTermsOfService -> {
+                openInAppBrowser(AppConfig.AppUrls.TermsOfService)
+            }
+
+            is SettingsIntent.OpenGreaterGoodsWebsite -> {
+                openInAppBrowser(AppConfig.AppUrls.GreaterGoodsWebsite)
+            }
+
+
             else -> {}
         }
+    }
+
+    /**
+     * Handles the delete account action: shows loader, calls repo, handles error, navigates on success.
+     */
+    private fun onDeleteAccount() {
+        dialogQueueService.showLoader(SettingsScreenStrings.DeletingAccount)
+        viewModelScope.launch {
+            try {
+
+                val account = state.value.account
+                if (account != null) {
+                    accountService.deleteAccount(account.id, account.isActiveAccount)
+                }
+                dialogQueueService.dismissLoader()
+                // navigationService.reInitialize() // Go to landing/login
+            } catch (e: Exception) {
+                dialogQueueService.dismissLoader()
+                dialogQueueService.enqueue(
+                    DialogModel.Confirm(
+                        title = SettingsScreenStrings.Error.Header,
+                        message = e.message ?: SettingsScreenStrings.Error.MessageGeneric,
+                        primaryActionType = ButtonType.ErrorText,
+                        confirmText = SettingsScreenStrings.DeleteAccountDialog.Cancel,
+                        onConfirm = {},
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun onConfirmDeleteAccount() {
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title = SettingsScreenStrings.DeleteAccountDialog.Title,
+                message = SettingsScreenStrings.DeleteAccountDialog.Body,
+                primaryActionType = ButtonType.ErrorText,
+                confirmText = SettingsScreenStrings.DeleteAccountDialog.Confirm,
+                cancelText = SettingsScreenStrings.DeleteAccountDialog.Cancel,
+                onConfirm = { handleIntent(SettingsIntent.DeleteAccount) },
+                onCancel = {},
+            ),
+        )
     }
 
     fun onExportDataClick() {
@@ -814,10 +878,11 @@ constructor(
             DialogModel.Confirm(
                 title,
                 body,
-                logoutModalString.Confirm,
-                logoutModalString.Cancel,
-                onDismiss = {},
-                onConfirm = {
+                primaryActionType = ButtonType.ErrorText,
+            logoutModalString.Confirm,
+            logoutModalString.Cancel,
+            onDismiss = {},
+            onConfirm = {
                     if (isLogoutAll) {
                         onLogoutAllAccounts()
                     } else {

@@ -153,6 +153,10 @@ interface IAccountService {
      * @param themeMode The ThemeMode to set
      */
     suspend fun setCurrentThemeMode(themeMode: ThemeMode)
+    /**
+     * Deletes the current user account from the server and local storage.
+     */
+    suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean)
 }
 
 /**
@@ -189,6 +193,11 @@ sealed class AuthState {
 
     data class Error(
         val message: String,
+    ) : AuthState()
+
+    data class AccountDeleted(
+        val isActiveAccount: Boolean,
+        val message: String? = null,
     ) : AuthState()
 }
 

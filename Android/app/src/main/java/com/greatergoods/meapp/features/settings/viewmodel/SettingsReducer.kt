@@ -69,9 +69,9 @@ sealed interface SettingsIntent : IReducer.Intent {
     data class ToggleStreak(val checked: Boolean): SettingsIntent
     object goalSettingModal : SettingsIntent
     object ShowAppearanceModal : SettingsIntent
-
-    // Theme Update Intent
     data class UpdateThemeMode(val themeMode: String) : SettingsIntent
+    object DeleteAccount : SettingsIntent
+    object ConfirmDeleteAccount : SettingsIntent
 }
 
 /**

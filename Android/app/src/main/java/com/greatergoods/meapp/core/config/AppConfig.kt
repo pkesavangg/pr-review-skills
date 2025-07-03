@@ -7,6 +7,11 @@ object AppConfig {
     const val AUTHORIZATION_HEADER = "Authorization"
     const val PRODUCT_URL = "https://greatergoods.com"
 
+    object AppUrls {
+        const val PrivacyPolicy = "https://greatergoods.com/legal/privacy-policy"
+        const val TermsOfService = "https://greatergoods.com/legal/weight-gurus-tos"
+        const val GreaterGoodsWebsite = "https://greatergoods.com"
+    }
     object Integrations {
         fun fitbit(accountId: String) =
             "https://www.fitbit.com/oauth2/authorize?response_type=code&client_id=22B2QV&redirect_uri=https%3A%2F%2Fapi.weightgurus.com%2Fv2%2Fauth%2Ffitbit&scope=profile%20weight&state=v3-$accountId"

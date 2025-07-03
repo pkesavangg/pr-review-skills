@@ -214,4 +214,8 @@ interface IAccountRepository {
      * @param themeMode The ThemeMode to set
      */
     suspend fun setCurrentThemeMode(themeMode: ThemeMode)
+    /**
+     * Deletes the current user account via API and clears local data.
+     */
+    suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean)
 }

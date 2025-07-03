@@ -38,6 +38,10 @@ interface AccountDao {
     @Delete
     suspend fun deleteAccount(account: AccountEntity)
 
+    /**
+     * Deletes the account with the given ID from the database.
+     * @param accountId The ID of the account to delete.
+     */
     @Query("DELETE FROM account WHERE accountId = :accountId")
     suspend fun deleteAccountById(accountId: String)
 
