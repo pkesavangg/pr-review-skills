@@ -13,9 +13,11 @@ struct IntegrationItem: Identifiable {
     let id = UUID()
     let type: IntegrationItemType
     var isSelected: Bool = false
+    var isOutOfSync: Bool = false
 
-    init(type: IntegrationItemType, isSelected: Bool = false) {
+    init(type: IntegrationItemType, isSelected: Bool = false, isOutOfSync: Bool = false) {
         self.type = type
         self.isSelected = isSelected
+        self.isOutOfSync = isOutOfSync
     }
 }

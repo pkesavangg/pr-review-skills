@@ -60,4 +60,24 @@ class DialogUtility @Inject constructor(
 
         dialogQueueService.enqueue(alert)
     }
+
+    /**
+     * Shows the Model Number Help dialog for Add Scale feature.
+     *
+     * @param onDismiss Optional callback when the dialog is dismissed
+     */
+    override fun showModelNumberHelpDialog(
+        onDismiss: (() -> Unit)?
+    ) {
+        val dialog = DialogModel.Custom(
+            contentKey = com.greatergoods.meapp.features.common.components.DialogType.ModelNumberHelp,
+            params = emptyMap(),
+            onDismiss = {
+                onDismiss?.let { it() }
+                dialogQueueService.dismissCurrent()
+            },
+            customPriority = 5,
+        )
+        dialogQueueService.enqueue(dialog)
+    }
 }

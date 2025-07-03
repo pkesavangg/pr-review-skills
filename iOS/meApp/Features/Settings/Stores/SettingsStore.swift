@@ -111,7 +111,7 @@ class SettingsStore: ObservableObject {
                 self?.syncHeightPickers()
                 self?.syncSettingsStates()
             }
-            .store(in: &accountService.cancellables)
+            .store(in: &cancellables)
         
         accountService.$allAccounts
             .sink { [weak self] allAccounts in

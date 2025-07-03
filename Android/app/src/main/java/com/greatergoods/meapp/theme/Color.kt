@@ -45,6 +45,8 @@ val LightColorScheme =
         inverseAction = LightColorToken.inverse,
         inverseActionDisabled = LightColorToken.inverseDisabled,
         inverseActionSecondary = LightColorToken.inverseSecondary,
+        errorAction = LightColorToken.errorAction,
+        errorActionDisabled = LightColorToken.errorActionDisabled,
         // Status
         goal = LightColorToken.goal,
         success = LightColorToken.success,
@@ -95,6 +97,8 @@ val DarkColorScheme =
         inverseAction = DarkColorToken.inverse,
         inverseActionDisabled = DarkColorToken.inverseDisabled,
         inverseActionSecondary = DarkColorToken.inverseSecondary,
+        errorAction = DarkColorToken.errorAction,
+        errorActionDisabled = DarkColorToken.errorActionDisabled,
         // Status
         goal = DarkColorToken.goal,
         success = DarkColorToken.success,

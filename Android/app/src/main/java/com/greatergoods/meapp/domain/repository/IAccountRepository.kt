@@ -3,9 +3,9 @@ package com.greatergoods.meapp.domain.repository
 import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.auth.ChangePasswordResponse
 import com.greatergoods.meapp.domain.model.api.auth.LoginResponse
+import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
-import com.greatergoods.meapp.domain.model.api.user.AccountResponse
-import com.greatergoods.meapp.domain.model.api.user.CreateAccountRequest
+import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.storage.Account.Account
@@ -17,50 +17,50 @@ import retrofit2.Response
  * Provides methods for account authentication, management, and data synchronization.
  */
 interface IAccountRepository {
-    // API Operations
     /**
-     * Logs in via API and returns LoginResponse.
+     * Logs in via API and returns the authenticated Account.
+     * @param email User's email
+     * @param password User's password
+     * @return The authenticated Account
      */
-    suspend fun loginInAPI(email: String, password: String): LoginResponse
+    suspend fun login(email: String, password: String): Account
 
     /**
-     * Signs up via API and returns LoginResponse.
+     * Signs up via API and returns the created Account.
+     * @param request Signup request data
+     * @return The created Account
      */
-    suspend fun signupInAPI(request: CreateAccountRequest): LoginResponse
-
-    /**
-     * Logs out via API for a specific account.
-     * @param fcmToken Optional FCM token to unregister
-     * @param accountId The account ID to logout
-     */
-    suspend fun logoutInAPI(fcmToken: String?, accountId: String)
-
-    /**
-     * Logs out in the database.
-     */
-    suspend fun logOutInDb(accountId: String)
+    suspend fun signup(request: SignupRequest): Account
 
     /**
      * Gets account info via API for a specific account and returns AccountResponse.
      * @param accountId The account ID to get info for
      * @return AccountInfo for the specified account
      */
-    suspend fun getAccountInAPI(accountId: String): AccountInfo
+    suspend fun getAccount(accountId: String): AccountInfo
 
     /**
-     * Updates password via API and returns true if successful.
+     * Changes the password for the specified account.
+     * @param accountId The account ID
+     * @param oldPassword The current password
+     * @param newPassword The new password to set
+     * @return ChangePasswordResponse with new tokens if successful
      */
-    suspend fun updatePasswordInAPI(oldPassword: String, newPassword: String): ChangePasswordResponse
+    suspend fun updatePassword(accountId: String, oldPassword: String, newPassword: String): ChangePasswordResponse
 
     /**
-     * Requests password reset via API and returns true if successful.
+     * Requests password reset via API.
+     * @param email The email address to reset the password for
+     * @return API response
      */
-    suspend fun resetPasswordInAPI(email: String): Response<Unit>
+    suspend fun resetPassword(email: String): Response<Unit>
 
     /**
-     * Updates profile via API and returns AccountResponse
+     * Updates the user's profile information via API and updates the local database.
+     * @param profileData The profile data to update
+     * @return The updated Account
      */
-    suspend fun updateProfileInAPI(profileData: ProfileUpdateRequest): AccountResponse
+    suspend fun updateProfile(profileData: ProfileUpdateRequest): Account
 
     /**
      * Refreshes the token via API and returns a Token.
@@ -68,31 +68,131 @@ interface IAccountRepository {
      * @param accountId The account ID to associate with the refreshed token (optional)
      * @return Token object with refreshed tokens
      */
-    suspend fun refreshTokenInAPI(refreshToken: String, accountId: String? = null): Token
+    suspend fun refreshToken(
+        refreshToken: String,
+        accountId: String? = null,
+    ): Token
 
-    // DB Operations
-    suspend fun addAccountInDB(account: Account): Account
-    suspend fun updateAccountInDB(accountId: String, partialUpdate: PartialAccount): Account
-    suspend fun logoutInDb(accountId: String)
-    suspend fun logoutAllAccountsInDb()
-    suspend fun removeAccountInDB(accountId: String)
-    suspend fun removeAllAccountsInDB()
-    suspend fun deactivateOtherAccountsInDB(accountId: String)
-    suspend fun deactivateAllAccountsInDB()
-    suspend fun activateAccountInDB(accountId: String)
-    suspend fun updateTokensInDB(tokens: Map<String, String>)
-    suspend fun updateLastActiveTimeInDB(accountId: String)
+    /**
+     * Adds an account to the database with all entity relations and returns the domain model.
+     * @param account The Account to add
+     * @return The added Account
+     */
+    suspend fun addAccount(account: Account): Account
+
+    /**
+     * Updates an account in the database with partial data and returns the updated domain model.
+     * @param accountId The ID of the account to update
+     * @param partialUpdate Partial account data to update
+     * @return The updated Account
+     */
+    suspend fun updateAccount(accountId: String, partialUpdate: PartialAccount): Account
+
+    /**
+     * Deactivates all accounts except the given account ID.
+     * @param accountId The account ID to keep active
+     */
+    suspend fun deactivateOtherAccounts(accountId: String)
+
+    /**
+     * Activates the specified account by setting it as the active account.
+     * @param accountId The account ID to activate
+     */
+    suspend fun activateAccount(accountId: String)
+
+    /**
+     * Updates tokens for the active account in the TokenManager.
+     * @param request The token update request containing all token fields
+     */
+    suspend fun updateTokens(request: AccountToken)
+
+    /**
+     * Updates the last active time for the account in the database.
+     * @param accountId The account ID to update
+     */
+    suspend fun updateLastActiveTime(accountId: String)
+
+    /**
+     * Gets the sync timestamp for the current account as a Flow.
+     * @return Flow emitting the sync timestamp
+     */
     suspend fun getSyncTimeStamp(): Flow<String>
+
+    /**
+     * Updates the sync timestamp for the current account.
+     * @param timeStamp The new sync timestamp
+     */
     suspend fun updateSyncTimeStamp(timeStamp: String)
+
+    /**
+     * Updates the account from API response data and returns the updated Account.
+     * @param accountId The account ID to update
+     * @param accountInfo The API response data
+     * @return The updated Account
+     */
     suspend fun updateAccountFromAPI(accountId: String, accountInfo: AccountInfo): Account
+
+    /**
+     * Marks the specified account as expired in the database.
+     * @param accountId The account ID to mark as expired
+     */
     suspend fun markAccountExpired(accountId: String)
-    fun getLoggedInAccountsFromDB(): Flow<List<Account>>
-    fun getStoredActiveAccountFromDB(): Flow<Account?>
+
+    /**
+     * Gets all logged-in accounts from the database as a Flow.
+     * @return Flow emitting the list of logged-in accounts
+     */
+    fun getLoggedInAccounts(): Flow<List<Account>>
+
+    /**
+     * Gets the stored active account from the database as a Flow.
+     * @return Flow emitting the active account or null if none
+     */
+    fun getActiveAccount(): Flow<Account?>
 
     /**
      * Gets all accounts with unsynced data (isSynced = false) from the database.
-     * Used by offline handler service to sync pending changes.
      * @return List of accounts that need to be synced
      */
-    suspend fun getUnsyncedAccountsFromDB(): List<Account>
+    suspend fun getUnsyncedAccounts(): List<Account>
+
+    /**
+     * Logs out the account both remotely (API) and locally (DB, tokens).
+     * @param accountId The ID of the account to log out
+     * @param fcmToken The FCM token for push notifications (optional)
+     * @param isActiveAccount Whether this is the active account
+     * @return true if logout was successful, false otherwise
+     */
+    suspend fun logoutAccount(accountId: String, fcmToken: String?, isActiveAccount: Boolean): Boolean
+
+    /**
+     * Logs out all accounts both remotely (API) and locally (DB, tokens).
+     * @return true if all accounts were logged out successfully, false otherwise
+     */
+    suspend fun logoutAllAccounts(): Boolean
+
+    /**
+     * Adds a new account from a LoginResponse, sets it as active, and updates tokens.
+     * @param loginResponse The login response containing account and token info
+     * @return The saved Account
+     */
+    suspend fun addAccountFromLoginResponse(loginResponse: LoginResponse): Account
+
+    /**
+     * Updates the user's tokens for the given account ID.
+     * @param accountId The account ID to update tokens for
+     */
+    suspend fun updateUserTokens(accountId: String)
+
+    /**
+     * Clears the tokens for the given account ID.
+     * @param accountId The account ID whose tokens should be cleared
+     */
+    suspend fun clearAccountTokens(accountId: String)
+
+    /**
+     * Removes the account with the given ID from the database.
+     * @param accountId The account ID to remove
+     */
+    suspend fun removeAccount(accountId: String)
 }

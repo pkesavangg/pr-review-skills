@@ -57,12 +57,23 @@ struct SettingsScreen: View {
                 // Ensure this is the actively selected tab before evaluating modal presentation
                 if tabViewModel.selectedTab == .settings {
                     settingsStore.presentAddAccountModalIfNeeded(router: router)
+
+                    // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
+                    if let route = tabViewModel.pendingSettingsNavigation {
+                        tabViewModel.pendingSettingsNavigation = nil
+                        router.navigate(to: route)
+                    }
                 }
             }
             // Re-evaluate modal presentation whenever the selected tab changes.
             .onChange(of: tabViewModel.selectedTab) {
                 if tabViewModel.selectedTab == .settings {
                     settingsStore.presentAddAccountModalIfNeeded(router: router)
+
+                    if let route = tabViewModel.pendingSettingsNavigation {
+                        tabViewModel.pendingSettingsNavigation = nil
+                        router.navigate(to: route)
+                    }
                 }
             }
         }

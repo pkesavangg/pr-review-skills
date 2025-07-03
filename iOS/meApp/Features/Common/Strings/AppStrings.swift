@@ -10,6 +10,8 @@ import Foundation
 /// Constants for common strings used throughout the app
 struct CommonStrings {
     static let done = "Done"
+    static let ok = "OK"
+    static let retry = "Retry"
     static let cancel = "Cancel"
     static let submit = "Submit"
     static let next = "Next"
@@ -45,6 +47,7 @@ struct CommonStrings {
     static let yes = "Yes"
     static let no = "No"
     static let iOS = "iOS"
+    static let finish = "Finish"
 }
 
 /// Constants for entry strings used in the app
@@ -142,7 +145,7 @@ struct HKIntegrationHealthAccessStrings {
             highlight: "Profile → Privacy → Apps → Weight Gurus."
         )
     )
-
+    
     static let integrationFailed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integration Failed",
@@ -172,7 +175,7 @@ struct HKIntegrationModalStrings {
             suffix: ". Or remove the integration in Weight Gurus."
         )
     )
-
+    
     
     static let finishAdding = HKIntegrationModalContent(
         imageName: AppAssets.hkLogoLarge,
@@ -185,7 +188,7 @@ struct HKIntegrationModalStrings {
     static let addIntegration = HKIntegrationModalContent(
         imageName: AppAssets.hkLogoLarge,
         title: "Add Apple Health Integration",
-        message: "It looks like you’re using Weight Gurus on a new device. To continue syncing with Apple Health, please reconnect.",
+        message: "It looks like you're using Weight Gurus on a new device. To continue syncing with Apple Health, please reconnect.",
         primaryButtonTitle: "CONNECT",
         secondaryButtonTitle: nil
     )
@@ -328,6 +331,13 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
     
+    struct ConnectWifiNetwork {
+        static let title = "Are you sure you want to exit?"
+        static let message = "Wi-Fi settings will not be updated."
+        static let goBackButton = "Go Back"
+        static let exitButton = "Exit"
+    }
+    
     struct GoalExitAlert {
         static let title = "Are you sure you want to leave?"
         static let message = "You have unsaved changes. Are you sure you want to exit?"
@@ -396,6 +406,43 @@ struct AlertStrings {
         static let removeButton = "Remove"
         static let cancelButton = "Cancel"
     }
+    
+    // Alert shown when user attempts to disconnect a third-party integration (Fitbit / MyFitnessPal).
+    struct RemoveIntegrationAlert {
+        static let title = "Are you sure you want to turn off this integration?"
+        static let cancelButton = "Cancel"
+        static let removeButton = "Remove"
+    }
+    
+    // Alert shown when integration add/remove fails.
+    struct IntegrationFailureAlert {
+        static let message = "Sorry, something went wrong. Try again?"
+    }
+    
+    // Alert when in-app browser cannot open link.
+    struct LinkOpenErrorAlert {
+        static let title = "Something went wrong!"
+        static let message = "Copy this link and paste it into your web browser."
+        static let copyLinkButton = "Copy Link"
+        static let dismissButton = "Dismiss"
+    }
+    
+    // Alert when integration is enabled but invalid.
+    struct ReIntegrateAlert {
+        static let disableButton: (String) -> String = { name in "Disable \(name)" }
+        static let disableAllButton = "Disable All"
+        static let okButton = "OK"
+        static let message: (String, Int) -> String = { name, count in
+            "Unable to connect to \(name)! You may need to re-enable \(count > 1 ? "these" : "this") integration by re-authorizing your account."
+        }
+    }
+    
+    struct ExitSetupAlert {
+        static let title = "Confirm"
+        static let message = "Are you sure you want to exit setup?"
+        static let exitButton = "Exit"
+        static let returnButton = "Return"
+    }
 }
 
 struct LoaderStrings {
@@ -408,6 +455,8 @@ struct LoaderStrings {
     static let sendingEmail = "Sending email..."
     static let sendingCsv = "Sending .CSV File..."
     static let loading = "Loading..."
+    static let removingIntegration = "Removing integration..."
+    static let syncing = "Syncing..."
 }
 
 struct URLStrings {
@@ -477,7 +526,6 @@ struct AppAssets {
     static let filledCloseCircle = "filledCloseCircle"
     static let filledTickCircle = "filledTickCircle"
     static let exclamationMark = "exclamationMark"
-    static let scale0412 = "0412"
     static let weightOnlyMode = "weightOnlyMode"
     static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
     static let  skuNumberSticker = "skuNumberSticker"
@@ -495,5 +543,44 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+    static let checkMarkLarge = "checkMarkLarge"
+    static let appSyncTab = "appSyncTab"
+    
+    // MARK: - Scale images
+    // MARK: - AppSync series
+    static let scale0341 = "0341"
+    static let scale0342 = "0342"
+    static let scale0343 = "0343"
+    static let scale0345 = "0345"
+    static let scale0346 = "0346"
+    static let scale0347 = "0347"
+    static let scale0358 = "0358"
+    static let scale0359 = "0359"
+    static let scale0364 = "0364"
+    static let scale0369 = "0369"
+    static let scale0370 = "0370"
+    static let scale0371 = "0371"
+    
+    // MARK: - Bluetooth series
+    static let scale0375 = "0375"
+    static let scale0376 = "0376"
+    static let scale0378 = "0378"
+    static let scale0380 = "0380"
+    static let scale0382 = "0382"
+    static let scale0383 = "0383"
+    
+    // MARK: - WiFi series
+    static let scale0384 = "0384"
+    static let scale0385 = "0385"
+    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
+    
+    // MARK: - Bluetooth wifi series
+    static let scale0412 = "0412"
+    static let streak = "streak"
+    static let longestStreak = "longestStreak"
+    static let plusCircle = "plusCircle"
+    static let minusCircle = "minusCircle"
+    static let plusCircleDark = "plusCircleDark"
+    static let minusCircleDark = "minusCircleDark"
 }
 

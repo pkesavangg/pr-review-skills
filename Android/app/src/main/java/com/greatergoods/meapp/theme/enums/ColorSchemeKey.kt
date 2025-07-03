@@ -26,6 +26,8 @@ enum class ColorSchemeKey {
     Inverse,
     InverseDisabled,
     InverseSecondary,
+    ErrorAction,
+    ErrorActionDisabled,
 
     // Status
     Goal,

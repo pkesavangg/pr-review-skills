@@ -26,6 +26,8 @@ data class ColorScheme(
     val inverseAction: Color,
     val inverseActionDisabled: Color,
     val inverseActionSecondary: Color,
+    val errorAction: Color,
+    val errorActionDisabled: Color,
     // Status
     val goal: Color,
     val success: Color,
@@ -104,6 +106,8 @@ data class ColorScheme(
             ColorSchemeKey.Inverse -> inverseAction
             ColorSchemeKey.InverseDisabled -> inverseActionDisabled
             ColorSchemeKey.InverseSecondary -> inverseActionSecondary
+            ColorSchemeKey.ErrorAction -> errorAction
+            ColorSchemeKey.ErrorActionDisabled -> errorActionDisabled
 
             // Status
             ColorSchemeKey.Goal -> success

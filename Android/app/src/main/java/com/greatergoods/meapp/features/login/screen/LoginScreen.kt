@@ -141,7 +141,7 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
                     Spacer(Modifier.height(spacing.xs))
                     AppButton(
                         label = LoginStrings.LoginButton,
-                        enabled = state.form.isValid && !state.isLoading,
+                        enabled = state.form.isValid,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         onClick = {
                             keyboardController?.hide()

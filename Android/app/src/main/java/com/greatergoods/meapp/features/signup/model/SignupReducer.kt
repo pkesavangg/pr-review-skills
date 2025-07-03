@@ -424,8 +424,29 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
             }
 
             is SignupIntent.ToggleMetric -> {
+                // Convert weight values when switching units
+                val currentWeightValue = state.form.controls.currentWeight.value
+                val goalWeightValue = state.form.controls.goalWeight.value
+
+                val convertedCurrentWeight = convertWeightValue(
+                    value = currentWeightValue,
+                    fromMetric = state.form.controls.useMetric.value,
+                    toMetric = intent.useMetric
+                )
+
+                val convertedGoalWeight = convertWeightValue(
+                    value = goalWeightValue,
+                    fromMetric = state.form.controls.useMetric.value,
+                    toMetric = intent.useMetric
+                )
+
                 // Update the metric setting in the form controls
                 state.form.controls.useMetric.onValueChange(intent.useMetric)
+
+                // Update weight values with converted values
+                state.form.controls.currentWeight.onValueChange(convertedCurrentWeight)
+                state.form.controls.goalWeight.onValueChange(convertedGoalWeight)
+
                 state.copy(error = null)
             }
 
