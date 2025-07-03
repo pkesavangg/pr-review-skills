@@ -56,8 +56,11 @@ object AccountEntityMapper {
         weightlessTimestamp = null,
         weightlessWeight = null,
         isStreakOn = false,
+        streakTimestamp = null,
         dashboardType = null,
-        dashboardMetrics = null
+        dashboardMetrics = null,
+        shouldSendEntryNotifications = false,
+        shouldSendWeightInEntryNotifications = false
     )
 
     /**
@@ -95,9 +98,17 @@ object AccountEntityMapper {
             weightlessTimestamp = accountWithRelations.weightlessSettings?.weightlessTimestamp,
             weightlessWeight = accountWithRelations.weightlessSettings?.weightlessWeight,
             isStreakOn = accountWithRelations.streaksSettings?.isStreakOn ?: false,
+            streakTimestamp = accountWithRelations.streaksSettings?.streakTimestamp,
             dashboardType = accountWithRelations.dashboardSettings?.dashboardType,
             dashboardMetrics = accountWithRelations.dashboardSettings?.dashboardMetrics?.split(",")
-                ?.filterNot { it.isBlank() }
+                ?.filterNot { it.isBlank() },
+            // Map notification settings
+            shouldSendEntryNotifications = accountWithRelations.notificationSettings?.shouldSendEntryNotifications ?: false,
+            shouldSendWeightInEntryNotifications = accountWithRelations.notificationSettings?.shouldSendWeightInEntryNotifications ?: false,
+            goalType = accountWithRelations.goalSettings?.goalType,
+            initialWeight = accountWithRelations.goalSettings?.weight?.toDouble() ?: 0.0,
+            goalWeight = accountWithRelations.goalSettings?.goalWeight?.toDoubleOrNull() ?: 0.0,
+            goalPercent = accountWithRelations.goalSettings?.goalPercent?.toDouble() ?: 0.0,
         )
     }
 }

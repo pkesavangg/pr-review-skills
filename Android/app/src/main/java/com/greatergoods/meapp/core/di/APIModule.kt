@@ -6,8 +6,11 @@ import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.data.api.IExportAPI
+import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
+import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.IUserAPI
+import com.greatergoods.meapp.data.api.IUserSettingsAPI
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,11 +18,11 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Dagger Hilt module for providing API service dependencies.
+ * Dagger Hilt module for providing API interface dependencies.
  */
 @Module
 @InstallIn(SingletonComponent::class)
-class APIModule {
+object ApiModule {
 
     @Provides
     @Singleton
@@ -27,9 +30,7 @@ class APIModule {
         httpClient.createService(EntryApi::class.java)
 
     /**
-     * Provides a singleton instance of [IAuthAPI] using the provided [HttpClient].
-     * @param httpClient The HTTP client for network operations.
-     * @return [IAuthAPI] instance.
+     * Provides the IAuthAPI implementation using Retrofit.
      */
     @Provides
     @Singleton
@@ -43,6 +44,14 @@ class APIModule {
     @Provides
     @Singleton
     fun provideUserAPI(httpClient: HttpClient): IUserAPI = httpClient.createService(IUserAPI::class.java)
+
+    /**
+     * Provides the IUserSettingsAPI implementation using Retrofit.
+     */
+    @Provides
+    @Singleton
+    fun provideUserSettingsAPI(httpClient: HttpClient): IUserSettingsAPI = httpClient.createService(IUserSettingsAPI::class.java)
+
 
     /**
      * Provides a singleton instance of [IDeviceAPI] using the provided [HttpClient].
@@ -73,4 +82,19 @@ class APIModule {
     @Provides
     @Singleton
     fun provideBodyCompAPI(httpClient: HttpClient): IBodyCompAPI = httpClient.createService(IBodyCompAPI::class.java)
+
+    /**
+     * Provides a singleton instance of [INotificationAPI] using the provided [HttpClient].
+     * @param httpClient The HTTP client for network operations.
+     * @return [INotificationAPI] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideNotificationAPI(httpClient: HttpClient): INotificationAPI = httpClient.createService(INotificationAPI::class.java)
+    /**
+     * Provides the IGoalAPI implementation using Retrofit.
+     */
+    @Provides
+    @Singleton
+    fun provideGoalAPI(httpClient: HttpClient): IGoalAPI = httpClient.createService(IGoalAPI::class.java)
 }

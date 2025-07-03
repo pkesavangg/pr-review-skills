@@ -44,6 +44,7 @@ fun AppHelpModal(
     AppPopupModal {
         AppPopup(
             true,
+            modifier = Modifier,
             AppHelpModalStrings.Title,
             supportingText = AppHelpModalStrings.SupportingText,
             onClose = {

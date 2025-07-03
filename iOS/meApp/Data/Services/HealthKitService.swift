@@ -4,91 +4,136 @@ import ggHealthKitPackage
 import SwiftData
 
 @MainActor
-public final class HealthKitService: HealthKitServiceProtocol {    
+public final class HealthKitService: HealthKitServiceProtocol {
     static let shared = HealthKitService()
     @Injector private var integrationService: IntegrationsService
-    private let healthKitService = ggHealthKitPackage.HealthKitService.shared
+    @Injector private var logger: LoggerService
+    @Injector private var accountService: AccountService
+    private let hkPackage = ggHealthKitPackage.AppleHealthHandler.shared
+    private let tag = "HealthKitService"
     private let context: ModelContext
+    private let kvStore = KvStorageService.shared
+    private let addHKModalFlagKeyBase = "hasSeenAddAppleHealthIntegrationModal"
+    /// Local storage flag indicating the *Finish Adding Apple Health* prompt has already been shown on this device.
+    private let finishHKModalFlagKeyBase = "hasSeenFinishAddingAppleHealthModal"
+    /// Local storage flag indicating the *Out of Sync* Apple Health prompt has already been shown on this device.
+    private let outOfSyncHKModalFlagKeyBase = "hasSeenOutOfSyncAppleHealthModal"
     
     // MARK: - Initialization
     
     init() {
+        hkPackage.setAppType(appType: .WEIGHT_GURUS)
         self.context = PersistenceController.shared.context
     }
     
     // MARK: - HealthKitServiceProtocol
     
+    /// Integrates or de-integrates Apple Health based on `turnOn`. Returns `true` when integration remains enabled after the call.
     public func integrate(turnOn: Bool) async throws -> Bool {
         if turnOn {
             do {
-                _ = try await integrationService.checkIfIntegrationIsAlreadyUsed(type: .healthKit)
+                let isAlreadyIntegrated = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
+                if isAlreadyIntegrated {
+                    throw IntegrationError.userConflict
+                }
             } catch {
-                throw HealthKitError.authorizationDenied
+                throw IntegrationError.userConflict
             }
         }
         
         if turnOn {
+            let isAvailable = hkPackage.available();
+            if !isAvailable {
+                return false
+            }
+            let authorizationResult = await hkPackage.requestAuthorization()
+            if !authorizationResult {
+                logger.log(level: .error, tag: tag, message: "HealthKit authorization failed.")
+                return false
+            }
+            let permissions = getApprovedPermissionList()
+            if permissions.isEmpty {
+                return false
+            }
+            let integrationInfo = IntegrationInfo(
+                type: .healthKit,
+                isIntegrated: true
+            )
             do {
-                try await healthKitService.requestAuthorization()
-                try await syncAllData()
-                try await integrationService.setStoredIntegrationData(IntegrationInfo(
-                    type: .healthKit,
-                    isIntegrated: true,
-                    assignedTo: nil,
-                    deIntegrated: nil
-                ))
+                try await self.integrationService.setStoredIntegrationData(integrationInfo)
                 return true
             } catch {
                 return false
             }
         } else {
             try await clearHealthKit()
-            try await integrationService.setStoredIntegrationData(IntegrationInfo(
-                type: .healthKit,
-                isIntegrated: false,
-                assignedTo: nil,
-                deIntegrated: nil
-            ))
             return false
         }
     }
     
+    public func isHKOutOfSync() async -> Bool {
+        do {
+            let result = try await self.integrationService.getStoredIntegrationData()
+            let isIntegrated = result?.isIntegrated ?? false
+            let approvedPermissions = self.getApprovedPermissionList()
+            return isIntegrated && approvedPermissions.isEmpty
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
+            return false
+        }
+    }
+    
+    /// Pushes the entire local entry history into Apple Health.
     public func syncAllData() async throws {
-        try await healthKitService.checkAuthorizationStatus()
         let entries = try await fetchAllEntries()
         let healthKitData = buildHealthKitData(from: entries)
-        try await healthKitService.saveData(healthKitData)
+        try await hkPackage.saveData(healthKitData)
     }
     
-    func syncNewData(entry: Entry) async throws {
-        guard try await integrationService.getStoredIntegrationData()?.isIntegrated == true else {
-            return
+    /// Opens the Apple Health app so the user can review permissions.
+    public func openAppleHealth() {
+        Task {
+            await hkPackage.openAppleHealth()
         }
-        try await healthKitService.checkAuthorizationStatus()
+    }
+    
+    /// Writes a single `Entry` into Apple Health.
+    func syncNewData(entry: Entry) async throws {
         let healthKitData = buildHealthKitData(from: [entry])
-        try await healthKitService.saveData(healthKitData)
+        try await hkPackage.saveData(healthKitData)
     }
     
-    public func checkAuthStatus() async throws {
-        try await healthKitService.checkAuthorizationStatus()
-    }
-    
+    /// Deletes a single `Entry` previously written to Apple Health.
     func deleteEntry(entry: Entry) async throws -> Bool {
         let healthKitData = buildHealthKitData(from: [entry])
-        try await healthKitService.deleteData(healthKitData)
+        try await hkPackage.deleteEntry(healthKitData)
         return true
     }
     
+    /// Removes all Apple Health records previously generated by the app.
     public func clearHealthKit() async throws {
-        if try await integrationService.getStoredIntegrationData()?.isIntegrated == true {
-            let entries = try await fetchAllEntries()
-            let healthKitData = buildHealthKitData(from: entries)
-            try await healthKitService.deleteData(healthKitData)
+        do {
+            try await self.integrationService.clearIntegrationStatus(integrationType: .healthKit)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to clear integration status", data: error.localizedDescription)
         }
+        try await hkPackage.deleteAllData()
     }
     
-    // MARK: - Private Methods
+    /// Returns `true` if at least one HealthKit permission is granted.
+    func checkAuthorizationStatus() -> Bool {
+        let approvedPermissionList = self.getApprovedPermissionList();
+        return approvedPermissionList.count > 0
+    }
     
+    /// Lists the granted HealthKit permission identifiers.
+    func getApprovedPermissionList() -> [String] {
+        hkPackage.getApprovedPermissionList()
+    }
+    
+    // MARK: - Private Helpers ------------------------------------------------
+    
+    /// Fetches all entries from the local database ordered chronologically.
     private func fetchAllEntries() async throws -> [Entry] {
         let descriptor = FetchDescriptor<Entry>(
             sortBy: [SortDescriptor(\.entryTimestamp, order: .forward)]
@@ -96,19 +141,21 @@ public final class HealthKitService: HealthKitServiceProtocol {
         return try context.fetch(descriptor)
     }
     
+    /// Converts entries into `HealthKitData` payloads ready for saving.
     private func buildHealthKitData(from entries: [Entry]) -> [HealthKitData] {
         var healthKitData: [HealthKitData] = []
-        
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for entry in entries {
             guard let scaleEntry = entry.scaleEntry,
-                  let timestamp = ISO8601DateFormatter().date(from: entry.entryTimestamp) else {
+                  let timestamp = formatter.date(from: entry.entryTimestamp) else {
                 continue
             }
             
             if let weight = scaleEntry.weight {
                 healthKitData.append(HealthKitData(
                     type: .weight,
-                    value: Double(weight),
+                    value: ConversionTools.convertStoredToLbs(weight),
                     timestamp: timestamp
                 ))
             }
@@ -116,7 +163,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             if let bodyFat = scaleEntry.bodyFat {
                 healthKitData.append(HealthKitData(
                     type: .bodyFat,
-                    value: Double(bodyFat),
+                    value: ConversionTools.convertStoredToLbs(bodyFat),
                     timestamp: timestamp
                 ))
             }
@@ -124,7 +171,18 @@ public final class HealthKitService: HealthKitServiceProtocol {
             if let muscleMass = scaleEntry.muscleMass {
                 healthKitData.append(HealthKitData(
                     type: .leanBodyMass,
-                    value: Double(muscleMass),
+                    value: ConversionTools.convertStoredToLbs(muscleMass),
+                    timestamp: timestamp
+                ))
+            }
+            
+            if let weight = scaleEntry.weight, let bodyFat = scaleEntry.bodyFat {
+                let convertedWeight = ConversionTools.convertStoredToLbs(weight)
+                let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
+                let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
+                healthKitData.append(HealthKitData(
+                    type: .leanBodyMass,
+                    value: leanBodyMass,
                     timestamp: timestamp
                 ))
             }
@@ -132,13 +190,113 @@ public final class HealthKitService: HealthKitServiceProtocol {
             if let bmi = scaleEntry.bmi {
                 healthKitData.append(HealthKitData(
                     type: .bmi,
-                    value: Double(bmi),
+                    value: ConversionTools.convertStoredToLbs(bmi),
                     timestamp: timestamp
                 ))
             }
         }
         
         return healthKitData
+    }
+    
+    /// Writes the provided dataset to Apple Health and logs the outcome.
+    private func saveHealthKitData(finalData: [HealthKitData]) async throws {
+        do {
+            if finalData.count > 0 {
+                try await hkPackage.saveData(finalData)
+            } else {
+                logger.log(level: .info, tag: tag, message: "HealthKit: No data to save")
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "HealthKit: saveHealthKitData error", data: error)
+            throw error
+        }
+    }
+    
+    // MARK: - Integration Helper ------------------------------------------------
+    /// Determines which Apple Health integration modal (if any) should be presented on app launch.
+    /// - Returns: A `HKIntegrationModalState` value (`.addIntegration` / `.finishAdding`) when a prompt
+    ///            should be shown, or `nil` when no prompt is required.
+    public func shouldShowHKIntegrationModal() async throws -> HKIntegrationModalState? {
+        do {
+            // ------------------------------------------------------------
+            // 0️⃣  Out of Sync
+            // ------------------------------------------------------------
+            // Show when the integration is marked as enabled but *no* HealthKit permissions remain.
+            // This means the user has disabled permissions in Apple Health while the integration is
+            // still considered active in Weight Gurus.
+            let approvedPermissions = getApprovedPermissionList()
+            if approvedPermissions.isEmpty {
+                if let integrationInfo = try await integrationService.getStoredIntegrationData(),
+                   integrationInfo.isIntegrated,
+                   integrationInfo.type == .healthKit {
+                    let accountId = try? await accountService.getActiveAccount()?.accountId
+                    let scopedOutOfSyncKey = scopedKey(outOfSyncHKModalFlagKeyBase, accountId: accountId)
+                    if (kvStore.getValue(forKey: scopedOutOfSyncKey) as? Bool) != true {
+                        kvStore.setValue(true, forKey: scopedOutOfSyncKey)
+                        return .outOfSync
+                    }
+                }
+            }
+
+            // ------------------------------------------------------------
+            // 1️⃣  Finish Adding Apple Health
+            // ------------------------------------------------------------
+            // Show when HealthKit permissions have been granted (≥1) but we don't yet
+            // have a stored integration record for the current device/account.
+            let accountId = try? await accountService.getActiveAccount()?.accountId
+            let scopedFinishKey = scopedKey(finishHKModalFlagKeyBase, accountId: accountId)
+            if (kvStore.getValue(forKey: scopedFinishKey) as? Bool) != true {
+                let approvedPermissions = getApprovedPermissionList()
+                if !approvedPermissions.isEmpty {
+                    let storedIntegrationData = try await integrationService.getStoredIntegrationData()
+                    if storedIntegrationData == nil {
+                        // Ensure no other account on this device is already integrated with Apple Health
+                        let isUsedByAnotherAccount = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
+                        if !isUsedByAnotherAccount {
+                            // Another account is already integrated; skip showing the Finish Adding prompt
+                            kvStore.setValue(true, forKey: scopedFinishKey)
+                            return .finishAdding
+                        }
+                    }
+                }
+            }
+
+            // ------------------------------------------------------------
+            // 2️⃣  Add Apple Health Integration (fresh install / new device)
+            // ------------------------------------------------------------
+            let scopedAddKey = scopedKey(addHKModalFlagKeyBase, accountId: accountId)
+            if (kvStore.getValue(forKey: scopedAddKey) as? Bool) != true {
+                guard let account = try await accountService.getActiveAccount() else {
+                    return nil
+                }
+
+                // Account level flag from backend indicating HealthKit was enabled previously.
+                let isHealthKitOn = account.integrationSettings?.isHealthKitOn ?? false
+                if isHealthKitOn {
+                    let storedIntegrationData = try await integrationService.getStoredIntegrationData()
+                    if storedIntegrationData == nil {
+                        let isUsedByAnotherAccount = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
+                        if !isUsedByAnotherAccount {
+                            // Another account is already integrated; skip showing the Add Integration prompt
+                            kvStore.setValue(true, forKey: scopedAddKey)
+                            return .addIntegration
+                        }
+                    }
+                }
+            }
+
+            return nil
+        } catch {
+            logger.log(level: .error, tag: tag, message: "shouldShowHKIntegrationModal check failed", data: error.localizedDescription)
+            throw error
+        }
+    }
+    
+    /// Generates a per-account key for storing modal flags so that each account can be treated independently.
+    private func scopedKey(_ base: String, accountId: String?) -> String {
+        guard let id = accountId, !id.isEmpty else { return base }
+        return "\(base)_\(id)"
     }
 }
 

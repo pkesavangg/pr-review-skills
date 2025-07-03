@@ -9,11 +9,13 @@ import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.strings.MetricLabels
 import com.greatergoods.meapp.features.dashboard.string.DashboardString
+import com.greatergoods.meapp.features.dashboard.strings.DashboardStatsStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.greatergoods.meapp.proto.MetricKey
 import com.greatergoods.meapp.proto.MilestoneKey
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
+import kotlin.collections.filter
 import kotlin.math.roundToInt
 
 /**

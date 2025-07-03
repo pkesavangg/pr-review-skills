@@ -14,4 +14,30 @@ protocol IntegrationRepositoryAPIProtocol {
     ///   - provider: The integration provider to remove.
     func removeIntegration(accountId: String, provider: IntegrationType) async throws
 
+    /// Adds or updates a Health Connect/HealthKit integration.
+    /// - Parameters:
+    ///   - deviceId: The unique device identifier.
+    ///   - type: The integration type (healthconnect or healthkit).
+    ///   - preferences: Integration preferences as dynamic JSON.
+    /// - Returns: The integration response containing device info and timestamps.
+    func createHealthIntegration(deviceId: String, type: IntegrationType, preferences: [String: AnyCodable]) async throws -> HealthIntegrationResponse
+
+    /// Logs Health Connect/HealthKit measurement data.
+    /// - Parameters:
+    ///   - type: The integration type (healthconnect or healthkit).
+    ///   - sentAt: The ISO-8601 timestamp indicating when the data was sent.
+    ///   - timestamp: The ISO-8601 timestamp of the measurement.
+    ///   - weight: Weight in smallest unit (e.g., lbs * 100) – optional.
+    ///   - bodyFat: Body-fat percentage – optional.
+    ///   - muscleMass: Muscle mass – optional.
+    ///   - water: Water percentage – optional.
+    ///   - bmi: BMI – optional.
+    ///   - data: Raw dynamic payload forwarded to the backend.
+    /// - Returns: The log response with all fields echoed back by the API.
+    func logHealthIntegration(type: IntegrationType, sentAt: String, timestamp: String, weight: Int?, bodyFat: Int?, muscleMass: Int?, water: Int?, bmi: Int?, data: [String: AnyCodable]) async throws -> HealthIntegrationLogResponse
+
+    /// Deletes the Health Connect/HealthKit integration associated with the given **device identifier**.
+    /// - Parameter deviceId: The unique health-integration device identifier.
+    func deleteHealthIntegration(deviceId: String) async throws
+
 }

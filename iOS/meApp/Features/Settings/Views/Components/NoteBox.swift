@@ -9,20 +9,23 @@ import SwiftUI
 
 struct NoteBox<Content: View>: View {
     let content: Content
+    var alignCenter: Bool
     @Environment(\.appTheme) private var theme
-
+    
     init(
+        alignCenter: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
+        self.alignCenter = alignCenter
         self.content = content()
     }
-
+    
     var body: some View {
         HStack(alignment: .top, spacing: .spacingSM) {
             content
         }
         .padding(.spacingSM)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: alignCenter ? .center : .leading)
         .background(theme.backgroundPrimary)
         .cornerRadius(.radiusSM)
     }
@@ -49,7 +52,7 @@ struct NoteBox<Content: View>: View {
                 Text("Heart Rate: OFF")
                     .fontOpenSans(.body2)
                     .foregroundColor(.black)
-                Spacer()                
+                Spacer()
             }
         }
         NoteBox {

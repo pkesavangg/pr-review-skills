@@ -37,18 +37,22 @@ import com.greatergoods.meapp.theme.MeTheme
  */
 @Composable
 fun GoalStep(
+    title: String = SignupStrings.goalStepTitle,
+    subtitle: String = SignupStrings.goalStepSubtitle,
     goalTypeControl: FormControl<String>,
     currentWeightControl: FormControl<String>,
     goalWeightControl: FormControl<String>,
-    useMetricControl: FormControl<Boolean>,
+    useMetricControl: FormControl<Boolean>? = null,
     onMetricToggle: (Boolean) -> Unit = {},
+    onGoalTypeChange: (GoalType) -> Unit = {}, // Callback for goal type changes
     onNext: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    showCurrentWeightForMaintain: Boolean = true, // Default true for signup process
+    showMetricToggle: Boolean = true, // Default true for backward compatibility
 ) {
     val currentWeightFocusRequester = remember { FocusRequester() }
     val goalWeightFocusRequester = remember { FocusRequester() }
 
-    val isMetric = useMetricControl.value
+    val isMetric = useMetricControl?.value ?: false
     val weightUnit = if (isMetric) Metrics.KG.value else Metrics.LBS.value
 
     // Goal type options
@@ -61,8 +65,8 @@ fun GoalStep(
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
-        AppText(SignupStrings.goalStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.goalStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
+        AppText(title, TextType.Title, spacing = MeTheme.spacing.xs)
+        AppText(subtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround,
@@ -74,8 +78,10 @@ fun GoalStep(
                         if (goalTypeControl.value == GoalType.MAINTAIN.value) it.id == 0 else it.id == 1
                     } ?: goalTypeOptions[1],
                 onSelected = { selectedOption ->
-                    val value = if (selectedOption.id == 0) GoalType.MAINTAIN.value else GoalType.LOSE_GAIN.value
+                    val goalType = if (selectedOption.id == 0) GoalType.MAINTAIN else GoalType.LOSE_GAIN
+                    val value = goalType.value
                     goalTypeControl.onValueChange(value)
+                    onGoalTypeChange(goalType) // Trigger the callback
                 },
                 size = SegmentButtonSize.Small,
                 type = SegmentButtonType.Single,
@@ -83,17 +89,23 @@ fun GoalStep(
             )
         }
         Spacer(modifier = Modifier.padding(vertical = MeTheme.spacing.sm))
+        val shouldShowCurrentWeight = if (goalTypeControl.value == GoalType.MAINTAIN.value) {
+            showCurrentWeightForMaintain
+        } else {
+            true // Always show for lose/gain
+        }
 
-        // Weight Inputs with dynamic labels
-        AppInput(
-            formControl = currentWeightControl,
-            type = AppInputType.BODY_COMP,
-            label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
-            imeAction = ImeAction.Next,
-            nextFocusRequester = goalWeightFocusRequester,
-            modifier = Modifier.focusRequester(currentWeightFocusRequester),
-            enabled = goalTypeControl.value == GoalType.LOSE_GAIN.value,
-        )
+        if (shouldShowCurrentWeight) {
+            AppInput(
+                formControl = currentWeightControl,
+                type = AppInputType.BODY_COMP,
+                label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
+                imeAction = ImeAction.Next,
+                nextFocusRequester = goalWeightFocusRequester,
+                modifier = Modifier.focusRequester(currentWeightFocusRequester),
+                enabled = goalTypeControl.value == GoalType.LOSE_GAIN.value,
+            )
+        }
 
         AppInput(
             formControl = goalWeightControl,
@@ -101,26 +113,34 @@ fun GoalStep(
             label = SignupStrings.goalStepGoalWeightDynamic.format(weightUnit),
             imeAction = ImeAction.Next,
             onImeAction = onNext,
-            modifier = Modifier.focusRequester(goalWeightFocusRequester),
+            modifier = if (shouldShowCurrentWeight) {
+                Modifier.focusRequester(goalWeightFocusRequester)
+            } else {
+                // If current weight is hidden, goal weight becomes the first input
+                Modifier.focusRequester(currentWeightFocusRequester)
+            },
         )
         Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
-        // Metric Toggle Section
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AppText(
-                text = SignupStrings.goalStepUseMetric,
-                textType = TextType.Body,
-            )
-            AppToggle(
-                checked = isMetric,
-                onCheckedChange = { newValue ->
-                    useMetricControl.onValueChange(newValue)
-                    onMetricToggle(newValue)
-                }
-            )
+
+        // Metric Toggle Section - only show if enabled
+        if (showMetricToggle) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AppText(
+                    text = SignupStrings.goalStepUseMetric,
+                    textType = TextType.Body,
+                )
+                AppToggle(
+                    checked = isMetric,
+                    onCheckedChange = { newValue ->
+                        useMetricControl?.onValueChange(newValue)
+                        onMetricToggle(newValue)
+                    }
+                )
+            }
         }
     }
 }
@@ -135,7 +155,9 @@ fun GoalStepPreview() {
             goalWeightControl = FormControl.create("", listOf(FormValidations.required())),
             useMetricControl = FormControl.create(false, emptyList()),
             onMetricToggle = {},
+            onGoalTypeChange = {},
             onNext = {},
+            showMetricToggle = true, // Show toggle in preview
         )
     }
 }

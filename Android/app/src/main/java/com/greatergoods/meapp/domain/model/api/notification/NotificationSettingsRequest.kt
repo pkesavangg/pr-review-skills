@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.domain.model.api
+package com.greatergoods.meapp.domain.model.api.notification
 
 data class NotificationSettingsRequest(
     val shouldSendEntryNotifications: Boolean,

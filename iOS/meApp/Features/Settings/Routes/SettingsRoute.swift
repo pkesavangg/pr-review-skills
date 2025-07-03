@@ -16,9 +16,11 @@ enum SettingsRoute: Routable {
     case displayMetrics
     case scaleNameScreen(scaleName: String)
     case users
+    case wifi
+    case wifiCredentials(wifiName: String)    
     case scaleBluetoothScreen(scale: Device)  
     case scaleSettings(scale: Device, scaleType: ScaleType)  
-    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts
+    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts, wifiMacAddress
 
     var body: some View {
         switch self {
@@ -40,6 +42,10 @@ enum SettingsRoute: Routable {
             UsersScreen()
         case .scaleBluetoothScreen(let scale):
             ScaleBluetoothScreen(scale: scale)
+        case .wifi:
+            WifiScreen()
+        case .wifiCredentials(let wifiName):
+            WifiCredentialsView(wifiName: wifiName)
         case .editProfile:
             EditProfileScreen()
         case .goal:
@@ -54,6 +60,8 @@ enum SettingsRoute: Routable {
             HelpScreen()
         case .myAccounts:
             MyAccountsScreen()
+        case .wifiMacAddress:
+            WifiMacAddressScreen()
         }
     }
 }
