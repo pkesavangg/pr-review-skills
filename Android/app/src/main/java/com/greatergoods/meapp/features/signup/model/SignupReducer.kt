@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.signup.model
 
+import com.greatergoods.meapp.domain.enums.GoalType
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.common.components.DateTimeValue
@@ -112,7 +113,9 @@ data class SignupFormControls(
                     birthday =
                         FormControl.create(
                             DateTimeValue.Date(
-                                DateTimeValue.getEpochMillisFromDateString(AppValidatorConfig.DateOfBirth.DEFAULT_VALUE),
+                                DateTimeValue.getEpochMillisFromDateString(
+                                    AppValidatorConfig.DateOfBirth.DEFAULT_VALUE,
+                                ),
                             ),
                             listOf(),
                         ),
@@ -141,10 +144,11 @@ data class SignupFormControls(
                             signupData.goalWeight,
                             listOf(FormValidations.required(), weightValidator(WeightUnit.LB)),
                         ),
-                    useMetric = FormControl.create(
-                        false,
-                        emptyList()
-                    ),
+                    useMetric =
+                        FormControl.create(
+                            false,
+                            emptyList(),
+                        ),
                 )
 
             val formGroup = FormGroup(controls)
@@ -166,54 +170,59 @@ data class SignupFormControls(
                 }
             }
 
-                        // Set up metric toggle validation trigger
+            // Set up metric toggle validation trigger
             controls.useMetric.onValueChangeListener { oldValue, newValue ->
                 val wasMetric = oldValue
                 val isMetric = newValue
 
                 // Convert weight values when switching units
                 if (controls.currentWeight.value.isNotEmpty()) {
-                    val convertedCurrentWeight = convertWeightValue(
-                        controls.currentWeight.value,
-                        wasMetric,
-                        isMetric
-                    )
+                    val convertedCurrentWeight =
+                        convertWeightValue(
+                            controls.currentWeight.value,
+                            wasMetric,
+                            isMetric,
+                        )
                     controls.currentWeight.onValueChange(convertedCurrentWeight)
                 }
 
                 if (controls.goalWeight.value.isNotEmpty()) {
-                    val convertedGoalWeight = convertWeightValue(
-                        controls.goalWeight.value,
-                        wasMetric,
-                        isMetric
-                    )
+                    val convertedGoalWeight =
+                        convertWeightValue(
+                            controls.goalWeight.value,
+                            wasMetric,
+                            isMetric,
+                        )
                     controls.goalWeight.onValueChange(convertedGoalWeight)
                 }
 
                 // Update height input based on metric setting
                 val currentHeight = controls.height.value
-                val newHeight = if (isMetric) {
-                    // Convert to metric (cm)
-                    when (currentHeight) {
-                        is HeightInput.FtIn -> {
-                            val totalInches = (currentHeight.feet * 12) + currentHeight.inches
-                            val cm = (totalInches * 2.54).toInt()
-                            HeightInput.Cm(cm)
+                val newHeight =
+                    if (isMetric) {
+                        // Convert to metric (cm)
+                        when (currentHeight) {
+                            is HeightInput.FtIn -> {
+                                val totalInches = (currentHeight.feet * 12) + currentHeight.inches
+                                val cm = (totalInches * 2.54).toInt()
+                                HeightInput.Cm(cm)
+                            }
+
+                            is HeightInput.Cm -> currentHeight // Already metric
                         }
-                        is HeightInput.Cm -> currentHeight // Already metric
-                    }
-                } else {
-                    // Convert to imperial (ft/in)
-                    when (currentHeight) {
-                        is HeightInput.Cm -> {
-                            val totalInches = (currentHeight.value / 2.54).toInt()
-                            val feet = totalInches / 12
-                            val inches = totalInches % 12
-                            HeightInput.FtIn(feet, inches)
+                    } else {
+                        // Convert to imperial (ft/in)
+                        when (currentHeight) {
+                            is HeightInput.Cm -> {
+                                val totalInches = (currentHeight.value / 2.54).toInt()
+                                val feet = totalInches / 12
+                                val inches = totalInches % 12
+                                HeightInput.FtIn(feet, inches)
+                            }
+
+                            is HeightInput.FtIn -> currentHeight // Already imperial
                         }
-                        is HeightInput.FtIn -> currentHeight // Already imperial
                     }
-                }
                 controls.height.onValueChange(newHeight)
 
                 // Revalidate weights after conversion
@@ -428,24 +437,29 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
                 val currentWeightValue = state.form.controls.currentWeight.value
                 val goalWeightValue = state.form.controls.goalWeight.value
 
-                val convertedCurrentWeight = convertWeightValue(
-                    value = currentWeightValue,
-                    fromMetric = state.form.controls.useMetric.value,
-                    toMetric = intent.useMetric
-                )
+                val convertedCurrentWeight =
+                    convertWeightValue(
+                        value = currentWeightValue,
+                        fromMetric = state.form.controls.useMetric.value,
+                        toMetric = intent.useMetric,
+                    )
 
-                val convertedGoalWeight = convertWeightValue(
-                    value = goalWeightValue,
-                    fromMetric = state.form.controls.useMetric.value,
-                    toMetric = intent.useMetric
-                )
+                val convertedGoalWeight =
+                    convertWeightValue(
+                        value = goalWeightValue,
+                        fromMetric = state.form.controls.useMetric.value,
+                        toMetric = intent.useMetric,
+                    )
 
                 // Update the metric setting in the form controls
-                state.form.controls.useMetric.onValueChange(intent.useMetric)
+                state.form.controls.useMetric
+                    .onValueChange(intent.useMetric)
 
                 // Update weight values with converted values
-                state.form.controls.currentWeight.onValueChange(convertedCurrentWeight)
-                state.form.controls.goalWeight.onValueChange(convertedGoalWeight)
+                state.form.controls.currentWeight
+                    .onValueChange(convertedCurrentWeight)
+                state.form.controls.goalWeight
+                    .onValueChange(convertedGoalWeight)
 
                 state.copy(error = null)
             }
@@ -461,28 +475,16 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
 /**
  * Gets the current weight unit based on metric setting
  */
-fun SignupFormControls.getCurrentWeightUnit(): WeightUnit {
-    return if (useMetric.value) WeightUnit.KG else WeightUnit.LB
-}
-
-/**
- * Gets the weight unit display string
- */
-fun SignupFormControls.getWeightUnitString(): String {
-    return getCurrentWeightUnit().value
-}
-
-/**
- * Gets the height unit display string
- */
-fun SignupFormControls.getHeightUnitString(): String {
-    return if (useMetric.value) "cm" else "ft/in"
-}
+fun SignupFormControls.getCurrentWeightUnit(): WeightUnit = if (useMetric.value) WeightUnit.KG else WeightUnit.LB
 
 /**
  * Converts weight value between units when metric setting changes
  */
-fun convertWeightValue(value: String, fromMetric: Boolean, toMetric: Boolean): String {
+fun convertWeightValue(
+    value: String,
+    fromMetric: Boolean,
+    toMetric: Boolean,
+): String {
     if (value.isBlank() || fromMetric == toMetric) return value
 
     return try {

@@ -23,11 +23,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object ApiModule {
-
     @Provides
     @Singleton
-    fun provideEntryApi(httpClient: HttpClient): EntryApi =
-        httpClient.createService(EntryApi::class.java)
+    fun provideEntryApi(httpClient: HttpClient): EntryApi = httpClient.createService(EntryApi::class.java)
 
     /**
      * Provides the IAuthAPI implementation using Retrofit.
@@ -50,8 +48,8 @@ object ApiModule {
      */
     @Provides
     @Singleton
-    fun provideUserSettingsAPI(httpClient: HttpClient): IUserSettingsAPI = httpClient.createService(IUserSettingsAPI::class.java)
-
+    fun provideUserSettingsAPI(httpClient: HttpClient): IUserSettingsAPI =
+        httpClient.createService(IUserSettingsAPI::class.java)
 
     /**
      * Provides a singleton instance of [IDeviceAPI] using the provided [HttpClient].
@@ -64,15 +62,12 @@ object ApiModule {
 
     @Provides
     @Singleton
-    fun provideIntegrationAPI(
-        httpClient: HttpClient
-    ): IIntegrationAPI = httpClient.createService(IIntegrationAPI::class.java)
+    fun provideIntegrationAPI(httpClient: HttpClient): IIntegrationAPI =
+        httpClient.createService(IIntegrationAPI::class.java)
 
     @Provides
     @Singleton
-    fun provideExportAPI(
-        httpClient: HttpClient
-    ): IExportAPI = httpClient.createService(IExportAPI::class.java)
+    fun provideExportAPI(httpClient: HttpClient): IExportAPI = httpClient.createService(IExportAPI::class.java)
 
     /**
      * Provides a singleton instance of [IBodyCompAPI] using the provided [HttpClient].
@@ -90,7 +85,9 @@ object ApiModule {
      */
     @Provides
     @Singleton
-    fun provideNotificationAPI(httpClient: HttpClient): INotificationAPI = httpClient.createService(INotificationAPI::class.java)
+    fun provideNotificationAPI(httpClient: HttpClient): INotificationAPI =
+        httpClient.createService(INotificationAPI::class.java)
+
     /**
      * Provides the IGoalAPI implementation using Retrofit.
      */

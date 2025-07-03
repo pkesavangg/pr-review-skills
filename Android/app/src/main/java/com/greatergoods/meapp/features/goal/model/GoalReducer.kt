@@ -1,11 +1,11 @@
 package com.greatergoods.meapp.features.goal.model
 
+import com.greatergoods.meapp.domain.enums.GoalType
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
-import com.greatergoods.meapp.features.signup.model.GoalType
 
 /**
  * Controls for Goal form.
@@ -16,27 +16,33 @@ data class GoalFormControls(
     val goalWeight: FormControl<String>,
 ) {
     companion object {
-        fun create(goalType: GoalType = GoalType.LOSE_GAIN) = GoalFormControls(
-            goalType = FormControl.create(
-                initialValue = goalType.value,
-                validators = listOf(FormValidations.required()),
-            ),
-            currentWeight = FormControl.create(
-                initialValue = "0.0",
-                validators = if (goalType == GoalType.LOSE_GAIN) {
-                    listOf(FormValidations.required(), FormValidations.weightValidator())
-                } else {
-                    listOf(FormValidations.weightValidator()) // No required validation for disabled field
-                },
-            ),
-            goalWeight = FormControl.create(
-                initialValue = "0",
-                validators = listOf(
-                    FormValidations.required(),
-                    FormValidations.weightValidator(),
-                ),
+        fun create(goalType: GoalType = GoalType.LOSE_GAIN) =
+            GoalFormControls(
+                goalType =
+                    FormControl.create(
+                        initialValue = goalType.value,
+                        validators = listOf(FormValidations.required()),
+                    ),
+                currentWeight =
+                    FormControl.create(
+                        initialValue = "0.0",
+                        validators =
+                            if (goalType == GoalType.LOSE_GAIN) {
+                                listOf(FormValidations.required(), FormValidations.weightValidator())
+                            } else {
+                                listOf(FormValidations.weightValidator()) // No required validation for disabled field
+                            },
+                    ),
+                goalWeight =
+                    FormControl.create(
+                        initialValue = "0",
+                        validators =
+                            listOf(
+                                FormValidations.required(),
+                                FormValidations.weightValidator(),
+                            ),
+                    ),
             )
-        )
     }
 }
 
@@ -54,7 +60,7 @@ data class GoalState(
     val error: String? = null,
     val account: Account? = null,
     val latestWeight: Double? = null,
-    ) : IReducer.State
+) : IReducer.State
 
 /**
  * Intents for Goal screen actions.
@@ -132,39 +138,45 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
 
             is GoalIntent.ChangeGoalType -> {
                 // Update form validators based on goal type
-                val goalWeightValidators = if (intent.goalType == GoalType.LOSE_GAIN) {
-                    listOf(FormValidations.required(), FormValidations.weightValidator())
-                } else {
-                    listOf(FormValidations.weightValidator())
-                }
+                val goalWeightValidators =
+                    if (intent.goalType == GoalType.LOSE_GAIN) {
+                        listOf(FormValidations.required(), FormValidations.weightValidator())
+                    } else {
+                        listOf(FormValidations.weightValidator())
+                    }
 
                 // For maintain goal, current weight input is hidden, so no validation needed
-                val currentWeightValidators = if (intent.goalType == GoalType.LOSE_GAIN) {
-                    listOf(FormValidations.required(), FormValidations.weightValidator())
-                } else {
-                    emptyList() // No validation for hidden field in maintain mode
-                }
+                val currentWeightValidators =
+                    if (intent.goalType == GoalType.LOSE_GAIN) {
+                        listOf(FormValidations.required(), FormValidations.weightValidator())
+                    } else {
+                        emptyList() // No validation for hidden field in maintain mode
+                    }
 
-                val updatedGoalTypeControl = FormControl.create(
-                    initialValue = intent.goalType.value,
-                    validators = listOf(FormValidations.required()),
-                )
+                val updatedGoalTypeControl =
+                    FormControl.create(
+                        initialValue = intent.goalType.value,
+                        validators = listOf(FormValidations.required()),
+                    )
 
-                val updatedCurrentWeightControl = FormControl.create(
-                    initialValue = state.form.controls.currentWeight.value,
-                    validators = currentWeightValidators,
-                )
+                val updatedCurrentWeightControl =
+                    FormControl.create(
+                        initialValue = state.form.controls.currentWeight.value,
+                        validators = currentWeightValidators,
+                    )
 
-                val updatedGoalWeightControl = FormControl.create(
-                    initialValue = state.form.controls.goalWeight.value,
-                    validators = goalWeightValidators,
-                )
+                val updatedGoalWeightControl =
+                    FormControl.create(
+                        initialValue = state.form.controls.goalWeight.value,
+                        validators = goalWeightValidators,
+                    )
 
-                val updatedControls = state.form.controls.copy(
-                    goalType = updatedGoalTypeControl,
-                    currentWeight = updatedCurrentWeightControl,
-                    goalWeight = updatedGoalWeightControl,
-                )
+                val updatedControls =
+                    state.form.controls.copy(
+                        goalType = updatedGoalTypeControl,
+                        currentWeight = updatedCurrentWeightControl,
+                        goalWeight = updatedGoalWeightControl,
+                    )
                 val updatedForm = FormGroup(updatedControls)
 
                 state.copy(

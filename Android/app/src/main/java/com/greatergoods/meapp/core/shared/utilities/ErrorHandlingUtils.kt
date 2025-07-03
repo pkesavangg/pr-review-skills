@@ -1,9 +1,9 @@
 package com.greatergoods.meapp.core.shared.utilities
 
-import retrofit2.HttpException
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.enum.AuthAction
+import com.greatergoods.meapp.domain.enums.AuthAction
 import com.greatergoods.meapp.domain.services.AuthState
+import retrofit2.HttpException
 
 /**
  * Generic error handler for suspend functions that logs, optionally shows toast, and emits event.
@@ -22,17 +22,18 @@ suspend fun <T> runCatchingWithHandlers(
     showErrorToast: ((AuthAction, HttpException?) -> Unit)? = null,
     emitEvent: ((Any) -> Unit)? = null,
     onError: ((Exception) -> Unit)? = null,
-    block: suspend () -> T
-): T? = try {
-    block()
-} catch (e: Exception) {
-    AppLog.e(tag, "${action?.name ?: "Operation"} failed", e.toString())
-    if (action != null && showErrorToast != null) {
-        showErrorToast(action, e as? HttpException)
+    block: suspend () -> T,
+): T? =
+    try {
+        block()
+    } catch (e: Exception) {
+        AppLog.e(tag, "${action?.name ?: "Operation"} failed", e.toString())
+        if (action != null && showErrorToast != null) {
+            showErrorToast(action, e as? HttpException)
+        }
+        if (emitEvent != null) {
+            emitEvent(AuthState.Error(e.message ?: "${action?.name ?: "Operation"} failed"))
+        }
+        onError?.invoke(e)
+        null
     }
-    if (emitEvent != null) {
-        emitEvent(AuthState.Error(e.message ?: "${action?.name ?: "Operation"} failed"))
-    }
-    onError?.invoke(e)
-    null
-}

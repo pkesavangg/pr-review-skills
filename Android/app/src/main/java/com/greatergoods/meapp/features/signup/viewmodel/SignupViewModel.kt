@@ -162,7 +162,6 @@ class SignupViewModel
             dialogQueueService.enqueue(
                 DialogModel.Custom(
                     contentKey = DialogType.HelpPopup,
-                    onDismiss = {},
                 ),
             )
         }

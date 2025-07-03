@@ -28,7 +28,7 @@ class AppInitializer
                     // Add other initialization methods here
                     isInitialized = true
                 } catch (e: Exception) {
-                    Log.e("AppInitializer", "Failed to initialize app", e)
+                    AppLog.e("AppInitializer", "Failed to initialize app", e)
                     throw e
                 }
             }

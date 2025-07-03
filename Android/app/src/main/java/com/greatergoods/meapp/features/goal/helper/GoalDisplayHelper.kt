@@ -1,16 +1,16 @@
 package com.greatergoods.meapp.features.goal.helper
 
-import android.util.Log
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
-import com.greatergoods.meapp.features.signup.model.GoalType
+import com.greatergoods.meapp.domain.enums.GoalType
 import kotlin.math.abs
+import android.util.Log
 
 /**
  * Data class representing weightless settings, mirroring Angular Weightless interface.
  */
 data class Weightless(
     val isWeightlessOn: Boolean,
-    val weightlessWeight: Float
+    val weightlessWeight: Float,
 )
 
 /**
@@ -18,7 +18,6 @@ data class Weightless(
  * Contains utility functions for goal calculations, mirroring Angular logic.
  */
 object GoalDisplayHelper {
-
     /**
      * Transforms weight value similar to Angular weightPipe.transform().
      * Handles weightless logic and unit conversions.
@@ -33,13 +32,14 @@ object GoalDisplayHelper {
         value: Double,
         showSymbol: Boolean = false,
         weightless: Weightless? = null,
-        isMetric: Boolean = false
+        isMetric: Boolean = false,
     ): String {
-        val weight = if (weightless?.isWeightlessOn == true) {
-            ConversionTools.convertStoredToDisplay(value - weightless.weightlessWeight, isMetric)
-        } else {
-            ConversionTools.convertStoredToDisplay(value, isMetric)
-        }
+        val weight =
+            if (weightless?.isWeightlessOn == true) {
+                ConversionTools.convertStoredToDisplay(value - weightless.weightlessWeight, isMetric)
+            } else {
+                ConversionTools.convertStoredToDisplay(value, isMetric)
+            }
 
         return if (showSymbol || weightless?.isWeightlessOn == true) {
             "${if (weight > 0) "+" else ""}${String.format("%.1f", weight)}"
@@ -64,22 +64,24 @@ object GoalDisplayHelper {
         latestEntryWeight: Double,
         goalType: GoalType,
         weightless: Weightless? = null,
-        isMetric: Boolean = false
+        isMetric: Boolean = false,
     ): Double {
         // Transform weights using weightPipe logic
-        val transformedGoalWeight = transformWeight(
-            value = goalWeight,
-            showSymbol = false,
-            weightless = weightless,
-            isMetric = isMetric
-        ).toDoubleOrNull() ?: 0.0
+        val transformedGoalWeight =
+            transformWeight(
+                value = goalWeight,
+                showSymbol = false,
+                weightless = weightless,
+                isMetric = isMetric,
+            ).toDoubleOrNull() ?: 0.0
 
-        val transformedLatestWeight = transformWeight(
-            value = latestEntryWeight,
-            showSymbol = false,
-            weightless = weightless,
-            isMetric = isMetric
-        ).toDoubleOrNull() ?: 0.0
+        val transformedLatestWeight =
+            transformWeight(
+                value = latestEntryWeight,
+                showSymbol = false,
+                weightless = weightless,
+                isMetric = isMetric,
+            ).toDoubleOrNull() ?: 0.0
 
         // Calculate toGoal exactly like Angular
         val toGoal = transformedGoalWeight - transformedLatestWeight
@@ -93,6 +95,7 @@ object GoalDisplayHelper {
                 // Format to 1 decimal place and convert back to number like Angular
                 String.format("%.1f", weightAwayFromGoalWeight).toDouble()
             }
+
             else -> {
                 // For lose/gain goals, return toGoal formatted to 1 decimal place
                 String.format("%.1f", toGoal).toDouble()
@@ -116,7 +119,7 @@ object GoalDisplayHelper {
         latestEntryWeight: Double,
         goalType: GoalType,
         weightless: Weightless? = null,
-        isMetric: Boolean = false
+        isMetric: Boolean = false,
     ): String {
         val distance = computeToGoal(goalWeight, latestEntryWeight, goalType, weightless, isMetric)
 
@@ -130,6 +133,7 @@ object GoalDisplayHelper {
                     String.format("%.1f", distance).removeSuffix(".0")
                 }
             }
+
             else -> {
                 // For lose/gain goals, show absolute value without sign
                 String.format("%.1f", abs(distance)).removeSuffix(".0")
@@ -142,20 +146,25 @@ object GoalDisplayHelper {
      * @deprecated Use computeToGoal() with weightless support instead
      */
     @Deprecated("Use computeToGoal() with weightless support")
-    fun computeGoal(currentWeight: Double, goalWeight: Double, goalType: GoalType): String {
-        val distance = computeToGoal(
-            goalWeight = goalWeight,
-            latestEntryWeight = currentWeight,
-            goalType = goalType,
-            weightless = null,
-            isMetric = false
-        )
+    fun computeGoal(
+        currentWeight: Double,
+        goalWeight: Double,
+        goalType: GoalType,
+    ): String {
+        val distance =
+            computeToGoal(
+                goalWeight = goalWeight,
+                latestEntryWeight = currentWeight,
+                goalType = goalType,
+                weightless = null,
+                isMetric = false,
+            )
         return getDistanceToGoalDisplayText(
             goalWeight = goalWeight,
             latestEntryWeight = currentWeight,
             goalType = goalType,
             weightless = null,
-            isMetric = false
+            isMetric = false,
         )
     }
 
@@ -163,7 +172,10 @@ object GoalDisplayHelper {
      * Computes display progress percentage based on goal type, following Angular stats-modal logic.
      * Maintain goals always show 100% progress, other goals are capped at 100%.
      */
-    fun computeDisplayProgressPercentage(goalType: GoalType, goalPercent: Double?): Double {
+    fun computeDisplayProgressPercentage(
+        goalType: GoalType,
+        goalPercent: Double?,
+    ): Double {
         Log.d("goalpercent", goalPercent.toString())
         return if (goalType == GoalType.MAINTAIN) {
             100.0 // Maintain goals always show 100% progress

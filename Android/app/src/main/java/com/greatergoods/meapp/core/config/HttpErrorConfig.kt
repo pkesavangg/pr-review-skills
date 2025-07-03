@@ -13,12 +13,11 @@ class HttpErrorConfig {
         const val BAD_REQUEST = 400
         const val NO_INTERNET_CONNECTION = 0
     }
+
     object ResponseMessage {
         // HTTP Error Messages
         const val NO_CONNECTION = "No connection found"
         const val NOT_AUTHORIZED = "Unauthorized"
         const val SERVER_ERROR = "Server Error"
     }
-
-
 }

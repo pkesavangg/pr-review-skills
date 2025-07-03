@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.domain.enums.GoalType
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.features.common.components.AppLinearProgressIndicator
 import com.greatergoods.meapp.features.common.components.AppLinearProgressType
@@ -27,7 +28,6 @@ import com.greatergoods.meapp.features.common.helper.AccountHelper.formatWeightF
 import com.greatergoods.meapp.features.goal.helper.GoalDisplayHelper
 import com.greatergoods.meapp.features.goal.helper.Weightless
 import com.greatergoods.meapp.features.goal.strings.GoalStrings
-import com.greatergoods.meapp.features.signup.model.GoalType
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
