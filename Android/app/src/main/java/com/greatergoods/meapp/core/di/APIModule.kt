@@ -5,6 +5,7 @@ import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
+import com.greatergoods.meapp.data.api.IDeviceInfoAPI
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
@@ -52,13 +53,13 @@ object ApiModule {
         httpClient.createService(IUserSettingsAPI::class.java)
 
     /**
-     * Provides a singleton instance of [IDeviceAPI] using the provided [HttpClient].
+     * Provides a singleton instance of [IDeviceInfoAPI] using the provided [HttpClient].
      * @param httpClient The HTTP client for network operations.
-     * @return [IDeviceAPI] instance.
+     * @return [IDeviceInfoAPI] instance.
      */
     @Provides
     @Singleton
-    fun provideDeviceAPI(httpClient: HttpClient): IDeviceAPI = httpClient.createService(IDeviceAPI::class.java)
+    fun provideDeviceAPI(httpClient: HttpClient): IDeviceInfoAPI = httpClient.createService(IDeviceInfoAPI::class.java)
 
     @Provides
     @Singleton
@@ -94,4 +95,13 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideGoalAPI(httpClient: HttpClient): IGoalAPI = httpClient.createService(IGoalAPI::class.java)
+
+    /**
+     * Provides a singleton instance of [IDeviceAPI] using the provided [HttpClient].
+     * @param httpClient The HTTP client for network operations.
+     * @return [IDeviceAPI] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideScaleAPI(httpClient: HttpClient): IDeviceAPI = httpClient.createService(IDeviceAPI::class.java)
 }

@@ -11,20 +11,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+import com.greatergoods.meapp.features.common.helper.ScaleUtility
 import com.greatergoods.meapp.features.common.model.ScaleInfo
 import com.greatergoods.meapp.features.common.strings.AppListStrings
-import com.greatergoods.meapp.features.common.helper.ScaleUtility
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -32,11 +31,11 @@ import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 
 /**
- * Card composable for displaying a scale's info as per Figma.
+ * Card composable for displaying a ScaleInfo's info as per Figma.
  *
  * @param scale The scale info to display.
  * @param isSavedScale Whether the scale is saved (shows connection status and right caret if true).
- * @param onClick Callback when the card is clicked, provides the selected scale.
+ * @param onClick Callback when the card is clicked, provides the selected scale info.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -47,34 +46,43 @@ fun AppScaleCard(
     modifier: Modifier = Modifier,
 ) {
     val cardSpacing = if (isSavedScale) MeTheme.spacing.md else MeTheme.spacing.sm
-    val connectionIcon = when (scale.setupType) {
-        ScaleSetupType.Wifi, ScaleSetupType.EspTouchWifi -> AppIcons.Connection.Wifi
-        ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> AppIcons.Connection.Bluetooth
-        ScaleSetupType.BtWifiR4 -> AppIcons.Connection.BluetoothWifi
-        ScaleSetupType.AppSync -> TODO()
-    }
+
+    val connectionIcon =
+        when (scale.setupType) {
+            ScaleSetupType.Wifi, ScaleSetupType.EspTouchWifi -> AppIcons.Connection.Wifi
+            ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> AppIcons.Connection.Bluetooth
+            ScaleSetupType.BtWifiR4 -> AppIcons.Connection.BluetoothWifi
+            ScaleSetupType.AppSync -> AppIcons.Connection.Wifi // Default for AppSync
+        }
     val trailingIcon = if (isSavedScale) AppIcons.Default.RightCaret else connectionIcon
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onClick(scale) },
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable { onClick(scale) },
         color = MeTheme.colorScheme.secondaryBackground,
         shadowElevation = 0.dp,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = cardSpacing, vertical = cardSpacing),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = cardSpacing, vertical = cardSpacing),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             // Placeholder image
             Image(
-                painter = painterResource(id = ScaleUtility.scaleImageResource(scale.sku) ?: AppIcons.Default.ScalePlaceholder),
+                painter =
+                    painterResource(
+                        id = ScaleUtility.scaleImageResource(scale.sku) ?: AppIcons.Default.ScalePlaceholder,
+                    ),
                 contentDescription = null,
-                modifier = Modifier
-                    .size(75.dp)
+                modifier =
+                    Modifier
+                        .shadow(elevation = spacing.sm, spotColor = Color(0x40FFFFFF), ambientColor = Color(0x40FFFFFF))
+                        .size(75.dp),
             )
             Spacer(modifier = Modifier.width(MeTheme.spacing.sm))
             Column(
@@ -83,7 +91,7 @@ fun AppScaleCard(
             ) {
                 AppText(
                     text = scale.sku,
-                    textType = if (isSavedScale) TextType.ListTitle1 else TextType.ListTitle2
+                    textType = if (isSavedScale) TextType.ListTitle1 else TextType.ListTitle2,
                 )
                 AppText(
                     text = scale.productName.lowercase(),
@@ -92,12 +100,12 @@ fun AppScaleCard(
                 if (isSavedScale) {
                     Spacer(modifier = Modifier.height(spacing.x3s))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-
-                        val setupIndicationIcon = if (scale.isWifiConfigured == false) {
-                            AppIcons.Default.Exclamation
-                        } else {
-                            connectionIcon
-                        }
+                        val setupIndicationIcon =
+                            if (scale.isWifiConfigured == false) {
+                                AppIcons.Default.Exclamation
+                            } else {
+                                connectionIcon
+                            }
                         AppIcon(
                             id = setupIndicationIcon,
                             contentDescription = "Connection type icon",
@@ -107,11 +115,12 @@ fun AppScaleCard(
                         )
                         Spacer(modifier = Modifier.width(spacing.x3s))
                         AppText(
-                            text = when {
-                                !scale.isConnected!! -> AppListStrings.NotConnected
-                                !scale.isWifiConfigured!! -> AppListStrings.SetupIncomplete
-                                else -> AppListStrings.Connected
-                            } ,
+                            text =
+                                when {
+                                    !scale.isConnected!! -> AppListStrings.NotConnected
+                                    !scale.isWifiConfigured!! -> AppListStrings.SetupIncomplete
+                                    else -> AppListStrings.Connected
+                                },
                             textType = TextType.Body,
                         )
                     }
@@ -126,7 +135,6 @@ fun AppScaleCard(
                 enabled = false,
                 onClick = null,
             )
-
         }
     }
     HorizontalDivider(thickness = 0.5.dp, color = colorScheme.utility)
@@ -137,38 +145,50 @@ fun AppScaleCard(
 fun PreviewAppScaleCard() {
     MeAppTheme {
         Column {
+            // ScaleInfo example 1
             AppScaleCard(
-                scale = ScaleInfo(
-                    productName = "accucheck verve smart scale",
-                    sku = "0412",
-                    imgPath = null,
-                    setupType = ScaleSetupType.BtWifiR4,
-                    bodyComp = true,
-                    isConnected = true,
-                ),
+                scale =
+                    ScaleInfo(
+                        productName = "AccuCheck Verve Smart Scale",
+                        sku = "0412",
+                        setupType = ScaleSetupType.BtWifiR4,
+                        bodyComp = true,
+                        isConnected = true,
+                        isWifiConfigured = true,
+                        broadcastId = "broadcast1",
+                    ),
                 isSavedScale = true,
                 onClick = {},
             )
+
+            // ScaleInfo example 2
             AppScaleCard(
-                scale = ScaleInfo(
-                    productName = "AppSync Body Fat Scale",
-                    sku = "0375",
-                    imgPath = null,
-                    setupType = ScaleSetupType.Wifi,
-                    bodyComp = true,
-                    isWifiConfigured = false
-                ),
+                scale =
+                    ScaleInfo(
+                        productName = "Bluetooth Smart Scale",
+                        sku = "0375",
+                        setupType = ScaleSetupType.Bluetooth,
+                        bodyComp = false,
+                        isConnected = false,
+                        isWifiConfigured = false,
+                        broadcastId = "broadcast2",
+                    ),
                 isSavedScale = true,
                 onClick = {},
             )
+
+            // ScaleInfo example 3
             AppScaleCard(
-                scale = ScaleInfo(
-                    productName = "AppSync Body Fat Scale",
-                    sku = "0341",
-                    imgPath = null,
-                    setupType = ScaleSetupType.Bluetooth,
-                    bodyComp = true,
-                ),
+                scale =
+                    ScaleInfo(
+                        productName = "Wi-Fi Smart Scale",
+                        sku = "0384",
+                        setupType = ScaleSetupType.Wifi,
+                        bodyComp = true,
+                        isConnected = false,
+                        isWifiConfigured = false,
+                        broadcastId = null,
+                    ),
                 isSavedScale = false,
                 onClick = {},
             )
