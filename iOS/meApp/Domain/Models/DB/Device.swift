@@ -110,6 +110,17 @@ final class Device {
         self.bathScale = bathScale
         self.r4ScalePreference = r4ScalePreference
         self.metaData = metaData
+
+        if let broadcastId = broadcastId {
+          let bidStr = broadcastId
+          if let bidInt = Int(bidStr) {
+            // Determine protocol based on scale source type & sku when available
+            let scaleSource = ScaleSourceType(rawValue: bathScale?.scaleType ?? "") ?? .bluetoothScale
+
+            let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+            self.broadcastIdString = ProtocolConversionTools.convertIntToHex(bidInt, protocolType: protocolType)
+          }
+        }
     }
     convenience init(from dto: ScaleDTO,
                      protocolType: String? = nil,
@@ -130,7 +141,7 @@ final class Device {
             isDeleted: dto.isDeleted,
             deviceName: dto.name,
             deviceType: "scale",
-            broadcastId: dto.broadcastId.map { String($0) },
+            broadcastId: dto.broadcastId.map { String($0)},
             broadcastIdString: dto.broadcastIdString,
             userNumber: dto.userNumber.map { String($0) },
             protocolType: protocolType,

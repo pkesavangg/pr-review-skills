@@ -8,6 +8,12 @@ import GGBluetoothSwiftPackage
 //
 // Concrete service implementations are responsible for mapping between these wrappers and
 // the SDK equivalents.
+//
+// Key design principles:
+// - All models are `Sendable` for safe concurrent usage
+// - Models provide conversion methods from/to SDK types
+// - No SDK types are exposed in public interfaces
+// - Models are immutable value types where possible
 
 /// Minimal representation of a Wi-Fi configuration used during setup.
 public struct WifiConfig: Sendable, Equatable {
@@ -305,11 +311,24 @@ public struct DeviceDiscoveryEvent: Sendable, Equatable {
     let protocolType: ProtocolType
     let isNew: Bool
 
-  init(device: Device, deviceInfo: ScaleItemInfo, protocolType: ProtocolType, isNew: Bool) {
+    init(device: Device, deviceInfo: ScaleItemInfo, protocolType: ProtocolType, isNew: Bool) {
         self.device = device
         self.deviceInfo = deviceInfo
         self.protocolType = protocolType
         self.isNew = isNew
+    }
+}
+
+/// Represents firmware update status
+public struct FirmwareUpdateStatus: Sendable, Equatable {
+    public let progress: Double
+    public let isComplete: Bool
+    public let error: String?
+
+    public init(progress: Double, isComplete: Bool = false, error: String? = nil) {
+        self.progress = progress
+        self.isComplete = isComplete
+        self.error = error
     }
 }
 
