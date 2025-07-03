@@ -30,6 +30,6 @@ struct HelpScreenStrings {
     static let sendWeightGurusLog = "Send Weight Gurus Log"
     static let resyncEntries = "Resync Entries"
     static let clearAllLocalData = "Clear All Local Data"
-    static let rateApp = "Rate the App "
+    static let rateApp = "Rate the App"
     static let sendScaleLog = "Send Scale Log"
 } 
