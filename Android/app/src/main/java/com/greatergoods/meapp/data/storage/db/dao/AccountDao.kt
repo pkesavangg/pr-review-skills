@@ -67,10 +67,10 @@ interface AccountDao {
     @Query("UPDATE account SET lastActiveTime = :timestamp WHERE accountId = :accountId")
     suspend fun updateLastActiveTime(accountId: String, timestamp: String)
 
-    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0 WHERE accountId = :accountId")
+    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0, isExpired = 0 WHERE accountId = :accountId")
     suspend fun logoutAccount(accountId: String)
 
-    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0")
+    @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0, isExpired = 0")
     suspend fun logoutAllAccounts()
 
     @Query("UPDATE account SET isSynced = :isSynced WHERE accountId = :accountId")
@@ -131,13 +131,51 @@ interface AccountDao {
     fun getUnsyncedAccounts(): Flow<List<AccountEntity>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM account
         WHERE accountId IN (
             SELECT accountId FROM weight_comp_settings WHERE isSynced = 0
         ) OR isSynced = 0
-    """)
+    """,
+    )
     fun getUnsyncedBodyCompAccounts(): Flow<List<Account>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM notification_settings WHERE isSynced = 0
+        ) OR isSynced = 0
+    """)
+    fun getUnsyncedNotificationAccounts(): Flow<List<Account>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM streaks_settings WHERE isSynced = 0
+        )
+    """)
+    fun getUnsyncedStreakAccounts(): Flow<List<Account>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM weightless_settings WHERE isSynced = 0
+        )
+    """)
+    fun getUnsyncedWeightlessAccounts(): Flow<List<Account>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM account
+        WHERE accountId IN (
+            SELECT accountId FROM goal_settings WHERE isSynced = 0
+        )
+    """)
+    fun getUnsyncedGoalAccounts(): Flow<List<Account>>
 
     @Query("UPDATE account SET isSynced = 1")
     suspend fun markAllAccountsSynced()
@@ -146,6 +184,6 @@ interface AccountDao {
     suspend fun markAccountSynced(accountId: String)
 
     // Account Expiration Management
-    @Query("UPDATE account SET isExpired = 1, isLoggedIn = 0, isActiveAccount = 0, expiresAt = '' WHERE accountId = :accountId")
+    @Query("UPDATE account SET isExpired = 1, isActiveAccount = 0, expiresAt = '' WHERE accountId = :accountId")
     suspend fun markAccountExpired(accountId: String)
 }

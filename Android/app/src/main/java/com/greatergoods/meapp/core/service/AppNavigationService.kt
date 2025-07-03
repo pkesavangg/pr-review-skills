@@ -92,9 +92,9 @@ class AppNavigationService : IAppNavigationService {
         )
     }
 
-    override suspend fun logout() {
+    override suspend fun reInitialize() {
         emitNavigationIntent(
-            NavigationIntent.Logout,
+            NavigationIntent.ReInitialize,
         )
     }
 

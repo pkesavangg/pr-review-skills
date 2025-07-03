@@ -81,7 +81,7 @@ fun LandingScreen() {
                 onClick = {
                     coroutineScope.launch {
                         backStack.addRoute(
-                            AppRoute.Auth.Login,
+                            AppRoute.Auth.Login(),
                         )
                     }
                 },

@@ -22,7 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
-import com.greatergoods.meapp.features.common.strings.AppUserStrings
+import com.greatergoods.meapp.features.common.strings.AppListStrings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
@@ -62,14 +62,14 @@ fun AppUser(
                 start = spacing.sm,
                 top = spacing.sm,
                 bottom = spacing.sm,
-                end = if (account.isLoggedIn) spacing.sm else 0.dp,
+                end = if (account.isLoggedIn && !account.isExpired) spacing.sm else 0.dp,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AppProfileAvatar(
             text = account.firstName,
             isActive = account.isActiveAccount,
-            enabled = account.isLoggedIn,
+            enabled = account.isLoggedIn && !account.isExpired,
             modifier = Modifier.alpha(avatarAlpha),
         )
 
@@ -96,16 +96,17 @@ fun AppUser(
             )
         }
 
-        if (showAccountActivity && account.isLoggedIn) {
+        if (showAccountActivity && account.isLoggedIn && !account.isExpired) {
             AppIcon(
                 id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
                 contentDescription = "Select account",
                 type = AppIconType.Primary,
                 modifier = Modifier.size(24.dp),
             )
-        } else if (account.isExpired) {
+        }
+        if (account.isExpired) {
             AppButton(
-                label = AppUserStrings.LogInButton,
+                label = AppListStrings.LogInButton,
                 onClick = onLoginRequest,
                 type = ButtonType.TextPrimary,
                 size = ButtonSize.Small,

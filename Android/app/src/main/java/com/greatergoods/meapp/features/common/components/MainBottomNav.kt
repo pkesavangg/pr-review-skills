@@ -65,7 +65,9 @@ fun MainBottomNav(
         containerColor = MeTheme.colorScheme.primaryBackground,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = MeTheme.spacing.xs),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MeTheme.spacing.xs),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             BOTTOM_NAV_ITEMS.forEachIndexed { index, item ->
@@ -115,9 +117,14 @@ fun MainBottomNav(
                     },
                     selected = false,
                     onClick = {
-                        selectedItem = item
                         coroutineScope.launch {
                             topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+                            val requiredItem = BOTTOM_NAV_ITEMS.find {
+                                it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
+                            }
+                            if (requiredItem != null && requiredItem != selectedItem) {
+                                selectedItem = requiredItem
+                            }
                         }
                     },
                 )

@@ -70,7 +70,7 @@ struct LandingScreen: View {
                             
                             VStack {
                                 // Scrollable account list and CTAs
-                                ScrollView(.vertical, showsIndicators: false) {
+                                ScrollView(.vertical) {
                                     VStack(spacing: .spacingXS) {
                                         VStack(spacing: 0) {
                                             ForEach(Array(landingStore.userItems.enumerated()), id: \.element.id) { index, item in

@@ -36,6 +36,7 @@ data class ValidationError(
 class FormControl<T> private constructor(
     initialValue: T,
     validators: List<Validator<T>> = emptyList(),
+    onValueChangeCallback: OnValueChangeCallback<T>? = null
 ) {
     private val _value = mutableStateOf(initialValue)
     val value: T get() = _value.value
@@ -61,7 +62,7 @@ class FormControl<T> private constructor(
     private val _validators = mutableStateOf(validators)
     private val _asyncValidators = mutableStateOf<List<AsyncValidatorWrapper<T>>>(emptyList())
 
-    private var onValueChangeCallback: OnValueChangeCallback<T>? = null
+    private var onValueChangeCallback: OnValueChangeCallback<T>? = onValueChangeCallback
 
     /**
      * Sets a callback to be notified when the value changes
@@ -212,10 +213,12 @@ class FormControl<T> private constructor(
         fun <T> create(
             initialValue: T,
             validators: List<Validator<T>> = emptyList(),
+            onValueChangeCallback: OnValueChangeCallback<T>? = null,
         ): FormControl<T> =
             FormControl(
                 initialValue = initialValue,
                 validators = validators,
+                onValueChangeCallback = onValueChangeCallback,
             )
     }
 
@@ -285,6 +288,9 @@ class FormGroup<T : Any>(
     val isTouched: Boolean
         get() = controls.toList().any { it.touched }
 
+    val isPending: Boolean
+        get() = controls.toList().any { it.pending }
+
     /**
      * Returns a map of all form control values where the key is the field name
      * and the value is the current value of that form control
@@ -341,6 +347,122 @@ class FormGroup<T : Any>(
         _groupError.value = null
     }
 }
+
+@Stable
+class MultiFormGroup<T : Any>(
+    val forms: T,
+    private val crossValidators: List<(T) -> String?> = emptyList()
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+    private val _groupError = mutableStateOf<String?>(null)
+    val groupError: String? get() = _groupError.value
+
+    /**
+     * Returns true if all nested FormGroups are valid and cross-validation passes
+     */
+    val isValid: Boolean
+        get() = forms.toFormGroupList().all { it.isValid } && groupError == null
+
+    val isDirty: Boolean
+        get() = forms.toFormGroupList().any { it.isDirty }
+
+    val isTouched: Boolean
+        get() = forms.toFormGroupList().any { it.isTouched }
+
+    val isPending: Boolean
+        get() = forms.toFormGroupList().any { it.isPending }
+
+    /**
+     * Validates all nested FormGroups and runs cross-validation
+     */
+    fun validate(): Boolean {
+        val formGroups = forms.toFormGroupList()
+        val formsValid = formGroups.all { it.validate() }
+
+        // Clear group error before validation
+        _groupError.value = null
+
+        for (validator in crossValidators) {
+            val err = validator(forms)
+            if (err != null) {
+                _groupError.value = err
+                return false
+            }
+        }
+
+        return formsValid
+    }
+
+    /**
+     * Forces all controls in all nested FormGroups to show their error states
+     */
+    fun forceShowAllErrors() {
+        forms.toFormGroupList().forEach { it.forceShowAllErrors() }
+    }
+
+    /**
+     * Resets all controls in all nested FormGroups to their initial state
+     */
+    fun resetForm() {
+        forms.toFormGroupList().forEach { it.resetForm() }
+        _groupError.value = null
+    }
+
+    /**
+     * Combines all field values from all nested FormGroups into a single flat map
+     */
+    fun getValues(): Map<String, Any?> {
+        return forms.toFormGroupList().flatMap { it.getValues().entries }.associate { it.toPair() }
+    }
+
+    /**
+     * Returns a nested map structure preserving the original form organization
+     */
+    fun getNestedValues(): Map<String, Map<String, Any?>> {
+        return forms.javaClass.declaredFields
+            .mapNotNull { field ->
+                field.isAccessible = true
+                val formGroup = field.get(forms) as? FormGroup<*>
+                if (formGroup != null) {
+                    field.name to formGroup.getValues()
+                } else {
+                    null
+                }
+            }.toMap()
+    }
+
+    /**
+     * Serializes combined values into the specified @Serializable type
+     */
+    private inline fun <reified R : Any> getValuesAsType(): R {
+        val valueMap = getValues()
+        val jsonObjectMap = valueMap.mapValues { (_, value) ->
+            when (value) {
+                null -> JsonNull
+                is String -> JsonPrimitive(value)
+                is Number -> JsonPrimitive(value)
+                is Boolean -> JsonPrimitive(value)
+                is DateTimeValue -> json.encodeToJsonElement(value)
+                is HeightInput -> json.encodeToJsonElement(value)
+                else -> JsonPrimitive(value.toString())
+            }
+        }
+        return json.decodeFromJsonElement(JsonObject(jsonObjectMap))
+    }
+
+    companion object {
+        fun <T : Any> create(forms: T, crossValidators: List<(T) -> String?> = emptyList()): MultiFormGroup<T> {
+            return MultiFormGroup(forms, crossValidators)
+        }
+    }
+}
+
+// Extension for nested FormGroup access
+private fun <T : Any> T.toFormGroupList(): List<FormGroup<*>> =
+    javaClass.declaredFields.mapNotNull { field ->
+        field.isAccessible = true
+        field.get(this) as? FormGroup<*>
+    }
 
 // Extension for explicit control access
 private fun <T : Any> T.toList(): List<FormControl<*>> =

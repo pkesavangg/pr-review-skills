@@ -6,13 +6,16 @@ import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.strings.ToastStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,6 +37,7 @@ class AppViewModel
         private val appNavigationService: IAppNavigationService,
         private val tokenManager: ITokenManager,
         private val accountService: IAccountService,
+        private val dialogUtility: IDialogUtility,
     ) : BaseIntentViewModel<AppState, AppIntent>(
             reducer = AppReducer(),
         ) {
@@ -78,7 +82,20 @@ class AppViewModel
                         }
 
                         is AuthState.LoggedOut -> {
-                            routeToLandingOrApp()
+                            if (authState.isActiveAccount) {
+                                routeToLandingOrApp()
+                            }
+                        }
+
+                        is AuthState.UnauthorizedLogout -> {
+                            // Show account logged out alert
+                            viewModelScope.launch {
+                                val activeAccount = accountService.handleUnauthorizedLogout(authState.accountId)
+                                if (activeAccount != null) {
+                                    navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
+                                    dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
+                                }
+                            }
                         }
 
                         is AuthState.AccountAdded -> {
@@ -86,6 +103,16 @@ class AppViewModel
                         }
 
                         is AuthState.AccountSwitched -> {
+                            if (authState.showToast) {
+                                val accountName = authState.account.firstName
+                                dialogQueueService.showToast(
+                                    Toast(
+                                        title = null,
+                                        message = ToastStrings.Success.AccountSwitchSuccess.Message(accountName),
+                                        action = null,
+                                    ),
+                                )
+                            }
                             initLoadingData(authState.account)
                         }
 
@@ -113,12 +140,12 @@ class AppViewModel
         private suspend fun checkLoginStatus(): Boolean =
             try {
                 // Check active account first
-                accountService.checkLoginStatusForActiveAccount()
+                val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount()
                 // Then check other logged-in accounts
-                accountService.checkLoginStatusForLoggedInAccounts()
+                val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
 
                 AppLog.d(TAG, "Checked login status for all accounts")
-                true
+                isActiveAccountChecked && isLoggedInAccountsChecked
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error checking login status", e.toString())
                 false
@@ -145,13 +172,12 @@ class AppViewModel
 
         private suspend fun initLoadingData(account: Account?) {
             try {
-                if (account != null) {
-                    val isLoginStatusChecked = checkLoginStatus()
-                    if (isLoginStatusChecked) {
-                        entryService.updateAccountId(account.id)
-                        deviceInfoService.updateDeviceInfo()
-                        navigationService.autoLogin()
-                    }
+                val isLoginStatusChecked = checkLoginStatus()
+                if (account != null && isLoginStatusChecked) {
+                    entryService.updateAccountId(account.id)
+
+                    deviceInfoService.updateDeviceInfo()
+                    navigationService.autoLogin()
                 } else {
                     routeToLandingOrApp()
                 }

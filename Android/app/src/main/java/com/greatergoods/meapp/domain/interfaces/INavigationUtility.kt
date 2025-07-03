@@ -30,7 +30,7 @@ interface INavigationUtility {
 
     suspend fun login()
 
-    suspend fun logout()
+    suspend fun reInitialize()
 
     suspend fun autoLogin()
 
@@ -92,7 +92,7 @@ sealed interface NavigationIntent {
 
     data object Login : NavigationIntent
 
-    data object Logout : NavigationIntent
+    data object ReInitialize : NavigationIntent
 
     data object AutoLogin : NavigationIntent
 }

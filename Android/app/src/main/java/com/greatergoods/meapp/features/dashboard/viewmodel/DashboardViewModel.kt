@@ -21,79 +21,55 @@ import android.util.Log
  */
 @HiltViewModel
 class DashboardViewModel
-    @Inject
-    constructor(
-        private val entryService: IEntryService,
-        private val appNavigationService: IAppNavigationService,
-    ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
-            reducer = DashboardReducer(),
-        ) {
-        init {
-            handleIntent(DashboardIntent.LoadEntries)
-            loadEntries()
-            observeAuthEvent()
-        }
+@Inject
+constructor(
+    private val entryService: IEntryService,
+    private val appNavigationService: IAppNavigationService,
+) : BaseIntentViewModel<DashboardState, DashboardIntent>(
+    reducer = DashboardReducer(),
+) {
+    init {
+        handleIntent(DashboardIntent.LoadEntries)
+        loadEntries()
+    }
 
-        override fun provideInitialState(): DashboardState = DashboardState()
+    override fun provideInitialState(): DashboardState = DashboardState()
 
-        /**
-         * Observes authentication state changes and shows toast for account switches.
-         */
-        private fun observeAuthEvent() {
-            viewModelScope.launch {
-                appNavigationService.authEvent.collect { authState ->
-                    when (authState) {
-                        is AuthState.AccountSwitched -> {
-                            if (authState.showToast) {
-                                val accountName = authState.account.firstName
-                                dialogQueueService.showToast(
-                                    Toast(
-                                        title = null,
-                                        message = ToastStrings.Success.AccountSwitchSuccess.Message(accountName),
-                                        action = null,
-                                    ),
-                                )
-                            }
-                        }
+    /**
+     * Observes authentication state changes and shows toast for account switches.
+     */
 
-                        else -> {}
-                    }
-                }
+    /**
+     * Loads entries and updates the state accordingly.
+     */
+    private fun loadEntries() {
+        viewModelScope.launch {
+            entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
+                handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
             }
         }
-
-        /**
-         * Loads entries and updates the state accordingly.
-         */
-        private fun loadEntries() {
-            viewModelScope.launch {
-                entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
-                    Log.i("CHECKING", dayWise.toString())
-                    handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
-                }
-            }
-            viewModelScope.launch {
-                entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
-                    handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
-                }
-            }
-            viewModelScope.launch {
-                handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
+        viewModelScope.launch {
+            entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
+                handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
             }
         }
-
-        /**
-         * Adds new entries using the entry service and updates the state.
-         *
-         * @param entries The list of entries to add.
-         */
-        fun addEntry(entries: List<ScaleEntry>) {
-            viewModelScope.launch {
-                dialogQueueService.showToast(
-                    Toast(
-                        message = "Adding ${entries.size} entries",
-                    ),
-                )
-            }
+        viewModelScope.launch {
+            handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
         }
     }
+
+    /**
+     * Adds new entries using the entry service and updates the state.
+     *
+     * @param entries The list of entries to add.
+     */
+    fun addEntry(entries: List<ScaleEntry>) {
+        viewModelScope.launch {
+            dialogQueueService.showToast(
+                Toast(
+                    message = "Adding ${entries.size} entries",
+                ),
+            )
+        }
+    }
+}

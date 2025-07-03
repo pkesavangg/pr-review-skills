@@ -4,15 +4,16 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IGoalService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.signup.model.GoalType
 import com.greatergoods.meapp.features.signup.model.SignupData
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import com.greatergoods.meapp.features.signup.model.SignupIntent
@@ -29,18 +30,19 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SignupViewModel
-@Inject
-constructor(
-    private val accountService: IAccountService,
-) : BaseIntentViewModel<SignupState, SignupIntent>(
-    reducer = SignupReducer(),
-) {
-    private val TAG = "SignupViewModel"
+    @Inject
+    constructor(
+        private val accountService: IAccountService,
+        private val goalService: IGoalService,
+    ) : BaseIntentViewModel<SignupState, SignupIntent>(
+            reducer = SignupReducer(),
+        ) {
+        private val TAG = "SignupViewModel"
 
-    override fun provideInitialState(): SignupState =
-        SignupState(
-            form = FormGroup(SignupFormControls.create()),
-        )
+        override fun provideInitialState(): SignupState =
+            SignupState(
+                form = FormGroup(SignupFormControls.create()),
+            )
 
         override fun handleIntent(intent: SignupIntent) {
             when (intent) {
@@ -51,19 +53,19 @@ constructor(
                 else -> {}
             }
             super.handleIntent(intent)
-    }
-
-    /**
-     * Handles moving to the next step or submitting if on the last step.
-     */
-    fun onNext() {
-        if (state.value.isLastStep) {
-            AppLog.d(TAG, "Submitting signup form")
-            onSubmit()
-        } else {
-            AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
         }
-    }
+
+        /**
+         * Handles moving to the next step or submitting if on the last step.
+         */
+        fun onNext() {
+            if (state.value.isLastStep) {
+                AppLog.d(TAG, "Submitting signup form")
+                onSubmit()
+            } else {
+                AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
+            }
+        }
 
         /**
          * Handles the signup form submission. Validates the form, shows loading, and attempts signup.
@@ -106,79 +108,46 @@ constructor(
             val signupData: SignupData = stateValue.form.getValuesAsType()
             viewModelScope.launch {
                 try {
+                    val isMetric = if (!stateValue.goalSkipped) signupData.unitMetric else false
+
                     // Create the basic account request (similar to newAccount in wgApp4-1)
                     val signupRequest =
-                        mutableMapOf<String, Any>(
-                            "email" to signupData.email.trim(),
-                            "firstName" to signupData.firstName.trim(),
-                            "lastName" to
-                                signupData.lastName.trim(),
-                            "gender" to signupData.sex,
-                            "zipcode" to
-                                signupData.zipcode
-                                    .trim(),
-                            "password" to signupData.password,
-                            "dob" to DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
-                            "height" to HeightInput.convertHeightInputToStored(controls.height.value),
-
-                            )
-
-                    var goalData: Map<String, Any>? = null
-                    if (!stateValue.goalSkipped) {
-                        val goalType = signupData.goalType
-                        val currentWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0
-                        val goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0
-                        val isMetric = signupData.unitMetric
-                        // Use ConversionTools to convert display weights to stored format
-                        val convertedCurrentWeight =
-                            ConversionTools.convertDisplayToStored(
-                                display = currentWeight,
-                                isMetric = isMetric,
-                            )
-                        val convertedGoalWeight =
-                            ConversionTools.convertDisplayToStored(
-                                display = goalWeight,
-                                isMetric = isMetric,
-                            )
-                        goalData =
-                            if (goalType == GoalType.MAINTAIN.value) {
-                                // For maintain: both goalWeight and initialWeight are the same
-                                mapOf(
-                                    "type" to GoalType.MAINTAIN.value,
-                                    "goalWeight" to convertedGoalWeight,
-                                    "initialWeight" to convertedGoalWeight,
-                                )
-                            } else {
-                                // Determine gain vs lose based on weight comparison
-                                val determinedGoalType =
-                                    if (convertedGoalWeight >
-                                        convertedCurrentWeight
-                                    ) {
-                                        GoalType.GAIN.value
-                                    } else {
-                                        GoalType.LOSE.value
-                                    }
-                                mapOf(
-                                    "type" to determinedGoalType,
-                                    "goalWeight" to convertedGoalWeight,
-                                    "initialWeight" to convertedCurrentWeight,
-                                )
-                            }
-
-                        // Add weight unit to account data for body composition update (always lbs)
-                        signupRequest["weightUnit"] = if (isMetric) WeightUnit.KG else WeightUnit.LB
-                    }
-                    val account = accountService.addAccount(signupRequest)
+                        SignupRequest(
+                            signupData.email.trim(),
+                            signupData.firstName.trim(),
+                            signupData.lastName.trim(),
+                            signupData.sex,
+                            signupData.zipcode
+                                .trim(),
+                            signupData.password,
+                            DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
+                            controls.height.value.toStoredHeight(),
+                            if (isMetric) WeightUnit.KG else WeightUnit.LB,
+                        )
+                    val account = accountService.signup(signupRequest)
                     if (account != null) {
-                        AppLog.i("SignupViewModel", "Account created successfully")
+                        AppLog.i(TAG, "Account created successfully")
+
+                        // Create goal if not skipped - this will complete before proceeding to navigation
+                        if (!stateValue.goalSkipped) {
+                            AppLog.d(TAG, "Creating goal for new account...")
+                            goalService.createGoalForSignup(
+                                account = account,
+                                goalType = signupData.goalType,
+                                currentWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0,
+                                goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0,
+                            )
+                            AppLog.d(TAG, "Goal creation completed, proceeding to navigation")
+                        }
+
                         navigationService.replaceStack(AppRoute.Init.Loading)
-                        AppLog.i("SignupViewModel", "Navigation to loading screen successful after signup")
+                        AppLog.i(TAG, "Navigation to loading screen successful after signup")
                         handleIntent(SignupIntent.Success)
                     } else {
                         handleIntent(SignupIntent.Error("Something went wrong"))
                     }
                 } catch (e: Exception) {
-                    AppLog.e("SignupViewModel", "Signup failed", e.toString())
+                    AppLog.e(TAG, "Signup failed", e.toString())
                     handleIntent(SignupIntent.Error("Signup failed"))
                 } finally {
                     dialogQueueService.dismissLoader()
@@ -224,9 +193,9 @@ constructor(
             viewModelScope.launch {
                 try {
                     navigationService.navigateBack(topLevel = null)
-                    AppLog.d("SignupViewModel", "Successfully navigated back from signup")
+                    AppLog.d(TAG, "Successfully navigated back from signup")
                 } catch (e: Exception) {
-                    AppLog.e("SignupViewModel", "Failed to navigate back from signup", e.toString())
+                    AppLog.e(TAG, "Failed to navigate back from signup", e.toString())
                 }
             }
         }

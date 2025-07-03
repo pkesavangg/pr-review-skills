@@ -29,7 +29,7 @@ fun MeApp() {
     val topLevelBackStack =
         rememberTopLevelBackStack(
             Pair(AppRoute.App, AppRoute.Init.Loading),
-            AppRoute.Auth.Login,
+            AppRoute.Auth.Login(),
             Pair(AppRoute.Home, AppRoute.Main.Dashboard),
         )
 

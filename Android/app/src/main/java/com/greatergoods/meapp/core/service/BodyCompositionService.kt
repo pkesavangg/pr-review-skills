@@ -19,7 +19,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Service implementation for managing body composition settings.
+ * Implementation of body composition service for managing body composition settings.
  * Handles activity level, weight unit, and height updates with offline support.
  * Follows the same pattern as Angular updateBodycomp method.
  */
@@ -35,17 +35,17 @@ class BodyCompositionService @Inject constructor(
     }
 
     /**
-     * Checks if network is available using the connectivity observer
+     * Checks if network is available for API calls.
      */
     private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
 
-
     /**
-     * Updates body composition data in the local database.
-     * This method handles offline updates for any body composition field.
+     * Updates body composition data both online and offline.
+     * Online: Updates via API, then saves to DB with isSynced = true
+     * Offline: Saves to DB with isSynced = false for later sync
      *
      * @param updateType The type of update (activity level, weight unit, or height)
-     * @param bodyComposition The new value (String for activity level, WeightUnit for weight unit, Int for height)
+     * @param bodyCompRequest The body composition data to update
      * @return The updated account or null if update fails
      */
     override suspend fun updateBodyComposition(updateType: BodyCompUpdateType, bodyComposition: BodyCompUpdateRequest): Account? {
@@ -55,30 +55,30 @@ class BodyCompositionService @Inject constructor(
 
             if (isNetworkAvailable()) {
                 val response = bodyCompositionRepository.updateBodyCompInAPI(bodyComposition)
-                val bodyComposition = WeightCompSettingsEntity(
-                        accountId = activeAccount.id,
-                        height = response.account.height,
-                        activityLevel = response.account.activityLevel,
-                        weightUnit = response.account.weightUnit,
-                        isSynced = true
+                val bodyCompEntity = WeightCompSettingsEntity(
+                    accountId = activeAccount.id,
+                    height = response.account.height,
+                    activityLevel = response.account.activityLevel,
+                    weightUnit = response.account.weightUnit,
+                    isSynced = true
                 )
-                bodyCompositionRepository.updateBodyCompInDB(activeAccount.id, bodyComposition)
-                AppLog.i(TAG, "$updateType updated online for account: ${activeAccount.id}")
-                // Note: Account sync will be handled by OfflineHandlerService
-                null
+                val updatedAccount = bodyCompositionRepository.updateBodyCompInDB(activeAccount.id, bodyCompEntity)
+                AppLog.i(TAG, "Body composition saved to DB with isSynced = true")
+                updatedAccount
             } else {
-                // Offline: Store locally using body composition repository
-                val bodyComposition = WeightCompSettingsEntity(
+                val bodyCompEntity = WeightCompSettingsEntity(
                     accountId = activeAccount.id,
                     height = bodyComposition.height,
                     activityLevel = bodyComposition.activityLevel,
                     weightUnit = bodyComposition.weightUnit,
                     isSynced = false
                 )
-                bodyCompositionRepository.updateBodyCompInDB(activeAccount.id,bodyComposition)
+                val updatedAccount = bodyCompositionRepository.updateBodyCompInDB(activeAccount.id, bodyCompEntity)
+                AppLog.i(TAG, "Body composition saved to DB with isSynced = false for offline sync")
+                updatedAccount
             }
         } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to update $updateType", e.toString())
+            AppLog.e(TAG, "Body composition update failed", e.toString())
             null
         }
     }

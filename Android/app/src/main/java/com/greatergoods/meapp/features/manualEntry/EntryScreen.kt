@@ -24,7 +24,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.common.DashboardType
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppInput
@@ -49,48 +48,24 @@ import java.util.Calendar
 fun EntryScreen() {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
-    val backStack = LocalNavBackStack.current
-    EntryScreenContent(state, viewModel::handleIntent)
-
-    LaunchedEffect(Unit) {
-        viewModel.initDeactivate()
-    }
-
-    /* // Register canDeactivate callback for this screen
-     LaunchedEffect(backStack, state.form.isDirty) {
-         backStack.registerCanDeactivate(AppRoute.Main.Entry) {
-             if (state.form.controls.weightDateTime.weight.dirty) {
-                 suspendCancellableCoroutine { cont ->
-                     viewModel.dialogQueueService.enqueue(
-                         DialogModel.Confirm(
-                             title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                             message = AppPopupStrings.UnsavedChanges.Message,
-                             onConfirm = { cont.resume(true) },
-                             onCancel = { cont.resume(false) },
-                         ),
-                     )
-                 }
-             } else {
-                 true
-             }
-         }
-     }
-     // Unregister on dispose
-     DisposableEffect(backStack) {
-         onDispose {
-             backStack.unregisterCanDeactivate(AppRoute.Main.Entry)
-         }
-     }*/
+    EntryScreenContent(state, viewModel::initDeactivate, viewModel::handleIntent)
 }
 
 @Composable
 private fun EntryScreenContent(
     state: EntryState,
+    initializeDeactivate: (() -> Unit) -> Unit,
     handleIntent: (EntryIntent) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val controls = state.form.controls
+    LaunchedEffect(Unit) {
+        initializeDeactivate {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }
+    }
+    val entryForm = state.form.forms
     val scrollState = rememberScrollState()
     val calendar = Calendar.getInstance()
     val maxValue =
@@ -117,7 +92,7 @@ private fun EntryScreenContent(
             verticalArrangement = Arrangement.Top,
         ) {
             AppInput(
-                formControl = controls.weightDateTime.weight,
+                formControl = entryForm.weightDateTime.controls.weight,
                 label = EntryScreenStrings.WEIGHT_LABEL,
                 type = AppInputType.BODY_COMP,
                 imeAction = ImeAction.Next,
@@ -131,7 +106,7 @@ private fun EntryScreenContent(
                         .focusRequester(weightFocusRequester),
             )
             DateTimeInput(
-                formControl = controls.weightDateTime.dateTime,
+                formControl = entryForm.weightDateTime.controls.dateTime,
                 mode = DateTimeInputMode.DateTime,
                 label = EntryScreenStrings.DATE_LABEL,
                 maxValue = maxValue,
@@ -141,8 +116,8 @@ private fun EntryScreenContent(
             ExpandableMetricsCard(
                 title = EntryScreenStrings.METRICS_SECTION_TITLE,
                 subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
-                generalMetrics = controls.generalMetrics,
-                r4ScaleMetrics = controls.r4ScaleMetrics,
+                generalMetrics = entryForm.generalMetrics.controls,
+                r4ScaleMetrics = entryForm.r4ScaleMetrics?.controls,
                 onImeAction = {
                     focusManager.clearFocus()
                     keyboardController?.hide()
@@ -151,7 +126,7 @@ private fun EntryScreenContent(
             )
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 AppButton(
-                    enabled = state.form.isValid && !state.isLoading,
+                    enabled = state.form.isValid,
                     label = EntryScreenStrings.SaveButton,
                     size = ButtonSize.Large,
                     type = ButtonType.PrimaryFilled,

@@ -7,7 +7,7 @@ data class ScaleApiEntry(
     val weight: Double,
     val bodyFat: Double?,
     val muscleMass: Double?,
-    val boneMass: Double,
+    val boneMass: Double?,
     val water: Double?,
     val bmi: Double?,
     val source: String?,

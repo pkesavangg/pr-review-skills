@@ -1,20 +1,21 @@
 package com.greatergoods.meapp.core.di
 
-import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppNavigationService
 import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DeviceInfoService
+import com.greatergoods.meapp.core.service.GoalService
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
+import com.greatergoods.meapp.core.service.NotificationService
 import com.greatergoods.meapp.core.service.OfflineHandlerService
+import com.greatergoods.meapp.core.service.UserSettingsService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.data.services.ExportService
-import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
@@ -22,18 +23,24 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
+import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
+import com.greatergoods.meapp.domain.repository.INotificationRepository
+import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
+import com.greatergoods.meapp.domain.services.IGoalService
 import com.greatergoods.meapp.domain.services.IIntegrationService
+import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
+import com.greatergoods.meapp.domain.services.IUserSettingsService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.meapp.features.common.service.DialogUtility
-import com.greatergoods.notification.NotificationService
+import com.greatergoods.notification.NotificationService as GGNotificationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -58,27 +65,25 @@ object ServiceModule {
     fun provideAccountService(
         accountRepository: IAccountRepository,
         connectivityObserver: IConnectivityObserver,
-        tokenManager: ITokenManager,
         dialogQueueService: IDialogQueueService,
-        userDataStore: UserDataStore,
-        appEventService: IAppNavigationService,
+        appNavigationService: IAppNavigationService,
+        userSettingsRepository: IUserSettingsRepository,
     ): IAccountService =
         AccountService(
             accountRepository,
             connectivityObserver,
-            tokenManager,
             dialogQueueService,
-            userDataStore,
-            appEventService,
+            appNavigationService,
+            userSettingsRepository,
         )
 
     /**
-     * Provides a singleton instance of [IAppNavigationService].
-     * @return [AppNavigationService] instance.
+     * Provides a singleton instance of [IAppEventService].
+     * @return [AppEventService] instance.
      */
     @Provides
     @Singleton
-    fun provideAppEventService(): IAppNavigationService = AppNavigationService()
+    fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
 
     /**
      * Provides a singleton instance of [GGNotificationManager] for notification operations.
@@ -90,7 +95,7 @@ object ServiceModule {
     @Singleton
     fun provideNotificationManager(
         @ApplicationContext context: Context,
-        notificationService: NotificationService,
+        notificationService: GGNotificationService,
         appRepository: IAppRepository,
     ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
 
@@ -118,9 +123,8 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility {
-        return DialogUtility(dialogQueueService)
-    }
+    fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility =
+        DialogUtility(dialogQueueService)
 
     @Provides
     @Singleton
@@ -169,7 +173,7 @@ object ServiceModule {
     fun provideExportService(
         exportAPI: IExportAPI,
         accountService: IAccountService,
-        dialogQueueService: IDialogQueueService
+        dialogQueueService: IDialogQueueService,
     ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
 
     /**
@@ -181,12 +185,19 @@ object ServiceModule {
     fun provideOfflineHandlerService(
         accountRepository: IAccountRepository,
         bodyCompositionRepository: IBodyCompositionRepository,
+        notificationRepository: INotificationRepository,
+        userSettingsRepository: IUserSettingsRepository,
+        goalRepository: IGoalRepository,
         connectivityObserver: IConnectivityObserver,
-    ): IOfflineHandlerService = OfflineHandlerService(
-        accountRepository,
-        bodyCompositionRepository,
-        connectivityObserver,
-    )
+    ): IOfflineHandlerService =
+        OfflineHandlerService(
+            accountRepository,
+            bodyCompositionRepository,
+            notificationRepository,
+            userSettingsRepository,
+            goalRepository,
+            connectivityObserver,
+        )
 
     /**
      * Provides the body composition service implementation.
@@ -197,10 +208,45 @@ object ServiceModule {
     fun provideBodyCompositionService(
         bodyCompositionRepository: IBodyCompositionRepository,
         connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService
-    ): IBodyCompositionService = BodyCompositionService(
-        bodyCompositionRepository,
-        connectivityObserver,
-        dialogQueueService
-    )
+        dialogQueueService: IDialogQueueService,
+    ): IBodyCompositionService =
+        BodyCompositionService(
+            bodyCompositionRepository,
+            connectivityObserver,
+            dialogQueueService,
+        )
+
+    /**
+     * Provides the notification service implementation.
+     * Handles notification settings with offline support.
+     */
+    @Provides
+    @Singleton
+    fun provideNotificationService(
+        notificationRepository: INotificationRepository,
+        connectivityObserver: IConnectivityObserver,
+    ): INotificationService =
+        NotificationService(
+            notificationRepository,
+            connectivityObserver,
+        )
+
+    @Provides
+    @Singleton
+    fun provideUserSettingsService(
+        userSettingsRepository: IUserSettingsRepository,
+        connectivityObserver: IConnectivityObserver,
+    ): IUserSettingsService = UserSettingsService(userSettingsRepository, connectivityObserver)
+
+    /**
+     * Provides the goal service implementation.
+     * Handles goal management, percentage calculation, and goal completion alerts.
+     */
+    @Provides
+    @Singleton
+    fun provideGoalService(
+        goalRepository: IGoalRepository,
+        connectivityObserver: IConnectivityObserver,
+        dialogQueueService: IDialogQueueService,
+    ): IGoalService = GoalService(goalRepository, connectivityObserver, dialogQueueService)
 }

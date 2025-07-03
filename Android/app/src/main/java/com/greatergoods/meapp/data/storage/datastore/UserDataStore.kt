@@ -12,7 +12,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import android.content.Context
-import android.util.Log
 
 /**
  * Extension property to provide UserPreferences DataStore instance from Context.
@@ -54,7 +53,6 @@ class UserDataStore @Inject constructor(
      * Emits a Flow of the current active UserAccount, or null if none is active.
      */
     val currentAccountFlow: Flow<UserAccount?> = dataFlow.map {
-        Log.d("UserDataStore", "currentAccountFlow: ${it.accountsMap.values}")
         it.accountsMap.values.firstOrNull { account -> account.isActive }
     }
 
@@ -254,7 +252,7 @@ class UserDataStore @Inject constructor(
     suspend fun logoutCurrentAccount() {
         val current = getData()
         val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
-        
+
         if (currentActiveAccount != null) {
             val updated = current.toBuilder().apply {
                 putAccounts(
@@ -273,7 +271,7 @@ class UserDataStore @Inject constructor(
     suspend fun removeCurrentAccount() {
         val current = getData()
         val currentActiveAccount = current.accountsMap.entries.firstOrNull { it.value.isActive }
-        
+
         if (currentActiveAccount != null) {
             val updated = current.toBuilder().apply {
                 removeAccounts(currentActiveAccount.key)
@@ -355,27 +353,21 @@ class UserDataStore @Inject constructor(
     }
 
     /**
-     * Gets whether the account switch info modal has been shown for a specific account.
-     * @param accountId The account ID to check.
-     * @return True if the modal has been shown, false otherwise.
+     * Gets whether the account switch info modal has been shown for this device (any account).
+     * @return True if the modal has been shown for this device, false otherwise.
      */
-    suspend fun hasShownAccountSwitchInfoModal(accountId: String): Boolean =
-        getData().accountsMap[accountId]?.hasShownAccountSwitchInfoModal ?: false
+    suspend fun hasShownAccountSwitchInfoModalForDevice(): Boolean =
+        getData().hasShownAccountSwitchInfoModalForDevice
 
     /**
-     * Sets whether the account switch info modal has been shown for a specific account.
-     * @param accountId The account ID to update.
+     * Sets whether the account switch info modal has been shown for this device (any account).
      * @param hasShown Whether the modal has been shown.
      */
-    suspend fun setAccountSwitchInfoModalShown(accountId: String, hasShown: Boolean) {
+    suspend fun setAccountSwitchInfoModalShownForDevice(hasShown: Boolean) {
         val current = getData()
-        val updated = current.toBuilder().apply {
-            val account = accountsMap[accountId]?.toBuilder()
-                ?.setHasShownAccountSwitchInfoModal(hasShown)
-            if (account != null) {
-                putAccounts(accountId, account.build())
-            }
-        }.build()
+        val updated = current.toBuilder()
+            .setHasShownAccountSwitchInfoModalForDevice(hasShown)
+            .build()
         updateData { updated }
     }
 }

@@ -7,8 +7,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.withFrameNanos
 import androidx.navigation3.runtime.NavKey
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -121,15 +123,16 @@ class TopLevelBackStack<T : NavKey>(
         val stack = stacks.getOrPut(topLevelKey) { mutableStateListOf() }
         val currentRoute = stack.lastOrNull()
         if (currentRoute != null && !canDeactivate(currentRoute)) return
-        stack.clear()
-        routes.forEach { route ->
+        routes.forEachIndexed { index, route ->
             if (requiresLogin(route)) {
                 onLoginSuccessRoute = Pair(topLevelKey, route)
-                stack.add(loginKey)
+                stack.add(index, loginKey)
             } else {
-                stack.add(route)
+                stack.add(index, route)
             }
         }
+        delay(100)
+        stack.removeAll { it !in routes }
     }
 
     /**
@@ -180,15 +183,19 @@ class TopLevelBackStack<T : NavKey>(
         AppLog.i("autoLogin", "Navigation to dashboard successful")
     }
 
-    fun logout() {
+    suspend fun reInitialize() {
         isLoggedIn = false
         val stacks = _topLevelStacks.value
-        stacks.values.forEach { stack ->
-            // Remove non-public routes from each stack
-            val publicRoutes = stack.filter { isPublic(it) }
-            stack.clear()
-            stack.addAll(publicRoutes)
-        }
+        val primaryStack = stacks[startKey.first] ?: return
+
+        // Add start screen at beginning
+        primaryStack.add(0, startKey.second)
+        // Remove everything except start screen
+        withFrameNanos { }
+        primaryStack.removeAll { it != startKey.second }
+        // Remove all other stacks
+        withFrameNanos { }
+        stacks.keys.removeIf { it != startKey.first }
     }
 
     private fun requiresLogin(key: T): Boolean = key !is PublicRoute && !isLoggedIn

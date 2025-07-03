@@ -36,48 +36,76 @@ sealed class HeightInput {
             is FtIn -> "$feet' $inches\""
         }
 
+    /**
+     * Converts this HeightInput to stored height format (tenths of inches).
+     * @return Height in stored format
+     */
+    fun toStoredHeight(): Int =
+        when (this) {
+            is Cm -> {
+                // Convert cm to stored height format
+                val CM_TO_INCH_FACTOR = 0.254
+                kotlin.math.round(value / CM_TO_INCH_FACTOR).toInt()
+            }
+            is FtIn -> {
+                // Convert feet/inches to stored height format
+                val INCHES_PER_FOOT = 12
+                val STORED_HEIGHT_TO_INCHES_FACTOR = 10
+                val totalInches = (feet * INCHES_PER_FOOT) + inches
+                (totalInches * STORED_HEIGHT_TO_INCHES_FACTOR).toInt()
+            }
+        }
+
     companion object {
         /**
-         * Converts HeightInput to stored height format (tenths of inches).
-         * @param heightInput The height input to convert
-         * @return Height in stored format
+         * Creates a HeightInput from stored height format based on unit preference.
+         * @param storedHeight Height in stored format (tenths of inches)
+         * @param isMetric Whether to create metric (cm) or imperial (ft/in) input
+         * @return HeightInput in the appropriate format
          */
-        fun convertHeightInputToStored(heightInput: HeightInput): Int =
-            when (heightInput) {
-                is Cm -> {
-                    // Convert cm to stored height format
-                    convertCmToStoredHeight(heightInput.value)
-                }
-                is FtIn -> {
-                    // Convert feet/inches to stored height format
-                    convertFeetInchesToStoredHeight(
-                        feet = heightInput.feet,
-                        inches = heightInput.inches,
-                    )
-                }
+        fun fromStoredHeight(storedHeight: Int, isMetric: Boolean): HeightInput {
+            return if (isMetric) {
+                // Convert stored height to cm
+                val CM_TO_INCH_FACTOR = 0.254
+                val heightInCm = kotlin.math.round(storedHeight * CM_TO_INCH_FACTOR / 10).toInt()
+                Cm(heightInCm.coerceIn(150, 200)) // Ensure within valid range
+            } else {
+                // Convert stored height to feet/inches
+                val STORED_HEIGHT_TO_INCHES_FACTOR = 10
+                val INCHES_PER_FOOT = 12
+                val totalInches = storedHeight / STORED_HEIGHT_TO_INCHES_FACTOR
+                val feet = totalInches / INCHES_PER_FOOT
+                val inches = totalInches % INCHES_PER_FOOT
+                FtIn(
+                    feet = feet.coerceIn(4, 7), // Ensure within valid range
+                    inches = inches.coerceIn(0, 11)
+                )
             }
-
-        /**
-         * Converts centimeters to stored height format.
-         * @param cm Height in centimeters
-         * @return Height in stored format
-         */
-        private fun convertCmToStoredHeight(cm: Int): Int {
-            val CM_TO_INCH_FACTOR = 0.254
-            return kotlin.math.round(cm / CM_TO_INCH_FACTOR).toInt()
         }
 
         /**
-         * Converts feet and inches to stored height format.
-         * @param feet Height in feet
-         * @param inches Additional inches
-         * @return Height in stored format
+         * Formats height display based on unit preference.
+         * @param height Height in stored format (tenths of inches)
+         * @param isMetric Whether to display in metric (cm) or imperial (ft/in)
+         * @return Formatted height string
          */
-        private fun convertFeetInchesToStoredHeight(feet: Int, inches: Int): Int {
-            val INCHES_PER_FOOT = 12
-            val STORED_HEIGHT_TO_INCHES_FACTOR = 10
-            val totalInches = (feet * INCHES_PER_FOOT) + inches
-            return (totalInches * STORED_HEIGHT_TO_INCHES_FACTOR).toInt()
+        fun formatHeightDisplay(height: Int?, isMetric: Boolean): String {
+            if (height == null) return "Not Set"
+
+            return if (isMetric) {
+                // Convert stored height to cm
+                val CM_TO_INCH_FACTOR = 0.254
+                val heightInCm = kotlin.math.round(height * CM_TO_INCH_FACTOR / 10).toInt()
+                "$heightInCm cm"
+            } else {
+                // Convert stored height to feet/inches
+                val STORED_HEIGHT_TO_INCHES_FACTOR = 10
+                val INCHES_PER_FOOT = 12
+                val totalInches = height / STORED_HEIGHT_TO_INCHES_FACTOR
+                val feet = totalInches / INCHES_PER_FOOT
+                val inches = totalInches % INCHES_PER_FOOT
+                "$feet' $inches\""
+            }
         }
     }
 }

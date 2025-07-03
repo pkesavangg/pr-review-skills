@@ -15,7 +15,20 @@ data class SettingsState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val account: Account? = null,
-) : IReducer.State
+    val hasMultipleAccounts: Boolean = false,
+) : IReducer.State {
+
+    /**
+     * Computed property that returns the current notification status as a formatted string.
+     * This is reactive and will update whenever the account state changes.
+     */
+    val currentNotificationStatus: String
+        get() = when {
+            account?.shouldSendEntryNotifications == true && account.shouldSendWeightInEntryNotifications == true -> "w/ weight"
+            account?.shouldSendEntryNotifications == true -> "On"
+            else -> "Off"
+        }
+}
 
 /**
  * Intent for settings actions, such as loading and updating settings.
@@ -30,23 +43,32 @@ sealed interface SettingsIntent : IReducer.Intent {
 
     object ClearError : SettingsIntent
 
+    object OpenAddScales: SettingsIntent
     object Logout : SettingsIntent
-
+    object LogoutAllAccounts : SettingsIntent
     object SwitchAccount : SettingsIntent
 
     data class UpdateAccount(
         val account: Account?,
+        val hasMultipleAccounts: Boolean = false
     ) : SettingsIntent
 
     // URL Opening Intents
     object OpenPrivacyPolicy : SettingsIntent
     object OpenTermsOfService : SettingsIntent
     object OpenGreaterGoodsWebsite : SettingsIntent
+    object OpenHelp : SettingsIntent
 
     // Modal Selection Intents
     object ShowBiologicalSexModal : SettingsIntent
     object ShowActivityLevelModal : SettingsIntent
     object ShowUnitTypeModal : SettingsIntent
+    object ShowNotificationsModal : SettingsIntent
+    object ShowHeightModal : SettingsIntent
+    object ShowWeightlessModal : SettingsIntent
+    object ShowStreakModal : SettingsIntent
+    object goalSettingModal : SettingsIntent
+
 }
 
 /**
@@ -61,7 +83,11 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
             is SettingsIntent.SetError -> state.copy(errorMessage = intent.message, isLoading = false)
             SettingsIntent.ClearError -> state.copy(errorMessage = null)
             SettingsIntent.LoadSettings -> state.copy(isLoading = true)
-            is SettingsIntent.UpdateAccount -> state.copy(account = intent.account)
+            is SettingsIntent.UpdateAccount -> state.copy(
+                account = intent.account,
+                hasMultipleAccounts = intent.hasMultipleAccounts,
+            )
+
             else -> null
             // Add more intent handling as needed
         }

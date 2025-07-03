@@ -48,8 +48,8 @@ fun NavigationObserver(
                         backStack.login()
                     }
 
-                    is NavigationIntent.Logout -> {
-                        backStack.logout()
+                    is NavigationIntent.ReInitialize -> {
+                        backStack.reInitialize()
                     }
 
                     is NavigationIntent.AutoLogin -> {

@@ -9,10 +9,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
     private let networkMonitor: NetworkMonitor = NetworkMonitor.shared
+    /// API repository for integration-related network calls
+    private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
     
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
-
+    
     var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
     
@@ -20,9 +22,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         // Load initial accounts from local storage
         Task {
             do {
+                try await syncUnsyncedAccounts() // Try to sync any offline changes
                 try await updatePublishedState()
                 let _ = try await refreshAllAccounts()
-                try await syncUnsyncedAccounts() // Try to sync any offline changes
             } catch {
                 
             }
@@ -253,6 +255,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if canSaveOffline && HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
+                localAccount.update(from: profile)
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
@@ -331,9 +334,58 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
-    /// Updates the integrations for the active account.
-    func updateIntegrations(integrations: Integrations) async throws -> Account {
-        throw AccountError.notImplemented
+    // MARK: - Integrations (HealthKit)
+    
+    /// Creates (or updates) an Apple Health (HealthKit) integration for the active account.
+    ///
+    /// This wraps the `POST /integrations/health` endpoint (see `IntegrationAPIRepository.createHealthIntegration`).
+    /// For the initial implementation we forward an **empty** preferences dictionary.
+    /// - Parameter deviceId: The HealthKit pseudo-device identifier.
+    /// - Returns: The `HealthIntegrationResponse` returned by the backend.
+    @discardableResult
+    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable] = [:]) async throws -> Account {
+        guard let accountId = activeAccount?.accountId,
+              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+        let deviceId = DeviceInfoHelper.getDeviceId()
+        do {
+            let _ = try await integrationApiRepo.createHealthIntegration(
+                deviceId: deviceId,
+                type: integrationType,
+                preferences: preferences
+            )
+            
+            if localAccount.integrationSettings == nil {
+                localAccount.integrationSettings = IntegrationSettings(
+                    accountId: accountId,
+                    isHealthKitOn: true,
+                    isSynced: true
+                )
+            } else {
+                localAccount.integrationSettings?.isHealthKitOn = true
+            }
+            try await localRepo.updateAccount(localAccount)
+            try await updatePublishedState()
+            return localAccount
+        } catch {
+            if HTTPError.isNetworkError(error) {
+                if localAccount.integrationSettings == nil {
+                    localAccount.integrationSettings = IntegrationSettings(
+                        accountId: accountId,
+                        isHealthKitOn: true,
+                        isSynced: false
+                    )
+                } else {
+                    localAccount.integrationSettings?.isHealthKitOn = true
+                    localAccount.isSynced = false
+                }
+                try? await localRepo.updateAccount(localAccount)
+                try? await updatePublishedState()
+                return localAccount
+            }
+            throw error
+        }
     }
     
     /// Updates the notification settings for the active account or a specific account by ID.
@@ -457,11 +509,24 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     /// Synchronizes any unsynced accounts with the server.
     func syncUnsyncedAccounts() async throws {
-        guard networkMonitor.isConnected,
-              let account = activeAccount else {
-            return
+        // Ensure we have connectivity before attempting to sync
+        guard networkMonitor.isConnected else { return }
+        
+        // Always fetch the account flagged as active from local storage. This avoids
+        // relying on a potentially stale `activeAccount` reference.
+        guard let localAccount = try await localRepo.fetchAllAccounts()
+            .first(where: { $0.isActiveAccount == true }) else {
+            return // No active account found locally – nothing to sync
         }
-        let isSynced = account.isSynced ?? false
+        
+        // Make an independent snapshot so subsequent mutations on `localAccount`
+        // (triggered by network responses) **do not** mutate the values we are
+        // about to evaluate for unsynced-state detection.
+        let account = Account(from: localAccount.toAccountDTO())
+        
+        // Keep the published `activeAccount` in sync with the freshly-fetched model
+        self.activeAccount = localAccount
+        let isSynced =  localAccount.isSynced ?? true
         do {
             // Handle Profile updates
             if let firstName = account.firstName,
@@ -475,6 +540,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 let profile = Profile(
                     firstName: firstName,
                     lastName: account.lastName ?? "",
+                    email: account.email,
                     gender: gender,
                     zipcode: zipcode,
                     dob: dob,
@@ -484,7 +550,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 )
                 try await updateProfile(profile)
             }
-            
             // Handle Body Composition updates
             if let weightUnit = account.weightSettings?.weightUnit,
                let height = Double(account.weightSettings?.height ?? "0"),
@@ -497,7 +562,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 )
                 try await updateBodyComp(bodyComp)
             }
-            
             // Handle Notification Settings
             if let shouldSendEntry = account.notificationSettings?.shouldSendEntryNotifications,
                let shouldSendWeightIn = account.notificationSettings?.shouldSendWeightInEntryNotifications,
@@ -536,23 +600,24 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                !isSynced {
                 try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
             }
-            
             // Handle Integration Settings
-            if let integrationSettings = account.integrationSettings, !isSynced {
-                let integrations = Integrations(
-                    isFitbitOn: integrationSettings.isFitbitOn,
-                    isMFPOn: integrationSettings.isMfpOn,
-                    isFitbitValid: integrationSettings.isHealthConnectOn,
-                    isMFPValid: integrationSettings.isMfpValid,
-                    isHealthKitOn: integrationSettings.isMfpOn,
-                    isHealthConnectOn: integrationSettings.isHealthConnectOn
-                )
-                let _ = try await updateIntegrations(integrations: integrations)
+            if let integrationSettings = account.integrationSettings,
+               !isSynced {
+                // • Apple Health (HealthKit)
+                if integrationSettings.isHealthKitOn {
+                    // Fire-and-forget; the helper already updates the local store & published state.
+                    _ = try await updateIntegrations(
+                        integrationType: .healthKit
+                    )
+                } else {
+                    // If HealthKit is off, ensure it's marked as unsynced
+                    _ = try await deleteHealthIntegration(.healthKit)
+                }
             }
             
-            // Mark account as synced
-            account.isSynced = true
-            try await localRepo.updateAccount(account)
+            // Mark **local** account (the one in persistence) as synced
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
             
         } catch {
@@ -560,6 +625,38 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 throw error
             }
             // If it's a network error, keep the account marked as unsynced
+        }
+    }
+    
+    // MARK: - Delete Health Integration
+    /// Deletes the health integration for the active account or a specific account by ID.
+    /// - Parameter type: The type of integration to delete (e.g., HealthKit).
+    /// - Throws: An error if the deletion fails or if the account is not found.
+    /// - Returns: The updated account after deletion.
+    func deleteHealthIntegration(_ type: IntegrationType) async throws {
+        let deviceId = DeviceInfoHelper.getDeviceId()
+        guard let accountId = activeAccount?.accountId else {
+            throw AccountError.noActiveAccount
+        }
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
+        }
+        do {
+            try await integrationApiRepo.deleteHealthIntegration(deviceId: deviceId)
+            try await refreshAccount()
+            localAccount.isSynced = true
+            try await localRepo.updateAccount(localAccount)
+            try await updatePublishedState()
+        } catch {
+            if HTTPError.isNetworkError(error) {
+                if type == .healthKit {
+                    localAccount.integrationSettings?.isHealthKitOn = false
+                    localAccount.isSynced = false
+                }
+                try await localRepo.updateAccount(localAccount)
+                try await updatePublishedState()
+            }
+            throw error
         }
     }
     
@@ -580,6 +677,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
+                localAccount.dashboardSettings?.dashboardMetrics = metrics.joined(separator: ",")
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
@@ -610,6 +708,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 if let streaksSettings = localAccount.streaksSettings {
                     streaksSettings.isStreakOn = isStreakOn
                     streaksSettings.streakTimestamp = streakTimestamp
+                    localAccount.streaksSettings = streaksSettings
                 } else {
                     localAccount.streaksSettings = StreaksSettings(
                         accountId: localAccount.accountId,
@@ -618,6 +717,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                         isSynced: false
                     )
                 }
+                localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
@@ -635,7 +735,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.noActiveAccount
         }
         
-        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId)
+        }
         do {
             let response = try await apiRepo.patchWeightless(isWeightlessOn, weightlessTimestamp, Int(weightlessWeight))
             localAccount.update(from: response)
@@ -685,6 +786,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         )
     }
     
+    /// Updates the published state of active and all accounts.
+    func updatePublishedState() async throws {
+        allAccounts = try await localRepo.fetchAllAccounts()
+        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true})
+    }
+    
     // MARK: - Private Helpers
     /// Deletes the account locally by ID and updates the published state.
     private func deleteAccountLocally(accountId: String) async throws {
@@ -729,12 +836,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             acc.isActiveAccount = false
             try await localRepo.updateAccount(acc)
         }
-    }
-    
-    /// Updates the published state of active and all accounts.
-    func updatePublishedState() async throws {
-        allAccounts = try await localRepo.fetchAllAccounts()
-        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true})
     }
     
     // MARK: - Private Helpers

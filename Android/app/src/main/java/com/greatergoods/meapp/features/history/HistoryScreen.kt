@@ -29,7 +29,6 @@ fun HistoryScreen() {
     val viewModel: HistoryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
     val isRefreshing = state.isLoading
-    val coroutineScope = rememberCoroutineScope()
     HistoryScreenContent(
         state = state,
         isRefreshing = isRefreshing,

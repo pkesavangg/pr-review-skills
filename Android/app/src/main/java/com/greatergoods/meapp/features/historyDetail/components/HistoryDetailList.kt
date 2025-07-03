@@ -1,37 +1,48 @@
 package com.greatergoods.meapp.features.historyDetail.components
 
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
+import com.greatergoods.meapp.features.common.components.AppDraggableActionItem
+import com.greatergoods.meapp.features.common.components.AppDraggableList
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 
 /**
  * List of history detail items, using HistoryDetailItem for each row.
- * @param items List of history detail item models
+ * @param historyDetails List of history detail item models
  * @param onItemClick Callback when an item's "More Details" is clicked
  * @param onItemDelete Callback when an item's "Delete" is clicked
  */
 @Composable
 fun HistoryDetailList(
-    items: List<ScaleEntry>,
+    historyDetails: List<ScaleEntry>,
     onItemClick: (ScaleEntry) -> Unit,
     onItemDelete: (ScaleEntry) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-
-    LazyColumn(modifier = modifier) {
-        items(items, key = { it.entry.id }) { item ->
-            HistoryDetailItem(
-                item = item,
-            )
-        }
+    AppDraggableList(
+        items = historyDetails,
+        iconWidth = 88.dp,
+        keySelector = { it.entry.id },
+        trailingActions = { index, item ->
+            AppDraggableActionItem(
+                itemWidth = 88.dp,
+                text = "Delete",
+                contentDescription = "Delete item",
+                backgroundColor = MeTheme.colorScheme.textError,
+            ) {
+                onItemDelete(item)
+            }
+        },
+    ) { item, _ ->
+        HistoryDetailItem(
+            item = item,
+        )
     }
 }
 
@@ -119,7 +130,7 @@ fun HistoryDetailListPreview() {
                 ),
             )
         HistoryDetailList(
-            sampleItems,
+            historyDetails = sampleItems,
             onItemClick = {},
             onItemDelete = {},
         )

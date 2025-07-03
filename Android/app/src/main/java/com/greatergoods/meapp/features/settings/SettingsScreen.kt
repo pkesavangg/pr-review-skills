@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.common.components.AppScaffold
+import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SettingsSection
 import com.greatergoods.meapp.features.common.model.SettingColorType
@@ -41,7 +42,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen() {
     val viewmodel: SettingsViewModel = hiltViewModel()
     val state by viewmodel.state.collectAsState()
-    SettingsScreenContent(state, viewmodel::handleIntent)
+    SettingsScreenContent(state, viewmodel::handleIntent, viewmodel)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,6 +50,7 @@ fun SettingsScreen() {
 fun SettingsScreenContent(
     state: SettingsState,
     handleIntent: (SettingsIntent) -> Unit,
+    viewModel: SettingsViewModel? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val backStack = LocalNavBackStack.current
@@ -70,7 +72,9 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.AddEditScales,
-                            onClick = { },
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.OpenAddScales)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Integrations,
@@ -108,8 +112,9 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.GoalSetting,
-                            type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.goalSettingModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.BiologicalSex,
@@ -133,8 +138,15 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Height,
-                            type = SettingsItemType.TextOnly("5' 7\""),
-                            onClick = { },
+                            type = SettingsItemType.TextOnly(
+                                HeightInput.formatHeightDisplay(
+                                    height = state.account?.height,
+                                    isMetric = state.account?.weightUnit?.value == "kg"
+                                )
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowHeightModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UnitType,
@@ -151,8 +163,12 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Weightless,
-                            type = SettingsItemType.TextOnly("On"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(
+                                viewModel?.getWeightlessDisplayText() ?: "Off"
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
+                            },
                         ),
                     ),
             )
@@ -164,13 +180,24 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.Notifications,
-                            type = SettingsItemType.Dropdown("Off"),
-                            onClick = { },
+                            type = SettingsItemType.Dropdown(state.currentNotificationStatus),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowNotificationsModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Messages,
                             type = SettingsItemType.Action(),
                             onClick = { },
+                        ),
+                        SettingsItem(
+                            title = SettingsScreenStrings.Streaks,
+                            type = SettingsItemType.Dropdown(
+                                if (state.account?.isStreakOn == true) "On" else "Off"
+                            ),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowStreakModal)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.AppPermissions,
@@ -188,7 +215,9 @@ fun SettingsScreenContent(
                         SettingsItem(
                             title = SettingsScreenStrings.HelpCustomerService,
                             type = SettingsItemType.Action(),
-                            onClick = {},
+                            onClick = {
+                                handleIntent(SettingsIntent.OpenHelp)
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.PrivacyPolicy,
@@ -216,8 +245,8 @@ fun SettingsScreenContent(
 
             // Log Out and Delete Account
             SettingsSection(
-                items =
-                    listOf(
+                items = buildList {
+                    add(
                         SettingsItem(
                             title = SettingsScreenStrings.SwitchAccounts,
                             type = SettingsItemType.None,
@@ -225,6 +254,8 @@ fun SettingsScreenContent(
                                 handleIntent(SettingsIntent.SwitchAccount)
                             },
                         ),
+                    )
+                    add(
                         SettingsItem(
                             title = SettingsScreenStrings.LogOut,
                             type = SettingsItemType.None,
@@ -232,22 +263,37 @@ fun SettingsScreenContent(
                                 handleIntent(SettingsIntent.Logout)
                             },
                         ),
+                    )
+                    if (state.hasMultipleAccounts) {
+                        add(
+                            SettingsItem(
+                                title = SettingsScreenStrings.LogoutAll,
+                                type = SettingsItemType.None,
+                                onClick = {
+                                    handleIntent(SettingsIntent.LogoutAllAccounts)
+                                },
+                            ),
+                        )
+                    }
+                    add(
                         SettingsItem(
                             title = SettingsScreenStrings.DeleteAccount,
                             type = SettingsItemType.None,
                             color = SettingColorType.Danger,
                             onClick = { },
                         ),
-                    ),
+                    )
+                },
             )
         }
     }
 }
 
+
 @PreviewTheme
 @Composable
 fun SettingsScreenPreview() {
     MeAppTheme {
-        SettingsScreenContent(SettingsState(), { })
+        SettingsScreenContent(SettingsState(), { }, null)
     }
 }

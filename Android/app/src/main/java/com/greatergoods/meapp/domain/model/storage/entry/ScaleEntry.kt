@@ -25,7 +25,7 @@ data class ScaleEntry(
             weight = scaleEntity.weight * 10.0,
             bodyFat = scaleEntity.bodyFat?.times(10.0),
             muscleMass = scaleEntity.muscleMass?.times(10.0),
-            boneMass = metrics?.boneMass?.times(10.0) ?: 0.0,
+            boneMass = metrics?.boneMass?.times(10.0),
             water = scaleEntity.water?.times(10.0),
             bmi = scaleEntity.bmi?.times(10.0),
             source = scaleEntity.source,
@@ -71,7 +71,7 @@ data class ScaleEntry(
                 skeletalMusclePercent = scaleEntry.skeletalMusclePercent?.div(10.0),
                 subcutaneousFatPercent = scaleEntry.subcutaneousFatPercent?.div(10.0),
                 visceralFatLevel = scaleEntry.visceralFatLevel?.div(10.0),
-                boneMass = scaleEntry.boneMass.div(10.0),
+                boneMass = scaleEntry.boneMass?.div(10.0),
                 impedance = scaleEntry.impedance,
             )
 
