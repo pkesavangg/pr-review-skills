@@ -213,8 +213,8 @@ constructor(
             title = RadioGroupModalStrings.Titles.BiologicalSex,
             options =
                 listOf(
-                    RadioButtonOption(Gender.MALE.name, RadioGroupModalStrings.BiologicalSex.Male),
-                    RadioButtonOption(Gender.FEMALE.name, RadioGroupModalStrings.BiologicalSex.Female),
+                    RadioButtonOption(Gender.MALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Male),
+                    RadioButtonOption(Gender.FEMALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Female),
                 ),
             selectedItem = state.value.account?.gender,
             onConfirm = { selectedSex ->
