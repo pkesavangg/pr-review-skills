@@ -85,7 +85,6 @@ object TextTypeDefaults {
                 color = colorScheme.textSubheading,
             )
 
-
         }
     }
 }

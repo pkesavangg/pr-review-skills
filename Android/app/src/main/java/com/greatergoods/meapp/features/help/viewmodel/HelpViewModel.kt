@@ -44,10 +44,8 @@ class HelpViewModel @Inject constructor(
             is HelpIntent.OpenDebugMenu -> onOpenDebugMenu()
             is HelpIntent.OpenUrl -> openInAppBrowser(intent.url)
             is HelpIntent.Error -> onError(intent.message)
-            is HelpIntent.OpenDebugMenu -> onOpenDebugMenu()
         }
     }
-
 
     /**
      * Handles debug menu navigation.
@@ -81,21 +79,6 @@ class HelpViewModel @Inject constructor(
                 navigationService.navigateBack()
             } catch (e: Exception) {
                 AppLog.e(TAG, "Failed to navigate back from help", e.toString())
-            }
-        }
-    }
-
-    /**
-     * Handles debug menu navigation.
-     * Opens debug menu after 5 taps on title (like Angular implementation).
-     */
-    fun onOpenDebugMenu() {
-        AppLog.d(TAG, "Debug menu navigation requested")
-        viewModelScope.launch {
-            try {
-                // navigationService.navigateTo(AppRoute.AccountSettings.DebugMenu)
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Failed to navigate to debug menu", e.toString())
             }
         }
     }

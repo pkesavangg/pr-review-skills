@@ -105,6 +105,8 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideScaleAPI(httpClient: HttpClient): IDeviceAPI = httpClient.createService(IDeviceAPI::class.java)
+
+    /**
      * Provides the ISupportAPI implementation using Retrofit.
      * Used for sending logs and other support-related operations.
      */

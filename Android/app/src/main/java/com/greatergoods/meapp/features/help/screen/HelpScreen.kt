@@ -36,6 +36,7 @@ import com.greatergoods.meapp.features.help.viewmodel.HelpViewModel
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.delay
 import android.content.Intent
 
 /**
