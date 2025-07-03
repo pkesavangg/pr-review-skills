@@ -18,7 +18,7 @@ struct HelpScreenStrings {
     // Debug Menu
     static let debugMenuTitle = "Debug Menu"
     static let cautionTitle = "Caution!"
-    static let cautionSub = "Only use this menu if instructed by Greater Goods Customer Service"
+    static let cautionSub = "Only use this menu if instructed by Greater Goods Customer Service."
     static let appInformation = "App Information"
     static let appTroubleshooting = "App Troubleshooting"
     static let scaleTroubleshooting = "Scale Troubleshooting"
