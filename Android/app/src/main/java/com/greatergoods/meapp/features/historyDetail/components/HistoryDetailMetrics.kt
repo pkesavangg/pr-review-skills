@@ -12,27 +12,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.components.AppIcon
-import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper
-import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper.getMetrics
-import com.greatergoods.meapp.features.historyDetail.modal.Metric
+import com.greatergoods.meapp.features.common.helper.StatHelper
+import com.greatergoods.meapp.features.common.helper.StatHelper.getMetrics
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeTheme
-import android.util.Log
 
 @Composable
 internal fun MetricItem(
-    metric: Metric,
+    stat: Stat,
     modifier: Modifier = Modifier,
     index: Int,
     size: Int = 1,
 ) {
-    val bgColor = MetricHelper.getBgColor(index, size)
+    val bgColor = StatHelper.getBgColor(index, size)
     Row(
         modifier =
             modifier
@@ -43,21 +41,32 @@ internal fun MetricItem(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = metric.label,
+            text = stat.label,
             style = MeTheme.typography.body2,
             color = MeTheme.colorScheme.textBody,
         )
         Row {
             Text(
-                text = metric.value.plus(metric.unit),
+                text = buildString {
+                    if (stat.valuePrefix != null) {
+                        append(stat.valuePrefix)
+                        append(" ")
+                    }
+                    append(stat.value)
+                    if (stat.unit != null) {
+                        append(stat.unit)
+                    }
+                },
                 style = MeTheme.typography.body2,
                 color = MeTheme.colorScheme.textBody,
             )
             Spacer(modifier = Modifier.width(MeTheme.spacing.x2s))
-            AppIcon(
-                id = metric.icon,
-                contentDescription = metric.label,
-            )
+            if (stat.icon != null) {
+                AppIcon(
+                    id = stat.icon,
+                    contentDescription = stat.label,
+                )
+            }
         }
     }
 }
@@ -76,7 +85,7 @@ fun HistoryDetailItemDetails(
     ) {
         metrics.forEachIndexed { index, metric ->
             MetricItem(
-                metric = metric,
+                stat = metric,
                 index = index,
                 size = metrics.size,
             )

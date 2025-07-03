@@ -33,7 +33,7 @@ import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.DraggableListItemScope
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.historyDetail.helper.MetricHelper.getMetrics
+import com.greatergoods.meapp.features.common.helper.StatHelper.getMetrics
 import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.getDate
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.getTime

@@ -27,14 +27,14 @@ import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toGraphPoin
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
-import com.greatergoods.meapp.features.historyDetail.modal.Metric
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 fun HistoryGraph(
     state: DashboardState,
-    selectedMetric: Metric? = null,
+    selectedStat: Stat? = null,
     onSelected: (List<PeriodBodyScaleSummary>) -> Unit
 ) {
     var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
@@ -111,7 +111,7 @@ fun HistoryGraph(
                 Modifier
                     .fillMaxWidth(),
             segment = selectedSegment,
-            secondaryGraphLines = if (selectedMetric != null) entries.toGraphPoints(selectedMetric.key) else null,
+            secondaryGraphLines = if (selectedStat != null) entries.toGraphPoints(selectedStat.key) else null,
             graphLines = listOf(graphLines),
             onScroll = {
                 subText = it
