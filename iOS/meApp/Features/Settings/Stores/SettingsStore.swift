@@ -455,13 +455,13 @@ class SettingsStore: ObservableObject {
     private func presentChangePasswordExitAlert(onExit: @escaping () -> Void,
                                                 onCancel: (() -> Void)? = nil) {
         let alert = AlertModel(
-            title: AlertStrings.ChangePasswordExitAlert.title,
-            message: AlertStrings.ChangePasswordExitAlert.message,
+            title: alertLang.ChangePasswordExitAlert.title,
+            message: alertLang.ChangePasswordExitAlert.message,
             buttons: [
-                AlertButtonModel(title: AlertStrings.ChangePasswordExitAlert.exitButton, type: .primary) { _ in
+                AlertButtonModel(title: alertLang.ChangePasswordExitAlert.exitButton, type: .primary) { _ in
                     onExit()
                 },
-                AlertButtonModel(title: AlertStrings.ChangePasswordExitAlert.returnButton, type: .secondary) { _ in
+                AlertButtonModel(title: alertLang.ChangePasswordExitAlert.returnButton, type: .secondary) { _ in
                     onCancel?()
                 }
             ]
