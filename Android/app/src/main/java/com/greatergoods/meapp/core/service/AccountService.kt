@@ -399,10 +399,8 @@ constructor(
      * Deletes the current user account from the server and local storage.
      */
     override suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean) {
+        requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
         try {
-            if(!isNetworkAvailable()){
-                return
-            }
             accountRepository.deleteAccount(accountID, isActiveAccount)
             appNavigationService.emitAuthEvent(AuthState.AccountDeleted(isActiveAccount))
             AppLog.d(TAG, "Account deleted successfully")

@@ -196,15 +196,6 @@ constructor(
                 // navigationService.reInitialize() // Go to landing/login
             } catch (e: Exception) {
                 dialogQueueService.dismissLoader()
-                dialogQueueService.enqueue(
-                    DialogModel.Confirm(
-                        title = SettingsScreenStrings.Error.Header,
-                        message = e.message ?: SettingsScreenStrings.Error.MessageGeneric,
-                        primaryActionType = ButtonType.ErrorText,
-                        confirmText = SettingsScreenStrings.DeleteAccountDialog.Cancel,
-                        onConfirm = {},
-                    ),
-                )
             }
         }
     }
