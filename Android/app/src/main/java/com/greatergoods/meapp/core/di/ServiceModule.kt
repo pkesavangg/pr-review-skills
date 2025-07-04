@@ -122,12 +122,8 @@ object ServiceModule {
     @Singleton
     fun provideLogManager(
         logRepository: ILogRepository,
-        connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService,
     ): LogManager = LogManager(
         logRepository,
-        connectivityObserver,
-        dialogQueueService
         )
 
     /**

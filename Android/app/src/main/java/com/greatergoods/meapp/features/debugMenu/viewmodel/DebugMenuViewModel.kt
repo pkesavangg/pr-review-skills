@@ -3,11 +3,8 @@ package com.greatergoods.meapp.features.debugMenu.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.AppStatusService
-import com.greatergoods.meapp.core.service.StorageClearService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
-import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
-import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
@@ -226,12 +223,11 @@ class DebugMenuViewModel @Inject constructor(
      */
     private fun showRestartAlert(onDismiss: () -> Unit) {
         dialogQueueService.enqueue(
-            DialogModel.Confirm(
+            DialogModel.Alert(
                 title = DebugMenuStrings.Alerts.DataHeader,
                 message = DebugMenuStrings.Alerts.DataMessage,
-                confirmText = DebugMenuStrings.Ok,
-                cancelText = "Cancel",
-                onConfirm = {
+                dismissText = DebugMenuStrings.Ok,
+                onDismiss = {
                     AppLog.i(tag, "Restart alert confirmed, executing app exit callback")
                     viewModelScope.launch {
                         try {
@@ -244,13 +240,6 @@ class DebugMenuViewModel @Inject constructor(
                         }
                     }
                 },
-                onCancel = {
-                    AppLog.i(tag, "Restart alert cancelled")
-                    dialogQueueService.dismissCurrent()
-                },
-                onDismiss = {
-                    AppLog.i(tag, "Restart alert dismissed without action")
-                }
             ),
         )
     }
