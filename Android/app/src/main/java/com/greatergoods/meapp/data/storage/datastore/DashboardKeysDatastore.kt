@@ -127,11 +127,14 @@ class DashboardKeysDatastore(
     private fun defaultMilestoneKeys(): List<MilestoneKey> =
         MilestoneKey.entries.filter { it != MilestoneKey.UNRECOGNIZED }
 
+    override fun getDefaultInstance(): VisibleMetrics = VisibleMetrics.getDefaultInstance()
+
     /**
-     * Clears all visible metrics data (removes all accounts).
+     * Optional: Override clearData() only if you need custom clear logic
+     * Otherwise, the base implementation will use getDefaultInstance()
      */
     override suspend fun clearData() {
-        updateData { VisibleMetrics.getDefaultInstance() }
+        super.clearData() // Use the base implementation
     }
 
     /**

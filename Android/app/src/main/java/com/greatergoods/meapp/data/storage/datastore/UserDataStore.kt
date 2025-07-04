@@ -238,11 +238,13 @@ class UserDataStore @Inject constructor(
         updateData { updated }
     }
 
+    override fun getDefaultInstance(): UserPreferences = UserPreferences.getDefaultInstance()
+
     /**
      * Clears all user data (removes all accounts).
      */
     override suspend fun clearData() {
-        updateData { UserPreferences.getDefaultInstance() }
+        super.clearData()
     }
 
     /**

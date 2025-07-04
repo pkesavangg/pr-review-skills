@@ -14,6 +14,7 @@ import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.proto.ThemeMode
@@ -37,6 +38,7 @@ constructor(
     dialogQueueService: IDialogQueueService,
     private val appNavigationService: IAppNavigationService,
     private val userSettingsRepository: IUserSettingsRepository,
+    private val storageClearService: StorageClearService
 ) : BaseService(connectivityObserver, dialogQueueService),
     IAccountService {
     companion object {
@@ -481,6 +483,19 @@ constructor(
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to set theme mode", e.toString())
             appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to set theme mode"))
+        }
+    }
+    override suspend fun reset() {
+        try {
+            storageClearService.clearAllStorage()
+        }
+        catch (e: Exception){
+             dialogQueueService.showToast(
+                 Toast(
+                     title = null,
+                     message = ToastStrings.Error.LoginError.MessageGeneric
+                 )
+             )
         }
     }
 }
