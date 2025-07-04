@@ -51,6 +51,11 @@ struct ScaleSettingsScreen: View {
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            Task {
+                await scaleStore.loadScale(scale)
+            }
+        }
     }
     
     // MARK: - Sections as Functions
@@ -122,8 +127,8 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.scaleName,
-                    value: scale.deviceName,
-                    onTap: { router.navigate(to: .scaleNameScreen(scaleName: scale.deviceName ?? MyScaleStrings.unknownScale)) }
+                    value: scaleStore.scale?.nickname ?? scale.deviceName ?? MyScaleStrings.unknownScale,
+                    onTap: { router.navigate(to: .scaleNameScreen(scale: scale)) }
                 )
             )
         }
@@ -167,6 +172,7 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.scaleType,
                     value: scaleStore.scaleTypeValue,
+                    chevronType: .none,
                     onTap: { scaleStore.scaleTypeTapped() }
                 )
             )

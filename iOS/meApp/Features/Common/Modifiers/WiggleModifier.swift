@@ -9,46 +9,44 @@ import SwiftUI
 
 struct WiggleModifier: ViewModifier {
     let shouldWiggle: Bool
-    @State private var isWiggling = false
+    @State private var rotation: Double = 0
+    @State private var bounce: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
-            .modifier(WiggleEffect(enabled: shouldWiggle, isWiggling: isWiggling))
+            .rotationEffect(.degrees(rotation))
+            .offset(y: bounce)
             .onAppear {
                 if shouldWiggle {
-                    isWiggling = true
+                    startWiggle()
                 }
             }
             .onChange(of: shouldWiggle) { _, newValue in
-                isWiggling = newValue
+                if newValue {
+                    startWiggle()
+                } else {
+                    stopWiggle()
+                }
             }
             .onDisappear {
-                isWiggling = false
+                stopWiggle()
             }
     }
-}
 
-private struct WiggleEffect: ViewModifier {
-    let enabled: Bool
-    let isWiggling: Bool
-
-    private var rotationAnimation: Animation {
-        Animation.easeInOut(duration: Double.random(in: 0.1...0.15)).repeatForever(autoreverses: true)
+    private func startWiggle() {
+        // Use the same animation for all items
+        withAnimation(Animation.easeInOut(duration: 0.18).repeatForever(autoreverses: true)) {
+            rotation = 2.0
+        }
+        withAnimation(Animation.easeInOut(duration: 0.14).repeatForever(autoreverses: true)) {
+            bounce = 2.0
+        }
     }
 
-    private var bounceAnimation: Animation {
-        Animation.easeInOut(duration: Double.random(in: 0.12...0.18)).repeatForever(autoreverses: true)
-    }
-
-    func body(content: Content) -> some View {
-        if enabled {
-            content
-                .rotationEffect(.degrees(isWiggling ? 2.5 : -2))
-                .offset(y: isWiggling ? 1 : -1)
-                .animation(rotationAnimation, value: isWiggling)
-                .animation(bounceAnimation, value: isWiggling)
-        } else {
-            content
+    private func stopWiggle() {
+        withAnimation(.easeOut(duration: 0.1)) {
+            rotation = 0
+            bounce = 0
         }
     }
 }

@@ -7,45 +7,28 @@
 
 import SwiftUI
 
-// MARK: - Identifiable Data Structures
-struct MetricItem: Identifiable, Equatable {
-    let id = UUID()
-    let value: String
-    let label: String
-    let unit: String?
-    let preLabel: String?
-    let icon: String?
-}
-
 class DashboardStore: ObservableObject {
-    // MARK: - Services
     @Injector private var notificationService: NotificationHelperService
     @Injector private var accountService: AccountService
-
-    // MARK: - Loader State
+    @Injector private var logger : LoggerService
     @Published var isLoading: Bool = false
     @Published var loaderOverride: LoaderModel? = nil
     @Published var alertData: AlertModel? = nil
     
-    // MARK: - Common Strings/Labels as variables
     let lang = LoaderStrings.self
 
-    // MARK: - Device-specific Metric Type
-    @Published var metricType: DashboardMetricType = .twelve  // <--- Set explicitly, not by count!
+    @Published var metricType: DashboardMetricType = .twelve
 
-    // MARK: - Edit Mode State
     @Published var isEditMode: Bool = false
     @Published var isGoalCardRemoved: Bool = false
     @Published var activeMetricsCount: Int = 12
     @Published var activeStreakItemsCount: Int = 6
 
-    // MARK: - Drag and Drop State
     @Published var dropHoverId: String? = nil
     @Published var gridLayoutId = UUID()
     @Published var draggingMetric: MetricItem? = nil
     @Published var draggingStreak: MetricItem? = nil
 
-    // MARK: - Selected Metric State
     @Published var selectedMetricLabel: String? = nil
     @Published var goalType: GoalType = .gain
     @Published var goalStartWeight: Double = 0.0
@@ -57,7 +40,6 @@ class DashboardStore: ObservableObject {
     private var latestWeightStored: Int = 0
     @Injector private var entryService: EntryService
     
-    /// Loader binding for presentLoader
     var loaderData: Binding<LoaderModel?> {
         Binding(
             get: { self.loaderOverride ?? (self.isLoading ? LoaderModel(text: self.lang.saving) : nil) },
@@ -65,44 +47,132 @@ class DashboardStore: ObservableObject {
         )
     }
 
-    // MARK: - Original Data (never modified)
     private let originalMetrics: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
-        ("24.5", DashboardStrings.bmi, nil, nil, nil),
-        ("18.3", DashboardStrings.bodyFat, DashboardStrings.bodyFatUnit, nil, nil),
-        ("41.6", DashboardStrings.muscle, DashboardStrings.muscleUnit, nil, nil),
-        ("59.1", DashboardStrings.water, DashboardStrings.waterUnit, nil, nil),
-        ("80", DashboardStrings.heartBpm, DashboardStrings.heartBpmUnit, nil, nil),
-        ("4.4", DashboardStrings.bone, DashboardStrings.boneUnit, nil, nil),
-        ("8", DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, nil),
-        ("10.3", DashboardStrings.subFat, DashboardStrings.subFatUnit, nil, nil),
-        ("18.6", DashboardStrings.protein, DashboardStrings.proteinUnit, nil, nil),
-        ("52.7", DashboardStrings.skelMuscle, DashboardStrings.skelMuscleUnit, nil, nil),
-        ("1862", DashboardStrings.bmrKcal, DashboardStrings.bmrKcalUnit, nil, nil),
-        ("28", DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, nil)
+        (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.bodyFatUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.muscleUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.waterUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.heartBpmUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.boneUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, nil),
+        (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.subFatUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.proteinUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.skelMuscleUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.bmrKcalUnit, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, nil)
     ]
 
     private let originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
-        ("1 day", DashboardStrings.currentStreak, nil, nil, AppAssets.streak),
-        ("10 day", DashboardStrings.longestStreak, nil, nil, AppAssets.longestStreak),
-        ("-1", DashboardStrings.lbsWeek, nil, nil, nil),
-        ("-10", DashboardStrings.lbsMonth, nil, nil, nil),
-        ("-20", DashboardStrings.lbsYear, nil, nil, nil),
-        ("-30", DashboardStrings.lbsTotal, nil, nil, nil)
+        (DashboardStrings.placeholder, DashboardStrings.currentStreak, nil, nil, AppAssets.streak),
+        (DashboardStrings.placeholder, DashboardStrings.longestStreak, nil, nil, AppAssets.longestStreak),
+        (DashboardStrings.placeholder, DashboardStrings.lbsWeek, nil, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.lbsMonth, nil, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.lbsYear, nil, nil, nil),
+        (DashboardStrings.placeholder, DashboardStrings.lbsTotal, nil, nil, nil)
     ]
 
-    // MARK: - Current Data (reordered based on removal state)
     @Published var metrics: [MetricItem] = []
     @Published var streakItems: [MetricItem] = []
 
-    // MARK: - Initialization
     init() {
-        // Initialize with original data
         metrics = originalMetrics.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
         streakItems = originalStreakItems.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
-        // metricType can be set externally after init depending on device type
+        Task {
+            await loadLatestEntryData()
+        }
+    }
+    
+    @MainActor
+    func loadLatestEntryData() {
+        Task {
+            do {
+                guard let latestEntry = try await entryService.getLatestEntry() else {
+                    return
+                }
+                if let weight = latestEntry.scaleEntry?.weight {
+                    latestWeightStored = weight
+                }
+                updateMetricsWithEntry(latestEntry)
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to load latest entry data: \(error)")
+            }
+        }
+    }
+    
+    private func updateMetricsWithEntry(_ entry: Entry) {
+        if let bmi = entry.scaleEntry?.bmi {
+            let formattedValue = BodyMetricsConvertor.convert(Double(bmi), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
+        }
+        
+        if let bodyFat = entry.scaleEntry?.bodyFat {
+            let formattedValue = BodyMetricsConvertor.convert(Double(bodyFat), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
+        }
+        
+        if let muscleMass = entry.scaleEntry?.muscleMass {
+            let formattedValue = BodyMetricsConvertor.convert(Double(muscleMass), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
+        }
+        
+        if let water = entry.scaleEntry?.water {
+            let formattedValue = BodyMetricsConvertor.convert(Double(water), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.water, value: formattedValue)
+        }
+        
+        if let pulse = entry.scaleEntryMetric?.pulse {
+            let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
+        }
+        
+        if let boneMass = entry.scaleEntryMetric?.boneMass {
+            let formattedValue = BodyMetricsConvertor.convert(Double(boneMass), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
+        }
+        
+        if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel {
+            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
+        }
+        
+        if let subFat = entry.scaleEntryMetric?.subcutaneousFatPercent {
+            let formattedValue = BodyMetricsConvertor.convert(Double(subFat), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
+        }
+        
+        if let protein = entry.scaleEntryMetric?.proteinPercent {
+            let formattedValue = BodyMetricsConvertor.convert(Double(protein), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
+        }
+        
+        if let skelMuscle = entry.scaleEntryMetric?.skeletalMusclePercent {
+            let formattedValue = BodyMetricsConvertor.convert(Double(skelMuscle), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
+        }
+        
+        if let bmr = entry.scaleEntryMetric?.bmr {
+            let formattedValue = BodyMetricsConvertor.convert(Double(bmr), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
+        }
+        
+        if let metabolicAge = entry.scaleEntryMetric?.metabolicAge {
+            let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
+        }
+    }
+    
+    private func updateMetricValue(for label: String, value: String) {
+        if let index = metrics.firstIndex(where: { $0.label == label }) {
+            metrics[index] = MetricItem(
+                value: value,
+                label: metrics[index].label,
+                unit: metrics[index].unit,
+                preLabel: metrics[index].preLabel,
+                icon: metrics[index].icon
+            )
+        }
     }
 
-    // MARK: - Metric Grid Columns
     var metricGridColumns: [GridItem] {
         metricType == .four ?
             Array(repeating: GridItem(.flexible(), spacing: 16), count: 2) :
@@ -119,14 +189,12 @@ class DashboardStore: ObservableObject {
         }
     }
 
-    // MARK: - Streak Grid Columns
     let streakColumns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
 
     var streakItemsToShow: [MetricItem] {
         isEditMode ? streakItems : Array(streakItems.prefix(activeStreakItemsCount))
     }
 
-    // MARK: - Entry Creation Helper
     func createEntryForMetricInfo() -> Entry {
         let bmiStr = metrics.first(where: { $0.label == DashboardStrings.bmi })?.value
         let bodyFatStr = metrics.first(where: { $0.label == DashboardStrings.bodyFat })?.value
@@ -137,7 +205,7 @@ class DashboardStore: ObservableObject {
         let bodyFat = bodyFatStr.flatMap { Double($0) }.flatMap { Int($0) }
         let muscleMass = muscleStr.flatMap { Double($0) }.flatMap { Int($0) }
         let water = waterStr.flatMap { Double($0) }.flatMap { Int($0) }
-        let mockWeight = bmi.map { Int(Double($0) * 2.5) }
+        let actualWeight = latestWeightStored
 
         let bmrStr = metrics.first(where: { $0.label == DashboardStrings.bmrKcal })?.value
         let metabolicAgeStr = metrics.first(where: { $0.label == DashboardStrings.metAge })?.value
@@ -166,7 +234,7 @@ class DashboardStore: ObservableObject {
             isSynced: true
         )
         entry.scaleEntry = BathScaleEntry(
-            weight: mockWeight,
+            weight: actualWeight,
             bodyFat: bodyFat,
             muscleMass: muscleMass,
             water: water,
@@ -189,7 +257,6 @@ class DashboardStore: ObservableObject {
     }
     
     func createEntryForMetricInfo(metricLabel: String) -> Entry {
-        // Create the same entry as the default method, but we can customize based on metricLabel if needed
         return createEntryForMetricInfo()
     }
 
@@ -204,11 +271,10 @@ class DashboardStore: ObservableObject {
         case DashboardStrings.water:
             return .water
         default:
-            return .weight // Default fallback
+            return .weight
         }
     }
 
-    // MARK: - Edit Mode Methods
     func toggleMetricRemoval(at index: Int) {
         guard index < metrics.count else { return }
         let metric = metrics[index]
@@ -222,7 +288,6 @@ class DashboardStore: ObservableObject {
             activeMetricsCount -= 1
         }
         
-        // Reset drag state and force UI refresh
         resetDragState()
     }
 
@@ -248,7 +313,6 @@ class DashboardStore: ObservableObject {
             activeStreakItemsCount -= 1
         }
         
-        // Reset drag state and force UI refresh
         resetDragState()
     }
 
@@ -261,12 +325,10 @@ class DashboardStore: ObservableObject {
         isLoading = true
         loaderOverride = LoaderModel(text: lang.saving)
         
-        // Clear all state immediately to prevent unwanted behavior
         selectedMetricLabel = nil
         isEditMode = false
         resetDragState()
         
-        // Simulate reset operation with a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.isLoading = false
@@ -277,12 +339,10 @@ class DashboardStore: ObservableObject {
                 self.activeStreakItemsCount = self.originalStreakItems.count
                 self.isGoalCardRemoved = false
                 
-                // Ensure all state is properly reset
                 self.selectedMetricLabel = nil
                 self.isEditMode = false
                 self.resetDragState()
                 
-                // Update grid layout ID to force UI refresh
                 self.gridLayoutId = UUID()
             }
         }
@@ -296,7 +356,6 @@ class DashboardStore: ObservableObject {
             message: alertLang.message,
             buttons: [
                 AlertButtonModel(title: alertLang.cancelButton, type: .secondary) { _ in
-                    // Do nothing, just dismiss alert
                 },
                 AlertButtonModel(title: alertLang.resetButton, type: .primary) { _ in
                     self.resetDashboard()
@@ -310,11 +369,9 @@ class DashboardStore: ObservableObject {
         isLoading = true
         loaderOverride = LoaderModel(text: lang.saving)
         
-        // Clear selection and drag state immediately
         selectedMetricLabel = nil
         resetDragState()
         
-        // Simulate save operation with a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.isLoading = false
@@ -325,7 +382,6 @@ class DashboardStore: ObservableObject {
         }
     }
 
-    // MARK: - Helper Methods
     private func restoreOriginalMetricOrder() {
         metrics = originalMetrics.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
     }
@@ -333,7 +389,6 @@ class DashboardStore: ObservableObject {
         streakItems = originalStreakItems.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
     }
 
-    // MARK: - Reordered Array Methods
     func isMetricRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
         let metricsToShow = self.metricsToShow
         guard reorderedIndex < metricsToShow.count else { return false }
@@ -363,25 +418,19 @@ class DashboardStore: ObservableObject {
         toggleStreakRemoval(at: originalIndex)
     }
 
-    // MARK: - Selection Methods
     func selectMetric(_ label: String) {
-        // If the same metric is tapped again, deselect it
         if selectedMetricLabel == label {
             selectedMetricLabel = nil
         } else {
-            // Otherwise, select the new metric
             selectedMetricLabel = label
         }
     }
 
-    // MARK: - Drag State Management
     func resetDragState() {
-        // Reset all drag state immediately without animation to prevent delays
         draggingMetric = nil
         draggingStreak = nil
         dropHoverId = nil
         
-        // Force UI refresh by updating grid layout ID
         gridLayoutId = UUID()
     }
 
@@ -389,13 +438,11 @@ class DashboardStore: ObservableObject {
         draggingMetric != nil || draggingStreak != nil
     }
 
-    // MARK: - Computed Properties for View
     @MainActor
     var allContentRemoved: Bool {
         metricsToShow.isEmpty && (!isEditMode && isGoalCardRemoved) && (!shouldShowStreakGrid)
     }
 
-    // MARK: - Streak Visibility
     @MainActor
     var isStreakEnabled: Bool {
         accountService.activeAccount?.streaksSettings?.isStreakOn ?? false
@@ -442,7 +489,6 @@ class DashboardStore: ObservableObject {
         }
     }
     
-    // MARK: - Goal Card Data
     @MainActor
     private func displayWeight(fromStored stored: Int) -> Double {
         let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
@@ -458,7 +504,6 @@ class DashboardStore: ObservableObject {
         Task { [weak self] in
             guard let self = self else { return }
             do {
-                // Get latest entry for current weight
                 let latestEntry = try await self.entryService.getLatestEntry()
                 var currentWeightStored: Int = 0
                 if let latestWeight = latestEntry?.scaleEntry?.weight {
@@ -467,59 +512,33 @@ class DashboardStore: ObservableObject {
                 
                 guard let account = self.accountService.activeAccount,
                       let goalSettings = account.goalSettings else { 
-                    print("Dashboard: No account or goal settings found")
+                    logger.log(level: .error, tag: "DashboardStore", message: "No account or goal settings found")
                     return 
                 }
                 
-                // Set goal type from account settings
                 self.goalType = goalSettings.goalType ?? .gain
                 self.goalUnit = account.weightSettings?.weightUnit ?? .lb
                 
-                // Get initial weight from goal settings (this is the starting weight when goal was set)
                 let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
                 self.goalStartWeight = self.displayWeight(fromStored: initialWeightStored)
-                
-                // Get goal weight from goal settings
                 if let goalW = goalSettings.goalWeight {
                     self.goalWeight = self.displayWeight(fromStored: Int(goalW))
                 }
-                
-                // Calculate current weight
                 let currentWeight = self.displayWeight(fromStored: currentWeightStored)
-                
-                // Calculate delta (current weight - initial weight)
                 self.goalDelta = currentWeight - self.goalStartWeight
-                
-                // Debug prints
-                print("Dashboard Goal Data:")
-                print("  Initial Weight (stored): \(initialWeightStored)")
-                print("  Initial Weight (display): \(self.goalStartWeight)")
-                print("  Current Weight (stored): \(currentWeightStored)")
-                print("  Current Weight (display): \(currentWeight)")
-                print("  Goal Weight (stored): \(goalSettings.goalWeight ?? 0)")
-                print("  Goal Weight (display): \(self.goalWeight)")
-                print("  Delta: \(self.goalDelta)")
-                print("  Goal Type: \(self.goalType)")
-                print("  Unit: \(self.goalUnit)")
-                
-                // Calculate progress
+
                 let totalDistance = abs(self.goalWeight - self.goalStartWeight)
                 let achievedDistance = abs(currentWeight - self.goalStartWeight)
                 
                 if totalDistance > 0 {
-                    // For gain goals: progress increases as weight increases
-                    // For lose goals: progress increases as weight decreases
                     let progress = min(max(CGFloat(achievedDistance / totalDistance), 0), 1)
                     self.goalProgress = progress
-                    print("  Progress: \(progress)")
                 } else {
                     self.goalProgress = 1.0
-                    print("  Progress: 1.0 (no distance to goal)")
                 }
                 
             } catch {
-                // Handle error if needed
-                print("Error loading goal card data: \(error)")
+                logger.log(level: .error, tag: "DashboardStore", message: "Error loading goal card data: \(error)")
             }
         }
     }

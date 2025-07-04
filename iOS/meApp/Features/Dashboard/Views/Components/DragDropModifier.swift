@@ -7,38 +7,6 @@
 
 import SwiftUI
 
-// MARK: - Generic Reorder Extension
-extension View {
-    func draggableReorder<T: Identifiable & Equatable>(
-        item: T,
-        draggingItem: Binding<T?>,
-        items: Binding<[T]>,
-        isDraggable: Bool = true,
-        onDropTargetChanged: @escaping (Bool) -> Void
-    ) -> some View {
-        if isDraggable {
-            AnyView(
-                self
-                    .onDrag {
-                        draggingItem.wrappedValue = item
-                        return NSItemProvider(object: "\(item.id)" as NSString)
-                    }
-                    .onDrop(
-                        of: [.text],
-                        delegate: ReorderDropDelegate(
-                            item: item,
-                            items: items,
-                            draggingItem: draggingItem,
-                            onDropTargetChanged: onDropTargetChanged
-                        )
-                    )
-            )
-        } else {
-            AnyView(self)
-        }
-    }
-}
-
 // MARK: - Generic DropDelegate for drag-and-drop reordering
 struct ReorderDropDelegate<T: Identifiable & Equatable>: DropDelegate {
     let item: T

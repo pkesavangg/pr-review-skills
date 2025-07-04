@@ -45,6 +45,56 @@ struct MyScalesScreen: View {
         return Image(imagePath)
     }
     
+    /// Determines the scale type based on the scale's SKU and other properties
+    private func determineScaleType(for scale: Device) -> ScaleType {
+        guard let sku = scale.sku else { return .bluetoothA6 } // Default fallback
+        
+        // Get scale info from the SCALES constant
+        if let scaleInfo = SCALES.first(where: { $0.sku == sku }) {
+            switch scaleInfo.setupType {
+            case .bluetooth, .lcbt:
+                return .bluetoothA6
+            case .wifi, .espTouchWifi:
+                return .wifi
+            case .appSync:
+                return .appsync
+            case .btWifiR4:
+                return .bluetoothR4
+            }
+        }
+        
+        // Fallback: determine based on scale source type if available
+        if let scaleSourceType = scale.bathScale?.scaleType {
+            let sourceType = ScaleSourceType(rawValue: scaleSourceType) ?? .bluetoothScale
+            switch sourceType {
+            case .bluetooth, .bluetoothScale, .lcbt, .lcbtScale:
+                return .bluetoothA6
+            case .wifi, .espTouchWifi:
+                return .wifi
+            case .appsync, .appsyncScale:
+                return .appsync
+            case .btWifiR4:
+                return .bluetoothR4
+            }
+        }
+        
+        // Final fallback: determine based on device type
+        if let deviceType = scale.deviceType {
+            switch deviceType.lowercased() {
+            case "bluetooth", "bluetoothscale":
+                return .bluetoothA6
+            case "wifi", "wifiscale":
+                return .wifi
+            case "appsync", "appsyncscale":
+                return .appsync
+            default:
+                return .bluetoothA6
+            }
+        }
+        
+        return .bluetoothA6 // Default fallback
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
@@ -159,10 +209,11 @@ struct MyScalesScreen: View {
                             ScaleItemView(
                                 scaleIcon: scaleIcon(for: scale.sku),
                                 modelNumber: scale.sku ?? "----",
-                                scaleName: scale.deviceName ?? lang.unknownScale,
+                                scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
                                 status: .connected,
                                 onTap: {
-                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: .bluetoothR4))
+                                    let scaleType = determineScaleType(for: scale)
+                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
                                 }
                             )
                             .padding(.horizontal, .spacingSM)

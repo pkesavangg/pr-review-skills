@@ -53,6 +53,7 @@ struct DashboardStrings {
     static let goalTypeLabel = "Goal Type: %@"
     static let plus  = "+"
     static let minus  = "-"
+    static let placeholder = "--"
     static func loseGoalWeightLabel(_ unit: String) -> String{
         return "\(unit) to goal"
     }

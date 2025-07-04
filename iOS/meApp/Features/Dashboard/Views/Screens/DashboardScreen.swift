@@ -4,36 +4,12 @@
 //
 //  Created by Lakshmi Priya on 30/06/25.
 //
+
 import SwiftUI
-
-// MARK: - Identifiable Wrapper for Metric Info
-struct MetricInfoWrapper: Identifiable {
-    let id = UUID()
-    let metricLabel: String
-}
-
-// MARK: - Long Press Modifier
-struct LongPressModifier: ViewModifier {
-    let isEditMode: Bool
-    let action: () -> Void
-    
-    func body(content: Content) -> some View {
-        if !isEditMode {
-            content
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.5, maximumDistance: 50)
-                        .onEnded { _ in
-                            action()
-                        }
-                )
-        } else {
-            content
-        }
-    }
-}
 
 struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject var store = DashboardStore()
     let lang = DashboardStrings.self
     @State private var selectedEntry: Entry? = nil
@@ -74,6 +50,9 @@ struct DashboardScreen: View {
                     .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
             }
         }
+        .onAppear(){
+            store.loadLatestEntryData()
+        }
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
@@ -81,14 +60,15 @@ struct DashboardScreen: View {
         }
         .sheet(item: $openMetricInfoWithoutSelection) { wrapper in
             // Open metric info without affecting selection state
-            let entry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
-            ScaleMetricsView(entry: entry, selectedMetric: store.getBodyMetric(for: wrapper.metricLabel))
+            ScaleMetricsView(
+                entry: store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
+                selectedMetric: store.getBodyMetric(for: wrapper.metricLabel)
+            )
         }
         .onChange(of: selectedMetricInfo) { oldValue, newValue in
             guard let label = newValue else { return }
             store.selectedMetricLabel = label
-            let entry = store.createEntryForMetricInfo()
-            selectedEntry = entry
+            selectedEntry = store.createEntryForMetricInfo()
             selectedMetric = store.selectedBodyMetric
             selectedMetricInfo = nil
         }
@@ -167,19 +147,10 @@ struct DashboardScreen: View {
                 store.dropHoverId = isTargeted ? item.label : nil
             }
         )
-        .modifier(LongPressModifier(isEditMode: store.isEditMode) {
-            // Always open the info sheet for the long-pressed metric
-            if store.selectedMetricLabel != item.label {
-                store.selectMetric(item.label)
-                // Use a slight delay to ensure selection state updates before opening the sheet
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    selectedMetricInfo = item.label
-                }
-            } else {
-                // If already selected, open the sheet immediately
-                selectedMetricInfo = item.label
-            }
-        })
+        .longPressGesture(isEditMode: store.isEditMode) {
+            // Handle long press for metric info
+            handleMetricLongPress(for: item.label)
+        }
     }
     
     // MARK: - Streak and Loss Grid
@@ -289,7 +260,9 @@ struct DashboardScreen: View {
                         store.resetDragState()
                     }
                 })
-                ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: false, action: {})
+                ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: false, action: {
+                    tabViewModel.navigateToGoalSetting()
+                })
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: false, action: {
                     // If a metric is selected, open its metric info
                     if let selectedLabel = store.selectedMetricLabel {
@@ -302,5 +275,16 @@ struct DashboardScreen: View {
             }
         }
         .padding(.bottom, .spacingLG)
+    }
+    
+    // MARK: - Helper Methods
+    private func handleMetricLongPress(for metricLabel: String) {
+        // Update selection state if needed
+        if store.selectedMetricLabel != metricLabel {
+            store.selectMetric(metricLabel)
+        }
+        
+        // Open metric info sheet
+        selectedMetricInfo = metricLabel
     }
 }

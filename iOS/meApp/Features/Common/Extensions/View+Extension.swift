@@ -222,4 +222,33 @@ extension View {
         ))
     }
     
+    func draggableReorder<T: Identifiable & Equatable>(
+        item: T,
+        draggingItem: Binding<T?>,
+        items: Binding<[T]>,
+        isDraggable: Bool = true,
+        onDropTargetChanged: @escaping (Bool) -> Void
+    ) -> some View {
+        if isDraggable {
+            AnyView(
+                self
+                    .onDrag {
+                        draggingItem.wrappedValue = item
+                        return NSItemProvider(object: "\(item.id)" as NSString)
+                    }
+                    .onDrop(
+                        of: [.text],
+                        delegate: ReorderDropDelegate(
+                            item: item,
+                            items: items,
+                            draggingItem: draggingItem,
+                            onDropTargetChanged: onDropTargetChanged
+                        )
+                    )
+            )
+        } else {
+            AnyView(self)
+        }
+    }
+    
 }

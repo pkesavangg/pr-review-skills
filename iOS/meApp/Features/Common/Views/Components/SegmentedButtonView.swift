@@ -21,7 +21,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                         selectedSegment = segment
                     }
                 }) {
-                    Text(segment.rawValue.uppercased())
+                    Text(segmentDisplayName(for: segment))
                         .fontWeight(.bold)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
                         .frame(maxWidth: .infinity)
@@ -57,6 +57,17 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
+    }
+    
+    /// Returns the display name for a segment based on type
+    private func segmentDisplayName(for segment: T) -> String {
+        // Type-specific handling
+        if let bodyMetric = segment as? BodyMetric {
+            return bodyMetric.displayName.uppercased()
+        }
+        
+        // Fallback for other types
+        return segment.rawValue.uppercased()
     }
 
     /// Calculates the x-offset required to place the highlight behind the selected segment.
