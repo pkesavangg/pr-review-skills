@@ -37,6 +37,7 @@ import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.dashboard.strings.DashboardMetricsStrings
 import com.greatergoods.meapp.theme.MeTheme
+import sh.calvin.reorderable.ReorderableCollectionItemScope
 
 /**
  * Composable for displaying a single metric item in the dashboard metrics grid.
@@ -48,17 +49,18 @@ internal fun StatCard(
     isVisible: Boolean = true,
     isSelected: Boolean = false,
     modifier: Modifier = Modifier,
-    onMetricClick: (Stat) -> Unit
+    isPlaceHolder: Boolean = false,
+    onMetricClick: (Stat) -> Unit = {}
 ) {
     val contentHorizonalAlignment = if (stat.icon == null) Alignment.CenterHorizontally else Alignment.Start
     Card(
         modifier = Modifier
             .fillMaxSize()
-            .alpha(if (isVisible) 1f else 0.5f), // 50% opacity when not visible,
+            .alpha(if (isVisible && !isPlaceHolder) 1f else 0.5f), // 50% opacity when not visible,
         shape = RoundedCornerShape(MeTheme.borderRadius.sm),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected && isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
-            disabledContainerColor = if (isSelected && isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
+            containerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
+            disabledContainerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
         ),
         enabled = enabled,
         onClick = { onMetricClick(stat) },
@@ -109,11 +111,13 @@ internal fun StatCard(
 fun AnimatedStatCard(
     stat: Stat,
     inEditMode: Boolean,
+    isDragging: Boolean = false,
     isSelected: Boolean? = false,
     isVisible: Boolean = true,
     modifier: Modifier = Modifier,
     onBadgeClick: () -> Unit = {},
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    reorderableScope: ReorderableCollectionItemScope? = null
 ) {
     // Wiggle animation
     val infiniteTransition = rememberInfiniteTransition()
@@ -128,7 +132,7 @@ fun AnimatedStatCard(
 
     BadgedBox(
         badge = {
-            if (inEditMode) {
+            if (inEditMode && !isDragging) {
                 Badge(
                     containerColor = MeTheme.colorScheme.inverseAction,
                     contentColor = Color.Transparent,
@@ -150,18 +154,18 @@ fun AnimatedStatCard(
                 }
             }
         },
-        modifier = modifier
+        modifier = Modifier
             .graphicsLayer {
                 rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
             },
-    ) {
+
+        ) {
         StatCard(
             stat = stat,
             enabled = isSelected != null && !inEditMode,
             isVisible = isVisible,
             isSelected = isSelected ?: false,
-            modifier = Modifier
-                .padding(horizontal = MeTheme.spacing.sm),
+            modifier = modifier,
         ) {
             onClick()
         }

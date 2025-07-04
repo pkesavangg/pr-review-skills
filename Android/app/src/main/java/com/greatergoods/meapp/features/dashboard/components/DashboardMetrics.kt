@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.dashboard.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -113,20 +114,15 @@ private fun DashboardMetricsGrid(
 ) {
     var localVisibleMetrics by remember(visibleMetrics) { mutableStateOf(visibleMetrics) }
     val hapticFeedback = LocalHapticFeedback.current
-
     val lazyGridState = rememberLazyGridState()
     val reorderableState = rememberReorderableLazyGridState(
         lazyGridState = lazyGridState,
         onMove = { from, to ->
-            val fromIndex = localVisibleMetrics.indexOfFirst { it.key == from.key }
-            val toIndex = localVisibleMetrics.indexOfFirst { it.key == to.key }
-            if (fromIndex != -1 && toIndex != -1) {
-                val newMetrics = localVisibleMetrics.toMutableList()
-                val moved = newMetrics.removeAt(fromIndex)
-                newMetrics.add(toIndex, moved)
-                localVisibleMetrics = newMetrics
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+            localVisibleMetrics = localVisibleMetrics.toMutableList().apply {
+                add(to.index, removeAt(from.index))
             }
+
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
         },
     )
 
@@ -147,23 +143,39 @@ private fun DashboardMetricsGrid(
             key = { stat -> getMetricKey(stat, isVisible = true) },
         ) { metric ->
             val isSelected = selectedStat?.key == metric.key
-            ReorderableItem(
-                state = reorderableState,
-                key = metric.key,
-                enabled = inEditMode,
-            ) { isDragging ->
-                AnimatedStatCard(
+            Box {
+                StatCard(
                     stat = metric,
-                    inEditMode = inEditMode,
-                    isSelected = isSelected,
-                    onBadgeClick = {
-                        onMetricMoved(true, false, metric)
-                    },
-                    onClick = {
-                        onMetricClick(if (isSelected) null else metric)
-                    },
-
+                    isPlaceHolder = true,
                 )
+                ReorderableItem(
+                    state = reorderableState,
+                    key = getMetricKey(metric, isVisible = true),
+                    enabled = inEditMode,
+                ) { isDragging ->
+                    AnimatedStatCard(
+                        stat = metric,
+                        isDragging = isDragging,
+                        inEditMode = inEditMode,
+                        isSelected = isSelected,
+                        modifier = if (inEditMode) Modifier.draggableHandle(
+                            onDragStarted = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                            },
+                            onDragStopped = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                            },
+                        ) else Modifier,
+
+                        onBadgeClick = {
+                            onMetricMoved(true, false, metric)
+                        },
+                        onClick = {
+                            onMetricClick(if (isSelected) null else metric)
+                        },
+
+                        )
+                }
             }
         }
 
