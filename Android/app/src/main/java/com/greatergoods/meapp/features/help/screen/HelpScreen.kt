@@ -12,16 +12,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.ScaleList
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.help.model.HelpIntent
 import com.greatergoods.meapp.features.help.strings.HelpScreenStrings
@@ -29,7 +36,7 @@ import com.greatergoods.meapp.features.help.viewmodel.HelpViewModel
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import android.annotation.SuppressLint
+import kotlinx.coroutines.delay
 import android.content.Intent
 
 /**
@@ -43,7 +50,7 @@ fun HelpScreen() {
         viewModel.handleIntent(HelpIntent.OnBack)
     }
 
-    HelpContent( viewModel::handleIntent)
+    HelpContent(viewModel, viewModel::handleIntent)
 }
 
 /**
@@ -51,126 +58,133 @@ fun HelpScreen() {
  */
 @Composable
 private fun HelpContent(
+    viewModel: HelpViewModel,
     handleIntent: (HelpIntent) -> Unit
 ) {
+
+    // Debug tap tracking (like Angular tryToOpenDebugModal)
+    var debugTaps by remember { mutableIntStateOf(0) }
+    LaunchedEffect(debugTaps) {
+        if (debugTaps > 0) {
+            delay(10000)
+            debugTaps = 0
+        }
+    }
     AppScaffold(
         title = HelpScreenStrings.Title,
+        enable = true,
         navigationIcon = {
             AppIconButton(AppIcons.Default.Close) {
                 handleIntent(HelpIntent.OnBack)
+            }
+        },
+        appBarOnclick = {
+            debugTaps++
+            if (debugTaps >= 5) {
+                viewModel.onOpenDebugMenu()
+                debugTaps = 0 // Reset after opening debug menu
             }
         },
     ) { scaffoldModifier ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
         ) {
             // Body content based on selected segment
-            ContactUsContent { handleIntent }
+            ContactUsContent(handleIntent)
+            Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.xl))
+            // Reuse ScaleList from ChooseScaleScreen
+            ScaleList(
+                onScaleSelected = { scale ->
+                    val url = "${AppConfig.PRODUCT_URL}/${scale.sku}"
+                    handleIntent(HelpIntent.OpenUrl(url))
+                },
+            )
         }
     }
 }
 
 /**
- * Body content composable that displays content based on the selected segment.
- */
-@Composable
-private fun HelpBodyContent(
-    handleIntent: (HelpIntent) -> Unit
-) {
-}
-
-/**
  * Contact Us content composable.
  */
-@SuppressLint("UseKtx")
 @Composable
 private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
     val context = LocalContext.current
 
     Column(
         horizontalAlignment = Alignment.Start,
-        modifier = Modifier.fillMaxWidth().padding(start = MeTheme.spacing.sm,end = MeTheme.spacing.sm, top = MeTheme.spacing.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = MeTheme.spacing.sm, end = MeTheme.spacing.sm, top = MeTheme.spacing.md),
     ) {
         AppText(
             text = HelpScreenStrings.ContactSectionTitle,
             textType = TextType.Title,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(modifier = Modifier.padding(top=MeTheme.spacing.x3s))
+        Spacer(modifier = Modifier.padding(top = MeTheme.spacing.x3s))
         AppText(
             text = HelpScreenStrings.ContactSectionSubtitle,
             textType = TextType.Subtitle,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(modifier = Modifier.padding(bottom=MeTheme.spacing.md))
-            // Phone contact
-            val phoneNumber = HelpScreenStrings.Phone
-                AppText(
-                    text = phoneNumber,
-                    textType = TextType.Link,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.clickable(
-                        true,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_DIAL).apply {
-                                data = "tel:$phoneNumber".toUri()
-                            }
-                            context.startActivity(intent)
-                        }
-                    )
-                )
-        Spacer(modifier = Modifier.padding(bottom=MeTheme.spacing.sm))
-                AppText(
-                    text = HelpScreenStrings.Email,
-                    textType = TextType.Link,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.clickable(true) {
-                        val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = "mailto:${HelpScreenStrings.Email}".toUri()
-                        }
-                        context.startActivity(intent)
-                    }
-                )
-        Spacer(modifier = Modifier.padding(bottom=MeTheme.spacing.md))
-        UserManualContent()
-    }
-}
-
-
-
-/**
- * User Manual content composable.
- */
-@Composable
-private fun UserManualContent() {
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
+        // Phone contact
+        val phoneNumber = HelpScreenStrings.Phone
         AppText(
-            text = HelpScreenStrings.UserManualSectionTitle,
-            textType = TextType.Title,
+            text = phoneNumber,
+            textType = TextType.Link,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.clickable(
+                true,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                        data = "tel:$phoneNumber".toUri()
+                    }
+                    context.startActivity(intent)
+                },
+            ),
         )
-
-        AppIconButton(AppIcons.Outlined.Help) {
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
+        AppText(
+            text = HelpScreenStrings.Email,
+            textType = TextType.Link,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.clickable(true) {
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = "mailto:${HelpScreenStrings.Email}".toUri()
+                }
+                context.startActivity(intent)
+            },
+        )
+        Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            AppText(
+                text = HelpScreenStrings.UserManualSectionTitle,
+                textType = TextType.Title,
+            )
+            AppIconButton(AppIcons.Outlined.Help) {
+                handleIntent(HelpIntent.ShowModelNumberHelpPopup)
+            }
         }
+        AppText(
+            text = HelpScreenStrings.UserManualSectionSubtitle,
+            textType = TextType.Subtitle,
+        )
     }
-    AppText(
-        text = HelpScreenStrings.UserManualSectionSubtitle,
-        textType = TextType.Subtitle
-    )
-
 }
 
 @PreviewTheme
 @Composable
 private fun HelpScreenPreview() {
     MeAppTheme {
-        HelpContent(
-            handleIntent = {},
-        )
+        // HelpContent(
+        //     handleIntent = {},
+        // )
     }
 }

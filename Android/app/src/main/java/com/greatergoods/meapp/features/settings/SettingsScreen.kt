@@ -156,11 +156,7 @@ fun SettingsScreenContent(
                             title = SettingsScreenStrings.UnitType,
                             type =
                                 SettingsItemType.Dropdown(
-                                    when (state.account?.weightUnit) {
-                                        WeightUnit.KG -> "kg & cm"
-                                        WeightUnit.LB -> "lbs & feet"
-                                        else -> SettingsScreenStrings.NotSet
-                                    },
+                                    state.account?.weightUnit?.unit ?: SettingsScreenStrings.NotSet,
                                 ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
@@ -170,7 +166,11 @@ fun SettingsScreenContent(
                             title = SettingsScreenStrings.Weightless,
                             type =
                                 SettingsItemType.Dropdown(
-                                    viewModel?.getWeightlessDisplayText() ?: "Off",
+                                    if (state.account?.isWeightlessOn == true) {
+                                        "On - ${state.account.displayWeightlessWeight()}"
+                                    } else {
+                                        "Off"
+                                    },
                                 ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
@@ -257,7 +257,6 @@ fun SettingsScreenContent(
                         add(
                             SettingsItem(
                                 title = SettingsScreenStrings.SwitchAccounts,
-                                type = SettingsItemType.None,
                                 onClick = {
                                     handleIntent(SettingsIntent.SwitchAccount)
                                 },

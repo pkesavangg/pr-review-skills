@@ -10,7 +10,7 @@ import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
-import com.greatergoods.meapp.proto.DashboardKey
+import com.greatergoods.meapp.proto.MetricKey
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -19,6 +19,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
 import android.util.Log
+import com.greatergoods.meapp.features.common.model.DashboardKey
 
 /**
  * Utility object for graph-related data transformation and formatting.
@@ -67,42 +68,42 @@ object GraphUtil {
      * @param propertyName The property to extract (e.g., "weight").
      * @return [GraphLine] for the property.
      */
-    fun List<PeriodBodyScaleSummary>.toGraphPoints(dashboardKey: DashboardKey): GraphLine {
-        val prop: KProperty1<PeriodBodyScaleSummary, *>? =
-            when (dashboardKey) {
-                DashboardKey.BMI -> PeriodBodyScaleSummary::bmi
-                DashboardKey.BODY_FAT -> PeriodBodyScaleSummary::bodyFat
-                DashboardKey.MUSCLE_MASS -> PeriodBodyScaleSummary::muscleMass
-                DashboardKey.BODY_WATER -> PeriodBodyScaleSummary::water
-                DashboardKey.HEART_RATE -> PeriodBodyScaleSummary::pulse
-                DashboardKey.BONE_MASS -> PeriodBodyScaleSummary::boneMass
-                DashboardKey.VISCERAL_FAT -> PeriodBodyScaleSummary::visceralFatLevel
-                DashboardKey.SUBCUTANEOUS_FAT -> PeriodBodyScaleSummary::subcutaneousFatPercent
-                DashboardKey.PROTEIN -> PeriodBodyScaleSummary::proteinPercent
-                DashboardKey.SKELETAL_MUSCLE -> PeriodBodyScaleSummary::skeletalMusclePercent
-                DashboardKey.BMR -> PeriodBodyScaleSummary::bmr
-                DashboardKey.METABOLIC_AGE -> PeriodBodyScaleSummary::metabolicAge
-                else -> null
-            }
+    fun List<PeriodBodyScaleSummary>.toGraphPoints(metricKey: MetricKey): GraphLine {
+
+        val prop = metricKeyPropertyMap[metricKey]
+            ?: error("Unsupported MetricKey: $metricKey")
 
         return GraphLine(
-            name = dashboardKey.name,
-            points =
-                this.mapNotNull { summary ->
-                    val value = (prop?.get(summary) as? Number)?.toFloat()
-                    value?.let {
-                        GraphPoint(
-                            x =
-                                Label(
-                                    value = DateTimeConverter.isoToTimestamp(summary.entryTimestamp),
-                                    label = summary.entryTimestamp,
-                                ),
-                            y = Label(value = it, label = "$it"),
-                        )
-                    }
-                },
+            name = metricKey.name,
+            points = this.mapNotNull { summary ->
+                val value = (prop.get(summary) as? Number)?.toFloat()
+                value?.let {
+                    GraphPoint(
+                        x = Label(
+                            value = DateTimeConverter.isoToTimestamp(summary.entryTimestamp),
+                            label = summary.entryTimestamp,
+                        ),
+                        y = Label(value = it, label = "$it"),
+                    )
+                }
+            },
         )
     }
+
+    private val metricKeyPropertyMap: Map<MetricKey, KProperty1<PeriodBodyScaleSummary, *>> = mapOf(
+        MetricKey.BMI to PeriodBodyScaleSummary::bmi,
+        MetricKey.BODY_FAT to PeriodBodyScaleSummary::bodyFat,
+        MetricKey.MUSCLE_MASS to PeriodBodyScaleSummary::muscleMass,
+        MetricKey.BODY_WATER to PeriodBodyScaleSummary::water,
+        MetricKey.HEART_RATE to PeriodBodyScaleSummary::pulse,
+        MetricKey.BONE_MASS to PeriodBodyScaleSummary::boneMass,
+        MetricKey.VISCERAL_FAT to PeriodBodyScaleSummary::visceralFatLevel,
+        MetricKey.SUBCUTANEOUS_FAT to PeriodBodyScaleSummary::subcutaneousFatPercent,
+        MetricKey.PROTEIN to PeriodBodyScaleSummary::proteinPercent,
+        MetricKey.SKELETAL_MUSCLE to PeriodBodyScaleSummary::skeletalMusclePercent,
+        MetricKey.BMR to PeriodBodyScaleSummary::bmr,
+        MetricKey.METABOLIC_AGE to PeriodBodyScaleSummary::metabolicAge,
+    )
 
     // endregion
 

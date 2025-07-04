@@ -1,7 +1,9 @@
 package com.greatergoods.meapp.features.help.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.help.model.HelpIntent
 import com.greatergoods.meapp.features.help.model.HelpReducer
@@ -14,7 +16,9 @@ import javax.inject.Inject
  * ViewModel for the Help screen that manages state and handles user intents.
  */
 @HiltViewModel
-class HelpViewModel @Inject constructor() : BaseIntentViewModel<HelpState, HelpIntent>(
+class HelpViewModel @Inject constructor(
+    private val dialogUtility: IDialogUtility,
+) : BaseIntentViewModel<HelpState, HelpIntent>(
     reducer = HelpReducer(),
 ) {
 
@@ -35,12 +39,35 @@ class HelpViewModel @Inject constructor() : BaseIntentViewModel<HelpState, HelpI
         AppLog.d(TAG, "Handling intent: ${intent.javaClass.simpleName}")
 
         when (intent) {
+            is HelpIntent.ShowModelNumberHelpPopup -> showModelNumberHelpPopup()
             is HelpIntent.OnBack -> onBack()
+            is HelpIntent.OpenDebugMenu -> onOpenDebugMenu()
             is HelpIntent.OpenUrl -> openInAppBrowser(intent.url)
             is HelpIntent.Error -> onError(intent.message)
         }
     }
 
+    /**
+     * Handles debug menu navigation.
+     * Opens debug menu after 5 taps on title (like Angular implementation).
+     */
+    fun onOpenDebugMenu() {
+        AppLog.d(TAG, "Debug menu navigation requested")
+        viewModelScope.launch {
+            try {
+                navigationService.navigateTo(AppRoute.AccountSettings.DebugMenu)
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to navigate to debug menu", e.toString())
+            }
+        }
+    }
+
+    /**
+     * Shows the Model number help popup.
+     */
+    private fun showModelNumberHelpPopup() {
+        dialogUtility.showModelNumberHelpDialog()
+    }
 
     /**
      * Handles back navigation.

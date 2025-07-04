@@ -21,7 +21,7 @@ object DataStoreModule {
     @Provides
     @Singleton
     fun provideUserDataStore(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
     ): UserDataStore = UserDataStore(context)
 
     /**
@@ -33,15 +33,13 @@ object DataStoreModule {
     @Singleton
     fun provideFcmDataStore(
         @ApplicationContext context: Context,
-    ): FcmDataStore =
-        FcmDataStore(context)
+    ): FcmDataStore = FcmDataStore(context)
 
     @Provides
     @Singleton
     fun provideVisileMetricsDataStore(
         @ApplicationContext context: Context,
-    ): DashboardKeysDatastore =
-        DashboardKeysDatastore(context)
+    ): DashboardKeysDatastore = DashboardKeysDatastore(context)
 
     /**
      * Provides a singleton instance of [HealthConnectDataStore].
@@ -50,6 +48,5 @@ object DataStoreModule {
     @Singleton
     fun provideHealthConnectDataStore(
         @ApplicationContext context: Context,
-    ): HealthConnectDataStore =
-        HealthConnectDataStore(context)
+    ): HealthConnectDataStore = HealthConnectDataStore(context)
 }

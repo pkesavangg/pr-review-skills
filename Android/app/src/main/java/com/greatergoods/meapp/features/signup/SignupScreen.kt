@@ -61,7 +61,6 @@ fun SignupScreenContent(
     handleIntent: (SignupIntent) -> Unit,
     onBack: () -> Unit,
 ) {
-
     val windowSize = LocalWindowInfo.current.containerSize
     val isTablet =
         with(LocalDensity.current) {

@@ -57,7 +57,7 @@ import android.content.Context
         IntegrationsSettingsEntity::class,
     ],
     views = [ActiveEntryEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)

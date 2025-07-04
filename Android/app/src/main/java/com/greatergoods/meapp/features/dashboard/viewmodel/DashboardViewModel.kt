@@ -5,10 +5,12 @@ import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.common.model.DashboardKey
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.proto.DashboardKey
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -38,7 +40,8 @@ constructor(
 
     override fun handleIntent(intent: DashboardIntent) {
         when (intent) {
-            is DashboardIntent.UpdateVisibleMetrics -> updateVisibleMetrics(intent.metrics)
+            is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys)
+            is DashboardIntent.SaveDashboardMetrics -> saveDashboardMetrics(intent.visibleMetrics)
             else -> null
         }
         super.handleIntent(intent)
@@ -46,15 +49,62 @@ constructor(
 
     private fun subscribeMetrics() {
         viewModelScope.launch {
-            dashboardService.getVisibleKeys().collect {
-                handleIntent(DashboardIntent.SetVisibleMetrics(it))
+            // Combine both metric and milestone keys into a single DashboardKey list
+            combine(
+                dashboardService.getVisibleMetricKeys(),
+                dashboardService.getVisibleMilestoneKeys(),
+            ) { metricKeys, milestoneKeys ->
+                val combinedKeys = mutableListOf<DashboardKey>()
+                combinedKeys.addAll(metricKeys.map { DashboardKey.Metric(it) })
+                combinedKeys.addAll(milestoneKeys.map { DashboardKey.Milestone(it) })
+                combinedKeys
+            }.collect {
+                handleIntent(DashboardIntent.SetVisibleKeys(it))
             }
         }
     }
 
-    private fun updateVisibleMetrics(metrics: List<DashboardKey>) {
+    private fun updateVisibleKeys(keys: List<DashboardKey>) {
         viewModelScope.launch {
-            dashboardService.updateVisibleKeys(keys = metrics)
+            val metricKeys = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
+
+            val milestoneKeys = keys.filterIsInstance<DashboardKey.Milestone>().map { it.key }
+
+
+            dashboardService.updateVisibleMetricKeys(keys = metricKeys)
+            dashboardService.updateVisibleMilestoneKeys(keys = milestoneKeys)
+        }
+    }
+
+    /**
+     * Saves the dashboard metrics configuration.
+     *
+     * @param visibleMetrics List of visible metrics to save.
+     */
+    private fun saveDashboardMetrics(visibleMetrics: List<Stat>) {
+        viewModelScope.launch {
+            try {
+                val metricKeys = visibleMetrics.mapNotNull { stat ->
+                    when (stat.key) {
+                        is DashboardKey.Metric -> stat.key.key
+                        is DashboardKey.Milestone -> null
+                    }
+                }
+
+                dashboardService.updateVisibleMetricKeys(keys = metricKeys)
+
+                dialogQueueService.showToast(
+                    Toast(
+                        message = "Dashboard metrics saved successfully",
+                    ),
+                )
+            } catch (exception: Exception) {
+                dialogQueueService.showToast(
+                    Toast(
+                        message = "Failed to save dashboard metrics",
+                    ),
+                )
+            }
         }
     }
 

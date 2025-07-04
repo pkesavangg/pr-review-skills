@@ -2,15 +2,16 @@ package com.greatergoods.meapp.features.dashboard.viewmodel
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.greatergoods.meapp.proto.DashboardKey
+import com.greatergoods.meapp.features.common.model.DashboardKey
+import com.greatergoods.meapp.features.common.model.Stat
 
 /**
  * UI state for the dashboard, holding loading state and entry summaries.
  *
  * @property isLoading Whether data is currently loading.
+ * @property visibleKeys List of visible dashboard keys (metrics and milestones).
  * @property dayWiseEntries List of day-wise body scale summaries.
  * @property monthWiseEntries List of month-wise body scale summaries.
- * @property totalEntries List of all scale entries.
  */
 data class DashboardState(
     val isLoading: Boolean = false,
@@ -25,10 +26,11 @@ data class DashboardState(
 sealed interface DashboardIntent : IReducer.Intent {
     object LoadEntries : DashboardIntent
     data class SetDayWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
-    data class SetVisibleMetrics(val metrics: List<DashboardKey>) : DashboardIntent
-    data class UpdateVisibleMetrics(val metrics: List<DashboardKey>) : DashboardIntent
+    data class SetVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
+    data class UpdateVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
     data class SetMonthWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
     data class SetIsLoading(val isLoading: Boolean) : DashboardIntent
+    data class SaveDashboardMetrics(val visibleMetrics: List<Stat>) : DashboardIntent
 }
 
 /**
@@ -39,7 +41,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
         is DashboardIntent.SetDayWiseEntries -> state.copy(dayWiseEntries = intent.entries)
         is DashboardIntent.SetMonthWiseEntries -> state.copy(monthWiseEntries = intent.entries)
         is DashboardIntent.SetIsLoading -> state.copy(isLoading = intent.isLoading)
-        is DashboardIntent.SetVisibleMetrics -> state.copy(visibleKeys = intent.metrics)
+        is DashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys)
         DashboardIntent.LoadEntries -> state.copy(isLoading = true)
         else -> state
     }

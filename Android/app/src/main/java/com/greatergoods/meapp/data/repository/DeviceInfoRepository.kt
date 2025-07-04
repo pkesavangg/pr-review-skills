@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.data.repository
 
-import com.greatergoods.meapp.data.api.IDeviceAPI
+import com.greatergoods.meapp.data.api.IDeviceInfoAPI
 import com.greatergoods.meapp.domain.model.common.DeviceInfo
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
 import retrofit2.Response
@@ -13,7 +13,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class DeviceInfoRepository @Inject constructor(
-    private val deviceApi: IDeviceAPI
+    private val deviceApi: IDeviceInfoAPI
 ) : IDeviceInfoRepository {
     /**
      * Updates device info for the account (including FCM token).

@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.domain.model.storage.Account
 
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools.convertStoredToKg
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools.convertStoredToLbs
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 
 /**
@@ -40,4 +42,23 @@ data class Account(
     val initialWeight: Double = 0.0, // initial weight when goal was set
     val metPreviousGoal: Boolean? = null, // whether previous goal was met
     val goalPercent: Double = 0.0, // calculated goal completion percentage
-)
+) {
+    /**
+     * Get the metric of account
+     */
+    val isMetric: Boolean = weightUnit == WeightUnit.KG
+
+    /**
+     * Get the display weightless weight
+     */
+    val displayWeightlessWeight: () -> String = {
+        val weight = weightlessWeight?.toDouble() ?: 0.0
+        val convertedWeight =
+            if (isMetric) {
+                convertStoredToKg(weight)
+            } else {
+                convertStoredToLbs(weight)
+            }
+        String.format("%.1f ${weightUnit.label}", convertedWeight)
+    }
+}

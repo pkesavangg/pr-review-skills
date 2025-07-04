@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.features.addScale.reducer
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
+import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.features.common.helper.ScaleDataHelper.toScaleInfo
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
@@ -41,7 +43,7 @@ sealed interface AddScaleIntent : IReducer.Intent {
     object ShowHelp : AddScaleIntent
     object OpenScaleChooser : AddScaleIntent
     object Submit : AddScaleIntent
-    data class SetSavedScaled(val scaled: List<ScaleInfo>) : AddScaleIntent
+    data class SetSavedScales(val scales: List<Device>) : AddScaleIntent
     data class ScaleSelected(val sku: String) : AddScaleIntent
 }
 
@@ -53,7 +55,7 @@ class AddScaleReducer : IReducer<AddScaleState, AddScaleIntent> {
         AddScaleIntent.ShowHelp -> state.copy()
         AddScaleIntent.Submit -> state.copy(isSubmitting = true)
         AddScaleIntent.OpenScaleChooser -> state.copy()
-        is AddScaleIntent.SetSavedScaled -> state.copy(savedScales = intent.scaled)
+        is AddScaleIntent.SetSavedScales -> state.copy(savedScales = intent.scales.map { it.toScaleInfo() })
         is AddScaleIntent.ScaleSelected -> state.copy(selectedSku = intent.sku)
     }
 }

@@ -192,9 +192,15 @@ fun <T> showRadioGroupModal(
     val dialog =
         createRadioGroupDialog(
             config = config,
-            onConfirm = onConfirm,
-            onCancel = onCancel,
-            onDismiss = onCancel,
+            onConfirm = {
+                onConfirm(it)
+            },
+            onCancel = {
+                onCancel?.invoke()
+            },
+            onDismiss = {
+                onCancel?.invoke()
+            },
         )
 
     dialogService.enqueue(dialog)

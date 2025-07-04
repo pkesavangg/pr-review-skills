@@ -7,6 +7,7 @@ import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DashboardService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.GoalService
+import com.greatergoods.meapp.core.service.DeviceService
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.NotificationService
@@ -26,6 +27,8 @@ import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.repository.IDashboardRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.repository.IDeviceRepository
+import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
@@ -262,4 +265,14 @@ object ServiceModule {
         dashboardRepository: IDashboardRepository
     ): IDashboardService =
         DashboardService(dashboardRepository)
+     
+    /**
+     * Provides the device service implementation.
+     * Handles scale/device data operations with automatic synchronization.
+     */
+    @Provides
+    @Singleton
+    fun provideDeviceService(
+        deviceRepository: IDeviceRepository
+    ): IDeviceService = DeviceService(deviceRepository)
 }

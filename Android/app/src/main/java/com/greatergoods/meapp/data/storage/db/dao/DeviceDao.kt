@@ -256,4 +256,11 @@ interface DeviceDao {
         // Update the device's connection status
         // You might want to add a specific query for this
     }
+
+    /**
+     * Get all unsynced devices as a List (not Flow).
+     * @return A List of all unsynced devices
+     */
+    @Query("SELECT * FROM device WHERE isSynced = 0")
+    suspend fun getUnsyncedDevicesList(): List<DeviceEntity>
 }

@@ -5,10 +5,12 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.domain.enums.ActivityLevel
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
-import com.greatergoods.meapp.domain.model.common.ActivityLevel
+import com.greatergoods.meapp.domain.model.common.Gender
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.BodyCompUpdateType
 import com.greatergoods.meapp.domain.services.IAccountService
@@ -25,7 +27,6 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.export.strings.ExportStrings
 import com.greatergoods.meapp.features.settings.strings.RadioGroupModalStrings
 import com.greatergoods.meapp.features.settings.strings.SettingsScreenStrings
-import com.greatergoods.meapp.features.signup.model.Gender
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -48,11 +49,11 @@ constructor(
     private val userDataStore: UserDataStore,
     private val notificationService: INotificationService,
     private val userSettingsService: IUserSettingsService,
+    private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
     override fun provideInitialState(): SettingsState = SettingsState()
-
     private val TAG = "SettingsViewModel"
 
     init {
@@ -80,6 +81,10 @@ constructor(
 
             is SettingsIntent.OpenAddScales -> {
                 navigateTo(AppRoute.AccountSettings.AddEditScales)
+            }
+
+            is SettingsIntent.OpenHelp -> {
+                navigateTo(AppRoute.AccountSettings.HelpScreen)
             }
 
             is SettingsIntent.ExportData -> {
@@ -128,6 +133,10 @@ constructor(
 
             is SettingsIntent.goalSettingModal -> {
                 onGoalSettingClick()
+            }
+
+            is SettingsIntent.OpenHelp -> {
+                onHelpClick()
             }
 
             else -> {}
@@ -188,8 +197,8 @@ constructor(
             title = RadioGroupModalStrings.Titles.BiologicalSex,
             options =
                 listOf(
-                    RadioButtonOption(Gender.MALE.value, RadioGroupModalStrings.BiologicalSex.Male),
-                    RadioButtonOption(Gender.FEMALE.value, RadioGroupModalStrings.BiologicalSex.Female),
+                    RadioButtonOption(Gender.MALE.name, RadioGroupModalStrings.BiologicalSex.Male),
+                    RadioButtonOption(Gender.FEMALE.name, RadioGroupModalStrings.BiologicalSex.Female),
                 ),
             selectedItem = state.value.account?.gender,
             onConfirm = { selectedSex ->
@@ -694,6 +703,7 @@ constructor(
     fun onHelpClick() {
         AppLog.d("SettingsViewModel", "Help clicked")
         // TODO: Navigate to help screen
+        navigateTo(AppRoute.AccountSettings.HelpScreen)
     }
 
     /*
@@ -810,8 +820,8 @@ constructor(
         return if (account?.isWeightlessOn == true) {
             val weightlessWeight = account.weightlessWeight
             if (weightlessWeight != null) {
-                val isMetric = account.weightUnit?.value == "kg"
-                val displayWeight = ConversionTools.convertStoredToDisplay(weightlessWeight.toDouble(), isMetric)
+                val displayWeight =
+                    ConversionTools.convertStoredToDisplay(weightlessWeight.toDouble(), account.isMetric)
                 val formattedWeight = String.format("%.1f", displayWeight)
                 "On - $formattedWeight"
             } else {

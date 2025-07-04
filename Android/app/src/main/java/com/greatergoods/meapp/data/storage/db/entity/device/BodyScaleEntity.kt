@@ -24,4 +24,5 @@ data class BodyScaleEntity(
     val id: String, // This is both PK and FK to device.id
     val scaleType: String?,
     val bodyComp: Boolean = false,
+    val isWeighOnlyModeEnabledByOthers: Boolean = false
 )

@@ -10,9 +10,10 @@ enum class Gender {
 enum class WeightUnit(
     val value: String,
     val label: String,
+    val unit: String,
 ) {
-    KG("kg", "kg"),
-    LB("lb", "lbs"),
+    KG("kg", "kg", "kg & cm"),
+    LB("lb", "lbs", "lbs & feet"),
     ;
 
     companion object {
@@ -30,16 +31,4 @@ enum class WeightUnit(
                 }
             }
     }
-}
-
-enum class ActivityLevel {
-    NORMAL,
-    ATHLETE,
-}
-
-enum class DashboardType(
-    val value: String,
-) {
-    DASHBOARD_4_METRICS("dashboard_4_metrics"),
-    DASHBOARD_12_METRICS("dashboard_12_metrics"),
 }

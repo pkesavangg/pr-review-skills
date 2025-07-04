@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.domain.enum
+package com.greatergoods.meapp.domain.enums
 
 object NotificationChannel {
     const val GENERAL = "GENERAL"
