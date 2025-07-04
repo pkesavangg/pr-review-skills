@@ -38,8 +38,6 @@
 - Implemented goal screen and account delete functionality
 - Implemented weightless screen
 - Implemented help and debug menu screens
-- Implemented horizontal pager reusable component
-- Implemented sign up flow
 - Updated swipe-to-action to dynamically accept input
 
 #### Integration & Migration
