@@ -7,7 +7,7 @@ struct PermissionListView: View {
     // MARK: Enumerations
     /// Distinct permission groups that can be rendered by the list.
     enum Category: CaseIterable, Hashable {
-        case bluetooth, location, camera, notifications
+        case bluetooth, location, camera, internet, notifications
     }
     
     /// High-level scale setup types that determine which permissions are required.
@@ -30,7 +30,7 @@ struct PermissionListView: View {
     
     /// Generic initialiser – retains the previous behaviour where caller explicitly specifies the permission groups.
     init(
-        categories: Set<Category> = Set(Category.allCases),
+        categories: Set<Category> = Set(Category.allCases.filter { $0 != .internet }),
         requiredCategories: Set<Category> = [.bluetooth, .location]
     ) {
         self.categories = categories
@@ -52,15 +52,19 @@ struct PermissionListView: View {
             config = (Set(Category.allCases), "") // no header; will be ignored via nil below
         case .appSync:
             config = ([.camera], PermissionsStrings.cameraPermissionDescription)
-        case .btWifi, .bluetooth:
+        case .btWifi:
+            config = ([.bluetooth, .internet], PermissionsStrings.bluetoothPermissionDescription)
+        case .bluetooth:
             config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription)
         case .wifi:
             config = ([.location], PermissionsStrings.locationPermissionDescription)
         }
 
-        self.categories = config.0
+        let (resolvedCategories, description) = config
+
+        self.categories = resolvedCategories
         self.requiredCategories = [] // Initialize with no required categories to avoid showing red indicators when permissions are disabled
-        self.headerDescription = config.1.isEmpty ? nil : config.1
+        self.headerDescription = description.isEmpty ? nil : description
     }
     
     // MARK: Body
@@ -74,6 +78,7 @@ struct PermissionListView: View {
                 if categories.contains(.bluetooth) { bluetoothSection }
                 if categories.contains(.location) { locationSection }
                 if categories.contains(.camera) { cameraSection }
+                if categories.contains(.internet) { internetSection }
                 if categories.contains(.notifications) { notificationSection }
             }
         }
@@ -84,24 +89,51 @@ struct PermissionListView: View {
         sectionView(
             title: PermissionsStrings.bluetooth,
             rows: [
-                (viewModel.bluetoothAuthorized ? PermissionsStrings.bluetoothAccessAuthorized : PermissionsStrings.authorizeBluetoothAccess,
-                 viewModel.bluetoothAuthorized),
-                (viewModel.bluetoothPoweredOn ? PermissionsStrings.bluetoothTurnedOn : PermissionsStrings.turnOnBluetooth,
-                 viewModel.bluetoothPoweredOn)
+                (
+                    PermissionsStrings.bluetoothAccessAuthorized,
+                    viewModel.bluetoothAuthorized,
+                    .bluetooth
+                ),
+                (
+                    PermissionsStrings.bluetoothTurnedOn,
+                    viewModel.bluetoothPoweredOn,
+                    .bluetoothSwitch
+                )
             ],
             category: .bluetooth
         )
     }
     
     private var locationSection: some View {
-        sectionView(
+        // Base rows for location services
+        var rows: [(String, Bool, PermissionsViewModel.PermissionType)] = [
+            (
+                PermissionsStrings.locationAccessEnabled,
+                viewModel.locationServicesEnabled,
+                .locationSwitch
+            ),
+            (
+                PermissionsStrings.locationAccessNotAuthorized,
+                viewModel.locationAuthorized,
+                .location
+            )
+        ]
+
+        // For Wi-Fi–only setup flows add an extra Wi-Fi status row
+        if setupType == .wifi {
+            let wifiRowTitle: String
+            if let ssid = viewModel.wifiNetworkName, !ssid.isEmpty {
+                wifiRowTitle = "Connected to \(ssid)"
+            } else {
+                wifiRowTitle = PermissionsStrings.wifiEnablePrompt
+            }
+
+            rows.append((wifiRowTitle, viewModel.wifiNetworkName != nil, .wifiSwitch))
+        }
+
+        return sectionView(
             title: PermissionsStrings.location,
-            rows: [
-                (viewModel.locationServicesEnabled ? PermissionsStrings.locationAccessEnabled : PermissionsStrings.enableLocationServices,
-                 viewModel.locationServicesEnabled),
-                (viewModel.locationAuthorized ? PermissionsStrings.locationAccessAuthorized : PermissionsStrings.authorizeLocationAccess,
-                 viewModel.locationAuthorized)
-            ],
+            rows: rows,
             category: .location
         )
     }
@@ -110,10 +142,28 @@ struct PermissionListView: View {
         sectionView(
             title: PermissionsStrings.camera,
             rows: [
-                (viewModel.cameraAuthorized ? PermissionsStrings.cameraAccessAuthorized : PermissionsStrings.authorizeCameraAccess,
-                 viewModel.cameraAuthorized)
+                (
+                    PermissionsStrings.cameraAccessAuthorized,
+                    viewModel.cameraAuthorized,
+                    .camera
+                )
             ],
             category: .camera
+        )
+    }
+    
+    private var internetSection: some View {
+        let rowTitle = viewModel.internetConnected ? PermissionsStrings.internetNetworkConnected : PermissionsStrings.internetNetworkDisconnected
+        return sectionView(
+            title: PermissionsStrings.internet,
+            rows: [
+                (
+                    rowTitle,
+                    viewModel.internetConnected,
+                    .internet
+                )
+            ],
+            category: .internet
         )
     }
     
@@ -121,8 +171,11 @@ struct PermissionListView: View {
         sectionView(
             title: PermissionsStrings.notifications,
             rows: [
-                (viewModel.notificationsEnabled ? PermissionsStrings.notificationsEnabled : PermissionsStrings.enableNotifications,
-                 viewModel.notificationsEnabled)
+                (
+                    PermissionsStrings.notificationsEnabled,
+                    viewModel.notificationsEnabled,
+                    .notification
+                )
             ],
             category: .notifications
         )
@@ -180,18 +233,25 @@ struct PermissionListView: View {
     /// - Returns: A view containing the header and a card-styled list of rows.
     @ViewBuilder
     private func sectionView(title: String,
-                             rows: [(String, Bool)],
+                             rows: [(String, Bool, PermissionsViewModel.PermissionType)],
                              category: Category) -> some View {
         VStack(alignment: .leading) {
             sectionHeader(title)
-
             // Card container
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.0) { index, row in
+                    // Destructure the row tuple for better readability
+                    let (label, isEnabled, permissionType) = row
+
                     ActionListItemView(config: ActionListItemConfig(
-                        title: row.0,
-                        chevronType: .none,
-                        leadingIcon: statusIcon(for: row.1, required: isRequired(category))
+                        title: label,
+                        chevronType: isEnabled ? .none : .right,
+                        leadingIcon: statusIcon(for: isEnabled, required: isRequired(category)),
+                        onTap: {
+                            if !isEnabled {
+                                viewModel.handlePermission(permissionType)
+                            }
+                        }
                     ))
                     .padding(.horizontal)
 
@@ -212,6 +272,11 @@ struct PermissionListView: View {
 struct PermissionsListView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
+            PermissionListView()
+                .environmentObject(Theme.shared)
+                .padding(.horizontal)
+                .background(.purple.opacity(0.3))
+            
             PermissionListView(setupType: .wifi)
                 .environmentObject(Theme.shared)
                 .padding(.horizontal)
