@@ -665,7 +665,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.scale.rawValue
+            deviceType: DeviceType.scale.rawValue,
+            isSynced: false
         )
         let protocolType = ProtocolType(rawValue: ggEntry.protocolType ?? "") ?? .A6
         var sourceType = ScaleSourceType.bluetoothScale
