@@ -50,8 +50,9 @@ struct DashboardScreen: View {
                     .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
             }
         }
-        .onAppear(){
+        .onAppear {
             store.loadLatestEntryData()
+            store.loadGoalCardData()
         }
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
@@ -84,9 +85,6 @@ struct DashboardScreen: View {
         }
         .presentAlert(alertData: $store.alertData)
         .presentLoader(loaderData: store.loaderData)
-        .onAppear {
-            store.loadGoalCardData()
-        }
     }
 
     // MARK: - Metric Grid Section

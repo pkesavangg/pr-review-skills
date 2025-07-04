@@ -164,52 +164,7 @@ class ScaleStore: ObservableObject {
     
     /// Determines the scale type based on the scale's SKU and other properties
     private func determineScaleType(for scale: Device) -> String {
-        guard let sku = scale.sku else { return "Unknown" }
-        
-        // Get scale info from the SCALES constant
-        if let scaleInfo = SCALES.first(where: { $0.sku == sku }) {
-            switch scaleInfo.setupType {
-            case .bluetooth, .lcbt:
-                return "Bluetooth"
-            case .wifi, .espTouchWifi:
-                return "WiFi"
-            case .appSync:
-                return "AppSync"
-            case .btWifiR4:
-                return "Bluetooth/Wi-Fi"
-            }
-        }
-        
-        // Fallback: determine based on scale source type if available
-        if let scaleSourceType = scale.bathScale?.scaleType {
-            let sourceType = ScaleSourceType(rawValue: scaleSourceType) ?? .bluetoothScale
-            switch sourceType {
-            case .bluetooth, .bluetoothScale, .lcbt, .lcbtScale:
-                return "Bluetooth"
-            case .wifi, .espTouchWifi:
-                return "WiFi"
-            case .appsync, .appsyncScale:
-                return "AppSync"
-            case .btWifiR4:
-                return "Bluetooth/Wi-Fi"
-            }
-        }
-        
-        // Final fallback: determine based on device type
-        if let deviceType = scale.deviceType {
-            switch deviceType.lowercased() {
-            case "bluetooth", "bluetoothscale":
-                return "Bluetooth"
-            case "wifi", "wifiscale":
-                return "WiFi"
-            case "appsync", "appsyncscale":
-                return "AppSync"
-            default:
-                return "Unknown"
-            }
-        }
-        
-        return "Unknown"
+        return ScaleTypeHelper.determineScaleTypeString(for: scale)
     }
     
     func getDeviceInfo() async {
