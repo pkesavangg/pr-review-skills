@@ -1,0 +1,24 @@
+package com.greatergoods.meapp.features.scaleDetails.strings
+
+object ScaleDetailsStrings {
+    const val Header = "Scale Settings"
+    const val Close = "Close"
+    const val Settings = "Settings"
+    const val Mode = "Mode"
+    const val AllBodyMetrics = "All Body Metrics"
+    const val DisplayMetrics = "Display Metrics"
+    const val Users = "Users"
+    const val ScaleName = "Scale Name"
+    const val Connection = "Connection"
+    const val Bluetooth = "Bluetooth"
+    const val Connected = "Connected"
+    const val WiFi = "Wi-Fi"
+    const val WiFiMacAddress = "Wi-Fi MAC Address"
+    const val Support = "Support"
+    const val ScaleType = "Scale Type"
+    const val BluetoothWiFi = "Bluetooth/Wi-Fi"
+    const val Sku = "SKU"
+    const val DatePaired = "Date Paired"
+    const val ProductGuide = "Product Guide"
+    const val DeleteScale = "Delete Scale"
+}

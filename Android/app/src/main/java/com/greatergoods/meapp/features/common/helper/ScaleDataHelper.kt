@@ -4,6 +4,7 @@ import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.model.ScaleInfo
+import com.greatergoods.meapp.resources.AppIcons
 
 /**
  * Helper object providing conversion functions for scale data.
@@ -23,9 +24,10 @@ object ScaleDataHelper {
             }
 
         // Get product name from SCALES using sku
-        val productName = this.sku?.let { sku ->
-            SCALES.find { it.sku == sku }?.productName
-        } ?: ""
+        val productName =
+            this.sku?.let { sku ->
+                SCALES.find { it.sku == sku }?.productName
+            } ?: ""
 
         return ScaleInfo(
             productName = this.nickname?.takeIf { it.isNotBlank() } ?: productName,
@@ -37,4 +39,18 @@ object ScaleDataHelper {
             broadcastId = this.broadcastId,
         )
     }
+
+    /**
+     * Returns the appropriate icon for the given scale setup type.
+     *
+     * @param setupType The scale setup type
+     * @return The icon resource ID for the setup type
+     */
+    fun scaleTypeIcon(setupType: ScaleSetupType): Int =
+        when (setupType) {
+            ScaleSetupType.Wifi, ScaleSetupType.EspTouchWifi -> AppIcons.Connection.Wifi
+            ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> AppIcons.Connection.Bluetooth
+            ScaleSetupType.BtWifiR4 -> AppIcons.Connection.BluetoothWifi
+            ScaleSetupType.AppSync -> AppIcons.Connection.AppSync
+        }
 }

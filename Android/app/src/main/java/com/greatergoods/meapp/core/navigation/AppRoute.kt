@@ -12,7 +12,9 @@ sealed class AppRoute : NavKey {
      * Initial navigation routes (e.g., splash, onboarding).
      */
     @Serializable
-    sealed class Init : AppRoute(), PublicRoute {
+    sealed class Init :
+        AppRoute(),
+        PublicRoute {
         @Serializable
         data object Loading : Init()
     }
@@ -53,13 +55,16 @@ sealed class AppRoute : NavKey {
      * Authentication-related navigation routes.
      */
     @Serializable
-    sealed class Auth : AppRoute(), PublicRoute {
-
+    sealed class Auth :
+        AppRoute(),
+        PublicRoute {
         @Serializable
         data object Landing : Auth()
 
         @Serializable
-        data class Login(val email: String? = null) : Auth()
+        data class Login(
+            val email: String? = null,
+        ) : Auth()
 
         @Serializable
         data object Signup : Auth()
@@ -99,7 +104,10 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data object DebugMenu : AccountSettings()
+        
+        @Serializable        
+        data class ScaleDetails(
+            val broadcastId: String,
+        ) : AccountSettings()
     }
 }
-
-

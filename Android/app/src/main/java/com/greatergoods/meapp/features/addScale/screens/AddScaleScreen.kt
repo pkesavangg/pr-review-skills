@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleFormControls
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
@@ -139,24 +140,30 @@ fun AddScaleScreenContent(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
                 Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-                AppText(
-                    text = AddScaleScreenStrings.MyScales,
-                    textType = TextType.Title,
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
-            ) {
-                state.savedScales.forEach { scaleInfo ->
-                    AppScaleCard(
-                        scale = scaleInfo,
-                        isSavedScale = true,
-                        onClick = { selectedScaleInfo ->
-                            // TODO: Handle scale info selection
-                        },
+                if (state.savedScales.isNotEmpty()) {
+                    AppText(
+                        text = AddScaleScreenStrings.MyScales,
+                        textType = TextType.Title,
                     )
+                }
+            }
+            if (state.savedScales.isNotEmpty()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(),
+                ) {
+                    state.savedScales.forEach { scaleInfo ->
+                        AppScaleCard(
+                            scale = scaleInfo,
+                            isSavedScale = true,
+                            onClick = { selectedScaleInfo ->
+                                selectedScaleInfo.broadcastId?.let { broadcastId ->
+                                    handleIntent(AddScaleIntent.OpenScaleSettings(broadcastId))
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }

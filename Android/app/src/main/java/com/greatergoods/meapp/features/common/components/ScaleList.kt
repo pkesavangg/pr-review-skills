@@ -49,6 +49,9 @@ fun ScaleList(
                     it.setupType == ScaleSetupType.EspTouchWifi ||
                     it.setupType == ScaleSetupType.BtWifiR4
             }
+            ScaleSegmentType.AppSync -> SCALES.filter {
+                it.setupType == ScaleSetupType.AppSync
+            }
         }
     }
 
@@ -63,6 +66,7 @@ fun ScaleList(
                 ScaleSegmentType.All,
                 ScaleSegmentType.Bluetooth,
                 ScaleSegmentType.Wifi,
+                ScaleSegmentType.AppSync,
             ),
             key = ScaleSegmentType::name,
             selectedData = selectedType,
