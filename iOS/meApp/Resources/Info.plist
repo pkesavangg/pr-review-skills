@@ -17,7 +17,5 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Weight Gurus uses the camera to sync with AppSync scales.</string>
-	<key>NSMotionUsageDescription</key>
-	<string>Weight Gurus uses the camera to sync with AppSync scales.</string>
 </dict>
 </plist>

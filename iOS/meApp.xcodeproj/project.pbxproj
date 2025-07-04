@@ -11,6 +11,7 @@
 		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
 		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
 		D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */; };
+		D0D5A5D92E17C2BC00DC5F5A /* AppSyncPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D0D5A5D82E17C2BC00DC5F5A /* AppSyncPackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +83,7 @@
 				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
 				D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */,
 				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
+				D0D5A5D92E17C2BC00DC5F5A /* AppSyncPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -154,6 +156,7 @@
 				481F096E2DF05C8D00799EAA /* FirebaseMessaging */,
 				D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */,
 				10575C012E15116D0093651D /* GGBluetoothSwiftPackage */,
+				D0D5A5D82E17C2BC00DC5F5A /* AppSyncPackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -241,6 +244,7 @@
 				481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
 				10575C002E1511500093651D /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */,
+				D0D5A5D72E17C2BC00DC5F5A /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -963,8 +967,16 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/dmdbrands/ggHealthKitPackage";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
+				branch = main;
+				kind = branch;
+			};
+		};
+		D0D5A5D72E17C2BC00DC5F5A /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/dmdbrands/ggAppSyncPackage";
+			requirement = {
+				branch = main;
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -989,6 +1001,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */;
 			productName = ggHealthKitPackage;
+		};
+		D0D5A5D82E17C2BC00DC5F5A /* AppSyncPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D0D5A5D72E17C2BC00DC5F5A /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */;
+			productName = AppSyncPackage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
