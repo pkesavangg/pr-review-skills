@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -55,6 +58,8 @@ import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.proto.MilestoneKey
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
 
 /**
  * Composable for the dashboard milestone section that displays weight progress and milestone stats.
@@ -133,8 +138,24 @@ private fun DashboardMilestoneGrid(
     goalWeight: String = "",
     currentWeight: String = ""
 ) {
+    var localVisibleMilestones by remember(visibleMilestones) { mutableStateOf(visibleMilestones) }
+    val hapticFeedback = LocalHapticFeedback.current
+    val lazyGridState = rememberLazyGridState()
+    val reorderableState = rememberReorderableLazyGridState(
+        lazyGridState = lazyGridState,
+        onMove = { from, to ->
+            localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+            // Call onMilestonesChanged with the new order
+            onMilestoneMoved(true, true, localVisibleMilestones[to.index])
+        },
+    )
+    val minCellSize = 160.dp // Adjust as needed for design
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Adaptive(minSize = minCellSize),
+        state = lazyGridState,
         contentPadding = PaddingValues(MeTheme.spacing.sm),
         userScrollEnabled = false,
         modifier = Modifier
@@ -143,12 +164,11 @@ private fun DashboardMilestoneGrid(
         horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     ) {
-        // Visible milestones
+        // Visible milestones (reorderable)
         items(
-            items = visibleMilestones,
-            key = { stat -> getMilestoneKey(stat, isVisible = true) },
+            items = localVisibleMilestones,
+            key = { getMilestoneKey(it, isVisible = true) },
             span = { milestone ->
-                // Goal progress milestone spans full width (2 columns)
                 if (isGoalProgressMilestone(milestone)) {
                     GridItemSpan(2)
                 } else {
@@ -156,36 +176,56 @@ private fun DashboardMilestoneGrid(
                 }
             },
         ) { milestone ->
-            // Check if this is the goal progress milestone (TO_GOAL)
-            if (isGoalProgressMilestone(milestone)) {
-                GoalProgressMilestoneCard(
-                    startWeight = startWeight,
-                    goalWeight = goalWeight,
-                    currentWeight = currentWeight,
-                    inEditMode = inEditMode,
-                    onBadgeClick = {
-                        onMilestoneMoved(true, false, milestone)
-                    },
-                )
-            } else {
-                AnimatedStatCard(
-                    stat = milestone,
-                    inEditMode = inEditMode,
-                    isSelected = false,
-                    onBadgeClick = {
-                        onMilestoneMoved(true, false, milestone)
-                    },
-                )
+            ReorderableItem(
+                state = reorderableState,
+                key = getMilestoneKey(milestone, isVisible = true),
+                enabled = inEditMode,
+            ) { isDragging ->
+                if (isGoalProgressMilestone(milestone)) {
+                    GoalProgressMilestoneCard(
+                        startWeight = startWeight,
+                        goalWeight = goalWeight,
+                        currentWeight = currentWeight,
+                        inEditMode = inEditMode,
+                        modifier = Modifier.draggableHandle(
+                            onDragStarted = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                            },
+                            onDragStopped = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                            },
+                        ),
+                        onBadgeClick = {
+                            onMilestoneMoved(true, false, milestone)
+                        },
+                    )
+                } else {
+                    AnimatedStatCard(
+                        stat = milestone,
+                        inEditMode = inEditMode,
+                        isDragging = isDragging,
+                        isSelected = false,
+                        modifier = Modifier.draggableHandle(
+                            onDragStarted = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                            },
+                            onDragStopped = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                            },
+                        ),
+                        onBadgeClick = {
+                            onMilestoneMoved(true, false, milestone)
+                        },
+                    )
+                }
             }
         }
-
-        // Hidden milestones (only when in edit mode)
+        // Hidden milestones (not reorderable)
         if (inEditMode) {
             items(
                 items = hiddenMilestones,
                 key = { stat -> getMilestoneKey(stat, isVisible = false) },
                 span = { milestone ->
-                    // Goal progress milestone spans full width (2 columns)
                     if (isGoalProgressMilestone(milestone)) {
                         GridItemSpan(2)
                     } else {
@@ -193,7 +233,6 @@ private fun DashboardMilestoneGrid(
                     }
                 },
             ) { milestone ->
-                // Check if this is the goal progress milestone (TO_GOAL)
                 if (isGoalProgressMilestone(milestone)) {
                     GoalProgressMilestoneCard(
                         startWeight = startWeight,
@@ -252,6 +291,7 @@ private fun GoalProgressMilestoneCard(
     currentWeight: String,
     inEditMode: Boolean,
     isVisible: Boolean = true,
+    modifier: Modifier = Modifier,
     onBadgeClick: () -> Unit = {}
 ) {
     val start = startWeight.toFloatOrNull() ?: 0f
@@ -298,7 +338,7 @@ private fun GoalProgressMilestoneCard(
                 }
             }
         },
-        modifier = Modifier
+        modifier = modifier
             .graphicsLayer {
                 rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
             },
