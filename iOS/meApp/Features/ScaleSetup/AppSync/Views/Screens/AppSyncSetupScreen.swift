@@ -7,21 +7,21 @@
 
 import SwiftUI
 
-struct AppSyncScreen: View {
+struct AppSyncSetupScreen: View {
     // MARK: - State & Environment
     @StateObject private var setupStore: AppSyncSetupStore = .init()
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) var dismiss
-
+    
     // MARK: - Input
     let sku: String
     var commonLang = CommonStrings.self
     let scaleSetupLang = ScaleSetupStrings.self
-
-
+    
+    
     // Directly retrieve the pre-built views from the store.
     private var stepViews: [AnyView] { setupStore.stepViews }
-
+    
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
@@ -47,12 +47,17 @@ struct AppSyncScreen: View {
             
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews
+                views: stepViews,
+                shouldApplyHorizontalPadding: { index in
+                    // Apply padding for all steps except the AppSync scanner step
+                    setupStore.steps[index] != .appSync
+                }
             )
             // Footer Buttons
-            footerButtons
-                .padding(.spacingSM)
-            
+            if setupStore.currentStep != .appSync {
+                footerButtons
+                    .padding(.spacingSM)
+            }
         }
         .onAppear {
             setupStore.dismissAction = dismiss
@@ -92,9 +97,9 @@ struct AppSyncScreen: View {
 }
 
 #Preview {
-    AppSyncScreen(sku: "0343") // Body-comp scale
+    AppSyncSetupScreen(sku: "0343") // Body-comp scale
 }
 
 #Preview {
-    AppSyncScreen(sku: "0342") // Non-body-comp scale
+    AppSyncSetupScreen(sku: "0342") // Non-body-comp scale
 }

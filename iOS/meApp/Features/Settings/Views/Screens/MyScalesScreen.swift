@@ -126,7 +126,7 @@ struct MyScalesScreen: View {
                         }
                     case .setupFlow(let scale):
                         if scale.setupType == .appSync {
-                            AppSyncScreen(sku: scale.sku)
+                            AppSyncSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
                         } else {
                             // TODO: Handle other setup types
