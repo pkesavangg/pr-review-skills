@@ -8,6 +8,8 @@ final class AppSyncSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
+    @Injector private var scaleService: ScaleService
+    @Injector private var accountService: AccountService
     
     // MARK: - Public state
     @Published var currentStepIndex: Int = 0 {
@@ -143,12 +145,33 @@ final class AppSyncSetupStore: ObservableObject {
     }
     
     private func saveScale() {
-        notificationService.showLoader(LoaderModel(
-            text: loaderLang.saving
-        ))
-        // TODO: Implement actual scale saving logic here.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-            self.notificationService.dismissLoader()
+        notificationService.showLoader(LoaderModel(text: loaderLang.saving))
+
+        guard let scaleItem else {
+            notificationService.dismissLoader()
+            return
+        }
+
+        Task {
+            defer { self.notificationService.dismissLoader() }
+            guard let accountId = self.accountService.activeAccount?.accountId else {
+                return
+            }
+            do {
+                let newDevice = Device(
+                    id: UUID().uuidString,
+                    accountId: accountId,
+                    sku: scaleItem.sku,
+                    deviceName: scaleItem.productName,
+                    deviceType: DeviceType.scale.rawValue,
+                    bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
+                )
+                let response = try await self.scaleService.createDevice(newDevice)
+                await self.scaleService.syncAllScalesWithRemote()
+                logger.log(level: .error, tag: tag, message: "Scale saved successfully with ID: \(response.id)")
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+            }
             self.dismissAction?()
         }
     }
