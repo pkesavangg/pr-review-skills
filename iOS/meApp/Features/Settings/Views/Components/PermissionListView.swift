@@ -7,109 +7,178 @@ struct PermissionListView: View {
     // MARK: Enumerations
     /// Distinct permission groups that can be rendered by the list.
     enum Category: CaseIterable, Hashable {
-        case bluetooth, location, camera, notifications
+        case bluetooth, location, camera, internet, notifications
+    }
+    
+    /// High-level scale setup types that determine which permissions are required.
+    /// – `appSync`  ➜ needs camera access only.
+    /// – `btWifi`   ➜ needs Bluetooth access only (BT-WiFi scale).
+    /// – `bluetooth`➜ needs Bluetooth access only (BT scale).
+    /// – `wifi`     ➜ needs Location access only (Wi-Fi scale).
+    enum SetupType {
+        case all, appSync, btWifi, bluetooth, wifi
     }
     
     // MARK: Dependencies
     @Environment(\.appTheme) private var theme
     @StateObject private var viewModel: PermissionsViewModel = PermissionsViewModel()
-    
     // MARK: Configuration
     private let categories: Set<Category>
     private let requiredCategories: Set<Category>
+    private let headerDescription: String?
+    private var setupType: SetupType = .all
     
-    /// Creates a configurable permission list.
-    /// - Parameters:
-    ///   - viewModel: State object holding the permission flags. Defaults to new instance.
-    ///   - categories: Which permission groups to show. Defaults to **all**.
-    ///   - requiredCategories: Which of the presented groups are mandatory for the current flow. Defaults to bluetooth & location.
+    /// Generic initialiser – retains the previous behaviour where caller explicitly specifies the permission groups.
     init(
-        categories: Set<Category> = Set(Category.allCases),
+        categories: Set<Category> = Set(Category.allCases.filter { $0 != .internet }),
         requiredCategories: Set<Category> = [.bluetooth, .location]
     ) {
         self.categories = categories
         self.requiredCategories = requiredCategories
+        self.headerDescription = nil
+    }
+    
+    /// Convenience initialiser for scale setup flows – only `setupType` is required.
+    /// Internally resolves which permission sections to show, which are required, and what
+    /// explanatory text to render in the page header.
+    ///
+    /// - Parameter setupType: The high-level scale setup variant.
+    init(setupType: SetupType) {
+        // Determine configuration based on setup type.
+        let config: (Set<Category>, String)
+        self.setupType = setupType
+        switch setupType {
+        case .all:
+            config = (Set(Category.allCases), "") // no header; will be ignored via nil below
+        case .appSync:
+            config = ([.camera], PermissionsStrings.cameraPermissionDescription)
+        case .btWifi:
+            config = ([.bluetooth, .internet], PermissionsStrings.bluetoothPermissionDescription)
+        case .bluetooth:
+            config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription)
+        case .wifi:
+            config = ([.location], PermissionsStrings.locationPermissionDescription)
+        }
+
+        let (resolvedCategories, description) = config
+
+        self.categories = resolvedCategories
+        self.requiredCategories = [] // Initialize with no required categories to avoid showing red indicators when permissions are disabled
+        self.headerDescription = description.isEmpty ? nil : description
     }
     
     // MARK: Body
     var body: some View {
-        List {
-            if categories.contains(.bluetooth) { bluetoothSection }
-            if categories.contains(.location) { locationSection }
-            if categories.contains(.camera) { cameraSection }
-            if categories.contains(.notifications) { notificationSection }
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading) {
+                if let headerDescription = headerDescription {
+                    pageHeader(description: headerDescription)
+                        .padding([.top, .bottom], .spacingMD)
+                }
+                if categories.contains(.bluetooth) { bluetoothSection }
+                if categories.contains(.location) { locationSection }
+                if categories.contains(.camera) { cameraSection }
+                if categories.contains(.internet) { internetSection }
+                if categories.contains(.notifications) { notificationSection }
+            }
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
     }
     
     // MARK: Sections
     private var bluetoothSection: some View {
-        Section(header: sectionHeader(PermissionsStrings.bluetooth)) {
-            // Access authorised
-            ActionListItemView(config: ActionListItemConfig(
-                title: PermissionsStrings.bluetoothAccessAuthorized,
-                chevronType: .none,
-                leadingIcon: statusIcon(for: viewModel.bluetoothAuthorized, required: isRequired(.bluetooth))
-            ))
-            .listRowInsets()
-            
-            // BT powered on
-            ActionListItemView(config: ActionListItemConfig(
-                title: PermissionsStrings.bluetoothTurnedOn,
-                chevronType: .none,
-                leadingIcon: statusIcon(for: viewModel.bluetoothPoweredOn, required: isRequired(.bluetooth))
-            ))
-            .listRowInsets()
-        }
-        .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        sectionView(
+            title: PermissionsStrings.bluetooth,
+            rows: [
+                (
+                    PermissionsStrings.bluetoothAccessAuthorized,
+                    viewModel.bluetoothAuthorized,
+                    .bluetooth
+                ),
+                (
+                    PermissionsStrings.bluetoothTurnedOn,
+                    viewModel.bluetoothPoweredOn,
+                    .bluetoothSwitch
+                )
+            ],
+            category: .bluetooth
+        )
     }
     
     private var locationSection: some View {
-        Section(header: sectionHeader(PermissionsStrings.location)) {
-            ActionListItemView(config: ActionListItemConfig(
-                title: PermissionsStrings.locationAccessEnabled,
-                chevronType: .none,
-                leadingIcon: statusIcon(for: viewModel.locationServicesEnabled, required: isRequired(.location))
-            ))
-            .listRowInsets()
-            
-            ActionListItemView(config: ActionListItemConfig(
-                title: PermissionsStrings.locationAccessNotAuthorized,
-                chevronType: .none,
-                leadingIcon: statusIcon(for: viewModel.locationAuthorized, required: isRequired(.location))
-            ))
-            .listRowInsets()
+        // Base rows for location services
+        var rows: [(String, Bool, PermissionsViewModel.PermissionType)] = [
+            (
+                PermissionsStrings.locationAccessEnabled,
+                viewModel.locationServicesEnabled,
+                .locationSwitch
+            ),
+            (
+                PermissionsStrings.locationAccessNotAuthorized,
+                viewModel.locationAuthorized,
+                .location
+            )
+        ]
+
+        // For Wi-Fi–only setup flows add an extra Wi-Fi status row
+        if setupType == .wifi {
+            let wifiRowTitle: String
+            if let ssid = viewModel.wifiNetworkName, !ssid.isEmpty {
+                wifiRowTitle = "Connected to \(ssid)"
+            } else {
+                wifiRowTitle = PermissionsStrings.wifiEnablePrompt
+            }
+
+            rows.append((wifiRowTitle, viewModel.wifiNetworkName != nil, .wifiSwitch))
         }
-        .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+
+        return sectionView(
+            title: PermissionsStrings.location,
+            rows: rows,
+            category: .location
+        )
     }
     
     private var cameraSection: some View {
-        Section(header: sectionHeader(PermissionsStrings.camera)) {
-            ActionListItemView(config: ActionListItemConfig(
-                title: PermissionsStrings.cameraAccessAuthorized,
-                chevronType: .none,
-                leadingIcon: statusIcon(for: viewModel.cameraAuthorized, required: isRequired(.camera))
-            ))
-            .listRowInsets()
-        }
-        .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        sectionView(
+            title: PermissionsStrings.camera,
+            rows: [
+                (
+                    PermissionsStrings.cameraAccessAuthorized,
+                    viewModel.cameraAuthorized,
+                    .camera
+                )
+            ],
+            category: .camera
+        )
+    }
+    
+    private var internetSection: some View {
+        let rowTitle = viewModel.internetConnected ? PermissionsStrings.internetNetworkConnected : PermissionsStrings.internetNetworkDisconnected
+        return sectionView(
+            title: PermissionsStrings.internet,
+            rows: [
+                (
+                    rowTitle,
+                    viewModel.internetConnected,
+                    .internet
+                )
+            ],
+            category: .internet
+        )
     }
     
     private var notificationSection: some View {
-        Section(header: sectionHeader(PermissionsStrings.notifications)) {
-            ActionListItemView(config: ActionListItemConfig(
-                title: PermissionsStrings.notificationsEnabled,
-                chevronType: .none,
-                leadingIcon: statusIcon(for: viewModel.notificationsEnabled, required: isRequired(.notifications))
-            ))
-            .listRowInsets()
-        }
-        .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        sectionView(
+            title: PermissionsStrings.notifications,
+            rows: [
+                (
+                    PermissionsStrings.notificationsEnabled,
+                    viewModel.notificationsEnabled,
+                    .notification
+                )
+            ],
+            category: .notifications
+        )
     }
     
     // MARK: Helpers
@@ -117,14 +186,24 @@ struct PermissionListView: View {
         Text(title)
             .fontOpenSans(.heading5)
             .foregroundColor(theme.textHeading)
-            .textCase(.none)
             .padding(.bottom, .spacingXS)
-            .padding(.leading, -16)
+            .padding(.top, .spacingMD)
+    }
+    
+    private func pageHeader(description: String) -> some View {
+        VStack(alignment: .leading, spacing: .spacingXS) {
+            Text(PermissionsStrings.pageHeaderTitle)
+                .fontOpenSans(.heading4)
+                .foregroundColor(theme.textHeading)
+            Text(description)
+                .fontOpenSans(.body2)
+                .foregroundColor(theme.textBody)
+        }
     }
     
     private func statusIcon(for isEnabled: Bool, required: Bool) -> AnyView {
         // Choose icon: checkmark for enabled, minus for disabled.
-        let icon = isEnabled ? AppAssets.checkMarkCircle : AppAssets.xmark
+        let icon = isEnabled ? AppAssets.checkMarkCircle : AppAssets.minusCircleClear
         
         // Determine colour:
         //  - Enabled  ➜ primary action colour
@@ -132,7 +211,7 @@ struct PermissionListView: View {
         //  - Disabled & optional  ➜ utility / grey
         let colour: Color = {
             if isEnabled { return theme.actionPrimary }
-            return required ? theme.statusError : theme.statusUtility
+            return required ? theme.statusError : theme.statusUtilityPrimary
         }()
         
         return AnyView(
@@ -145,12 +224,68 @@ struct PermissionListView: View {
     private func isRequired(_ category: Category) -> Bool {
         requiredCategories.contains(category)
     }
+    
+    /// Helper that generates a permission section with unified styling (mirrors the layout of the original `locationSection`).
+    /// - Parameters:
+    ///   - title: Localised title of the section.
+    ///   - rows: Array of tuples `(title, enabled)` describing each row.
+    ///   - category: The originating `Category`, used to evaluate `required` state for icons.
+    /// - Returns: A view containing the header and a card-styled list of rows.
+    @ViewBuilder
+    private func sectionView(title: String,
+                             rows: [(String, Bool, PermissionsViewModel.PermissionType)],
+                             category: Category) -> some View {
+        VStack(alignment: .leading) {
+            sectionHeader(title)
+            // Card container
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.0) { index, row in
+                    // Destructure the row tuple for better readability
+                    let (label, isEnabled, permissionType) = row
+
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: label,
+                        chevronType: isEnabled ? .none : .right,
+                        leadingIcon: statusIcon(for: isEnabled, required: isRequired(category)),
+                        onTap: {
+                            if !isEnabled {
+                                viewModel.handlePermission(permissionType)
+                            }
+                        }
+                    ))
+                    .padding(.horizontal)
+
+                    if index < rows.count - 1 {
+                        Divider()
+                            .frame(height: 1)
+                            .padding(.leading, .spacingXL)
+                    }
+                }
+            }
+            .background(theme.backgroundPrimary)
+            .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+        }
+    }
 }
 
 // MARK: - Previews
 struct PermissionsListView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
+            PermissionListView()
+                .environmentObject(Theme.shared)
+                .padding(.horizontal)
+                .background(.purple.opacity(0.3))
+            
+            PermissionListView(setupType: .wifi)
+                .environmentObject(Theme.shared)
+                .padding(.horizontal)
+                .background(.purple.opacity(0.3))
+            
+            PermissionListView()
+                .environmentObject(Theme.shared)
+                .padding(.horizontal)
+                .background(.purple.opacity(0.3))
             // AppSync flow – needs only camera
             PermissionListView(categories: [.camera])
                 .background(Color.gray.opacity(0.31))

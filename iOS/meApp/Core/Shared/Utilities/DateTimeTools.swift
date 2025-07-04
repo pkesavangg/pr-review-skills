@@ -292,10 +292,9 @@ final class DateTimeTools {
     }
 
     /// Returns the current timezone string like "330 min\nAsia/Calcutta" (offset first, then identifier).
-    /// - Parameter newlineSeparator: When true (default) places a line break between offset and identifier.
-    static func getTimezoneOffsetString(newlineSeparator: Bool = true) -> String {
+    static func getTimezoneOffsetString() -> String {
         let minutes = TimeZone.current.secondsFromGMT() / 60
-        let separator = newlineSeparator ? "\n" : " "
-        return "\(minutes) min\(separator)\(TimeZone.current.identifier)"
+        return "\(minutes) min \(TimeZone.current.identifier)"
     }
 }
+	

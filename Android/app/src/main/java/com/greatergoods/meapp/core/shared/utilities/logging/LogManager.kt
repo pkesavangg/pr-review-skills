@@ -1,6 +1,9 @@
 package com.greatergoods.meapp.core.shared.utilities.logging
 
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import com.greatergoods.meapp.core.service.BaseService
 import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -11,7 +14,9 @@ class LogManager
     @Inject
     constructor(
         private val logRepository: ILogRepository,
-    ) {
+        connectivityObserver: IConnectivityObserver,
+        dialogQueueService: IDialogQueueService,
+    ) : BaseService(connectivityObserver, dialogQueueService){
         /**
          * Get logs for the last specified days
          * @param days Number of days to look back
@@ -42,19 +47,36 @@ class LogManager
          * Delete all logs for the current account
          */
         suspend fun deleteAllLogs() {
-            logRepository.deleteAllLogs()
-            AppLog.d("LogManager", "Deleted all logs")
+            logRepository.clearLogsForCurrentAccount()
+            AppLog.d("LogManager", "Deleted logs for current account")
         }
 
+            /**
+     * Log an error with exception
+     * @param message Log message
+     * @param throwable Exception to log
+     */
+    fun logError(
+        message: String,
+        throwable: Throwable,
+    ) {
+        AppLog.e("LogManager", message, throwable?.toString())
+    }
+
         /**
-         * Log an error with exception
-         * @param message Log message
-         * @param throwable Exception to log
-         */
-        fun logError(
-            message: String,
-            throwable: Throwable,
-        ) {
-            AppLog.e("LogManager", message, throwable?.toString())
+     * Sends logs for debugging purposes.
+     * Delegates to the log repository for actual API communication.
+     * Based on Angular http.service.ts sendLog() method.
+     */
+    suspend fun sendLogs() {
+        requireNetworkAvailable(onError = {showNetworkErrorAndThrow()})
+        try {
+            AppLog.i("LogManager", "Log sending initiated")
+            logRepository.sendLogs()
+            AppLog.i("LogManager", "Logs sent successfully")
+        } catch (e: Exception) {
+            AppLog.e("LogManager", "Failed to send logs", e.toString())
+            throw e
         }
     }
+}

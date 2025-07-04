@@ -16,7 +16,7 @@ struct TroubleShootingView: View {
     private let commonLang = CommonStrings.self
 
     // MARK: Dynamic values
-    private var appVersion: String { "\(AppInfo.appVersion)-\(AppEnvironment.current)" }
+    private var appVersion: String { "\(AppInfo.appVersion)" }
     private var currentTime: String { DateTimeTools.getCurrentDayTimeShort() }
     private var timezoneString: String { DateTimeTools.getTimezoneOffsetString() }
 
@@ -51,7 +51,7 @@ struct TroubleShootingView: View {
     private func cautionSection() -> some View {
         VStack(spacing: .spacingXS) {
             Text(lang.cautionTitle)
-                .fontOpenSans(.heading4)
+                .fontOpenSans(.heading3)
                 .foregroundColor(theme.textError)
             Text(lang.cautionSub)
                 .fontOpenSans(.body2)
@@ -65,30 +65,33 @@ struct TroubleShootingView: View {
 
     private func appInformationSection() -> some View {
         Section(header: sectionHeader(title: lang.appInformation)) {
-            ActionListItemView(config: ActionListItemConfig(title: commonLang.appVersion, value: appVersion, chevronType: .none))
-            ActionListItemView(config: ActionListItemConfig(title: lang.nativeModules, value: commonLang.yes, chevronType: .none))
-            ActionListItemView(config: ActionListItemConfig(title: lang.componentVersion, value: commonLang.iOS, chevronType: .none))
-            ActionListItemView(config: ActionListItemConfig(title: lang.api, value: API.baseURL.slice(from: 7, to: 16), chevronType: .none))
-            ActionListItemView(config: ActionListItemConfig(title: lang.time, value: currentTime, chevronType: .none))
-            ActionListItemView(config: ActionListItemConfig(title: lang.timezone, value: timezoneString, chevronType: .none))
+            Group {
+                ActionListItemView(config: ActionListItemConfig(title: commonLang.appVersion, value: appVersion, chevronType: .none))
+                ActionListItemView(config: ActionListItemConfig(title: lang.nativeModules, value: commonLang.yes, chevronType: .none))
+                ActionListItemView(config: ActionListItemConfig(title: lang.componentVersion, value: commonLang.iOS, chevronType: .none))
+                ActionListItemView(config: ActionListItemConfig(title: lang.api, value: API.baseURL.slice(from: 7, to: 16), chevronType: .none))
+                ActionListItemView(config: ActionListItemConfig(title: lang.time, value: currentTime, chevronType: .none))
+                ActionListItemView(config: ActionListItemConfig(title: lang.timezone, value: timezoneString, chevronType: .none))
+            }
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
     private func appTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.appTroubleshooting)) {
-            ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, onTap: { helpStore.sendWeightGurusLog() }))
-                .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, onTap: { helpStore.resyncEntries() }))
-                .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, onTap: { helpStore.clearAllLocalData() }))
-                .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: lang.showAppRateModal, onTap: { helpStore.showAppRateModal() }))
-                .listRowInsets()
+            Group {
+                ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, onTap: { helpStore.sendWeightGurusLog() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, onTap: { helpStore.resyncEntries() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, onTap: { helpStore.clearAllLocalData() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.rateApp, onTap: { helpStore.showAppRateModal() }))
+            }
+            .listRowInsets()
+
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
     private func scaleTroubleshootingSection() -> some View {
@@ -97,7 +100,7 @@ struct TroubleShootingView: View {
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
     private func sectionHeader(title: String) -> some View {

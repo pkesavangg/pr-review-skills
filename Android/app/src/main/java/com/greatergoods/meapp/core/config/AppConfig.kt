@@ -5,6 +5,7 @@ object AppConfig {
     const val BASE_URL = "https://api.weightgurus.com/v3/"
     const val BASE_URL_HEADER = "Base-url"
     const val AUTHORIZATION_HEADER = "Authorization"
+    const val PRODUCT_URL = "https://greatergoods.com"
 
     object Integrations {
         fun fitbit(accountId: String) =

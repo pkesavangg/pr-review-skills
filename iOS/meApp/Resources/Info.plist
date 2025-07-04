@@ -15,5 +15,7 @@
 		<string>OpenSans-Italic.ttf</string>
 		<string>OpenSans-Regular.ttf</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Weight Gurus uses the camera to sync with AppSync scales.</string>
 </dict>
 </plist>

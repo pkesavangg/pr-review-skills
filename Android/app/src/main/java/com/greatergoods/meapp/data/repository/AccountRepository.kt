@@ -32,6 +32,7 @@ import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.features.goal.helper.Weightless
+import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -581,4 +582,25 @@ constructor(
     // New: Flow for active account's Weightless settings
     override fun getActiveAccountWeightlessFlow(): Flow<Weightless> =
         getActiveAccount().map { it.toWeightless() }.distinctUntilChanged()
+    // Theme Mode Operations
+
+    /**
+     * Gets the current theme mode for the active account as a flow.
+     * @return Flow of ThemeMode that emits changes
+     */
+    override val currentThemeModeFlow = userDataStore.currentThemeModeFlow
+
+    /**
+     * Sets the theme mode for the active account.
+     * @param themeMode The ThemeMode to set
+     */
+    override suspend fun setCurrentThemeMode(themeMode: ThemeMode) {
+        val activeAccount = getActiveAccount().first()
+        if (activeAccount != null) {
+            userDataStore.setThemeMode(activeAccount.id, themeMode)
+            AppLog.d(TAG, "Set theme mode to $themeMode for account: ${activeAccount.id}")
+        } else {
+            AppLog.w(TAG, "No active account found, cannot set theme mode")
+        }
+    }
 }

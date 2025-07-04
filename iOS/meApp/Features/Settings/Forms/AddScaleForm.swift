@@ -8,49 +8,58 @@
 import Foundation
 import Combine
 
-class AddScaleForm: ObservableObject {
-    @Published var modelNumber = "" {
-        didSet {
-            let filtered = modelNumber.filter { $0.isNumber }
-            guard filtered.count > 4 || filtered != modelNumber else { return }
-            if filtered.count > 4 {
-                modelNumber = String(filtered.prefix(4))
-            } else {
-                modelNumber = filtered
-            }
-            isDirty = true
-        }
-    }
-    @Published var isDirty = false
+/// Reactive form for adding a scale via SKU entry.
+/// Uses the shared `ObservableForm` infrastructure and a custom `skuMatch` validator.
+class AddScaleForm: ObservableForm {
+    // MARK: Controls
+    /// Four-digit model/SKU number.
+    var modelNumber = FormControl("", validators: [
+        .required,
+        .minLength(4),
+        .maxLength(4),
+        .skuMatch
+    ])
 
-    var isValid: Bool {
-        modelNumber.count == 4 && Int(modelNumber) != nil
-    }
-
-    func getError(for field: FocusField) -> String? {
-        guard isDirty else { return nil }
-        switch field {
-        case .modelNumber:
-            if modelNumber.isEmpty || modelNumber.count < 4 {
-                return FormErrorMessages.modelNumberInvalid
-            }
-        default:
-            break
-        }
-        return nil
-    }
-
-    func reset() {
-        modelNumber = ""
-        isDirty = false
-    }
-
+    // MARK: Binding Helpers – mirrors the old imperative API so calling code needs minimal change.
+    /// Sets a new model number after filtering non-numeric characters and truncating to 4 digits.
     func setModelNumber(_ newValue: String) {
         let filtered = newValue.filter { $0.isNumber }
         let truncated = String(filtered.prefix(4))
-        if truncated != modelNumber {
-            modelNumber = truncated
+        if truncated != modelNumber.value {
+            modelNumber.value = truncated
         }
-        isDirty = true
+        modelNumber.markAsDirty()
+        validate()
+    }
+
+    /// Convenience for outside views that still expect a string value.
+    var modelNumberValue: String { modelNumber.value }
+
+    /// Reset the form to pristine state.
+    func reset() {
+        modelNumber.value = ""
+        modelNumber.markAsPristine()
+        validate()
+    }
+
+    // MARK: Error helpers – used by UI.
+    func getError(for field: FocusField) -> String? {
+        switch field {
+        case .modelNumber:
+            return modelNumberError
+        default:
+            return nil
+        }
+    }
+
+    private var modelNumberError: String? {
+        guard modelNumber.isDirty else { return nil }
+        if modelNumber.errors[.required] ||
+            modelNumber.errors[.minLength] ||
+            modelNumber.errors[.maxLength] ||
+            modelNumber.errors[.skuMatch] {
+            return FormErrorMessages.modelNumberInvalid
+        }
+        return nil
     }
 }

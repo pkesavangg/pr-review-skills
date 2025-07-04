@@ -8,6 +8,7 @@ struct WeightlessScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var router: Router<SettingsRoute>
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     
     private let strings = WeightlessStrings.self
     private let toast = ToastStrings.self
@@ -75,7 +76,31 @@ struct WeightlessScreen: View {
             }
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .onAppear { settingsStore.populateWeightlessFormIfNeeded() }
+        .onAppear {
+            settingsStore.populateWeightlessFormIfNeeded()
+
+            registerDeactivation {
+                // If the form has no unsaved changes, allow immediate tab switch.
+                if !settingsStore.weightlessForm.isDirty {
+                    router.navigateBack()
+                    return true
+                }
+
+                // Otherwise ask for confirmation via SettingsStore.
+                let confirmed = await settingsStore.confirmDiscardWeightlessChanges()
+                if confirmed {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        router.navigateBack()
+                        settingsStore.resetWeightlessForm()
+                    }
+                }
+                return confirmed
+            }
+        }
+        .onDisappear {
+            // Remove deactivation handler when leaving the screen.
+            registerDeactivation { true }
+        }
         .navigationBarHidden(true)
     }
 }

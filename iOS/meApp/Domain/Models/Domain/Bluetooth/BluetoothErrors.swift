@@ -40,6 +40,13 @@ enum BluetoothServiceError: Error, LocalizedError {
     case updateWeightOnlyModeFailed(Error)
     case showWeightOnlyModeFailed(Error)
     case showUpdatesPendingAlertFailed(Error)
+    case pairOperationFailed(Error)
+    case deviceNotFound
+    case invalidDeviceState
+    case bluetoothUnavailable
+    case permissionDenied
+    case scanInProgress
+    case deviceAlreadyConnected
 
     var errorDescription: String? {
         switch self {
@@ -107,6 +114,20 @@ enum BluetoothServiceError: Error, LocalizedError {
             return "Show weight only mode failed: \(error.localizedDescription)"
         case .showUpdatesPendingAlertFailed(let error):
             return "Show updates pending alert failed: \(error.localizedDescription)"
+        case .pairOperationFailed(let error):
+            return "Pairing operation failed: \(error.localizedDescription)"
+        case .deviceNotFound:
+            return "Device not found or no longer available"
+        case .invalidDeviceState:
+            return "Device is in an invalid state for this operation"
+        case .bluetoothUnavailable:
+            return "Bluetooth is not available or turned off"
+        case .permissionDenied:
+            return "Required permissions were denied"
+        case .scanInProgress:
+            return "Cannot perform operation while scan is in progress"
+        case .deviceAlreadyConnected:
+            return "Device is already connected"
         }
     }
 }

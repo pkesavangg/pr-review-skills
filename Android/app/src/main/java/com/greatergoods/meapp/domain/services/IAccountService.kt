@@ -4,6 +4,7 @@ import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -139,6 +140,19 @@ interface IAccountService {
      * @return true if all accounts were logged out successfully, false otherwise
      */
     suspend fun logoutAll(): Boolean
+
+    // Theme Mode Operations
+    /**
+     * Gets the current theme mode for the active account as a flow.
+     * @return Flow of ThemeMode that emits changes
+     */
+    val currentThemeModeFlow: Flow<ThemeMode>
+
+    /**
+     * Sets the theme mode for the active account.
+     * @param themeMode The ThemeMode to set
+     */
+    suspend fun setCurrentThemeMode(themeMode: ThemeMode)
 }
 
 /**

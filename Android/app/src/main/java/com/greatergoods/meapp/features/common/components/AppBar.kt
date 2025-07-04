@@ -3,6 +3,7 @@
 
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -40,20 +41,26 @@ fun AppBar(
     title: String? = null,
     borderColor: Color = colorScheme.utility,
     containerColor: Color = colorScheme.primaryBackground,
+    enable: Boolean = false,
+    onClick: (() -> Unit)? = null,
     navigationIcon: (@Composable (() -> Unit))? = null,
     actions: (@Composable (() -> Unit))? = null,
 ) {
     TopAppBar(
         modifier =
-            Modifier.drawBehind {
-                val borderSize = 1.dp.toPx()
-                drawLine(
-                    color = borderColor,
-                    start = Offset(0f, size.height),
-                    end = Offset(size.width, size.height),
-                    strokeWidth = borderSize,
-                )
-            },
+            Modifier
+                .drawBehind {
+                    val borderSize = 1.dp.toPx()
+                    drawLine(
+                        color = borderColor,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = borderSize,
+                    )
+                }
+                .clickable(enabled = enable) {
+                    onClick?.invoke()
+                },
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = containerColor,

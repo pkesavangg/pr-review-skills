@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.helper.DateFormatHelper
 import com.greatergoods.meapp.features.common.model.SettingColorType
 import com.greatergoods.meapp.features.common.model.SettingsItem
 import com.greatergoods.meapp.features.common.model.SettingsItemType
@@ -75,29 +76,32 @@ fun SettingsSection(
 /**
  * A row in the settings section that displays a single settings item.
  * Handles different types of settings items:
- * - Action: Shows a right caret icon
- * - Dropdown: Shows a down caret icon
- * - TextOnly: Shows only text without any icon
- * - CustomIcon: Shows a custom icon
- * - Custom: Shows custom composable content
- * - None: Shows no additional content
+ * - Action: Shows a right caret icon (icon clickable)
+ * - Dropdown: Shows a down/up caret icon (icon clickable, toggles state)
+ * - TextOnly: Shows only text without any icon (whole row clickable)
+ * - CustomIcon: Shows a custom icon (icon clickable)
+ * - Custom: Shows custom composable content (whole row clickable)
+ * - None: Shows no additional content (whole row clickable)
  *
  * @param item The settings item to display
  */
 @Composable
-private fun SettingsItemRow(item: SettingsItem) {
+private fun SettingsItemRow(
+    item: SettingsItem,
+) {
     val color =
         when (item.color) {
-            SettingColorType.Default -> MeTheme.colorScheme.textBody
+            SettingColorType.Default -> if (item.enabled) MeTheme.colorScheme.textBody else MeTheme.colorScheme.utility
             SettingColorType.Primary -> MeTheme.colorScheme.wgPrimary
             SettingColorType.Tertiary -> MeTheme.colorScheme.textSubheading
             SettingColorType.Danger -> MeTheme.colorScheme.danger
         }
 
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MeTheme.colorScheme.primaryBackground,
-        onClick = item.onClick,
+         onClick = item.onClick,
     ) {
         Row(
             modifier =
@@ -111,6 +115,7 @@ private fun SettingsItemRow(item: SettingsItem) {
                 text = item.title,
                 textType = TextType.Subtitle,
                 color = color,
+                enabled = item.enabled,
             )
 
             Row(
@@ -123,15 +128,22 @@ private fun SettingsItemRow(item: SettingsItem) {
                         is SettingsItemType.CustomIcon -> item.type.text
                         is SettingsItemType.Dropdown -> item.type.text
                         is SettingsItemType.TextOnly -> item.type.text
+                        is SettingsItemType.TextDate ->
+                            DateFormatHelper.formatDisplayDate(
+                                item.type.rawDate,
+                            )
+
                         else -> null
                     }
                 if (value != null) {
                     Text(
                         text = value,
                         style = MeTheme.typography.body2,
-                        color = MeTheme.colorScheme.textSubheading,
+                        color = if (item.enabled) MeTheme.colorScheme.textSubheading else MeTheme.colorScheme.utility,
                         textAlign = TextAlign.End,
-                        modifier = Modifier.widthIn(max = 120.dp),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 160.dp),
                     )
                 }
                 when (item.type) {
@@ -139,6 +151,8 @@ private fun SettingsItemRow(item: SettingsItem) {
                         AppIcon(
                             id = AppIcons.Default.RightCaret,
                             contentDescription = "Action",
+                            enabled = item.enabled,
+                            onClick = {item.onClick.invoke()},
                         )
                     }
 
@@ -146,6 +160,8 @@ private fun SettingsItemRow(item: SettingsItem) {
                         AppIcon(
                             id = AppIcons.Filled.CaretDown,
                             contentDescription = "Dropdown",
+                            enabled = item.enabled,
+                            onClick = {item.onClick.invoke()},
                         )
                     }
 
@@ -157,8 +173,18 @@ private fun SettingsItemRow(item: SettingsItem) {
                         item.type.content()
                     }
 
+                    is SettingsItemType.Toggle -> {
+                        AppToggle(
+                            checked = item.type.checked,
+                            onCheckedChange = item.type.onCheckedChange
+                        )
+                    }
+
                     is SettingsItemType.None, is SettingsItemType.TextOnly -> {
                         // No icon
+                    }
+
+                    is SettingsItemType.TextDate -> {
                     }
                 }
             }
@@ -171,7 +197,7 @@ private fun SettingsItemRow(item: SettingsItem) {
 private fun SettingsSectionPreview() {
     MeAppTheme {
         Column {
-            // Action Items Section
+            // Action Items Section (Icon clickable only)
             SettingsSection(
                 title = "Action Items",
                 items =
@@ -179,7 +205,7 @@ private fun SettingsSectionPreview() {
                         SettingsItem(
                             title = "Regular Action",
                             type = SettingsItemType.Action(),
-                            onClick = {},
+                            onClick = {}, // Row click (not triggered)
                         ),
                         SettingsItem(
                             title = "Primary Action",
@@ -196,7 +222,7 @@ private fun SettingsSectionPreview() {
                     ),
             )
 
-            // Dropdown Items Section
+            // Dropdown Items Section (Centralized state management)
             SettingsSection(
                 title = "Dropdown Items",
                 items =
@@ -204,17 +230,21 @@ private fun SettingsSectionPreview() {
                         SettingsItem(
                             title = "Gender",
                             type = SettingsItemType.Dropdown("Female"),
-                            onClick = {},
+                            onClick = {
+                                // Set dialog and expand dropdown
+                            },
                         ),
                         SettingsItem(
                             title = "Units",
                             type = SettingsItemType.Dropdown("lbs & feet"),
-                            onClick = {},
+                            onClick = {
+                                // Set dialog and expand dropdown
+                            },
                         ),
                     ),
             )
 
-            // Text Only Items Section
+            // Text Only Items Section (Whole row clickable)
             SettingsSection(
                 title = "Text Only Items",
                 items =
@@ -222,12 +252,12 @@ private fun SettingsSectionPreview() {
                         SettingsItem(
                             title = "Height",
                             type = SettingsItemType.TextOnly("5' 7\""),
-                            onClick = {},
+                            onClick = {}, // Whole row clickable
                         ),
                         SettingsItem(
                             title = "Weight",
                             type = SettingsItemType.TextOnly("150 lbs"),
-                            onClick = {},
+                            onClick = {}, // Whole row clickable
                         ),
                     ),
             )
@@ -244,12 +274,12 @@ private fun SettingsSectionPreview() {
                                     text = "Custom",
                                     icon = { AppIcon(id = AppIcons.Default.Plus, contentDescription = "Plus") },
                                 ),
-                            onClick = {},
+                            onClick = {}, // Row click (not triggered)
                         ),
                         SettingsItem(
                             title = "No Icon",
                             type = SettingsItemType.None,
-                            onClick = {},
+                            onClick = {}, // Whole row clickable
                         ),
                         SettingsItem(
                             title = "Custom Content",
@@ -267,10 +297,12 @@ private fun SettingsSectionPreview() {
                                         )
                                     }
                                 },
-                            onClick = {},
+                            onClick = {}, // Whole row clickable
                         ),
                     ),
             )
         }
     }
 }
+
+

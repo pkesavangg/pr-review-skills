@@ -38,7 +38,7 @@ struct ConnectedGraphPageView: View {
                             if tick != graphStore.goalWeight {
                                 RuleMark(y: .value(GraphViewStrings.yGrid, tick))
                                     .lineStyle(StrokeStyle(lineWidth: 1))
-                                    .foregroundStyle(theme.statusUtility)
+                                    .foregroundStyle(theme.statusUtilityPrimary)
                                     .zIndex(-1)
                             }
                         }
@@ -55,7 +55,7 @@ struct ConnectedGraphPageView: View {
                                         dash: (isFirst || isLast) ? [] : [3, 3]
                                     )
                                 )
-                                .foregroundStyle(theme.statusUtility)
+                                .foregroundStyle(theme.statusUtilityPrimary)
                                 .zIndex(-1)
                         }
 

@@ -21,6 +21,7 @@ final class ContentViewModel: ObservableObject {
     @Injector var entryService : EntryService
     @Injector var logger : LoggerService
     @Injector var pushNotificationService : PushNotificationService
+    @Injector var bluetoothService: BluetoothService
     
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
@@ -85,6 +86,7 @@ final class ContentViewModel: ObservableObject {
         await scaleService.syncAllScalesWithRemote()
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
+        bluetoothService.initialize()
         
         do {
             entries = try await entryService.getAllEntries()

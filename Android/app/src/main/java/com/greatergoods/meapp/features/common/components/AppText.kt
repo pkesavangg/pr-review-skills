@@ -36,7 +36,7 @@ enum class TextType {
 
 object TextTypeDefaults {
     @Composable
-    fun appearance(type: TextType): TextAppearance {
+    fun appearance(type: TextType, enabled: Boolean = true): TextAppearance {
         val typography = MeTheme.typography
 
         return when (type) {
@@ -49,7 +49,7 @@ object TextTypeDefaults {
             TextType.Subtitle ->
                 TextAppearance(
                     style = typography.subHeading1,
-                    color = colorScheme.textBody,
+                    color = if (enabled) colorScheme.textBody else colorScheme.utility,
                 )
 
             TextType.Body ->
@@ -60,7 +60,7 @@ object TextTypeDefaults {
 
             TextType.Link ->
                 TextAppearance(
-                    style = typography.link2,
+                    style = typography.link1,
                     color = colorScheme.primaryAction,
                 )
 
@@ -85,7 +85,6 @@ object TextTypeDefaults {
                 color = colorScheme.textSubheading,
             )
 
-
         }
     }
 }
@@ -95,12 +94,13 @@ fun AppText(
     text: String,
     textType: TextType,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     spacing: Dp = LocalSpacing.current.none,
     textAlign: TextAlign = TextAlign.Start,
     color: Color? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val textTypeDefault = TextTypeDefaults.appearance(textType)
+    val textTypeDefault = TextTypeDefaults.appearance(textType, enabled)
     Column(
         modifier =
             Modifier

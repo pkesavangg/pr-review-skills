@@ -67,7 +67,7 @@ struct ToggleListItem: View {
             if showDivider {
                 HStack {
                     Divider()
-                        .foregroundColor(theme.statusUtility)
+                        .foregroundColor(theme.statusUtilityPrimary)
                         .padding(.trailing, .spacingSM)
                 }
             }

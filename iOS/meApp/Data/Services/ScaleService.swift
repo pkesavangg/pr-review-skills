@@ -332,8 +332,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             if (device.broadcastIdString == nil || device.broadcastIdString?.isEmpty == true) {
                 if let bidStr = device.broadcastId, let bidInt = Int(bidStr) {
                     let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "") ?? .bluetoothScale
-                    let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource,
-                                                                                      sku: device.sku ?? "")
+                    let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
                     device.broadcastIdString = ProtocolConversionTools.convertIntToHex(bidInt, protocolType: protocolType)
                 }
             }

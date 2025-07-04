@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleFormControls
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
@@ -41,7 +42,6 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.components.ScaleList
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
@@ -59,7 +59,7 @@ fun AddScaleScreen(viewModel: AddScaleViewModel = hiltViewModel()) {
 @Composable
 fun AddScaleScreenContent(
     state: AddScaleState,
-    handleIntent: (AddScaleIntent) -> Unit
+    handleIntent: (AddScaleIntent) -> Unit,
 ) {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -88,8 +88,10 @@ fun AddScaleScreenContent(
                     onClick = { focusManager.clearFocus() },
                 ),
         ) {
-            Column(modifier = Modifier
-                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
+            Column(
+                modifier =
+                    Modifier
+                        .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
             ) {
                 AppText(
                     text = AddScaleScreenStrings.Title,
@@ -114,9 +116,10 @@ fun AddScaleScreenContent(
                     showTrailingIconAlways = true,
                     trailingIconId = AppIcons.Outlined.Help,
                     onTrailingAction = { handleIntent(AddScaleIntent.ShowHelp) },
-                    modifier = Modifier
-                        .semantics { contentType = ContentType.PhoneNumber }
-                        .focusRequester(modelNumberFocusRequester),
+                    modifier =
+                        Modifier
+                            .semantics { contentType = ContentType.PhoneNumber }
+                            .focusRequester(modelNumberFocusRequester),
                 )
 
                 Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
@@ -137,26 +140,33 @@ fun AddScaleScreenContent(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
                 Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-                AppText(
-                    text = AddScaleScreenStrings.MyScales,
-                    textType = TextType.Title,
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
-            ) {
-                state.savedScales.forEach { scale ->
-                    AppScaleCard(
-                        scale = scale,
-                        isSavedScale = true,
-                        onClick = {},
+                if (state.savedScales.isNotEmpty()) {
+                    AppText(
+                        text = AddScaleScreenStrings.MyScales,
+                        textType = TextType.Title,
                     )
                 }
             }
+            if (state.savedScales.isNotEmpty()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(),
+                ) {
+                    state.savedScales.forEach { scaleInfo ->
+                        AppScaleCard(
+                            scale = scaleInfo,
+                            isSavedScale = true,
+                            onClick = { selectedScaleInfo ->
+                                selectedScaleInfo.broadcastId?.let { broadcastId ->
+                                    handleIntent(AddScaleIntent.OpenScaleSettings(broadcastId))
+                                }
+                            },
+                        )
+                    }
+                }
+            }
         }
-
     }
 }
 
@@ -164,14 +174,17 @@ fun AddScaleScreenContent(
 @Composable
 fun AddScaleScreenPreview() {
     MeAppTheme {
-        val dummyAddScaleState = AddScaleState(
-            form = FormGroup(
-                controls = AddScaleFormControls(
-                    modelNumber = FormControl.create(""),
-                ),
-            ),
-            isSubmitting = false,
-        )
+        val dummyAddScaleState =
+            AddScaleState(
+                form =
+                    FormGroup(
+                        controls =
+                            AddScaleFormControls(
+                                modelNumber = FormControl.create(""),
+                            ),
+                    ),
+                isSubmitting = false,
+            )
         AddScaleScreenContent(
             state = dummyAddScaleState,
             handleIntent = {},

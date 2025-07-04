@@ -13,8 +13,6 @@ import Combine
 protocol BluetoothServiceProtocol {
 
     // MARK: - State
-    /// Indicates whether a smart scan is currently in progress.
-    var isScanning: Bool { get }
 
     /// Flag that determines if UI modals can be shown for newly discovered scales.
     var canShowScaleDiscoveredModal: Bool { get }
@@ -31,6 +29,9 @@ protocol BluetoothServiceProtocol {
 
     /// Publisher for new entry events.
     var newEntryReceivedPublisher: AnyPublisher<Entry, Never> { get }
+
+    /// Publisher for firmware update progress.
+    var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { get }
 
     /// Indicates whether a setup is currently in progress.
     var isSetupInProgress: Bool { get set }
@@ -68,6 +69,15 @@ protocol BluetoothServiceProtocol {
     // MARK: - Device CRUD
     /// Adds a newly discovered scale to persistent storage and returns the saved model.
     func addNewDevice(_ device: Device, metaData: DeviceMetaData?) async throws -> Device
+
+    /// Confirms a smart pairing operation with the specified device.
+    /// - Parameters:
+    ///   - device: The device to confirm pairing with.
+    ///   - token: The authentication token for the device.
+    ///   - displayName: The display name for the scale.
+    ///   - userNumber: Optional user number for the device.
+    /// - Returns: The result of the user creation operation.
+    func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async throws -> UserCreationResponse
 
     /// Deletes a scale from storage (and optionally from the physical device).
     /// - Parameters:
