@@ -27,6 +27,7 @@ struct ChooseYourScaleView: View {
                 trailingContent: { EmptyView() },
                 onLeadingTap: { dismiss() },
                 onTrailingTap: {},
+                canShowBorder: true,
                 canShowPresentationIndicator: true
             )
 
@@ -35,7 +36,9 @@ struct ChooseYourScaleView: View {
                 onSelect(scale)
                 dismiss()
             }
+            .padding(.top, .spacingSM)
         }
+        .background(theme.backgroundSecondary.ignoresSafeArea())
     }
 }
 

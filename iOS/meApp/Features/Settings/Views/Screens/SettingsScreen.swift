@@ -179,12 +179,13 @@ struct SettingsScreen: View {
                 style: .fill
             )
             .onLongPressGesture {
-                tabViewModel.showTabBar = false
                 router.navigate(to: .myAccounts)
             }
             Text(settingsStore.profileName)
                 .fontOpenSans(.heading3)
                 .foregroundColor(theme.textHeading)
+                .lineLimit(1)
+                .truncationMode(.tail)
             Text(settingsStore.profileEmail)
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
@@ -199,7 +200,6 @@ struct SettingsScreen: View {
                 onTap: {router.navigate(to:.addEditScales)}))
                 .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations, onTap: {
-                tabViewModel.showTabBar = false
                 router.navigate(to: .integrations)
             }))
                 .listRowInsets()
@@ -209,19 +209,17 @@ struct SettingsScreen: View {
                 .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword,
                                                        onTap: {
-                                                           tabViewModel.showTabBar = false
                                                            router.navigate(to: .changePassword)
                                                        }))
                 .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.userProfile,
                                                        onTap: {
-                                                           tabViewModel.showTabBar = false
                                                            router.navigate(to: .editProfile)
                                                        }))
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func profileSettingsSection() -> some View {
@@ -229,7 +227,6 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.goalSetting,
                 onTap: {
-                    tabViewModel.showTabBar = false
                     router.navigate(to: .goal)
                 }))
                 .listRowInsets()
@@ -261,13 +258,12 @@ struct SettingsScreen: View {
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText,
                 onTap: {
-                    tabViewModel.showTabBar = false
                     router.navigate(to: .weightless)
                 }))
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func appSettingsSection() -> some View {
@@ -295,13 +291,12 @@ struct SettingsScreen: View {
                 onTap: { showAppearancePicker = true }))
                 .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
-                tabViewModel.showTabBar = false
                 router.navigate(to: .appPermissions)
             }))
                 .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func supportSection() -> some View {
@@ -311,7 +306,6 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.helpAndCustomerService,
                 onTap: {
-                    tabViewModel.showTabBar = false
                     router.navigate(to: .help)
                 }
             ))
@@ -342,7 +336,7 @@ struct SettingsScreen: View {
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func accountActionSection() -> some View {
@@ -350,7 +344,6 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.switchAccounts,
                 onTap: {
-                    tabViewModel.showTabBar = false
                     router.navigate(to: .myAccounts)
                 }
             ))
@@ -387,7 +380,7 @@ struct SettingsScreen: View {
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtility)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     private func sectionHeader(title: String) -> some View {

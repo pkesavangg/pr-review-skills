@@ -30,6 +30,7 @@ struct ColorTokens {
     static let red900 = Color("red-900")
     static let green100 = Color("green-100")
     static let yellow100 = Color("yellow-100")
+    static let accucheck = Color("accucheck")
 
     // MARK: - App Palette Definitions
     struct Palette {
@@ -62,6 +63,8 @@ struct ColorTokens {
             actionInverse: neutral100,
             actionInverseDisabled: neutral300,
             actionInverseSecondary: neutral200,
+            actionError: red900,
+            actionErrorDisabled: red100,
             
             // Brand
             brandMeAppPrimary: teal100,
@@ -71,12 +74,18 @@ struct ColorTokens {
             statusSuccess: green100,
             statusError: red900,
             statusStreak: yellow100,
-            statusUtility: neutral400,
+            statusUtilityPrimary: neutral400,
+            statusUtilitySecondary: neutral900,
             statusIconPrimary: blue900,
             statusIconSecondary: neutral600,
-            statusIconDisabled: neutral400,
+            statusIconPrimaryDisabled: blue500,
+            statusIconSecondaryDisabled: neutral400,
             statusIconLoading: blue500,
-            statusIconLoadingError: red100
+            statusIconLoadingError: red100,
+            
+            // Logos
+            logoPrimary: neutral100,
+            logoSecondary: neutral900,
         )
     }
 }

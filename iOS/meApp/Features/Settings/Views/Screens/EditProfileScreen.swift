@@ -14,6 +14,7 @@ struct EditProfileScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var settingsStore: SettingsStore
     @EnvironmentObject var router: Router<SettingsRoute>
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     
     @State private var focusedField: FocusField? = nil
     @State private var showDatePicker = false
@@ -105,10 +106,10 @@ struct EditProfileScreen: View {
                     }
                     
                     // Birthday date selector
-                    VStack(alignment: .leading, spacing: .spacingXS) {
+                    VStack(alignment: .leading, spacing: .spacingSM) {
                         Text(labels.birthday)
-                            .fontOpenSans(.body3)
-                            .foregroundColor(theme.textBody)
+                            .fontOpenSans(.subHeading1)
+                            .foregroundColor(theme.textSubheading)
                         
                         DateLabelView(date: settingsStore.editProfileForm.birthday.value) {
                             withAnimation { showDatePicker.toggle() }
@@ -127,7 +128,31 @@ struct EditProfileScreen: View {
             .navigationBarHidden(true)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .onAppear { settingsStore.populateEditFormIfNeeded() }
+        .onAppear {
+            settingsStore.populateEditFormIfNeeded()
+
+            registerDeactivation {
+                // If the form has no unsaved changes, allow immediate tab switch.
+                if !settingsStore.editProfileForm.isDirty {
+                    router.navigateBack()
+                    return true
+                }
+
+                // Otherwise ask for confirmation.
+                let confirmed = await settingsStore.confirmDiscardProfileChanges()
+                if confirmed {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        router.navigateBack()
+                        settingsStore.resetEditProfileForm()
+                    }
+                }
+                return confirmed
+            }
+        }
+        .onDisappear {
+            // Remove deactivation handler when leaving screen.
+            registerDeactivation { true }
+        }
     }
 }
 
