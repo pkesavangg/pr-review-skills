@@ -1,0 +1,72 @@
+# SwiftUI Best Practices (meApp iOS)
+
+## 1. View Structure
+- One main View per file (exception: multiple previews allowed).
+- Every SwiftUI file must contain at least one preview using `#Preview`.
+- Prefer stateless views unless state is required.
+- Use `@Observable` for state management.
+
+## 2. State Management
+- Use `@StateObject` for ViewModels/Stores.
+- Use `@State` for local view state.
+- Use `@EnvironmentObject` for global state.
+- Use `@FocusState` for focus management.
+
+## 3. Design System Enforcement
+- Use only design system resources from `Theme/`.
+- Never hardcode colors, fonts, or spacing.
+- Use `@Environment(\.appTheme)` for theming.
+- Use shared components from `Features/Common/` when available.
+
+## 4. Static String Management
+- All static text must be in dedicated `Strings` files.
+- Create `Strings/` subfolder in each feature.
+- Use PascalCase for string structs and constants.
+- Reference static text from corresponding `Strings` object.
+- Applies to all views in `Features/` folders.
+
+## 5. Advanced State & Memory Management
+- Use `@StateObject` only when the view owns the object lifecycle; use `@ObservedObject` for injected dependencies to avoid retain cycles and memory leaks ([Common Mistakes with @StateObject](https://medium.com/@shahin.cse.sust/common-mistakes-with-stateobject-in-swiftui-how-to-avoid-them-e03e84a2de5f)).
+- For shared data, prefer `@EnvironmentObject` but avoid for deeply nested dependencies; use `@Binding` for explicit parent-child state propagation.
+- Avoid unnecessary object creation: inject heavy view models as `@ObservedObject` from parent views when possible.
+
+## 6. List & Large Data Performance
+- For very large datasets, prefer `List` over `LazyVStack` for better off-screen view management ([Common Complex Issues in SwiftUI](https://medium.com/@authfy/common-complex-issues-in-swiftui-development-and-how-to-fix-them-31539faddad9)).
+- Always provide unique, stable identifiers for list items.
+
+## 7. Offloading Heavy Computation
+- Never perform heavy computations in the view `body`; use background threads or async tasks and update state on the main thread.
+- Use `Task` or `DispatchQueue.global` for background work, and update `@State` on the main thread.
+
+## 8. Value Types & Copy-on-Write
+- Prefer value types (struct, enum) for large data models to leverage Swift's copy-on-write optimizations.
+- Avoid reference types unless shared mutable state is required.
+
+## 9. Explicit Resource Cleanup
+- For heavy resources (media players, large buffers), explicitly release them in `.onDisappear` or via cancellation tokens.
+- Use weak references in view models to avoid retain cycles, especially in navigation flows.
+
+## 10. Equatable Views
+- Conform views to `Equatable` when possible to help SwiftUI skip unnecessary updates.
+- Only use Equatable when you can provide a meaningful and efficient `==` implementation.
+
+## 11. Navigation & View Lifecycle
+- Avoid strong references from child to parent view models to prevent memory leaks in navigation flows.
+- Use weak references and clean up resources in `.onDisappear`.
+
+---
+
+**Summary:**
+- All UI must use SwiftUI, the design system, and externalized strings, with previews and proper state management.
+description:
+globs:
+alwaysApply: false
+---
+
+**References:**
+- [SwiftUI Coding Standards and Best Practices – Pavlos Simas](https://simaspavlos.medium.com/swiftui-coding-standards-and-best-practices-6e861ed3edd6)
+- [Optimizing SwiftUI Performance: Best Practices – Medium](https://medium.com/@garejakirit/optimizing-swiftui-performance-best-practices-93b9cc91c623)
+- [Reducing SwiftUI Memory Usage in Large Applications – Wesley Matlock](https://medium.com/@wesleymatlock/reducing-swiftui-memory-usage-in-large-applications-71ed7ff1ac64)
+- [Common Complex Issues in SwiftUI Development and How to Fix Them – Medium](https://medium.com/@authfy/common-complex-issues-in-swiftui-development-and-how-to-fix-them-31539faddad9)
+- [Common Mistakes with @StateObject in SwiftUI: How to Avoid Them – Medium](https://medium.com/@shahin.cse.sust/common-mistakes-with-stateobject-in-swiftui-how-to-avoid-them-e03e84a2de5f)
+- [Improving Accessibility Identifiers Maintainability with Nested Accessibility Identifiers in SwiftUI – Medium](https://medium.com/@rmenezes89/improving-accessibility-identifiers-maintainability-with-nested-accessibility-identifiers-in-8dddd3d00a98)

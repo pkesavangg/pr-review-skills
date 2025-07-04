@@ -1,0 +1,30 @@
+# Logger Best Practices (meApp iOS)
+
+## 1. Logger Usage
+- Use `LoggerService` for all production logs.
+- Use appropriate log levels:
+  - `LoggerService.info` - General information
+  - `LoggerService.debug` - Debug information
+  - `LoggerService.warning` - Warnings
+  - `LoggerService.error` - Errors
+  - `LoggerService.verbose` - Verbose (development only)
+
+## 2. Log Structure
+- Use descriptive tags (class or feature name).
+- Include contextual information.
+- Structure messages for easy searching.
+- Avoid logging sensitive data.
+
+## 3. Exception Logging
+- Always log exceptions with context.
+- Include relevant parameters.
+- Use `LoggerService.error` for all exceptions.
+
+---
+
+**Summary:**
+- All logs must use LoggerService, be structured, and avoid sensitive data.
+description:
+globs:
+alwaysApply: false
+---
