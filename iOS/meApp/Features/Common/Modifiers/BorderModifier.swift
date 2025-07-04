@@ -51,7 +51,7 @@ struct BorderModifier: ViewModifier {
     private func makeBorder(width: CGFloat?, height: CGFloat?, alignment: Alignment) -> some View {
         Rectangle()
             .frame(width: width, height: height)
-            .foregroundColor(color ?? theme.statusUtility)
+            .foregroundColor(color ?? theme.statusUtilityPrimary)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
     }
 }

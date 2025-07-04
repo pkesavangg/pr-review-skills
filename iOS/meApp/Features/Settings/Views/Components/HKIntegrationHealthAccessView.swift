@@ -26,7 +26,7 @@ struct HKIntegrationHealthAccessView: View {
         case .permissionsAllowed:
             return HKIntegrationHealthAccessStrings.permissionsAllowed
         case .permissionsNotAllowed:
-            return HKIntegrationHealthAccessStrings.notConnected // Reuse or create new if needed
+            return HKIntegrationHealthAccessStrings.notConnected
         case .integrationComplete:
             return HKIntegrationHealthAccessStrings.integrationComplete
         case .integrationFailed:
@@ -49,8 +49,8 @@ struct HKIntegrationHealthAccessView: View {
                     }
                 },
                 onLeadingTap: {
-                    // Trigger the passed dismiss handler so the parent can clear `activeState`.
-                    onDismiss?()
+                    // Dismiss the view
+                    viewModel.showExitAlert(state: state, dismiss: onDismiss)
                 },
                 onTrailingTap: {},
                 canShowBorder: true
@@ -59,17 +59,16 @@ struct HKIntegrationHealthAccessView: View {
                 // Image
                 Image(content.imageName)
                     .resizable()
-                    .scaledToFit()
                     .frame(maxWidth: 190, maxHeight: 401)
-                    .clipShape(RoundedRectangle(cornerRadius: 12)) // TODO: Need to update the theme radius after UX provided
+                    .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.black, lineWidth: 5) // TODO: Need to replace with theme color after UX provided
+                        RoundedRectangle(cornerRadius: .radiusSM)
+                            .stroke(theme.statusUtilitySecondary, lineWidth: 5)
                     }
                     .overlay {
                         if state == .integrationFailed  || state == .userConflict {
-                            Color.black.opacity(0.1)
-                                .cornerRadius(12)
+                            theme.supportOverlay
+                                .cornerRadius(.radiusSM)
                             Image(AppAssets.exclamationDanger)
                                 .resizable()
                                 .scaledToFit()
@@ -82,7 +81,7 @@ struct HKIntegrationHealthAccessView: View {
                 // Title
                 Text(content.title)
                     .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading) // TODO: Need to replace with theme color after UX provided
+                    .foregroundColor(theme.textHeading)
                     .multilineTextAlignment(.center)
                     .padding(.top, .spacing2XL)
                     .padding(.horizontal, .spacingSM)
@@ -101,7 +100,7 @@ struct HKIntegrationHealthAccessView: View {
                             .fontOpenSans(.body2)
                     }
                 }
-                .foregroundColor(theme.textBody) // Replace with correct color once UX provides it
+                .foregroundColor(theme.textBody)
                 .multilineTextAlignment(.center)
                 .padding(.vertical, .spacingMD)
                 .padding(.horizontal, .spacingLG)

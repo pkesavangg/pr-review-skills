@@ -45,6 +45,8 @@ enum AppColors {
         let actionInverse: Color
         let actionInverseDisabled: Color
         let actionInverseSecondary: Color
+        let actionError: Color
+        let actionErrorDisabled: Color
         
         // Brand colors
         let brandMeAppPrimary: Color
@@ -54,12 +56,18 @@ enum AppColors {
         let statusSuccess: Color
         let statusError: Color
         let statusStreak: Color
-        let statusUtility: Color
+        let statusUtilityPrimary: Color
+        let statusUtilitySecondary: Color
         let statusIconPrimary: Color
         let statusIconSecondary: Color
-        let statusIconDisabled: Color
+        let statusIconPrimaryDisabled: Color
+        let statusIconSecondaryDisabled: Color
         let statusIconLoading: Color
         let statusIconLoadingError: Color
+        
+        // Logo colors
+        let logoPrimary: Color
+        let logoSecondary: Color
         
         static func forTheme(_ theme: Theme) -> Palette {
             switch theme {
