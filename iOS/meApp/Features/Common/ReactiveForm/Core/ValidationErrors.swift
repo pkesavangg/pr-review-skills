@@ -44,6 +44,7 @@ public enum ValidatorType: Hashable {
     case url
     case minValue
     case maxValue
+    case skuMatch
     
     public func hash(into hasher: inout Hasher) {
         hasher.combine(String(describing: self))

@@ -105,9 +105,16 @@ class MetricFieldFormatter: ObservableObject {
             return emptyValue
         }
         
-        // Remove leading zeros but keep a single zero when the entire string is zeros (e.g. "0" → "0", "000" → "0")
-        let trimmedDigits = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
-        let normalizedDigits = trimmedDigits.isEmpty ? "0" : trimmedDigits
+        // Decide whether to preserve leading zeros based on configuration
+        let normalizedDigits: String
+        if config.showPrefixZero {
+            // Keep the original digits (will still be length-clamped below)
+            normalizedDigits = digitsOnly
+        } else {
+            // Trim leading zeros but keep a single zero when the string is all zeros
+            let trimmed = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
+            normalizedDigits = trimmed.isEmpty ? "0" : trimmed
+        }
         
         // Enforce maxLength constraint
         let limitedDigits = String(normalizedDigits.prefix(config.maxLength))

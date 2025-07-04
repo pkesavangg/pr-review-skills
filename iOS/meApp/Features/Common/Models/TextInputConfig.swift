@@ -23,4 +23,8 @@ struct TextInputConfig {
     var maxLength: Int = 3
     var maxValue: Double? = nil
     var allowWholeNumbers: Bool = false
+    /// Determines whether leading zeros should be preserved when `allowWholeNumbers` is true.
+    /// - Note: Defaults to `false` to keep the previous trimming behaviour. Set to `true` when
+    ///         you need to display values like "0385" without removing the leading zero.
+    var showPrefixZero: Bool = false
 }

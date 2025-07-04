@@ -142,7 +142,7 @@ struct WifiScreen:View {
                     Divider()
                         .frame(height: 1)
                         .frame(maxWidth: .infinity)
-                        .background(theme.statusUtility)
+                        .background(theme.statusUtilityPrimary)
                 }
             }
         }
