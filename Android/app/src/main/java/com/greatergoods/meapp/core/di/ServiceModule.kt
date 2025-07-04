@@ -6,8 +6,8 @@ import com.greatergoods.meapp.core.service.AppNavigationService
 import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DashboardService
 import com.greatergoods.meapp.core.service.DeviceInfoService
-import com.greatergoods.meapp.core.service.GoalService
 import com.greatergoods.meapp.core.service.DeviceService
+import com.greatergoods.meapp.core.service.GoalService
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.NotificationService
@@ -18,8 +18,6 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.data.services.ExportService
-import com.greatergoods.meapp.data.storage.datastore.DashboardKeysDatastore
-import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
@@ -114,7 +112,11 @@ object ServiceModule {
      */
     @Provides
     @Singleton
-    fun provideLogManager(logRepository: ILogRepository): LogManager = LogManager(logRepository)
+    fun provideLogManager(
+        logRepository: ILogRepository,
+        connectivityObserver: IConnectivityObserver,
+        dialogQueueService: IDialogQueueService
+    ): LogManager = LogManager(logRepository, connectivityObserver, dialogQueueService)
 
     /**
      * Provides a singleton instance of [DialogQueueService] for managing dialog queues.
@@ -265,7 +267,7 @@ object ServiceModule {
         dashboardRepository: IDashboardRepository
     ): IDashboardService =
         DashboardService(dashboardRepository)
-     
+
     /**
      * Provides the device service implementation.
      * Handles scale/device data operations with automatic synchronization.
