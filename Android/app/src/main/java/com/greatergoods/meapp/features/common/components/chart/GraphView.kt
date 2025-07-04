@@ -19,7 +19,6 @@ import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageYVal
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
-import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
@@ -164,7 +163,7 @@ fun GraphView(
                 if (isActive) {
                     val joinedLabel = subset.values
                         .filterNotNull()
-                        .joinToString(" / ") { it.toDouble().rounded().toString() }
+                        .joinToString(" / ") { it.label }
                     onLabelUpdate(joinedLabel)
                     val graphLines = filterXValuesInRange(
                         stableGraphLines,
@@ -185,8 +184,7 @@ fun GraphView(
                 ),
             )
             onLabelUpdate(
-                selectedData.first().y.value.toDouble()
-                    .rounded().toString(),
+                selectedData.first().y.label,
             )
         }
     }
@@ -210,7 +208,7 @@ fun GraphView(
                     // Check if still active before updating
                     val joinedLabel = subset.values
                         .filterNotNull()
-                        .joinToString(" / ") { "%.1f".format(it) }
+                        .joinToString(" / ") { it.label }
                     onLabelUpdate(joinedLabel)
                     val graphLines = filterXValuesInRange(
                         stableGraphLines,

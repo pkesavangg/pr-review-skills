@@ -18,8 +18,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
-import android.util.Log
-import com.greatergoods.meapp.features.common.model.DashboardKey
 
 /**
  * Utility object for graph-related data transformation and formatting.
@@ -57,7 +55,7 @@ object GraphUtil {
                                 value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
                                 label = entry.period,
                             ),
-                        y = Label(value = entry.weight, label = "${entry.weight} kg"),
+                        y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight.rounded() ?: 0}"),
                     )
                 },
         )
@@ -197,25 +195,30 @@ object GraphUtil {
         graphLines: List<GraphLine>,
         min: Long,
         max: Long,
-    ): Map<String, Float?> {
-        val result =
-            graphLines.associate { line ->
+    ): Map<String, Label?> {
+        val result = graphLines.associate { line ->
 
-                val yValues =
-                    line.points
-                        .filter { it.x.value.toLong() in min..max }
-                        .map { it.y.value.toDouble() }
+            val yValues =
+                line.points
+                    .filter { it.x.value.toLong() in min..max }
+                    .map { it.y.value.toDouble() }
 
-                Log.d("GraphView", "Average Y values for ${line.name}: $yValues")
-                val average =
-                    if (yValues.isNotEmpty()) {
-                        yValues.average().toFloat()
-                    } else {
-                        null
-                    }
+            val average =
+                if (yValues.isNotEmpty()) {
+                    yValues.average().toFloat()
+                } else {
+                    null
+                }
+            val inWeightlessMode = line.points.map { it.y.label }.any { it.contains("+") }
+            val prefix = if (inWeightlessMode && average != null && average > 0) "+" else ""
 
-                line.name to average
-            }
+            val label = if (average == null) null else Label(
+                value = average.toDouble().rounded() ?: 0.0,
+                label = prefix + average.toDouble().rounded().toString(),
+            )
+
+            line.name to label
+        }
         return result
     }
 

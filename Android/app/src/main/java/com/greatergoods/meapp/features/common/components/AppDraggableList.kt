@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -83,6 +84,7 @@ fun <T> AppDraggableList(
     footerContent: @Composable (() -> Unit)? = null,
     itemContent: @Composable DraggableListItemScope.(item: T) -> Unit,
 ) {
+    var isMultiTouch by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
     var openIndex by remember { mutableStateOf<Int?>(null) }
     val haptic = LocalHapticFeedback.current
@@ -103,7 +105,15 @@ fun <T> AppDraggableList(
     LazyColumn(
         state = lazyListState,
         contentPadding = contentPadding,
-        modifier = modifier.then(heightModifier),
+        modifier = modifier.then(heightModifier).pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent()
+                    isMultiTouch = event.changes.size > 1
+                    // ... handle single-finger drag logic here ...
+                }
+            }
+        }
     ) {
         itemsIndexed(items, key = { _, item -> keySelector(item) }) { index, item ->
             val scope = remember(item) { DraggableListItemScopeImpl(item, index) }
@@ -120,7 +130,7 @@ fun <T> AppDraggableList(
 
             AppDraggableListItem(
                 actionContent = { trailingActions(index, item) },
-                isDraggable = !lazyListState.isScrollInProgress && isItemDraggable(item),
+                isDraggable = !lazyListState.isScrollInProgress && isItemDraggable(item) && !isMultiTouch,
                 iconWidth = iconWidth,
                 index = index,
                 onActionOpened = { openedIdx ->

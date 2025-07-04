@@ -2,6 +2,7 @@ package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.utility.HttpErrorResponse
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IUserAPI
@@ -30,8 +31,10 @@ import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.features.goal.helper.Weightless
 import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
@@ -562,6 +565,23 @@ constructor(
         tokens?.let { tokenManager.setTokens(it) }
     }
 
+    // New: Flow for active account's weight unit
+    override fun getActiveAccountWeightUnitFlow(): Flow<WeightUnit?> =
+        getActiveAccount().map { it?.weightUnit }.distinctUntilChanged()
+
+    private fun Account?.toWeightless(): Weightless {
+        val rawWeightless = this?.weightlessWeight ?: 0f
+        val unit = this?.weightUnit
+        val weightlessInLb = ConversionTools.convertStoredToDisplay(rawWeightless.toDouble(), unit == WeightUnit.KG)
+        return Weightless(
+            isWeightlessOn = this?.isWeightlessOn ?: false,
+            weightlessWeight = weightlessInLb.toFloat(),
+        )
+    }
+
+    // New: Flow for active account's Weightless settings
+    override fun getActiveAccountWeightlessFlow(): Flow<Weightless> =
+        getActiveAccount().map { it.toWeightless() }.distinctUntilChanged()
     // Theme Mode Operations
 
     /**

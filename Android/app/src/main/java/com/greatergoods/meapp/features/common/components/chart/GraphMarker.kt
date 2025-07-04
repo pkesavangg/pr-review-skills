@@ -29,7 +29,7 @@ internal fun rememberDefaultMarker(
         rememberTextComponent(
             color = MeTheme.colorScheme.textSubheading,
             textSize = 14.sp,
-            padding = Insets(topDp = -10f),
+            padding = Insets(topDp = -6f),
 
             )
     val guideline = rememberAxisGuidelineComponent(

@@ -69,7 +69,11 @@ fun HistoryItem(
                 horizontalAlignment = Alignment.Start,
             ) {
                 Text(
-                    text = item.avgWeight.toString().plus(item.unit ?: " lbs"),
+                    text = buildString {
+                        append(item.avgWeightPrefix ?: "")
+                        append(item.avgWeight?.toString() ?: "")
+                        append(" ${item.unit ?: "lbs"}")
+                    },
                     style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                 )
@@ -88,7 +92,7 @@ fun HistoryItem(
                 horizontalAlignment = Alignment.End,
             ) {
                 Text(
-                    text = item.change.toString().plus(item.unit ?: " lbs"),
+                    text = item.change.toString().plus(" ${item.unit ?: "lbs"}"),
                     style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                 )
