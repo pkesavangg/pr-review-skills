@@ -55,4 +55,4 @@ data class Device(
 
     // BPM
     val hasNumericUsers: Boolean?
-)
+) 

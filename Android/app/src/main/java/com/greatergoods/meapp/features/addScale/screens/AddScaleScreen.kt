@@ -41,7 +41,6 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.components.ScaleList
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
@@ -59,7 +58,7 @@ fun AddScaleScreen(viewModel: AddScaleViewModel = hiltViewModel()) {
 @Composable
 fun AddScaleScreenContent(
     state: AddScaleState,
-    handleIntent: (AddScaleIntent) -> Unit
+    handleIntent: (AddScaleIntent) -> Unit,
 ) {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -81,14 +80,17 @@ fun AddScaleScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = { focusManager.clearFocus() },
                 ),
         ) {
-            Column(modifier = Modifier
-                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
+            Column(
+                modifier =
+                    Modifier
+                        .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
             ) {
                 AppText(
                     text = AddScaleScreenStrings.Title,
@@ -113,9 +115,10 @@ fun AddScaleScreenContent(
                     showTrailingIconAlways = true,
                     trailingIconId = AppIcons.Outlined.Help,
                     onTrailingAction = { handleIntent(AddScaleIntent.ShowHelp) },
-                    modifier = Modifier
-                        .semantics { contentType = ContentType.PhoneNumber }
-                        .focusRequester(modelNumberFocusRequester),
+                    modifier =
+                        Modifier
+                            .semantics { contentType = ContentType.PhoneNumber }
+                            .focusRequester(modelNumberFocusRequester),
                 )
 
                 Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
@@ -144,19 +147,19 @@ fun AddScaleScreenContent(
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                    .fillMaxWidth(),
             ) {
-                state.savedScales.forEach { scale ->
+                state.savedScales.forEach { scaleInfo ->
                     AppScaleCard(
-                        scale = scale,
+                        scale = scaleInfo,
                         isSavedScale = true,
-                        onClick = {},
+                        onClick = { selectedScaleInfo ->
+                            // TODO: Handle scale info selection
+                        },
                     )
                 }
             }
         }
-
     }
 }
 
@@ -164,14 +167,17 @@ fun AddScaleScreenContent(
 @Composable
 fun AddScaleScreenPreview() {
     MeAppTheme {
-        val dummyAddScaleState = AddScaleState(
-            form = FormGroup(
-                controls = AddScaleFormControls(
-                    modelNumber = FormControl.create(""),
-                ),
-            ),
-            isSubmitting = false,
-        )
+        val dummyAddScaleState =
+            AddScaleState(
+                form =
+                    FormGroup(
+                        controls =
+                            AddScaleFormControls(
+                                modelNumber = FormControl.create(""),
+                            ),
+                    ),
+                isSubmitting = false,
+            )
         AddScaleScreenContent(
             state = dummyAddScaleState,
             handleIntent = {},

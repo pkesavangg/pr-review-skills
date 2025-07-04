@@ -73,7 +73,7 @@ struct UsersScreen: View {
                                 )
                                 if idx < scaleStore.otherUsers.count - 1 {
                                     Divider()
-                                        .background(theme.statusUtility)
+                                        .background(theme.statusUtilityPrimary)
                                 }
                             }
                         }

@@ -4,8 +4,10 @@ import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppNavigationService
 import com.greatergoods.meapp.core.service.BodyCompositionService
+import com.greatergoods.meapp.core.service.DashboardService
 import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.GoalService
+import com.greatergoods.meapp.core.service.DeviceService
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.NotificationService
@@ -16,12 +18,17 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.data.services.ExportService
+import com.greatergoods.meapp.data.storage.datastore.DashboardKeysDatastore
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
+import com.greatergoods.meapp.domain.repository.IDashboardRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.repository.IDeviceRepository
+import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
@@ -30,6 +37,7 @@ import com.greatergoods.meapp.domain.repository.INotificationRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
+import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
@@ -249,4 +257,22 @@ object ServiceModule {
         connectivityObserver: IConnectivityObserver,
         dialogQueueService: IDialogQueueService,
     ): IGoalService = GoalService(goalRepository, connectivityObserver, dialogQueueService)
+
+
+    @Provides
+    @Singleton
+    fun provideDashboardService(
+        dashboardRepository: IDashboardRepository
+    ): IDashboardService =
+        DashboardService(dashboardRepository)
+     
+    /**
+     * Provides the device service implementation.
+     * Handles scale/device data operations with automatic synchronization.
+     */
+    @Provides
+    @Singleton
+    fun provideDeviceService(
+        deviceRepository: IDeviceRepository
+    ): IDeviceService = DeviceService(deviceRepository)
 }

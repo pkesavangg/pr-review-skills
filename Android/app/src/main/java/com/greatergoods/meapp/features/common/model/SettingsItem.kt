@@ -45,4 +45,5 @@ data class SettingsItem(
     val type: SettingsItemType = SettingsItemType.Action(),
     val color: SettingColorType = SettingColorType.Default,
     val onClick: () -> Unit = {},
+    val iconClick: (() -> Unit)? = null, // Separate click handler for icon-only clicks
 )

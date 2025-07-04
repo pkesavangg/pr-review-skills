@@ -4,7 +4,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.greatergoods.meapp.MainActivity
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.enum.NotificationChannel
+import com.greatergoods.meapp.domain.enums.NotificationChannel
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.notification.NotificationService
 import dagger.hilt.android.AndroidEntryPoint
@@ -22,7 +22,6 @@ import android.content.Intent
  */
 @AndroidEntryPoint
 class PushNotificationService : FirebaseMessagingService() {
-
     companion object {
         private const val TAG = "PushNotificationService"
     }

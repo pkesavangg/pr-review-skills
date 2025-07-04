@@ -10,6 +10,7 @@ import com.greatergoods.meapp.features.addScale.screens.ChooseScaleScreen
 import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.changePassword.ChangePasswordScreen
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
+import com.greatergoods.meapp.features.debugMenu.screen.DebugMenuScreen
 import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
@@ -52,5 +53,6 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
     entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
      entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
+    entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
 }
 

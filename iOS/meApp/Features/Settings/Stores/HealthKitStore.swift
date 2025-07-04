@@ -81,6 +81,7 @@ final class HealthKitStore: ObservableObject {
             }
             
             let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
+
             if wasPreviouslyIntegrated {
                 // Determine the correct modal to present based on existing HealthKit permissions.
                 let permissionCount = healthKitService.getApprovedPermissionList().count
@@ -93,7 +94,7 @@ final class HealthKitStore: ObservableObject {
                 case 1..<wgTotalPermissionsCount:
                     activeState = .integrationComplete
                 default:
-                    activeState = .permissionsNotAllowed
+                    activeState = .integrationFailed
                 }
             } else {
                 // User has never integrated before, so show the *Permissions Not Allowed* modal.

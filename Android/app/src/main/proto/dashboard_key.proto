@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+option java_package = "com.greatergoods.meapp.proto";
+option java_multiple_files = true;
+
+message VisibleMetrics {
+    map<string, VisibleKeys> account_metric_map = 1; // accountId → visible keys
+}
+
+message VisibleKeys {
+    repeated MetricKey visible_metric_keys = 1;
+    repeated MilestoneKey visible_milestone_keys = 2;
+}
+
+enum MetricKey {
+    BMI = 0;
+    BODY_FAT = 1;
+    MUSCLE_MASS = 2;
+    BODY_WATER = 3;
+    HEART_RATE = 4;
+    BONE_MASS = 5;
+    VISCERAL_FAT = 6;
+    SUBCUTANEOUS_FAT = 7;
+    PROTEIN = 8;
+    SKELETAL_MUSCLE = 9;
+    BMR = 10;
+    METABOLIC_AGE = 11;
+}
+
+enum MilestoneKey {
+    TO_GOAL = 0;            // -13.2 lbs to goal
+    CURRENT_STREAK = 1;     // 1 day
+    LONGEST_STREAK = 2;     // 10 day
+    PER_WEEK = 3;           // -1 lbs/week
+    PER_MONTH = 4;          // -10 lbs/month
+    PER_YEAR = 5;           // -20 lbs/year
+    TOTAL_CHANGE = 6;       // -30 lbs/total
+}

@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.addScale.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleFormControls
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleReducer
@@ -12,12 +13,14 @@ import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.ScaleInfo
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class AddScaleViewModel @Inject constructor(
     private val dialogUtility: IDialogUtility,
+    private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<AddScaleState, AddScaleIntent>(AddScaleReducer()) {
 
     override fun provideInitialState(): AddScaleState {
@@ -30,6 +33,7 @@ class AddScaleViewModel @Inject constructor(
         super.handleIntent(intent)
         when (intent) {
             is AddScaleIntent.Submit -> {
+                // TODO: Handle scale submission
             }
 
             is AddScaleIntent.ShowHelp -> {
@@ -41,7 +45,7 @@ class AddScaleViewModel @Inject constructor(
             }
 
             is AddScaleIntent.ScaleSelected -> {
-                // TODO() Navigate to selected scale setup
+                // TODO: Navigate to selected scale setup
             }
 
             else -> {}
@@ -50,37 +54,10 @@ class AddScaleViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val dummyScaleList = listOf(
-                ScaleInfo(
-                    productName = "accucheck verve smart scale",
-                    sku = "0412",
-                    imgPath = null,
-                    setupType = ScaleSetupType.Bluetooth,
-                    bodyComp = true,
-                    isConnected = true,
-                    isWifiConfigured = true
-                ),
-                ScaleInfo(
-                    productName = "accucheck verve smart scale",
-                    sku = "0412",
-                    imgPath = null,
-                    setupType = ScaleSetupType.Bluetooth,
-                    bodyComp = true,
-                    isConnected = false,
-                    isWifiConfigured = true
-                ),
-                ScaleInfo(
-                    productName = "accucheck verve smart scale",
-                    sku = "0412",
-                    imgPath = null,
-                    setupType = ScaleSetupType.Bluetooth,
-                    bodyComp = true,
-                    isConnected = true,
-                    isWifiConfigured = false
-                )
-            )
-
-            handleIntent(AddScaleIntent.SetSavedScaled(dummyScaleList))
+            // Collect saved scales from DeviceService
+            deviceService.savedScales.collectLatest { devices ->
+                handleIntent(AddScaleIntent.SetSavedScales(devices))
+            }
         }
     }
 

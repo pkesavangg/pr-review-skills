@@ -25,16 +25,17 @@ import com.greatergoods.meapp.features.common.components.chart.GraphView
 import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.toWeightGraphPoints
+import com.greatergoods.meapp.features.common.model.DashboardKey
+import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
-import com.greatergoods.meapp.features.historyDetail.modal.Metric
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 fun HistoryGraph(
     state: DashboardState,
-    selectedMetric: Metric? = null,
+    selectedStat: Stat? = null,
     onSelected: (List<PeriodBodyScaleSummary>) -> Unit
 ) {
     var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
@@ -64,6 +65,11 @@ fun HistoryGraph(
     var labelData by remember {
         mutableStateOf("")
     }
+
+    val validMetricKey = if (selectedStat?.key is DashboardKey.Metric) {
+        selectedStat.key.key
+    } else null
+
     Column(
         modifier =
             Modifier
@@ -86,7 +92,7 @@ fun HistoryGraph(
                 }
             }
             Text(
-                text = labelData.ifBlank { "No data" },
+                text = labelData.ifBlank { "---" },
                 style = MeTheme.typography.heading2,
                 lineHeight = 0.sp,
                 color = MeTheme.colorScheme.textBody,
@@ -111,7 +117,7 @@ fun HistoryGraph(
                 Modifier
                     .fillMaxWidth(),
             segment = selectedSegment,
-            secondaryGraphLines = if (selectedMetric != null) entries.toGraphPoints(selectedMetric.key) else null,
+            secondaryGraphLines = validMetricKey?.let { entries.toGraphPoints(validMetricKey) },
             graphLines = listOf(graphLines),
             onScroll = {
                 subText = it

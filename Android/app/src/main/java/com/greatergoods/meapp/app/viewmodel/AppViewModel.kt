@@ -9,8 +9,10 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.model.Toast
@@ -36,8 +38,10 @@ class AppViewModel
         private val deviceInfoService: IDeviceInfoService,
         private val appNavigationService: IAppNavigationService,
         private val tokenManager: ITokenManager,
+        private val dashboardService: IDashboardService,
         private val accountService: IAccountService,
         private val dialogUtility: IDialogUtility,
+        private val deviceService: IDeviceService,
     ) : BaseIntentViewModel<AppState, AppIntent>(
             reducer = AppReducer(),
         ) {
@@ -175,8 +179,9 @@ class AppViewModel
                 val isLoginStatusChecked = checkLoginStatus()
                 if (account != null && isLoginStatusChecked) {
                     entryService.updateAccountId(account.id)
-
                     deviceInfoService.updateDeviceInfo()
+                    dashboardService.setAccountId(account.id)
+                    deviceService.setAccountId(account.id)
                     navigationService.autoLogin()
                 } else {
                     routeToLandingOrApp()

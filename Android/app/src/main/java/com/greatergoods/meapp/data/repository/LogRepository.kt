@@ -1,9 +1,16 @@
 package com.greatergoods.meapp.data.repository
 
+import com.greatergoods.meapp.core.service.AppStatusService
+import com.greatergoods.meapp.core.shared.utilities.DeviceInfoUtil
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.api.ISupportAPI
 import com.greatergoods.meapp.data.storage.db.dao.LogDao
 import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
+import com.greatergoods.meapp.domain.model.api.support.DeviceInfo
+import com.greatergoods.meapp.domain.model.api.support.LogEntry
+import com.greatergoods.meapp.domain.model.api.support.SendLogRequest
 import com.greatergoods.meapp.domain.repository.ILogRepository
+import com.greatergoods.meapp.domain.services.IAccountService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +33,8 @@ class LogRepository
     @Inject
     constructor(
         private val logDao: LogDao,
+        private val supportAPI: ISupportAPI,
+        private val accountService: IAccountService,
     ) : ILogRepository {
         private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private var currentSessionId: String = UUID.randomUUID().toString()
@@ -160,6 +169,81 @@ class LogRepository
                 AppLog.e("LogRepository", "Failed to clear logs", e.toString())
                 throw e
             }
+        }
+
+        override suspend fun sendLogs() {
+            try {
+                AppLog.i("LogRepository", "Log sending initiated")
+                // Sync current account ID
+                syncCurrentAccountId()
+                // Get recent logs from the last 5 days for current account only
+                val recentLogEntities = getLogsByAccountId(currentAccountId).first()
+                    .filter {
+                        val fiveDaysAgo = System.currentTimeMillis() - (5 * 24 * 60 * 60 * 1000L)
+                        it.timestamp >= fiveDaysAgo
+                    }
+                AppLog.i("LogRepository", "Sending ${recentLogEntities.size} logs for account: $currentAccountId")
+                // Convert LogEntity to LogEntry for API transmission
+                val logEntries = recentLogEntities.map { LogEntry.from(it) }
+                // Create device info for debugging context
+                val deviceInfo = DeviceInfo(
+                    platform = DeviceInfoUtil.getOSVersion(),
+                    osVersion = DeviceInfoUtil.getAppVersion(),
+                    deviceModel = "${DeviceInfoUtil.getManufacturer()} ${DeviceInfoUtil.getModel()}",
+                    apiUrl = AppStatusService.apiUrl,
+                    timezone = AppStatusService.getUserTimezone(),
+                    timezoneOffset = AppStatusService.getUserTimezoneOffset()
+                )
+
+                // Create the request payload
+                val sendLogRequest = SendLogRequest(
+                    logs = logEntries,
+                    deviceInfo = deviceInfo,
+                    appVersion = AppStatusService.version,
+                    timestamp = System.currentTimeMillis()
+                )
+
+                // Send logs to support API (POST /support/log)
+                val response = supportAPI.sendLog(sendLogRequest)
+
+                if (response.isSuccessful) {
+                    val responseText = response.body()?.string() ?: "No response body"
+                    AppLog.i("LogRepository", "Logs sent successfully. Response: $responseText")
+                } else {
+                    val errorText = response.errorBody()?.string() ?: "Unknown error"
+                    AppLog.e("LogRepository", "Failed to send logs. HTTP ${response.code()}: $errorText")
+                    throw Exception("Failed to send logs: HTTP ${response.code()} - $errorText")
+                }
+            } catch (e: Exception) {
+                AppLog.e("LogRepository", "Failed to send logs", e.toString())
+                throw e
+            }
+        }
+
+        override suspend fun sendLogsForCurrentAccount() {
+            // This is now the default behavior of sendLogs()
+            sendLogs()
+        }
+
+        override suspend fun clearLogsForCurrentAccount() {
+            try {
+                // Sync current account ID
+                syncCurrentAccountId()
+                AppLog.i("LogRepository", "Clearing logs for account: $currentAccountId")
+                deleteLogsByAccountId(currentAccountId)
+                AppLog.i("LogRepository", "Logs cleared for account: $currentAccountId")
+            } catch (e: Exception) {
+                AppLog.e("LogRepository", "Failed to clear logs for current account", e.toString())
+                throw e
+            }
+        }
+
+        /**
+         * Updates the current account ID from the active account service.
+         */
+        private suspend fun syncCurrentAccountId() {
+            val activeAccount = accountService.getCurrentAccount()
+            currentAccountId = activeAccount?.id ?: "default"
         }
 
         fun updateAccountId(accountId: String) {

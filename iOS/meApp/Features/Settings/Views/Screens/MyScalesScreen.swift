@@ -14,6 +14,25 @@ struct MyScalesScreen: View {
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
+
+    // Consolidated sheet presentation state
+    private enum ActiveSheet: Identifiable {
+        case scaleList
+        case setupFlow(ScaleItemInfo)
+
+        var id: String {
+            switch self {
+            case .scaleList:
+                return "scaleList"
+            case .setupFlow(let scale):
+                // SKU uniquely identifies a scale
+                return scale.sku
+            }
+        }
+    }
+
+    @State private var activeSheet: ActiveSheet?
+    
     private var focusBinding: Binding<FocusField?> {
         Binding(
             get: { focusedField },
@@ -60,10 +79,11 @@ struct MyScalesScreen: View {
                             customIcon: AppAssets.helpCircle,
                             onCustomIconTap: { scaleStore.openHelp() },
                             maxLength: 4,
-                            allowWholeNumbers: true
+                            allowWholeNumbers: true,
+                            showPrefixZero: true
                         ),
                         value: Binding(
-                            get: { scaleStore.addScaleForm.modelNumber },
+                            get: { scaleStore.addScaleForm.modelNumberValue },
                             set: { scaleStore.addScaleForm.setModelNumber($0) }
                         ),
                         focusedField: focusBinding
@@ -75,7 +95,16 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: !scaleStore.addScaleForm.isValid,
                         action: {
-                            // TODO: ADD action
+                            // Fetch the corresponding scale and trigger setup flow sheet.
+                            if let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) {
+                                // Clear focus & reset form
+                                focusedField = nil
+                                hideKeyboard()
+
+                                activeSheet = .setupFlow(scale)
+                                // Optional: reset the form for next entry
+                                scaleStore.resetForm()
+                            }
                         }
                     )
                     .padding(.bottom, .spacingSM)
@@ -85,12 +114,37 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: false,
                         action: {
-                            // TODO: ADD action
+                            activeSheet = .scaleList
                         }
                     )
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
+                .sheet(item: $activeSheet) { sheet in
+                    switch sheet {
+                    case .scaleList:
+                        ChooseYourScaleView { scale in
+                            // Delay so the scale list sheet dismisses before presenting the next one
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                activeSheet = .setupFlow(scale)
+                            }
+                        }
+                    case .setupFlow(let scale):
+                        if scale.setupType == .appSync {
+                            AppSyncSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
+                        } else {
+                            // TODO: Handle other setup types
+                            VStack(spacing: .spacingMD) {
+                                Text("Setup flow coming soon")
+                                    .fontOpenSans(.heading4)
+                                Text("Selected scale: \(scale.productName)")
+                                    .fontOpenSans(.body2)
+                            }
+                            .padding()
+                        }
+                    }
+                }
                 
                 if !scaleStore.scales.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {

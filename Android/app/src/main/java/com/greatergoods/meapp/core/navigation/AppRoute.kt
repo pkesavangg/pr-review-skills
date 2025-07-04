@@ -96,8 +96,10 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data object HelpScreen : AccountSettings()
-    }
 
+        @Serializable
+        data object DebugMenu : AccountSettings()
+    }
 }
 
 

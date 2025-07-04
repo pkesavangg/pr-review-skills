@@ -40,7 +40,6 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
-import com.greatergoods.meapp.features.historyDetail.viewmodel.HistoryDetailViewModel
 import com.greatergoods.meapp.features.login.model.LoginFormControls
 import com.greatergoods.meapp.features.login.model.LoginIntent
 import com.greatergoods.meapp.features.login.model.LoginState
@@ -56,12 +55,13 @@ import com.greatergoods.meapp.theme.MeTheme.typography
  * Login screen composable. Displays the login form, handles user input, and shows loading/error states.
  */
 @Composable
-fun LoginScreen( email: String? = null) {
-    val viewmodel: LoginViewModel = hiltViewModel<LoginViewModel, LoginViewModel.Factory>(
-        creationCallback = { factory ->
-            factory.create(email)
-        },
-    )
+fun LoginScreen(email: String? = null) {
+    val viewmodel: LoginViewModel =
+        hiltViewModel<LoginViewModel, LoginViewModel.Factory>(
+            creationCallback = { factory ->
+                factory.create(email)
+            },
+        )
     val state by viewmodel.state.collectAsState()
     BackHandler {
         viewmodel.handleIntent(LoginIntent.OnBack)
@@ -70,7 +70,10 @@ fun LoginScreen( email: String? = null) {
 }
 
 @Composable
-private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit) {
+private fun LoginContent(
+    state: LoginState,
+    handleIntent: (LoginIntent) -> Unit,
+) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -134,9 +137,10 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         },
-                        modifier = Modifier
-                            .semantics { contentType = ContentType.Password }
-                            .focusRequester(passwordFocusRequester),
+                        modifier =
+                            Modifier
+                                .semantics { contentType = ContentType.Password }
+                                .focusRequester(passwordFocusRequester),
                     )
                     Spacer(Modifier.height(spacing.xs))
                     AppButton(
@@ -200,16 +204,19 @@ private fun LoginContent(state: LoginState, handleIntent: (LoginIntent) -> Unit)
 @Composable
 fun LoginScreenPreview() {
     MeAppTheme {
-        val dummyLoginState = LoginState(
-            form = FormGroup(
-                controls = LoginFormControls(
-                    email = FormControl.create(""),
-                    password = FormControl.create(""),
-                ),
-            ),
-            isLoading = false,
-            error = null,
-        )
+        val dummyLoginState =
+            LoginState(
+                form =
+                    FormGroup(
+                        controls =
+                            LoginFormControls(
+                                email = FormControl.create(""),
+                                password = FormControl.create(""),
+                            ),
+                    ),
+                isLoading = false,
+                error = null,
+            )
 
         LoginContent(
             state = dummyLoginState,

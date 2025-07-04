@@ -13,13 +13,18 @@ import SwiftUI
 struct SwiperView<Content: View>: View {
     @Binding var selectedIndex: Int
     let views: [Content]
+    /// Closure that decides whether horizontal padding should be applied for a given page index.
+    /// Defaults to always applying padding (previous behaviour).
+    private let shouldApplyHorizontalPadding: (Int) -> Bool
     
     init(
         selectedIndex: Binding<Int>,
         views: [Content],
+        shouldApplyHorizontalPadding: @escaping (Int) -> Bool = { _ in true }
     ) {
         self._selectedIndex = selectedIndex
         self.views = views
+        self.shouldApplyHorizontalPadding = shouldApplyHorizontalPadding
     }
 
     @GestureState private var dragOffset: CGFloat = 0
@@ -29,8 +34,8 @@ struct SwiperView<Content: View>: View {
             HStack(spacing: 0) {
                 ForEach(0..<views.count, id: \.self) { i in
                     views[i]
-                        .padding(.horizontal)
-                        .frame(width: geometry.size.width) // no .padding here
+                        .padding(.horizontal, shouldApplyHorizontalPadding(i) ? .spacingSM : 0)
+                        .frame(width: geometry.size.width)
                 }
             }
             .frame(width: geometry.size.width * CGFloat(views.count), alignment: .leading)

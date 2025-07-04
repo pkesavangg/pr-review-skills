@@ -41,10 +41,12 @@ fun AppScaffold(
     borderColor: Color = colorScheme.utility,
     containerColor: Color = colorScheme.secondaryBackground,
     appBarColor: Color = colorScheme.primaryBackground,
+    enable: Boolean = false,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
+    appBarOnclick: () -> Unit = {},
     content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
@@ -54,10 +56,14 @@ fun AppScaffold(
             if (title != null || navigationIcon != null || actions != null) {
                 AppBar(
                     title = title,
+                    enable = enable,
                     navigationIcon = navigationIcon,
                     actions = actions,
                     borderColor = borderColor,
                     containerColor = appBarColor,
+                    onClick = {
+                        appBarOnclick()
+                    }
                 )
             }
         },

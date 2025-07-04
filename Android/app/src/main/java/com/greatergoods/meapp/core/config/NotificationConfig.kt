@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.core.config
 
-import com.greatergoods.meapp.domain.enum.NotificationChannel
+import com.greatergoods.meapp.domain.enums.NotificationChannel
 import com.greatergoods.notification.model.ChannelConfig
 import android.app.Notification
 import android.app.NotificationManager

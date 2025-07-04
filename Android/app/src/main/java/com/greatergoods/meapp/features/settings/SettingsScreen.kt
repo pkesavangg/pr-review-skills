@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -129,43 +130,48 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ActivityLevel,
-                            type = SettingsItemType.Dropdown(
-                                state.account?.activityLevel?.replaceFirstChar { it.uppercase() } ?: SettingsScreenStrings.NotSet
-                            ),
+                            type =
+                                SettingsItemType.Dropdown(
+                                    state.account?.activityLevel?.replaceFirstChar { it.uppercase() }
+                                        ?: SettingsScreenStrings.NotSet,
+                                ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Height,
-                            type = SettingsItemType.TextOnly(
-                                HeightInput.formatHeightDisplay(
-                                    height = state.account?.height,
-                                    isMetric = state.account?.weightUnit?.value == "kg"
-                                )
-                            ),
+                            type =
+                                SettingsItemType.TextOnly(
+                                    HeightInput.formatHeightDisplay(
+                                        height = state.account?.height,
+                                        isMetric = state.account?.weightUnit == WeightUnit.KG,
+                                    ),
+                                ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowHeightModal)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UnitType,
-                            type = SettingsItemType.Dropdown(
-                                when (state.account?.weightUnit?.value) {
-                                    "kg" -> "kg & cm"
-                                    "lb" -> "lbs & feet"
-                                    else -> SettingsScreenStrings.NotSet
-                                }
-                            ),
+                            type =
+                                SettingsItemType.Dropdown(
+                                    state.account?.weightUnit?.unit ?: SettingsScreenStrings.NotSet,
+                                ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Weightless,
-                            type = SettingsItemType.Dropdown(
-                                viewModel?.getWeightlessDisplayText() ?: "Off"
-                            ),
+                            type =
+                                SettingsItemType.Dropdown(
+                                    if (state.account?.isWeightlessOn == true) {
+                                        "On - ${state.account.displayWeightlessWeight()}"
+                                    } else {
+                                        "Off"
+                                    },
+                                ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
                             },
@@ -192,9 +198,10 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Streaks,
-                            type = SettingsItemType.Dropdown(
-                                if (state.account?.isStreakOn == true) "On" else "Off"
-                            ),
+                            type =
+                                SettingsItemType.Dropdown(
+                                    if (state.account?.isStreakOn == true) "On" else "Off",
+                                ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowStreakModal)
                             },
@@ -245,50 +252,49 @@ fun SettingsScreenContent(
 
             // Log Out and Delete Account
             SettingsSection(
-                items = buildList {
-                    add(
-                        SettingsItem(
-                            title = SettingsScreenStrings.SwitchAccounts,
-                            type = SettingsItemType.None,
-                            onClick = {
-                                handleIntent(SettingsIntent.SwitchAccount)
-                            },
-                        ),
-                    )
-                    add(
-                        SettingsItem(
-                            title = SettingsScreenStrings.LogOut,
-                            type = SettingsItemType.None,
-                            onClick = {
-                                handleIntent(SettingsIntent.Logout)
-                            },
-                        ),
-                    )
-                    if (state.hasMultipleAccounts) {
+                items =
+                    buildList {
                         add(
                             SettingsItem(
-                                title = SettingsScreenStrings.LogoutAll,
-                                type = SettingsItemType.None,
+                                title = SettingsScreenStrings.SwitchAccounts,
                                 onClick = {
-                                    handleIntent(SettingsIntent.LogoutAllAccounts)
+                                    handleIntent(SettingsIntent.SwitchAccount)
                                 },
                             ),
                         )
-                    }
-                    add(
-                        SettingsItem(
-                            title = SettingsScreenStrings.DeleteAccount,
-                            type = SettingsItemType.None,
-                            color = SettingColorType.Danger,
-                            onClick = { },
-                        ),
-                    )
-                },
+                        add(
+                            SettingsItem(
+                                title = SettingsScreenStrings.LogOut,
+                                type = SettingsItemType.None,
+                                onClick = {
+                                    handleIntent(SettingsIntent.Logout)
+                                },
+                            ),
+                        )
+                        if (state.hasMultipleAccounts) {
+                            add(
+                                SettingsItem(
+                                    title = SettingsScreenStrings.LogoutAll,
+                                    type = SettingsItemType.None,
+                                    onClick = {
+                                        handleIntent(SettingsIntent.LogoutAllAccounts)
+                                    },
+                                ),
+                            )
+                        }
+                        add(
+                            SettingsItem(
+                                title = SettingsScreenStrings.DeleteAccount,
+                                type = SettingsItemType.None,
+                                color = SettingColorType.Danger,
+                                onClick = { },
+                            ),
+                        )
+                    },
             )
         }
     }
 }
-
 
 @PreviewTheme
 @Composable

@@ -58,7 +58,7 @@ struct DashboardScreen: View {
 
                     if !store.metricsToShow.isEmpty {
                         Divider()
-                            .foregroundColor(theme.statusUtility)
+                            .foregroundColor(theme.statusUtilityPrimary)
                             .padding(.vertical, .spacingSM)
                             .padding(.horizontal, .spacing2XL)
                     }

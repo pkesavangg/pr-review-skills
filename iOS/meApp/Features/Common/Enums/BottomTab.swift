@@ -50,32 +50,7 @@ enum BottomTab: String, CaseIterable {
         case .entry: ManualEntryScreen()
         case .history: HistoryListScreen()
         case .settings: SettingsScreen()
-        case .appsync: AppSyncView()
+        case .appsync: AppSyncTabScreen()
         }
-    }
-}
-
-struct DetailScreen: View {
-    let item: Int
-    @EnvironmentObject private var viewModel: BottomTabBarViewModel
-    var body: some View {
-        NavigationLink {
-            Text("In Detail for Item \(item)")
-                .onAppear { viewModel.showTabBar = true }
-        } label: {
-            Text("Detail for Item \(item)")
-                .font(.largeTitle)
-                .navigationTitle("Item \(item)")
-        }
-
-    }
-}
-
-struct AppSyncView: View {
-    var body: some View {
-        Text("AppSync View")
-            .font(.largeTitle)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white)
     }
 }

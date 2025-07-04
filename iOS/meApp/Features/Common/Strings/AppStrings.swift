@@ -450,6 +450,13 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
         static let resetButton = "Reset"
     }
+    
+    struct HKExitAlert {
+        static let title = "Are you sure you want to exit?"
+        static let message = "Apple Health will not sync with Weight Gurus."
+        static let cancelButton = "cancel"
+        static let exitButton = "exit setup"
+    }
 }
 
 struct LoaderStrings {
@@ -589,5 +596,6 @@ struct AppAssets {
     static let minusCircle = "minusCircle"
     static let plusCircleDark = "plusCircleDark"
     static let minusCircleDark = "minusCircleDark"
+    static let minusCircleClear = "minusCircleClear"
 }
 

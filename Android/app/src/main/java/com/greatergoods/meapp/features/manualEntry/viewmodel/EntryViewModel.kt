@@ -25,117 +25,120 @@ import kotlin.coroutines.resume
  */
 @HiltViewModel
 class EntryViewModel
-@Inject
-constructor(
-    private val entryService: IEntryService,
-    private val accountService: IAccountService,
-) : BaseIntentViewModel<EntryState, EntryIntent>(
-    reducer = EntryReducer(),
-) {
-    override fun provideInitialState(): EntryState =
-        EntryState(
-            form = MultiFormGroup.create(
-                forms = EntryForm.create(),
-            ),
-        )
-
-    init {
-        viewModelScope.launch {
-            val entryForm = EntryForm.create(
-                includeR4ScaleMetrics = true,
-                weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
-                height = accountService.activeAccountFlow.first()?.height,
-            )
-            handleIntent(
-                EntryIntent.UpdateForm(
-                    form = MultiFormGroup.create(
-                        forms = entryForm,
+    @Inject
+    constructor(
+        private val entryService: IEntryService,
+        private val accountService: IAccountService,
+    ) : BaseIntentViewModel<EntryState, EntryIntent>(
+            reducer = EntryReducer(),
+        ) {
+        override fun provideInitialState(): EntryState =
+            EntryState(
+                form =
+                    MultiFormGroup.create(
+                        forms = EntryForm.create(),
                     ),
-                ),
             )
-        }
-    }
 
-    override fun handleIntent(intent: EntryIntent) {
-        super.handleIntent(intent)
-        when (intent) {
-            is EntryIntent.Save -> {
-                saveEntry()
-            }
-
-            else -> null
-        }
-    }
-
-    fun initDeactivate(onConfirm: () -> Unit) {
-        viewModelScope.launch {
-            navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
-                if (state.value.form.isDirty || state.value.form.isTouched) {
-                    return@registerOnDeactivate suspendCancellableCoroutine { cont ->
-                        var isResumed = false
-
-                        dialogQueueService.enqueue(
-                            DialogModel.Confirm(
-                                title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                                message = AppPopupStrings.UnsavedChanges.Message,
-                                onConfirm = {
-                                    if (!isResumed) {
-                                        isResumed = true
-                                        onConfirm()
-                                        deactivate()
-                                        _state.value.form.resetForm()
-                                        cont.resume(true)
-                                    }
-                                },
-                                onCancel = {
-                                    if (!isResumed) {
-                                        isResumed = true
-                                        cont.resume(false)
-                                    }
-                                },
+        init {
+            viewModelScope.launch {
+                val entryForm =
+                    EntryForm.create(
+                        includeR4ScaleMetrics = true,
+                        weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
+                        height = accountService.activeAccountFlow.first()?.height,
+                    )
+                handleIntent(
+                    EntryIntent.UpdateForm(
+                        form =
+                            MultiFormGroup.create(
+                                forms = entryForm,
                             ),
-                        )
+                    ),
+                )
+            }
+        }
+
+        override fun handleIntent(intent: EntryIntent) {
+            super.handleIntent(intent)
+            when (intent) {
+                is EntryIntent.Save -> {
+                    saveEntry()
+                }
+
+                else -> null
+            }
+        }
+
+        fun initDeactivate(onConfirm: () -> Unit) {
+            viewModelScope.launch {
+                navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
+                    if (state.value.form.isDirty || state.value.form.isTouched) {
+                        return@registerOnDeactivate suspendCancellableCoroutine { cont ->
+                            var isResumed = false
+
+                            dialogQueueService.enqueue(
+                                DialogModel.Confirm(
+                                    title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                                    message = AppPopupStrings.UnsavedChanges.Message,
+                                    onConfirm = {
+                                        if (!isResumed) {
+                                            isResumed = true
+                                            onConfirm()
+                                            deactivate()
+                                            _state.value.form.resetForm()
+                                            cont.resume(true)
+                                        }
+                                    },
+                                    onCancel = {
+                                        if (!isResumed) {
+                                            isResumed = true
+                                            cont.resume(false)
+                                        }
+                                    },
+                                ),
+                            )
+                        }
+                    } else {
+                        return@registerOnDeactivate true
                     }
-                } else {
-                    return@registerOnDeactivate true
+                }
+            }
+        }
+
+        fun deactivate() {
+            viewModelScope.launch {
+                navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
+            }
+        }
+
+        private fun saveEntry() {
+            dialogQueueService.showLoader(
+                message = "saving entry...",
+            )
+            viewModelScope.launch {
+                val scaleEntry =
+                    _state.value.form.forms
+                        .toScaleEntry(_state.value.weightMode)
+                try {
+                    entryService.syncOperations(newEntries = listOf(scaleEntry))
+                    dialogQueueService.showToast(
+                        Toast(
+                            message = "entry saved successfully!",
+                        ),
+                    )
+                    _state.value.form.resetForm()
+                    navigationService.navigateBack(AppRoute.Home)
+                } catch (e: Exception) {
+                    AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
+                    dialogQueueService.showToast(
+                        Toast(
+                            message = "Failed to save entry: ${e.message}",
+                        ),
+                    )
+                } finally {
+                    dialogQueueService.dismissLoader()
                 }
             }
         }
     }
-
-    fun deactivate() {
-        viewModelScope.launch {
-            navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
-        }
-    }
-
-    private fun saveEntry() {
-        dialogQueueService.showLoader(
-            message = "saving entry...",
-        )
-        viewModelScope.launch {
-            val scaleEntry =
-                _state.value.form.forms
-                    .toScaleEntry(_state.value.weightMode.value)
-            try {
-                entryService.syncOperations(newEntries = listOf(scaleEntry))
-                dialogQueueService.showToast(
-                    Toast(
-                        message = "entry saved successfully!",
-                    ),
-                )
-                _state.value.form.resetForm()
-                navigationService.navigateBack(AppRoute.Home)
-            } catch (e: Exception) {
-                AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
-                dialogQueueService.showToast(
-                    Toast(
-                        message = "Failed to save entry: ${e.message}",
-                    ),
-                )
-            } finally {
-                dialogQueueService.dismissLoader()
-            }
-        }
-    }
-}

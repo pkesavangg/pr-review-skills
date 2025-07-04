@@ -63,7 +63,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
             if canShowPresentationIndicator {
                 VStack(spacing: 0) {
                     Capsule()
-                        .fill(theme.statusUtility)
+                        .fill(theme.statusUtilityPrimary)
                         .frame(width: 36, height: 5)
                         .padding(.top, 4) // TODO: Need to update after UX design provides the correct padding
                     

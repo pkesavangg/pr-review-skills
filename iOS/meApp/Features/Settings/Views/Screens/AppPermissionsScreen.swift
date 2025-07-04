@@ -31,6 +31,7 @@ struct AppPermissionsScreen: View {
             ZStack {
                 theme.backgroundSecondary.ignoresSafeArea()
                 PermissionListView()
+                    .padding(.horizontal, .spacingSM)
             }
         }
         .navigationBarBackButtonHidden(true)

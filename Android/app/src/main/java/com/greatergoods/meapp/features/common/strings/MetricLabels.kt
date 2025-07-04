@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.features.common.strings
 
-import com.greatergoods.meapp.features.common.enums.MetricKey
+import com.greatergoods.meapp.proto.MetricKey
 
 object MetricLabels {
     data class LabelPair(val full: String, val short: String? = null)

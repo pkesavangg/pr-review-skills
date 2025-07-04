@@ -32,7 +32,7 @@ object AccountHelper {
             goalWeight = convertedGoalWeight,
             initialWeight = convertedInitialWeight,
             type = goalType,
-            metPreviousGoal = metPreviousGoal
+            metPreviousGoal = metPreviousGoal,
         )
     }
 
@@ -59,26 +59,11 @@ object AccountHelper {
     }
 
     /**
-     * Gets the weight unit string for display purposes.
-     *
-     * @return "kg" for metric, "lbs" for imperial
-     */
-    fun Account.getWeightUnitDisplay(): String {
-        return when (this.weightUnit) {
-            WeightUnit.KG -> "kg"
-            WeightUnit.LB -> "lbs"
-            null -> "lbs" // Default to imperial
-        }
-    }
-
-    /**
      * Checks if the account uses metric units.
      *
      * @return true if metric (kg), false if imperial (lbs)
      */
-    fun Account.isMetricUnit(): Boolean {
-        return this.weightUnit == WeightUnit.KG
-    }
+    fun Account.isMetricUnit(): Boolean = this.weightUnit == WeightUnit.KG
 
     /**
      * Formats weight for display with appropriate unit.
@@ -88,7 +73,7 @@ object AccountHelper {
      */
     fun Account.formatWeightForDisplay(weight: Double): String {
         val displayWeight = convertStoredWeightToDisplay(weight)
-        val unit = getWeightUnitDisplay()
+        val unit = this.weightUnit.label
         return String.format("%.1f %s", displayWeight, unit)
     }
 }

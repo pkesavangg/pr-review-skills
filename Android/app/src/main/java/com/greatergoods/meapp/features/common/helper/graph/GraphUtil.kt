@@ -6,11 +6,11 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricE
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.common.enums.GraphSegment
-import com.greatergoods.meapp.features.common.enums.MetricKey
 import com.greatergoods.meapp.features.common.model.chart.GraphLine
 import com.greatergoods.meapp.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.model.chart.Label
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.rounded
+import com.greatergoods.meapp.proto.MetricKey
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -19,6 +19,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
 import android.util.Log
+import com.greatergoods.meapp.features.common.model.DashboardKey
 
 /**
  * Utility object for graph-related data transformation and formatting.
@@ -40,24 +41,26 @@ object GraphUtil {
     // endregion
 
     // region Data Transformation
+
     /**
      * Converts a list of [PeriodBodyScaleSummary] to a [GraphLine] for weight.
      * @return [GraphLine] representing weight over time.
      */
-    fun List<PeriodBodyScaleSummary>.toWeightGraphPoints(): GraphLine {
-        return GraphLine(
+    fun List<PeriodBodyScaleSummary>.toWeightGraphPoints(): GraphLine =
+        GraphLine(
             name = "Weight",
-            points = this.map { entry ->
-                GraphPoint(
-                    x = Label(
-                        value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
-                        label = entry.period,
-                    ),
-                    y = Label(value = entry.weight, label = "${entry.weight} kg"),
-                )
-            },
+            points =
+                this.map { entry ->
+                    GraphPoint(
+                        x =
+                            Label(
+                                value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
+                                label = entry.period,
+                            ),
+                        y = Label(value = entry.weight, label = "${entry.weight} kg"),
+                    )
+                },
         )
-    }
 
     /**
      * Converts a list of [ScaleEntry] to a [GraphLine] for the given property name.
@@ -66,25 +69,14 @@ object GraphUtil {
      * @return [GraphLine] for the property.
      */
     fun List<PeriodBodyScaleSummary>.toGraphPoints(metricKey: MetricKey): GraphLine {
-        val prop: KProperty1<PeriodBodyScaleSummary, *>? = when (metricKey) {
-            MetricKey.BMI -> PeriodBodyScaleSummary::bmi
-            MetricKey.BODY_FAT -> PeriodBodyScaleSummary::bodyFat
-            MetricKey.MUSCLE_MASS -> PeriodBodyScaleSummary::muscleMass
-            MetricKey.BODY_WATER -> PeriodBodyScaleSummary::water
-            MetricKey.HEART_RATE -> PeriodBodyScaleSummary::pulse
-            MetricKey.BONE_MASS -> PeriodBodyScaleSummary::boneMass
-            MetricKey.VISCERAL_FAT -> PeriodBodyScaleSummary::visceralFatLevel
-            MetricKey.SUBCUTANEOUS_FAT -> PeriodBodyScaleSummary::subcutaneousFatPercent
-            MetricKey.PROTEIN -> PeriodBodyScaleSummary::proteinPercent
-            MetricKey.SKELETAL_MUSCLE -> PeriodBodyScaleSummary::skeletalMusclePercent
-            MetricKey.BMR -> PeriodBodyScaleSummary::bmr
-            MetricKey.METABOLIC_AGE -> PeriodBodyScaleSummary::metabolicAge
-        }
+
+        val prop = metricKeyPropertyMap[metricKey]
+            ?: error("Unsupported MetricKey: $metricKey")
 
         return GraphLine(
             name = metricKey.name,
             points = this.mapNotNull { summary ->
-                val value = (prop?.get(summary) as? Number)?.toFloat()
+                val value = (prop.get(summary) as? Number)?.toFloat()
                 value?.let {
                     GraphPoint(
                         x = Label(
@@ -98,15 +90,34 @@ object GraphUtil {
         )
     }
 
+    private val metricKeyPropertyMap: Map<MetricKey, KProperty1<PeriodBodyScaleSummary, *>> = mapOf(
+        MetricKey.BMI to PeriodBodyScaleSummary::bmi,
+        MetricKey.BODY_FAT to PeriodBodyScaleSummary::bodyFat,
+        MetricKey.MUSCLE_MASS to PeriodBodyScaleSummary::muscleMass,
+        MetricKey.BODY_WATER to PeriodBodyScaleSummary::water,
+        MetricKey.HEART_RATE to PeriodBodyScaleSummary::pulse,
+        MetricKey.BONE_MASS to PeriodBodyScaleSummary::boneMass,
+        MetricKey.VISCERAL_FAT to PeriodBodyScaleSummary::visceralFatLevel,
+        MetricKey.SUBCUTANEOUS_FAT to PeriodBodyScaleSummary::subcutaneousFatPercent,
+        MetricKey.PROTEIN to PeriodBodyScaleSummary::proteinPercent,
+        MetricKey.SKELETAL_MUSCLE to PeriodBodyScaleSummary::skeletalMusclePercent,
+        MetricKey.BMR to PeriodBodyScaleSummary::bmr,
+        MetricKey.METABOLIC_AGE to PeriodBodyScaleSummary::metabolicAge,
+    )
+
     // endregion
 
     // region Calculation
+
     /**
      * Calculates the X-axis step size for the given [GraphSegment].
      * @return The step size in milliseconds.
      */
-    fun calculateXStep(segment: GraphSegment, xLabels: List<Double>): Double {
-        return when (segment) {
+    fun calculateXStep(
+        segment: GraphSegment,
+        xLabels: List<Double>,
+    ): Double =
+        when (segment) {
             GraphSegment.WEEK -> ONE_DAY_MILLIS
             GraphSegment.MONTH -> 5 * ONE_DAY_MILLIS
             GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
@@ -114,12 +125,12 @@ object GraphUtil {
                 ONE_DAY_MILLIS * 60
             }
         }.toDouble()
-    }
 
     fun List<Double>.getMinPositiveDelta(): Double {
         if (size < 2) return 1.0
         val sorted = sorted()
-        return sorted.zipWithNext { a, b -> b - a }
+        return sorted
+            .zipWithNext { a, b -> b - a }
             .filter { it > 0 }
             .minOrNull() ?: 1.0
     }
@@ -127,15 +138,17 @@ object GraphUtil {
     /**
      * Returns the number of intervals for the given [GraphSegment].
      */
-    private fun GraphSegment.intervalCount(): Int = when (this) {
-        GraphSegment.WEEK -> 7
-        GraphSegment.MONTH -> 6
-        GraphSegment.YEAR -> 12
-        else -> 32
-    }
+    private fun GraphSegment.intervalCount(): Int =
+        when (this) {
+            GraphSegment.WEEK -> 7
+            GraphSegment.MONTH -> 6
+            GraphSegment.YEAR -> 12
+            else -> 32
+        }
     // endregion
 
     // region Formatting
+
     /**
      * Formats a timestamp for the given [GraphSegment].
      * @return A formatted string for axis labels.
@@ -143,14 +156,14 @@ object GraphUtil {
     fun formatTimestampForSegment(
         timestamp: Long,
         segment: GraphSegment,
-
-        ): String {
+    ): String {
         val date = Date(timestamp)
-        val formatter = when (segment) {
-            GraphSegment.WEEK -> weekFormatter
-            GraphSegment.MONTH -> dayFormatter
-            GraphSegment.YEAR, GraphSegment.TOTAL -> monthFormatter
-        }
+        val formatter =
+            when (segment) {
+                GraphSegment.WEEK -> weekFormatter
+                GraphSegment.MONTH -> dayFormatter
+                GraphSegment.YEAR, GraphSegment.TOTAL -> monthFormatter
+            }
         val result = formatter.format(date)
         return if (segment == GraphSegment.YEAR) result.take(1) else result
     }
@@ -159,41 +172,50 @@ object GraphUtil {
         timestamp: Long,
         segment: GraphSegment,
     ): String {
-        val formatter = when (segment) {
-            GraphSegment.WEEK, GraphSegment.MONTH -> dateRangeFormatter
-            GraphSegment.YEAR, GraphSegment.TOTAL -> monthYearFormatter
-        }
+        val formatter =
+            when (segment) {
+                GraphSegment.WEEK, GraphSegment.MONTH -> dateRangeFormatter
+                GraphSegment.YEAR, GraphSegment.TOTAL -> monthYearFormatter
+            }
         val zone = ZoneId.systemDefault()
         val startDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
         return startDate.format(formatter)
     }
 
-    fun filterXValuesInRange(graphLines: List<GraphLine>, min: Long, max: Long): List<GraphLine> {
-        return graphLines.map { line ->
+    fun filterXValuesInRange(
+        graphLines: List<GraphLine>,
+        min: Long,
+        max: Long,
+    ): List<GraphLine> =
+        graphLines.map { line ->
             line.copy(
                 points = line.points.filter { it.x.value.toLong() in min..max },
             )
         }
-    }
 
     fun averageYValuesInRange(
         graphLines: List<GraphLine>,
         min: Long,
-        max: Long
+        max: Long,
     ): Map<String, Float?> {
-        val result = graphLines.associate { line ->
+        val result =
+            graphLines.associate { line ->
 
-            val yValues = line.points
-                .filter { it.x.value.toLong() in min..max }
-                .map { it.y.value.toDouble() }
+                val yValues =
+                    line.points
+                        .filter { it.x.value.toLong() in min..max }
+                        .map { it.y.value.toDouble() }
 
-            Log.d("GraphView", "Average Y values for ${line.name}: $yValues")
-            val average = if (yValues.isNotEmpty()) {
-                yValues.average().toFloat()
-            } else null
+                Log.d("GraphView", "Average Y values for ${line.name}: $yValues")
+                val average =
+                    if (yValues.isNotEmpty()) {
+                        yValues.average().toFloat()
+                    } else {
+                        null
+                    }
 
-            line.name to average
-        }
+                line.name to average
+            }
         return result
     }
 
@@ -219,7 +241,7 @@ object GraphUtil {
             visceralFatLevel = metrics.mapNotNull { it.visceralFatLevel }.averageOrNull(),
             boneMass = metrics.mapNotNull { it.boneMass }.averageOrNull(),
             impedance = metrics.mapNotNull { it.impedance }.averageOrNull(),
-            unit = metrics.firstOrNull { it.unit != null }?.unit,
+            unit = metrics.first().unit,
         )
     }
 
@@ -233,7 +255,7 @@ object GraphUtil {
     fun formatDateRange(
         startTimestamp: Long,
         endTimestamp: Long,
-        segment: GraphSegment
+        segment: GraphSegment,
     ): String {
         val zone = ZoneId.systemDefault()
         val startDate = Instant.ofEpochMilli(startTimestamp).atZone(zone).toLocalDate()

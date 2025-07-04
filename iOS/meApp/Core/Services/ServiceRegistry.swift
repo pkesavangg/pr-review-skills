@@ -19,11 +19,11 @@ import Foundation
 @MainActor
 class ServiceRegistry {
     static let shared = ServiceRegistry()
-    
+
     init() {
         registerEssentialServices()
     }
-    
+
     /// Registers services required at app launch (before login)
     @MainActor private func registerEssentialServices() {
         DependencyContainer.shared.register(AccountService.shared)
@@ -36,8 +36,9 @@ class ServiceRegistry {
         DependencyContainer.shared.register(NotificationHelperService.shared)
         DependencyContainer.shared.register(PushNotificationService.shared)
         DependencyContainer.shared.register(FeedService.shared)
+        DependencyContainer.shared.register(BluetoothService.shared)
     }
-    
+
     /// Registers services needed after login
     @MainActor func registerSessionServices() {
         DependencyContainer.shared.register(FeedService.shared)
@@ -55,6 +56,7 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: EntryService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PushNotificationService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: BluetoothService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)
@@ -76,7 +78,7 @@ class ServiceRegistry {
 To use the dependency injection system:
 
 1. Register essential services at app launch:
-   
+
    @MainActor
    final class AccountService {
        var currentUserId: String? = nil

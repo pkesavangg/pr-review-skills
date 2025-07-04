@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.domain.model.storage.entry
 
+import com.greatergoods.meapp.domain.model.common.WeightUnit
+
 /**
  * Data class representing dashboard metrics for display in the dashboard screen.
  * This model contains the key health metrics that are displayed in the metrics section.
@@ -17,7 +19,7 @@ data class DashboardMetric(
     val skeletalMusclePercent: Double?,
     val bmr: Double?,
     val metabolicAge: Int?,
-    val unit: String?,
+    val unit: WeightUnit,
 ) {
     companion object {
         /**
@@ -25,8 +27,8 @@ data class DashboardMetric(
          * @param summary The period summary containing the metrics data.
          * @return DashboardMetrics object with the extracted metrics.
          */
-        fun fromPeriodSummary(summary: PeriodBodyScaleSummary): DashboardMetric {
-            return DashboardMetric(
+        fun fromPeriodSummary(summary: PeriodBodyScaleSummary): DashboardMetric =
+            DashboardMetric(
                 bmi = summary.bmi,
                 bodyFat = summary.bodyFat,
                 muscleMass = summary.muscleMass,
@@ -41,10 +43,9 @@ data class DashboardMetric(
                 metabolicAge = summary.metabolicAge?.toInt(),
                 unit = summary.unit,
             )
-        }
 
-        fun fromScaleEntry(scaleEntry: ScaleEntry): DashboardMetric {
-            return DashboardMetric(
+        fun fromScaleEntry(scaleEntry: ScaleEntry): DashboardMetric =
+            DashboardMetric(
                 bmi = scaleEntry.scale.scaleEntry.bmi,
                 bodyFat = scaleEntry.scale.scaleEntry.bodyFat,
                 muscleMass = scaleEntry.scale.scaleEntry.muscleMass,
@@ -59,14 +60,13 @@ data class DashboardMetric(
                 metabolicAge = scaleEntry.scale.scaleEntryMetric?.metabolicAge,
                 unit = scaleEntry.entry.unit,
             )
-        }
 
         /**
          * Creates an empty DashboardMetrics object.
          * @return Empty DashboardMetrics with all values set to null.
          */
-        fun empty(): DashboardMetric {
-            return DashboardMetric(
+        fun empty(): DashboardMetric =
+            DashboardMetric(
                 bmi = null,
                 bodyFat = null,
                 muscleMass = null,
@@ -79,8 +79,7 @@ data class DashboardMetric(
                 skeletalMusclePercent = null,
                 bmr = null,
                 metabolicAge = null,
-                unit = null,
+                unit = WeightUnit.LB,
             )
-        }
     }
 }

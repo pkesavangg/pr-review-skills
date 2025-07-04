@@ -26,6 +26,7 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
  *
  * @param onScaleSelected Callback when a scale is selected from the list.
  * @param modifier Modifier to be applied to the component.
+ * @param enableScroll Whether the scale list should have its own vertical scroll. Set to false when used inside a scrollable parent.
  */
 @Composable
 fun ScaleList(
@@ -74,8 +75,7 @@ fun ScaleList(
     }
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
+            .fillMaxWidth(),
     ) {
         filteredScales.forEach { scale ->
             AppScaleCard(

@@ -2,7 +2,6 @@ package com.greatergoods.meapp.features.signup.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.common.WeightUnit
@@ -10,10 +9,10 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IGoalService
 import com.greatergoods.meapp.features.common.components.DateTimeValue
 import com.greatergoods.meapp.features.common.components.DialogType
-import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.signup.model.SignupData
 import com.greatergoods.meapp.features.signup.model.SignupFormControls
 import com.greatergoods.meapp.features.signup.model.SignupIntent
@@ -162,7 +161,6 @@ class SignupViewModel
             dialogQueueService.enqueue(
                 DialogModel.Custom(
                     contentKey = DialogType.HelpPopup,
-                    onDismiss = {},
                 ),
             )
         }
@@ -170,10 +168,10 @@ class SignupViewModel
         private fun onRequestBack() {
             dialogQueueService.enqueue(
                 DialogModel.Confirm(
-                    title = "Confirm",
-                    message = "Are you sure you want to leave?",
-                    confirmText = "EXIT",
-                    cancelText = "RETURN",
+                    title = AppPopupStrings.UnsavedChanges.Title,
+                    message = AppPopupStrings.UnsavedChanges.Message,
+                    confirmText = AppPopupStrings.UnsavedChanges.Exit,
+                    cancelText = AppPopupStrings.UnsavedChanges.Return,
                     onConfirm = {
                         navigateBack()
                         dialogQueueService.dismissCurrent()
@@ -199,34 +197,4 @@ class SignupViewModel
                 }
             }
         }
-
-        /**
-         * Opens a URL using the injected CustomTabManager.
-         * @param url The URL to open.
-         */
-        private fun openUrl(url: String) {
-            customTabManager.openChromeTab(url)
-        }
-
-        /**
-         * Converts [HeightInput] to millimeters (Int) for API request using ConversionTools.
-         */
-        private fun convertHeightInputToMm(heightInput: HeightInput): Int =
-            when (heightInput) {
-                is HeightInput.Cm -> {
-                    // Convert cm to stored height format, then to mm
-                    val storedHeight = ConversionTools.convertCmToStoredHeight(heightInput.value)
-                    ConversionTools.convertStoredHeightToCm(storedHeight) * 10
-                }
-
-                is HeightInput.FtIn -> {
-                    // Convert feet/inches to stored height format, then to mm
-                    val storedHeight =
-                        ConversionTools.convertFeetInchesToStoredHeight(
-                            feet = heightInput.feet,
-                            inches = heightInput.inches,
-                        )
-                    ConversionTools.convertStoredHeightToCm(storedHeight) * 10
-                }
-            }
     }

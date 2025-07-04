@@ -11,57 +11,59 @@ object AccountEntityMapper {
     /**
      * Maps a domain [Account] to a database [AccountEntity].
      */
-    fun toEntity(account: DomainAccount): AccountEntity = AccountEntity(
-        id = account.id,
-        firstName = account.firstName,
-        lastName = account.lastName,
-        dob = account.dob,
-        email = account.email,
-        expiresAt = account.expiresAt,
-        fcmToken = account.fcmToken,
-        gender = account.gender,
-        isActiveAccount = account.isActiveAccount,
-        isLoggedIn = account.isLoggedIn,
-        isExpired = account.isExpired,
-        isSynced = account.isSynced,
-        lastActiveTime = account.lastActiveTime,
-        zipcode = account.zipcode
-    )
+    fun toEntity(account: DomainAccount): AccountEntity =
+        AccountEntity(
+            id = account.id,
+            firstName = account.firstName,
+            lastName = account.lastName,
+            dob = account.dob,
+            email = account.email,
+            expiresAt = account.expiresAt,
+            fcmToken = account.fcmToken,
+            gender = account.gender,
+            isActiveAccount = account.isActiveAccount,
+            isLoggedIn = account.isLoggedIn,
+            isExpired = account.isExpired,
+            isSynced = account.isSynced,
+            lastActiveTime = account.lastActiveTime,
+            zipcode = account.zipcode,
+        )
 
     /**
      * Maps a database [AccountEntity] to a domain [Account].
      * Note: This mapper only handles basic AccountEntity properties.
      * For full Account with settings, use the toDomainFromAccountWithRelations method.
      */
-    fun toDomain(entity: AccountEntity): DomainAccount = DomainAccount(
-        id = entity.id,
-        firstName = entity.firstName,
-        lastName = entity.lastName,
-        dob = entity.dob,
-        email = entity.email,
-        expiresAt = entity.expiresAt,
-        fcmToken = entity.fcmToken,
-        gender = entity.gender,
-        isActiveAccount = entity.isActiveAccount,
-        isLoggedIn = entity.isLoggedIn,
-        isExpired = entity.isExpired,
-        isSynced = entity.isSynced,
-        lastActiveTime = entity.lastActiveTime,
-        zipcode = entity.zipcode,
-        // Default values for settings (use toDomainFromAccountWithRelations for full mapping)
-        weightUnit = null,
-        isWeightlessOn = false,
-        height = null,
-        activityLevel = null,
-        weightlessTimestamp = null,
-        weightlessWeight = null,
-        isStreakOn = false,
-        streakTimestamp = null,
-        dashboardType = null,
-        dashboardMetrics = null,
-        shouldSendEntryNotifications = false,
-        shouldSendWeightInEntryNotifications = false
-    )
+    fun toDomain(entity: AccountEntity): DomainAccount =
+        DomainAccount(
+            id = entity.id,
+            firstName = entity.firstName,
+            lastName = entity.lastName,
+            dob = entity.dob,
+            email = entity.email,
+            expiresAt = entity.expiresAt,
+            fcmToken = entity.fcmToken,
+            gender = entity.gender,
+            isActiveAccount = entity.isActiveAccount,
+            isLoggedIn = entity.isLoggedIn,
+            isExpired = entity.isExpired,
+            isSynced = entity.isSynced,
+            lastActiveTime = entity.lastActiveTime,
+            zipcode = entity.zipcode,
+            // Default values for settings (use toDomainFromAccountWithRelations for full mapping)
+            weightUnit = WeightUnit.LB,
+            isWeightlessOn = false,
+            height = null,
+            activityLevel = null,
+            weightlessTimestamp = null,
+            weightlessWeight = null,
+            isStreakOn = false,
+            streakTimestamp = null,
+            dashboardType = null,
+            dashboardMetrics = null,
+            shouldSendEntryNotifications = false,
+            shouldSendWeightInEntryNotifications = false,
+        )
 
     /**
      * Maps a database [Account] (with all relations) to a domain [Account].
@@ -85,13 +87,7 @@ object AccountEntityMapper {
             lastActiveTime = entity.lastActiveTime,
             zipcode = entity.zipcode,
             // Map from related entities
-            weightUnit = accountWithRelations.weightCompSettings?.weightUnit?.let { weightUnitString ->
-                when (weightUnitString.lowercase()) {
-                    "kg" -> WeightUnit.KG
-                    "lb", "lbs" -> WeightUnit.LB
-                    else -> WeightUnit.LB // Default fallback
-                }
-            },
+            weightUnit = WeightUnit.from(accountWithRelations.weightCompSettings?.weightUnit),
             isWeightlessOn = accountWithRelations.weightlessSettings?.isWeightlessOn ?: false,
             height = accountWithRelations.weightCompSettings?.height,
             activityLevel = accountWithRelations.weightCompSettings?.activityLevel,
@@ -100,11 +96,18 @@ object AccountEntityMapper {
             isStreakOn = accountWithRelations.streaksSettings?.isStreakOn ?: false,
             streakTimestamp = accountWithRelations.streaksSettings?.streakTimestamp,
             dashboardType = accountWithRelations.dashboardSettings?.dashboardType,
-            dashboardMetrics = accountWithRelations.dashboardSettings?.dashboardMetrics?.split(",")
-                ?.filterNot { it.isBlank() },
+            dashboardMetrics =
+                accountWithRelations.dashboardSettings
+                    ?.dashboardMetrics
+                    ?.split(",")
+                    ?.filterNot { it.isBlank() },
             // Map notification settings
-            shouldSendEntryNotifications = accountWithRelations.notificationSettings?.shouldSendEntryNotifications ?: false,
-            shouldSendWeightInEntryNotifications = accountWithRelations.notificationSettings?.shouldSendWeightInEntryNotifications ?: false,
+            shouldSendEntryNotifications =
+                accountWithRelations.notificationSettings?.shouldSendEntryNotifications
+                    ?: false,
+            shouldSendWeightInEntryNotifications =
+                accountWithRelations.notificationSettings?.shouldSendWeightInEntryNotifications
+                    ?: false,
             goalType = accountWithRelations.goalSettings?.goalType,
             initialWeight = accountWithRelations.goalSettings?.weight?.toDouble() ?: 0.0,
             goalWeight = accountWithRelations.goalSettings?.goalWeight?.toDoubleOrNull() ?: 0.0,
