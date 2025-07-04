@@ -33,6 +33,8 @@ struct ConnectingWifiLoaderView: View {
                     .foregroundColor(theme.textHeading)
                 
                 Image(AppAssets.scale0412)
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: 180, height: 180)
                 
                 SetupLoaderView(connectionState: store.wifiConnectionState)

@@ -16,6 +16,7 @@ struct DashboardStrings {
     static let resetDashboard = "Reset Dashboard"
 
     // Metrics labels, units, preLabels
+    static let weight = "weight"
     static let bmi = "bmi"
     static let bodyFat = "body fat %"
     static let bodyFatUnit = "%"
@@ -47,6 +48,16 @@ struct DashboardStrings {
     static let lbsMonth = "lbs/month"
     static let lbsYear = "lbs/year"
     static let lbsTotal = "lbs/total"
+
+    // Goal Card/Progress strings
+    static let goalTypeLabel = "Goal Type: %@"
+    static let plus  = "+"
+    static let minus  = "-"
+    static let placeholder = "--"
+    static func loseGoalWeightLabel(_ unit: String) -> String{
+        return "\(unit) to goal"
+    }
+    static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
+           return "\(unit) to \(goalWeight) \(unit) goal weight"
+       }
 }
-
-

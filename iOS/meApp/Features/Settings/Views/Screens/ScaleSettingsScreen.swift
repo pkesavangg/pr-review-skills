@@ -51,12 +51,21 @@ struct ScaleSettingsScreen: View {
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            Task {
+                await scaleStore.loadScale(scale)
+            }
+        }
     }
     
     // MARK: - Sections as Functions
     private func scaleImageSection() -> some View {
-        Image(AppAssets.scale0412)
-            .frame(width: 370)
+        let sku = scale.sku ?? ""
+        let imagePath = SCALES.first(where: { $0.sku == sku })?.imgPath ?? AppAssets.scale0412 // fallback
+        return Image(imagePath)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 180, height: 180)
             .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
     }
@@ -118,8 +127,8 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.scaleName,
-                    value: scale.deviceName,
-                    onTap: { router.navigate(to: .scaleNameScreen(scaleName: scale.deviceName ?? MyScaleStrings.unknownScale)) }
+                    value: scaleStore.scale?.nickname ?? scale.deviceName ?? MyScaleStrings.unknownScale,
+                    onTap: { router.navigate(to: .scaleNameScreen(scale: scale)) }
                 )
             )
         }
@@ -163,6 +172,7 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.scaleType,
                     value: scaleStore.scaleTypeValue,
+                    chevronType: .none,
                     onTap: { scaleStore.scaleTypeTapped() }
                 )
             )
