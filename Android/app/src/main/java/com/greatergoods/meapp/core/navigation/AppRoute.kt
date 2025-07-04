@@ -104,10 +104,18 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data object DebugMenu : AccountSettings()
-        
-        @Serializable        
+
+        @Serializable
         data class ScaleDetails(
             val broadcastId: String,
         ) : AccountSettings()
+    }
+
+    @Serializable
+    sealed class ScaleDetails : AppRoute() {
+        @Serializable
+        data class ScaleMode(
+            val scaleId: String,
+        ) : ScaleDetails()
     }
 }

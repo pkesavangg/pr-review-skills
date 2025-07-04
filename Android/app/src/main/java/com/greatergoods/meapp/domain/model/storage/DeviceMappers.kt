@@ -10,8 +10,8 @@ import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEnt
 /**
  * Extension functions for mapping between Device domain model and database entities.
  */
-fun DeviceDetails.toDeviceDomainModel(): Device {
-    return Device(
+fun DeviceDetails.toDeviceDomainModel(): Device =
+    Device(
         id = device.id,
         accountId = device.accountId,
         peripheralIdentifier = device.peripheralIdentifier,
@@ -53,11 +53,11 @@ fun DeviceDetails.toDeviceDomainModel(): Device {
         systemId = meta?.systemId,
         latestVersion = meta?.latestVersion,
         hasNumericUsers = bpm?.hasNumericUsers,
+        isWeighOnlyModeEnabledByOthers = scale?.isWeighOnlyModeEnabledByOthers ?: false,
     )
-}
 
-fun DeviceEntity.toDeviceDomainModel(): Device {
-    return Device(
+fun DeviceEntity.toDeviceDomainModel(): Device =
+    Device(
         id = id,
         accountId = accountId,
         peripheralIdentifier = peripheralIdentifier,
@@ -98,74 +98,87 @@ fun DeviceEntity.toDeviceDomainModel(): Device {
         manufacturerName = null, // Will be set by DeviceDetails
         systemId = null, // Will be set by DeviceDetails
         latestVersion = null, // Will be set by DeviceDetails
-        hasNumericUsers = null, // Will be set by DeviceDetails
+        hasNumericUsers = null, // Will be set by DeviceDetails,
+        isWeighOnlyModeEnabledByOthers = false, // Will be set by DeviceDetails
     )
-}
 
-fun Device.toDeviceDetails(): DeviceDetails {
-    return DeviceDetails(
-        device = DeviceEntity(
-            id = id,
-            accountId = accountId,
-            peripheralIdentifier = peripheralIdentifier,
-            nickname = nickname,
-            sku = sku,
-            mac = mac,
-            password = password,
-            isDeleted = isDeleted,
-            deviceName = deviceName,
-            deviceType = deviceType,
-            broadcastId = broadcastId,
-            broadcastIdString = broadcastIdString,
-            userNumber = userNumber,
-            protocolType = protocolType,
-            createdAt = createdAt,
-            lastModified = lastModified,
-            isSynced = isSynced,
-            isConnected = isConnected,
-            wifiMac = wifiMac,
-            isWifiConfigured = isWifiConfigured,
-            token = token,
-        ),
-        scale = if (scaleType != null || bodyComp) {
-            BodyScaleEntity(
+fun Device.toDeviceDetails(): DeviceDetails =
+    DeviceDetails(
+        device =
+            DeviceEntity(
                 id = id,
-                scaleType = scaleType,
-                bodyComp = bodyComp,
-            )
-        } else null,
-        meta = if (modelNumber != null || serialNumber != null || firmwareRevision != null) {
-            DeviceMetaDataEntity(
-                id = id,
-                modelNumber = modelNumber,
-                serialNumber = serialNumber,
-                firmwareRevision = firmwareRevision,
-                hardwareRevision = hardwareRevision,
-                softwareRevision = softwareRevision,
-                manufacturerName = manufacturerName,
-                systemId = systemId,
-                latestVersion = latestVersion,
-            )
-        } else null,
-        r4Preference = if (displayName != null || displayMetrics != null) {
-            R4ScalePreferenceEntity(
-                id = id,
-                displayName = displayName,
-                displayMetrics = displayMetrics?.split(",")?.filter { it.isNotEmpty() },
-                shouldFactoryReset = shouldFactoryReset,
-                shouldMeasureImpedance = shouldMeasureImpedance,
-                shouldMeasurePulse = shouldMeasurePulse,
-                timeFormat = timeFormat,
-                tzOffset = tzOffset?.toIntOrNull(),
-                wifiFotaScheduleTime = wifiFotaScheduleTime?.toIntOrNull(),
-                updatedAt = prefsUpdatedAt,
-            )
-        } else null,
-        bpm = if (hasNumericUsers != null) {
-            BpmEntity(
-                id = id,
-                hasNumericUsers = hasNumericUsers,
-            )
-        } else null,
+                accountId = accountId,
+                peripheralIdentifier = peripheralIdentifier,
+                nickname = nickname,
+                sku = sku,
+                mac = mac,
+                password = password,
+                isDeleted = isDeleted,
+                deviceName = deviceName,
+                deviceType = deviceType,
+                broadcastId = broadcastId,
+                broadcastIdString = broadcastIdString,
+                userNumber = userNumber,
+                protocolType = protocolType,
+                createdAt = createdAt,
+                lastModified = lastModified,
+                isSynced = isSynced,
+                isConnected = isConnected,
+                wifiMac = wifiMac,
+                isWifiConfigured = isWifiConfigured,
+                token = token,
+            ),
+        scale =
+            if (scaleType != null || bodyComp) {
+                BodyScaleEntity(
+                    id = id,
+                    scaleType = scaleType,
+                    bodyComp = bodyComp,
+                    isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
+                )
+            } else {
+                null
+            },
+        meta =
+            if (modelNumber != null || serialNumber != null || firmwareRevision != null) {
+                DeviceMetaDataEntity(
+                    id = id,
+                    modelNumber = modelNumber,
+                    serialNumber = serialNumber,
+                    firmwareRevision = firmwareRevision,
+                    hardwareRevision = hardwareRevision,
+                    softwareRevision = softwareRevision,
+                    manufacturerName = manufacturerName,
+                    systemId = systemId,
+                    latestVersion = latestVersion,
+                )
+            } else {
+                null
+            },
+        r4Preference =
+            if (displayName != null || displayMetrics != null) {
+                R4ScalePreferenceEntity(
+                    id = id,
+                    displayName = displayName,
+                    displayMetrics = displayMetrics?.split(",")?.filter { it.isNotEmpty() },
+                    shouldFactoryReset = shouldFactoryReset,
+                    shouldMeasureImpedance = shouldMeasureImpedance,
+                    shouldMeasurePulse = shouldMeasurePulse,
+                    timeFormat = timeFormat,
+                    tzOffset = tzOffset?.toIntOrNull(),
+                    wifiFotaScheduleTime = wifiFotaScheduleTime?.toIntOrNull(),
+                    updatedAt = prefsUpdatedAt,
+                )
+            } else {
+                null
+            },
+        bpm =
+            if (hasNumericUsers != null) {
+                BpmEntity(
+                    id = id,
+                    hasNumericUsers = hasNumericUsers,
+                )
+            } else {
+                null
+            },
     )
-} 

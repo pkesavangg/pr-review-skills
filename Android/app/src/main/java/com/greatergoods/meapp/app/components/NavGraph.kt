@@ -20,6 +20,7 @@ import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.manualEntry.EntryScreen
 import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.scaleDetails.screens.ScaleDetailsScreen
+import com.greatergoods.meapp.features.scaleMode.screens.ScaleModeScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 import com.greatergoods.meapp.features.signup.SignupScreen
 import com.greatergoods.meapp.features.weightless.screen.WeightlessScreen
@@ -57,5 +58,11 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
     entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
         ScaleDetailsScreen(scaleInfo.broadcastId)
+    }
+}
+
+fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
+    entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
+        ScaleModeScreen(scaleInfo.scaleId)
     }
 }

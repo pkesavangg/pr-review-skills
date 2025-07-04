@@ -24,6 +24,8 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
 
     object OpenProductGuide : ScaleDetailsIntent
 
+    object OpenScaleMode : ScaleDetailsIntent
+
     object Back : ScaleDetailsIntent
 }
 
@@ -41,5 +43,6 @@ class ScaleDetailsReducer : IReducer<ScaleDetailsState, ScaleDetailsIntent> {
             ScaleDetailsIntent.DeleteScale -> state.copy()
             ScaleDetailsIntent.OpenProductGuide -> state.copy()
             ScaleDetailsIntent.Back -> state.copy()
+            else -> state.copy()
         }
 }
