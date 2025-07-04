@@ -97,25 +97,11 @@ private fun SettingsItemRow(
             SettingColorType.Danger -> MeTheme.colorScheme.danger
         }
 
-    // Determine if the whole row should be clickable
-    val hasClickableIcon = when (item.type) {
-        is SettingsItemType.Action,
-        is SettingsItemType.Dropdown,
-        is SettingsItemType.CustomIcon -> true
-
-        else -> false
-    }
-
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MeTheme.colorScheme.primaryBackground,
-        onClick =
-            if (item.enabled) {
-                item.onClick
-            } else {
-                {}
-            },
+         onClick = item.onClick,
     ) {
         Row(
             modifier =
@@ -166,9 +152,7 @@ private fun SettingsItemRow(
                             id = AppIcons.Default.RightCaret,
                             contentDescription = "Action",
                             enabled = item.enabled,
-                            onClick = {
-                                item.iconClick?.invoke() ?: item.onClick.invoke()
-                            },
+                            onClick = {item.onClick.invoke()},
                         )
                     }
 
@@ -177,9 +161,7 @@ private fun SettingsItemRow(
                             id = AppIcons.Filled.CaretDown,
                             contentDescription = "Dropdown",
                             enabled = item.enabled,
-                            onClick = {
-                                item.iconClick?.invoke() ?: item.onClick()
-                            },
+                            onClick = {item.onClick.invoke()},
                         )
                     }
 
@@ -224,21 +206,18 @@ private fun SettingsSectionPreview() {
                             title = "Regular Action",
                             type = SettingsItemType.Action(),
                             onClick = {}, // Row click (not triggered)
-                            iconClick = {}, // Icon click (triggered)
                         ),
                         SettingsItem(
                             title = "Primary Action",
                             type = SettingsItemType.Action(),
                             color = SettingColorType.Primary,
                             onClick = {},
-                            iconClick = {},
                         ),
                         SettingsItem(
                             title = "Danger Action",
                             type = SettingsItemType.Action(),
                             color = SettingColorType.Danger,
                             onClick = {},
-                            iconClick = {},
                         ),
                     ),
             )
@@ -296,7 +275,6 @@ private fun SettingsSectionPreview() {
                                     icon = { AppIcon(id = AppIcons.Default.Plus, contentDescription = "Plus") },
                                 ),
                             onClick = {}, // Row click (not triggered)
-                            iconClick = {}, // Icon click (triggered)
                         ),
                         SettingsItem(
                             title = "No Icon",

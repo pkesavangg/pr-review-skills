@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
@@ -34,7 +35,6 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
-import kotlinx.coroutines.launch
 
 /**
  * Debug menu screen composable. Displays debug information and troubleshooting options.
@@ -74,7 +74,7 @@ private fun DebugMenuContent(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = spacing.md),
+                .padding(horizontal = spacing.sm),
             verticalArrangement = Arrangement.Top,
         ) {
             Spacer(modifier = Modifier.padding(top = spacing.md))
@@ -179,10 +179,14 @@ private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
                 type = SettingsItemType.None,
                 color = SettingColorType.Danger,
                 onClick = {
+                    AppLog.i("DebugMenuScreen", "Clear data clicked")
                     handleIntent(
                         DebugMenuIntent.ClearAllData {
-                            scope.launch {
+                            AppLog.i("DebugMenuScreen", "Activity finish callback triggered!")
+                            try {
                                 activity?.finish()
+                            } catch (e: Exception) {
+                                AppLog.e("DebugMenuScreen", "Error finishing activity", e.toString())
                             }
                         },
                     )
