@@ -17,5 +17,23 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Weight Gurus uses the camera to sync with AppSync scales.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>wifi setup</key>
+		<string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Weight Gurus uses camera and photo access to sync with AppSync scales.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
