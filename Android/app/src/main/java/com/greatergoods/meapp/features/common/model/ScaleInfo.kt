@@ -26,6 +26,18 @@ data class ScaleInfo(
 
 val SCALES =
     listOf(
+        ScaleInfo("AppSync Body Fat Scale", "0341", ScaleSetupType.AppSync, true),
+        ScaleInfo("AppSync Bathroom Scale", "0342", ScaleSetupType.AppSync, false),
+        ScaleInfo("AppSync Body Fat Scale", "0343", ScaleSetupType.AppSync, true),
+        ScaleInfo("AppSync Body Fat Scale", "0345", ScaleSetupType.AppSync, true),
+        ScaleInfo("AppSync Body Fat Scale", "0346", ScaleSetupType.AppSync, true),
+        ScaleInfo("AppSync Body Fat Scale", "0347", ScaleSetupType.AppSync, true),
+        ScaleInfo("Basic AppSync Bathroom Scale", "0358", ScaleSetupType.AppSync, false),
+        ScaleInfo("Basic AppSync Bathroom Scale", "0359", ScaleSetupType.AppSync, false),
+        ScaleInfo("AppSync Bathroom Scale", "0364", ScaleSetupType.Wifi, true),
+        ScaleInfo("AppSync Body Fat Scale", "0369", ScaleSetupType.Wifi, true),
+        ScaleInfo("AppSync Body Fat Scale", "0370", ScaleSetupType.Wifi, true),
+        ScaleInfo("AppSync Bathroom Scale", "0371", ScaleSetupType.Wifi, false),
         ScaleInfo("Bluetooth Smart Scale", "0375", ScaleSetupType.Bluetooth, false),
         ScaleInfo("Bluetooth Smart Scale", "0376", ScaleSetupType.Bluetooth, false),
         ScaleInfo("Bluetooth Smart Scale", "0378", ScaleSetupType.Lcbt, true),
@@ -38,17 +50,3 @@ val SCALES =
         ScaleInfo("Wi-Fi Smart Scale", "0397", ScaleSetupType.EspTouchWifi, false),
         ScaleInfo("AccuCheck Verve Smart Scale", "0412", ScaleSetupType.BtWifiR4, true),
     )
-
-// TODO(): Add AppSync scales
-// ScaleInfo("AppSync Body Fat Scale", "0341", ScaleSetupType.Wifi, true),
-// ScaleInfo("AppSync Bathroom Scale", "0342", ScaleSetupType.Wifi, false),
-// ScaleInfo("AppSync Body Fat Scale", "0343", ScaleSetupType.Wifi, true),
-// ScaleInfo("AppSync Body Fat Scale", "0345", ScaleSetupType.Wifi, true),
-// ScaleInfo("AppSync Body Fat Scale", "0346", ScaleSetupType.Wifi, true),
-// ScaleInfo("AppSync Body Fat Scale", "0347", ScaleSetupType.Wifi, true),
-// ScaleInfo("Basic AppSync Bathroom Scale", "0358", ScaleSetupType.Wifi, false),
-// ScaleInfo("Basic AppSync Bathroom Scale", "0359", ScaleSetupType.Wifi, false),
-// ScaleInfo("AppSync Bathroom Scale", "0364", ScaleSetupType.Wifi, true),
-// ScaleInfo("AppSync Body Fat Scale", "0369", ScaleSetupType.Wifi, true),
-// ScaleInfo("AppSync Body Fat Scale", "0370", ScaleSetupType.Wifi, true),
-// ScaleInfo("AppSync Bathroom Scale", "0371", ScaleSetupType.Wifi, false),

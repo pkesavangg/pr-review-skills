@@ -1,11 +1,12 @@
-package com.greatergoods.meapp.features.scaleSettings.viewmodel
+package com.greatergoods.meapp.features.scaleDetails.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.scaleSettings.reducer.ScaleSettingsIntent
-import com.greatergoods.meapp.features.scaleSettings.reducer.ScaleSettingsReducer
-import com.greatergoods.meapp.features.scaleSettings.reducer.ScaleSettingsState
+import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
+import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsReducer
+import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsState
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -13,42 +14,43 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the ScaleSettings screen. Handles scale settings logic and navigation.
+ * ViewModel for the ScaleDetails screen. Handles scale details logic and navigation.
  */
 @HiltViewModel(
-    assistedFactory = ScaleSettingsViewModel.Factory::class,
+    assistedFactory = ScaleDetailsViewModel.Factory::class,
 )
-class ScaleSettingsViewModel
+class ScaleDetailsViewModel
     @AssistedInject
     constructor(
         private val deviceService: IDeviceService,
         @Assisted val broadcastId: String,
-    ) : BaseIntentViewModel<ScaleSettingsState, ScaleSettingsIntent>(
-            reducer = ScaleSettingsReducer(),
+    ) : BaseIntentViewModel<ScaleDetailsState, ScaleDetailsIntent>(
+            reducer = ScaleDetailsReducer(),
         ) {
         @AssistedFactory
         interface Factory {
-            fun create(broadcastId: String): ScaleSettingsViewModel
+            fun create(broadcastId: String): ScaleDetailsViewModel
         }
 
-        override fun provideInitialState(): ScaleSettingsState = ScaleSettingsState()
+        override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState()
 
-        override fun handleIntent(intent: ScaleSettingsIntent) {
+        override fun handleIntent(intent: ScaleDetailsIntent) {
             super.handleIntent(intent)
             when (intent) {
-                ScaleSettingsIntent.EditName -> {
+                ScaleDetailsIntent.EditName -> {
                     // TODO: Handle edit name
                 }
 
-                ScaleSettingsIntent.DeleteScale -> {
+                ScaleDetailsIntent.DeleteScale -> {
                     // TODO: Handle delete scale
                 }
 
-                ScaleSettingsIntent.OpenProductGuide -> {
+                ScaleDetailsIntent.OpenProductGuide -> {
+                    openProductGuide()
                     // TODO: Handle open product guide
                 }
 
-                ScaleSettingsIntent.Back -> {
+                ScaleDetailsIntent.Back -> {
                     navigateBack()
                 }
 
@@ -65,9 +67,20 @@ class ScaleSettingsViewModel
                 deviceService.savedScales.collect { devices ->
                     val device = devices.find { it.broadcastId == broadcastId }
                     device?.let { scaleDevice ->
-                        handleIntent(ScaleSettingsIntent.SetScaleInfo(scaleDevice))
+                        handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
                     }
                 }
+            }
+        }
+
+        private fun openProductGuide() {
+            if (!state.value.scale
+                    ?.sku
+                    .isNullOrEmpty()
+            ) {
+                val sku = state.value.scale!!.sku
+                val url = "${AppConfig.PRODUCT_URL}/$sku"
+                openInAppBrowser(url)
             }
         }
 

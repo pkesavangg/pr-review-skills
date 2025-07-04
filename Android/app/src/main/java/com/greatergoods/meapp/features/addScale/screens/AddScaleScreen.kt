@@ -140,26 +140,30 @@ fun AddScaleScreenContent(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
                 Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-                AppText(
-                    text = AddScaleScreenStrings.MyScales,
-                    textType = TextType.Title,
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
-            ) {
-                state.savedScales.forEach { scaleInfo ->
-                    AppScaleCard(
-                        scale = scaleInfo,
-                        isSavedScale = true,
-                        onClick = { selectedScaleInfo ->
-                            selectedScaleInfo.broadcastId?.let { broadcastId ->
-                                handleIntent(AddScaleIntent.OpenScaleSettings(broadcastId))
-                            }
-                        },
+                if (state.savedScales.isNotEmpty()) {
+                    AppText(
+                        text = AddScaleScreenStrings.MyScales,
+                        textType = TextType.Title,
                     )
+                }
+            }
+            if (state.savedScales.isNotEmpty()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(),
+                ) {
+                    state.savedScales.forEach { scaleInfo ->
+                        AppScaleCard(
+                            scale = scaleInfo,
+                            isSavedScale = true,
+                            onClick = { selectedScaleInfo ->
+                                selectedScaleInfo.broadcastId?.let { broadcastId ->
+                                    handleIntent(AddScaleIntent.OpenScaleSettings(broadcastId))
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }

@@ -2,7 +2,6 @@ package com.greatergoods.meapp.core.navigation
 
 import androidx.navigation3.runtime.NavKey
 import com.example.nav3integration.PublicRoute
-import com.greatergoods.meapp.features.common.model.ScaleInfo
 import kotlinx.serialization.Serializable
 
 /**
@@ -107,7 +106,7 @@ sealed class AppRoute : NavKey {
         data object DebugMenu : AccountSettings()
         
         @Serializable        
-        data class ScaleSettings(
+        data class ScaleDetails(
             val broadcastId: String,
         ) : AccountSettings()
     }

@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.common.helper.DateFormatHelper
 import com.greatergoods.meapp.features.common.model.SettingColorType
 import com.greatergoods.meapp.features.common.model.SettingsItem
 import com.greatergoods.meapp.features.common.model.SettingsItemType
@@ -90,7 +91,7 @@ private fun SettingsItemRow(
 ) {
     val color =
         when (item.color) {
-            SettingColorType.Default -> MeTheme.colorScheme.textBody
+            SettingColorType.Default -> if (item.enabled) MeTheme.colorScheme.textBody else MeTheme.colorScheme.utility
             SettingColorType.Primary -> MeTheme.colorScheme.wgPrimary
             SettingColorType.Tertiary -> MeTheme.colorScheme.textSubheading
             SettingColorType.Danger -> MeTheme.colorScheme.danger
@@ -109,8 +110,12 @@ private fun SettingsItemRow(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MeTheme.colorScheme.primaryBackground,
-        enabled = !hasClickableIcon,
-        onClick = item.onClick,
+        onClick =
+            if (item.enabled) {
+                item.onClick
+            } else {
+                {}
+            },
     ) {
         Row(
             modifier =
@@ -124,6 +129,7 @@ private fun SettingsItemRow(
                 text = item.title,
                 textType = TextType.Subtitle,
                 color = color,
+                enabled = item.enabled,
             )
 
             Row(
@@ -136,15 +142,22 @@ private fun SettingsItemRow(
                         is SettingsItemType.CustomIcon -> item.type.text
                         is SettingsItemType.Dropdown -> item.type.text
                         is SettingsItemType.TextOnly -> item.type.text
+                        is SettingsItemType.TextDate ->
+                            DateFormatHelper.formatDisplayDate(
+                                item.type.rawDate,
+                            )
+
                         else -> null
                     }
                 if (value != null) {
                     Text(
                         text = value,
                         style = MeTheme.typography.body2,
-                        color = MeTheme.colorScheme.textSubheading,
+                        color = if (item.enabled) MeTheme.colorScheme.textSubheading else MeTheme.colorScheme.utility,
                         textAlign = TextAlign.End,
-                        modifier = Modifier.widthIn(max = 120.dp),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 160.dp),
                     )
                 }
                 when (item.type) {
@@ -152,6 +165,7 @@ private fun SettingsItemRow(
                         AppIcon(
                             id = AppIcons.Default.RightCaret,
                             contentDescription = "Action",
+                            enabled = item.enabled,
                             onClick = {
                                 item.iconClick?.invoke() ?: item.onClick.invoke()
                             },
@@ -161,7 +175,8 @@ private fun SettingsItemRow(
                     is SettingsItemType.Dropdown -> {
                         AppIcon(
                             id = AppIcons.Filled.CaretDown,
-                            contentDescription = "Expand",
+                            contentDescription = "Dropdown",
+                            enabled = item.enabled,
                             onClick = {
                                 item.iconClick?.invoke() ?: item.onClick()
                             },
@@ -178,6 +193,9 @@ private fun SettingsItemRow(
 
                     is SettingsItemType.None, is SettingsItemType.TextOnly -> {
                         // No icon
+                    }
+
+                    is SettingsItemType.TextDate -> {
                     }
                 }
             }

@@ -15,6 +15,11 @@ sealed class SettingsItemType {
         val text: String,
     ) : SettingsItemType()
 
+    // Text date - formats and displays a date string
+    data class TextDate(
+        val rawDate: String,
+    ) : SettingsItemType()
+
     // Text with action Icon (Default) - Text param
     data class Action(
         val text: String? = null,
@@ -43,6 +48,7 @@ sealed class SettingsItemType {
 data class SettingsItem(
     val title: String,
     val type: SettingsItemType = SettingsItemType.Action(),
+    val enabled: Boolean = true,
     val color: SettingColorType = SettingColorType.Default,
     val onClick: () -> Unit = {},
     val iconClick: (() -> Unit)? = null, // Separate click handler for icon-only clicks

@@ -1,6 +1,6 @@
-package com.greatergoods.meapp.features.scaleSettings.strings
+package com.greatergoods.meapp.features.scaleDetails.strings
 
-object ScaleSettingsStrings {
+object ScaleDetailsStrings {
     const val Header = "Scale Settings"
     const val Close = "Close"
     const val Settings = "Settings"
@@ -21,4 +21,4 @@ object ScaleSettingsStrings {
     const val DatePaired = "Date Paired"
     const val ProductGuide = "Product Guide"
     const val DeleteScale = "Delete Scale"
-} 
+}
