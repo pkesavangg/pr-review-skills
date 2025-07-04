@@ -1,3 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
 # Swift Code Style & Documentation (meApp iOS)
 
 ## 1. Swift Conventions

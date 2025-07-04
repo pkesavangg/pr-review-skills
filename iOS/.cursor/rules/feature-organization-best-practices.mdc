@@ -1,3 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
 # Feature Organization Best Practices (meApp iOS)
 
 ## 1. Feature Structure

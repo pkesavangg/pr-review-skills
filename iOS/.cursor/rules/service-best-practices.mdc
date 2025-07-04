@@ -1,3 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
 # Service Layer Best Practices (meApp iOS)
 
 ## 1. Folder & File Organization
@@ -13,7 +18,7 @@
 - Use `@MainActor` only for UI-related services; otherwise, prefer actor isolation for shared mutable state.
 
 ## 3. Concurrency & Thread-Safety
-- Prefer actor-isolated services for shared mutable state; use `nonisolated` functions only for read-only methods. 
+- Prefer actor-isolated services for shared mutable state; use `nonisolated` functions only for read-only methods.
 - Expose long-running operations as `AsyncStream` or `AsyncThrowingStream` so callers can observe progress or partial results.
 - Always propagate cooperative cancellation (`Task.isCancelled`, `try Task.checkCancellation()`) and respect timeouts.
 

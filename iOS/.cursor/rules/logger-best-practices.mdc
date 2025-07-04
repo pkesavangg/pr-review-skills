@@ -1,3 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
 # Logger Best Practices (meApp iOS)
 
 ## 1. Logger Usage

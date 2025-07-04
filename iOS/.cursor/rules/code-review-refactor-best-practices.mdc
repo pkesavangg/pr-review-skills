@@ -1,3 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
 # Code Review & Refactor Best Practices (meApp iOS)
 
 ## 1. Analyze Existing Code
