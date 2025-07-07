@@ -102,12 +102,15 @@ class AccountService
       password: String,
     ): Account? =
       try {
+        AppLog.d(TAG, "login() called for email: $email")
         val isExistingAccount = getLoggedInAccounts().any { it.email == email }
         if (hasReachedMaxAccounts.first() && !isExistingAccount) {
+          AppLog.w(TAG, "Max accounts reached. Cannot login new account: $email")
           throw MaxAccountsReachedException()
         }
         val savedAccount = accountRepository.login(email, password)
         appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
+        AppLog.d(TAG, "login() successful for email: $email")
         savedAccount
       } catch (e: HttpException) {
         val header = ToastStrings.Error.LoginError.Header
@@ -131,13 +134,16 @@ class AccountService
      * @throws MaxAccountsReachedException if the maximum number of accounts is reached
      */
     override suspend fun signup(request: SignupRequest): Account? {
+      AppLog.d(TAG, "signup() called for email: ${request.email}")
       if (hasReachedMaxAccounts.first()) {
+        AppLog.w(TAG, "Max accounts reached. Cannot signup new account: ${request.email}")
         appNavigationService.emitAuthEvent(AuthState.Error("Maximum account limit reached"))
         throw MaxAccountsReachedException()
       }
       return try {
         val savedAccount = accountRepository.signup(request)
         appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
+        AppLog.d(TAG, "signup() successful for email: ${request.email}")
         savedAccount
       } catch (e: Exception) {
         if (e is HttpException) {
@@ -167,6 +173,7 @@ class AccountService
      * @param email The email address to reset the password for
      */
     override suspend fun resetPassword(email: String) {
+      AppLog.d(TAG, "resetPassword() called for email: $email")
       try {
         val response = this.accountRepository.resetPassword(email)
         if (response.isSuccessful) {
@@ -204,8 +211,12 @@ class AccountService
       currentPassword: String,
       newPassword: String,
     ): Boolean {
+      AppLog.d(TAG, "changePassword() called")
       return try {
-        getCurrentAccount() ?: return false
+        getCurrentAccount() ?: run {
+          AppLog.w(TAG, "No active account found for changePassword(). Returning false.")
+          return false
+        }
         accountRepository.updatePassword(activeAccountFlow.first()!!.id, currentPassword, newPassword)
         AppLog.d(TAG, "Password changed successfully")
         showSuccessToast(
@@ -238,6 +249,7 @@ class AccountService
      */
     override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account? =
       try {
+        AppLog.d(TAG, "updateProfile() called for accountId: ${profileUpdateRequest.accountId}")
         val updatedAccount = accountRepository.updateProfile(profileUpdateRequest)
         AppLog.i(TAG, "Profile updated successfully via API for account: \\${updatedAccount.id}")
         updatedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
@@ -266,11 +278,13 @@ class AccountService
      * @return true if account is still valid, false if expired
      */
     override suspend fun checkLoginStatusForActiveAccount(): Boolean {
+      AppLog.d(TAG, "checkLoginStatusForActiveAccount() called")
       return try {
+        AppLog.d(TAG, "Checking network availability for checkLoginStatusForActiveAccount()")
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
         val activeAccount = getCurrentAccount()
         if (activeAccount == null) {
-          AppLog.d(TAG, "No active account found")
+          AppLog.d(TAG, "No active account found in checkLoginStatusForActiveAccount(). Returning false.")
           return false
         }
         AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
@@ -301,11 +315,13 @@ class AccountService
      * @return true if all accounts are valid, false if any account is expired
      */
     override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean {
+      AppLog.d(TAG, "checkLoginStatusForLoggedInAccounts() called")
       return try {
+        AppLog.d(TAG, "Checking network availability for checkLoginStatusForLoggedInAccounts()")
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
         val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
         if (loggedInAccounts.isEmpty()) {
-          AppLog.d(TAG, "No non-active logged-in accounts found")
+          AppLog.d(TAG, "No non-active logged-in accounts found in checkLoginStatusForLoggedInAccounts(). Returning true.")
           return true
         }
         for (account in loggedInAccounts) {
@@ -339,6 +355,7 @@ class AccountService
      * @return The affected account or null if not found
      */
     override suspend fun handleUnauthorizedLogout(accountId: String?): Account? {
+      AppLog.d(TAG, "handleUnauthorizedLogout() called for accountId: $accountId")
       if (accountId.isNullOrEmpty()) {
         AppLog.w(TAG, "No account ID available for unauthorized logout")
         return null
@@ -376,6 +393,7 @@ class AccountService
       fcmToken: String?,
     ): Boolean =
       try {
+        AppLog.d(TAG, "logout() called for accountId: $accountId")
         val isActiveAccount = getCurrentAccount()?.id == accountId
         val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
         AppLog.d(TAG, "Logout successful")
@@ -393,6 +411,7 @@ class AccountService
      */
     override suspend fun logoutAll(): Boolean =
       try {
+        AppLog.d(TAG, "logoutAll() called")
         val result = accountRepository.logoutAllAccounts()
         AppLog.d(TAG, "All accounts logged out successfully")
         appNavigationService.emitAuthEvent(AuthState.LoggedOut(true))
@@ -410,6 +429,8 @@ class AccountService
       accountID: String,
       isActiveAccount: Boolean,
     ) {
+      AppLog.d(TAG, "deleteAccount() called for accountId: $accountID, isActiveAccount: $isActiveAccount")
+      AppLog.d(TAG, "Checking network availability for deleteAccount()")
       requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
       try {
         accountRepository.deleteAccount(accountID, isActiveAccount)
@@ -432,6 +453,7 @@ class AccountService
       showToast: Boolean,
     ): Boolean =
       try {
+        AppLog.d(TAG, "switchAccount() called for accountId: ${account.id}, showToast: $showToast")
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
         // Switch to the account using the repository method
         accountRepository.switchToAccount(account.id)
@@ -451,6 +473,7 @@ class AccountService
      */
     override suspend fun updateTokens(tokens: AccountToken): Boolean =
       try {
+        AppLog.d(TAG, "updateTokens() called for accountId: ${tokens.accountId}")
         accountRepository.updateTokens(tokens)
         AppLog.d(TAG, "Tokens updated successfully")
         appNavigationService.emitAuthEvent(AuthState.TokensUpdated)
@@ -466,6 +489,7 @@ class AccountService
      * @param themeMode The ThemeMode to set
      */
     override suspend fun setCurrentThemeMode(themeMode: ThemeMode) {
+      AppLog.d(TAG, "setCurrentThemeMode() called with themeMode: $themeMode")
       try {
         accountRepository.setCurrentThemeMode(themeMode)
         AppLog.d(TAG, "Successfully set theme mode to: $themeMode")
@@ -476,9 +500,12 @@ class AccountService
     }
 
     override suspend fun reset() {
+      AppLog.d(TAG, "reset() called. Clearing all storage.")
       try {
         storageClearService.clearAllStorage()
+        AppLog.d(TAG, "reset() completed. All storage cleared.")
       } catch (e: Exception) {
+        AppLog.e(TAG, "reset() failed during storage clear", e.toString())
         dialogQueueService.showToast(
           Toast(
             title = null,
@@ -494,6 +521,7 @@ class AccountService
      * Extension function to sort accounts: active account first, then others by lastActiveTime descending.
      */
     private fun List<Account>.sortedActiveFirst(): List<Account> {
+      AppLog.d(TAG, "sortedActiveFirst() called. Sorting accounts with active account first.")
       val active = this.find { it.isActiveAccount }
       val others =
         this
