@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -45,7 +47,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppDraggableListItem(
-    onActionOpened: (Int) -> Unit,
+    onActionOpened: (Int?) -> Unit,
     isDraggable: Boolean,
     index: Int,
     iconWidth: Dp = 40.dp,
@@ -79,6 +81,13 @@ fun AppDraggableListItem(
                 Modifier
                     .width(iconWidth)
                     .matchParentSize()
+                    .pointerInput(
+                        showAction,
+                    ) {
+                        awaitPointerEventScope {
+                                onActionOpened(null)
+                        }
+                    }
                     .align(Alignment.CenterEnd),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
@@ -163,7 +172,8 @@ private fun DraggableContentBox(
                                 .roundToInt(),
                         y = 0,
                     )
-                }.anchoredDraggable(
+                }
+                .anchoredDraggable(
                     state = state,
                     orientation = Orientation.Horizontal,
                     enabled = isDraggable,
