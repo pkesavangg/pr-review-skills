@@ -104,6 +104,22 @@ final class DateTimeTools {
         return Calendar.current.component(.weekday, from: date)
     }
 
+    static func getDateStringFromDate(_ dateString: String) -> String {
+        guard let date = parse(dateString) else { return invalidString }
+        return formatter("yyyy-MM-dd").string(from: date)
+    }
+
+    static func getDateFromDateString(_ dateString: String, format: String) -> Date {
+        guard parse(dateString) != nil else { return Date() }
+        return formatter(format).date(from: dateString) ?? Date()
+    }
+
+
+    static func getMonthStringFromDate(_ dateString: String) -> String {
+        guard let date = parse(dateString) else { return invalidString }
+        return formatter("yyyy-MM").string(from: date)
+    }
+
     // MARK: - ISO String
 
     /// Returns the current date and time as an ISO8601 string with fractional seconds.
@@ -272,7 +288,7 @@ final class DateTimeTools {
         }
         return formatter.string(from: combined)
     }
-    
+
     // MARK: - Timezone Offset
     /// Returns the current user's timezone offset in minutes.
     static func getUTCOffset() -> Int {
@@ -297,4 +313,4 @@ final class DateTimeTools {
         return "\(minutes) min \(TimeZone.current.identifier)"
     }
 }
-	
+
