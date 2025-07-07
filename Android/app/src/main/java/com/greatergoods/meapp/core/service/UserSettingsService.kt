@@ -1,14 +1,13 @@
 package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import com.greatergoods.meapp.core.shared.utilities.DateTimeUtil.getCurrentTimestamp
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.api.metrics.StreakRequest
 import com.greatergoods.meapp.domain.model.api.metrics.WeightlessRequest
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.IUserSettingsService
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,16 +23,6 @@ class UserSettingsService
     private val connectivityObserver: IConnectivityObserver,
   ) : IUserSettingsService {
     private val TAG = "UserSettingsService"
-
-    /**
-     * Generates a timestamp in the format 'YYYY-MM-DD HH:mm:ss.SSSSSSZ'
-     * Example: '2022-08-22 14:26:38.954039+05:30'
-     */
-    private fun getCurrentTimestamp(): String {
-      val now = ZonedDateTime.now()
-      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSXXX")
-      return now.format(formatter)
-    }
 
     /**
      * Checks if network is available using the connectivity observer

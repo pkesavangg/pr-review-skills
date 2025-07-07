@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.config.AppConfig
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
 import com.greatergoods.meapp.domain.model.api.integration.UserAccount
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Data class for invalid integration alert information.
@@ -174,7 +174,7 @@ class IntegrationService
               try {
                 removeMultipleIntegrations(providers)
               } catch (e: Exception) {
-                Log.e("IntegrationService", "Error disabling integrations", e)
+                AppLog.e("IntegrationService", "Error disabling integrations", e)
               }
             }
             dialogQueueService.dismissCurrent()
