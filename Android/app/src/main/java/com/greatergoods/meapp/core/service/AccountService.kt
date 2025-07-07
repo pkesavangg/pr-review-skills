@@ -249,7 +249,7 @@ class AccountService
      */
     override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account? =
       try {
-        AppLog.d(TAG, "updateProfile() called for accountId: ${profileUpdateRequest.accountId}")
+        AppLog.d(TAG, "updateProfile() called for accountId: ${profileUpdateRequest.id}")
         val updatedAccount = accountRepository.updateProfile(profileUpdateRequest)
         AppLog.i(TAG, "Profile updated successfully via API for account: \\${updatedAccount.id}")
         updatedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
@@ -321,7 +321,10 @@ class AccountService
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
         val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
         if (loggedInAccounts.isEmpty()) {
-          AppLog.d(TAG, "No non-active logged-in accounts found in checkLoginStatusForLoggedInAccounts(). Returning true.")
+          AppLog.d(
+            TAG,
+            "No non-active logged-in accounts found in checkLoginStatusForLoggedInAccounts(). Returning true.",
+          )
           return true
         }
         for (account in loggedInAccounts) {
