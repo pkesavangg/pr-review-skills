@@ -1,15 +1,14 @@
 package com.greatergoods.meapp.features.scaleMode.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -20,21 +19,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.storage.Device
-import com.greatergoods.meapp.features.common.components.AppButton
+import com.greatergoods.meapp.features.common.components.AnnotationPosition
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppIconType
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.AppToggle
-import com.greatergoods.meapp.features.common.components.ButtonSize
-import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonData
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
@@ -47,9 +46,9 @@ import com.greatergoods.meapp.features.scaleMode.strings.ScaleModeStrings
 import com.greatergoods.meapp.features.scaleMode.viewmodel.ScaleModeViewModel
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
-import com.greatergoods.meapp.theme.token.LocalBorderRadius
-import com.greatergoods.meapp.theme.token.LocalSpacing
-import com.greatergoods.meapp.theme.token.LocalTypography
+import com.greatergoods.meapp.theme.MeTheme.borderRadius
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
 
 @Composable
@@ -74,20 +73,14 @@ fun ScaleModeScreenContent(
 ) {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
-    val uriHandler = LocalUriHandler.current
     val isAllBodyMetrics = state.isAllBodyMetrics
     val isHeartRateOn = state.isHeartRateOn
-    val scale = state.scale
     val modeOptions =
         listOf(
             SegmentButtonData(0, ScaleModeStrings.AllBodyMetrics),
             SegmentButtonData(1, ScaleModeStrings.WeightOnly),
         )
     val selectedMode = if (isAllBodyMetrics) modeOptions[0] else modeOptions[1]
-
-    val typography = LocalTypography.current
-    val spacing = LocalSpacing.current
-    val borderRadius = LocalBorderRadius.current
 
     AppScaffold(
         title = ScaleModeStrings.Title,
@@ -102,11 +95,11 @@ fun ScaleModeScreenContent(
             if (!isAllBodyMetrics) {
                 AppText(
                     text = ScaleModeStrings.Save,
-                    textType = TextType.Title,
-                    color = MeTheme.colorScheme.primaryAction,
+                    textType = TextType.ListTitle1,
+                    color = colorScheme.primaryAction,
                     modifier =
                         Modifier
-                            .padding(end = MeTheme.spacing.md)
+                            .padding(end = spacing.md)
                             .clickable { handleIntent(ScaleModeIntent.Save) },
                 )
             }
@@ -117,31 +110,24 @@ fun ScaleModeScreenContent(
                 Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(MeTheme.spacing.md),
-            verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),
+                    .padding(vertical = spacing.md, horizontal = spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
             // Description with link
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val descParts = ScaleModeStrings.BioimpedanceDescription.split(ScaleModeStrings.BioimpedanceTitle)
+            Column(verticalArrangement = Arrangement.Center) {
                 AppText(
-                    text = descParts[0],
+                    text = ScaleModeStrings.BioimpedanceDescription.format(ScaleModeStrings.BioimpedanceTitle),
+                    annotatedText = ScaleModeStrings.BioimpedanceTitle,
+                    annotationPosition = AnnotationPosition.Middle,
+                    spanStyle =
+                        SpanStyle(
+                            color = colorScheme.primaryAction,
+                            fontWeight = FontWeight.Bold,
+                            textDecoration = TextDecoration.Underline,
+                        ),
                     textType = TextType.Body,
+                    onAnnotationClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
                 )
-                AppButton(
-                    label = ScaleModeStrings.BioimpedanceTitle,
-                    type = ButtonType.TextPrimary,
-                    size = ButtonSize.Small,
-                    modifier = Modifier.padding(horizontal = 2.dp),
-                    onClick = {
-                        uriHandler.openUri("https://en.wikipedia.org/wiki/Bioelectrical_impedance_analysis")
-                    },
-                )
-                if (descParts.size > 1) {
-                    AppText(
-                        text = descParts[1],
-                        textType = TextType.Body,
-                    )
-                }
             }
             // Mode selector
             SegmentButtonGroup(
@@ -157,19 +143,20 @@ fun ScaleModeScreenContent(
             if (isAllBodyMetrics) {
                 // Heart Rate toggle
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(spacing.md),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
                     AppIcon(
                         id = AppIcons.Metrics.Pulse,
-                        contentDescription = ScaleModeStrings.HeartRate,
+                        contentDescription = ScaleModeStrings.HeartRate(isHeartRateOn),
                         type = AppIconType.Default,
                     )
                     AppText(
-                        text = "${ScaleModeStrings.HeartRate} ${if (isHeartRateOn) ScaleModeStrings.HeartRateOn else ScaleModeStrings.HeartRateOff}",
+                        text = ScaleModeStrings.HeartRate(isHeartRateOn),
                         textType = TextType.Body,
-                        modifier = Modifier.weight(1f),
                     )
+                    Spacer(modifier = Modifier.weight(1f))
                     AppToggle(
                         checked = isHeartRateOn,
                         onCheckedChange = { handleIntent(ScaleModeIntent.SetHeartRate(it)) },
@@ -180,13 +167,16 @@ fun ScaleModeScreenContent(
                     textType = TextType.SubHeading,
                 )
                 Surface(
-                    color = MeTheme.colorScheme.inverseAction, // TODO: Replace with color token if needed
-                    shape = RoundedCornerShape(borderRadius.md),
+                    color = colorScheme.inverseAction,
+                    shape = RoundedCornerShape(borderRadius.sm),
                     modifier = Modifier.fillMaxWidth(),
                     shadowElevation = 0.dp,
                 ) {
                     AppText(
                         text = ScaleModeStrings.NoteMedical,
+                        annotatedText = ScaleModeStrings.Note,
+                        annotationPosition = AnnotationPosition.Start,
+                        spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
                         textType = TextType.SubHeading,
                         modifier = Modifier.padding(spacing.md),
                     )
@@ -194,8 +184,9 @@ fun ScaleModeScreenContent(
             } else {
                 // Weight Only Mode UI
                 Row(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.xs),
                 ) {
                     AppIcon(
                         id = AppIcons.Default.WeightOnlyMode,
@@ -207,49 +198,28 @@ fun ScaleModeScreenContent(
                         textType = TextType.SubHeading,
                     )
                 }
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(vertical = spacing.lg),
+                Column(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
-                    // Placeholder for scale image with indicator overlay
-                    AppIcon(
-                        id = AppIcons.Default.ScalePlaceholder,
-                        contentDescription = "Scale",
-                        modifier = Modifier.size(180.dp),
-                        type = AppIconType.Default,
+                    Image(
+                        painter =
+                            painterResource(
+                                id = AppIcons.Default.BodyMetricsOffScale,
+                            ),
+                        contentDescription = null,
                     )
-                    Column(
-                        modifier =
-                            Modifier
-                                .align(Alignment.Center)
-                                .background(
-                                    color = Color.Black.copy(alpha = 0.7f),
-                                    shape = RoundedCornerShape(borderRadius.pill),
-                                ).padding(horizontal = 24.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        AppText(
-                            text = "0.0 lb",
-                            textType = TextType.ListTitle1,
-                            color = Color.White,
-                        )
-                        AppText(
-                            text = ScaleModeStrings.BodyMetricsOff,
-                            textType = TextType.SubHeading,
-                            color = Color.White,
-                        )
-                    }
                 }
                 Surface(
-                    color = MeTheme.colorScheme.inverseAction, // TODO: Replace with color token if needed
-                    shape = RoundedCornerShape(borderRadius.md),
+                    color = colorScheme.inverseAction,
+                    shape = RoundedCornerShape(borderRadius.sm),
                     modifier = Modifier.fillMaxWidth(),
                     shadowElevation = 0.dp,
                 ) {
                     AppText(
                         text = ScaleModeStrings.NoteOtherUsers,
+                        annotatedText = ScaleModeStrings.Note,
+                        annotationPosition = AnnotationPosition.Start,
+                        spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
                         textType = TextType.SubHeading,
                         modifier = Modifier.padding(spacing.md),
                     )

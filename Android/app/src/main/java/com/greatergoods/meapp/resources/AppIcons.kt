@@ -26,6 +26,7 @@ object AppIcons {
         val ModalNumber = R.drawable.modal_number
         val ScalePlaceholder = R.drawable.placeholder_scale
         val WeightOnlyMode = R.drawable.ic_weight_only
+        val BodyMetricsOffScale = R.drawable._0412_bodymetrics
     }
 
     object Outlined {

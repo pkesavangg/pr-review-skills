@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.scaleMode.reducer
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
 
 /**
  * State for ScaleModeScreen.
@@ -21,6 +22,7 @@ sealed interface ScaleModeIntent : IReducer.Intent {
     data class SetHeartRate(val isHeartRateOn: Boolean) : ScaleModeIntent
     object Back : ScaleModeIntent
     object Save : ScaleModeIntent
+    object OpenBiaModal : ScaleModeIntent
 }
 
 /**
@@ -35,7 +37,7 @@ class ScaleModeReducer : IReducer<ScaleModeState, ScaleModeIntent> {
             is ScaleModeIntent.SetScale -> state.copy(scale = intent.scale)
             is ScaleModeIntent.SetMode -> state.copy(isAllBodyMetrics = intent.isAllBodyMetrics)
             is ScaleModeIntent.SetHeartRate -> state.copy(isHeartRateOn = intent.isHeartRateOn)
-            ScaleModeIntent.Back -> state.copy()
             ScaleModeIntent.Save -> state.copy()
+            else -> state.copy()
         }
-} 
+}

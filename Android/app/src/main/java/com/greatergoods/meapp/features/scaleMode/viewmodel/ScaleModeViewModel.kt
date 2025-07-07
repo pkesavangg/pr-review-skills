@@ -2,6 +2,8 @@ package com.greatergoods.meapp.features.scaleMode.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.scaleMode.reducer.ScaleModeIntent
 import com.greatergoods.meapp.features.scaleMode.reducer.ScaleModeReducer
@@ -35,6 +37,7 @@ class ScaleModeViewModel
             when (intent) {
                 ScaleModeIntent.Back -> navigateBack()
                 ScaleModeIntent.Save -> saveSettings()
+                ScaleModeIntent.OpenBiaModal -> openBiaModel()
                 else -> {}
             }
         }
@@ -56,6 +59,14 @@ class ScaleModeViewModel
             }
         }
 
+        private fun openBiaModel() {
+            dialogQueueService.enqueue(
+                DialogModel.Custom(
+                    contentKey = DialogType.BiaModal,
+                ),
+            )
+        }
+
         private fun saveSettings() {
             // TODO: Implement save logic (update device settings via DeviceService)
         }
@@ -65,4 +76,4 @@ class ScaleModeViewModel
                 navigationService.navigateBack()
             }
         }
-    } 
+    }
