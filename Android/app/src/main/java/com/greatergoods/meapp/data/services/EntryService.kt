@@ -218,6 +218,8 @@ constructor(
                 unSyncedEntries.add(0, entry)
             }
 
+            unSyncedEntries.sortBy { it.entry.entryTimestamp }
+
             // 3. Process operations
             val successfulOperations = mutableListOf<Entry>()
             val failedOperations = mutableListOf<Entry>()

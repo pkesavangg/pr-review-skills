@@ -30,11 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -117,7 +120,6 @@ private fun LazyGridItemInfo.toLazyCollectionItemInfo() =
             get() = this@toLazyCollectionItemInfo.size
         override val data: LazyGridItemInfo
             get() = this@toLazyCollectionItemInfo
-
     }
 
 private fun LazyGridLayoutInfo.toLazyCollectionLayoutInfo() =
@@ -134,7 +136,6 @@ private fun LazyGridLayoutInfo.toLazyCollectionLayoutInfo() =
             get() = this@toLazyCollectionLayoutInfo.reverseLayout
         override val beforeContentPadding: Int
             get() = this@toLazyCollectionLayoutInfo.beforeContentPadding
-
     }
 
 private fun LazyGridState.toLazyCollectionState() =
@@ -196,24 +197,45 @@ fun LazyGridItemScope.ReorderableItem(
     content: @Composable ReorderableCollectionItemScope.(isDragging: Boolean) -> Unit,
 ) {
     val dragging by state.isItemDragging(key)
+    var itemSize by remember { mutableStateOf(IntSize.Zero) }
+    val viewportSize = state.viewportSize
+    val draggingOrigin = state.draggingItemOrigin
+    val draggingSize = state.draggingItemSize ?: itemSize
     val offsetModifier = if (dragging) {
         Modifier
+            .onGloballyPositioned { itemSize = it.size }
             .zIndex(1f)
             .graphicsLayer {
-                translationY = state.draggingItemOffset.y
-                translationX = state.draggingItemOffset.x
+                // Clamp translation so the item cannot be dragged outside the grid (all sides)
+                val originX = draggingOrigin?.x?.toFloat() ?: 0f
+                val originY = draggingOrigin?.y?.toFloat() ?: 0f
+                val maxX = (viewportSize.width - draggingSize.width).toFloat()
+                val maxY = (viewportSize.height - draggingSize.height).toFloat()
+                val minTranslationX = -originX
+                val maxTranslationX = maxX - originX
+                val minTranslationY = -originY
+                val maxTranslationY = maxY - originY
+                translationX = state.draggingItemOffset.x.coerceIn(minTranslationX, maxTranslationX)
+                translationY = state.draggingItemOffset.y.coerceIn(minTranslationY, maxTranslationY)
             }
     } else if (key == state.previousDraggingItemKey) {
         Modifier
+            .onGloballyPositioned { itemSize = it.size }
             .zIndex(1f)
             .graphicsLayer {
-                translationY =
-                    state.previousDraggingItemOffset.value.y
-                translationX =
-                    state.previousDraggingItemOffset.value.x
+                val originX = draggingOrigin?.x?.toFloat() ?: 0f
+                val originY = draggingOrigin?.y?.toFloat() ?: 0f
+                val maxX = (viewportSize.width - draggingSize.width).toFloat()
+                val maxY = (viewportSize.height - draggingSize.height).toFloat()
+                val minTranslationX = -originX
+                val maxTranslationX = maxX - originX
+                val minTranslationY = -originY
+                val maxTranslationY = maxY - originY
+                translationX = state.previousDraggingItemOffset.value.x.coerceIn(minTranslationX, maxTranslationX)
+                translationY = state.previousDraggingItemOffset.value.y.coerceIn(minTranslationY, maxTranslationY)
             }
     } else {
-        animateItemModifier
+        Modifier.onGloballyPositioned { itemSize = it.size } then animateItemModifier
     }
 
     ReorderableCollectionItem(

@@ -188,6 +188,7 @@ private fun DashboardMilestoneGrid(
                         currentWeight = currentWeight,
                         inEditMode = inEditMode,
                         modifier = Modifier.draggableHandle(
+                            enabled = inEditMode,
                             onDragStarted = {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                             },
@@ -206,6 +207,7 @@ private fun DashboardMilestoneGrid(
                         isDragging = isDragging,
                         isSelected = false,
                         modifier = Modifier.draggableHandle(
+                            enabled = inEditMode,
                             onDragStarted = {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                             },

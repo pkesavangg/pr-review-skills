@@ -74,7 +74,7 @@ fun AppDraggableActionItem(
             )
         if (!text.isNullOrBlank()) {
             Text(
-                text = text,
+                text = text.uppercase(),
                 style = MeTheme.typography.button1,
                 color = MeTheme.colorScheme.inverseAction,
             )
