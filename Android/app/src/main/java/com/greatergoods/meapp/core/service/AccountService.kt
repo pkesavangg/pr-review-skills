@@ -273,12 +273,27 @@ class AccountService
       }
 
     /**
-     * Checks login status for the active account by calling getAccount API.
-     * Updates the account data in DB with the response and refreshes tokens if needed.
-     * @return true if account is still valid, false if expired
+     * Checks login status for the active account by calling getAccount API if online.
+     * If offline, checks local DB for isExpired status.
+     * @return true if account is valid (online or offline), false if expired
      */
     override suspend fun checkLoginStatusForActiveAccount(): Boolean {
       AppLog.d(TAG, "checkLoginStatusForActiveAccount() called")
+      if (!isNetworkAvailable()) {
+        AppLog.d(TAG, "Offline mode: checking local DB for active account validity.")
+        val activeAccount = getCurrentAccount()
+        if (activeAccount == null) {
+          AppLog.d(TAG, "No active account found in offline mode. Returning false.")
+          return false
+        }
+        if (activeAccount.isExpired) {
+          AppLog.d(TAG, "Active account is expired in local DB. Returning false.")
+          return false
+        }
+        AppLog.d(TAG, "Active account is valid in local DB. Returning true.")
+        return true
+      }
+      // Online mode: keep existing logic
       return try {
         AppLog.d(TAG, "Checking network availability for checkLoginStatusForActiveAccount()")
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
@@ -309,13 +324,28 @@ class AccountService
     }
 
     /**
-     * Checks login status for all logged-in accounts (non-active) by calling getAccount API.
-     * Updates account data in DB with responses and refreshes tokens if needed.
-     * For expired accounts, marks them as expired and clears tokens.
-     * @return true if all accounts are valid, false if any account is expired
+     * Checks login status for all logged-in accounts (non-active) by calling getAccount API if online.
+     * If offline, checks local DB for isExpired status for all accounts.
+     * @return true if all accounts are valid (online or offline), false if any are expired
      */
     override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean {
       AppLog.d(TAG, "checkLoginStatusForLoggedInAccounts() called")
+      if (!isNetworkAvailable()) {
+        AppLog.d(TAG, "Offline mode: checking local DB for all logged-in accounts validity.")
+        val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
+        if (loggedInAccounts.isEmpty()) {
+          AppLog.d(TAG, "No non-active logged-in accounts found in offline mode. Returning true.")
+          return true
+        }
+        val anyExpired = loggedInAccounts.any { it.isExpired }
+        if (anyExpired) {
+          AppLog.d(TAG, "At least one logged-in account is expired in local DB. Returning false.")
+          return false
+        }
+        AppLog.d(TAG, "All logged-in accounts are valid in local DB. Returning true.")
+        return true
+      }
+      // Online mode: keep existing logic
       return try {
         AppLog.d(TAG, "Checking network availability for checkLoginStatusForLoggedInAccounts()")
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
