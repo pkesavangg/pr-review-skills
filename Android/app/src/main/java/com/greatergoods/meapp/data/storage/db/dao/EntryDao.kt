@@ -649,4 +649,80 @@ ORDER BY d.day DESC
     fun getMonthlyHistory(
         accountId: String
     ): Flow<List<HistoryMonth>>
+
+    /**
+     * Get the oldest entry for an account.
+     * @param accountId The account ID
+     * @return The oldest entry with relations if found, null otherwise
+     */
+    @Transaction
+    @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) ASC LIMIT 1")
+    suspend fun getOldestEntry(accountId: String): PopulatedActiveEntry?
+
+    /**
+     * Get entry timestamps for streak calculation.
+     * Returns one entry timestamp per day, ordered with newest first.
+     * @param accountId The account ID
+     * @return List of entry timestamps for streak calculation
+     */
+    @Query(
+        """
+        SELECT entryTimestamp
+        FROM entry
+        WHERE accountId = :accountId
+        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
+        ORDER BY entryTimestamp DESC
+        """
+    )
+    suspend fun getStreakData(accountId: String): List<String>
+
+    /**
+     * Get the total count of entries for an account.
+     * @param accountId The account ID
+     * @return The total count of entries
+     */
+    @Query("SELECT COUNT(entryTimestamp) as total FROM entry WHERE accountId = :accountId")
+    suspend fun getTotalCount(accountId: String): Int
+
+    /**
+     * Get the longest streak count for an account.
+     * @param accountId The account ID
+     * @return The longest streak count
+     */
+    @Query(
+        """
+        SELECT MAX(streak_count) AS longestStreak
+        FROM (
+            SELECT COUNT(*) AS streak_count
+            FROM (
+                SELECT entryTimestamp,
+                       date(datetime(entryTimestamp, 'localtime'), 'start of day') AS day_start,
+                       row_number() OVER (ORDER BY entryTimestamp) AS row_num
+                FROM entry
+                WHERE accountId = :accountId
+                GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
+                ORDER BY DATE(entryTimestamp) ASC
+            ) AS t1
+            GROUP BY strftime('%Y-%m-%d', day_start, '-' || (row_num - 1) || ' day')
+        )
+        """
+    )
+    suspend fun getLongestStreakCount(accountId: String): Int
+
+    /**
+     * Get entries for an account in a specific date range (inclusive).
+     * @param accountId The account ID
+     * @param startDate The start date (ISO 8601 string)
+     * @param endDate The end date (ISO 8601 string)
+     * @return List of entries in the date range
+     */
+    @Transaction
+    @Query("""
+        SELECT * FROM entry_view
+        WHERE accountId = :accountId
+          AND datetime(entryTimestamp) >= datetime(:startDate)
+          AND datetime(entryTimestamp) <= datetime(:endDate)
+        ORDER BY datetime(entryTimestamp) DESC
+    """)
+    suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<PopulatedActiveEntry>
 }

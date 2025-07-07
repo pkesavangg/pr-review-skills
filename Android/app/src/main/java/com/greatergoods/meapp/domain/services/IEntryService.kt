@@ -53,4 +53,11 @@ interface IEntryService {
      * @return Flow of latest entries per day as PeriodBodyScaleSummary.
      */
     fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Gets the current progress for the active account.
+     * Calculates week, month, year, and total progress along with streak information.
+     * @return The current progress information
+     */
+    suspend fun getProgress(): Progress
 }

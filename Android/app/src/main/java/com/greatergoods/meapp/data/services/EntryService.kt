@@ -31,628 +31,804 @@ import javax.inject.Singleton
 class EntryService
 @Inject
 constructor(
-    private val entryRepository: IEntryRepository,
-    private val accountRepository: IAccountRepository,
+  private val entryRepository: IEntryRepository,
+  private val accountRepository: IAccountRepository,
 ) : IEntryService {
-    private val _isUpdating = MutableStateFlow(false)
-    override val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
+  private val _isUpdating = MutableStateFlow(false)
+  override val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
 
-    private val _latestEntry = MutableStateFlow<Entry?>(null)
-    override val latestEntry: StateFlow<Entry?> = _latestEntry.asStateFlow()
+  private val _latestEntry = MutableStateFlow<Entry?>(null)
+  override val latestEntry: StateFlow<Entry?> = _latestEntry.asStateFlow()
 
-    private val _last7Days = MutableStateFlow<List<Entry>>(listOf())
-    override val last7Days = _last7Days.asStateFlow()
+  private val _last7Days = MutableStateFlow<List<Entry>>(listOf())
+  override val last7Days = _last7Days.asStateFlow()
 
-    private val _last30Days = MutableStateFlow<List<Entry>>(listOf())
-    override val last30Days = _last30Days.asStateFlow()
-    private val _progress = MutableStateFlow<Progress?>(null)
-    override val progress: StateFlow<Progress?> = _progress.asStateFlow()
+  private val _last30Days = MutableStateFlow<List<Entry>>(listOf())
+  override val last30Days = _last30Days.asStateFlow()
+  private val _progress = MutableStateFlow<Progress?>(null)
+  override val progress: StateFlow<Progress?> = _progress.asStateFlow()
 
-    private val _lastUpdated = MutableStateFlow<Long?>(null)
-    override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
+  private val _lastUpdated = MutableStateFlow<Long?>(null)
+  override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
 
-    private var accountId: String? = null
-    private var initialWeight: Double? = null
+  private var accountId: String? = null
+  private var initialWeight: Double? = null
 
-    // Common flows for account properties
-    private val weightUnitFlow = accountRepository.getActiveAccountWeightUnitFlow()
-    private val weightLessFlow = accountRepository.getActiveAccountWeightlessFlow()
+  // Common flows for account properties
+  private val weightUnitFlow = accountRepository.getActiveAccountWeightUnitFlow()
+  private val weightLessFlow = accountRepository.getActiveAccountWeightlessFlow()
 
-    override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> =
-        combine(
-            entryRepository.getMonthlyAverage(accountId ?: ""),
-            weightUnitFlow,
-            weightLessFlow,
-        ) { months, unit, weightLess ->
-            months.map {
-                it.process(unit, weightLess)
-            }
-        }
-
-    override suspend fun monthDetails(startDate: String): Flow<List<Entry>> {
-        val input = startDate
-        val formatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)
-        val date = YearMonth.parse(input, formatter)
-        val monthParam = date.format(DateTimeFormatter.ofPattern("yyyy-MM")) // "2024-03"
-
-        return combine(
-            entryRepository.getMonthDetail(accountId ?: "", monthParam),
-            weightUnitFlow,
-            weightLessFlow,
-        ) { entries, unit, weightLess ->
-            entries.map { it.process(unit, weightLess) }
-        }
+  override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> =
+    combine(
+      entryRepository.getMonthlyAverage(accountId ?: ""),
+      weightUnitFlow,
+      weightLessFlow,
+    ) { months, unit, weightLess ->
+      months.map {
+        it.process(unit, weightLess)
+      }
     }
 
-    /**
-     * Updates all entry-related data for the given account.
-     * Fetches latest entry, last 7 and 30 days entries, and updates progress.
-     * @param accountId The account ID to update data for.
-     */
-    override suspend fun updateAccountId(accountId: String) {
-        this.accountId = accountId
-        this.syncOperations()
-    }
+  override suspend fun monthDetails(startDate: String): Flow<List<Entry>> {
+    val input = startDate
+    val formatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)
+    val date = YearMonth.parse(input, formatter)
+    val monthParam = date.format(DateTimeFormatter.ofPattern("yyyy-MM")) // "2024-03"
 
-    /**
-     * Saves a new entry both locally and remotely.
-     * @param entry The entry to save.
-     */
-    override suspend fun addEntry(entry: Entry) {
-        var updatedEntry = entry.updateEntry(
-            entry.entry.copy(
-                isSynced = false,
-                operationType = OperationType.CREATE.name,
-                accountId = "1",
+    return combine(
+      entryRepository.getMonthDetail(accountId ?: "", monthParam),
+      weightUnitFlow,
+      weightLessFlow,
+    ) { entries, unit, weightLess ->
+      entries.map { it.process(unit, weightLess) }
+    }
+  }
+
+  private suspend fun updateLast7Days(accountId: String) {
+    val endDate = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
+    val startDate = endDate.minusDays(7)
+    val entries = entryRepository.getEntriesInRange(
+      accountId,
+      startDate.toString(),
+      endDate.toString()
+    )
+    _last7Days.value = entries
+  }
+
+  private suspend fun updateLast30Days(accountId: String) {
+    val endDate = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
+    val startDate = endDate.minusDays(30)
+    val entries = entryRepository.getEntriesInRange(
+      accountId,
+      startDate.toString(),
+      endDate.toString()
+    )
+    _last30Days.value = entries
+  }
+
+  /**
+   * Updates all entry-related data for the given account.
+   * Fetches latest entry, last 7 and 30 days entries, and updates progress.
+   * @param accountId The account ID to update data for.
+   */
+  override suspend fun updateAccountId(accountId: String) {
+    this.accountId = accountId
+    this.syncOperations()
+    updateLast7Days(accountId)
+    updateLast30Days(accountId)
+    updateProgress(accountId)
+  }
+
+  /**
+   * Saves a new entry both locally and remotely.
+   * @param entry The entry to save.
+   */
+  override suspend fun addEntry(entry: Entry) {
+    var updatedEntry = entry.updateEntry(
+      entry.entry.copy(
+        isSynced = false,
+        operationType = OperationType.CREATE.name,
+        accountId = "1",
+      ),
+    )
+
+    if (updatedEntry is ScaleEntry) {
+      updatedEntry = updatedEntry.copy(
+        scale = updatedEntry.scale.copy(
+          scaleEntry = updatedEntry.scale.scaleEntry.copy(
+            weight = convertWeight(
+              updatedEntry.scale.scaleEntry.weight,
+              updatedEntry.entry.unit,
+              WeightUnit.LB,
             ),
+          ),
+        ),
+      )
+    }
+    // handle other types if you have them
+    syncOperations(
+      listOf(updatedEntry),
+    )
+  }
+
+  /**
+   * Saves multiple new entries both locally and remotely.
+   * @param entries The list of entries to save.
+   */
+  override suspend fun addEntry(entries: List<Entry>) {
+    try {
+      val updatedEntries = entries.map { entry ->
+        val baseEntry = entry.entry.copy(
+          isSynced = false,
+          operationType = OperationType.CREATE.name,
+          accountId = "1",
         )
+
+        val updatedEntry = entry.updateEntry(baseEntry)
 
         if (updatedEntry is ScaleEntry) {
-            updatedEntry = updatedEntry.copy(
-                scale = updatedEntry.scale.copy(
-                    scaleEntry = updatedEntry.scale.scaleEntry.copy(
-                        weight = convertWeight(
-                            updatedEntry.scale.scaleEntry.weight,
-                            updatedEntry.entry.unit,
-                            WeightUnit.LB,
-                        ),
-                    ),
+          updatedEntry.copy(
+            scale = updatedEntry.scale.copy(
+              scaleEntry = updatedEntry.scale.scaleEntry.copy(
+                weight = convertWeight(
+                  updatedEntry.scale.scaleEntry.weight,
+                  updatedEntry.entry.unit,
+                  WeightUnit.LB,
+                ),
+              ),
+            ),
+          )
+        } else {
+          updatedEntry
+        }
+      }
+
+      syncOperations(updatedEntries)
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error saving new entries", e.toString())
+    }
+  }
+
+  /**
+   * Deletes an entry both locally and remotely.
+   * @param entry The entry to delete.
+   */
+  override suspend fun deleteEntry(entry: Entry) {
+    try {
+      val deleteEntry =
+        entry.updateEntry(
+          entry =
+            entry.entry.copy(
+              isSynced = false,
+              operationType = OperationType.DELETE.name,
+            ),
+        )
+      syncOperations(emptyList(), listOf(deleteEntry))
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error deleting entry", e.toString())
+    }
+  }
+
+  /**
+   * Retrieves entries by device type for the specified account.
+   * @param accountId The account ID to filter entries by.
+   * @param deviceType The device type to filter entries by.
+   * @return Flow of list of entries matching the device type.
+   */
+  override fun getEntriesByDeviceType(
+    accountId: String,
+    deviceType: String,
+  ): Flow<List<Entry>> = entryRepository.getEntriesByDeviceType(accountId, deviceType)
+
+  /**
+   * Main sync operations method that handles both new entries and deletions.
+   * Matches the TypeScript syncOperations flow exactly.
+   */
+  override suspend fun syncOperations(
+    newEntries: List<Entry>,
+    deleteOps: List<Entry>,
+  ) {
+    if (accountId == null) return
+
+    try {
+      _isUpdating.value = true
+      // 1. Get existing unsynced entries
+      val unSyncedEntries = entryRepository.getUnSynced(accountId!!).toMutableList()
+
+      // 2. Add new operations to unsynced list
+      newEntries.forEach { entry ->
+        unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = accountId!!)))
+      }
+      deleteOps.forEach { entry ->
+        unSyncedEntries.add(0, entry)
+      }
+
+      unSyncedEntries.sortBy { it.entry.entryTimestamp }
+
+      // 3. Process operations
+      val successfulOperations = mutableListOf<Entry>()
+      val failedOperations = mutableListOf<Entry>()
+
+      for (operation in unSyncedEntries) {
+        try {
+          // Try to send to API
+          entryRepository.sendOperationToAPI((operation as ScaleEntry).toScaleApiEntry())
+          // If successful, mark as synced
+          val syncedOperation =
+            operation.updateEntry(
+              entry =
+                operation.entry.copy(
+                  isSynced = true,
                 ),
             )
+          successfulOperations.add(syncedOperation)
+        } catch (e: Exception) {
+          // If failed, increment attempts and store for retry
+          val failedOperation =
+            operation.updateEntry(
+              entry =
+                operation.entry.copy(
+                  isSynced = false,
+                  attempts = operation.entry.attempts.plus(1),
+                ),
+            )
+          failedOperations.add(failedOperation)
+          AppLog.e("EntryService", "Error sending operation to API", e.toString())
         }
-        // handle other types if you have them
-        syncOperations(
-            listOf(updatedEntry),
+      }
+
+      if (failedOperations.isNotEmpty()) {
+        EntryServiceHelper.executeOperations(
+          entryRepository,
+          failedOperations,
+          userHasOperations = true,
         )
-    }
+      }
 
-    /**
-     * Saves multiple new entries both locally and remotely.
-     * @param entries The list of entries to save.
-     */
-    override suspend fun addEntry(entries: List<Entry>) {
-        try {
-            val updatedEntries = entries.map { entry ->
-                val baseEntry = entry.entry.copy(
-                    isSynced = false,
-                    operationType = OperationType.CREATE.name,
-                    accountId = "1",
-                )
+      // 4. Handle goal alerts
+      val lastValidOperation =
+        (successfulOperations + failedOperations)
+          .filter { it.entry.operationType == OperationType.CREATE.name }
+          .maxByOrNull { it.entry.entryTimestamp }
 
-                val updatedEntry = entry.updateEntry(baseEntry)
+      lastValidOperation?.let {
+        // Trigger goal alert if needed
+        // TODO: Implement goal alert service
+      }
 
-                if (updatedEntry is ScaleEntry) {
-                    updatedEntry.copy(
-                        scale = updatedEntry.scale.copy(
-                            scaleEntry = updatedEntry.scale.scaleEntry.copy(
-                                weight = convertWeight(
-                                    updatedEntry.scale.scaleEntry.weight,
-                                    updatedEntry.entry.unit,
-                                    WeightUnit.LB,
-                                ),
-                            ),
-                        ),
-                    )
-                } else {
-                    updatedEntry
-                }
-            }
-
-            syncOperations(updatedEntries)
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error saving new entries", e.toString())
+      // 5. Get operations from API
+      val operationCount = entryRepository.getOperationCount(accountId!!)
+      val operationsFromApi = mutableListOf<ScaleEntry>()
+      try {
+        val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
+        val response = entryRepository.getOperationsFromAPI(syncTimeStamp)
+        if (response == null) {
+          AppLog.w("EntryService", "No operations received from API")
+          return
         }
-    }
-
-    /**
-     * Deletes an entry both locally and remotely.
-     * @param entry The entry to delete.
-     */
-    override suspend fun deleteEntry(entry: Entry) {
-        try {
-            val deleteEntry =
-                entry.updateEntry(
-                    entry =
-                        entry.entry.copy(
-                            isSynced = false,
-                            operationType = OperationType.DELETE.name,
-                        ),
-                )
-            syncOperations(emptyList(), listOf(deleteEntry))
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error deleting entry", e.toString())
-        }
-    }
-
-    /**
-     * Retrieves entries by device type for the specified account.
-     * @param accountId The account ID to filter entries by.
-     * @param deviceType The device type to filter entries by.
-     * @return Flow of list of entries matching the device type.
-     */
-    override fun getEntriesByDeviceType(
-        accountId: String,
-        deviceType: String,
-    ): Flow<List<Entry>> = entryRepository.getEntriesByDeviceType(accountId, deviceType)
-
-    /**
-     * Main sync operations method that handles both new entries and deletions.
-     * Matches the TypeScript syncOperations flow exactly.
-     */
-    override suspend fun syncOperations(
-        newEntries: List<Entry>,
-        deleteOps: List<Entry>,
-    ) {
-        if (accountId == null) return
-
-        try {
-            _isUpdating.value = true
-            // 1. Get existing unsynced entries
-            val unSyncedEntries = entryRepository.getUnSynced(accountId!!).toMutableList()
-
-            // 2. Add new operations to unsynced list
-            newEntries.forEach { entry ->
-                unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = accountId!!)))
-            }
-            deleteOps.forEach { entry ->
-                unSyncedEntries.add(0, entry)
-            }
-
-            unSyncedEntries.sortBy { it.entry.entryTimestamp }
-
-            // 3. Process operations
-            val successfulOperations = mutableListOf<Entry>()
-            val failedOperations = mutableListOf<Entry>()
-
-            for (operation in unSyncedEntries) {
-                try {
-                    // Try to send to API
-                    entryRepository.sendOperationToAPI((operation as ScaleEntry).toScaleApiEntry())
-                    // If successful, mark as synced
-                    val syncedOperation =
-                        operation.updateEntry(
-                            entry =
-                                operation.entry.copy(
-                                    isSynced = true,
-                                ),
-                        )
-                    successfulOperations.add(syncedOperation)
-                } catch (e: Exception) {
-                    // If failed, increment attempts and store for retry
-                    val failedOperation =
-                        operation.updateEntry(
-                            entry =
-                                operation.entry.copy(
-                                    isSynced = false,
-                                    attempts = operation.entry.attempts.plus(1),
-                                ),
-                        )
-                    failedOperations.add(failedOperation)
-                    AppLog.e("EntryService", "Error sending operation to API", e.toString())
-                }
-            }
-
-            if (failedOperations.isNotEmpty()) {
-                EntryServiceHelper.executeOperations(
-                    entryRepository,
-                    failedOperations,
-                    userHasOperations = true,
-                )
-            }
-
-            // 4. Handle goal alerts
-            val lastValidOperation =
-                (successfulOperations + failedOperations)
-                    .filter { it.entry.operationType == OperationType.CREATE.name }
-                    .maxByOrNull { it.entry.entryTimestamp }
-
-            lastValidOperation?.let {
-                // Trigger goal alert if needed
-                // TODO: Implement goal alert service
-            }
-
-            // 5. Get operations from API
-            val operationCount = entryRepository.getOperationCount(accountId!!)
-            val operationsFromApi = mutableListOf<ScaleEntry>()
-            try {
-                val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
-                val response = entryRepository.getOperationsFromAPI(syncTimeStamp)
-                if (response == null) {
-                    AppLog.w("EntryService", "No operations received from API")
-                    return
-                }
-                val scaleEntries =
-                    response.operations.map { fromScaleApiEntry(it, accountId = accountId!!) }
-                operationsFromApi.addAll(scaleEntries)
-                accountRepository.updateSyncTimeStamp(response.timestamp)
-            } catch (e: Exception) {
-                AppLog.e("EntryService", "Error getting operations from API", e.toString())
-                // If API fails, store successful operations as placeholders
-                // This means these operations will be marked as synced but might need to be
-                // re-synced later when API is available
-                EntryServiceHelper.executeOperations(
-                    entryRepository,
-                    successfulOperations,
-                    userHasOperations = operationCount > 0,
-                    arePlaceholders = true,
-                )
-            }
-
-            // 6. Execute operations from API
-            if (operationsFromApi.isNotEmpty()) {
-                EntryServiceHelper.executeOperations(
-                    entryRepository,
-                    operationsFromApi,
-                )
-            }
-
-            // 7. Update last updated timestamp
-            _lastUpdated.value = System.currentTimeMillis()
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error in syncOperations", e.toString())
-        } finally {
-            _isUpdating.value = false
-        }
-    }
-
-    private suspend fun updateLatestEntry(accountId: String) {
-        try {
-            entryRepository.getLatestEntry(accountId)?.collect { latest ->
-                _latestEntry.value = latest
-            }
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error updating latest entry", e.toString())
-        }
-    }
-
-    private fun updateProgress(accountId: String) {
-        EntryServiceHelper.updateProgress(
-            latestEntry = _latestEntry.value as? ScaleEntry,
-            last7Days = _last7Days.value,
-            last30Days = _last30Days.value,
-            initialWeight = initialWeight,
-            setProgress = { _progress.value = it },
+        val scaleEntries =
+          response.operations.map { fromScaleApiEntry(it, accountId = accountId!!) }
+        operationsFromApi.addAll(scaleEntries)
+        accountRepository.updateSyncTimeStamp(response.timestamp)
+      } catch (e: Exception) {
+        AppLog.e("EntryService", "Error getting operations from API", e.toString())
+        // If API fails, store successful operations as placeholders
+        // This means these operations will be marked as synced but might need to be
+        // re-synced later when API is available
+        EntryServiceHelper.executeOperations(
+          entryRepository,
+          successfulOperations,
+          userHasOperations = operationCount > 0,
+          arePlaceholders = true,
         )
+      }
+
+      // 6. Execute operations from API
+      if (operationsFromApi.isNotEmpty()) {
+        EntryServiceHelper.executeOperations(
+          entryRepository,
+          operationsFromApi,
+        )
+      }
+
+      // 7. Update last updated timestamp
+      _lastUpdated.value = System.currentTimeMillis()
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error in syncOperations", e.toString())
+    } finally {
+      _isUpdating.value = false
+    }
+  }
+
+  private suspend fun updateLatestEntry(accountId: String) {
+    try {
+      entryRepository.getLatestEntry(accountId)?.collect { latest ->
+        _latestEntry.value = latest
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating latest entry", e.toString())
+    }
+  }
+
+  private suspend fun updateProgress(accountId: String) {
+    try {
+      val progress = getProgress()
+      _progress.value = progress
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating progress", e.toString())
+    }
+  }
+
+  /**
+   * Gets monthly averages of body scale data for an account using JOINs.
+   */
+  override fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+    combine(
+      entryRepository.getMonthlyBodyScaleAveragesWithJoin(this.accountId ?: ""),
+      weightUnitFlow,
+      weightLessFlow,
+    ) { summaries, unit, weightLess ->
+      summaries.map { it.process(unit, weightLess) }
     }
 
-    /**
-     * Gets monthly averages of body scale data for an account using JOINs.
-     */
-    override fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
-        combine(
-            entryRepository.getMonthlyBodyScaleAveragesWithJoin(this.accountId ?: ""),
-            weightUnitFlow,
-            weightLessFlow,
-        ) { summaries, unit, weightLess ->
-            summaries.map { it.process(unit, weightLess) }
+  /**
+   * Gets the latest body scale entry for each month for an account using JOINs.
+   */
+  override fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+    combine(
+      entryRepository.getMonthlyBodyScaleLatestWithJoin(this.accountId ?: ""),
+      weightUnitFlow,
+      weightLessFlow,
+    ) { summaries, unit, weightLess ->
+      summaries.map { it.process(unit, weightLess) }
+    }
+
+  /**
+   * Gets daywise averages of body scale data for an account using JOINs.
+   */
+  override fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+    combine(
+      entryRepository.getDaywiseBodyScaleAveragesWithJoin(this.accountId ?: ""),
+      weightUnitFlow,
+      weightLessFlow,
+    ) { summaries, unit, weightLess ->
+      summaries.map { it.process(unit, weightLess) }
+    }
+
+  /**
+   * Gets the latest body scale entry for each day for an account using JOINs.
+   */
+  override fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+    combine(
+      entryRepository.getDaywiseBodyScaleLatestWithJoin(this.accountId ?: ""),
+      weightUnitFlow,
+      weightLessFlow,
+    ) { summaries, unit, weightLess ->
+      summaries.map { it.process(unit, weightLess) }
+    }
+
+  /**
+   * Gets the current progress for the active account.
+   * Calculates week, month, year, and total progress along with streak information.
+   * @return The current progress information
+   */
+  override suspend fun getProgress(): Progress {
+    if (accountId == null) {
+      return Progress()
+    }
+
+    try {
+      var week = 0.0
+      var initWeek: Entry? = null
+      var month = 0.0
+      var initMonth: Entry? = null
+      var year = 0.0
+      var initYear: Entry? = null
+      var total = 0.0
+      var latestWeight: Entry? = null
+      var startingWeight: Double? = null
+      var oldestEntry: Entry? = null
+
+      // Get current state values
+      latestWeight = _latestEntry.value
+      val last7DaysList = _last7Days.value
+      val last30DaysList = _last30Days.value
+
+      // Get initial entries for each period
+      initWeek = if (last7DaysList.isNotEmpty()) last7DaysList.last() else null
+      initMonth = if (last30DaysList.isNotEmpty()) last30DaysList.last() else null
+
+      // Calculate week and month progress
+      if (latestWeight != null && initWeek != null && latestWeight is ScaleEntry && initWeek is ScaleEntry) {
+        week = latestWeight.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
+      }
+
+      if (latestWeight != null && initMonth != null && latestWeight is ScaleEntry && initMonth is ScaleEntry) {
+        month = latestWeight.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
+      }
+
+      // Get starting weight (either from account or oldest entry)
+      if (initialWeight != null && initialWeight != 0.0) {
+        startingWeight = initialWeight
+      } else {
+        oldestEntry = entryRepository.getOldestEntry(accountId!!)
+        if (oldestEntry is ScaleEntry) {
+          startingWeight = oldestEntry.scale.scaleEntry.weight.toDouble()
+        }
+      }
+
+      // Calculate total progress
+      if (latestWeight != null && startingWeight != null && latestWeight is ScaleEntry) {
+        total = latestWeight.scale.scaleEntry.weight.toDouble() - startingWeight
+      }
+
+      // Calculate year progress (simplified - using last 30 days for now)
+      // In the TypeScript version, this uses monthYear data which we don't have yet
+      // For now, we'll use the same logic as month
+      year = month
+
+      // Get streak information
+      val currentStreak = getCurrentStreak()
+      val longestStreak = entryRepository.getLongestStreakCount(accountId!!)
+      val totalCount = entryRepository.getTotalCount(accountId!!)
+
+      return Progress(
+        latest = latestWeight,
+        currentStreak = currentStreak,
+        longestStreak = longestStreak,
+        count = totalCount,
+        initWt = initialWeight ?: 0.0,
+        week = week,
+        month = month,
+        year = year,
+        total = total,
+        initWeek = initWeek,
+        initMonth = initMonth,
+        initYear = initYear,
+      )
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error getting progress", e.toString())
+      return Progress()
+    }
+  }
+
+  /**
+   * Calculates the current streak based on the TypeScript implementation.
+   * @return The current streak count
+   */
+  private suspend fun getCurrentStreak(): Int {
+    if (accountId == null) return 0
+
+    try {
+      val entryDates = entryRepository.getStreakData(accountId!!)
+      if (entryDates.isEmpty()) return 0
+
+      var score = 0
+      val dateToCheck = Calendar.getInstance()
+
+      // Helper function to compare dates by year, month, and day
+      fun datesAreSame(d1: Calendar, d2: Calendar): Boolean =
+        d1.get(Calendar.YEAR) == d2.get(Calendar.YEAR) &&
+          d1.get(Calendar.MONTH) == d2.get(Calendar.MONTH) &&
+          d1.get(Calendar.DAY_OF_YEAR) == d2.get(Calendar.DAY_OF_YEAR)
+
+      // Helper function to add one to score and subtract one day
+      fun addOne() {
+        score++
+        dateToCheck.add(Calendar.DAY_OF_YEAR, -1)
+      }
+
+      // Remove the first (most recent) entry from the array
+      val firstEntryTimestamp = entryDates.first()
+      val remainingDates = entryDates.drop(1)
+
+      // Parse the first entry date
+      val firstEntryDate = Calendar.getInstance().apply {
+        time = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+          .parse(firstEntryTimestamp) ?: return 0
+      }
+
+      // Check if the most recent entry is from today, if not, check if it is from yesterday
+      if (datesAreSame(dateToCheck, firstEntryDate)) {
+        addOne()
+      } else {
+        dateToCheck.add(Calendar.DAY_OF_YEAR, -1)
+        if (datesAreSame(dateToCheck, firstEntryDate)) {
+          addOne()
+        }
+      }
+
+      // Check all remaining entries
+      for (entryTimestamp in remainingDates) {
+        val entryDate = Calendar.getInstance().apply {
+          time = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            .parse(entryTimestamp)
         }
 
-    /**
-     * Gets the latest body scale entry for each month for an account using JOINs.
-     */
-    override fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
-        combine(
-            entryRepository.getMonthlyBodyScaleLatestWithJoin(this.accountId ?: ""),
-            weightUnitFlow,
-            weightLessFlow,
-        ) { summaries, unit, weightLess ->
-            summaries.map { it.process(unit, weightLess) }
+        if (datesAreSame(dateToCheck, entryDate)) {
+          addOne()
+        } else {
+          break
         }
+      }
 
-    /**
-     * Gets daywise averages of body scale data for an account using JOINs.
-     */
-    override fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
-        combine(
-            entryRepository.getDaywiseBodyScaleAveragesWithJoin(this.accountId ?: ""),
-            weightUnitFlow,
-            weightLessFlow,
-        ) { summaries, unit, weightLess ->
-            summaries.map { it.process(unit, weightLess) }
-        }
-
-    /**
-     * Gets the latest body scale entry for each day for an account using JOINs.
-     */
-    override fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
-        combine(
-            entryRepository.getDaywiseBodyScaleLatestWithJoin(this.accountId ?: ""),
-            weightUnitFlow,
-            weightLessFlow,
-        ) { summaries, unit, weightLess ->
-            summaries.map { it.process(unit, weightLess) }
-        }
+      return score
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error calculating current streak", e.toString())
+      return 0
+    }
+  }
 }
 
 enum class OperationType {
-    CREATE,
-    DELETE,
+  CREATE,
+  DELETE,
 }
 
 internal object EntryServiceHelper {
-    /**
-     * Creates an operation entry for syncing with the server.
-     * @param entry The entry to create an operation for.
-     * @param type The operation type (CREATE or DELETE).
-     * @return The operation entry.
-     */
-    fun createOperation(
-        entry: Entry,
-        type: OperationType,
-    ): Entry? {
-        val updatedEntry =
-            entry.entry.copy(
-                operationType = type.name,
-                isSynced = false,
-            )
-        return entry.updateEntry(
-            entry = updatedEntry,
-        )
-    }
+  /**
+   * Creates an operation entry for syncing with the server.
+   * @param entry The entry to create an operation for.
+   * @param type The operation type (CREATE or DELETE).
+   * @return The operation entry.
+   */
+  fun createOperation(
+    entry: Entry,
+    type: OperationType,
+  ): Entry? {
+    val updatedEntry =
+      entry.entry.copy(
+        operationType = type.name,
+        isSynced = false,
+      )
+    return entry.updateEntry(
+      entry = updatedEntry,
+    )
+  }
 
-    /**
-     * Executes a list of operations received from the server.
-     * @param entryRepository The entry repository.
-     * @param operations The list of operations to execute.
-     */
-    suspend fun executeOperations(
-        entryRepository: IEntryRepository,
-        operations: List<Entry>,
-    ) {
-        if (operations.isEmpty()) return
-        try {
-            val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
-            entryRepository.insert(sortedOperations)
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error executing operations", e.toString())
+  /**
+   * Executes a list of operations received from the server.
+   * @param entryRepository The entry repository.
+   * @param operations The list of operations to execute.
+   */
+  suspend fun executeOperations(
+    entryRepository: IEntryRepository,
+    operations: List<Entry>,
+  ) {
+    if (operations.isEmpty()) return
+    try {
+      val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
+      entryRepository.insert(sortedOperations)
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error executing operations", e.toString())
+    }
+  }
+
+  /**
+   * Executes a list of operations, handling both create and delete operations.
+   * @param entryRepository The entry repository.
+   * @param operations The list of operations to execute.
+   * @param userHasOperations Whether the user has existing operations.
+   * @param arePlaceholders Whether the operations are placeholders (not yet synced).
+   */
+  suspend fun executeOperations(
+    entryRepository: IEntryRepository,
+    operations: List<Entry>,
+    userHasOperations: Boolean = true,
+    arePlaceholders: Boolean = false,
+  ) {
+    if (operations.isEmpty()) return
+
+    try {
+      // Sort operations by server timestamp
+      val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
+      // Separate create and delete operations
+      val createOperations =
+        sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
+      val deleteOperations =
+        sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
+
+      // Handle create operations
+      for (operation in createOperations) {
+        // Check if entry exists
+        val exists =
+          if (userHasOperations) {
+            entryRepository.getEntryById(operation.entry.id) != null
+          } else {
+            false
+          }
+
+        if (exists) {
+          // Update existing entry
+          entryRepository.update(operation)
+        } else {
+          // Insert new entry
+          entryRepository.insert(operation)
         }
+      }
+
+      // Handle delete operations
+      for (operation in deleteOperations) {
+        entryRepository.delete(operation)
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error executing operations", e.toString())
+      throw e
+    }
+  }
+
+  /**
+   * Calculates the current streak of consecutive days with entries.
+   * @param entries The list of entries.
+   * @return The current streak count.
+   */
+  fun calculateCurrentStreak(entries: List<Entry>): Int {
+    if (entries.isEmpty()) return 0
+
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val today = Calendar.getInstance()
+    var currentDate = today.clone() as Calendar
+    var streak = 0
+
+    val sortedEntries = entries.sortedByDescending { it.entry.entryTimestamp }
+    for (entry in sortedEntries) {
+      val entryDate = Calendar.getInstance()
+      entryDate.time = dateFormat.parse(entry.entry.entryTimestamp.toString())!!
+
+      if (entryDate.get(Calendar.YEAR) == currentDate.get(Calendar.YEAR) &&
+        entryDate.get(Calendar.DAY_OF_YEAR) == currentDate.get(Calendar.DAY_OF_YEAR)
+      ) {
+        streak++
+        currentDate.add(Calendar.DAY_OF_YEAR, -1)
+      } else {
+        break
+      }
     }
 
-    /**
-     * Executes a list of operations, handling both create and delete operations.
-     * @param entryRepository The entry repository.
-     * @param operations The list of operations to execute.
-     * @param userHasOperations Whether the user has existing operations.
-     * @param arePlaceholders Whether the operations are placeholders (not yet synced).
-     */
-    suspend fun executeOperations(
-        entryRepository: IEntryRepository,
-        operations: List<Entry>,
-        userHasOperations: Boolean = true,
-        arePlaceholders: Boolean = false,
-    ) {
-        if (operations.isEmpty()) return
+    return streak
+  }
 
-        try {
-            // Sort operations by server timestamp
-            val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
-            // Separate create and delete operations
-            val createOperations =
-                sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
-            val deleteOperations =
-                sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
+  /**
+   * Calculates the longest streak of consecutive days with entries.
+   * @param entries The list of entries.
+   * @return The longest streak count.
+   */
+  fun calculateLongestStreak(entries: List<Entry>): Int {
+    if (entries.isEmpty()) return 0
 
-            // Handle create operations
-            for (operation in createOperations) {
-                // Check if entry exists
-                val exists =
-                    if (userHasOperations) {
-                        entryRepository.getEntryById(operation.entry.id) != null
-                    } else {
-                        false
-                    }
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val sortedEntries =
+      entries
+        .map { dateFormat.parse(it.entry.entryTimestamp.toString())!! }
+        .map { date ->
+          Calendar.getInstance().apply { time = date }
+        }.distinctBy { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }
+        .sortedByDescending { it.timeInMillis }
 
-                if (exists) {
-                    // Update existing entry
-                    entryRepository.update(operation)
-                } else {
-                    // Insert new entry
-                    entryRepository.insert(operation)
-                }
-            }
+    var longestStreak = 1
+    var currentStreak = 1
 
-            // Handle delete operations
-            for (operation in deleteOperations) {
-                entryRepository.delete(operation)
-            }
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error executing operations", e.toString())
-            throw e
-        }
+    for (i in 1 until sortedEntries.size) {
+      val previous = sortedEntries[i - 1]
+      val current = sortedEntries[i]
+
+      val expected = previous.clone() as Calendar
+      expected.add(Calendar.DAY_OF_YEAR, -1)
+
+      if (current.get(Calendar.YEAR) == expected.get(Calendar.YEAR) &&
+        current.get(Calendar.DAY_OF_YEAR) == expected.get(Calendar.DAY_OF_YEAR)
+      ) {
+        currentStreak++
+      } else {
+        longestStreak = maxOf(longestStreak, currentStreak)
+        currentStreak = 1
+      }
     }
 
-    /**
-     * Calculates the current streak of consecutive days with entries.
-     * @param entries The list of entries.
-     * @return The current streak count.
-     */
-    fun calculateCurrentStreak(entries: List<Entry>): Int {
-        if (entries.isEmpty()) return 0
+    return maxOf(longestStreak, currentStreak)
+  }
 
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val today = Calendar.getInstance()
-        var currentDate = today.clone() as Calendar
-        var streak = 0
+  /**
+   * Updates the progress state for the current account.
+   * Calculates week, month, year, and total progress using only ScaleEntry weights.
+   * Ignores non-scale entries (e.g., BpmEntry).
+   *
+   * @param latestEntry The latest scale entry (nullable).
+   * @param last7Days The last 7 days of entries (may include nulls or non-scale entries).
+   * @param last30Days The last 30 days of entries (may include nulls or non-scale entries).
+   * @param initialWeight The initial weight for total progress calculation (nullable).
+   * @param setProgress Lambda to set the progress value.
+   */
+  fun updateProgress(
+    latestEntry: ScaleEntry?,
+    last7Days: List<Entry>,
+    last30Days: List<Entry>,
+    initialWeight: Double?,
+    setProgress: (Progress) -> Unit,
+  ) {
+    // Filter only non-null ScaleEntry for calculations
+    val last7ScaleEntries = last7Days.map { it as ScaleEntry }
+    val last30ScaleEntries = last30Days.map { it as ScaleEntry }
 
-        val sortedEntries = entries.sortedByDescending { it.entry.entryTimestamp }
-        for (entry in sortedEntries) {
-            val entryDate = Calendar.getInstance()
-            entryDate.time = dateFormat.parse(entry.entry.entryTimestamp.toString())!!
+    // Get the oldest (last) scale entry in each period for comparison
+    val initWeek = last7ScaleEntries.lastOrNull()
+    val initMonth = last30ScaleEntries.lastOrNull()
+    val initYear =
+      last30ScaleEntries.lastOrNull() // Placeholder: adjust if you have a year list
 
-            if (entryDate.get(Calendar.YEAR) == currentDate.get(Calendar.YEAR) &&
-                entryDate.get(Calendar.DAY_OF_YEAR) == currentDate.get(Calendar.DAY_OF_YEAR)
-            ) {
-                streak++
-                currentDate.add(Calendar.DAY_OF_YEAR, -1)
-            } else {
-                break
-            }
-        }
+    // Calculate week, month, year, and total progress (all as Double)
+    val week =
+      if (latestEntry != null && initWeek != null) {
+        latestEntry.scale.scaleEntry.weight
+          .toDouble() -
+          initWeek.scale.scaleEntry.weight
+            .toDouble()
+      } else {
+        0.0
+      }
 
-        return streak
-    }
+    val month =
+      if (latestEntry != null && initMonth != null) {
+        latestEntry.scale.scaleEntry.weight
+          .toDouble() -
+          initMonth.scale.scaleEntry.weight
+            .toDouble()
+      } else {
+        0.0
+      }
 
-    /**
-     * Calculates the longest streak of consecutive days with entries.
-     * @param entries The list of entries.
-     * @return The longest streak count.
-     */
-    fun calculateLongestStreak(entries: List<Entry>): Int {
-        if (entries.isEmpty()) return 0
+    val year =
+      if (latestEntry != null && initYear != null) {
+        latestEntry.scale.scaleEntry.weight
+          .toDouble() -
+          initYear.scale.scaleEntry.weight
+            .toDouble()
+      } else {
+        0.0
+      }
 
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val sortedEntries =
-            entries
-                .map { dateFormat.parse(it.entry.entryTimestamp.toString())!! }
-                .map { date ->
-                    Calendar.getInstance().apply { time = date }
-                }.distinctBy { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }
-                .sortedByDescending { it.timeInMillis }
+    val total =
+      if (latestEntry != null && initialWeight != null) {
+        latestEntry.scale.scaleEntry.weight
+          .toDouble() - initialWeight
+      } else {
+        0.0
+      }
 
-        var longestStreak = 1
-        var currentStreak = 1
+    setProgress(
+      Progress(
+        latest = latestEntry,
+        currentStreak = calculateCurrentStreak(last30ScaleEntries),
+        longestStreak = calculateLongestStreak(last30ScaleEntries),
+        count = last30ScaleEntries.size,
+        initWt = initialWeight ?: 0.0,
+        week = week,
+        month = month,
+        year = year,
+        total = total,
+        initWeek = initWeek,
+        initMonth = initMonth,
+        initYear = initYear,
+      ),
+    )
+  }
 
-        for (i in 1 until sortedEntries.size) {
-            val previous = sortedEntries[i - 1]
-            val current = sortedEntries[i]
-
-            val expected = previous.clone() as Calendar
-            expected.add(Calendar.DAY_OF_YEAR, -1)
-
-            if (current.get(Calendar.YEAR) == expected.get(Calendar.YEAR) &&
-                current.get(Calendar.DAY_OF_YEAR) == expected.get(Calendar.DAY_OF_YEAR)
-            ) {
-                currentStreak++
-            } else {
-                longestStreak = maxOf(longestStreak, currentStreak)
-                currentStreak = 1
-            }
-        }
-
-        return maxOf(longestStreak, currentStreak)
-    }
-
-    /**
-     * Updates the progress state for the current account.
-     * Calculates week, month, year, and total progress using only ScaleEntry weights.
-     * Ignores non-scale entries (e.g., BpmEntry).
-     *
-     * @param latestEntry The latest scale entry (nullable).
-     * @param last7Days The last 7 days of entries (may include nulls or non-scale entries).
-     * @param last30Days The last 30 days of entries (may include nulls or non-scale entries).
-     * @param initialWeight The initial weight for total progress calculation (nullable).
-     * @param setProgress Lambda to set the progress value.
-     */
-    fun updateProgress(
-        latestEntry: ScaleEntry?,
-        last7Days: List<Entry>,
-        last30Days: List<Entry>,
-        initialWeight: Double?,
-        setProgress: (Progress) -> Unit,
-    ) {
-        // Filter only non-null ScaleEntry for calculations
-        val last7ScaleEntries = last7Days.map { it as ScaleEntry }
-        val last30ScaleEntries = last30Days.map { it as ScaleEntry }
-
-        // Get the oldest (last) scale entry in each period for comparison
-        val initWeek = last7ScaleEntries.lastOrNull()
-        val initMonth = last30ScaleEntries.lastOrNull()
-        val initYear =
-            last30ScaleEntries.lastOrNull() // Placeholder: adjust if you have a year list
-
-        // Calculate week, month, year, and total progress (all as Double)
-        val week =
-            if (latestEntry != null && initWeek != null) {
-                latestEntry.scale.scaleEntry.weight
-                    .toDouble() -
-                    initWeek.scale.scaleEntry.weight
-                        .toDouble()
-            } else {
-                0.0
-            }
-
-        val month =
-            if (latestEntry != null && initMonth != null) {
-                latestEntry.scale.scaleEntry.weight
-                    .toDouble() -
-                    initMonth.scale.scaleEntry.weight
-                        .toDouble()
-            } else {
-                0.0
-            }
-
-        val year =
-            if (latestEntry != null && initYear != null) {
-                latestEntry.scale.scaleEntry.weight
-                    .toDouble() -
-                    initYear.scale.scaleEntry.weight
-                        .toDouble()
-            } else {
-                0.0
-            }
-
-        val total =
-            if (latestEntry != null && initialWeight != null) {
-                latestEntry.scale.scaleEntry.weight
-                    .toDouble() - initialWeight
-            } else {
-                0.0
-            }
-
-        setProgress(
-            Progress(
-                latest = latestEntry,
-                currentStreak = calculateCurrentStreak(last30ScaleEntries),
-                longestStreak = calculateLongestStreak(last30ScaleEntries),
-                count = last30ScaleEntries.size,
-                initWt = initialWeight ?: 0.0,
-                week = week,
-                month = month,
-                year = year,
-                total = total,
-                initWeek = initWeek,
-                initMonth = initMonth,
-                initYear = initYear,
-            ),
-        )
-    }
-
-    /**
-     * Clears all cached entry data and progress.
-     * @param setLatestEntry Lambda to set the latest entry value.
-     * @param setLast7Days Lambda to set the last 7 days value.
-     * @param setLast30Days Lambda to set the last 30 days value.
-     * @param setProgress Lambda to set the progress value.
-     */
-    fun clearAllData(
-        setLatestEntry: (Entry?) -> Unit,
-        setLast7Days: (List<Entry>) -> Unit,
-        setLast30Days: (List<Entry>) -> Unit,
-        setProgress: (Progress?) -> Unit,
-    ) {
-        setLatestEntry(null)
-        setLast7Days(emptyList())
-        setLast30Days(emptyList())
-        setProgress(null)
-    }
+  /**
+   * Clears all cached entry data and progress.
+   * @param setLatestEntry Lambda to set the latest entry value.
+   * @param setLast7Days Lambda to set the last 7 days value.
+   * @param setLast30Days Lambda to set the last 30 days value.
+   * @param setProgress Lambda to set the progress value.
+   */
+  fun clearAllData(
+    setLatestEntry: (Entry?) -> Unit,
+    setLast7Days: (List<Entry>) -> Unit,
+    setLast30Days: (List<Entry>) -> Unit,
+    setProgress: (Progress?) -> Unit,
+  ) {
+    setLatestEntry(null)
+    setLast7Days(emptyList())
+    setLast30Days(emptyList())
+    setProgress(null)
+  }
 }

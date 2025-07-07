@@ -235,4 +235,47 @@ class EntryRepository @Inject constructor(
      */
     override fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
         entryDao.getDaywiseBodyScaleLatestWithJoin(accountId)
+
+    /**
+     * Get the oldest entry for an account.
+     * @param accountId The account ID
+     * @return The oldest entry if found, null otherwise
+     */
+    override suspend fun getOldestEntry(accountId: String): Entry? =
+        entryDao.getOldestEntry(accountId)?.toEntry()
+
+    /**
+     * Get entry timestamps for streak calculation.
+     * Returns one entry timestamp per day, ordered with newest first.
+     * @param accountId The account ID
+     * @return List of entry timestamps for streak calculation
+     */
+    override suspend fun getStreakData(accountId: String): List<String> =
+        entryDao.getStreakData(accountId)
+
+    /**
+     * Get the total count of entries for an account.
+     * @param accountId The account ID
+     * @return The total count of entries
+     */
+    override suspend fun getTotalCount(accountId: String): Int =
+        entryDao.getTotalCount(accountId)
+
+    /**
+     * Get the longest streak count for an account.
+     * @param accountId The account ID
+     * @return The longest streak count
+     */
+    override suspend fun getLongestStreakCount(accountId: String): Int =
+        entryDao.getLongestStreakCount(accountId)
+
+    /**
+     * Get entries for an account in a specific date range (inclusive).
+     * @param accountId The account ID
+     * @param startDate The start date (ISO 8601 string)
+     * @param endDate The end date (ISO 8601 string)
+     * @return List of entries in the date range
+     */
+    override suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<Entry> =
+        entryDao.getEntriesInRange(accountId, startDate, endDate).mapNotNull { it.toEntry() }
 }
