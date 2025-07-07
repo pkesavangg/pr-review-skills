@@ -16,13 +16,14 @@ import javax.inject.Singleton
  * Follows the same pattern as Angular updateNotificationsSetting method.
  */
 @Singleton
-class NotificationService @Inject constructor(
+class NotificationService
+  @Inject
+  constructor(
     private val notificationRepository: INotificationRepository,
-    private val connectivityObserver: IConnectivityObserver
-) : INotificationService {
-
+    private val connectivityObserver: IConnectivityObserver,
+  ) : INotificationService {
     companion object {
-        private const val TAG = "NotificationService"
+      private const val TAG = "NotificationService"
     }
 
     /**
@@ -39,35 +40,46 @@ class NotificationService @Inject constructor(
      * @return The updated account or null if update fails
      */
     override suspend fun updateNotificationSettings(notificationSettings: NotificationSettingsRequest): Account? {
-        AppLog.d(TAG, "Updating notification settings: $notificationSettings")
-        return try {
-            val activeAccount = notificationRepository.getActiveAccountFromDB()
-                ?: throw IllegalStateException("No active account found")
+      AppLog.d(TAG, "Updating notification settings: $notificationSettings")
+      return try {
+        val activeAccount =
+          notificationRepository.getActiveAccountFromDB()
+            ?: throw IllegalStateException("No active account found")
 
-            if (isNetworkAvailable()) {
-                val response = notificationRepository.updateNotificationSettingsInAPI(notificationSettings)
-                val notificationEntity = NotificationSettingsEntity(
-                    accountId = response.account.id,
-                    shouldSendEntryNotifications = response.account.shouldSendEntryNotifications,
-                    shouldSendWeightInEntryNotifications = response.account.shouldSendWeightInEntryNotifications,
-                    isSynced = true
-                )
-                val updatedAccount = notificationRepository.updateNotificationSettingsInDB(activeAccount.id, notificationEntity)
-                updatedAccount
-            } else {
-                // Offline: Save to DB with isSynced = false for later sync
-                val notificationEntity = NotificationSettingsEntity(
-                    accountId = activeAccount.id,
-                    shouldSendEntryNotifications = notificationSettings.shouldSendEntryNotifications,
-                    shouldSendWeightInEntryNotifications = notificationSettings.shouldSendWeightInEntryNotifications,
-                    isSynced = false
-                )
-                val updatedAccount = notificationRepository.updateNotificationSettingsInDB(activeAccount.id, notificationEntity)
-                updatedAccount
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Notification settings update failed", e.toString())
-            null
+        if (isNetworkAvailable()) {
+          val response = notificationRepository.updateNotificationSettingsInAPI(notificationSettings)
+          val notificationEntity =
+            NotificationSettingsEntity(
+              accountId = response.account.id,
+              shouldSendEntryNotifications = response.account.shouldSendEntryNotifications,
+              shouldSendWeightInEntryNotifications = response.account.shouldSendWeightInEntryNotifications,
+              isSynced = true,
+            )
+          val updatedAccount =
+            notificationRepository.updateNotificationSettingsInDB(
+              activeAccount.id,
+              notificationEntity,
+            )
+          updatedAccount
+        } else {
+          // Offline: Save to DB with isSynced = false for later sync
+          val notificationEntity =
+            NotificationSettingsEntity(
+              accountId = activeAccount.id,
+              shouldSendEntryNotifications = notificationSettings.shouldSendEntryNotifications,
+              shouldSendWeightInEntryNotifications = notificationSettings.shouldSendWeightInEntryNotifications,
+              isSynced = false,
+            )
+          val updatedAccount =
+            notificationRepository.updateNotificationSettingsInDB(
+              activeAccount.id,
+              notificationEntity,
+            )
+          updatedAccount
         }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Notification settings update failed", e.toString())
+        null
+      }
     }
-}
+  }

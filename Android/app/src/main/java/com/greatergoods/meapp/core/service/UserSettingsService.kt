@@ -17,11 +17,12 @@ import javax.inject.Singleton
  * Handles business logic for streak and weightless mode settings.
  */
 @Singleton
-class UserSettingsService @Inject constructor(
+class UserSettingsService
+  @Inject
+  constructor(
     private val userSettingsRepository: IUserSettingsRepository,
-    private val connectivityObserver: IConnectivityObserver
-) : IUserSettingsService {
-
+    private val connectivityObserver: IConnectivityObserver,
+  ) : IUserSettingsService {
     private val TAG = "UserSettingsService"
 
     /**
@@ -29,9 +30,9 @@ class UserSettingsService @Inject constructor(
      * Example: '2022-08-22 14:26:38.954039+05:30'
      */
     private fun getCurrentTimestamp(): String {
-        val now = ZonedDateTime.now()
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSXXX")
-        return now.format(formatter)
+      val now = ZonedDateTime.now()
+      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSXXX")
+      return now.format(formatter)
     }
 
     /**
@@ -45,29 +46,29 @@ class UserSettingsService @Inject constructor(
      * @param isStreakOn Boolean indicating if streak should be enabled
      * @return Updated account with new streak settings
      */
-    override suspend fun toggleStreakSetting(isStreakOn: Boolean): Account? {
-        return try {
-            AppLog.d(TAG, "Toggling streak setting to: $isStreakOn")
+    override suspend fun toggleStreakSetting(isStreakOn: Boolean): Account? =
+      try {
+        AppLog.d(TAG, "Toggling streak setting to: $isStreakOn")
 
-            val streakRequest = StreakRequest(
-                isStreakOn = isStreakOn,
-                streakTimestamp = getCurrentTimestamp()
-            )
+        val streakRequest =
+          StreakRequest(
+            isStreakOn = isStreakOn,
+            streakTimestamp = getCurrentTimestamp(),
+          )
 
-            if (isNetworkAvailable()) {
-                // Online: Update via API and mark as synced in DB
-                AppLog.d(TAG, "Network available - updating streak setting online")
-                userSettingsRepository.updateStreakSetting(streakRequest)
-            } else {
-                // Offline: Store locally and mark as unsynced for later sync
-                AppLog.d(TAG, "Network unavailable - storing streak setting for offline sync")
-                userSettingsRepository.updateStreakSettingOffline(streakRequest)
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error toggling streak setting", e.toString())
-            throw e
+        if (isNetworkAvailable()) {
+          // Online: Update via API and mark as synced in DB
+          AppLog.d(TAG, "Network available - updating streak setting online")
+          userSettingsRepository.updateStreakSetting(streakRequest)
+        } else {
+          // Offline: Store locally and mark as unsynced for later sync
+          AppLog.d(TAG, "Network unavailable - storing streak setting for offline sync")
+          userSettingsRepository.updateStreakSettingOffline(streakRequest)
         }
-    }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error toggling streak setting", e.toString())
+        throw e
+      }
 
     /**
      * Toggles the weightless setting for the active account.
@@ -77,30 +78,30 @@ class UserSettingsService @Inject constructor(
      * @return Updated account with new weightless settings
      */
     override suspend fun toggleWeightlessSetting(
-        isWeightlessOn: Boolean,
-        weightlessWeight: Double?
-    ): Account? {
-        return try {
-            AppLog.d(TAG, "Toggling weightless setting to: $isWeightlessOn, weight: $weightlessWeight")
+      isWeightlessOn: Boolean,
+      weightlessWeight: Double?,
+    ): Account? =
+      try {
+        AppLog.d(TAG, "Toggling weightless setting to: $isWeightlessOn, weight: $weightlessWeight")
 
-            val weightlessRequest = WeightlessRequest(
-                isWeightlessOn = isWeightlessOn,
-                weightlessTimestamp = if (isWeightlessOn) getCurrentTimestamp() else null,
-                weightlessWeight = if (isWeightlessOn) weightlessWeight else null
-            )
+        val weightlessRequest =
+          WeightlessRequest(
+            isWeightlessOn = isWeightlessOn,
+            weightlessTimestamp = if (isWeightlessOn) getCurrentTimestamp() else null,
+            weightlessWeight = if (isWeightlessOn) weightlessWeight else null,
+          )
 
-            if (isNetworkAvailable()) {
-                // Online: Update via API and mark as synced in DB
-                AppLog.d(TAG, "Network available - updating weightless setting online")
-                userSettingsRepository.updateWeightlessSetting(weightlessRequest)
-            } else {
-                // Offline: Store locally and mark as unsynced for later sync
-                AppLog.d(TAG, "Network unavailable - storing weightless setting for offline sync")
-                userSettingsRepository.updateWeightlessSettingOffline(weightlessRequest)
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error toggling weightless setting", e.toString())
-            throw e
+        if (isNetworkAvailable()) {
+          // Online: Update via API and mark as synced in DB
+          AppLog.d(TAG, "Network available - updating weightless setting online")
+          userSettingsRepository.updateWeightlessSetting(weightlessRequest)
+        } else {
+          // Offline: Store locally and mark as unsynced for later sync
+          AppLog.d(TAG, "Network unavailable - storing weightless setting for offline sync")
+          userSettingsRepository.updateWeightlessSettingOffline(weightlessRequest)
         }
-    }
-}
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error toggling weightless setting", e.toString())
+        throw e
+      }
+  }
