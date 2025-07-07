@@ -32,6 +32,10 @@ final class Entry {
     var deviceType: String
     /// Whether entry is synced online
     var isSynced: Bool
+    /// Number of attempts to sync the entry
+    var attempts: Int
+    /// Whether entry is failed to sync
+    var isFailedToSync: Bool
     @Relationship var scaleEntry: BathScaleEntry?
     @Relationship var scaleEntryMetric: BathScaleMetric?
 
@@ -51,8 +55,10 @@ final class Entry {
         self.serverTimestamp = serverTimestamp
         self.deviceType = deviceType
         self.isSynced = isSynced
+        self.attempts = 0
+        self.isFailedToSync = false
     }
-    
+
     init(from dto: BathScaleOperationDTO, accountId: String, isSynced: Bool = false) {
             let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
             self.id = UUID()
@@ -62,6 +68,8 @@ final class Entry {
             self.serverTimestamp = dto.serverTimestamp
             self.deviceType = DeviceType.scale.rawValue
             self.isSynced = isSynced
+            self.attempts = 0
+            self.isFailedToSync = false
             self.scaleEntry = BathScaleEntry(from: dto)
             self.scaleEntryMetric = BathScaleMetric(from: dto)
     }

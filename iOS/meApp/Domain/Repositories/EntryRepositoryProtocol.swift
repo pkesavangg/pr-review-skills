@@ -52,6 +52,13 @@ protocol EntryRepositoryProtocol {
     /// - Returns: An array of Entry objects for the month and user.
     func fetchEntries(forMonth month: String, userId: String) async throws -> [Entry]
 
+    /// Fetches all entries for a specific day and user.
+    /// - Parameters:
+    ///   - day: The day in 'YYYY-MM-DD' format.
+    ///   - userId: The user ID to filter entries by.
+    /// - Returns: An array of Entry objects for the day and user.
+    func fetchEntries(forDay day: String, userId: String) async throws -> [Entry]
+
     /// Fetches all unsynced entries from the local data store.
     /// - Returns: An array of Entry objects that are not synced.
     func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry]

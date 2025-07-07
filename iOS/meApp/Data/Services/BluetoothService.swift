@@ -13,45 +13,56 @@ import GGBluetoothSwiftPackage
 // For mapping device metadata
 import SwiftData
 
-/// Comprehensive implementation of `BluetoothServiceProtocol` backed by the `GGBluetoothSwiftPackage` SDK.
-///
-/// This service provides complete Bluetooth functionality for smart scales, including:
-/// - Device scanning and pairing
-/// - Wi-Fi configuration
-/// - Firmware updates
-/// - Data synchronization
-/// - User management
-/// - Settings configuration
+/**
+ * Comprehensive implementation of `BluetoothServiceProtocol` backed by the `GGBluetoothSwiftPackage` SDK.
+ *
+ * This service provides complete Bluetooth functionality for smart scales, including:
+ * - Device scanning and pairing
+ * - Wi-Fi configuration
+ * - Firmware updates
+ * - Data synchronization
+ * - User management
+ * - Settings configuration
+ *
+ * - NOTE: The static `shared` property is retained for legacy compatibility, but should be phased out in favor of DI.
+ */
 @MainActor
 final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
-    // MARK: - Singleton
+    // MARK: - Singleton (Legacy Only)
+    /// Legacy singleton for compatibility. Prefer dependency injection for new code.
     static let shared = BluetoothService(accountService: AccountService.shared,
                                          scaleService: ScaleService.shared,
                                          entryService: EntryService.shared,
-                                         //PermissionsService: PermissionsService.shared,
                                          logger: LoggerService.shared)
 
     // MARK: - Published State
+    /// Indicates if the scale discovered modal can be shown for newly discovered scales.
     @Published private(set) var canShowScaleDiscoveredModal: Bool = true
 
+    /// Indicates whether a setup is currently in progress.
+    @Published var isSetupInProgress: Bool = false
+
     // MARK: - Public Publishers
+    /// Publisher for unified device discovery events containing device, protocol type, and isNew flag.
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> {
         deviceDiscoveredSubject.eraseToAnyPublisher()
     }
+    /// Publisher for device metadata updates.
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> {
         deviceInfoUpdatedSubject.eraseToAnyPublisher()
     }
+    /// Publisher for weight-only mode alert visibility.
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> {
         showWeightOnlyModeAlertSubject.eraseToAnyPublisher()
     }
+    /// Publisher for new entry events.
     var newEntryReceivedPublisher: AnyPublisher<Entry, Never> {
         newEntryReceivedSubject.eraseToAnyPublisher()
     }
+    /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> {
         firmwareUpdateProgressSubject.eraseToAnyPublisher()
     }
-
-    @Published var isSetupInProgress: Bool = false
 
     // MARK: - Subjects for Scale Discovery
     private let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
@@ -73,24 +84,28 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let accountService: AccountService
     private let scaleService: ScaleServiceProtocol
     private let entryService: EntryServiceProtocol
-//    private let permissionsService: PermissionsServiceProtocol
     private let logger: LoggerService
     private let ggBleSDK = GGBluetoothSwiftPackage.shared
     private let tag = "BluetoothService"
 
     // MARK: - Initialization
+    /**
+     Initializes the BluetoothService with all required dependencies.
+     - Parameters:
+        - accountService: The account service dependency.
+        - scaleService: The scale service dependency.
+        - entryService: The entry service dependency.
+        - logger: The logger service dependency.
+     */
     init(
         accountService: AccountService,
         scaleService: ScaleServiceProtocol,
         entryService: EntryServiceProtocol ,
-//        permissionsService: PermissionsServiceProtocol = PermissionsService.shared,
-        logger: LoggerService,
-
+        logger: LoggerService
     ) {
         self.accountService = accountService
         self.scaleService = scaleService
         self.entryService = entryService
-        //self.permissionsService = permissionsService
         self.logger = logger
         setupSubscriptions()
     }
@@ -107,8 +122,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     }
 
+    /**
+     Initializes the Bluetooth service and subscribes to account changes.
+     */
     func initialize() {
-        // Subscribe to active account changes
         accountService.$activeAccount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
@@ -164,16 +181,25 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     // MARK: - BluetoothServiceProtocol Implementation
 
+    /**
+     Stops all ongoing Bluetooth operations and scanning.
+     */
     func stopScan() {
       ggBleSDK.stop()
       isSmartScanStarted = false
     }
 
+    /**
+     Clears all devices from the underlying Bluetooth plugin / cache.
+     */
     func clearDevices() {
         ggBleSDK.clearDevices()
     }
 
     // MARK: - Scanning & Pairing
+    /**
+     Starts a smart scan for Bluetooth devices. Throws if scan cannot be started.
+     */
     func scan() async {
         guard activeAccount != nil else {
             return
@@ -181,35 +207,56 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         do {
             try await startSmartScan()
         } catch {
-          logger.log(level: .error, tag: tag, message: BluetoothServiceError.scanFailed(error).localizedDescription)
+            logger.log(level: .error, tag: tag, message: BluetoothServiceError.scanFailed(error).localizedDescription)
         }
     }
 
 
-    func resyncAndScan() async throws {
+    /**
+     Forces a re-sync of locally stored devices with the Bluetooth plugin and re-starts scanning.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func resyncAndScan() async -> Result<Void, BluetoothServiceError> {
         do {
             try await scaleService.updateAllScalesStatus(nil)
             clearScaleDiscoveredInfo()
             try await scaleService.syncDevices(tempDevice: nil)
             syncDevices(bluetoothScales)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
         } catch {
-            throw BluetoothServiceError.resyncFailed(error)
+            return .failure(.resyncFailed(error))
         }
     }
 
+    /**
+     Pauses the current smart scan without tearing down the session.
+     */
     func pauseSmartScan() {
        ggBleSDK.pauseScan()
     }
 
+    /**
+     Resumes a previously paused smart scan.
+     - Parameter clearOnlyPairing: When true, clears only pairing-mode devices before resuming.
+     */
     func resumeSmartScan(clearOnlyPairing: Bool) {
        ggBleSDK.resumeScan(clearOnlyPairing)
     }
 
+    /**
+     Performs a dedicated scan intended for scale pairing.
+     */
     func scanForPairing() {
       ggBleSDK.scanForPairing()
     }
 
     // MARK: - Device Sync & CRUD
+    /**
+     Synchronises the provided device list with the Bluetooth plugin.
+     - Parameter devices: The devices to sync. Passing an empty array clears the list.
+     */
     func syncDevices(_ devices: [Device]) {
       if bluetoothScales.isEmpty {
           clearDevices()
@@ -219,7 +266,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         GGBTDevice(
             name: device.deviceName ?? "",
             broadcastId: device.broadcastIdString ?? "",
-            
+
             password: device.password,
             token: device.token,
             userNumber: Int(device.userNumber ?? "0"),
@@ -234,245 +281,380 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         ggBleSDK.syncDevices(ggDevices)
     }
 
-    func addNewDevice(_ scale: Device, metaData deviceDetails: DeviceMetaData?) async throws -> Device {
-          guard let userId = activeAccount?.accountId else {
-              throw BluetoothServiceError.noActiveAccount
-          }
-
-          let scaleToSave = scale
-          scaleToSave.accountId = userId
-          scaleToSave.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
-          scaleToSave.nickname = scale.nickname ?? "Bluetooth Smart Scale"
-
-          // Get device info if not provided
-          var metaData = deviceDetails
-          let scaleType = scale.bathScale?.scaleType ?? ""
-
-
-          if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue ||
-                                scaleType == ScaleSourceType.bluetooth.rawValue) {
-                do {
-                    let deviceInfo = try await getDeviceInfo(for: scale)
+    /**
+     Adds a newly discovered scale to persistent storage and returns the saved model.
+     - Returns: Result<Device, BluetoothServiceError>
+     */
+    func addNewDevice(_ scale: Device, metaData deviceDetails: DeviceMetaData?) async -> Result<Device, BluetoothServiceError> {
+        do {
+            guard let userId = activeAccount?.accountId else {
+                throw BluetoothServiceError.noActiveAccount
+            }
+            let scaleToSave = scale
+            scaleToSave.accountId = userId
+            scaleToSave.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
+            scaleToSave.nickname = scale.nickname ?? "Bluetooth Smart Scale"
+            var metaData = deviceDetails
+            let scaleType = scale.bathScale?.scaleType ?? ""
+            if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue || scaleType == ScaleSourceType.bluetooth.rawValue) {
+                let deviceInfoResult = await getDeviceInfo(for: scale)
+                switch deviceInfoResult {
+                case .success(let deviceInfo):
                     let dto = ScaleMetaDataDTO(
-                      firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
-                      hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
-                      latestFirmwareVersion: nil,
-                      manufacturerName: deviceInfo.manufacturerName?.replacingOccurrences(of: "\0", with: ""),
-                      modelNumber: deviceInfo.modelNumber?.replacingOccurrences(of: "\0", with: ""),
-                      serialNumber: deviceInfo.serialNumber?.replacingOccurrences(of: "\0", with: ""),
-                      softwareRevision: deviceInfo.softwareRevision?.replacingOccurrences(of: "\0", with: ""),
-                      systemId: deviceInfo.systemID?.replacingOccurrences(of: "\0", with: ""),
-                      wifiMac: ""
-                  )
+                        firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                        hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                        latestFirmwareVersion: nil,
+                        manufacturerName: deviceInfo.manufacturerName?.replacingOccurrences(of: "\0", with: ""),
+                        modelNumber: deviceInfo.modelNumber?.replacingOccurrences(of: "\0", with: ""),
+                        serialNumber: deviceInfo.serialNumber?.replacingOccurrences(of: "\0", with: ""),
+                        softwareRevision: deviceInfo.softwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                        systemId: deviceInfo.systemID?.replacingOccurrences(of: "\0", with: ""),
+                        wifiMac: ""
+                    )
                     metaData = DeviceMetaData(from: dto)
-                    // Get WiFi MAC address for R4 scales
                     if scaleType == ScaleSourceType.btWifiR4.rawValue {
-                      let wifiMacAddress = try await getWifiMacAddress(for: scale)
-                      scaleToSave.wifiMac = wifiMacAddress
+                        let wifiMacResult = await getWifiMacAddress(for: scale)
+                        switch wifiMacResult {
+                        case .success(let wifiMacAddress):
+                            scaleToSave.wifiMac = wifiMacAddress
+                        case .failure(let error):
+                            logger.log(level: .error, tag: tag, message: "Failed to get WiFi MAC address: \(error.localizedDescription)")
+                        }
                     }
-                } catch {
+                case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
-
                 }
             }
-
-        scaleToSave.metaData = metaData
-
-        let savedScale = try await scaleService.createDevice(scaleToSave)
-        try await scaleService.syncDevices(tempDevice: nil)
-        return savedScale
-      }
-
-      func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async throws -> UserCreationResponse {
-          guard let ggDevice = mapToGGBTDevice(device) else {
-            throw BluetoothServiceError.invalidBroadcastId
-          }
-          ggDevice.token = token
-          ggDevice.userNumber = userNumber ?? 0
-          let preference = GGDevicePreference(displayName: displayName)
-          ggDevice.preference = preference
-          let result = await ggBleSDK.confirmPair(
-              ggDevice
-          )
-          return UserCreationResponse(sdkType: result)
-      }
-
-      func disconnectDevice(broadcastId: String) async throws {
-          if !skipDevices.contains(broadcastId) {
-              skipDevices.append(broadcastId)
-          }
-          canShowScaleDiscoveredModal = false
-          Task {
-              try await Task.sleep(nanoseconds: 5_000_000_000)
-              await MainActor.run {
-                  self.canShowScaleDiscoveredModal = true
-              }
-          }
-          ggBleSDK.skipDevice(broadcastId)
-      }
-
-    func deleteDevice(_ device: Device, disconnect: Bool) async throws -> UserDeletionResponse {
-          guard let ggDevice = mapToGGBTDevice(device) else {
-            throw BluetoothServiceError.invalidBroadcastId
-          }
-          let result = await ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
-          return UserDeletionResponse(sdkType: result)
-      }
-
-      // MARK: - Wi-Fi Configuration
-      func getWifiList(for device: Device) async throws -> [WifiDetails] {
-        guard let ggDevice = mapToGGBTDevice(device) else {
-          throw BluetoothServiceError.invalidBroadcastId
+            scaleToSave.metaData = metaData
+            let savedScale = try await scaleService.createDevice(scaleToSave)
+            try await scaleService.syncDevices(tempDevice: nil)
+            return .success(savedScale)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
         }
-        let result = await ggBleSDK.getWifiList(ggDevice)
-        return result.wifi.map { WifiDetails(macAddress: $0.macAddress, ssid: $0.ssid, rssi: $0.rssi, password: $0.password) }
-      }
+    }
 
-      func setupWifi(on device: Device, config: WifiConfig) async throws {
-        guard let ggDevice = mapToGGBTDevice(device) else {
-          throw BluetoothServiceError.invalidBroadcastId
+    /**
+     Confirms a smart pairing operation with the specified device.
+     - Returns: Result<UserCreationResponse, BluetoothServiceError>
+     */
+    func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            ggDevice.token = token
+            ggDevice.userNumber = userNumber ?? 0
+            let preference = GGDevicePreference(displayName: displayName)
+            ggDevice.preference = preference
+            let result = await ggBleSDK.confirmPair(ggDevice)
+            return .success(UserCreationResponse(sdkType: result))
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
         }
-        let ggConfig = GGBTWifiConfig(ssid: config.ssid, password: config.password ?? "")
-        //TODO: Handle return
-        _ = await ggBleSDK.setupWifi( ggDevice, ggConfig)
-      }
+    }
 
-      func cancelWifi(on: Device) async throws {
-        guard let ggDevice = mapToGGBTDevice(on) else {
-          throw BluetoothServiceError.invalidBroadcastId
+    /**
+     Deletes a scale from storage (and optionally from the physical device).
+     - Returns: Result<UserDeletionResponse, BluetoothServiceError>
+     */
+    func deleteDevice(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let result = await ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
+            return .success(UserDeletionResponse(sdkType: result))
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
         }
-        ggBleSDK.cancelWifi( ggDevice)
-      }
+    }
 
-      func getConnectedWifiSSID(broadcastId: String) async throws -> String {
-          let ggDevice = mapToGGBTDevice(broadcastId)
-          return await ggBleSDK.getConnectedWifiSSID(ggDevice)
-      }
-
-      func getWifiMacAddress(for device: Device) async throws -> String {
-        guard let ggDevice = mapToGGBTDevice(device) else {
-          throw BluetoothServiceError.invalidBroadcastId
+    // MARK: - Wi-Fi Configuration
+    /**
+     Retrieves the available Wi-Fi networks from the given device.
+     - Returns: Result<[WifiDetails], BluetoothServiceError>
+     */
+    func getWifiList(for device: Device) async -> Result<[WifiDetails], BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let result = await ggBleSDK.getWifiList(ggDevice)
+            return .success(result.wifi.map { WifiDetails(macAddress: $0.macAddress, ssid: $0.ssid, rssi: $0.rssi, password: $0.password) })
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
         }
-        return await ggBleSDK.getWifiMacAddress(ggDevice)
-      }
+    }
 
-      // MARK: - Settings & Firmware
-      func updateSetting(on device: Device, settings: [DeviceSetting]) async throws {
-        guard let ggDevice = mapToGGBTDevice(device) else {
-          throw BluetoothServiceError.invalidBroadcastId
+    /**
+     Configures Wi-Fi on the given device.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func setupWifi(on device: Device, config: WifiConfig) async -> Result<Void, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let ggConfig = GGBTWifiConfig(ssid: config.ssid, password: config.password ?? "")
+            _ = await ggBleSDK.setupWifi(ggDevice, ggConfig)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
         }
-          let ggSettings = settings.map { setting in
-              GGBTSetting(
-                  key: GGBTSettingType(rawValue: setting.key) ?? .SESSION_IMPEDANCE,
-                  value: setting.value.toGGBTSettingValue()
-              )
-          }
-          ggBleSDK.updateSetting(ggDevice, ggSettings)
-      }
+    }
 
-      func updateFirmware(on device: Device, timestamp: UInt32) async throws {
-        guard let ggDevice = mapToGGBTDevice(device) else {
-          throw BluetoothServiceError.invalidBroadcastId
+    /**
+     Cancels a pending Wi-Fi configuration.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func cancelWifi(on: Device) async -> Result<Void, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(on) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            ggBleSDK.cancelWifi(ggDevice)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
         }
+    }
 
-        // Start firmware update and monitor progress
-        ggBleSDK.startFirmwareUpdate(ggDevice, timestamp)
+    /**
+     Retrieves the currently connected Wi-Fi SSID for an R4 scale.
+     - Returns: Result<String, BluetoothServiceError>
+     */
+    func getConnectedWifiSSID(broadcastId: String) async -> Result<String, BluetoothServiceError> {
+      let ggDevice = mapToGGBTDevice(broadcastId)
+      let ssid = await ggBleSDK.getConnectedWifiSSID(ggDevice)
+      return .success(ssid)
+    }
 
-        // For now, just send initial progress - in a real implementation,
-        // we would need to monitor the SDK's progress callbacks
-        let initialStatus = FirmwareUpdateStatus(progress: 0.0, isComplete: false)
-        firmwareUpdateProgressSubject.send(initialStatus)
-      }
-
-      func clearData(on device: Device, dataType: DeviceClearType) async throws {
-        guard let ggDevice = mapToGGBTDevice(device) else {
-          throw BluetoothServiceError.invalidBroadcastId
+    /**
+     Retrieves the Wi-Fi MAC address for an R4 scale.
+     - Returns: Result<String, BluetoothServiceError>
+     */
+    func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let mac = await ggBleSDK.getWifiMacAddress(ggDevice)
+            return .success(mac)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
         }
-          let sdkType: ClearDataType = {
-              switch dataType {
-              case .userData: return .ACCOUNT
-              case .history: return .HISTORY
-              case .all: return .ALL
-              }
-          }()
-          _ = await ggBleSDK.clearData(ggDevice,sdkType)
-      }
+    }
 
-      // MARK: - Profile & Account
-      func updateUserProfileForR4Scales() async throws -> Bool {
-          guard let account = activeAccount else {
-              throw BluetoothServiceError.noActiveAccount
-          }
-          guard let userProfile = await getProfileInfo(from: account) else {
-              throw BluetoothServiceError.noProfileInfo
-          }
-          let success = await ggBleSDK.updateProfile(profile: userProfile)
-          if !success {
-              throw BluetoothServiceError.updateProfileFailed(BluetoothServiceError.notImplemented)
-          }
-          return success
-      }
+    // MARK: - Settings & Firmware
+    /**
+     Updates a list of settings on the device.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func updateSetting(on device: Device, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let ggSettings = settings.map { setting in
+                GGBTSetting(
+                    key: GGBTSettingType(rawValue: setting.key) ?? .SESSION_IMPEDANCE,
+                    value: setting.value.toGGBTSettingValue()
+                )
+            }
+            ggBleSDK.updateSetting(ggDevice, ggSettings)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
 
-      func updateAccount(on device: Device, preference: R4ScalePreference) async throws -> UserCreationResponse {
-          guard let ggDevice = mapToGGBTDevice(device) else {
-            throw BluetoothServiceError.invalidBroadcastId
-          }
-          ggDevice.preference = mapToGGPreference(preference)
-          let result = await ggBleSDK.updateAccount(ggDevice)
-          return UserCreationResponse(sdkType: result)
-      }
+    /**
+     Initiates a firmware update on the device.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func updateFirmware(on device: Device, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            ggBleSDK.startFirmwareUpdate(ggDevice, timestamp)
+            let initialStatus = FirmwareUpdateStatus(progress: 0.0, isComplete: false)
+            firmwareUpdateProgressSubject.send(initialStatus)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
 
-      func getScaleUserList(for device: Device) async throws -> [DeviceUser] {
-          guard let ggDevice = mapToGGBTDevice(device) else {
-            throw BluetoothServiceError.invalidBroadcastId
-          }
-          let users = await ggBleSDK.getUsers(ggDevice)
-          let deviceUsers = users.user.map { user in
-              DeviceUser(
-                  name: user.name,
-                  token: user.token,
-                  lastActive: user.lastActive,
-                  isBodyMetricsEnabled: user.isBodyMetricsEnabled
-              )
-          }
-          return deviceUsers
-      }
+    /**
+     Clears stored data on the device (e.g., history, user).
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func clearData(on device: Device, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let sdkType: ClearDataType = {
+                switch dataType {
+                case .userData: return .ACCOUNT
+                case .history: return .HISTORY
+                case .all: return .ALL
+                }
+            }()
+            _ = await ggBleSDK.clearData(ggDevice, sdkType)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
 
-      // MARK: - Device Info
-      func getDeviceInfo(for device: Device) async throws -> DeviceInfo {
-          guard let ggDevice = mapToGGBTDevice(device) else {
-              throw BluetoothServiceError.invalidBroadcastId
-          }
-          let details = await ggBleSDK.getDeviceInfo(ggDevice)
-          return DeviceInfo(sdk:details)
-      }
+    // MARK: - Profile & Account
+    /**
+     Updates the user profile (height, weight, age, etc.) on all connected R4 scales.
+     - Returns: Result<Bool, BluetoothServiceError>
+     */
+    func updateUserProfileForR4Scales() async -> Result<Bool, BluetoothServiceError> {
+        do {
+            guard let account = activeAccount else {
+                throw BluetoothServiceError.noActiveAccount
+            }
+            guard let userProfile = await getProfileInfo(from: account) else {
+                throw BluetoothServiceError.noProfileInfo
+            }
+            let success = await ggBleSDK.updateProfile(profile: userProfile)
+            if !success {
+                throw BluetoothServiceError.updateProfileFailed(BluetoothServiceError.notImplemented)
+            }
+            return .success(success)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
 
-      func getMeasurementLiveData(broadcastId: String) async throws -> MeasurementLiveData {
-          let ggDevice = mapToGGBTDevice(broadcastId)
-          _ = await ggBleSDK.getMeasurementLiveData(ggDevice)
-          let liveData = MeasurementLiveData(weight: 0)
-          return liveData
-      }
+    /**
+     Updates account-specific preferences (display name, metrics, etc.) on the device.
+     - Returns: Result<UserCreationResponse, BluetoothServiceError>
+     */
+    func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            ggDevice.preference = mapToGGPreference(preference)
+            let result = await ggBleSDK.updateAccount(ggDevice)
+            return .success(UserCreationResponse(sdkType: result))
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
+
+    /**
+     Retrieves the list of users stored on the scale (R4 only).
+     - Returns: Result<[DeviceUser], BluetoothServiceError>
+     */
+    func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let users = await ggBleSDK.getUsers(ggDevice)
+            let deviceUsers = users.user.map { user in
+                DeviceUser(
+                    name: user.name,
+                    token: user.token,
+                    lastActive: user.lastActive,
+                    isBodyMetricsEnabled: user.isBodyMetricsEnabled
+                )
+            }
+            return .success(deviceUsers)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
+
+    // MARK: - Device Info
+    /**
+     Retrieves generic device information (model, serial, firmware, …).
+     - Returns: Result<DeviceInfo, BluetoothServiceError>
+     */
+    func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let details = await ggBleSDK.getDeviceInfo(ggDevice)
+            return .success(DeviceInfo(sdk: details))
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
+
+    /**
+     Retrieves live measurement data while a user is on the scale.
+     - Returns: Result<MeasurementLiveData, BluetoothServiceError>
+     */
+    func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> {
+      let ggDevice = mapToGGBTDevice(broadcastId)
+      _ = await ggBleSDK.getMeasurementLiveData(ggDevice)
+      let liveData = MeasurementLiveData(weight: 0)
+      return .success(liveData)
+    }
 
 
-    func updateWeightOnlyMode(on connectedScale: Device?) async throws {
+    /**
+     Triggers the in-app alert required when weight-only mode is enabled by another user.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func updateWeightOnlyMode(on connectedScale: Device?) async -> Result<Void, BluetoothServiceError> {
         do {
             var scales: [Device] = []
             if let connectedScale = connectedScale {
                 scales.append(connectedScale)
             } else {
                 scales = bluetoothScales.filter { scale in
-                    (scale.isConnected ?? false) //TODO handle weight only mode enable by others
+                    (scale.isConnected ?? false)
                 }
             }
-
             for scale in scales {
-                try await updateSetting(on: scale, settings: [
+                _ = await updateSetting(on: scale, settings: [
                     DeviceSetting(key: "SESSION_IMPEDANCE", value: DeviceSettingValue.bool(true))
                 ])
             }
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
         } catch {
-            throw BluetoothServiceError.updateWeightOnlyModeFailed(error)
+            return .failure(.updateProfileFailed(error))
         }
     }
 
@@ -556,7 +738,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     private func checkCanShowWeightOnlyModeAlert() async {
         let scale = bluetoothScales.filter { scale in
-            (scale.isConnected ?? false) //TODO handle weight only mode enable by others
+            (scale.isConnected ?? false)
         }
 
         if !scale.isEmpty {
@@ -711,17 +893,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 currentScale.broadcastId == newScale.broadcastId
             }
         }
-
         for scale in deletedScales {
             if scale.isConnected ?? false {
-                do {
-                  if scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue {
-                      _ = try await deleteDevice(scale, disconnect: false)
-                    }
-
-                  guard let broadcastId = scale.broadcastIdString else { continue }
-                  try await disconnectDevice(broadcastId: broadcastId)
-                } catch {
+                if scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue {
+                    _ = await deleteDevice(scale, disconnect: false)
+                }
+                guard let broadcastId = scale.broadcastIdString else { continue }
+                let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
+                if case .failure(let error) = disconnectResult {
+                    logger.log(level: .error, tag: tag, message: "Failed to disconnect device: \(error.localizedDescription)")
                 }
             }
         }
@@ -836,6 +1016,25 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func roundMetric(_ metric: Double?) -> Int? {
         guard let metric = metric else { return nil }
         return Int(floor(metric * 10))
+    }
+
+    /**
+     Disconnects the specified device without deleting it from storage.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+      if !skipDevices.contains(broadcastId) {
+          skipDevices.append(broadcastId)
+      }
+      canShowScaleDiscoveredModal = false
+      Task {
+          try await Task.sleep(nanoseconds: 5_000_000_000)
+          await MainActor.run {
+              self.canShowScaleDiscoveredModal = true
+          }
+      }
+      ggBleSDK.skipDevice(broadcastId)
+      return .success(())
     }
 }
 

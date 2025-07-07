@@ -55,7 +55,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     func deleteAllEntries() async throws {
         let all = try await fetchAllEntries()
         for entry in all {
-            entry.operationType = "delete"
+            entry.operationType = OperationType.delete.rawValue
         }
         try context.save()
     }
@@ -111,6 +111,29 @@ final class EntryRepository: EntryRepositoryProtocol {
             $0.entryTimestamp < endString
         })
         return try context.fetch(descriptor)
+    }
+
+    /// Fetches all entries for a specific day and user.
+    /// - Parameters:
+    ///   - day: The day in 'YYYY-MM-DD' format (e.g., "2025-05-30").
+    ///   - userId: The user ID to filter entries by.
+    /// - Returns: An array of Entry objects for the day and user.
+    func fetchEntries(forDay day: String, userId: String) async throws -> [Entry] {
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "yyyy-MM-dd"
+      guard let startDate = dateFormatter.date(from: day) else { return [] }
+      var comps = DateComponents()
+      comps.day = 1
+      guard let endDate = Calendar.current.date(byAdding: comps, to: startDate) else { return [] }
+      let isoFormatter = ISO8601DateFormatter()
+      let startString = isoFormatter.string(from: startDate)
+      let endString = isoFormatter.string(from: endDate)
+      let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+        $0.accountId == userId &&
+        $0.entryTimestamp >= startString &&
+        $0.entryTimestamp < endString
+      })
+      return try context.fetch(descriptor)
     }
 
     /// Fetches all unsynced entries from the local data store.
