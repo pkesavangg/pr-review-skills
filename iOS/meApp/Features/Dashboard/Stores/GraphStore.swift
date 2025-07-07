@@ -16,9 +16,9 @@ final class GraphStore: ObservableObject {
     @Published var currentDateRange: ClosedRange<Date> = Date()...Date()
     @Published var isAnimating: Bool = false
     @Published var selectedWeight: Double? = nil
-    @Published var selectedPage: Int = 0
     @Published var selectedPeriod: TimePeriod = .week
     @Published var operations: [BathScaleOperationDTO] = []
+    @Published var xScrollPosition: Date = Date()
 
     let yAxisTicks: [Double] = stride(from: 175, through: 190, by: 5).map { $0 }
     let goalWeight: Double = 178
@@ -26,21 +26,17 @@ final class GraphStore: ObservableObject {
 
     // MARK: - Computed Properties
 
-    var periodPages: [[BathScaleOperationDTO]] {
-        Self.periodPages(operations: operations, selectedPeriod: selectedPeriod, calendar: calendar)
-    }
-
     var continuousOperations: [BathScaleOperationDTO] {
         operations.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
     }
 
     var weightLabel: String? {
         guard !operations.isEmpty else { return nil }
-        let pages = periodPages
-        guard selectedPage < pages.count else { return nil }
-        let pageOps = pages[selectedPage]
-        guard let minDate = pageOps.compactMap(\.date).min(),
-              let maxDate = pageOps.compactMap(\.date).max() else { return nil }
+        
+        let visibleOps = getVisibleOperations()
+        let opsToUse = visibleOps.isEmpty ? operations : visibleOps
+        guard let minDate = opsToUse.compactMap(\.date).min(),
+              let maxDate = opsToUse.compactMap(\.date).max() else { return nil }
 
         switch selectedPeriod {
         case .week:
@@ -60,17 +56,15 @@ final class GraphStore: ObservableObject {
         }
     }
 
-    // --- Display Value for Weight ---
-    /// For .week/.month: latest entry in current page. For .year/.total: average of current page.
     var displayWeight: Double? {
-        let pages = periodPages
-        guard selectedPage < pages.count else { return nil }
-        let pageOps = pages[selectedPage]
+        let visibleOps = getVisibleOperations()
+        let opsToUse = visibleOps.isEmpty ? operations : visibleOps
+        
         switch selectedPeriod {
         case .week, .month:
-            return pageOps.last?.weight
+            return opsToUse.last?.weight
         case .year, .total:
-            let weights = pageOps.compactMap(\.weight)
+            let weights = opsToUse.compactMap(\.weight)
             guard !weights.isEmpty else { return nil }
             return weights.reduce(0, +) / Double(weights.count)
         }
@@ -80,13 +74,15 @@ final class GraphStore: ObservableObject {
 
     func updateOperations(_ newOperations: [BathScaleOperationDTO]) {
         operations = newOperations
+        // Set scroll position to the latest date (like ContentView.swift)
+        xScrollPosition = operations.compactMap(\.date).max() ?? Date()
         selectedWeight = displayWeight
-        selectedPage = getCurrentPeriodPageIndex(for: selectedPeriod)
     }
 
     func updateSelectedPeriod(_ period: TimePeriod) {
         selectedPeriod = period
-        selectedPage = getCurrentPeriodPageIndex(for: period)
+        // Keep scroll position at the latest date when switching periods
+        xScrollPosition = operations.compactMap(\.date).max() ?? Date()
         selectedWeight = displayWeight
     }
 
@@ -95,119 +91,63 @@ final class GraphStore: ObservableObject {
         selectedWeight = entry?.weight
     }
 
-    func getPaddedOperations(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> [BathScaleOperationDTO] {
-        guard !operations.isEmpty else { return [] }
-        let domain = xAxisDomain(for: period, operations: operations)
-        var padded = operations.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
-        let isoFormatter = ISO8601DateFormatter()
-
-        if let first = padded.first, let firstDate = first.date,
-           firstDate > domain.lowerBound {
-            padded.insert(first.copy(with: isoFormatter.string(from: domain.lowerBound)), at: 0)
-        }
-
-        if let last = padded.last, let lastDate = last.date,
-           lastDate < domain.upperBound {
-            padded.append(last.copy(with: isoFormatter.string(from: domain.upperBound)))
-        }
-
-        return padded
-    }
-
-    func getCurrentPageDomain(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> ClosedRange<Date> {
-        xAxisDomain(for: period, operations: operations)
-    }
-
-    func getExtendedDomain(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> ClosedRange<Date> {
-        let currentDomain = getCurrentPageDomain(for: period, operations: operations)
-        let paddingInterval: TimeInterval = {
-            switch period {
-            case .week: return 7 * 24 * 3600
-            case .month: return 30 * 24 * 3600
-            case .year: return 365 * 24 * 3600
-            case .total: return 0
-            }
-        }()
-        let extendedStart = currentDomain.lowerBound.addingTimeInterval(-paddingInterval)
-        let extendedEnd = currentDomain.upperBound.addingTimeInterval(paddingInterval)
-        return extendedStart...extendedEnd
-    }
-
-    func getContinuousLineOperations(allOperations: [BathScaleOperationDTO], currentPageOperations: [BathScaleOperationDTO], period: TimePeriod) -> [BathScaleOperationDTO] {
-        let extendedDomain = getExtendedDomain(for: period, operations: currentPageOperations)
-        return allOperations.filter {
-            guard let date = $0.date else { return false }
-            return extendedDomain.contains(date)
-        }.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
-    }
-
-    func getFirstDateInAllOps(_ operations: [BathScaleOperationDTO]) -> Date? {
-        operations.compactMap(\.date).min()
-    }
-
-    func getLastDateInAllOps(_ operations: [BathScaleOperationDTO]) -> Date? {
-        operations.compactMap(\.date).max()
-    }
-
     func yAxisTicksWithGoal() -> [Double] {
         var ticks = yAxisTicks
         if !ticks.contains(goalWeight) { ticks.append(goalWeight) }
         return ticks.sorted()
     }
 
-    func xAxisDomain(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> ClosedRange<Date> {
+    func xAxisValues(for period: TimePeriod) -> [Date] {
+        let allDates = operations.compactMap(\.date)
+        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
+        
+        var dates: [Date] = []
+        
         switch period {
         case .week:
-            guard let start = Self.periodStartDate(.week, operations, calendar) else { return Date()...Date() }
-            return start...calendar.date(byAdding: .day, value: 6, to: start)!
-        case .month:
-            guard let start = Self.periodStartDate(.month, operations, calendar),
-                  let range = calendar.range(of: .day, in: .month, for: start) else { return Date()...Date() }
-            return start...calendar.date(byAdding: .day, value: range.count - 1, to: start)!
-        case .year:
-            guard let start = Self.periodStartDate(.year, operations, calendar) else { return Date()...Date() }
-            return start...calendar.date(byAdding: .month, value: 11, to: start)!
-        case .total:
-            let dates = operations.compactMap(\.date)
-            guard let min = dates.min(), let max = dates.max() else {
-                let now = Date()
-                return now...now
+            // For week view, show one mark per day across the entire data range
+            var current = calendar.startOfDay(for: minDate)
+            let end = calendar.startOfDay(for: maxDate)
+            while current <= end {
+                dates.append(current)
+                current = calendar.date(byAdding: .day, value: 1, to: current) ?? current
             }
-            return min...max
+            
+        case .month:
+            // For month view, show one mark per week
+            var current = calendar.startOfDay(for: minDate)
+            let end = calendar.startOfDay(for: maxDate)
+            while current <= end {
+                dates.append(current)
+                current = calendar.date(byAdding: .weekOfYear, value: 1, to: current) ?? current
+            }
+            
+        case .year:
+            // For year view, show one mark per month
+            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
+            let endComponents = calendar.dateComponents([.year, .month], from: maxDate)
+            let end = calendar.date(from: endComponents) ?? maxDate
+            while current <= end {
+                dates.append(current)
+                current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
+            }
+            
+        case .total:
+            // For total view, show one mark per quarter (3 months)
+            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
+            let endComponents = calendar.dateComponents([.year, .month], from: maxDate)
+            let end = calendar.date(from: endComponents) ?? maxDate
+            while current <= end {
+                dates.append(current)
+                current = calendar.date(byAdding: .month, value: 3, to: current) ?? current
+            }
         }
+        
+        return dates
     }
 
-    func xAxisLabels(for period: TimePeriod, operations: [BathScaleOperationDTO]) -> [Date] {
-        switch period {
-        case .week:
-            guard let start = Self.periodStartDate(.week, operations, calendar) else { return [] }
-            return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
-        case .month:
-            guard let start = Self.periodStartDate(.month, operations, calendar),
-                  let range = calendar.range(of: .day, in: .month, for: start) else { return [] }
-            let daysInMonth = range.count
-            let gridCount = max(4, min(daysInMonth, 6))
-            let step = Double(daysInMonth - 1) / Double(gridCount - 1)
-            return (0..<gridCount).compactMap {
-                let safeDay = min(1 + Int(round(step * Double($0))), daysInMonth)
-                return calendar.date(bySetting: .day, value: safeDay, of: start)
-            }
-        case .year:
-            guard let start = Self.periodStartDate(.year, operations, calendar) else { return [] }
-            return (0..<12).compactMap { calendar.date(byAdding: .month, value: $0, to: start) }
-        case .total:
-            let dates = operations.compactMap(\.date)
-            guard let first = dates.min(), let last = dates.max() else { return [] }
-            let firstYear = calendar.component(.year, from: first)
-            let lastYear = calendar.component(.year, from: last)
-            return (firstYear...lastYear).compactMap { year in
-                var comps = calendar.dateComponents([.year, .month, .day], from: first)
-                comps.year = year
-                comps.month = 1
-                comps.day = 1
-                return calendar.date(from: comps)
-            }
-        }
+    func xAxisLabels(for period: TimePeriod) -> [Date] {
+        return xAxisValues(for: period)
     }
 
     func xLabelString(for date: Date, period: TimePeriod) -> String? {
@@ -223,7 +163,7 @@ final class GraphStore: ObservableObject {
         }
     }
 
-    func getSelectedEntry(at location: CGPoint, proxy: ChartProxy, operations: [BathScaleOperationDTO]) -> (entry: BathScaleOperationDTO, pointY: CGFloat)? {
+    func getSelectedEntry(at location: CGPoint, proxy: ChartProxy) -> (entry: BathScaleOperationDTO, pointY: CGFloat)? {
         guard let date: Date = proxy.value(atX: location.x) else { return nil }
         guard let nearest = operations
             .compactMap({ op -> (BathScaleOperationDTO, Date)? in
@@ -236,64 +176,49 @@ final class GraphStore: ObservableObject {
         return (nearest, y)
     }
 
-    // MARK: - Static Period Helpers
+    func getFirstDateInAllOps() -> Date? {
+        operations.compactMap(\.date).min()
+    }
 
-    static func periodStartDate(_ period: TimePeriod, _ operations: [BathScaleOperationDTO], _ calendar: Calendar) -> Date? {
-        let date = operations.last?.date ?? Date()
+    func getLastDateInAllOps() -> Date? {
+        operations.compactMap(\.date).max()
+    }
+
+    // MARK: - Scrollable Chart Helpers
+
+    func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
         switch period {
-        case .week:
-            return calendar.dateInterval(of: .weekOfYear, for: date)?.start
-        case .month:
-            let comps = calendar.dateComponents([.year, .month], from: date)
-            return calendar.date(from: comps)
-        case .year:
-            return calendar.date(from: calendar.dateComponents([.year], from: date))
-        case .total:
-            return nil
+        case .week: return 7 * 24 * 60 * 60
+        case .month: return 30 * 24 * 60 * 60
+        case .year: return 365 * 24 * 60 * 60
+        case .total: 
+            // For total view, show a reasonable portion of the data at once
+            let allDates = operations.compactMap(\.date)
+            guard let minDate = allDates.min(), let maxDate = allDates.max() else {
+                return 365 * 24 * 60 * 60 // Default to 1 year if no data
+            }
+            let totalRange = maxDate.timeIntervalSince(minDate)
+            // Show about 1/4 of the total range, but minimum 1 year
+            return max(totalRange / 4, 365 * 24 * 60 * 60)
         }
     }
 
-    static func periodPages(operations: [BathScaleOperationDTO], selectedPeriod: TimePeriod, calendar: Calendar) -> [[BathScaleOperationDTO]] {
-        guard selectedPeriod != .total else {
-            return [operations.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }]
+    func timeSnapUnit(for period: TimePeriod) -> TimeInterval {
+        switch period {
+        case .week: return 24 * 60 * 60 // 1 day
+        case .month: return 7 * 24 * 60 * 60 // 1 week
+        case .year: return 30 * 24 * 60 * 60 // 1 month
+        case .total: return 90 * 24 * 60 * 60 // 3 months
         }
-        let grouped = Dictionary(grouping: operations) { op -> Date in
-            let date = op.date ?? Date()
-            switch selectedPeriod {
-            case .week:
-                return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
-            case .month:
-                return calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
-            case .year:
-                return calendar.date(from: calendar.dateComponents([.year], from: date)) ?? date
-            case .total:
-                return .distantPast
-            }
-        }
-        return grouped
-            .sorted { $0.key < $1.key }
-            .map { $0.value.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) } }
     }
 
-    // MARK: - Current Period Helpers
-
-    private func getCurrentPeriodPageIndex(for period: TimePeriod) -> Int {
-        let pages = periodPages
-        let currentDate = Date()
-        guard !pages.isEmpty else { return 0 }
-        let match: (Date) -> Bool = {
-            switch period {
-            case .week: return { self.calendar.isDate($0, equalTo: currentDate, toGranularity: .weekOfYear) }
-            case .month: return { self.calendar.isDate($0, equalTo: currentDate, toGranularity: .month) }
-            case .year: return { self.calendar.isDate($0, equalTo: currentDate, toGranularity: .year) }
-            case .total: return { _ in false }
-            }
-        }()
-        for (index, page) in pages.enumerated() {
-            if let first = page.first?.date, match(first) {
-                return index
-            }
+    private func getVisibleOperations() -> [BathScaleOperationDTO] {
+        let visibleStart = xScrollPosition.addingTimeInterval(-visibleDomainLength(for: selectedPeriod) / 2)
+        let visibleEnd = xScrollPosition.addingTimeInterval(visibleDomainLength(for: selectedPeriod) / 2)
+        
+        return operations.filter { op in
+            guard let date = op.date else { return false }
+            return date >= visibleStart && date <= visibleEnd
         }
-        return max(pages.count - 1, 0)
     }
 }

@@ -10,7 +10,7 @@ import SwiftUI
 struct WeightTrendView: View {
     @StateObject private var graphStore = GraphStore()
     @Environment(\.appTheme) private var theme
-   
+
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
@@ -20,12 +20,14 @@ struct WeightTrendView: View {
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.textSubheading)
                             .padding(.leading, .spacingSM)
-                        
+
                         WeightDisplayView(
-                            weightText: String(format: "%05.1f", graphStore.selectedEntry?.weight ?? graphStore.displayWeight ?? 0),
+                            weightText: String(format: "%05.1f", graphStore.selectedEntry != nil
+                                ? (graphStore.selectedEntry?.weight ?? 0)
+                                : (graphStore.displayWeight ?? 0)),
                             unitText: "lbs"
                         )
-                        
+
                         if let label = graphStore.weightLabel {
                             Text(label)
                                 .fontOpenSans(.subHeading2)
@@ -34,15 +36,14 @@ struct WeightTrendView: View {
                                 .padding(.top, .spacingXS)
                         }
                     }
-                    
+
                     Spacer()
                 }
                 .padding(.bottom, 8)
-                
+
                 GraphView(graphStore: graphStore)
-                    .frame(height: 400)
                     .padding(.trailing, 10)
-                
+
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
                     selectedSegment: Binding(
@@ -51,7 +52,6 @@ struct WeightTrendView: View {
                     )
                 )
                 .padding(.bottom, .spacingSM)
-                .padding(.top, 18)
                 .padding(.horizontal, 15)
             }
             .padding(.top, .spacingLG)
@@ -77,7 +77,7 @@ struct WeightTrendView: View {
 // Temporary mock data for BathScaleOperationDTO used for preview/testing purposes.
 func sampleOperations(for segment: String) -> [BathScaleOperationDTO] {
     let calendar = Calendar.current
-    let now = Date()
+    let today = calendar.startOfDay(for: Date())
     var operations: [BathScaleOperationDTO] = []
 
     func createOperation(date: Date, weight: Double) -> BathScaleOperationDTO {
@@ -106,82 +106,58 @@ func sampleOperations(for segment: String) -> [BathScaleOperationDTO] {
         )
     }
 
-    // Helper to get date for a given day offset from now, at a specific time
-    func dateByAdding(days: Int, hour: Int = 8, minute: Int = 0) -> Date {
-        let base = calendar.date(byAdding: .day, value: days, to: now)!
-        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: base)!
-    }
-    func dateByAdding(months: Int, day: Int = 1, hour: Int = 8, minute: Int = 0) -> Date {
-        let base = calendar.date(byAdding: .month, value: months, to: now)!
-        let withDay = calendar.date(bySetting: .day, value: day, of: base)!
-        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: withDay)!
-    }
-
     switch segment.uppercased() {
     case "WEEK":
-        // Generate data for the current week (7 days)
-        operations = [
-                   // Page 1
-                   createOperation(date: dateByAdding(days: -16), weight: 180.1),
-                   createOperation(date: dateByAdding(days: -15), weight: 179.8),
-                   createOperation(date: dateByAdding(days: -14), weight: 180.1),
-                   createOperation(date: dateByAdding(days: -13), weight: 179.8),
-                   createOperation(date: dateByAdding(days: -12), weight: 180.2),
-                   // Page 2
-                   createOperation(date: dateByAdding(days: -7), weight: 179.0),
-                   createOperation(date: dateByAdding(days: -6), weight: 178.7),
-                   createOperation(date: dateByAdding(days: -5), weight: 179.3),
-                   // Page 3
-                   createOperation(date: dateByAdding(days: -2), weight: 178.1),
-                   createOperation(date: dateByAdding(days: -1), weight: 177.9),
-                   createOperation(date: dateByAdding(days: 0), weight: 178.0)
-               ]
+        // Generate data for the past 60 days (much more than visible domain of 7 days)
+        operations = (0..<60).map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            let baseWeight = 180.0
+            let variation = sin(Double(offset) / 7.0) * 2.0 + Double.random(in: -1.0...1.0)
+            return createOperation(date: date, weight: baseWeight + variation)
+        }.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
 
     case "MONTH":
-        // 3 months, 3 pages, 4 entries each (spaced about 1 week apart)
-        // Page 1: 2 months ago
-        operations = [
-            createOperation(date: dateByAdding(months: -2, day: 2), weight: 185.1),
-            createOperation(date: dateByAdding(months: -2, day: 8), weight: 184.5),
-            createOperation(date: dateByAdding(months: -2, day: 15), weight: 183.8),
-            createOperation(date: dateByAdding(months: -2, day: 22), weight: 183.2),
-            // Page 2: 1 month ago
-            createOperation(date: dateByAdding(months: -1, day: 2), weight: 182.7),
-            createOperation(date: dateByAdding(months: -1, day: 9), weight: 182.1),
-            createOperation(date: dateByAdding(months: -1, day: 16), weight: 181.5),
-            createOperation(date: dateByAdding(months: -1, day: 23), weight: 181.0),
-            // Page 3: current month
-            createOperation(date: dateByAdding(months: 0, day: 2), weight: 180.7),
-            createOperation(date: dateByAdding(months: 0, day: 9), weight: 180.2),
-            createOperation(date: dateByAdding(months: 0, day: 16), weight: 179.8),
-            createOperation(date: dateByAdding(months: 0, day: 23), weight: 179.3)
-        ]
+        // Generate data for the past 120 days (much more than visible domain of 30 days)
+        operations = (0..<120).map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            let baseWeight = 180.0
+            let trend = -Double(offset) * 0.02 // Gradual weight loss trend
+            let variation = sin(Double(offset) / 10.0) * 3.0 + Double.random(in: -1.5...1.5)
+            return createOperation(date: date, weight: baseWeight + trend + variation)
+        }.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
 
     case "YEAR":
-        // Two years: one entry every 2 months (12 entries)
-        let monthsAgo = stride(from: -22, through: 0, by: 2).map { $0 }
-        let weights: [Double] = [188.0, 183.4, 185.1, 181.9, 184.2, 180.7, 182.5, 179.8, 181.2, 178.6, 180.4, 177.9]
-        operations = zip(monthsAgo, weights).map { (monthOffset, weight) in
-            createOperation(date: dateByAdding(months: monthOffset, day: 8), weight: weight)
-        }
+        // Generate data for the past 2 years (730 days, much more than visible domain of 365 days)
+        operations = (0..<730).map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            let baseWeight = 185.0
+            let yearlyTrend = -Double(offset) * 0.01 // Very gradual weight loss over time
+            let seasonalVariation = sin(Double(offset) / 365.0 * 2 * Double.pi) * 5.0 // Seasonal variation
+            let randomVariation = Double.random(in: -2.0...2.0)
+            return createOperation(date: date, weight: baseWeight + yearlyTrend + seasonalVariation + randomVariation)
+        }.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
 
     case "TOTAL":
-        // 13 entries over 3 years, every 3 months
-        let monthsAgo = stride(from: -36, through: 0, by: 3).map { $0 }
-        let weights: [Double] = [182.8, 185.0, 179.4, 183.3, 180.1, 178.9, 181.7, 179.2, 180.5, 177.4, 179.6, 178.2, 177.3]
-        operations = zip(monthsAgo, weights).map { (monthOffset, weight) in
-            createOperation(date: dateByAdding(months: monthOffset, day: 10), weight: weight)
-        }
-
+        // Generate data for the past 3 years (1095 days)
+        operations = (0..<1095).map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            let baseWeight = 190.0
+            let longTermTrend = -Double(offset) * 0.008 // Very gradual long-term weight loss
+            let yearlyVariation = sin(Double(offset) / 365.0 * 2 * Double.pi) * 4.0
+            let monthlyVariation = sin(Double(offset) / 30.0 * 2 * Double.pi) * 2.0
+            let randomVariation = Double.random(in: -2.5...2.5)
+            return createOperation(date: date, weight: baseWeight + longTermTrend + yearlyVariation + monthlyVariation + randomVariation)
+        }.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
 
     default:
-        // Default to recent week, 3 entries
-        operations = [
-            createOperation(date: dateByAdding(days: -2), weight: 178.1),
-            createOperation(date: dateByAdding(days: -1), weight: 177.9),
-            createOperation(date: dateByAdding(days: 0), weight: 178.0)
-        ]
+        // Default case - generate 30 days of data
+        operations = (0..<30).map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            let baseWeight = 178.0
+            let variation = Double.random(in: -1.0...1.0)
+            return createOperation(date: date, weight: baseWeight + variation)
+        }.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
     }
 
-    return operations.sorted { $0.date ?? Date() < $1.date ?? Date() }
+    return operations
 }
