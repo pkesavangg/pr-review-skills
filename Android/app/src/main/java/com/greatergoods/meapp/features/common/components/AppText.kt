@@ -5,13 +5,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.AnnotatedString.Range
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -22,6 +29,12 @@ data class TextAppearance(
     val style: TextStyle,
     val color: Color,
 )
+
+enum class AnnotationPosition {
+    Start,
+    End,
+    Middle,
+}
 
 enum class TextType {
     Title,
@@ -36,7 +49,10 @@ enum class TextType {
 
 object TextTypeDefaults {
     @Composable
-    fun appearance(type: TextType, enabled: Boolean = true): TextAppearance {
+    fun appearance(
+        type: TextType,
+        enabled: Boolean = true,
+    ): TextAppearance {
         val typography = MeTheme.typography
 
         return when (type) {
@@ -70,58 +86,114 @@ object TextTypeDefaults {
                     color = colorScheme.textSubheading,
                 )
 
-            TextType.ListTitle1 -> TextAppearance(
-                style = typography.heading5,
-                color = colorScheme.textHeading,
-            )
+            TextType.ListTitle1 ->
+                TextAppearance(
+                    style = typography.heading5,
+                    color = colorScheme.textHeading,
+                )
 
-            TextType.ListTitle2 -> TextAppearance(
-                style = typography.heading4,
-                color = colorScheme.textHeading,
-            )
+            TextType.ListTitle2 ->
+                TextAppearance(
+                    style = typography.heading4,
+                    color = colorScheme.textHeading,
+                )
 
-            TextType.ListSubtitle -> TextAppearance(
-                style = typography.subHeading2,
-                color = colorScheme.textSubheading,
-            )
-
+            TextType.ListSubtitle ->
+                TextAppearance(
+                    style = typography.subHeading2,
+                    color = colorScheme.textSubheading,
+                )
         }
     }
 }
 
 @Composable
 fun AppText(
-    text: String,
+    text: String = "",
     textType: TextType,
     modifier: Modifier = Modifier,
+    annotatedText: String? = null,
+    annotationPosition: AnnotationPosition = AnnotationPosition.Start,
+    spanStyle: SpanStyle? = null,
     enabled: Boolean = true,
     spacing: Dp = LocalSpacing.current.none,
     textAlign: TextAlign = TextAlign.Start,
     color: Color? = null,
     onClick: (() -> Unit)? = null,
+    onAnnotationClick: ((String) -> Unit)? = null,
 ) {
-    val textTypeDefault = TextTypeDefaults.appearance(textType, enabled)
+    val appearance = TextTypeDefaults.appearance(textType, enabled)
+
+    val ANNOTATION_TAG = "ANNOTATED_CLICK"
+
+    val finalText = remember(text, annotatedText, spanStyle) {
+        if (annotatedText != null && spanStyle != null) {
+            buildAnnotatedString {
+                when (annotationPosition) {
+                    AnnotationPosition.Start -> {
+                        pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
+                        withStyle(spanStyle) { append(annotatedText) }
+                        pop()
+                        append(text.removePrefix(annotatedText))
+                    }
+                    AnnotationPosition.End -> {
+                        append(text.removeSuffix(annotatedText))
+                        pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
+                        withStyle(spanStyle) { append(annotatedText) }
+                        pop()
+                    }
+                    AnnotationPosition.Middle -> {
+                        val startIndex = text.indexOf(annotatedText)
+                        if (startIndex != -1) {
+                            append(text.substring(0, startIndex))
+                            pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
+                            withStyle(spanStyle) { append(annotatedText) }
+                            pop()
+                            append(text.substring(startIndex + annotatedText.length))
+                        } else {
+                            append(text) // fallback
+                        }
+                    }
+                }
+            }
+        } else {
+            AnnotatedString(text)
+        }
+    }
+
     Column(
-        modifier =
-            Modifier
-                .wrapContentSize()
-                .let {
-                    if (onClick != null) {
-                        it.clickable(onClick = onClick)
-                    } else {
-                        it
+        modifier = Modifier.wrapContentSize(),
+        horizontalAlignment = Alignment.Start,
+    ) {
+        if (onAnnotationClick != null && annotatedText != null && spanStyle != null) {
+            ClickableText(
+                text = finalText,
+                style = appearance.style.copy(color = color ?: appearance.color, textAlign = textAlign),
+                modifier = modifier,
+                onClick = { offset ->
+                    finalText.getStringAnnotations(
+                        tag = ANNOTATION_TAG,
+                        start = offset,
+                        end = offset + 1
+                    ).firstOrNull()
+                        ?.let { annotation ->
+                        onAnnotationClick(annotation.item)
                     }
                 },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text,
-            style = textTypeDefault.style,
-            color = color ?: textTypeDefault.color,
-            textAlign = textAlign,
-            modifier = modifier,
-        )
-        Spacer(Modifier.height(spacing))
+            )
+        } else {
+            Text(
+                text = finalText,
+                style = appearance.style,
+                color = color ?: appearance.color,
+                textAlign = textAlign,
+                modifier =
+                    modifier.then(
+                        if (onClick != null) Modifier.clickable { onClick() } else Modifier,
+                    ),
+            )
+        }
+        Spacer(modifier = Modifier.height(spacing))
     }
 }
 

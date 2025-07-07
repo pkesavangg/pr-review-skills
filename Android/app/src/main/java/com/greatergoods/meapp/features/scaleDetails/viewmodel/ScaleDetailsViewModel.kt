@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.scaleDetails.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.config.AppConfig
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
@@ -54,6 +55,10 @@ class ScaleDetailsViewModel
                     navigateBack()
                 }
 
+                ScaleDetailsIntent.OpenScaleMode -> {
+                    openScaleMode()
+                }
+
                 else -> {}
             }
         }
@@ -81,6 +86,17 @@ class ScaleDetailsViewModel
                 val sku = state.value.scale!!.sku
                 val url = "${AppConfig.PRODUCT_URL}/$sku"
                 openInAppBrowser(url)
+            }
+        }
+
+        private fun openScaleMode() {
+            viewModelScope.launch {
+                if (!state.value.scale
+                        ?.id
+                        .isNullOrEmpty()
+                ) {
+                    navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(state.value.scale!!.id))
+                }
             }
         }
 

@@ -34,7 +34,6 @@ import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
-import com.greatergoods.meapp.theme.model.BorderRadius
 
 /**
  * Card composable for displaying a ScaleInfo's info as per Figma.
@@ -119,16 +118,23 @@ fun AppScaleCard(
                 if (showConnectionStatus) {
                     Spacer(modifier = Modifier.height(spacing.x3s))
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        val showExclamation = scale.isWifiConfigured == false && scale.isConnected == true
                         val setupIndicationIcon =
-                            if (scale.isWifiConfigured == false && scale.isConnected == true) {
+                            if (showExclamation) {
                                 AppIcons.Default.Exclamation
                             } else {
                                 connectionIcon
                             }
+                        val iconType = when {
+                            showExclamation ->  AppIconType.Danger
+                            scale.isConnected == false -> AppIconType.Tertiary
+                            else -> AppIconType.Primary
+                        }
                         AppIcon(
                             id = setupIndicationIcon,
                             contentDescription = "Connection type icon",
-                            type = AppIconType.Primary,
+                            type = iconType,
+                            enabled = scale.isConnected == true,
                             onClick = null,
                         )
                         Spacer(modifier = Modifier.width(spacing.x3s))
@@ -145,9 +151,21 @@ fun AppScaleCard(
                     }
                 }
             }
-            Spacer(modifier = Modifier.width(MeTheme.spacing.md))
+            Spacer(modifier = Modifier.width(spacing.md))
+            if(!isSavedScale) {
+                AppIcon(
+                    id = connectionIcon,
+                    contentDescription = if (isSavedScale) "Navigate" else "Scale type icon",
+                    type = AppIconType.Primary,
+                    modifier = Modifier.size(32.dp),
+                    enabled = enabled,
+                    onClick = null,
+                )
+                Spacer(modifier = Modifier.width(spacing.sm))
+            }
+
             AppIcon(
-                id = trailingIcon,
+                id = AppIcons.Default.RightCaret,
                 contentDescription = if (isSavedScale) "Navigate" else "Scale type icon",
                 type = AppIconType.Primary,
                 modifier = Modifier.size(32.dp),
