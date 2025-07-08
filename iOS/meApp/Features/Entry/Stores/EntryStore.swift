@@ -172,13 +172,6 @@ final class EntryStore: ObservableObject {
             manualEntryForm.bmi.validate()
         }
 
-        // Helper to strip trailing "%" and assign to field
-        func assignPercent(_ source: String?, to control: FormControl<String>) {
-            guard let value = source?.replacingOccurrences(of: "%", with: "") else { return }
-            control.value = value
-            control.validate()
-        }
-
         assignPercent(metrics.bodyFat, to: manualEntryForm.bodyFat)
         assignPercent(metrics.muscleMass, to: manualEntryForm.muscleMass)
         assignPercent(metrics.waterWeight, to: manualEntryForm.bodyWater)
@@ -324,4 +317,11 @@ final class EntryStore: ObservableObject {
             })
         }
     }
-} 
+    
+    // Helper to strip trailing "%" and assign to field
+    private func assignPercent(_ source: String?, to control: FormControl<String>) {
+        guard let value = source?.replacingOccurrences(of: "%", with: "") else { return }
+        control.value = value
+        control.validate()
+    }
+}

@@ -311,9 +311,9 @@ struct ManualEntryScreen: View {
                         return await entryStore.confirmDiscardChanges()
                     }
                 }
-                .onChange(of: tabViewModel.selectedTab) { oldValue, newValue in
+                .onChange(of: tabViewModel.selectedTab) { _, newValue in
                     // Pre-populate form if coming from AppSync **Edit** flow
-                    if let metrics = tabViewModel.pendingAppSyncEditMetrics, tabViewModel.selectedTab == .entry {
+                    if let metrics = tabViewModel.pendingAppSyncEditMetrics, newValue == .entry {
                         entryStore.populateFromAppSync(metrics: metrics)
                         tabViewModel.pendingAppSyncEditMetrics = nil
                     }
