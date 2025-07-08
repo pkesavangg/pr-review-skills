@@ -157,6 +157,16 @@ final class AppSyncSetupStore: ObservableObject {
             guard let accountId = self.accountService.activeAccount?.accountId else {
                 return
             }
+            // Remove any existing device with the same SKU to avoid duplicates
+            do {
+                let existingDevices = try await self.scaleService.getDevices()
+                if let oldDevice = existingDevices.first(where: { $0.sku == scaleItem.sku }) {
+                    try? await self.scaleService.deleteDevice(oldDevice.id, showToast: false)
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to remove existing device before saving: \(error.localizedDescription)")
+            }
+
             do {
                 let newDevice = Device(
                     id: UUID().uuidString,

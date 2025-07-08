@@ -64,7 +64,7 @@ struct MyScalesScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingLG)
                 
-                VStack(alignment: .center, spacing: 0){
+                VStack(alignment: .center, spacing: 0) {
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.modelNumber,
@@ -77,10 +77,7 @@ struct MyScalesScreen: View {
                             allowWholeNumbers: true,
                             showPrefixZero: true
                         ),
-                        value: Binding(
-                            get: { scaleStore.addScaleForm.modelNumberValue },
-                            set: { scaleStore.addScaleForm.setModelNumber($0) }
-                        ),
+                        value: $scaleStore.addScaleForm.modelNumber.value,
                         focusedField: focusBinding
                     )
                     .padding(.bottom, .spacingMD)
@@ -92,13 +89,19 @@ struct MyScalesScreen: View {
                         action: {
                             // Fetch the corresponding scale and trigger setup flow sheet.
                             if let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) {
-                                // Clear focus & reset form
-                                focusedField = nil
-                                hideKeyboard()
-
-                                activeSheet = .setupFlow(scale)
-                                // Optional: reset the form for next entry
-                                scaleStore.resetForm()
+                                let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
+                                let proceed = {
+                                    // Clear focus & reset form
+                                    focusedField = nil
+                                    hideKeyboard()
+                                    activeSheet = .setupFlow(scale)
+                                    scaleStore.resetForm()
+                                }
+                                if isDuplicate {
+                                    scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
+                                } else {
+                                    proceed()
+                                }
                             }
                         }
                     )
@@ -109,6 +112,8 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: false,
                         action: {
+                            focusedField = nil
+                            hideKeyboard()
                             activeSheet = .scaleList
                         }
                     )
@@ -121,7 +126,15 @@ struct MyScalesScreen: View {
                         ChooseYourScaleView { scale in
                             // Delay so the scale list sheet dismisses before presenting the next one
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                activeSheet = .setupFlow(scale)
+                                let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
+                                let proceed = {
+                                    activeSheet = .setupFlow(scale)
+                                }
+                                if isDuplicate {
+                                    scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
+                                } else {
+                                    proceed()
+                                }
                             }
                         }
                     case .setupFlow(let scale):

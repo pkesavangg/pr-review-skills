@@ -450,6 +450,15 @@ struct AlertStrings {
         static let cancelButton = "cancel"
         static let exitButton = "exit setup"
     }
+    
+    struct DeviceAlreadyPairedAlert {
+        static let title = "Device Already Paired"
+        static let message: (String) -> String = { sku in
+            "The device with SKU: \(sku) is already paired. Do you want to pair it again?"
+        }
+        static let returnButton = "RETURN"
+        static let pairButton = "PAIR"
+    }
 }
 
 struct LoaderStrings {

@@ -347,4 +347,20 @@ class ScaleStore: ObservableObject {
             return "##:##:##:##:##:##"
     }
     
+    /// Shows an alert when the selected scale SKU is already paired and lets the user decide whether to pair again.
+    func handleDuplicateScale(sku: String, onPair: @escaping () -> Void) {
+        let lang = alertLang.DeviceAlreadyPairedAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message(sku),
+            buttons: [
+                AlertButtonModel(title: lang.returnButton, type: .secondary) { _ in },
+                AlertButtonModel(title: lang.pairButton, type: .primary) { _ in
+                    onPair()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
 }
