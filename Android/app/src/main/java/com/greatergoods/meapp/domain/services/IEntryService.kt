@@ -13,7 +13,7 @@ interface IEntryService {
     val latestEntry: StateFlow<Entry?>
     val last7Days: StateFlow<List<Entry>>
     val last30Days: StateFlow<List<Entry>>
-    val progress: StateFlow<Progress?>
+    val progress: Flow<Progress>
     val lastUpdated: StateFlow<Long?>
     suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>>
 

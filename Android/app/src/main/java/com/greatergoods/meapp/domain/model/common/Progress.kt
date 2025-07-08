@@ -14,5 +14,5 @@ data class Progress(
     val total: Double = 0.0,
     val initWeek: Entry? = null,
     val initMonth: Entry? = null,
-    val initYear: Entry? = null
+    val initYear: HistoryMonth? = null
 )
