@@ -1,4 +1,5 @@
 import SwiftUI
+import AppSyncPackage
 
 // MARK: - AppSyncTabScreen
 /// A dedicated tab screen that launches the App Sync camera scanner.
@@ -8,6 +9,8 @@ struct AppSyncTabScreen: View {
     // Theme & navigation
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    // Store handling scan results
+    @StateObject private var scanStore = AppSyncTabStore()
 
     // MARK: - Body
     var body: some View {
@@ -21,8 +24,10 @@ struct AppSyncTabScreen: View {
                     onManualEntry: {
                         tabViewModel.selectTab(.entry)
                     },
-                    onScanned: { entry in
+                    onScanned: { data in
+                        // Forward to store for processing, then return to dashboard
                         tabViewModel.selectTab(.dash)
+                        scanStore.handleScanned(data, tabViewModel: tabViewModel)
                     }
                 )
             }

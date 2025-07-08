@@ -311,6 +311,13 @@ struct ManualEntryScreen: View {
                         return await entryStore.confirmDiscardChanges()
                     }
                 }
+                .onChange(of: tabViewModel.selectedTab) { oldValue, newValue in
+                    // Pre-populate form if coming from AppSync **Edit** flow
+                    if let metrics = tabViewModel.pendingAppSyncEditMetrics, tabViewModel.selectedTab == .entry {
+                        entryStore.populateFromAppSync(metrics: metrics)
+                        tabViewModel.pendingAppSyncEditMetrics = nil
+                    }
+                }
             }
             .scrollDismissesKeyboard(.interactively)
         }

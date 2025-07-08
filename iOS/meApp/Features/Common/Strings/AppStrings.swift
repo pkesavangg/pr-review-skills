@@ -106,6 +106,7 @@ struct ToastStrings {
     static let hkIntegrationRemoved = "Apple Health integration removed."
     static let hkIntegrationSynced = "Apple Health is synced!"
     static let saveScaleError = "Error saving scale. Please restart the app and try again."
+    static let restartApp = "Please restart your app and try again."
 }
 
 /// Constants for help modal strings used in the app
@@ -607,5 +608,15 @@ struct AppAssets {
     static let plusCircleDark = "plusCircleDark"
     static let minusCircleDark = "minusCircleDark"
     static let minusCircleClear = "minusCircleClear"
+}
+
+/// Constants used in the AppSync entry result confirmation card
+struct AppSyncEntryCardStrings {
+    static let title = "Your AppSync Scan was successful!"
+    static let weight = "Weight"
+    static let bodyFat = "Body Fat"
+    static let muscleMass = "Muscle Mass"
+    static let waterWeight = "Water Weight"
+    static let bmi = "BMI"
 }
 
