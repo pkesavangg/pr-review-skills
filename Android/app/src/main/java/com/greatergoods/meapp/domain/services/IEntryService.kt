@@ -19,7 +19,7 @@ interface IEntryService {
 
   suspend fun monthDetails(startDate: String): Flow<List<Entry>>
 
-  suspend fun updateAccountId(accountId: String)
+  suspend fun updateAccountId(accountId: String?)
   suspend fun addEntry(entry: Entry)
   suspend fun addEntry(entries: List<Entry>)
   suspend fun deleteEntry(entry: Entry)
