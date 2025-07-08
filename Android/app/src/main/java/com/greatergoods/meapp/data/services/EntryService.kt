@@ -3,16 +3,18 @@ package com.greatergoods.meapp.data.services
 
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.data.services.EntryServiceHelper.processInitialWeight
+import com.greatergoods.meapp.data.services.EntryServiceHelper.processWeight
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.domain.model.goal.Goal
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
+import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.goal.helper.Weightless
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.convertWeight
@@ -29,14 +31,14 @@ import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Data class combining weight unit and weightless settings for efficient flow operations.
  */
 data class WeightSettings(
   val weightUnit: WeightUnit?,
-  val weightless: Weightless?
+  val weightless: Weightless?,
+  val goal: Goal?
 )
 
 @Singleton
@@ -44,6 +46,7 @@ class EntryService
 @Inject
 constructor(
   private val entryRepository: IEntryRepository,
+  private val goalRepository: IGoalRepository,
   private val accountRepository: IAccountRepository,
 ) : IEntryService {
   private val _isUpdating = MutableStateFlow(false)
@@ -65,8 +68,9 @@ constructor(
   private val weightSettingsFlow = combine(
     accountRepository.getActiveAccountWeightUnitFlow(),
     accountRepository.getActiveAccountWeightlessFlow(),
-  ) { weightUnit, weightless ->
-    WeightSettings(weightUnit, weightless)
+    goalRepository.getCurrentGoal(),
+  ) { weightUnit, weightless, goal ->
+    WeightSettings(weightUnit, weightless, goal)
   }
 
   private val _lastUpdated = MutableStateFlow<Long?>(null)
@@ -92,13 +96,19 @@ constructor(
     weightSettingsFlow,
     monthYear,
   ) { latest, last7, last30, weightSettings, monthYear ->
-    Log.d("EntryService", "monthYear: $monthYear")
     calculateProgress(
       latest?.process(weightSettings.weightUnit, weightSettings.weightless),
       last7.map { it.process(weightSettings.weightUnit, weightSettings.weightless) },
       last30.map { it.process(weightSettings.weightUnit, weightSettings.weightless) },
       monthYear.map { it.process(weightSettings.weightUnit, weightSettings.weightless) },
-      processInitialWeight(initialWeight ?: 0.0, weightSettings.weightUnit, weightSettings.weightless),
+      processWeight(this.initialWeight ?: 0.0, weightSettings.weightUnit, weightSettings.weightless),
+      goal = weightSettings.goal?.copy(
+        goalWeight = processWeight(
+          weightSettings.goal.goalWeight,
+          weightSettings.weightUnit,
+          weightSettings.weightless,
+        ),
+      ),
     )
   }
 
@@ -432,6 +442,7 @@ constructor(
     last30Days: List<Entry>,
     months: List<HistoryMonth>,
     initialWeight: Double?,
+    goal: Goal?
   ): Progress {
     if (accountId == null) {
       return Progress()
@@ -482,7 +493,7 @@ constructor(
       }
 
       if (initYear != null && initYear.entryTimestamp != null) {
-                try {
+        try {
           // Parse the MMM yyyy format (e.g., "May 2024")
           val yearMonthFormat = SimpleDateFormat("MMM yyyy", Locale.ENGLISH)
           val initYearDate = yearMonthFormat.parse(initYear.entryTimestamp)
@@ -525,6 +536,7 @@ constructor(
 
       return Progress(
         latest = latestEntry,
+        goal = goal,
         currentStreak = currentStreak,
         longestStreak = longestStreak,
         count = totalCount,
@@ -681,7 +693,7 @@ internal object EntryServiceHelper {
     )
   }
 
-  fun processInitialWeight(
+  fun processWeight(
     weight: Double,
     unit: WeightUnit?,
     weightLess: Weightless?,

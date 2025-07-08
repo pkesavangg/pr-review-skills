@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.domain.services.IGoalService
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.model.Toast
@@ -13,7 +14,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -26,6 +26,7 @@ class DashboardViewModel
 @Inject
 constructor(
   private val entryService: IEntryService,
+  private val goalService: IGoalService,
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
@@ -35,11 +36,7 @@ constructor(
     handleIntent(DashboardIntent.LoadEntries)
     loadEntries()
     subscribeMetrics()
-    viewModelScope.launch {
-      entryService.progress.collect {
-        Log.d("DashboardViewModel", "Progress: $it")
-      }
-    }
+    subscribeProgress()
   }
 
   override fun provideInitialState(): DashboardState = DashboardState()
@@ -51,6 +48,14 @@ constructor(
       else -> null
     }
     super.handleIntent(intent)
+  }
+
+  private fun subscribeProgress() {
+    viewModelScope.launch {
+      entryService.progress.collect {
+        handleIntent(DashboardIntent.SetProgress(it))
+      }
+    }
   }
 
   private fun subscribeMetrics() {

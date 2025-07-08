@@ -479,8 +479,9 @@ constructor(
         expiresAt = loginResponse.expiresAt,
       ),
     )
-    dashboardKeysDatastore.updateVisibleMetricKeys(account.id)
-    dashboardKeysDatastore.updateVisibleMilestoneKeys(account.id)
+    // For new accounts, initialize both metric and milestone keys with defaults
+    // Use resetVisibleKeys to ensure both are properly initialized
+    dashboardKeysDatastore.resetVisibleKeys(account.id)
     return account
   }
 
@@ -547,6 +548,10 @@ constructor(
         initialWeight = account.initialWeight?.toDouble() ?: 0.0,
         isWeightlessOn = account.isWeightlessOn,
         height = account.height,
+        goalWeight = account.goalWeight?.toDouble() ?: 0.0,
+        goalType = account.goalType,
+        metPreviousGoal = account.metPreviousGoal,
+        goalPercent = account.goalPercent.toDouble(),
         activityLevel = account.activityLevel,
         weightlessTimestamp = account.weightlessTimestamp,
         weightlessWeight = account.weightlessWeight,
