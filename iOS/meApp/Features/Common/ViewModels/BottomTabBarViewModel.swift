@@ -28,7 +28,7 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var scaleService: ScaleService
     
     private let tag = "BottomTabBarViewModel"
-    var cancellables: Set<AnyCancellable> = []
+    private var cancellables: Set<AnyCancellable> = []
     
     init() {
         self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
@@ -44,6 +44,7 @@ class BottomTabBarViewModel: ObservableObject {
             .map { scales in
                 scales.contains { $0.bathScale?.scaleType == ScaleSourceType.appsync.rawValue }
             }
+            .receive(on: DispatchQueue.main)
             .assign(to: \.showAppSync, on: self)
             .store(in: &cancellables)
     }

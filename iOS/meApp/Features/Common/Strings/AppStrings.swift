@@ -105,6 +105,7 @@ struct ToastStrings {
     static let weightHistorySynced = "Weight history successfully synced."
     static let hkIntegrationRemoved = "Apple Health integration removed."
     static let hkIntegrationSynced = "Apple Health is synced!"
+    static let saveScaleError = "Error saving scale. Please restart the app and try again."
 }
 
 /// Constants for help modal strings used in the app
