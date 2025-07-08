@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.domain.repository
 
+import com.greatergoods.meapp.domain.model.api.device.R4ScalePreferenceApiModel
+import com.greatergoods.meapp.domain.model.api.device.ScaleMetaDataApiModel
 import com.greatergoods.meapp.domain.model.storage.Device
 import kotlinx.coroutines.flow.Flow
 
@@ -9,25 +11,44 @@ import kotlinx.coroutines.flow.Flow
 interface IDeviceRepository {
     // DB operations
     fun getDevices(accountId: String): Flow<List<Device>>
+
     fun getDevice(deviceId: String): Flow<Device?>
+
     /**
      * Save a device to the local database.
      * @param device The device to save. Must have a valid accountId.
      * @throws IllegalArgumentException if accountId is blank
      */
     suspend fun saveDeviceToDb(device: Device)
+
     suspend fun deleteDeviceFromDb(deviceId: String)
+
     fun deviceExistsByBroadcastId(broadcastId: String): Flow<Boolean>
+
     fun deviceExistsByMac(mac: String): Flow<Boolean>
+
     fun deviceExistsByPeripheralId(peripheralId: String): Flow<Boolean>
+
     fun getDeviceByBroadcastId(broadcastId: String): Flow<Device?>
+
     fun getDeviceByMac(mac: String): Flow<Device?>
+
     fun getDeviceByPeripheralId(peripheralId: String): Flow<Device?>
-    suspend fun updateDeviceNickname(deviceId: String, nickname: String): Device
+
+    suspend fun updateDeviceNickname(
+        deviceId: String,
+        nickname: String,
+    ): Device
+
     suspend fun getUnsyncedDevices(): List<Device>
-    suspend fun markDeviceSynced(deviceId: String, isSynced: Boolean)
+
+    suspend fun markDeviceSynced(
+        deviceId: String,
+        isSynced: Boolean,
+    )
 
     // API operations
+
     /**
      * Gets all devices from the API for the given account.
      */
@@ -36,6 +57,23 @@ interface IDeviceRepository {
     /**
      * Saves a device to the API for the given account.
      */
-    suspend fun saveDeviceToApi(device: Device, accountId: String): Device
+    suspend fun saveDeviceToApi(
+        device: Device,
+        accountId: String,
+    ): Device
+
     suspend fun deleteDeviceFromApi(deviceId: String): Boolean
+
+    /**
+     * Save scale preferences to the API.
+     */
+    suspend fun saveScalePreferencesToApi(preferences: R4ScalePreferenceApiModel): R4ScalePreferenceApiModel
+
+    /**
+     * Save scale metadata to the API.
+     */
+    suspend fun saveScaleMetaDataToApi(
+        deviceId: String,
+        metaData: ScaleMetaDataApiModel,
+    ): Boolean
 }

@@ -51,9 +51,8 @@ fun AppScaleCard(
     enabled: Boolean = true,
     onClick: (ScaleInfo) -> Unit,
 ) {
-    val cardSpacing = if (isSavedScale) MeTheme.spacing.md else MeTheme.spacing.sm
+    val cardSpacing = if (isSavedScale) spacing.md else spacing.sm
     val connectionIcon = ScaleDataHelper.scaleTypeIcon(scale.setupType)
-    val trailingIcon = if (isSavedScale) AppIcons.Default.RightCaret else connectionIcon
     val isWifiSetup =
         scale.setupType == ScaleSetupType.Wifi ||
             scale.setupType == ScaleSetupType.EspTouchWifi ||
@@ -70,7 +69,7 @@ fun AppScaleCard(
             modifier
                 .fillMaxWidth()
                 .clickable { onClick(scale) },
-        color = MeTheme.colorScheme.secondaryBackground,
+        color = colorScheme.secondaryBackground,
         shadowElevation = 0.dp,
     ) {
         Row(
@@ -102,7 +101,7 @@ fun AppScaleCard(
                 )
             }
 
-            Spacer(modifier = Modifier.width(MeTheme.spacing.sm))
+            Spacer(modifier = Modifier.width(spacing.sm))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center,
@@ -126,7 +125,7 @@ fun AppScaleCard(
                                 connectionIcon
                             }
                         val iconType = when {
-                            showExclamation ->  AppIconType.Danger
+                            showExclamation -> AppIconType.Danger
                             scale.isConnected == false -> AppIconType.Tertiary
                             else -> AppIconType.Primary
                         }
@@ -192,7 +191,7 @@ fun PreviewAppScaleCard() {
                         bodyComp = true,
                         isConnected = true,
                         isWifiConfigured = true,
-                        broadcastId = "broadcast1",
+                        scaleId = "scaleId1",
                     ),
                 isSavedScale = true,
                 onClick = {},
@@ -208,7 +207,7 @@ fun PreviewAppScaleCard() {
                         bodyComp = false,
                         isConnected = false,
                         isWifiConfigured = false,
-                        broadcastId = "broadcast2",
+                        scaleId = "scaleId2",
                     ),
                 isSavedScale = true,
                 onClick = {},
@@ -224,7 +223,7 @@ fun PreviewAppScaleCard() {
                         bodyComp = true,
                         isConnected = false,
                         isWifiConfigured = false,
-                        broadcastId = null,
+                        scaleId = null,
                     ),
                 isSavedScale = false,
                 onClick = {},

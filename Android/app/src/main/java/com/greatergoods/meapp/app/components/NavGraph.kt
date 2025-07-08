@@ -57,7 +57,7 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
     entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
     entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
-        ScaleDetailsScreen(scaleInfo.broadcastId)
+        ScaleDetailsScreen(scaleInfo.scaleId)
     }
 }
 

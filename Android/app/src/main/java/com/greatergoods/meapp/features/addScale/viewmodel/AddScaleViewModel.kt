@@ -43,7 +43,7 @@ class AddScaleViewModel
                 }
 
                 is AddScaleIntent.OpenScaleSettings -> {
-                    navigateTo(AppRoute.AccountSettings.ScaleDetails(intent.broadcastId))
+                    navigateTo(AppRoute.AccountSettings.ScaleDetails(intent.scaleId))
                 }
 
                 else -> {}

@@ -36,7 +36,7 @@ object ScaleDataHelper {
             bodyComp = this.bodyComp,
             isConnected = this.isConnected,
             isWifiConfigured = this.isWifiConfigured,
-            broadcastId = this.broadcastId,
+            scaleId = this.id,
         )
     }
 
