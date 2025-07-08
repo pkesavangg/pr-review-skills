@@ -760,10 +760,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
 
     private func handlePermissionStatus(_ permissionData: GGScanResponseData) async {
-        // Handle permission status updates
-        // This would interface with a PermissionsService if available
-        // For now, just log the permission status
-        print("Permission status updated: \(permissionData)")
+        // Update central PermissionsService with latest status
+        if let permissionResponse = permissionData as? GGPermissionResponseData {
+            let permissionStatus = permissionResponse.permissions
+            PermissionsService.shared.setPermissions(permissionStatus)
+            logger.log(level: .debug, tag: tag, message: "Permission status updated: \(permissionStatus)")
+        }
     }
 
     private func handleNewDevice(_ deviceData: GGScanResponseData) async {
