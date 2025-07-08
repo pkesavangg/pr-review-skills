@@ -10,21 +10,41 @@ final class AppSyncSetupStore: ObservableObject {
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService
     @Injector private var accountService: AccountService
+    // Permissions
+    @Injector private var permissionsService: PermissionsService
     
     // MARK: - Public state
     @Published var currentStepIndex: Int = 0 {
-        didSet { currentStep = steps[currentStepIndex] }
+        didSet {
+            currentStep = steps[currentStepIndex]
+            updateNextEnabled()
+        }
     }
     @Published private(set) var currentStep: AppSyncSetupStep = .intro
-    @Published var isNextEnabled: Bool = true // Reserved for future validation rules
+    @Published var isNextEnabled: Bool = true // Dynamically updated based on permission state
     
     /// Ordered list of steps. Updated once `configure(with:)` is called.
     @Published private(set) var steps: [AppSyncSetupStep] = AppSyncSetupStep.allCases
     
-    /// Lazily generated list of views corresponding to `steps`.
+    /// Lazily builds the views for each step. The `AppSyncScannerView` is
+    /// constructed **only** when the current step is `.appSync` so that the
+    /// camera permission dialog is requested at the correct time.
     var stepViews: [AnyView] {
         guard let scaleItem else { return [] }
-        return steps.map { viewForStep($0, scaleItem: scaleItem) }
+
+        return steps.map { step in
+            // Defer building `AppSyncScannerView` until the user actually
+            // navigates to that page. Prior pages will render an `EmptyView`
+            // placeholder with the same layout footprint, preventing early
+            // evaluation of the scanner – and therefore the camera prompt.
+            if step == .appSync && step != currentStep {
+                // Keep an invisible placeholder with full-page dimensions so
+                // the page stack keeps its expected size.
+                return AnyView(Color.clear)
+            }
+
+            return viewForStep(step, scaleItem: scaleItem)
+        }
     }
     
     var dismissAction: DismissAction?
@@ -39,7 +59,15 @@ final class AppSyncSetupStore: ObservableObject {
     let toastLang = ToastStrings.self
     
     // MARK: - Lifecycle
-    init() { }
+    init() {
+        // Observe permission changes and update button state accordingly
+        permissionsService.$permissions
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateNextEnabled()
+            }
+            .store(in: &cancellables)
+    }
     
     /// Call once the screen knows the SKU to prepare step flow.
     func configure(with sku: String) {
@@ -57,6 +85,9 @@ final class AppSyncSetupStore: ObservableObject {
         // Reset navigation indices.
         currentStepIndex = 0
         currentStep = steps.first ?? .intro
+
+        // Evaluate initial button state based on current permissions
+        updateNextEnabled()
     }
     
     // MARK: - Navigation helpers
@@ -72,6 +103,18 @@ final class AppSyncSetupStore: ObservableObject {
     func moveToPreviousStep() {
         guard currentStepIndex > 0 else { return }
         currentStepIndex -= 1
+    }
+    
+    // MARK: - Validation Helpers
+    /// Updates `isNextEnabled` based on the current step and camera permission state.
+    private func updateNextEnabled() {
+        guard currentStep == .permissions else {
+            isNextEnabled = true
+            return
+        }
+
+        let cameraEnabled = permissionsService.getPermissionState(.CAMERA) == .ENABLED
+        isNextEnabled = cameraEnabled
     }
     
     // MARK: - Step → View mapping
@@ -101,7 +144,7 @@ final class AppSyncSetupStore: ObservableObject {
                 onScanned: { result in
                     self.moveToNextStep()
                 }
-            )) // TODO: replace with actual AppSync progress screen
+            ))
         case .finish:
             let lang = AppSyncStrings.FinishViewStrings.self
             return AnyView(
@@ -115,11 +158,6 @@ final class AppSyncSetupStore: ObservableObject {
     
     /// Presents a confirmation alert before abandoning the setup flow.
     func handleExit() {
-        if currentStep == .finish {
-            self.dismissAction?()
-            return
-        }
-        
         let alertLang = AlertStrings.ExitSetupAlert.self
         let alert = AlertModel(
             title: alertLang.title,

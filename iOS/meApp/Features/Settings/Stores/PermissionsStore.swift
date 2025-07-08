@@ -34,6 +34,13 @@ final class PermissionsStore: ObservableObject {
     }
 
     // MARK: - Internal helpers
+    /// Updates the set of required permission categories based on the provided devices.
+    /// This method analyzes each device's scale or connection type to determine which
+    /// permissions (e.g., Bluetooth, Camera, Notifications) are required for proper functionality.
+    /// The resulting `requiredCategories` set is used to visually indicate which permissions
+    /// are mandatory (e.g., using red status icons) in the `PermissionListView`.
+    ///
+    /// - Parameter devices: An array of `Device` instances whose capabilities dictate required permissions.
     private func updatePermissionSets(with devices: [Device]) {
         // Reset
         var newRequired: Set<PermissionListView.Category> = []
