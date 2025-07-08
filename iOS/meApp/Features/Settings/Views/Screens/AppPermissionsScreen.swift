@@ -15,6 +15,8 @@ struct AppPermissionsScreen: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject var router: Router<SettingsRoute>
+    /// Store that derives which permission sections must be displayed.
+    @StateObject private var permissionsStore = PermissionsStore()
     private let lang = PermissionsStrings.self
     
     var body: some View {
@@ -30,8 +32,10 @@ struct AppPermissionsScreen: View {
             )
             ZStack {
                 theme.backgroundSecondary.ignoresSafeArea()
-                PermissionListView()
-                    .padding(.horizontal, .spacingSM)
+                PermissionListView(
+                    requiredCategories: permissionsStore.requiredCategories
+                )
+                .padding(.horizontal, .spacingSM)
             }
         }
         .navigationBarBackButtonHidden(true)
