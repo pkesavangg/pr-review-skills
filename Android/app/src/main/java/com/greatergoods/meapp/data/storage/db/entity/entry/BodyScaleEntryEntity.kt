@@ -2,6 +2,7 @@ package com.greatergoods.meapp.data.storage.db.entity.entry
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
 
 /**
@@ -27,5 +28,20 @@ data class BodyScaleEntryEntity(
     val muscleMass: Double?,
     val water: Double?,
     val bmi: Double?,
-    val source: String?,
-)
+    val source: String?
+) {
+    @Ignore
+    var prefix: String? = null
+    constructor(
+        id: Long,
+        weight: Double,
+        bodyFat: Double?,
+        muscleMass: Double?,
+        water: Double?,
+        bmi: Double?,
+        source: String?,
+        prefix: String?
+    ) : this(id, weight, bodyFat, muscleMass, water, bmi, source) {
+        this.prefix = prefix
+    }
+}

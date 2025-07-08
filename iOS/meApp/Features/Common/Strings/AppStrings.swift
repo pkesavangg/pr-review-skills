@@ -445,6 +445,13 @@ struct AlertStrings {
         static let returnButton = "Return"
     }
     
+    struct ResetDashboardAlert {
+        static let title = "Are you sure?"
+        static let message = "Your dashboard display metrics will reset to default settings"
+        static let cancelButton = "Cancel"
+        static let resetButton = "Reset"
+    }
+    
     struct HKExitAlert {
         static let title = "Are you sure you want to exit?"
         static let message = "Apple Health will not sync with Weight Gurus."

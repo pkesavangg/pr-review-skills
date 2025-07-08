@@ -23,7 +23,7 @@ data class ScaleEntry(
         return ScaleApiEntry(
             operationType = entry.operationType.lowercase(),
             entryTimestamp = entry.entryTimestamp,
-            weight = scaleEntity.weight * 10.0,
+            weight = (scaleEntity.weight * 10.0).toInt(),
             bodyFat = scaleEntity.bodyFat?.times(10.0),
             muscleMass = scaleEntity.muscleMass?.times(10.0),
             boneMass = metrics?.boneMass?.times(10.0),

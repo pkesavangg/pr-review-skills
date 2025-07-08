@@ -87,6 +87,12 @@ class BottomTabBarViewModel: ObservableObject {
         selectedTab = tab
     }
     
+    /// Navigates to the goal setting screen via the settings tab
+    func navigateToGoalSetting() {
+        selectTab(.settings)
+        pendingSettingsNavigation = .goal
+    }
+
     // MARK: - Apple Health Integration Prompt
     /// Checks whether the user should be prompted to add Apple Health integration
     /// and shows the modal if needed.

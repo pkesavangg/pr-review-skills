@@ -11,9 +11,14 @@ struct ScaleNameScreen : View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @ObservedObject var scaleStore = ScaleStore()
-    let scaleName: String
+    let scale: Device
     let lang = ScaleSettingsStrings.self
     let commonLang = CommonStrings.self
+    
+    @State private var editedName: String = ""
+    @State private var focusedField: FocusField? = nil
+    @State private var errorMessage: String? = nil
+    
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -24,9 +29,16 @@ struct ScaleNameScreen : View {
                         text: commonLang.save.uppercased(),
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: false,
+                        isDisabled: editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || editedName == (scale.nickname ?? scale.deviceName ?? ""),
                         action: {
-                            // TODO: ADD Action
+                            Task {
+                                await scaleStore.saveScaleName(editedName)
+                                if scaleStore.errorMessage == nil {
+                                    router.navigateBack()
+                                } else {
+                                    errorMessage = scaleStore.errorMessage
+                                }
+                            }
                         }
                     ))
                 },
@@ -35,19 +47,47 @@ struct ScaleNameScreen : View {
                 canShowBorder: true
             )
             
-            VStack{
-                ListItemView(title: scaleName, subtitleTop: lang.scaleName.lowercased(), trailing: Image(AppAssets.closeCircle), rowHeight: 56, onTap: {})
-                    .cornerRadius(.radiusXS)
-                    .padding(.top, .spacingMD)
+            VStack(spacing: .spacingMD) {
+                AppInputField(
+                    config: TextInputConfig(
+                        label: lang.scaleName,
+                        placeholder: lang.scaleName,
+                        inputType: .text,
+                        errorMessage: errorMessage,
+                        focusField: .scaleName
+                    ),
+                    value: $editedName,
+                    focusedField: $focusedField
+                ) {
+                    // Handle commit action if needed
+                }
+                .padding(.horizontal, .spacingSM)
+                .padding(.top, .spacingMD)
+                
+                Spacer()
             }
-            .padding(.horizontal, .spacingSM)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onAppear {
+            // Load the scale in the store
+            Task {
+                await scaleStore.loadScale(scale)
+            }
+            // Initialize the edited name with current scale name
+            editedName = scale.nickname ?? scale.deviceName ?? ""
+        }
     }
+    
+
 }
 
 #Preview{
-    ScaleNameScreen(scaleName: "AccuCheck Verve Smart Scale")
+    let mockDevice = Device(
+        id: "1",
+        accountId: "demo-account",
+        sku: "0412",
+        deviceName: "AccuCheck Verve Smart Scale"
+    )
+    ScaleNameScreen(scale: mockDevice)
 }

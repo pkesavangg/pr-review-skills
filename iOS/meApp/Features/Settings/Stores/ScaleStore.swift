@@ -44,7 +44,7 @@ class ScaleStore: ObservableObject {
     @Published var wifiMacAddressValue: String = "" // TODO: Replace with actual Wi-Fi MAC address
     @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi" // TODO: Replace with actual scale type
     @Published var skuValue: String = "0412" // TODO: Replace with actual SKU
-    @Published var datePairedValue: String = "June 2, 2025" // TODO: Replace with actual date paired
+    @Published var datePairedValue: String = "12/25/2024" // TODO: Replace with actual date paired
     
     // Display Metrics State
     @Published var progressMetrics: [ProgressMetricItem] = [
@@ -153,8 +153,18 @@ class ScaleStore: ObservableObject {
         self.scale = scale
         self.isBluetoothScale = scale.deviceType == "bluetooth"
         self.isDeviceConnected = scale.isConnected ?? false
+        
+        // Update scale type value based on scale details
+        self.scaleTypeValue = determineScaleType(for: scale)
+        self.skuValue = scale.sku ?? ""
+        
         await getDeviceInfo()
         await getConnectedWifiSSID()
+    }
+    
+    /// Determines the scale type based on the scale's SKU and other properties
+    private func determineScaleType(for scale: Device) -> String {
+        return ScaleTypeHelper.determineScaleTypeString(for: scale)
     }
     
     func getDeviceInfo() async {
@@ -198,6 +208,63 @@ class ScaleStore: ObservableObject {
             errorMessage = error.localizedDescription
         }
         showNicknameAlert = false
+    }
+    
+    /// Saves the scale name (nickname) for the current scale
+    func saveScaleName(_ newName: String) async {
+        guard let scale = scale else {
+            await MainActor.run { self.errorMessage = ToastStrings.somethingWentWrong }
+            return
+        }
+        
+        // Show loader with 'Saving...' text
+        await MainActor.run {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
+            errorMessage = nil
+        }
+        
+        do {
+            let properties: [String: Any] = ["nickname": newName]
+            _ = try await scaleService.editDevice(scale.id, properties: properties)
+            
+            await MainActor.run {
+                // Update the current scale's nickname
+                self.scale?.nickname = newName
+                self.scale?.deviceName = newName
+                // Show success toast
+                notificationService.showToast(ToastModel(title: ToastStrings.success, message: "Scale name updated"))
+            }
+            // Refresh the scales list to update UI in other screens
+            await self.refreshScalesList()
+        } catch {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+            }
+        }
+        // Dismiss loader
+        await MainActor.run {
+            notificationService.dismissLoader()
+        }
+    }
+    
+    /// Refreshes the scales list to update UI across all screens
+    private func refreshScalesList() async {
+        do {
+            let devices = try await scaleService.getDevices()
+            await MainActor.run {
+                self.scales = devices
+                
+                // Update the current scale if it exists in the refreshed list
+                if let currentScale = self.scale,
+                   let updatedScale = devices.first(where: { $0.id == currentScale.id }) {
+                    self.scale = updatedScale
+                }
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+            }
+        }
     }
     
     func deleteScale(scaleId: String, onSuccess: @escaping () -> Void) async {

@@ -1,6 +1,9 @@
 package com.greatergoods.meapp.core.shared.utilities.logging
 
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import com.greatergoods.meapp.core.service.BaseService
 import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -11,7 +14,9 @@ class LogManager
     @Inject
     constructor(
         private val logRepository: ILogRepository,
-    ) {
+        connectivityObserver: IConnectivityObserver,
+        dialogQueueService: IDialogQueueService,
+    ) : BaseService(connectivityObserver, dialogQueueService){
         /**
          * Get logs for the last specified days
          * @param days Number of days to look back
@@ -64,6 +69,7 @@ class LogManager
      * Based on Angular http.service.ts sendLog() method.
      */
     suspend fun sendLogs() {
+        requireNetworkAvailable(onError = {showNetworkErrorAndThrow()})
         try {
             AppLog.i("LogManager", "Log sending initiated")
             logRepository.sendLogs()

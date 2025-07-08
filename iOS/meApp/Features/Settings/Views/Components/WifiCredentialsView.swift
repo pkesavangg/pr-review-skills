@@ -111,7 +111,7 @@ struct WifiCredentialsView: View {
                         size: .small,
                         isDisabled: !networkHasNoPassword && !store.isFormValid,
                         action: {
-                            if store.isFormValid && !networkHasNoPassword {
+                            if networkHasNoPassword || store.isFormValid {
                                 showLoader = true
                             }
                         }

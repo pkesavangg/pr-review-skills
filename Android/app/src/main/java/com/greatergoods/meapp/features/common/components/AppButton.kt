@@ -37,6 +37,7 @@ enum class ButtonType {
     InlineTextPrimary,
     InlineTextSecondary,
     InlineTextTertiary,
+    ErrorText,
 }
 
 // Color
@@ -92,6 +93,9 @@ object AppButtonDefaults {
 
             ButtonType.TextTertiary, ButtonType.InlineTextTertiary ->
                 if (enabled) MeTheme.colorScheme.tertiaryAction else MeTheme.colorScheme.tertiaryActionDisabled
+
+           ButtonType.ErrorText ->
+                if (enabled) MeTheme.colorScheme.errorAction else MeTheme.colorScheme.errorActionDisabled
         }
 
     /**
@@ -239,7 +243,7 @@ fun AppButtonPreview() {
             Column(verticalArrangement = Arrangement.Center) {
                 // Each group: enabled/disabled for each type
                 Column {
-                    AppButton(type = ButtonType.PrimaryFilled, onClick = {}, label = "Primary Filled", enabled = true)
+                    AppButton(type = ButtonType.ErrorText, onClick = {}, label = "Primary Filled", enabled = true)
                     Spacer(Modifier.height(16.dp))
                     AppButton(type = ButtonType.PrimaryFilled, onClick = {}, label = "Primary Filled", enabled = false)
                 }
@@ -321,6 +325,12 @@ fun AppButtonPreview() {
                         label = "Inline text Secondary",
                         enabled = false,
                     )
+                }
+                Spacer(Modifier.height(16.dp))
+                Column {
+                    AppButton(type = ButtonType.ErrorText, onClick = {}, label = "Error Text")
+                    Spacer(Modifier.height(16.dp))
+                    AppButton(type = ButtonType.ErrorText, onClick = {}, label = "Error Text", enabled = false)
                 }
                 Spacer(Modifier.height(16.dp))
                 Column {
@@ -483,7 +493,26 @@ fun AppButtonPreview() {
                 }
                 Spacer(Modifier.height(16.dp))
                 Column {
-                    AppButton(type = ButtonType.PrimaryFilled, onClick = {}, label = "Min", size = ButtonSize.Small)
+                    Column {
+                        AppButton(
+                            type = ButtonType.ErrorText,
+                            onClick = {},
+                            label = "Error Text",
+                            size = ButtonSize.Small,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        AppButton(
+                            type = ButtonType.ErrorText,
+                            onClick = {},
+                            label = "Error Text",
+                            enabled = false,
+                            size = ButtonSize.Small,
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Column {
+                        AppButton(type = ButtonType.PrimaryFilled, onClick = {}, label = "Min", size = ButtonSize.Small)
+                    }
                 }
             }
         }

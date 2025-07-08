@@ -5,8 +5,8 @@ import com.greatergoods.meapp.domain.model.storage.Device
 /**
  * Extension functions to map API models to domain models.
  */
-fun DeviceApiModel.toDomainModel(accountId: String): Device {
-    return Device(
+fun DeviceApiModel.toDomainModel(accountId: String): Device =
+    Device(
         // Device properties
         id = id,
         accountId = accountId,
@@ -29,11 +29,10 @@ fun DeviceApiModel.toDomainModel(accountId: String): Device {
         wifiMac = null, // Not in API response
         isWifiConfigured = false, // Not in API response
         token = scaleToken,
-
         // Body Scale properties
         scaleType = type,
         bodyComp = type?.contains("scale", ignoreCase = true) == true,
-
+        isWeighOnlyModeEnabledByOthers = false,
         // R4 Prefs
         displayName = preference?.displayName,
         displayMetrics = preference?.displayMetrics?.joinToString(","),
@@ -44,7 +43,6 @@ fun DeviceApiModel.toDomainModel(accountId: String): Device {
         tzOffset = preference?.tzOffset?.toString(),
         wifiFotaScheduleTime = preference?.wifiFotaScheduleTime?.toString(),
         prefsUpdatedAt = null, // Not in API response
-
         // Meta
         modelNumber = null, // Not in API response
         serialNumber = null, // Not in API response
@@ -54,21 +52,17 @@ fun DeviceApiModel.toDomainModel(accountId: String): Device {
         manufacturerName = null, // Not in API response
         systemId = null, // Not in API response
         latestVersion = latestVersion,
-
         // BPM
-        hasNumericUsers = null // Not in API response
+        hasNumericUsers = null, // Not in API response
     )
-}
 
 /**
  * Extension function to map a list of API models to domain models.
  */
-fun List<DeviceApiModel>.toDomainModels(accountId: String): List<Device> {
-    return map { it.toDomainModel(accountId) }
-}
+fun List<DeviceApiModel>.toDomainModels(accountId: String): List<Device> = map { it.toDomainModel(accountId) }
 
-fun Device.toApiModel(): DeviceApiModel {
-    return DeviceApiModel(
+fun Device.toApiModel(): DeviceApiModel =
+    DeviceApiModel(
         id = id,
         nickname = nickname,
         type = deviceType,
@@ -81,16 +75,16 @@ fun Device.toApiModel(): DeviceApiModel {
         name = deviceName,
         scaleToken = token,
         peripheralIdentifier = peripheralIdentifier,
-        preference = PreferenceApiModel(
-            tzOffset = tzOffset?.toIntOrNull(),
-            timeFormat = timeFormat,
-            displayName = displayName,
-            displayMetrics = displayMetrics?.split(","),
-            shouldMeasurePulse = shouldMeasurePulse,
-            shouldMeasureImpedance = shouldMeasureImpedance,
-            shouldFactoryReset = shouldFactoryReset,
-            wifiFotaScheduleTime = wifiFotaScheduleTime?.toIntOrNull(),
-        ),
-        latestVersion = latestVersion
+        preference =
+            PreferenceApiModel(
+                tzOffset = tzOffset?.toIntOrNull(),
+                timeFormat = timeFormat,
+                displayName = displayName,
+                displayMetrics = displayMetrics?.split(","),
+                shouldMeasurePulse = shouldMeasurePulse,
+                shouldMeasureImpedance = shouldMeasureImpedance,
+                shouldFactoryReset = shouldFactoryReset,
+                wifiFotaScheduleTime = wifiFotaScheduleTime?.toIntOrNull(),
+            ),
+        latestVersion = latestVersion,
     )
-} 

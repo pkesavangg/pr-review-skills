@@ -24,12 +24,20 @@ enum class AppIconType {
 
 object AppIconDefaults {
     @Composable
-    fun tintColor(type: AppIconType): Color =
+    fun tintColor(type: AppIconType, enabled: Boolean = true): Color =
         when (type) {
-            AppIconType.Primary -> MeTheme.colorScheme.primaryAction
-            AppIconType.Secondary -> MeTheme.colorScheme.inverseAction
-            AppIconType.Tertiary -> MeTheme.colorScheme.tertiaryAction
-            AppIconType.Danger -> MeTheme.colorScheme.textError
+            AppIconType.Primary ->
+                if (enabled) MeTheme.colorScheme.primaryAction
+                else MeTheme.colorScheme.primaryActionDisabled
+            AppIconType.Secondary ->
+                if (enabled) MeTheme.colorScheme.inverseAction
+                else MeTheme.colorScheme.inverseActionDisabled
+            AppIconType.Tertiary ->
+                if (enabled) MeTheme.colorScheme.tertiaryAction
+                else MeTheme.colorScheme.tertiaryActionDisabled
+            AppIconType.Danger ->
+                if (enabled) MeTheme.colorScheme.errorAction
+                else MeTheme.colorScheme.errorActionDisabled
             AppIconType.Default -> Color.Unspecified
         }
 }
@@ -54,7 +62,7 @@ fun AppIcon(
                     },
                 enabled = enabled,
             ) { onClick?.invoke() }
-    val tintColor = tintColor ?: AppIconDefaults.tintColor(type)
+    val tintColor = tintColor ?: AppIconDefaults.tintColor(type, enabled)
     Icon(
         painter = painterResource(id = id),
         contentDescription = contentDescription,

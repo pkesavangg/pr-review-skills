@@ -4,11 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -21,6 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.dashboard.components.DashboardControlPanel
@@ -69,12 +70,12 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
     var inEditMode by remember {
         mutableStateOf(false)
     }
-    var currentVisibleMetrics by remember {
-        mutableStateOf(listOf<Stat>())
+    var currentVisibleMetrics by remember(state.visibleKeys) {
+        mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Metric })
     }
 
-    var currentVisibleMilestones by remember {
-        mutableStateOf(listOf<Stat>())
+    var currentVisibleMilestones by remember(state.visibleKeys) {
+        mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Milestone })
     }
 
     AppScaffold(title = null) {
@@ -85,7 +86,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             DashboardMetrics(
                 metricData = metricData,
                 inEditMode = inEditMode,
-                visibleKeys = state.visibleKeys,
+                visibleKeys = currentVisibleMetrics,
                 selectedStat = selectedStat,
                 onMetricClick = { stat ->
                     selectedStat = stat
@@ -94,12 +95,16 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
                     currentVisibleMetrics = visibleMetrics
                 },
             )
+            HorizontalDivider(
+                color = MeTheme.colorScheme.utility,
+                modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
+            )
             DashboardMilestone(
                 startWeight = "100",
                 goalWeight = "200",
                 currentWeight = "150",
                 inEditMode = inEditMode,
-                visibleKeys = state.visibleKeys,
+                visibleKeys = currentVisibleMilestones,
                 onMilestonesChanged = { visibleMilestones ->
                     currentVisibleMilestones = visibleMilestones
                 },
@@ -110,7 +115,8 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
                 onEditClick = { editMode ->
                     if (!editMode && inEditMode) {
                         // Save dashboard metrics and milestones when exiting edit mode
-                        val allVisibleKeys = currentVisibleMetrics.map { it.key } + currentVisibleMilestones.map { it.key }
+                        val allVisibleKeys =
+                            currentVisibleMetrics + currentVisibleMilestones
                         handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
                     }
                     inEditMode = editMode

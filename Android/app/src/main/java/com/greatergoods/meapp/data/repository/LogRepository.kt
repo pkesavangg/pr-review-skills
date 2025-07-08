@@ -194,13 +194,10 @@ class LogRepository
                     timezone = AppStatusService.getUserTimezone(),
                     timezoneOffset = AppStatusService.getUserTimezoneOffset()
                 )
-
                 // Create the request payload
                 val sendLogRequest = SendLogRequest(
                     logs = logEntries,
-                    deviceInfo = deviceInfo,
-                    appVersion = AppStatusService.version,
-                    timestamp = System.currentTimeMillis()
+                    version = AppStatusService.version,
                 )
 
                 // Send logs to support API (POST /support/log)

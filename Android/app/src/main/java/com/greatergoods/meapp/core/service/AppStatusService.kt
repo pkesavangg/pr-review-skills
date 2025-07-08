@@ -12,41 +12,38 @@ import java.util.TimeZone
  * Based on Angular's AppStatus service.
  */
 object AppStatusService {
+  val isDev: Boolean = BuildConfig.DEBUG
 
-    val isDev: Boolean = BuildConfig.DEBUG
+  val version: String = BuildConfig.VERSION_NAME
 
-    val version: String = BuildConfig.VERSION_NAME
+  val apiUrl: String = AppConfig.BASE_URL
 
-    val apiUrl: String = AppConfig.BASE_URL
+  val isNative: Boolean = true // Android is always native
 
-    val isNative: Boolean = true // Android is always native
+  val isAndroid: Boolean = true
 
-    val isAndroid: Boolean = true
+  val isMetric: Boolean = false // TODO: Get from user preferences
 
-    val isMetric: Boolean = false // TODO: Get from user preferences
+  val enableTestingFeatures: Boolean = BuildConfig.DEBUG
 
-    val enableTestingFeatures: Boolean = BuildConfig.DEBUG
+  val showDownloadLogOption: Boolean = BuildConfig.DEBUG
 
-    val showDownloadLogOption: Boolean = BuildConfig.DEBUG
+  val canShowRateAppItem: Boolean = true
 
-    val canShowRateAppItem: Boolean = true
+  fun getCurrentDateTime(): String {
+    val formatter = SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault())
+    return formatter.format(Date())
+  }
 
-    fun getCurrentDateTime(): String {
-        val formatter = SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault())
-        return formatter.format(Date())
+  fun getUserTimezone(): String = TimeZone.getDefault().displayName
+
+  fun getUserTimezoneOffset(): String {
+    val offsetMillis = TimeZone.getDefault().rawOffset
+    val offsetMinutes = offsetMillis / (1000 * 60)
+    return if (offsetMinutes >= 0) {
+      "+$offsetMinutes"
+    } else {
+      "$offsetMinutes"
     }
-
-    fun getUserTimezone(): String {
-        return TimeZone.getDefault().displayName
-    }
-
-    fun getUserTimezoneOffset(): String {
-        val offsetMillis = TimeZone.getDefault().rawOffset
-        val offsetMinutes = offsetMillis / (1000 * 60)
-        return if (offsetMinutes >= 0) {
-            "+$offsetMinutes"
-        } else {
-            "$offsetMinutes"
-        }
-    }
+  }
 }

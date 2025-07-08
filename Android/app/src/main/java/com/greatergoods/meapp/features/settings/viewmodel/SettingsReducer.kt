@@ -16,6 +16,7 @@ data class SettingsState(
     val errorMessage: String? = null,
     val account: Account? = null,
     val hasMultipleAccounts: Boolean = false,
+    val currentThemeMode: String = "System Settings",
 ) : IReducer.State {
 
     /**
@@ -42,8 +43,7 @@ sealed interface SettingsIntent : IReducer.Intent {
     ) : SettingsIntent
 
     object ClearError : SettingsIntent
-
-    object OpenAddScales: SettingsIntent
+    object OpenAddScales : SettingsIntent
     object Logout : SettingsIntent
     object LogoutAllAccounts : SettingsIntent
     object SwitchAccount : SettingsIntent
@@ -66,9 +66,12 @@ sealed interface SettingsIntent : IReducer.Intent {
     object ShowNotificationsModal : SettingsIntent
     object ShowHeightModal : SettingsIntent
     object ShowWeightlessModal : SettingsIntent
-    object ShowStreakModal : SettingsIntent
+    data class ToggleStreak(val checked: Boolean): SettingsIntent
     object goalSettingModal : SettingsIntent
-
+    object ShowAppearanceModal : SettingsIntent
+    data class UpdateThemeMode(val themeMode: String) : SettingsIntent
+    object DeleteAccount : SettingsIntent
+    object ConfirmDeleteAccount : SettingsIntent
 }
 
 /**
@@ -88,6 +91,7 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
                 hasMultipleAccounts = intent.hasMultipleAccounts,
             )
 
+            is SettingsIntent.UpdateThemeMode -> state.copy(currentThemeMode = intent.themeMode)
             else -> null
             // Add more intent handling as needed
         }

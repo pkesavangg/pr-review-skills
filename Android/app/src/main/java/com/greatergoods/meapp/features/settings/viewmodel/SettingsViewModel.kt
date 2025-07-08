@@ -1,12 +1,12 @@
 package com.greatergoods.meapp.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.enums.ActivityLevel
-import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.api.notification.NotificationSettingsRequest
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
@@ -18,6 +18,7 @@ import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IUserSettingsService
+import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.HeightInput
 import com.greatergoods.meapp.features.common.components.RadioButtonOption
@@ -49,16 +50,17 @@ constructor(
     private val userDataStore: UserDataStore,
     private val notificationService: INotificationService,
     private val userSettingsService: IUserSettingsService,
-    private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
     SettingsReducer(),
 ) {
     override fun provideInitialState(): SettingsState = SettingsState()
+
     private val TAG = "SettingsViewModel"
 
     init {
         getUserProfile()
         showAccountSwitchInfoModal()
+        loadCurrentThemeMode()
     }
 
     fun getUserProfile() {
@@ -67,6 +69,22 @@ constructor(
                 val account = accountService.getCurrentAccount()
                 val hasMultipleAccounts = it.size > 1
                 handleIntent(SettingsIntent.UpdateAccount(account, hasMultipleAccounts))
+            }
+        }
+    }
+
+    /**
+     * Loads the current theme mode from the data store and updates the state.
+     */
+    private fun loadCurrentThemeMode() {
+        viewModelScope.launch {
+            userDataStore.currentThemeModeFlow.collect { themeMode ->
+                val displayString = when (themeMode) {
+                    com.greatergoods.meapp.proto.ThemeMode.LIGHT -> RadioGroupModalStrings.Appearance.Light
+                    com.greatergoods.meapp.proto.ThemeMode.DARK -> RadioGroupModalStrings.Appearance.Dark
+                    else -> RadioGroupModalStrings.Appearance.System
+                }
+                handleIntent(SettingsIntent.UpdateThemeMode(displayString))
             }
         }
     }
@@ -127,20 +145,73 @@ constructor(
                 onWeightlessClick()
             }
 
-            is SettingsIntent.ShowStreakModal -> {
-                onStreakClick()
-            }
-
             is SettingsIntent.goalSettingModal -> {
                 onGoalSettingClick()
             }
 
-            is SettingsIntent.OpenHelp -> {
-                onHelpClick()
+            is SettingsIntent.ShowAppearanceModal -> {
+                onAppearanceClick()
             }
+
+            is SettingsIntent.ToggleStreak -> {
+                onStreakUpdate(intent.checked)
+            }
+
+            is SettingsIntent.ConfirmDeleteAccount -> onConfirmDeleteAccount()
+
+            is SettingsIntent.DeleteAccount -> {
+                onDeleteAccount()
+            }
+
+            is SettingsIntent.OpenPrivacyPolicy -> {
+                openInAppBrowser(AppConfig.AppUrls.PrivacyPolicy)
+            }
+
+            is SettingsIntent.OpenTermsOfService -> {
+                openInAppBrowser(AppConfig.AppUrls.TermsOfService)
+            }
+
+            is SettingsIntent.OpenGreaterGoodsWebsite -> {
+                openInAppBrowser(AppConfig.AppUrls.GreaterGoodsWebsite)
+            }
+
 
             else -> {}
         }
+    }
+
+    /**
+     * Handles the delete account action: shows loader, calls repo, handles error, navigates on success.
+     */
+    private fun onDeleteAccount() {
+        dialogQueueService.showLoader(SettingsScreenStrings.DeletingAccount)
+        viewModelScope.launch {
+            try {
+
+                val account = state.value.account
+                if (account != null) {
+                    accountService.deleteAccount(account.id, account.isActiveAccount)
+                }
+                dialogQueueService.dismissLoader()
+                // navigationService.reInitialize() // Go to landing/login
+            } catch (e: Exception) {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+    private fun onConfirmDeleteAccount() {
+        dialogQueueService.enqueue(
+            DialogModel.Confirm(
+                title = SettingsScreenStrings.DeleteAccountDialog.Title,
+                message = SettingsScreenStrings.DeleteAccountDialog.Body,
+                primaryActionType = ButtonType.ErrorText,
+                confirmText = SettingsScreenStrings.DeleteAccountDialog.Confirm,
+                cancelText = SettingsScreenStrings.DeleteAccountDialog.Cancel,
+                onConfirm = { handleIntent(SettingsIntent.DeleteAccount) },
+                onCancel = {},
+            ),
+        )
     }
 
     fun onExportDataClick() {
@@ -197,8 +268,8 @@ constructor(
             title = RadioGroupModalStrings.Titles.BiologicalSex,
             options =
                 listOf(
-                    RadioButtonOption(Gender.MALE.name, RadioGroupModalStrings.BiologicalSex.Male),
-                    RadioButtonOption(Gender.FEMALE.name, RadioGroupModalStrings.BiologicalSex.Female),
+                    RadioButtonOption(Gender.MALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Male),
+                    RadioButtonOption(Gender.FEMALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Female),
                 ),
             selectedItem = state.value.account?.gender,
             onConfirm = { selectedSex ->
@@ -546,6 +617,85 @@ constructor(
         }
     }
 
+    fun onAppearanceClick() {
+        AppLog.d("SettingsViewModel", "Appearance clicked")
+        showAppearanceModal()
+    }
+
+    /**
+     * Shows the appearance/theme mode selection modal.
+     */
+    private fun showAppearanceModal() {
+        showRadioGroupModal(
+            dialogService = dialogQueueService,
+            title = RadioGroupModalStrings.Titles.Appearance,
+            options = listOf(
+                RadioButtonOption("LIGHT", RadioGroupModalStrings.Appearance.Light),
+                RadioButtonOption("DARK", RadioGroupModalStrings.Appearance.Dark),
+                RadioButtonOption("SYSTEM", RadioGroupModalStrings.Appearance.System),
+            ),
+            selectedItem = getCurrentThemeModeString(),
+            onConfirm = { selectedTheme ->
+                selectedTheme?.let { themeValue ->
+                    onAppearanceUpdate(themeValue.toString())
+                }
+            },
+            onCancel = {
+                AppLog.d(TAG, "Appearance selection cancelled")
+            },
+        )
+    }
+
+    /**
+     * Gets the current theme mode as a string for modal selection.
+     */
+    private fun getCurrentThemeModeString(): String {
+        return when (state.value.currentThemeMode) {
+            RadioGroupModalStrings.Appearance.Light -> "LIGHT"
+            RadioGroupModalStrings.Appearance.Dark -> "DARK"
+            else -> "SYSTEM"
+        }
+    }
+
+    /**
+     * Updates the appearance/theme mode via the user data store.
+     */
+    private fun onAppearanceUpdate(themeModeString: String) {
+        val currentAccount = state.value.account
+        if (currentAccount == null) {
+            AppLog.e(TAG, "No active account found for appearance update")
+            return
+        }
+
+        // Convert string to ThemeMode enum
+        val themeMode = when (themeModeString) {
+            "LIGHT" -> com.greatergoods.meapp.proto.ThemeMode.LIGHT
+            "DARK" -> com.greatergoods.meapp.proto.ThemeMode.DARK
+            else -> com.greatergoods.meapp.proto.ThemeMode.SYSTEM
+        }
+
+        // Convert to display string
+        val displayString = when (themeModeString) {
+            "LIGHT" -> RadioGroupModalStrings.Appearance.Light
+            "DARK" -> RadioGroupModalStrings.Appearance.Dark
+            else -> RadioGroupModalStrings.Appearance.System
+        }
+
+        // Show loading dialog
+        dialogQueueService.showLoader("Updating appearance...")
+        viewModelScope.launch {
+            try {
+                userDataStore.setThemeMode(currentAccount.id, themeMode)
+                handleIntent(SettingsIntent.UpdateThemeMode(displayString))
+                AppLog.i(TAG, "Successfully updated appearance to $displayString")
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error updating appearance", e.toString())
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
     /**
      * Shows the streak mode selection modal.
      */
@@ -703,7 +853,6 @@ constructor(
     fun onHelpClick() {
         AppLog.d("SettingsViewModel", "Help clicked")
         // TODO: Navigate to help screen
-        navigateTo(AppRoute.AccountSettings.HelpScreen)
     }
 
     /*
@@ -720,10 +869,11 @@ constructor(
             DialogModel.Confirm(
                 title,
                 body,
-                logoutModalString.Confirm,
-                logoutModalString.Cancel,
-                onDismiss = {},
-                onConfirm = {
+                primaryActionType = ButtonType.ErrorText,
+            logoutModalString.Confirm,
+            logoutModalString.Cancel,
+            onDismiss = {},
+            onConfirm = {
                     if (isLogoutAll) {
                         onLogoutAllAccounts()
                     } else {
@@ -741,6 +891,7 @@ constructor(
                 val account = state.value.account
                 if (account != null) {
                     accountService.logout(account.id, account.fcmToken)
+                    navigationService.reInitialize()
                 }
             } catch (e: Exception) {
                 AppLog.e("SettingsViewModel", "Failed to log out", e.toString())

@@ -29,6 +29,7 @@ object SettingsScreenStrings {
     const val Messages = "Messages"
     const val Streaks = "Streaks"
     const val AppPermissions = "App Permissions"
+    const val Appearance = "Appearance"
 
     // Support
     const val Support = "Support"
@@ -47,6 +48,7 @@ object SettingsScreenStrings {
     const val ProfileImage = "Profile Image"
     const val LoggingOut = "Logging out..."
     const val LoggingOutAll = "Logging out all Accounts..."
+    const val DeletingAccount = "Deleting Account..."
 
     object Error {
         const val Header = "Profile Update Error"
@@ -59,16 +61,26 @@ object SettingsScreenStrings {
         const val Header = "Profile Updated"
         const val Message = "Your profile has been updated successfully."
     }
+
     object LogoutDialog {
         object Logout {
             const val Title = "Log out"
             const val Body = "Are you sure you want to log out?"
         }
+
         object LogoutAll {
             const val Title = "Log Out of All Accounts"
             const val Body = "Are you sure you want to log out of all accounts?"
         }
+
         const val Confirm = "Log out"
+        const val Cancel = "Cancel"
+    }
+
+    object DeleteAccountDialog {
+        const val Title = "Delete Account"
+        const val Body = "Are you sure you want to delete your account? This action cannot be undone."
+        const val Confirm = "Delete"
         const val Cancel = "Cancel"
     }
 

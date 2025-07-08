@@ -1,11 +1,10 @@
 package com.greatergoods.meapp.features.debugMenu.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.service.AppStatusService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
-import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
-import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
@@ -32,8 +31,6 @@ class DebugMenuViewModel @Inject constructor(
     private val entryService: IEntryService,
     private val exportService: IExportService,
     private val logManager: LogManager,
-    private val userDataStore: UserDataStore,
-    private val fcmDataStore: FcmDataStore,
 ) : BaseIntentViewModel<DebugMenuState, DebugMenuIntent>(
     reducer = DebugMenuReducer(),
 ) {
@@ -159,27 +156,15 @@ class DebugMenuViewModel @Inject constructor(
 
             try {
                 val activeAccount = accountService.activeAccountFlow.first()
-                activeAccount?.let { account ->
-                    AppLog.i(tag, "Clearing all data for account: ${account.id}")
-
-                    // Clear account-specific logs (now account-specific)
-                    logManager.deleteAllLogs()
-                    // Clear DataStores (these are global, not account-specific)
-                    userDataStore.clearData()
-                    fcmDataStore.clearData()
-                    AppLog.i(tag, "All local data cleared successfully for account: ${account.id}")
-                } ?: run {
-                    AppLog.w(tag, "No active account found for clearing data")
-                    showErrorAlert()
-                    return@launch
+                if(activeAccount !== null){
+                    accountService.reset()
                 }
-
-                // Show restart alert
                 showRestartAlert(onDismiss)
             } catch (e: Exception) {
                 AppLog.e(tag, "Failed to clear all data", e.toString())
                 showErrorAlert()
-            } finally {
+            }
+            finally {
                 dialogQueueService.dismissLoader()
                 _state.value = state.value.copy(isLoading = false)
             }
@@ -242,7 +227,19 @@ class DebugMenuViewModel @Inject constructor(
                 title = DebugMenuStrings.Alerts.DataHeader,
                 message = DebugMenuStrings.Alerts.DataMessage,
                 dismissText = DebugMenuStrings.Ok,
-                onDismiss = onDismiss,
+                onDismiss = {
+                    AppLog.i(tag, "Restart alert confirmed, executing app exit callback")
+                    viewModelScope.launch {
+                        try {
+                            dialogQueueService.dismissCurrent()
+                            navigationService.replaceStack(AppRoute.Auth.Landing)
+                            onDismiss.invoke()
+                            AppLog.i(tag, "App exit callback executed successfully")
+                        } catch (e: Exception) {
+                            AppLog.e(tag, "Error executing app exit callback", e.toString())
+                        }
+                    }
+                },
             ),
         )
     }

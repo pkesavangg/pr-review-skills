@@ -25,6 +25,8 @@ object AppIcons {
         val Exclamation = R.drawable.ic_exclamation
         val ModalNumber = R.drawable.modal_number
         val ScalePlaceholder = R.drawable.placeholder_scale
+        val WeightOnlyMode = R.drawable.ic_weight_only
+        val BodyMetricsOffScale = R.drawable._0412_bodymetrics
     }
 
     object Outlined {
@@ -65,7 +67,9 @@ object AppIcons {
         val Bluetooth = R.drawable.ic_bluetooth
         val Wifi = R.drawable.ic_wifi
         val BluetoothWifi = R.drawable.ic_bluetooth_wifi
+        val AppSync = R.drawable.ic_app_sync
     }
+
     object Milestone {
         val Streak = R.drawable.streak
         val Bolt = R.drawable.bolt

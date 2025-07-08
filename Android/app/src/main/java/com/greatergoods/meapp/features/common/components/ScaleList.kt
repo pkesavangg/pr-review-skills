@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,35 +33,46 @@ fun ScaleList(
 ) {
     var selectedType by remember { mutableStateOf(ScaleSegmentType.All) }
 
-    val filteredScales = remember(selectedType) {
-        when (selectedType) {
-            ScaleSegmentType.All -> SCALES
-            ScaleSegmentType.Bluetooth -> SCALES.filter {
-                it.setupType == ScaleSetupType.Bluetooth ||
-                    it.setupType == ScaleSetupType.Lcbt ||
-                    it.setupType == ScaleSetupType.BtWifiR4
-            }
+    val filteredScales =
+        remember(selectedType) {
+            when (selectedType) {
+                ScaleSegmentType.All -> SCALES
+                ScaleSegmentType.AppSync ->
+                    SCALES.filter {
+                        it.setupType == ScaleSetupType.AppSync
+                    }
 
-            ScaleSegmentType.Wifi -> SCALES.filter {
-                it.setupType == ScaleSetupType.Wifi ||
-                    it.setupType == ScaleSetupType.EspTouchWifi ||
-                    it.setupType == ScaleSetupType.BtWifiR4
+                ScaleSegmentType.Bluetooth ->
+                    SCALES.filter {
+                        it.setupType == ScaleSetupType.Bluetooth ||
+                            it.setupType == ScaleSetupType.Lcbt ||
+                            it.setupType == ScaleSetupType.BtWifiR4
+                    }
+
+                ScaleSegmentType.Wifi ->
+                    SCALES.filter {
+                        it.setupType == ScaleSetupType.Wifi ||
+                            it.setupType == ScaleSetupType.EspTouchWifi ||
+                            it.setupType == ScaleSetupType.BtWifiR4
+                    }
             }
         }
-    }
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = spacing.sm),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.sm),
     ) {
         // Segment control
         SegmentButtonGroup(
-            data = listOf(
-                ScaleSegmentType.All,
-                ScaleSegmentType.Bluetooth,
-                ScaleSegmentType.Wifi,
-            ),
+            data =
+                listOf(
+                    ScaleSegmentType.All,
+                    ScaleSegmentType.AppSync,
+                    ScaleSegmentType.Bluetooth,
+                    ScaleSegmentType.Wifi,
+                ),
             key = ScaleSegmentType::name,
             selectedData = selectedType,
             onSelected = { selectedType = it },
@@ -74,8 +83,9 @@ fun ScaleList(
         // List of filtered scales
     }
     Column(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier =
+            Modifier
+                .fillMaxWidth(),
     ) {
         filteredScales.forEach { scale ->
             AppScaleCard(

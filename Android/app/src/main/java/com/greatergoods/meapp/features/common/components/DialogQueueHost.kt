@@ -32,9 +32,9 @@ import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 fun DialogQueueHost(
     dialogQueueViewModel: DialogQueueViewModel,
     customDialogContent: (
-        @Composable (
-            DialogModel.Custom,
-        ) -> Unit
+    @Composable (
+        DialogModel.Custom,
+    ) -> Unit
     )? = null,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -62,6 +62,7 @@ fun DialogQueueHost(
                         ActionButton(
                             dialog.dismissText,
                             action = {
+                                dialog.onDismiss?.invoke()
                                 dialogQueueViewModel.dismissCurrent()
                             },
                         ),
@@ -73,6 +74,7 @@ fun DialogQueueHost(
                 AppDialog(
                     title = dialog.title,
                     body = dialog.message,
+                    primaryActionType = ButtonType.InlineTextPrimary,
                     confirmAction =
                         ActionButton(dialog.confirmText) {
                             dialog.onConfirm?.let { it() }

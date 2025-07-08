@@ -91,6 +91,12 @@ class AppViewModel
                             }
                         }
 
+                        is AuthState.AccountDeleted -> {
+                            if (authState.isActiveAccount) {
+                                routeToLandingOrApp()
+                            }
+                        }
+
                         is AuthState.UnauthorizedLogout -> {
                             // Show account logged out alert
                             viewModelScope.launch {

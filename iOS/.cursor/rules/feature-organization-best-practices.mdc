@@ -1,0 +1,35 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Feature Organization Best Practices (meApp iOS)
+
+## 1. Feature Structure
+```
+Features/{Feature}/
+├── Views/
+│   ├── Screens/           # Main screen views
+│   └── Components/        # Reusable components
+├── Stores/                # ViewModels/State management
+├── Models/                # Feature-specific models
+├── Strings/               # Localized strings
+├── Routes/                # Navigation routes
+├── Forms/                 # Form configurations
+└── Enums/                 # Feature-specific enums
+```
+
+## 2. View Organization
+- Separate screens and components.
+- Use descriptive file names.
+- Group related views in subdirectories.
+- Maintain clear navigation flow.
+
+---
+
+**Summary:**
+- All features must be organized for clarity, modularity, and scalability.
+description:
+globs:
+alwaysApply: false
+---

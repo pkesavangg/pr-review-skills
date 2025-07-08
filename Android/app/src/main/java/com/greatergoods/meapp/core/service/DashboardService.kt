@@ -12,17 +12,18 @@ import javax.inject.Singleton
  * Implementation of IDashboardService for dashboard visible metrics and milestones management.
  */
 @Singleton
-class DashboardService @Inject constructor(
-    private val dashboardRepository: IDashboardRepository
-) : IDashboardService {
-
+class DashboardService
+  @Inject
+  constructor(
+    private val dashboardRepository: IDashboardRepository,
+  ) : IDashboardService {
     private var accountId: String? = null
 
     /**
      * Sets the current account ID to be used by default in other methods.
      */
     override fun setAccountId(accountId: String) {
-        this.accountId = accountId
+      this.accountId = accountId
     }
 
     /**
@@ -30,70 +31,76 @@ class DashboardService @Inject constructor(
      * If accountId is null, uses the stored accountId.
      */
     override fun getVisibleMetricKeys(accountId: String?): Flow<List<MetricKey>> =
-        dashboardRepository.getVisibleMetricKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-        )
+      dashboardRepository.getVisibleMetricKeys(
+        accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      )
 
     /**
      * Gets a Flow of visible milestone keys for the given account.
      * If accountId is null, uses the stored accountId.
      */
     override fun getVisibleMilestoneKeys(accountId: String?): Flow<List<MilestoneKey>> =
-        dashboardRepository.getVisibleMilestoneKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-        )
+      dashboardRepository.getVisibleMilestoneKeys(
+        accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      )
 
     /**
      * Updates the visible metric keys for the given account.
      * If accountId is null, uses the stored accountId.
      */
-    override suspend fun updateVisibleMetricKeys(accountId: String?, keys: List<MetricKey>) =
-        dashboardRepository.updateVisibleMetricKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"), keys,
-        )
+    override suspend fun updateVisibleMetricKeys(
+      accountId: String?,
+      keys: List<MetricKey>,
+    ) = dashboardRepository.updateVisibleMetricKeys(
+      accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      keys,
+    )
 
     /**
      * Updates the visible milestone keys for the given account.
      * If accountId is null, uses the stored accountId.
      */
-    override suspend fun updateVisibleMilestoneKeys(accountId: String?, keys: List<MilestoneKey>) =
-        dashboardRepository.updateVisibleMilestoneKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"), keys,
-        )
+    override suspend fun updateVisibleMilestoneKeys(
+      accountId: String?,
+      keys: List<MilestoneKey>,
+    ) = dashboardRepository.updateVisibleMilestoneKeys(
+      accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      keys,
+    )
 
     /**
      * Checks if the given accountId has a visible keys entry.
      * If accountId is null, uses the stored accountId.
      */
     override suspend fun hasVisibleKeys(accountId: String?): Boolean =
-        dashboardRepository.hasVisibleKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-        )
+      dashboardRepository.hasVisibleKeys(
+        accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      )
 
     /**
      * Resets the visible metric keys for the given account to the default list.
      * If accountId is null, uses the stored accountId.
      */
     override suspend fun resetVisibleMetricKeys(accountId: String?) =
-        dashboardRepository.resetVisibleMetricKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-        )
+      dashboardRepository.resetVisibleMetricKeys(
+        accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      )
 
     /**
      * Resets the visible milestone keys for the given account to the default list.
      * If accountId is null, uses the stored accountId.
      */
     override suspend fun resetVisibleMilestoneKeys(accountId: String?) =
-        dashboardRepository.resetVisibleMilestoneKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-        )
+      dashboardRepository.resetVisibleMilestoneKeys(
+        accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      )
 
     /**
      * Resets both visible metric and milestone keys for the given account to the default lists.
      * If accountId is null, uses the stored accountId.
      */
     override suspend fun resetVisibleKeys(accountId: String?) =
-        dashboardRepository.resetVisibleKeys(
-            accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-        )
-}
+      dashboardRepository.resetVisibleKeys(
+        accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      )
+  }

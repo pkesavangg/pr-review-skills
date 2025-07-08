@@ -1,0 +1,57 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Service Layer Best Practices (meApp iOS)
+
+## 1. Folder & File Organization
+- Define all service interfaces (protocols) in `Domain/Services/`.
+- Implement services in `Data/Services/`.
+- Use clear, descriptive file and type names (e.g., `AccountService`, `IAccountService`).
+
+## 2. Interface & Implementation
+- Service interfaces must be pure Swift (no UIKit/SwiftUI dependencies).
+- Use `async`/`await` for all asynchronous operations.
+- Document all methods and protocols with SwiftDoc.
+- Implementations must conform to the interface and be injected via DI.
+- Use `@MainActor` only for UI-related services; otherwise, prefer actor isolation for shared mutable state.
+
+## 3. Concurrency & Thread-Safety
+- Prefer actor-isolated services for shared mutable state; use `nonisolated` functions only for read-only methods.
+- Expose long-running operations as `AsyncStream` or `AsyncThrowingStream` so callers can observe progress or partial results.
+- Always propagate cooperative cancellation (`Task.isCancelled`, `try Task.checkCancellation()`) and respect timeouts.
+
+## 4. Error & Result Handling
+- Model failures with domain-specific enum types conforming to `LocalizedError`.
+- Avoid throwing raw `URLError`s or system errors from services.
+- Provide retry/back-off helpers in the service layer so UI code stays declarative.
+- Offer a non-throwing `Result<Value, DomainError>` overload for ergonomic call sites.
+
+## 5. Dependency Injection
+- All services must be injected via a DI container (e.g., `DependencyContainer`).
+- Register services in a central registry (e.g., `ServiceRegistry`).
+- Use singletons only when stateless or when state must be shared app-wide.
+
+## 6. Documentation
+- Every service interface and implementation must have clear SwiftDoc comments.
+- Document the purpose, parameters, return values, and error cases for each method.
+- For complex logic, add inline comments explaining the reasoning or algorithm.
+
+## 7. Testing
+- All business logic in services must be unit tested.
+- Use mock or fake implementations for testing.
+- Test error cases, cancellation, and retry logic.
+
+## 8. General Best Practices
+- Keep services focused and single-responsibility.
+- Avoid business logic in UI or repository layers; keep it in services.
+- Use value types for immutable data and reference types for shared mutable state.
+- Prefer composition over inheritance.
+- Ensure all public APIs are thread-safe.
+- Avoid side effects in service initializers; use explicit methods for setup/teardown.
+
+---
+
+**Summary:**
+- All business logic must be in services, with clear interfaces, DI, documentation, concurrency safety, robust error handling, and thorough testing.

@@ -98,10 +98,8 @@ final class HistoryStore: ObservableObject {
     }
 
     func refreshAllEntries() async {
-        Task { [weak self] in
-            await self?.entryService.syncAllEntriesWithRemote()
-            await self?.loadMonthsInternal()
-        }
+        await entryService.syncAllEntriesWithRemote()
+        await loadMonthsInternal()
     }
 
 

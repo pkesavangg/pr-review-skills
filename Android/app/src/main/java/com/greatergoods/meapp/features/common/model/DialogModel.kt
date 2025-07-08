@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.model
 
+import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.components.LoaderStyle
 
@@ -47,6 +48,7 @@ sealed class DialogModel(
     data class Confirm(
         val title: String,
         val message: String,
+        val primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
         val confirmText: String = "Yes",
         val cancelText: String = "No",
         val onConfirm: (() -> Unit)? = null,

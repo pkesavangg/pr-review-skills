@@ -5,7 +5,6 @@ import com.greatergoods.meapp.data.services.OperationType
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
-import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
@@ -13,9 +12,7 @@ import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryForm
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 object EntryHelper {
     private val dateFormatter: DateTimeFormatter =
@@ -33,7 +30,6 @@ object EntryHelper {
     fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
     fun EntryForm.toScaleEntry(weightMode: WeightUnit): ScaleEntry {
-        System.currentTimeMillis()
         val entryEntity =
             EntryEntity(
                 id = 0L, // Let Room auto-generate
@@ -91,33 +87,7 @@ object EntryHelper {
         )
     }
 
-    fun HistoryMonth.process(unit: WeightUnit?): HistoryMonth {
-        val monthYear =
-            entryTimestamp?.let {
-                try {
-                    val zonedDateTime = ZonedDateTime.parse(it)
-                    DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH).format(zonedDateTime)
-                } catch (e: Exception) {
-                    it // fallback to original string if parsing fails
-                }
-            }
-
-        val conversionFactor =
-            when (unit) {
-                WeightUnit.LB -> 1.0
-                WeightUnit.KG -> 0.453592
-                else -> 1.0
-            }
-
-        return this.copy(
-            entryTimestamp = monthYear,
-            avgWeight = avgWeight?.times(conversionFactor)?.rounded(),
-            change = change?.times(conversionFactor)?.rounded(),
-            unit = unit?.name,
-        )
-    }
-
-    fun Double?.rounded(): Double? = this?.let { String.format("%.2f", it).toDouble() }
+    fun Double?.rounded(): Double? = this?.let { kotlin.math.round(it * 10) / 10 }
 
     fun ScaleEntry.getDate(): String {
         val instant = Instant.parse(entry.entryTimestamp)
@@ -127,5 +97,14 @@ object EntryHelper {
     fun ScaleEntry.getTime(): String {
         val instant = Instant.parse(entry.entryTimestamp)
         return timeFormatter.format(instant)
+    }
+
+    fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
+        return when {
+            from == to -> value
+            from == WeightUnit.KG && to == WeightUnit.LB -> value * 2.20462
+            from == WeightUnit.LB && to == WeightUnit.KG -> value / 2.20462
+            else -> value
+        }
     }
 }

@@ -113,6 +113,7 @@ fun SettingsScreenContent(
                     listOf(
                         SettingsItem(
                             title = SettingsScreenStrings.GoalSetting,
+                            type = SettingsItemType.Action(),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.goalSettingModal)
                             },
@@ -130,48 +131,40 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ActivityLevel,
-                            type =
-                                SettingsItemType.Dropdown(
-                                    state.account?.activityLevel?.replaceFirstChar { it.uppercase() }
-                                        ?: SettingsScreenStrings.NotSet,
-                                ),
+                            type = SettingsItemType.Dropdown(
+                                state.account?.activityLevel?.replaceFirstChar { it.uppercase() }
+                                    ?: SettingsScreenStrings.NotSet,
+                            ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Height,
-                            type =
-                                SettingsItemType.TextOnly(
-                                    HeightInput.formatHeightDisplay(
-                                        height = state.account?.height,
-                                        isMetric = state.account?.weightUnit == WeightUnit.KG,
-                                    ),
+                            type = SettingsItemType.TextOnly(
+                                HeightInput.formatHeightDisplay(
+                                    height = state.account?.height,
+                                    isMetric = state.account?.weightUnit == WeightUnit.KG,
                                 ),
+                            ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowHeightModal)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.UnitType,
-                            type =
-                                SettingsItemType.Dropdown(
-                                    state.account?.weightUnit?.unit ?: SettingsScreenStrings.NotSet,
-                                ),
+                            type = SettingsItemType.Dropdown(
+                                state.account?.weightUnit?.unit ?: SettingsScreenStrings.NotSet,
+                            ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
                             },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Weightless,
-                            type =
-                                SettingsItemType.Dropdown(
-                                    if (state.account?.isWeightlessOn == true) {
-                                        "On - ${state.account.displayWeightlessWeight()}"
-                                    } else {
-                                        "Off"
-                                    },
-                                ),
+                            type = SettingsItemType.Dropdown(
+                                viewModel?.getWeightlessDisplayText() ?: "Off",
+                            ),
                             onClick = {
                                 handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
                             },
@@ -198,18 +191,29 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Streaks,
-                            type =
-                                SettingsItemType.Dropdown(
-                                    if (state.account?.isStreakOn == true) "On" else "Off",
-                                ),
-                            onClick = {
-                                handleIntent.invoke(SettingsIntent.ShowStreakModal)
-                            },
+                            type = SettingsItemType.Toggle(
+                                checked = state.account?.isStreakOn == true,
+                                onCheckedChange = { checked ->
+                                    handleIntent.invoke(SettingsIntent.ToggleStreak(checked))
+                                }
+                            ),
+                            onClick = {}, // No-op, handled by the switch
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.AppPermissions,
                             type = SettingsItemType.Action(),
-                            onClick = { },
+                            onClick = {
+                                coroutineScope.launch {
+                                    // backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
+                                }
+                            },
+                        ),
+                        SettingsItem(
+                            title = SettingsScreenStrings.Appearance,
+                            type = SettingsItemType.Dropdown(state.currentThemeMode),
+                            onClick = {
+                                handleIntent.invoke(SettingsIntent.ShowAppearanceModal)
+                            },
                         ),
                     ),
             )
@@ -252,45 +256,45 @@ fun SettingsScreenContent(
 
             // Log Out and Delete Account
             SettingsSection(
-                items =
-                    buildList {
+                items = buildList {
+                    add(
+                        SettingsItem(
+                            title = SettingsScreenStrings.SwitchAccounts,
+                            type = SettingsItemType.None,
+                            onClick = {
+                                handleIntent(SettingsIntent.SwitchAccount)
+                            },
+                        ),
+                    )
+                    add(
+                        SettingsItem(
+                            title = SettingsScreenStrings.LogOut,
+                            type = SettingsItemType.None,
+                            onClick = {
+                                handleIntent(SettingsIntent.Logout)
+                            },
+                        ),
+                    )
+                    if (state.hasMultipleAccounts) {
                         add(
                             SettingsItem(
-                                title = SettingsScreenStrings.SwitchAccounts,
+                                title = SettingsScreenStrings.LogoutAll,
+                                type = SettingsItemType.None,
                                 onClick = {
-                                    handleIntent(SettingsIntent.SwitchAccount)
+                                    handleIntent(SettingsIntent.LogoutAllAccounts)
                                 },
                             ),
                         )
-                        add(
-                            SettingsItem(
-                                title = SettingsScreenStrings.LogOut,
-                                type = SettingsItemType.None,
-                                onClick = {
-                                    handleIntent(SettingsIntent.Logout)
-                                },
-                            ),
-                        )
-                        if (state.hasMultipleAccounts) {
-                            add(
-                                SettingsItem(
-                                    title = SettingsScreenStrings.LogoutAll,
-                                    type = SettingsItemType.None,
-                                    onClick = {
-                                        handleIntent(SettingsIntent.LogoutAllAccounts)
-                                    },
-                                ),
-                            )
-                        }
-                        add(
-                            SettingsItem(
-                                title = SettingsScreenStrings.DeleteAccount,
-                                type = SettingsItemType.None,
-                                color = SettingColorType.Danger,
-                                onClick = { },
-                            ),
-                        )
-                    },
+                    }
+                    add(
+                        SettingsItem(
+                            title = SettingsScreenStrings.DeleteAccount,
+                            type = SettingsItemType.None,
+                            color = SettingColorType.Danger,
+                            onClick = { handleIntent(SettingsIntent.ConfirmDeleteAccount) },
+                        ),
+                    )
+                },
             )
         }
     }

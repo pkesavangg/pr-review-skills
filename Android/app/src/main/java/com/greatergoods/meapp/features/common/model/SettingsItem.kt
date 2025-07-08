@@ -15,6 +15,11 @@ sealed class SettingsItemType {
         val text: String,
     ) : SettingsItemType()
 
+    // Text date - formats and displays a date string
+    data class TextDate(
+        val rawDate: String,
+    ) : SettingsItemType()
+
     // Text with action Icon (Default) - Text param
     data class Action(
         val text: String? = null,
@@ -38,12 +43,18 @@ sealed class SettingsItemType {
     data class Custom(
         val content: @Composable () -> Unit,
     ) : SettingsItemType()
+
+    // Toggle (Switch) -> checked state and change handler
+    data class Toggle(
+        val checked: Boolean = false,
+        val onCheckedChange: (Boolean) -> Unit
+    ) : SettingsItemType()
 }
 
 data class SettingsItem(
     val title: String,
     val type: SettingsItemType = SettingsItemType.Action(),
+    val enabled: Boolean = true,
     val color: SettingColorType = SettingColorType.Default,
     val onClick: () -> Unit = {},
-    val iconClick: (() -> Unit)? = null, // Separate click handler for icon-only clicks
 )

@@ -2,6 +2,7 @@ package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.network.utility.HttpErrorResponse
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IUserAPI
@@ -30,7 +31,10 @@ import com.greatergoods.meapp.domain.model.api.user.Token
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
+import com.greatergoods.meapp.features.goal.helper.Weightless
+import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
@@ -503,6 +507,22 @@ constructor(
     }
 
     /**
+     * Deletes the current user account via API and clears local data.
+     */
+    override suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean) {
+        // Call API to delete account
+        if (isActiveAccount) {
+            userAPI.deleteAccount()
+            accountDao.logoutAccount(accountID)
+            accountDao.deactivateAllAccounts()
+        }
+        // Clear all tokens and local data
+        userDataStore.clearAccountTokens(accountID)
+        tokenManager.clearTokens()
+        AppLog.d(TAG, "Account deleted and local data cleared")
+    }
+
+    /**
      * Private helper to add an account from LoginResponse.account.
      */
     private suspend fun addAccountFromResponse(loginResponse: LoginResponse): Account {
@@ -559,5 +579,44 @@ constructor(
      */
     private suspend fun setTokensForAccount(tokens: Token?) {
         tokens?.let { tokenManager.setTokens(it) }
+    }
+
+    // New: Flow for active account's weight unit
+    override fun getActiveAccountWeightUnitFlow(): Flow<WeightUnit?> =
+        getActiveAccount().map { it?.weightUnit }.distinctUntilChanged()
+
+    private fun Account?.toWeightless(): Weightless {
+        val rawWeightless = this?.weightlessWeight ?: 0f
+        val unit = this?.weightUnit
+        val weightlessInLb = ConversionTools.convertStoredToDisplay(rawWeightless.toDouble(), unit == WeightUnit.KG)
+        return Weightless(
+            isWeightlessOn = this?.isWeightlessOn ?: false,
+            weightlessWeight = weightlessInLb.toFloat(),
+        )
+    }
+
+    // New: Flow for active account's Weightless settings
+    override fun getActiveAccountWeightlessFlow(): Flow<Weightless> =
+        getActiveAccount().map { it.toWeightless() }.distinctUntilChanged()
+    // Theme Mode Operations
+
+    /**
+     * Gets the current theme mode for the active account as a flow.
+     * @return Flow of ThemeMode that emits changes
+     */
+    override val currentThemeModeFlow = userDataStore.currentThemeModeFlow
+
+    /**
+     * Sets the theme mode for the active account.
+     * @param themeMode The ThemeMode to set
+     */
+    override suspend fun setCurrentThemeMode(themeMode: ThemeMode) {
+        val activeAccount = getActiveAccount().first()
+        if (activeAccount != null) {
+            userDataStore.setThemeMode(activeAccount.id, themeMode)
+            AppLog.d(TAG, "Set theme mode to $themeMode for account: ${activeAccount.id}")
+        } else {
+            AppLog.w(TAG, "No active account found, cannot set theme mode")
+        }
     }
 }

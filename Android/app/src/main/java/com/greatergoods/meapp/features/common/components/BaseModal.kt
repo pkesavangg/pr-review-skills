@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.model.ActionButton
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -34,6 +32,7 @@ import com.greatergoods.meapp.theme.MeTheme
 @Composable
 fun BaseModal(
     modifier: Modifier = Modifier,
+    primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
     primaryAction: ActionButton? = null,
     title: String? = null,
     body: String? = null,
@@ -105,7 +104,7 @@ fun BaseModal(
                         AppButton(
                             label = primaryAction.text,
                             onClick = primaryAction.action,
-                            type = ButtonType.InlineTextPrimary,
+                            type = primaryActionType,
                             size = ButtonSize.Small,
                             enabled = primaryAction.enabled,
                             modifier = Modifier,
