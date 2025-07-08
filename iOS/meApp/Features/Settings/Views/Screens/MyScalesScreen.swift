@@ -148,10 +148,14 @@ struct MyScalesScreen: View {
                             }
                         }
                     case .setupFlow(let scale):
-                        if scale.setupType == .appSync {
+                        switch scale.setupType {
+                        case .appSync:
                             AppSyncSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                        } else {
+                        case .lcbt:
+                            A6ScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
+                        default:
                             // TODO: Handle other setup types
                             VStack(spacing: .spacingMD) {
                                 Text("Setup flow coming soon")
