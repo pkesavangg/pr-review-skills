@@ -157,6 +157,7 @@ interface IAccountService {
      * Deletes the current user account from the server and local storage.
      */
     suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean)
+    suspend fun reset()
 }
 
 /**

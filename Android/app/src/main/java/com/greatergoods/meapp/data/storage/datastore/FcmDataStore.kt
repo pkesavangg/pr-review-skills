@@ -27,10 +27,16 @@ class FcmDataStore(context: Context) : BaseProtoDataStore<FcmToken>(
     dataStore = context.fcmTokenStore,
 ) {
     /**
-     * Clears the FCM token by setting it to an empty string.
+     * Gets the default instance of FcmToken.
+     */
+    override fun getDefaultInstance(): FcmToken = FcmToken.getDefaultInstance()
+
+    /**
+     * Optional: Override clearData() only if you need custom clear logic
+     * Otherwise, the base implementation will use getDefaultInstance()
      */
     override suspend fun clearData() {
-        updateData { it.toBuilder().setToken("").build() }
+        super.clearData() // Use the base implementation
     }
 
     /**

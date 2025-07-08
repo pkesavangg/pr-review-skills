@@ -73,12 +73,13 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
      * Checks if a HealthConnectData entry exists for the given accountId.
      */
     suspend fun hasHealthConnectData(accountId: String): Boolean = getData().dataMap.containsKey(accountId)
+    override fun getDefaultInstance(): HealthConnectDataMap = HealthConnectDataMap.getDefaultInstance()
 
     /**
      * Clears all data.
      */
     override suspend fun clearData() {
-        updateData { HealthConnectDataMap.getDefaultInstance() }
+       super.clearData()
     }
 
     /**

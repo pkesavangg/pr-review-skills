@@ -1,0 +1,90 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Performance Optimization Best Practices (meApp iOS)
+
+## 1. Memory Management
+- Avoid retain cycles in closures.
+- Use weak references when appropriate.
+- Dispose of resources properly.
+- Monitor memory usage.
+
+## 2. State Management & View Updates
+- Use `@State` for simple local state, `@Binding` for parent-child communication, and `@StateObject` for reference types owned by a view.
+- Prefer `@StateObject` over `@ObservedObject` when instantiating objects within a view to avoid reinitialization.
+- Use `@EnvironmentObject` for shared app-wide data, but avoid for deeply nested dependencies.
+- Minimize view body computation: extract reusable subviews and avoid redundant calculations in the `body`.
+
+## 3. List & ScrollView Performance
+- Use `LazyVStack`/`LazyHStack` instead of `VStack`/`HStack` for long or dynamic lists.
+- Always provide a stable `id` for items in `ForEach`.
+- Avoid using `.onAppear` for every list item as it can cause performance bottlenecks.
+
+## 4. View Hierarchy & Layout
+- Avoid deep view nesting; flatten hierarchies and extract reusable components.
+- Use `Group` to avoid unnecessary wrapper views.
+- Use `GeometryReader` sparingly, as it recalculates on every layout change and can impact performance if overused, especially in lists.
+
+## 5. Animations & Transitions
+- Use implicit animations only when necessary.
+- Prefer `withAnimation` for smooth UI transitions.
+- Use `.animation(nil)` for views that should not animate during state updates.
+- Avoid excessive or complex animations, especially in frequently updated views.
+
+## 6. Image Optimization
+- Use `.resizable()` and `.aspectRatio(contentMode:)` to control image scaling.
+- Use `Image(uiImage:)` for optimized UIKit integration when needed.
+- Cache remote images using `AsyncImage` or a custom cache.
+
+## 7. Network Optimization
+- Use efficient API calls and proper caching.
+- Handle offline scenarios gracefully.
+- Optimize image and data loading for minimal blocking of the main thread.
+
+## 8. Profiling & Tools
+- Always profile your app using Xcode Instruments (e.g., Time Profiler, Memory Graph, SwiftUI View Body) to measure actual performance gains.
+- Use the SwiftUI Previews performance diagnostics to catch slow view updates early.
+
+## 9. Example: Optimized List
+```swift
+struct ListView: View {
+    let items = Array(1...1000)
+    var body: some View {
+        ScrollView {
+            LazyVStack {
+                ForEach(items, id: \ .self) { item in
+                    Text("Item \(item)")
+                        .padding()
+                }
+            }
+        }
+    }
+}
+```
+
+## 10. Example: StateObject vs ObservedObject
+```swift
+class UserSettings: ObservableObject {
+    @Published var username = "Kirit"
+}
+
+struct ContentView: View {
+    @StateObject var settings = UserSettings()
+    var body: some View {
+        NavigationView {
+            HomeView().environmentObject(settings)
+        }
+    }
+}
+```
+
+---
+
+**References:**
+- [SwiftUI Performance Tuning Tips and Tricks – Canopas](https://canopas.com/swiftui-performance-tuning-tips-and-tricks-a8f9eeb23ec4?utm_source=chatgpt.com)
+- [Optimizing SwiftUI Performance: Best Practices – Medium](https://medium.com/@garejakirit/optimizing-swiftui-performance-best-practices-93b9cc91c623)
+
+**Summary:**
+- All code must be optimized for memory, network, and UI performance, following the latest SwiftUI performance best practices.

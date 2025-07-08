@@ -62,82 +62,82 @@ import android.widget.FrameLayout
  */
 @Composable
 fun CameraPreview(
-    onCameraReady: (Camera, CameraControl, CameraInfo) -> Unit,
-    cameraExecutor: ExecutorService,
-    onScanResult: (AppSyncResult) -> Unit,
-    onError: (String) -> Unit = {},
-    onLowLightDetected: (Boolean) -> Unit = {},
+  onCameraReady: (Camera, CameraControl, CameraInfo) -> Unit,
+  cameraExecutor: ExecutorService,
+  onScanResult: (AppSyncResult) -> Unit,
+  onError: (String) -> Unit = {},
+  onLowLightDetected: (Boolean) -> Unit = {},
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    Log.i("CHECK", AppSyncStrings.Initializes)
+  val context = LocalContext.current
+  val lifecycleOwner = LocalLifecycleOwner.current
+  Log.i("CHECK", AppSyncStrings.Initializes)
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { ctx ->
-                // Create PreviewView for camera display
-                val previewView =
-                    PreviewView(ctx).apply {
-                        layoutParams =
-                            FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                            )
-                    }
+  Box(modifier = Modifier.fillMaxSize()) {
+    AndroidView(
+      factory = { ctx ->
+        // Create PreviewView for camera display
+        val previewView =
+          PreviewView(ctx).apply {
+            layoutParams =
+              FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+              )
+          }
 
-                // Initialize CameraX provider
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                cameraProviderFuture.addListener(
-                    {
-                        try {
-                            val cameraProvider = cameraProviderFuture.get()
+        // Initialize CameraX provider
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+        cameraProviderFuture.addListener(
+          {
+            try {
+              val cameraProvider = cameraProviderFuture.get()
 
-                            // Set up camera preview use case
-                            val preview =
-                                Preview.Builder().build().also {
-                                    it.setSurfaceProvider(previewView.surfaceProvider)
-                                }
+              // Set up camera preview use case
+              val preview =
+                Preview.Builder().build().also {
+                  it.setSurfaceProvider(previewView.surfaceProvider)
+                }
 
-                            // Set up image analysis use case for frame processing
-                            val imageAnalyzer =
-                                ImageAnalysis
-                                    .Builder()
-                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                    .build()
-                            imageAnalyzer.setAnalyzer(
-                                cameraExecutor,
-                                { imageProxy ->
-                                    processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected)
-                                },
-                            )
+              // Set up image analysis use case for frame processing
+              val imageAnalyzer =
+                ImageAnalysis
+                  .Builder()
+                  .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                  .build()
+              imageAnalyzer.setAnalyzer(
+                cameraExecutor,
+                { imageProxy ->
+                  processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected)
+                },
+              )
 
-                            // Unbind any existing use cases and bind new ones
-                            cameraProvider.unbindAll()
-                            val camera =
-                                cameraProvider.bindToLifecycle(
-                                    lifecycleOwner,
-                                    CameraSelector.DEFAULT_BACK_CAMERA,
-                                    preview,
-                                    imageAnalyzer,
-                                )
-
-                            // Notify that camera is ready
-                            onCameraReady(camera, camera.cameraControl, camera.cameraInfo)
-                        } catch (exc: Exception) {
-                            Log.e("AppSyncScan", AppSyncStrings.CameraBindingFailed, exc)
-                            onError(AppSyncStrings.CameraInitializationFailed)
-                        }
-                    },
-                    ContextCompat.getMainExecutor(ctx),
+              // Unbind any existing use cases and bind new ones
+              cameraProvider.unbindAll()
+              val camera =
+                cameraProvider.bindToLifecycle(
+                  lifecycleOwner,
+                  CameraSelector.DEFAULT_BACK_CAMERA,
+                  preview,
+                  imageAnalyzer,
                 )
-                previewView
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
 
-        // Add overlay graphics for scan targeting
-        CameraOverlayBox()
-    }
+              // Notify that camera is ready
+              onCameraReady(camera, camera.cameraControl, camera.cameraInfo)
+            } catch (exc: Exception) {
+              Log.e("AppSyncScan", AppSyncStrings.CameraBindingFailed, exc)
+              onError(AppSyncStrings.CameraInitializationFailed)
+            }
+          },
+          ContextCompat.getMainExecutor(ctx),
+        )
+        previewView
+      },
+      modifier = Modifier.fillMaxSize(),
+    )
+
+    // Add overlay graphics for scan targeting
+    CameraOverlayBox()
+  }
 }
 
 /**
@@ -165,48 +165,48 @@ fun CameraPreview(
  * @param onLowLightDetected Callback to report low light condition changes
  */
 private fun processFrameWithJNI(
-    imageProxy: ImageProxy,
-    onScanResult: (AppSyncResult) -> Unit,
-    onLowLightDetected: (Boolean) -> Unit,
+  imageProxy: ImageProxy,
+  onScanResult: (AppSyncResult) -> Unit,
+  onLowLightDetected: (Boolean) -> Unit,
 ) {
-    try {
-        // Only process YUV_420_888 format images
-        if (imageProxy.format == ImageFormat.YUV_420_888) {
-            // Extract Y-plane (luminance) data for processing
-            val yBuffer = imageProxy.planes[0].buffer
-            val width = imageProxy.width
-            val height = imageProxy.height
-            val ySize = yBuffer.remaining()
-            val yBytes = ByteArray(ySize)
-            yBuffer.get(yBytes)
+  try {
+    // Only process YUV_420_888 format images
+    if (imageProxy.format == ImageFormat.YUV_420_888) {
+      // Extract Y-plane (luminance) data for processing
+      val yBuffer = imageProxy.planes[0].buffer
+      val width = imageProxy.width
+      val height = imageProxy.height
+      val ySize = yBuffer.remaining()
+      val yBytes = ByteArray(ySize)
+      yBuffer.get(yBytes)
 
-            // Check for low light conditions using the extracted luminance data
-            val isLowLight = AppSyncLowLightDetector.isLowLight(yBytes, width, height)
-            onLowLightDetected(isLowLight)
+      // Check for low light conditions using the extracted luminance data
+      val isLowLight = AppSyncLowLightDetector.isLowLight(yBytes, width, height)
+      onLowLightDetected(isLowLight)
 
-            // Call native detector to look for FS003 protocol patterns
-            val bits = CameraHandlerCallback.nativeDetector(yBytes, width, height)
-            if (bits != null && bits.isNotEmpty()) {
-                // Interpret the detected bits using FS003 protocol
-                val result = AppSyncFs003Interpreter.interpret(bits)
-                if (result != null) {
-                    // Deliver the successful scan result
-                    onScanResult(result)
-                } else {
-                    // Interpreter failed to process the detected bits
-                    Log.w("AppSyncScan", AppSyncStrings.InterpreterReturnedNull)
-                }
-            } else {
-                // Native detector did not find any valid patterns
-                // This is normal and expected for most frames
-                Log.w("AppSyncScan", AppSyncStrings.NativeDetectorReturnedNull)
-            }
+      // Call native detector to look for FS003 protocol patterns
+      val bits = CameraHandlerCallback.nativeDetector(yBytes, width, height)
+      if (bits != null && bits.isNotEmpty()) {
+        // Interpret the detected bits using FS003 protocol
+        val result = AppSyncFs003Interpreter.interpret(bits)
+        if (result != null) {
+          // Deliver the successful scan result
+          onScanResult(result)
+        } else {
+          // Interpreter failed to process the detected bits
+          Log.w("AppSyncScan", AppSyncStrings.InterpreterReturnedNull)
         }
-    } catch (e: Exception) {
-        // Log any errors that occur during frame processing
-        Log.e("AppSyncScan", AppSyncStrings.JniFrameProcessingFailed, e)
-    } finally {
-        // Always close the image proxy to release resources
-        imageProxy.close()
+      } else {
+        // Native detector did not find any valid patterns
+        // This is normal and expected for most frames
+        Log.w("AppSyncScan", AppSyncStrings.NativeDetectorReturnedNull)
+      }
     }
+  } catch (e: Exception) {
+    // Log any errors that occur during frame processing
+    Log.e("AppSyncScan", AppSyncStrings.JniFrameProcessingFailed, e)
+  } finally {
+    // Always close the image proxy to release resources
+    imageProxy.close()
+  }
 }

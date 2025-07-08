@@ -31,6 +31,7 @@ data class Device(
     // Body Scale properties
     val scaleType: String?,
     val bodyComp: Boolean,
+    val isWeighOnlyModeEnabledByOthers: Boolean,
 
     // R4 Prefs
     val displayName: String?,

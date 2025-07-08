@@ -1,0 +1,44 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# iOS Clean Architecture & Dependency Injection Best Practices (meApp)
+
+## 1. Clean Architecture
+- Follow Clean Architecture with clear separation of concerns:
+  - UI (SwiftUI) → Store → Service → Repository → DataSource
+- Keep business logic in the domain layer, implementation in the data layer.
+- Use dependency injection for all dependencies.
+- Maintain unidirectional data flow.
+
+## 2. Package Structure
+```
+meApp/
+├── Core/                    # Core utilities, DI, navigation
+├── Data/                    # Data layer (API, storage, repositories)
+├── Domain/                  # Domain layer (models, interfaces, services)
+├── Features/                # Feature modules
+├── Resources/               # Assets, fonts, configurations
+├── Theme/                   # Design system
+├── Shared/                  # Shared constants and utilities
+└── Utilities/               # Helper utilities
+```
+
+## 3. Dependency Injection
+- Use `DependencyContainer` for dependency management.
+- Register services via `ServiceRegistry`.
+- Use `@Injector` property wrapper for dependency injection.
+- Provide all dependencies via constructor injection.
+- Use singletons for services and repositories.
+
+---
+
+**Summary:**
+- Enforce Clean Architecture and DI for all new code and refactors.
+- Use the provided DI system for all dependencies.
+- Maintain clear separation of concerns and modularity.
+description:
+globs:
+alwaysApply: false
+---

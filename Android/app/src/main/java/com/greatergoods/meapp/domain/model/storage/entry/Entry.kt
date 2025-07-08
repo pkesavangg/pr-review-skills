@@ -32,7 +32,7 @@ sealed class Entry : IUnitProcessable<Entry> {
                 val finalWeight =
                     if (weightLess?.isWeightlessOn == true) convertedWeight - weightLess.weightlessWeight else convertedWeight
                 val newScaleEntry = this.scale.scaleEntry.copy(
-                    weight = finalWeight.rounded() ?: this.scale.scaleEntry.weight
+                    weight = finalWeight.rounded() ?: this.scale.scaleEntry.weight,
                 )
                 newScaleEntry.prefix = if (weightLess?.isWeightlessOn == true && finalWeight > 0) "+" else ""
                 this.copy(
@@ -40,7 +40,7 @@ sealed class Entry : IUnitProcessable<Entry> {
                         unit = toUnit,
                     ),
                     scale = this.scale.copy(
-                        scaleEntry = newScaleEntry
+                        scaleEntry = newScaleEntry,
                     ),
                 )
             }

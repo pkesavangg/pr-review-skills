@@ -7,6 +7,7 @@ import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
 import com.greatergoods.meapp.features.settings.components.AccountSwitchInfoModal
+import com.greatergoods.meapp.features.scaleMode.screens.BiaModal
 
 enum class DialogType {
     HeightPicker,
@@ -14,7 +15,8 @@ enum class DialogType {
     PasswordReset,
     RadioGroupPicker,
     AccountSwitchInfoPopup,
-    ModelNumberHelp
+    ModelNumberHelp,
+    BiaModal // Added for BIA info dialog
 }
 
 @Composable
@@ -101,6 +103,15 @@ fun DialogHost() {
             DialogType.ModelNumberHelp -> {
                 ModelNumberHelpDialog(
                     visible = true,
+                    onClose = {
+                        dialog.onDismiss?.let { it() }
+                        dialogQueueViewModel.dismissCurrent()
+                    },
+                )
+            }
+
+            DialogType.BiaModal -> {
+                BiaModal(
                     onClose = {
                         dialog.onDismiss?.let { it() }
                         dialogQueueViewModel.dismissCurrent()

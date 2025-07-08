@@ -2,6 +2,7 @@ package com.greatergoods.meapp.data.storage.datastore
 
 import androidx.datastore.core.DataStore
 import com.google.protobuf.MessageLite
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.first
 abstract class BaseProtoDataStore<T : MessageLite>(
     protected val dataStore: DataStore<T>
 ) {
+    private val tag = "BaseProtoDataStore"
+
     /**
      * Returns a [Flow] of the Proto data.
      */
@@ -35,9 +38,24 @@ abstract class BaseProtoDataStore<T : MessageLite>(
     }
 
     /**
-     * Clears all fields in the Proto message.
-     * Override this to provide custom clear logic.
+     * Gets the default instance of the Proto message.
+     * Must be implemented by each DataStore to provide its specific default instance.
      */
-    abstract suspend fun clearData()
+    protected abstract fun getDefaultInstance(): T
+
+    /**
+     * Clears all fields in the Proto message by resetting it to its default instance.
+     * Can be overridden to provide custom clear logic if needed.
+     */
+    open suspend fun clearData() {
+        try {
+            AppLog.i(tag, "Clearing DataStore: ${this::class.simpleName}")
+            updateData { getDefaultInstance() }
+            AppLog.i(tag, "Successfully cleared DataStore: ${this::class.simpleName}")
+        } catch (e: Exception) {
+            AppLog.e(tag, "Failed to clear DataStore: ${this::class.simpleName}", e.toString())
+            throw e
+        }
+    }
 }
 

@@ -44,7 +44,6 @@ import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsState
 import com.greatergoods.meapp.features.scaleDetails.strings.ScaleDetailsStrings
 import com.greatergoods.meapp.features.scaleDetails.viewmodel.ScaleDetailsViewModel
 import com.greatergoods.meapp.resources.AppIcons
-import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
@@ -78,7 +77,8 @@ fun ScaleDetailsScreenContent(
     val coroutineScope = rememberCoroutineScope()
     val device = state.scale
     val scaleName = device?.nickname ?: device?.deviceName ?: ""
-    val scaleSetupType = device?.scaleType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
+    val scaleSetupType =
+        device?.scaleType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
     val isConnected = device?.isConnected ?: false
 
     AppScaffold(
@@ -96,7 +96,7 @@ fun ScaleDetailsScreenContent(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
+                    .padding(vertical = spacing.md, horizontal = spacing.sm),
         ) {
             // Scale Image
             Box(
@@ -108,7 +108,8 @@ fun ScaleDetailsScreenContent(
                             elevation = spacing.sm,
                             spotColor = Color(0x40FFFFFF),
                             ambientColor = Color(0x40FFFFFF),
-                        ).clip(RoundedCornerShape(borderRadius.sm)),
+                        )
+                        .clip(RoundedCornerShape(borderRadius.sm)),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -132,6 +133,9 @@ fun ScaleDetailsScreenContent(
                                 SettingsItem(
                                     title = ScaleDetailsStrings.Mode,
                                     type = SettingsItemType.Action(ScaleDetailsStrings.AllBodyMetrics),
+                                    onClick = {
+                                        handleIntent(ScaleDetailsIntent.OpenScaleMode)
+                                    },
                                 ),
                             )
                             add(
@@ -151,7 +155,10 @@ fun ScaleDetailsScreenContent(
                         add(
                             SettingsItem(
                                 title = ScaleDetailsStrings.ScaleName,
-                                type = SettingsItemType.TextOnly(device?.nickname ?: device?.deviceName ?: ""),
+                                type =
+                                    SettingsItemType.TextOnly(
+                                        device?.nickname ?: device?.deviceName ?: "",
+                                    ),
                             ),
                         )
                     },
@@ -286,6 +293,7 @@ fun ScaleDetailsScreenPreview() {
             systemId = null,
             latestVersion = null,
             hasNumericUsers = null,
+            isWeighOnlyModeEnabledByOthers = false,
         )
     val dummyState = ScaleDetailsState(scale = dummyDevice)
     ScaleDetailsScreenContent(state = dummyState, handleIntent = {})

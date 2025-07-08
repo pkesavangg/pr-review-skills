@@ -62,6 +62,7 @@ fun DialogQueueHost(
                         ActionButton(
                             dialog.dismissText,
                             action = {
+                                dialog.onDismiss?.invoke()
                                 dialogQueueViewModel.dismissCurrent()
                             },
                         ),

@@ -4,6 +4,7 @@ package com.greatergoods.meapp.data.services
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
@@ -11,15 +12,13 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry.Companion.fr
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.services.IEntryService
-import com.greatergoods.meapp.features.goal.helper.Weightless
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.convertWeight
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -100,17 +99,31 @@ constructor(
      * @param entry The entry to save.
      */
     override suspend fun addEntry(entry: Entry) {
-        val updatedEntry =
-            entry.updateEntry(
-                entry =
-                    entry.entry.copy(
-                        isSynced = false,
-                        operationType = OperationType.CREATE.name,
-                        accountId = "1",
+        var updatedEntry = entry.updateEntry(
+            entry.entry.copy(
+                isSynced = false,
+                operationType = OperationType.CREATE.name,
+                accountId = "1",
+            ),
+        )
+
+        if (updatedEntry is ScaleEntry) {
+            updatedEntry = updatedEntry.copy(
+                scale = updatedEntry.scale.copy(
+                    scaleEntry = updatedEntry.scale.scaleEntry.copy(
+                        weight = convertWeight(
+                            updatedEntry.scale.scaleEntry.weight,
+                            updatedEntry.entry.unit,
+                            WeightUnit.LB,
+                        ),
                     ),
+                ),
             )
+        }
         // handle other types if you have them
-        entryRepository.insert(updatedEntry)
+        syncOperations(
+            listOf(updatedEntry),
+        )
     }
 
     /**
@@ -119,18 +132,33 @@ constructor(
      */
     override suspend fun addEntry(entries: List<Entry>) {
         try {
-            val updatedEntries =
-                entries.map { entry ->
-                    entry.updateEntry(
-                        entry =
-                            entry.entry.copy(
-                                isSynced = false,
-                                operationType = OperationType.CREATE.name,
-                                accountId = "1",
+            val updatedEntries = entries.map { entry ->
+                val baseEntry = entry.entry.copy(
+                    isSynced = false,
+                    operationType = OperationType.CREATE.name,
+                    accountId = "1",
+                )
+
+                val updatedEntry = entry.updateEntry(baseEntry)
+
+                if (updatedEntry is ScaleEntry) {
+                    updatedEntry.copy(
+                        scale = updatedEntry.scale.copy(
+                            scaleEntry = updatedEntry.scale.scaleEntry.copy(
+                                weight = convertWeight(
+                                    updatedEntry.scale.scaleEntry.weight,
+                                    updatedEntry.entry.unit,
+                                    WeightUnit.LB,
+                                ),
                             ),
+                        ),
                     )
+                } else {
+                    updatedEntry
                 }
-            this.syncOperations(updatedEntries)
+            }
+
+            syncOperations(updatedEntries)
         } catch (e: Exception) {
             AppLog.e("EntryService", "Error saving new entries", e.toString())
         }

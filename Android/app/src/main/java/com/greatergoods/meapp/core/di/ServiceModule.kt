@@ -12,12 +12,18 @@ import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.NotificationService
 import com.greatergoods.meapp.core.service.OfflineHandlerService
+import com.greatergoods.meapp.core.service.StorageClearService
 import com.greatergoods.meapp.core.service.UserSettingsService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.services.EntryService
 import com.greatergoods.meapp.data.services.ExportService
+import com.greatergoods.meapp.data.storage.datastore.BaseProtoDataStore
+import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
+import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
+import com.greatergoods.meapp.data.storage.datastore.UserDataStore
+import com.greatergoods.meapp.data.storage.db.AppDatabase
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IAccountRepository
@@ -74,6 +80,7 @@ object ServiceModule {
         dialogQueueService: IDialogQueueService,
         appNavigationService: IAppNavigationService,
         userSettingsRepository: IUserSettingsRepository,
+        storageClearService: StorageClearService
     ): IAccountService =
         AccountService(
             accountRepository,
@@ -81,6 +88,7 @@ object ServiceModule {
             dialogQueueService,
             appNavigationService,
             userSettingsRepository,
+            storageClearService
         )
 
     /**
@@ -116,7 +124,9 @@ object ServiceModule {
         logRepository: ILogRepository,
         connectivityObserver: IConnectivityObserver,
         dialogQueueService: IDialogQueueService
-    ): LogManager = LogManager(logRepository, connectivityObserver, dialogQueueService)
+    ): LogManager = LogManager(
+        logRepository,connectivityObserver, dialogQueueService
+        )
 
     /**
      * Provides a singleton instance of [DialogQueueService] for managing dialog queues.
@@ -277,4 +287,30 @@ object ServiceModule {
     fun provideDeviceService(
         deviceRepository: IDeviceRepository
     ): IDeviceService = DeviceService(deviceRepository)
+
+    @Provides
+    @Singleton
+    fun provideDataStores(
+        userDataStore: UserDataStore,
+        fcmDataStore: FcmDataStore,
+        healthConnectDataStore: HealthConnectDataStore,
+    ): Set<BaseProtoDataStore<*>> = setOf(
+        userDataStore,
+        fcmDataStore,
+        healthConnectDataStore,
+    )
+
+    @Provides
+    @Singleton
+    fun provideStorageClearService(
+        @ApplicationContext context: Context,
+        appDatabase: AppDatabase,
+        dataStores: Set<@JvmSuppressWildcards BaseProtoDataStore<*>>,
+        navigationService: IAppNavigationService
+    ): StorageClearService = StorageClearService(
+        context = context,
+        appDatabase = appDatabase,
+        dataStores = dataStores,
+        navigationService = navigationService
+    )
 }
