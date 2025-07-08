@@ -1,10 +1,10 @@
 import SwiftUI
 import GGBluetoothSwiftPackage
 import Combine // Added for Combine
-// MARK: - PermissionsViewModel
+// MARK: - PermissionsListViewModel
 /// Holds the current on/off state for each app permission. For now the values are hard-coded; real permission checks will be wired in later.
 @MainActor
-class PermissionsViewModel: ObservableObject {
+class PermissionsListViewModel: ObservableObject {
     @Injector var permissionsService: PermissionsService
     @Injector var loggerService: LoggerService
     
@@ -73,7 +73,7 @@ class PermissionsViewModel: ObservableObject {
     func handlePermission(_ type: PermissionType) {
         Task {
            let result = await permissionsService.handlePermission(type)
-            loggerService.log(level: .info, tag: tag, message: "Handled permission \(type): \(result)")
+           loggerService.log(level: .info, tag: tag, message: "Handled permission \(type): \(result)")
         }
     }
 }

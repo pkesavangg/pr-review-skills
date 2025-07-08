@@ -21,7 +21,7 @@ struct PermissionListView: View {
     
     // MARK: Dependencies
     @Environment(\.appTheme) private var theme
-    @StateObject private var viewModel: PermissionsViewModel = PermissionsViewModel()
+    @StateObject private var viewModel: PermissionsListViewModel = PermissionsListViewModel()
     // MARK: Configuration
     private let categories: Set<Category>
     private let requiredCategories: Set<Category>
