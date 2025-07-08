@@ -164,13 +164,11 @@ final class EntryStore: ObservableObject {
         // Weight
         let displayWeight = ConversionTools.convertStoredToDisplay(metrics.storedWeight, isMetric: metrics.isMetric)
         manualEntryForm.weight.value = String(format: "%.1f", displayWeight)
-        manualEntryForm.weight.markAsPristine()
         manualEntryForm.weight.validate()
 
         // BMI – already a plain decimal string in `metrics.bmi`
         if let bmiStr = metrics.bmi {
             manualEntryForm.bmi.value = bmiStr
-            manualEntryForm.bmi.markAsPristine()
             manualEntryForm.bmi.validate()
         }
 
@@ -178,7 +176,6 @@ final class EntryStore: ObservableObject {
         func assignPercent(_ source: String?, to control: FormControl<String>) {
             guard let value = source?.replacingOccurrences(of: "%", with: "") else { return }
             control.value = value
-            control.markAsPristine()
             control.validate()
         }
 
