@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-final class BathScaleWeightSummary {
+final class BathScaleWeightSummary: Identifiable {
     var id: UUID
     var accountId: String
     var period: String       // "YYYY-MM-DD"

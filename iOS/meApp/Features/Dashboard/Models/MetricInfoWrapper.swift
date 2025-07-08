@@ -8,7 +8,7 @@
 import Foundation
 
 // MARK: - Identifiable Wrapper for Metric Info
-struct MetricInfoWrapper: Identifiable {
+struct MetricInfoWrapper:  Equatable, Identifiable {
     let id = UUID()
     let metricLabel: String
 }

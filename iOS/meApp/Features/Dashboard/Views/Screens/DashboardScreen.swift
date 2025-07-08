@@ -1,5 +1,5 @@
 //
-//  DashboardView.swift
+//  DashboardScreen.swift
 //  meApp
 //
 //  Created by Lakshmi Priya on 30/06/25.
@@ -19,72 +19,68 @@ struct DashboardScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-
-            NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false)
-                .zIndex(100)
-            
-            ScrollView(showsIndicators: false) {
-                WeightTrendView()
-                    .frame(height: 490)
-                    .padding(.top, .spacingLG)
-
-                if !store.allContentRemoved {
-                    metricGridSection()
-                        .padding(.top,.spacingSM)
-
-                    if !store.metricsToShow.isEmpty {
-                        Divider()
-                            .foregroundColor(theme.statusUtilityPrimary)
-                            .padding(.vertical, .spacingSM)
-                            .padding(.horizontal, .spacing2XL)
-                    }
-
-                    goalCardSection()
-
-                    if store.shouldShowStreakGrid {
-                        streakAndLossGrid()
-                    }
-                }
-
-                actionButtonsSection()
-                    .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
-            }
+            navbarHeaderSection()
+            dashboardScrollView()
         }
-        .onAppear {
-            store.loadLatestEntryData()
-            store.loadGoalCardData()
-        }
+        .onAppear(perform: onAppearActions)
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
         }
         .sheet(item: $openMetricInfoWithoutSelection) { wrapper in
-            // Open metric info without affecting selection state
             ScaleMetricsView(
                 entry: store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
                 selectedMetric: store.getBodyMetric(for: wrapper.metricLabel)
             )
         }
-        .onChange(of: selectedMetricInfo) { oldValue, newValue in
-            guard let label = newValue else { return }
-            store.selectedMetricLabel = label
-            selectedEntry = store.createEntryForMetricInfo()
-            selectedMetric = store.selectedBodyMetric
-            selectedMetricInfo = nil
+        .onChange(of: selectedMetricInfo) { _, newValue in
+            handleSelectedMetricInfoChange(newValue)
         }
-        .onChange(of: store.selectedMetricLabel) { oldValue, newValue in
-            // Handle deselection: if selectedMetricLabel becomes nil, close the sheet
-            if newValue == nil && oldValue != nil {
-                selectedEntry = nil
-                selectedMetric = nil
-            }
+        .onChange(of: store.selectedMetricLabel) { _, newValue in
+            handleSelectedMetricLabelChange(newValue)
         }
-        .onChange(of: store.isEditMode) { oldValue, newValue in
-            store.resetDragState()
+        .onChange(of: selectedEntry) { _, newValue in
+            handleSelectedEntryChange(newValue)
         }
+        .onChange(of: openMetricInfoWithoutSelection) { _, newValue in
+            handleMetricInfoSheetDismiss(newValue)
+        }
+        .onChange(of: store.isEditMode) { _, _ in store.resetDragState() }
         .presentAlert(alertData: $store.alertData)
         .presentLoader(loaderData: store.loaderData)
+    }
+
+    // MARK: - Sections split for type-checking
+
+    @ViewBuilder
+    private func navbarHeaderSection() -> some View {
+        NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false)
+            .zIndex(100)
+    }
+
+    @ViewBuilder
+    private func dashboardScrollView() -> some View {
+        ScrollView(showsIndicators: false) {
+            WeightTrendView(dashboardStore: store)
+            if !store.allContentRemoved {
+                metricGridSection()
+                    .padding(.top, .spacingSM)
+                if !store.metricsToShow.isEmpty {
+                    Divider()
+                        .foregroundColor(theme.statusUtilityPrimary)
+                        .padding(.vertical, .spacingSM)
+                        .padding(.horizontal, .spacing2XL)
+                }
+                goalCardSection()
+                if store.shouldShowStreakGrid {
+                    streakAndLossGrid()
+                }
+            }
+            actionButtonsSection()
+                .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
+        }
+        .padding(.top, .zero)
     }
 
     // MARK: - Metric Grid Section
@@ -94,27 +90,28 @@ struct DashboardScreen: View {
                 metricCardView(for: item)
             }
         }
-        .padding(.top, .spacing3XL)
         .padding(.horizontal, .spacingSM)
         .id(store.gridLayoutId)
         .animation(.easeInOut(duration: 0.3), value: store.gridLayoutId)
     }
-    
+
     // MARK: - Metric Card View Helper
     private func metricCardView(for item: MetricItem) -> some View {
-        let isRemoved = store.isMetricRemovedInReorderedArray(at: store.metricsToShow.firstIndex(of: item) ?? 0)
+        let index = store.metricsToShow.firstIndex(of: item) ?? 0
+        let isRemoved = store.isMetricRemovedInReorderedArray(at: index)
+        let isSelected = store.selectedMetricLabel == item.label
         let verticalPadding = store.metricType == .twelve ? MetricCardView.twelveCardVerticalPadding : MetricCardView.fourCardVerticalPadding
-        
-        return MetricCardView(
+
+        let card = MetricCardView(
             value: store.formattedMetricValue(for: (item.preLabel, item.value)),
             label: item.label,
             metricType: store.metricType,
             isEditMode: store.isEditMode,
             isRemoved: isRemoved,
-            isSelected: store.selectedMetricLabel == item.label,
+            isSelected: isSelected,
             onToggleRemoval: {
-                if let index = store.metricsToShow.firstIndex(of: item) {
-                    store.toggleMetricRemovalInReorderedArray(at: index)
+                if let idx = store.metricsToShow.firstIndex(of: item) {
+                    store.toggleMetricRemovalInReorderedArray(at: idx)
                 }
             },
             onTap: {
@@ -125,32 +122,33 @@ struct DashboardScreen: View {
             onDropTargetChanged: { _ in },
             verticalPadding: verticalPadding
         )
-        .editModeOverlay(
-            isEditMode: store.isEditMode,
-            isRemoved: isRemoved,
-            onToggleRemoval: {
-                if let index = store.metricsToShow.firstIndex(of: item) {
-                    store.toggleMetricRemovalInReorderedArray(at: index)
+
+        return card
+            .editModeOverlay(
+                isEditMode: store.isEditMode,
+                isRemoved: isRemoved,
+                onToggleRemoval: {
+                    if let idx = store.metricsToShow.firstIndex(of: item) {
+                        store.toggleMetricRemovalInReorderedArray(at: idx)
+                    }
+                },
+                isBeingDragged: store.draggingMetric?.id == item.id,
+                isDropTarget: store.dropHoverId == item.label
+            )
+            .draggableReorder(
+                item: item,
+                draggingItem: $store.draggingMetric,
+                items: $store.metrics,
+                isDraggable: store.isEditMode && !isRemoved,
+                onDropTargetChanged: { isTargeted in
+                    store.dropHoverId = isTargeted ? item.label : nil
                 }
-            },
-            isBeingDragged: store.draggingMetric?.id == item.id,
-            isDropTarget: store.dropHoverId == item.label
-        )
-        .draggableReorder(
-            item: item,
-            draggingItem: $store.draggingMetric,
-            items: $store.metrics,
-            isDraggable: store.isEditMode && !isRemoved,
-            onDropTargetChanged: { isTargeted in
-                store.dropHoverId = isTargeted ? item.label : nil
+            )
+            .longPressGesture(isEditMode: store.isEditMode) {
+                handleMetricLongPress(for: item.label)
             }
-        )
-        .longPressGesture(isEditMode: store.isEditMode) {
-            // Handle long press for metric info
-            handleMetricLongPress(for: item.label)
-        }
     }
-    
+
     // MARK: - Streak and Loss Grid
     private func streakAndLossGrid() -> some View {
         LazyVGrid(columns: store.streakColumns, spacing: 16) {
@@ -164,12 +162,13 @@ struct DashboardScreen: View {
         .id(store.gridLayoutId)
         .animation(.easeInOut(duration: 0.3), value: store.gridLayoutId)
     }
-    
+
     // MARK: - Streak Card View Helper
     private func streakCardView(for item: MetricItem) -> some View {
-        let isRemoved = store.isStreakRemovedInReorderedArray(at: store.streakItemsToShow.firstIndex(of: item) ?? 0)
-        
-        return StreakCardView(
+        let index = store.streakItemsToShow.firstIndex(of: item) ?? 0
+        let isRemoved = store.isStreakRemovedInReorderedArray(at: index)
+
+        let card = StreakCardView(
             value: item.value,
             label: item.label,
             icon: item.icon,
@@ -177,46 +176,45 @@ struct DashboardScreen: View {
             isRemoved: isRemoved,
             isDropTarget: store.dropHoverId == item.label,
             onToggleRemoval: {
-                if let index = store.streakItemsToShow.firstIndex(of: item) {
-                    store.toggleStreakRemovalInReorderedArray(at: index)
+                if let idx = store.streakItemsToShow.firstIndex(of: item) {
+                    store.toggleStreakRemovalInReorderedArray(at: idx)
                 }
             },
             onDrop: { _, _ in true },
             onDropTargetChanged: { _ in }
         )
-        .editModeOverlay(
-            isEditMode: store.isEditMode,
-            isRemoved: isRemoved,
-            onToggleRemoval: {
-                if let index = store.streakItemsToShow.firstIndex(of: item) {
-                    store.toggleStreakRemovalInReorderedArray(at: index)
+
+        return card
+            .editModeOverlay(
+                isEditMode: store.isEditMode,
+                isRemoved: isRemoved,
+                onToggleRemoval: {
+                    if let idx = store.streakItemsToShow.firstIndex(of: item) {
+                        store.toggleStreakRemovalInReorderedArray(at: idx)
+                    }
+                },
+                isBeingDragged: store.draggingStreak?.id == item.id,
+                isDropTarget: store.dropHoverId == item.label
+            )
+            .draggableReorder(
+                item: item,
+                draggingItem: $store.draggingStreak,
+                items: $store.streakItems,
+                isDraggable: store.isEditMode && !isRemoved,
+                onDropTargetChanged: { isTargeted in
+                    store.dropHoverId = isTargeted ? item.label : nil
                 }
-            },
-            isBeingDragged: store.draggingStreak?.id == item.id,
-            isDropTarget: store.dropHoverId == item.label
-        )
-        .draggableReorder(
-            item: item,
-            draggingItem: $store.draggingStreak,
-            items: $store.streakItems,
-            isDraggable: store.isEditMode && !isRemoved,
-            onDropTargetChanged: { isTargeted in
-                store.dropHoverId = isTargeted ? item.label : nil
-            }
-        )
+            )
     }
-    
+
     // MARK: - Goal Progress Section
     private func goalCardSection() -> some View {
         if !store.isEditMode && store.isGoalCardRemoved {
             return AnyView(EmptyView())
         }
-        
-        return AnyView(
-            goalCardView()
-        )
+        return AnyView(goalCardView())
     }
-    
+
     // MARK: - Goal Card View Helper
     private func goalCardView() -> some View {
         GoalProgressCardView(
@@ -231,9 +229,7 @@ struct DashboardScreen: View {
         .editModeOverlay(
             isEditMode: store.isEditMode,
             isRemoved: store.isGoalCardRemoved,
-            onToggleRemoval: {
-                store.toggleGoalCardRemoval()
-            },
+            onToggleRemoval: { store.toggleGoalCardRemoval() },
             isBeingDragged: false,
             isDropTarget: false
         )
@@ -274,15 +270,67 @@ struct DashboardScreen: View {
         }
         .padding(.bottom, .spacingLG)
     }
-    
+
     // MARK: - Helper Methods
     private func handleMetricLongPress(for metricLabel: String) {
         // Update selection state if needed
         if store.selectedMetricLabel != metricLabel {
             store.selectMetric(metricLabel)
         }
-        
         // Open metric info sheet
         selectedMetricInfo = metricLabel
+    }
+
+    private func onAppearActions() {
+        store.loadLatestEntryData()
+        store.loadGoalCardData()
+        // Ensure chart shows the latest period for the current selected period when dashboard appears
+        if let latestDate = store.continuousOperations.map(\.date).max() {
+            let targetDate: Date
+            
+            switch store.selectedPeriod {
+            case .week:
+                // For week view, show the latest week
+                targetDate = latestDate
+            case .month:
+                // For month view, show the latest month
+                targetDate = latestDate
+            case .year:
+                // For year view, show the latest year
+                targetDate = latestDate
+            case .total:
+                // For total view, show the latest data
+                targetDate = latestDate
+            }
+            
+            store.updateScrollPositionDebounced(to: targetDate)
+        }
+    }
+
+    private func handleSelectedMetricInfoChange(_ newValue: String?) {
+        guard let label = newValue else { return }
+        store.selectedMetricLabel = label
+        selectedEntry = store.createEntryForMetricInfo()
+        selectedMetric = store.selectedBodyMetric
+        selectedMetricInfo = nil
+    }
+
+    private func handleSelectedMetricLabelChange(_ newValue: String?) {
+        if newValue == nil {
+            selectedEntry = nil
+            selectedMetric = nil
+        }
+    }
+
+    private func handleSelectedEntryChange(_ newValue: Entry?) {
+        if newValue == nil {
+            store.selectedMetricLabel = nil
+        }
+    }
+
+    private func handleMetricInfoSheetDismiss(_ newValue: MetricInfoWrapper?) {
+        if newValue == nil {
+            store.selectedMetricLabel = nil
+        }
     }
 }
