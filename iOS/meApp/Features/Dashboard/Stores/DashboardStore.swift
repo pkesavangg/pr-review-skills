@@ -6,15 +6,17 @@
 //
 
 import SwiftUI
-
-class DashboardStore: ObservableObject {
+import SwiftData
+import Combine
+@MainActor
+class DashboardStore: ObservableObject, EntryServiceDelegate {
     @Injector private var notificationService: NotificationHelperService
     @Injector private var accountService: AccountService
     @Injector private var logger : LoggerService
     @Published var isLoading: Bool = false
     @Published var loaderOverride: LoaderModel? = nil
     @Published var alertData: AlertModel? = nil
-    
+
     let lang = LoaderStrings.self
 
     @Published var metricType: DashboardMetricType = .twelve
@@ -36,10 +38,18 @@ class DashboardStore: ObservableObject {
     @Published var goalUnit: WeightUnit = .lb
     @Published var goalDelta: Double = 0.0
     @Published var goalProgress: CGFloat = 0.0
-    
+
+    @Published var dailySummaries: [BathScaleWeightSummary?] = []
+    @Published var monthlySummaries: [BathScaleWeightSummary?] = []
+    private var cancellables = Set<AnyCancellable>()
+
+    // Internal caches for fast incremental updates
+    private var dailyCache: [String: BathScaleWeightSummary] = [:]
+    private var monthlyCache: [String: BathScaleWeightSummary] = [:]
+
     private var latestWeightStored: Int = 0
     @Injector private var entryService: EntryService
-    
+
     var loaderData: Binding<LoaderModel?> {
         Binding(
             get: { self.loaderOverride ?? (self.isLoading ? LoaderModel(text: self.lang.saving) : nil) },
@@ -77,11 +87,15 @@ class DashboardStore: ObservableObject {
     init() {
         metrics = originalMetrics.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
         streakItems = originalStreakItems.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
+        DispatchQueue.main.async {
+          self.entryService.addDelegate(self)
+        }
         Task {
-            await loadLatestEntryData()
+            loadLatestEntryData()
+            await loadInitialData()
         }
     }
-    
+
     @MainActor
     func loadLatestEntryData() {
         Task {
@@ -98,69 +112,69 @@ class DashboardStore: ObservableObject {
             }
         }
     }
-    
+
     private func updateMetricsWithEntry(_ entry: Entry) {
         if let bmi = entry.scaleEntry?.bmi {
             let formattedValue = BodyMetricsConvertor.convert(Double(bmi), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
         }
-        
+
         if let bodyFat = entry.scaleEntry?.bodyFat {
             let formattedValue = BodyMetricsConvertor.convert(Double(bodyFat), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
         }
-        
+
         if let muscleMass = entry.scaleEntry?.muscleMass {
             let formattedValue = BodyMetricsConvertor.convert(Double(muscleMass), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
         }
-        
+
         if let water = entry.scaleEntry?.water {
             let formattedValue = BodyMetricsConvertor.convert(Double(water), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.water, value: formattedValue)
         }
-        
+
         if let pulse = entry.scaleEntryMetric?.pulse {
             let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true)
             updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
         }
-        
+
         if let boneMass = entry.scaleEntryMetric?.boneMass {
             let formattedValue = BodyMetricsConvertor.convert(Double(boneMass), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
         }
-        
+
         if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel {
             let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat), shouldCompose: false, wholeNumber: true)
             updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
         }
-        
+
         if let subFat = entry.scaleEntryMetric?.subcutaneousFatPercent {
             let formattedValue = BodyMetricsConvertor.convert(Double(subFat), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
         }
-        
+
         if let protein = entry.scaleEntryMetric?.proteinPercent {
             let formattedValue = BodyMetricsConvertor.convert(Double(protein), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
         }
-        
+
         if let skelMuscle = entry.scaleEntryMetric?.skeletalMusclePercent {
             let formattedValue = BodyMetricsConvertor.convert(Double(skelMuscle), shouldCompose: true, wholeNumber: false)
             updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
         }
-        
+
         if let bmr = entry.scaleEntryMetric?.bmr {
             let formattedValue = BodyMetricsConvertor.convert(Double(bmr), shouldCompose: false, wholeNumber: true)
             updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
         }
-        
+
         if let metabolicAge = entry.scaleEntryMetric?.metabolicAge {
             let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true)
             updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
         }
     }
-    
+
     private func updateMetricValue(for label: String, value: String) {
         if let index = metrics.firstIndex(where: { $0.label == label }) {
             metrics[index] = MetricItem(
@@ -229,7 +243,7 @@ class DashboardStore: ObservableObject {
             id: UUID(),
             entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
             accountId: "dashboard",
-            operationType: "create",
+            operationType: OperationType.create.rawValue,
             deviceType: "scale",
             isSynced: true
         )
@@ -255,7 +269,7 @@ class DashboardStore: ObservableObject {
         )
         return entry
     }
-    
+
     func createEntryForMetricInfo(metricLabel: String) -> Entry {
         return createEntryForMetricInfo()
     }
@@ -287,7 +301,7 @@ class DashboardStore: ObservableObject {
             metrics.append(metric)
             activeMetricsCount -= 1
         }
-        
+
         resetDragState()
     }
 
@@ -312,7 +326,7 @@ class DashboardStore: ObservableObject {
             streakItems.append(item)
             activeStreakItemsCount -= 1
         }
-        
+
         resetDragState()
     }
 
@@ -324,11 +338,11 @@ class DashboardStore: ObservableObject {
     func resetDashboard() {
         isLoading = true
         loaderOverride = LoaderModel(text: lang.saving)
-        
+
         selectedMetricLabel = nil
         isEditMode = false
         resetDragState()
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.isLoading = false
@@ -338,11 +352,11 @@ class DashboardStore: ObservableObject {
                 self.activeMetricsCount = self.originalMetrics.count
                 self.activeStreakItemsCount = self.originalStreakItems.count
                 self.isGoalCardRemoved = false
-                
+
                 self.selectedMetricLabel = nil
                 self.isEditMode = false
                 self.resetDragState()
-                
+
                 self.gridLayoutId = UUID()
             }
         }
@@ -368,10 +382,10 @@ class DashboardStore: ObservableObject {
     func saveChanges() {
         isLoading = true
         loaderOverride = LoaderModel(text: lang.saving)
-        
+
         selectedMetricLabel = nil
         resetDragState()
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.isLoading = false
@@ -430,7 +444,7 @@ class DashboardStore: ObservableObject {
         draggingMetric = nil
         draggingStreak = nil
         dropHoverId = nil
-        
+
         gridLayoutId = UUID()
     }
 
@@ -488,7 +502,7 @@ class DashboardStore: ObservableObject {
             return .weight
         }
     }
-    
+
     @MainActor
     private func displayWeight(fromStored stored: Int) -> Double {
         let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
@@ -509,16 +523,16 @@ class DashboardStore: ObservableObject {
                 if let latestWeight = latestEntry?.scaleEntry?.weight {
                     currentWeightStored = latestWeight
                 }
-                
+
                 guard let account = self.accountService.activeAccount,
-                      let goalSettings = account.goalSettings else { 
+                      let goalSettings = account.goalSettings else {
                     logger.log(level: .error, tag: "DashboardStore", message: "No account or goal settings found")
-                    return 
+                    return
                 }
-                
+
                 self.goalType = goalSettings.goalType ?? .gain
                 self.goalUnit = account.weightSettings?.weightUnit ?? .lb
-                
+
                 let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
                 self.goalStartWeight = self.displayWeight(fromStored: initialWeightStored)
                 if let goalW = goalSettings.goalWeight {
@@ -529,17 +543,126 @@ class DashboardStore: ObservableObject {
 
                 let totalDistance = abs(self.goalWeight - self.goalStartWeight)
                 let achievedDistance = abs(currentWeight - self.goalStartWeight)
-                
+
                 if totalDistance > 0 {
                     let progress = min(max(CGFloat(achievedDistance / totalDistance), 0), 1)
                     self.goalProgress = progress
                 } else {
                     self.goalProgress = 1.0
                 }
-                
+
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Error loading goal card data: \(error)")
             }
         }
     }
+}
+
+/// Dashboard store with incremental updates for daily and monthly summaries.
+
+extension DashboardStore {
+
+  /// Initial load: aggreconvenience gates all entries into daily and monthly summaries
+    func loadInitialData() async {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let entries = try await entryService.getAllEntries()
+            let daily = entryService.aggregateByDay(entries: entries, accountId: accountId)
+            let monthly = entryService.aggregateByMonth(entries: entries, accountId: accountId)
+            dailyCache = Dictionary(
+                uniqueKeysWithValues: daily.compactMap { summary in
+                    guard let summary = summary else { return nil }
+                    return (summary.period, summary)
+                }
+            )
+            monthlyCache = Dictionary(
+                uniqueKeysWithValues: monthly.compactMap { summary in
+                    guard let summary = summary else { return nil }
+                    return (summary.period, summary)
+                }
+            )
+            updatePublishedArrays()
+        } catch {
+            // Handle error (log, show alert, etc.)
+            print("Error loading initial dashboard data: \(error)")
+        }
+    }
+
+    /// Call this when a new entry is added
+    func onEntryAdded(_ entry: Entry) async {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+
+        // Fetch all entries for the affected day/month only
+        let dayEntries = await fetchEntriesForPeriod(dayKey, .day)
+        let monthEntries = await fetchEntriesForPeriod(monthKey, .month)
+
+        if let daySummary = entryService.aggregateByDay(entries: dayEntries, accountId: accountId).first {
+            dailyCache[dayKey] = daySummary
+        }
+        if let monthSummary = entryService.aggregateByMonth(entries: monthEntries, accountId: accountId).first {
+            monthlyCache[monthKey] = monthSummary
+        }
+        updatePublishedArrays()
+    }
+
+    /// Call this when an entry is deleted
+    func onEntryDeleted(_ entry: Entry) async {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+
+        // Fetch all entries for the affected day/month only
+        let dayEntries = await fetchEntriesForPeriod(dayKey, .day)
+        let monthEntries = await fetchEntriesForPeriod(monthKey, .month)
+
+      if let daySummary = entryService.aggregateByDay(entries: dayEntries, accountId: accountId).first {
+            dailyCache[dayKey] = daySummary
+        } else {
+            dailyCache.removeValue(forKey: dayKey)
+        }
+        if let monthSummary = entryService.aggregateByMonth(entries: monthEntries, accountId: accountId).first {
+            monthlyCache[monthKey] = monthSummary
+        } else {
+            monthlyCache.removeValue(forKey: monthKey)
+        }
+        updatePublishedArrays()
+    }
+
+    /// Call this when an entry is updated
+    func onEntryUpdated(_ entry: Entry) async {
+        // For simplicity, treat as delete+add
+        await onEntryDeleted(entry)
+        await onEntryAdded(entry)
+    }
+
+    // MARK: - Helpers
+    private func updatePublishedArrays() {
+        dailySummaries = Array(dailyCache.values).sorted { $0.period < $1.period }
+        monthlySummaries = Array(monthlyCache.values).sorted { $0.period < $1.period }
+    }
+
+    private enum PeriodType { case day, month }
+
+    private func fetchEntriesForPeriod(_ periodKey: String, _ type: PeriodType) async -> [Entry] {
+        // This assumes you have a way to fetch entries for a specific day or month from your repository/service
+        // You may need to implement these methods in your EntryService/Repository
+        do {
+            switch type {
+            case .day:
+                // periodKey: "yyyy-MM-dd"
+                return try await entryService.getEntries(forDay: periodKey)
+            case .month:
+                // periodKey: "yyyy-MM"
+                return try await entryService.getEntries(forMonth: periodKey)
+            }
+        } catch {
+            return []
+        }
+    }
+
 }

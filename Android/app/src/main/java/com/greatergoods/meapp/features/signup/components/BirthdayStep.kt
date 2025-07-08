@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.signup.components
 
 import androidx.compose.runtime.Composable
-import com.greatergoods.meapp.core.shared.utilities.DateTimeTools
+import com.greatergoods.meapp.core.shared.utilities.DateTimeUtil
 import com.greatergoods.meapp.features.common.components.AppStyledCard
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.DateTimeInput
@@ -20,29 +20,29 @@ import com.greatergoods.meapp.theme.MeTheme
  */
 @Composable
 fun BirthdayStep(birthdayControl: FormControl<DateTimeValue>) {
-    AppStyledCard(
-        cardAlignmentType = LocalCardAlignment.current,
-    ) {
-        AppText(SignupStrings.birthdayStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
-        DateTimeInput(
-            formControl = birthdayControl,
-            mode = DateTimeInputMode.Date,
-            maxValue = DateTimeValue.Date(DateTimeTools.getMinBirthdayOffsetForDatePicker()),
-        )
-    }
+  AppStyledCard(
+    cardAlignmentType = LocalCardAlignment.current,
+  ) {
+    AppText(SignupStrings.birthdayStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+    AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
+    DateTimeInput(
+      formControl = birthdayControl,
+      mode = DateTimeInputMode.Date,
+      maxValue = DateTimeValue.Date(DateTimeUtil.getMinBirthdayOffsetForDatePicker()),
+    )
+  }
 }
 
 @PreviewTheme
 @Composable
 fun BirthdayStepPreview() {
-    MeAppTheme {
-        BirthdayStep(
-            birthdayControl =
-                FormControl.create(
-                    DateTimeValue.Date(System.currentTimeMillis()),
-                    listOf(),
-                ),
-        )
-    }
+  MeAppTheme {
+    BirthdayStep(
+      birthdayControl =
+        FormControl.create(
+          DateTimeValue.Date(System.currentTimeMillis()),
+          listOf(),
+        ),
+    )
+  }
 }

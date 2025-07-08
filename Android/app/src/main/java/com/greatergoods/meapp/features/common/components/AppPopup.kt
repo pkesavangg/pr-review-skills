@@ -105,15 +105,20 @@ fun AppPopup(
                         Spacer(Modifier.height(MeTheme.spacing.lg + MeTheme.spacing.md))
                         imgType.image()
                     }
-
                 }
             }
+
+            val topPadding = if (imageType == null) MeTheme.spacing.lg + MeTheme.spacing.md else MeTheme.spacing.md
 
             Column(
                 modifier =
                     Modifier
-                        .padding(horizontal = MeTheme.spacing.md, vertical = MeTheme.spacing.lg)
-                        .fillMaxWidth(),
+                        .padding(
+                            top = topPadding,
+                            bottom = MeTheme.spacing.md,
+                            start = MeTheme.spacing.lg,
+                            end = MeTheme.spacing.lg,
+                        ).fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
             ) {
@@ -126,7 +131,6 @@ fun AppPopup(
                 }
                 heading?.let {
                     AppText(heading, TextType.Title, textAlign = TextAlign.Center)
-
                 }
                 supportingText?.let {
                     AppText(supportingText, TextType.Body, textAlign = TextAlign.Center)
