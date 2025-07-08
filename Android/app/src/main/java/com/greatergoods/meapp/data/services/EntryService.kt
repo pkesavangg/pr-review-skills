@@ -1,7 +1,9 @@
 // domain/service/EntryService.kt
 package com.greatergoods.meapp.data.services
 
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.services.EntryServiceHelper.processInitialWeight
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.domain.model.common.WeightUnit
@@ -48,18 +50,8 @@ constructor(
   override val last30Days = _last30Days.asStateFlow()
 
   // Common flows for account properties - initialized with defaults
-  private val weightUnitFlow = MutableStateFlow<WeightUnit?>(null)
-  private val weightLessFlow = MutableStateFlow<Weightless?>(null)
-
-  override val progress: Flow<Progress> = combine(
-    latestEntry,
-    last7Days,
-    last30Days,
-    weightUnitFlow,
-    weightLessFlow,
-  ) { latest, last7, last30, unit, weightLess ->
-    calculateProgress(latest, last7, last30, unit, weightLess)
-  }
+  private val weightLessFlow = accountRepository.getActiveAccountWeightlessFlow()
+  private val weightUnitFlow = accountRepository.getActiveAccountWeightUnitFlow()
 
   private val _lastUpdated = MutableStateFlow<Long?>(null)
   override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
@@ -70,13 +62,28 @@ constructor(
   override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> =
     combine(
       entryRepository.getMonthlyAverage(accountId ?: ""),
-      weightUnitFlow.asStateFlow(),
-      weightLessFlow.asStateFlow(),
+      weightUnitFlow,
+      weightLessFlow,
     ) { months, unit, weightLess ->
       months.map {
         it.process(unit, weightLess)
       }
     }
+
+  override val progress: Flow<Progress> = combine(
+    latestEntry,
+    last7Days,
+    last30Days,
+    weightUnitFlow,
+    weightLessFlow,
+  ) { latest, last7, last30, unit, weightLess ->
+    calculateProgress(
+      latest?.process(unit, weightLess),
+      last7.map { it.process(unit, weightLess) },
+      last30.map { it.process(unit, weightLess) },
+      processInitialWeight(initialWeight ?: 0.0, unit, weightLess),
+    )
+  }
 
   override suspend fun monthDetails(startDate: String): Flow<List<Entry>> {
     val input = startDate
@@ -86,8 +93,8 @@ constructor(
 
     return combine(
       entryRepository.getMonthDetail(accountId ?: "", monthParam),
-      weightUnitFlow.asStateFlow(),
-      weightLessFlow.asStateFlow(),
+      weightUnitFlow,
+      weightLessFlow,
     ) { entries, unit, weightLess ->
       entries.map { it.process(unit, weightLess) }
     }
@@ -125,23 +132,7 @@ constructor(
 
     // Update account-related flows
     try {
-      // Get the active account and update flows
-      val activeAccount = accountRepository.getActiveAccount().first()
-      activeAccount?.let { account ->
-        weightUnitFlow.value = account.weightUnit
-        initialWeight = account.initialWeight
-
-        // Update weightless flow if needed
-        if (account.isWeightlessOn == true && account.weightlessWeight != null) {
-          weightLessFlow.value = Weightless(
-            isWeightlessOn = true,
-            weightlessWeight = account.weightlessWeight,
-          )
-        } else {
-          weightLessFlow.value = null
-        }
-      }
-
+      this.initialWeight = accountRepository.getActiveAccount().first()?.initialWeight
       // Update latest entry - use first() to get the first value without blocking
       entryRepository.getLatestEntry(accountId)?.first()?.let { latest ->
         _latestEntry.value = latest
@@ -394,8 +385,7 @@ constructor(
     latestEntry: Entry?,
     last7Days: List<Entry>,
     last30Days: List<Entry>,
-    unit: WeightUnit?,
-    weightLess: Weightless?
+    initialWeight: Double?,
   ): Progress {
     if (accountId == null) {
       return Progress()
@@ -440,8 +430,33 @@ constructor(
         total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeight
       }
 
-      // Calculate year progress (simplified - using last 30 days for now)
-      year = month
+      val thirtyDaysAgoDate = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, 30)
+      }
+
+      if (initYear != null) {
+        val initYearTimestamp = Calendar.getInstance().apply {
+          time = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            .parse(initYear.entryTimestamp) ?: return Progress()
+        }
+
+        val thirtyDaysAgoDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+          .format(thirtyDaysAgoDate.time)
+        val initYearDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+          .format(initYearTimestamp.time)
+
+        if (initYearDateString >= thirtyDaysAgoDateString) {
+          // If initYear is within last 30 days, use initMonth for year calculation
+          if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
+            year = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
+          }
+        } else {
+          // If initYear is older than 30 days, use initYear for year calculation
+          if (latestEntry != null && initYear.avgWeight != null && latestEntry is ScaleEntry) {
+            year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
+          }
+        }
+      }
 
       // Get streak information
       val currentStreak = getCurrentStreak()
@@ -474,8 +489,8 @@ constructor(
   override fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getMonthlyBodyScaleAveragesWithJoin(this.accountId ?: ""),
-      weightUnitFlow.asStateFlow(),
-      weightLessFlow.asStateFlow(),
+      weightUnitFlow,
+      weightLessFlow,
     ) { summaries, unit, weightLess ->
       summaries.map { it.process(unit, weightLess) }
     }
@@ -486,8 +501,8 @@ constructor(
   override fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getMonthlyBodyScaleLatestWithJoin(this.accountId ?: ""),
-      weightUnitFlow.asStateFlow(),
-      weightLessFlow.asStateFlow(),
+      weightUnitFlow,
+      weightLessFlow,
     ) { summaries, unit, weightLess ->
       summaries.map { it.process(unit, weightLess) }
     }
@@ -498,8 +513,8 @@ constructor(
   override fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getDaywiseBodyScaleAveragesWithJoin(this.accountId ?: ""),
-      weightUnitFlow.asStateFlow(),
-      weightLessFlow.asStateFlow(),
+      weightUnitFlow,
+      weightLessFlow,
     ) { summaries, unit, weightLess ->
       summaries.map { it.process(unit, weightLess) }
     }
@@ -510,125 +525,11 @@ constructor(
   override fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getDaywiseBodyScaleLatestWithJoin(this.accountId ?: ""),
-      weightUnitFlow.asStateFlow(),
-      weightLessFlow.asStateFlow(),
+      weightUnitFlow,
+      weightLessFlow,
     ) { summaries, unit, weightLess ->
       summaries.map { it.process(unit, weightLess) }
     }
-
-  /**
-   * Gets the current progress for the active account.
-   * Calculates week, month, year, and total progress along with streak information.
-   * Implements the exact logic from the TypeScript version.
-   * @return The current progress information
-   */
-  override suspend fun getProgress(): Progress {
-    if (accountId == null) {
-      return Progress()
-    }
-
-    try {
-      var week = 0.0
-      var initWeek: Entry? = null
-      var month = 0.0
-      var initMonth: Entry? = null
-      var year = 0.0
-      var initYear: HistoryMonth? = null
-      var total = 0.0
-      var latestWeight: Entry? = null
-      var startingWeight: Double? = null
-      var oldestEntry: Entry? = null
-
-      // Get current state values - matching TypeScript implementation
-      latestWeight = _latestEntry.value
-      val last7DaysList = _last7Days.value
-      val last30DaysList = _last30Days.value
-
-      // Get monthly data for year calculation
-      val monthlyData = entryRepository.getMonthlyAverage(accountId!!).first()
-
-      // Get initial entries for each period - matching TypeScript logic
-      initWeek = if (last7DaysList.isNotEmpty()) last7DaysList.last() else null
-      initMonth = if (last30DaysList.isNotEmpty()) last30DaysList.last() else null
-      initYear = if (monthlyData.isNotEmpty()) monthlyData.last() else null
-
-      // Calculate week and month progress - matching TypeScript logic
-      if (latestWeight != null && initWeek != null && latestWeight is ScaleEntry && initWeek is ScaleEntry) {
-        week = latestWeight.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
-      }
-
-      if (latestWeight != null && initMonth != null && latestWeight is ScaleEntry && initMonth is ScaleEntry) {
-        month = latestWeight.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
-      }
-
-      // Get starting weight (either from account or oldest entry) - matching TypeScript logic
-      if (initialWeight != null && initialWeight != 0.0) {
-        startingWeight = initialWeight
-      } else {
-        oldestEntry = entryRepository.getOldestEntry(accountId!!)
-        if (oldestEntry is ScaleEntry) {
-          startingWeight = oldestEntry.scale.scaleEntry.weight.toDouble()
-        }
-      }
-
-      // Calculate total progress - matching TypeScript logic
-      if (latestWeight != null && startingWeight != null && latestWeight is ScaleEntry) {
-        total = latestWeight.scale.scaleEntry.weight.toDouble() - startingWeight
-      }
-
-      // Calculate year progress - implementing exact TypeScript logic
-      val thirtyDaysAgoDate = Calendar.getInstance().apply {
-        add(Calendar.DAY_OF_YEAR, -30)
-      }
-
-      if (initYear != null) {
-        val initYearTimestamp = Calendar.getInstance().apply {
-          time = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-            .parse(initYear.entryTimestamp) ?: return Progress()
-        }
-
-        val thirtyDaysAgoDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-          .format(thirtyDaysAgoDate.time)
-        val initYearDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-          .format(initYearTimestamp.time)
-
-        if (initYearDateString >= thirtyDaysAgoDateString) {
-          // If initYear is within last 30 days, use initMonth for year calculation
-          if (latestWeight != null && initMonth != null && latestWeight is ScaleEntry && initMonth is ScaleEntry) {
-            year = latestWeight.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
-          }
-        } else {
-          // If initYear is older than 30 days, use initYear for year calculation
-          if (latestWeight != null && initYear.avgWeight != null && latestWeight is ScaleEntry) {
-            year = latestWeight.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
-          }
-        }
-      }
-
-      // Get streak information
-      val currentStreak = getCurrentStreak()
-      val longestStreak = entryRepository.getLongestStreakCount(accountId!!)
-      val totalCount = entryRepository.getTotalCount(accountId!!)
-
-      return Progress(
-        latest = latestWeight,
-        currentStreak = currentStreak,
-        longestStreak = longestStreak,
-        count = totalCount,
-        initWt = initialWeight ?: 0.0,
-        week = week,
-        month = month,
-        year = year,
-        total = total,
-        initWeek = initWeek,
-        initMonth = initMonth,
-        initYear = initYear,
-      )
-    } catch (e: Exception) {
-      AppLog.e("EntryService", "Error getting progress", e.toString())
-      return Progress()
-    }
-  }
 
   /**
    * Calculates the current streak based on the TypeScript implementation.
@@ -722,6 +623,16 @@ internal object EntryServiceHelper {
     return entry.updateEntry(
       entry = updatedEntry,
     )
+  }
+
+  fun processInitialWeight(
+    weight: Double,
+    unit: WeightUnit?,
+    weightLess: Weightless?,
+  ): Double {
+
+    val convertedWeight = ConversionTools.convertStoredToDisplay(weight, unit == WeightUnit.KG)
+    return if (weightLess?.isWeightlessOn == true) convertedWeight - weightLess.weightlessWeight else convertedWeight
   }
 
   /**
