@@ -45,13 +45,13 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun ScaleDetailsScreen(scaleId: String) {
-    val viewModel: ScaleDetailsViewModel =
-        hiltViewModel<ScaleDetailsViewModel, ScaleDetailsViewModel.Factory>(
-            creationCallback = { factory ->
-                factory.create(scaleId)
-            },
-        )
-    val state by viewModel.state.collectAsState()
+  val viewModel: ScaleDetailsViewModel =
+    hiltViewModel<ScaleDetailsViewModel, ScaleDetailsViewModel.Factory>(
+      creationCallback = { factory ->
+        factory.create(scaleId)
+      },
+    )
+  val state by viewModel.state.collectAsState()
 
   BackHandler {
     viewModel.handleIntent(ScaleDetailsIntent.Back)
@@ -111,7 +111,7 @@ fun ScaleDetailsScreenContent(
               add(
                 SettingsItem(
                   title = ScaleDetailsStrings.Mode,
-                  type = SettingsItemType.Action(ScaleDetailsStrings.AllBodyMetrics),
+                  type = SettingsItemType.Action(scaleMode),
                   onClick = {
                     handleIntent(ScaleDetailsIntent.OpenScaleMode)
                   },
@@ -121,6 +121,9 @@ fun ScaleDetailsScreenContent(
                 SettingsItem(
                   title = ScaleDetailsStrings.DisplayMetrics,
                   type = SettingsItemType.Action(""),
+                  onClick = {
+                    handleIntent(ScaleDetailsIntent.OpenScaleDisplayMetrics)
+                  },
                 ),
               )
               add(
@@ -239,52 +242,52 @@ fun ScaleDetailsScreenContent(
 @PreviewTheme
 @Composable
 fun ScaleDetailsScreenPreview() {
-    val dummyDevice =
-        Device(
-            id = "1",
-            accountId = "1",
-            peripheralIdentifier = null,
-            nickname = null,
-            sku = "0412",
-            mac = null,
-            password = null,
-            isDeleted = false,
-            deviceName = "AccuCheck Verve Smart Scale",
-            deviceType = null,
-            broadcastId = null,
-            broadcastIdString = null,
-            userNumber = null,
-            protocolType = null,
-            createdAt = "June 27, 2023",
-            lastModified = null,
-            isSynced = false,
-            hasServerID = true,
-            isConnected = true,
-            wifiMac = "greatergoods1",
-            isWifiConfigured = true,
-            token = null,
-            scaleType = "Bluetooth/Wi-Fi",
-            bodyComp = true,
-            displayName = null,
-            displayMetrics = null,
-            shouldFactoryReset = false,
-            shouldMeasureImpedance = false,
-            shouldMeasurePulse = false,
-            timeFormat = null,
-            tzOffset = null,
-            wifiFotaScheduleTime = null,
-            prefsUpdatedAt = null,
-            modelNumber = null,
-            serialNumber = null,
-            firmwareRevision = null,
-            hardwareRevision = null,
-            softwareRevision = null,
-            manufacturerName = null,
-            systemId = null,
-            latestVersion = null,
-            hasNumericUsers = null,
-            isWeighOnlyModeEnabledByOthers = false,
-        )
-    val dummyState = ScaleDetailsState(scale = dummyDevice)
-    ScaleDetailsScreenContent(state = dummyState, handleIntent = {})
+  val dummyDevice =
+    Device(
+      id = "1",
+      accountId = "1",
+      peripheralIdentifier = null,
+      nickname = null,
+      sku = "0412",
+      mac = null,
+      password = null,
+      isDeleted = false,
+      deviceName = "AccuCheck Verve Smart Scale",
+      deviceType = null,
+      broadcastId = null,
+      broadcastIdString = null,
+      userNumber = null,
+      protocolType = null,
+      createdAt = "June 27, 2023",
+      lastModified = null,
+      isSynced = false,
+      hasServerID = true,
+      isConnected = true,
+      wifiMac = "greatergoods1",
+      isWifiConfigured = true,
+      token = null,
+      scaleType = "Bluetooth/Wi-Fi",
+      bodyComp = true,
+      displayName = null,
+      displayMetrics = null,
+      shouldFactoryReset = false,
+      shouldMeasureImpedance = false,
+      shouldMeasurePulse = false,
+      timeFormat = null,
+      tzOffset = null,
+      wifiFotaScheduleTime = null,
+      prefsUpdatedAt = null,
+      modelNumber = null,
+      serialNumber = null,
+      firmwareRevision = null,
+      hardwareRevision = null,
+      softwareRevision = null,
+      manufacturerName = null,
+      systemId = null,
+      latestVersion = null,
+      hasNumericUsers = null,
+      isWeighOnlyModeEnabledByOthers = false,
+    )
+  val dummyState = ScaleDetailsState(scale = dummyDevice)
+  ScaleDetailsScreenContent(state = dummyState, handleIntent = {})
 }
