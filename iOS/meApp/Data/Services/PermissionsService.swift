@@ -10,7 +10,7 @@ import GGBluetoothSwiftPackage
 import Combine
 
 @MainActor
-final class PermissionsService: ObservableObject {
+final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // Shared singleton instance for global access. Prefer DI for new code when possible.
     static let shared = PermissionsService()
 
