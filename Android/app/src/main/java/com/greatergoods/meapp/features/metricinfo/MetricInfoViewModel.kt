@@ -21,7 +21,7 @@ class MetricInfoViewModel @AssistedInject constructor(
 
   @AssistedFactory
   interface Factory {
-    fun create(info: DashboardMetric, key: MetricKey = MetricKey.BMI): MetricInfoViewModel
+    fun create(info: DashboardMetric, key: MetricKey = MetricKey.WEIGHT): MetricInfoViewModel
   }
 
   init {
@@ -36,6 +36,10 @@ class MetricInfoViewModel @AssistedInject constructor(
       is MetricInfoIntent.SelectSegment -> {
         val stat = StatHelper.getMetricValue(info, intent.key)
         handleIntent(MetricInfoIntent.SetStat(stat))
+      }
+
+      is MetricInfoIntent.OpenResource -> {
+        openInAppBrowser(intent.resource)
       }
 
       else -> Unit

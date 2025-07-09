@@ -1,29 +1,38 @@
 package com.greatergoods.meapp.features.metricinfo
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
+import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.SegmentButtonGroup
 import com.greatergoods.meapp.features.common.components.SegmentButtonSize
 import com.greatergoods.meapp.features.common.components.SegmentButtonType
-import com.greatergoods.meapp.features.common.helper.graph.dateRangeFormatter
-import com.greatergoods.meapp.features.common.helper.graph.monthDayFormatter
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.metricinfo.components.MetricInfoInfoSection
 import com.greatergoods.meapp.features.metricinfo.components.MetricInfoResourcesSection
 import com.greatergoods.meapp.features.metricinfo.components.MetricInfoValueSection
 import com.greatergoods.meapp.features.metricinfo.strings.MetricInfoStrings
+import com.greatergoods.meapp.features.metricinfo.strings.fullDateFormatter
+import com.greatergoods.meapp.features.metricinfo.strings.fullMonthYearFormatter
 import com.greatergoods.meapp.proto.MetricKey
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import java.time.Instant
 import java.time.ZoneId
@@ -41,8 +50,8 @@ enum class MetricInfoSource {
 
 fun getFormattedDate(timestamp: Long, source: MetricInfoSource): String {
   val formatter = when (source) {
-    MetricInfoSource.DAY -> dateRangeFormatter
-    MetricInfoSource.MONTH -> monthDayFormatter
+    MetricInfoSource.DAY -> fullDateFormatter
+    MetricInfoSource.MONTH -> fullMonthYearFormatter
   }
   val zone = ZoneId.systemDefault()
   val startDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
@@ -57,12 +66,12 @@ fun getFormattedDate(timestamp: Long, source: MetricInfoSource): String {
 @Composable
 fun MetricInfoScreen(
   info: DashboardMetric,
-  key: MetricKey = MetricKey.BMI,
+  key: MetricKey = MetricKey.WEIGHT,
   source: MetricInfoSource = MetricInfoSource.DAY
 ) {
   val viewModel = hiltViewModel<MetricInfoViewModel, MetricInfoViewModel.Factory>(
     creationCallback = { factory ->
-      factory.create(info)
+      factory.create(info, key)
     },
   )
   val state by viewModel.state.collectAsState()
@@ -94,12 +103,15 @@ fun MetricInfoScreenContent(
   date: String,
   handleIntent: (MetricInfoIntent) -> Unit,
 ) {
+  val scope = rememberCoroutineScope()
+  val backStack = LocalNavBackStack.current
+  val verticalScrollState = rememberScrollState()
   val metricKeys = MetricKey.entries
     .filter { it != MetricKey.UNRECOGNIZED }
     .map {
       MetricInfoKey(
         key = it,
-        label = it.name.replace('_', ' '),
+        label = it.name.replace("_", " "),
       )
     }
 
@@ -109,13 +121,20 @@ fun MetricInfoScreenContent(
     title = MetricInfoStrings.AppBarTitle,
     containerColor = MeTheme.colorScheme.secondaryBackground,
     appBarColor = MeTheme.colorScheme.primaryBackground,
+    navigationIcon = {
+      AppIconButton(AppIcons.Default.Close) {
+        scope.launch {
+          backStack.removeLast()
+        }
+      }
+    },
   ) { modifier ->
     Column(
-      modifier = modifier
-        .padding(horizontal = MeTheme.spacing.sm),
+      modifier = modifier.verticalScroll(verticalScrollState),
     ) {
       SegmentButtonGroup(
         data = metricKeys,
+        contentPadding = PaddingValues(horizontal = MeTheme.spacing.sm),
         selectedData = selectedMetricInfoKey,
         key = MetricInfoKey::label,
         size = SegmentButtonSize.Small,
@@ -124,9 +143,15 @@ fun MetricInfoScreenContent(
           handleIntent(MetricInfoIntent.SelectSegment(it.key))
         },
       )
-      MetricInfoValueSection(value = stat.getDisplayValue(), unit = stat.unit, date = date)
-      MetricInfoInfoSection()
-      MetricInfoResourcesSection()
+      Column(
+        modifier = modifier
+          .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+        verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xl),
+      ) {
+        MetricInfoValueSection(value = stat.getDisplayValue(), unit = stat.unit, date = date)
+        MetricInfoInfoSection(metricKey = selectedMetricInfoKey.key)
+        MetricInfoResourcesSection(metricKey = selectedMetricInfoKey.key, handleIntent = handleIntent)
+      }
     }
   }
 }

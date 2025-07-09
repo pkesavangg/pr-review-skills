@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.dashboard.viewmodel
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 
@@ -19,7 +20,10 @@ data class DashboardState(
   val visibleKeys: List<DashboardKey> = emptyList(),
   val dayWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
   val monthWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
-  val progress: Progress = Progress()
+  val progress: Progress = Progress(),
+  val selectedSegment: GraphSegment = GraphSegment.WEEK,
+  val selectedStat: Stat? = null,
+  val metricData: List<PeriodBodyScaleSummary> = emptyList(),
 ) : IReducer.State
 
 /**
@@ -34,6 +38,9 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetIsLoading(val isLoading: Boolean) : DashboardIntent
   data class SetProgress(val progress: Progress) : DashboardIntent
   data class SaveDashboardMetrics(val visibleMetrics: List<Stat>) : DashboardIntent
+  data class SetSelectedSegment(val segment: GraphSegment) : DashboardIntent
+  data class SetSelectedStat(val stat: Stat?) : DashboardIntent
+  data class SetMetricData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
 }
 
 /**
@@ -46,6 +53,9 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetIsLoading -> state.copy(isLoading = intent.isLoading)
     is DashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys)
     is DashboardIntent.SetProgress -> state.copy(progress = intent.progress)
+    is DashboardIntent.SetSelectedSegment -> state.copy(selectedSegment = intent.segment)
+    is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
+    is DashboardIntent.SetMetricData -> state.copy(metricData = intent.data)
     DashboardIntent.LoadEntries -> state.copy(isLoading = true)
     else -> state
   }

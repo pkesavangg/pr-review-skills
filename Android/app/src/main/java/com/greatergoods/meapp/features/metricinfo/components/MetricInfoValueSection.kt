@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.metricinfo.strings.MetricInfoStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
@@ -43,7 +44,7 @@ fun MetricInfoValueSection(value: String? = null, unit: String? = null, date: St
         )
     }
     Text(
-      text = date,
+      text = MetricInfoStrings.MeasurementTaken.plus(" $date").lowercase(),
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )

@@ -20,6 +20,7 @@ sealed interface MetricInfoIntent : IReducer.Intent {
   data class SelectSegment(val key: MetricKey) : MetricInfoIntent
   data class SetMetricInfo(val info: DashboardMetric) : MetricInfoIntent
   data class SetStat(val stat: Stat) : MetricInfoIntent
+  data class OpenResource(val resource: String) : MetricInfoIntent
 }
 
 /**

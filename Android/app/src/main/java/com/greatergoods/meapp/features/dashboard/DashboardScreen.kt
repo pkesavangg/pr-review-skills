@@ -21,14 +21,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummary
-import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.common.enums.GraphSegment
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.getSourceFromSegment
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
-import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.dashboard.components.DashboardControlPanel
 import com.greatergoods.meapp.features.dashboard.components.DashboardMetrics
 import com.greatergoods.meapp.features.dashboard.components.DashboardMilestone
@@ -69,24 +66,17 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
   val scrollState = rememberScrollState()
   val scope = rememberCoroutineScope()
   val navBackStack = LocalNavBackStack.current
-  var metricData: List<PeriodBodyScaleSummary> by remember {
-    mutableStateOf(listOf())
-  }
-  var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
-
-  var selectedStat: Stat? by remember {
-    mutableStateOf(null)
-  }
-  var inEditMode by remember {
-    mutableStateOf(false)
-  }
+  var inEditMode by remember { mutableStateOf(false) }
   var currentVisibleMetrics by remember(state.visibleKeys) {
     mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Metric })
   }
-
   var currentVisibleMilestones by remember(state.visibleKeys) {
     mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Milestone })
   }
+
+  val selectedSegment = state.selectedSegment
+  val selectedStat = state.selectedStat
+  val metricData = state.metricData
 
   AppScaffold(title = null) {
     Column(modifier = Modifier.verticalScroll(scrollState)) {
@@ -95,10 +85,10 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         selectedSegment = selectedSegment,
         selectedStat = selectedStat,
         onSelectSegment = {
-          selectedSegment = it
+          handleIntent(DashboardIntent.SetSelectedSegment(it))
         },
         onSelected = {
-          metricData = it
+          handleIntent(DashboardIntent.SetMetricData(it))
         },
       )
       DashboardMetrics(
@@ -107,7 +97,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         visibleKeys = currentVisibleMetrics,
         selectedStat = selectedStat,
         onMetricClick = { stat ->
-          selectedStat = stat
+          handleIntent(DashboardIntent.SetSelectedStat(stat))
         },
         onMetricsChanged = { visibleMetrics ->
           currentVisibleMetrics = visibleMetrics
@@ -142,8 +132,10 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             navBackStack.addRoute(
               route = AppRoute.Dashboard.MetricInfo(
                 info = fromPeriodSummary(metricData.first()),
-                key = (selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.BMI,
-                source = getSourceFromSegment(selectedSegment),
+                key = (selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
+                source = getSourceFromSegment(
+                  selectedSegment,
+                ),
               ),
             )
           }
