@@ -24,6 +24,8 @@ struct WeightDisplayView: View {
         }
         .padding(.leading, 14)
         .frame(height: 55)
+        // React to unit changes by forcing a redraw
+        .id(unitText) // This forces a redraw when the unit changes
     }
 }
 

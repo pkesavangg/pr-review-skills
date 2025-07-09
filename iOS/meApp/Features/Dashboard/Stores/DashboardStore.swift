@@ -53,23 +53,22 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     private var latestWeightStored: Int = 0
     @Injector private var entryService: EntryService
     
-    // MARK: - Graph Properties (merged from GraphStore)
-    @Published var selectedEntry: BathScaleWeightSummary? = nil
-    @Published var annotationHeight: CGFloat = 0
-    @Published var selectedPointY: CGFloat = 0
-    @Published var chartHeight: CGFloat = 0
-    @Published var currentDateRange: ClosedRange<Date> = Date()...Date()
-    @Published var isAnimating: Bool = false
-    @Published var selectedWeight: Double? = nil
+    // MARK: - Graph Properties
+    @Published var selectedEntry: BathScaleOperationDTO? = nil
     @Published var selectedPeriod: TimePeriod = .week
     @Published var xScrollPosition: Date = Date()
+    @Published var selectedWeight: Double? = nil
+    @Published var scrollEndTimer: Timer?
+    @Published var chartHeight: CGFloat = 0
+    @Published var annotationHeight: CGFloat = 0
     
-    // Add debounce mechanism for scroll position updates to prevent multiple updates per frame
-    // This fixes the "onChange(of: ChartScrollPositionConfiguration) action tried to update multiple times per frame" error
-    private var lastScrollPositionUpdate: Date = Date()
-    var isProgrammaticallyUpdatingScroll: Bool = false
+    // Crosshair and scroll state
+    @Published var showCrosshair: Bool = false
+    @Published var selectedPoint: BathScaleWeightSummary? = nil
+    @Published var selectedXValue: Date? = nil
+    @Published var isScrolling: Bool = false
+    @Published var hasDetectedScrollInCurrentGesture: Bool = false
     
-    let yAxisTicks: [Double] = stride(from: 175, through: 190, by: 5).map { $0 }
     private let calendar = Calendar.current
 
     var loaderData: Binding<LoaderModel?> {
@@ -111,45 +110,12 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     init() {
         metrics = originalMetrics.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
         streakItems = originalStreakItems.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
-//        DispatchQueue.main.async {
-//            self.entryService.addDelegate(self)
-//        }
-//        Task {
-//            loadLatestEntryData()
-//            await loadInitialData()
-//        }
-//        
-//        // Watch for unit changes
-//        accountService.$activeAccount
-//            .sink { [weak self] account in
-//                if account != nil {
-//                    self?.onUnitChanged()
-//                }
-//            }
-//            .store(in: &cancellables)
-//        
-//        // Watch for weightless settings changes
-//        accountService.$activeAccount
-//            .sink { [weak self] account in
-//                if account != nil {
-//                    self?.onWeightlessSettingsChanged()
-//                }
-//            }
-//            .store(in: &cancellables)
-//    }
-    
-//    /// Call this when the weight unit changes to refresh all relevant data and UI.
-//    @MainActor
-//    func onUnitChanged() {
-//        loadGoalCardData()
-//        refreshGraphData()
-//    }
-//    
-//    /// Call this when weightless settings change to refresh all relevant data and UI.
-//    @MainActor
-//    func onWeightlessSettingsChanged() {
-//        refreshGraphData()
-//        objectWillChange.send()
+        
+        // Initialize data loading
+        Task {
+            loadLatestEntryData()
+            await loadInitialData()
+        }
     }
     
     // MARK: - Graph Computed Properties (merged from GraphStore)
@@ -194,34 +160,108 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         return result
     }
     
-    var weightLabel: String? {
-        guard !continuousOperations.isEmpty else { return nil }
-        
+    var weightLabel: String {
+        guard !continuousOperations.isEmpty else {
+            return fallbackTimeLabel()
+        }
+
+        // If a point is selected, show its date
+        if let selectedEntry = selectedEntry {
+            if let date = selectedEntry.date {
+                return formatSelectedDate(date)
+            }
+            if let originalSummary = findOriginalSummary(for: selectedEntry) {
+                return formatSelectedDate(originalSummary.date)
+            }
+        }
+
+        // Otherwise show the period range for visible data
         let visibleOps = getVisibleOperations()
         let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
         guard let minDate = opsToUse.map(\.date).min(),
-              let maxDate = opsToUse.map(\.date).max() else { return nil }
-        
+              let maxDate = opsToUse.map(\.date).max() else {
+            return fallbackTimeLabel()
+        }
+
         switch selectedPeriod {
         case .week:
-            // Show date range for the week
             let month = DateTimeTools.formatter("LLL").string(from: minDate)
             let startDay = calendar.component(.day, from: minDate)
             let endDay = calendar.component(.day, from: maxDate)
             let year = calendar.component(.year, from: maxDate)
             return "\(month) \(startDay)-\(endDay), \(year)"
         case .month:
-            // Show month and year
             return DateTimeTools.formatter("LLL yyyy").string(from: minDate)
         case .year:
-            // Show year
             return DateTimeTools.formatter("yyyy").string(from: minDate)
         case .total:
-            // Show year range for total view
-            let minYear = calendar.component(.year, from: continuousOperations.map(\.date).min() ?? Date())
-            let maxYear = calendar.component(.year, from: continuousOperations.map(\.date).max() ?? Date())
+            let minYear = calendar.component(.year, from: minDate)
+            let maxYear = calendar.component(.year, from: maxDate)
             return minYear == maxYear ? "\(minYear)" : "\(minYear)-\(maxYear)"
         }
+    }
+
+    private func fallbackTimeLabel() -> String {
+        let now = Date()
+        
+        switch selectedPeriod {
+        case .week:
+            let formatter = DateTimeTools.formatter("MMM d")
+            if let week = calendar.dateInterval(of: .weekOfYear, for: now) {
+                let start = formatter.string(from: week.start)
+                let end = DateTimeTools.formatter("d").string(from: week.end.addingTimeInterval(-1))
+                let year = calendar.component(.year, from: now)
+                return "\(start)-\(end), \(year)"
+            }
+
+            // If week interval fails, manually calculate 7-day range
+            let start = formatter.string(from: calendar.date(byAdding: .day, value: -3, to: now) ?? now)
+            let end = formatter.string(from: calendar.date(byAdding: .day, value: 3, to: now) ?? now)
+            let year = calendar.component(.year, from: now)
+            return "\(start)-\(end), \(year)"
+            
+        case .month:
+            return DateTimeTools.formatter("LLLL yyyy").string(from: now)
+            
+        case .year, .total:
+            return DateTimeTools.formatter("yyyy").string(from: now)
+        }
+    }
+
+    
+    /// Find the original BathScaleWeightSummary for a selected DTO
+    private func findOriginalSummary(for dto: BathScaleOperationDTO) -> BathScaleWeightSummary? {
+        return continuousOperations.first { summary in
+            summary.entryTimestamp == dto.entryTimestamp
+        }
+    }
+    
+    /// Format date for selected point display
+    /// Shows "Jul 5, 2024" for week/month periods
+    /// Shows "Jul 2024" for year/total periods
+    private func formatSelectedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        switch selectedPeriod {
+        case .week, .month:
+            formatter.dateFormat = "MMM d, yyyy"
+        case .year, .total:
+            formatter.dateFormat = "MMM yyyy"
+        }
+        return formatter.string(from: date)
+    }
+    
+    /// Format date for chart annotation display
+    /// Shows "Jul 5" for week/month periods
+    /// Shows "Jul 2024" for year/total periods
+    func formatChartDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        switch selectedPeriod {
+        case .week, .month:
+            formatter.dateFormat = "MMM d"
+        case .year, .total:
+            formatter.dateFormat = "MMM yyyy"
+        }
+        return formatter.string(from: date)
     }
     
     var displayWeight: Double? {
@@ -321,15 +361,15 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     /// In weightless mode, shows +/- prefix for differences from anchor weight
     /// In normal mode, shows actual weight values
     func formatWeightDisplayText(_ weight: Double?) -> String {
-        guard let weight = weight else { return "0.0" }
+        guard let weight = weight else { return "0" }
         
         if isWeightlessModeEnabled {
             // Show +/- prefix for weightless mode
             let prefix = weight >= 0 ? "+" : ""
-            return String(format: "%@%.1f", prefix, weight)
+            return String(format: "%@%.0f", prefix, weight)
         } else {
-            // Show normal weight
-            return String(format: "%.1f", weight)
+            // Show normal weight as whole number
+            return String(format: "%.0f", weight)
         }
     }
     
@@ -763,6 +803,177 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
     
+    /// Handle unit change specifically
+    @MainActor
+    func handleUnitChange() {
+        loadGoalCardData()
+        objectWillChange.send()
+    }
+    
+    /// Handle weightless mode change specifically
+    @MainActor
+    func handleWeightlessModeChange() {
+        objectWillChange.send()
+    }
+    
+    /// Handle account changes efficiently
+    @MainActor
+    func handleAccountChange() {
+        loadGoalCardData()
+        objectWillChange.send()
+    }
+    
+    /// Handle entry changes (add/update/delete) with unit and weightless mode updates
+    @MainActor
+    func handleEntryChange() {
+        Task {
+            await loadInitialData()
+            loadLatestEntryData()
+            loadGoalCardData()
+            handleSettingsChange()
+            if let latestDate = continuousOperations.map(\.date).max() {
+                updateScrollPositionDebounced(to: latestDate)
+            }
+        }
+    }
+    
+    /// Handle settings changes (unit, weightless mode, etc.)
+    @MainActor
+    func handleSettingsChange() {
+        loadGoalCardData()
+        objectWillChange.send()
+    }
+    
+    /// Get current unit for reactive updates
+    var currentUnit: WeightUnit {
+        accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+    }
+    
+    /// Get current weightless mode for reactive updates
+    var currentWeightlessMode: Bool {
+        accountService.activeAccount?.weightlessSettings?.isWeightlessOn ?? false
+    }
+    
+    // MARK: - Scroll Handling
+    
+    /// Update scroll position with debouncing to prevent performance issues
+    @MainActor
+    func updateScrollPositionDebounced(to date: Date) {
+        scrollEndTimer?.invalidate()
+        scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.xScrollPosition = date
+            }
+        }
+    }
+        
+    /// Handle scroll end - disables dynamic Y-axis updates after a delay
+    @MainActor
+    func handleScrollEnd() {
+        scrollEndTimer?.invalidate()
+        scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.isScrolling = false
+                self?.showCrosshair = false
+                self?.selectedXValue = nil
+                self?.selectedPoint = nil
+                self?.selectEntry(nil)
+                self?.objectWillChange.send()
+            }
+        }
+    }
+    
+    /// Handle scroll start - enables dynamic Y-axis updates
+    @MainActor
+    func handleScrollStart() {
+        scrollEndTimer?.invalidate()
+        
+        if !isScrolling {
+            isScrolling = true
+            // Clear selection when scrolling starts
+            showCrosshair = false
+            selectedXValue = nil
+            selectedPoint = nil
+            selectEntry(nil)
+            objectWillChange.send()
+        }
+    }
+    
+    /// Handle chart selection at a specific date
+    @MainActor
+    func handleChartSelection(at selectedDate: Date) {
+        // Only handle selection if not currently scrolling
+        guard !isScrolling else { return }
+        
+        // Hide any existing crosshair first
+        showCrosshair = false
+        
+        guard !continuousOperations.isEmpty else { return }
+        
+        // Find the closest data point to the selected date
+        let selectedPoint = continuousOperations.min { point1, point2 in
+            abs(point1.date.timeIntervalSince(selectedDate)) < abs(point2.date.timeIntervalSince(selectedDate))
+        }
+        
+        guard let selectedPoint = selectedPoint else { 
+            // Clear selection if no point found
+            self.selectedPoint = nil
+            selectEntry(nil)
+            return 
+        }
+        
+        // Set the selected point and show crosshair
+        self.selectedPoint = selectedPoint
+        selectEntry(selectedPoint)
+        
+        // Force UI update
+        DispatchQueue.main.async {
+            self.showCrosshair = true
+        }
+    }
+    
+    /// Handle scroll gesture detection
+    @MainActor
+    func handleScrollGestureChanged(translation: CGSize) {
+        // Only detect horizontal scrolling gestures
+        let isHorizontalScroll = abs(translation.width) > abs(translation.height) * 1.5
+        let isSignificantMovement = abs(translation.width) > 8
+        
+        if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
+            hasDetectedScrollInCurrentGesture = true
+            handleScrollStart()
+        }
+    }
+    
+    /// Handle scroll gesture ended
+    @MainActor
+    func handleScrollGestureEnded(translation: CGSize) {
+        // Reset for next gesture
+        hasDetectedScrollInCurrentGesture = false
+        
+        // Only handle if it was a horizontal scroll
+        let isHorizontalScroll = abs(translation.width) > abs(translation.height) * 1.5
+        let isSignificantMovement = abs(translation.width) > 8
+        
+        if isHorizontalScroll && isSignificantMovement {
+            handleScrollEnd()
+        }
+    }
+    
+    /// Ensure chart shows the latest entries by default
+    /// This method should be called when data is loaded or when switching periods
+    @MainActor
+    func ensureLatestEntriesVisible() {
+        guard let latestDate = continuousOperations.map(\.date).max() else { return }
+        xScrollPosition = latestDate
+    }
+    
+    /// Get the latest date from all operations
+    /// This is used to set the initial scroll position
+    var latestDate: Date? {
+        return continuousOperations.map(\.date).max()
+    }
+    
     @MainActor
     func loadGoalCardData() {
         Task { [weak self] in
@@ -810,18 +1021,17 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     /// Refresh graph data when unit changes
     @MainActor
     func refreshGraphData() {
-        // Force refresh of Y-axis ticks and scale domain
         objectWillChange.send()
     }
     
-    /// Refresh all dashboard data including metrics, graph, and goal data
+    /// Refresh all dashboard data
     @MainActor
     func refreshDashboardData() {
         Task {
             await loadInitialData()
             loadLatestEntryData()
             loadGoalCardData()
-            // Ensure chart shows the latest entry after refresh
+            handleSettingsChange()
             if let latestDate = continuousOperations.map(\.date).max() {
                 updateScrollPositionDebounced(to: latestDate)
             }
@@ -835,7 +1045,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             await loadInitialData()
             loadLatestEntryData()
             loadGoalCardData()
-            // Ensure chart shows the latest entry after refresh
+            handleSettingsChange()
             if let latestDate = continuousOperations.map(\.date).max() {
                 updateScrollPositionDebounced(to: latestDate)
             }
@@ -849,7 +1059,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             await loadInitialData()
             loadLatestEntryData()
             loadGoalCardData()
-            // Ensure chart shows the latest entry after refresh
+            handleSettingsChange()
             if let latestDate = continuousOperations.map(\.date).max() {
                 updateScrollPositionDebounced(to: latestDate)
             }
@@ -902,32 +1112,23 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     
     func updateSelectedPeriod(_ period: TimePeriod) {
         selectedPeriod = period
-        // Keep scroll position at the latest date when switching periods
-        if let latestDate = continuousOperations.map(\.date).max() {
-            updateScrollPositionDebounced(to: latestDate)
-        }
+        // Ensure chart shows the latest entries when switching periods
+        ensureLatestEntriesVisible()
         selectedWeight = displayWeight
     }
     
-    /// Simplified scroll position update without excessive debouncing
-    func updateScrollPositionDebounced(to newPosition: Date) {
-        // Update immediately
-        isProgrammaticallyUpdatingScroll = true
-        xScrollPosition = newPosition
-        lastScrollPositionUpdate = Date()
-        
-        // Reset flag after a short delay
-        Task {
-            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
-            await MainActor.run {
-                self.isProgrammaticallyUpdatingScroll = false
-            }
-        }
-    }
+
     
     func selectEntry(_ entry: BathScaleWeightSummary?) {
-        selectedEntry = entry
-        selectedWeight = entry.map { convertStoredWeightToDisplay(Int($0.weight)) }
+        if let entry = entry {
+            selectedEntry = BathScaleOperationDTO(from: entry)
+            selectedWeight = convertStoredWeightToDisplay(Int(entry.weight))
+        } else {
+            selectedEntry = nil
+            selectedWeight = nil
+        }
+        // Force UI update to refresh weightLabel
+        objectWillChange.send()
     }
     
     func handleChartTap(at location: CGPoint, proxy: ChartProxy) {
@@ -945,16 +1146,13 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
     
     /// Calculate Y-axis range with proper padding and scaling
-    /// This provides a clean, readable scale that adapts to the data
     func calculateYAxisRange() -> ClosedRange<Double> {
         let weightValues = continuousOperations.map { summary -> Double in
             if isWeightlessModeEnabled {
-                // In weightless mode, calculate differences from anchor weight
                 guard let anchorWeight = weightlessAnchorWeight else { return 0 }
                 let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
                 return currentWeight - anchorWeight
             } else {
-                // Normal mode - use actual weights
                 return convertStoredWeightToDisplay(Int(summary.weight))
             }
         }
@@ -963,7 +1161,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         let allValues = weightValues + metricValues
         guard !allValues.isEmpty else { 
             if isWeightlessModeEnabled {
-                // For weightless mode, use a reasonable range for differences
                 return -10.0...10.0
             } else {
                 let defaultRange = accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70.0...90.0 : 170.0...190.0
@@ -974,14 +1171,9 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         let minValue = allValues.min() ?? (isWeightlessModeEnabled ? -10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70 : 170))
         let maxValue = allValues.max() ?? (isWeightlessModeEnabled ? 10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 90 : 190))
         
-        // Calculate the actual data range
         let dataRange = maxValue - minValue
-        
-        // For very small ranges, ensure we have enough visual space
         let minRange = isWeightlessModeEnabled ? 2.0 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 2.0 : 5.0)
         let effectiveRange = max(dataRange, minRange)
-        
-        // Add padding to prevent clipping (10% on each side)
         let padding = effectiveRange * 0.1
         
         return (minValue - padding)...(maxValue + padding)
@@ -1022,34 +1214,27 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
     
     /// Get Y-axis ticks with proper spacing for the current data range
-    /// This creates evenly spaced, readable tick marks
     func getYAxisTicks() -> [Double] {
         let range = calculateYAxisRange()
         let minValue = range.lowerBound
         let maxValue = range.upperBound
         let dataRange = maxValue - minValue
         
-        // Calculate optimal number of ticks (5-7 ticks for readability)
         let optimalTickCount = 6
         let roughStep = dataRange / Double(optimalTickCount - 1)
-        
-        // Normalize step to human-friendly increments
         let normalizedStep = normalizeStep(roughStep)
         
-        // Generate ticks from min to max
         var ticks: [Double] = []
         var currentTick = minValue
         
-        while currentTick <= maxValue + 0.001 { // Small epsilon for floating point comparison
+        while currentTick <= maxValue + 0.001 {
             ticks.append(currentTick)
             currentTick += normalizedStep
         }
         
-        // Always include goal weight if it exists and is within range
         if goalWeight > 0 {
             let goalValue = goalWeightForDisplay
             if goalValue >= minValue && goalValue <= maxValue {
-                // Only add if not already close to an existing tick
                 if !ticks.contains(where: { abs($0 - goalValue) < normalizedStep * 0.1 }) {
                     ticks.append(goalValue)
                 }
@@ -1059,16 +1244,22 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         return ticks.sorted()
     }
     
+    /// Get current Y-axis ticks (alias for getYAxisTicks)
+    func getCurrentYAxisTicks() -> [Double] {
+        return getYAxisTicks()
+    }
+    
+    /// Get current Y-axis scale domain
+    func getCurrentYScaleDomain() -> ClosedRange<Double> {
+        return getYScaleDomain()
+    }
+    
     /// Normalize step size to human-friendly increments
-    /// This ensures tick marks are at nice, round numbers
     private func normalizeStep(_ roughStep: Double) -> Double {
         let magnitude = pow(10, Foundation.floor(log10(roughStep)))
         let normalized = roughStep / magnitude
         
-        // Define clean step increments for better readability
         let cleanSteps: [Double] = [0.1, 0.2, 0.5, 1.0, 2.0, 2.5, 5.0, 10.0]
-        
-        // Find the closest clean step
         let closestStep = cleanSteps.min(by: { 
             abs($0 - normalized) < abs($1 - normalized)
         }) ?? 1.0
@@ -1077,14 +1268,11 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
     
     /// Calculate Y-axis scale domain with proper padding
-    /// This ensures all data points are visible with adequate spacing
     func getYScaleDomain() -> ClosedRange<Double> {
         let range = calculateYAxisRange()
         let minValue = range.lowerBound
         let maxValue = range.upperBound
         let dataRange = maxValue - minValue
-        
-        // Add minimal padding to prevent clipping (5%)
         let padding = dataRange * 0.05
         
         return (minValue - padding)...(maxValue + padding)
@@ -1098,7 +1286,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         
         switch period {
         case .week:
-            // For week view, show one mark per day across the entire data range
             var current = calendar.startOfDay(for: minDate)
             let end = calendar.startOfDay(for: maxDate)
             while current <= end {
@@ -1107,7 +1294,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             }
             
         case .month:
-            // For month view, show one mark per week
             var current = calendar.startOfDay(for: minDate)
             let end = calendar.startOfDay(for: maxDate)
             while current <= end {
@@ -1116,7 +1302,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             }
             
         case .year:
-            // For year view, show one mark per month
             var current = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
             let endComponents = calendar.dateComponents([.year, .month], from: maxDate)
             let end = calendar.date(from: endComponents) ?? maxDate
@@ -1126,7 +1311,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             }
             
         case .total:
-            // For total view, show one mark per quarter (3 months)
             var current = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
             let endComponents = calendar.dateComponents([.year, .month], from: maxDate)
             let end = calendar.date(from: endComponents) ?? maxDate
@@ -1138,6 +1322,8 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         
         return dates
     }
+    
+
     
     func xAxisLabels(for period: TimePeriod) -> [Date] {
         return xAxisValues(for: period)
@@ -1182,29 +1368,21 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         case .month: return 30 * 24 * 60 * 60
         case .year: return 365 * 24 * 60 * 60
         case .total: 
-            // For total view, show a reasonable portion of the data at once
             let allDates = continuousOperations.map(\.date)
             guard let minDate = allDates.min(), let maxDate = allDates.max() else {
-                return 365 * 24 * 60 * 60 // Default to 1 year if no data
+                return 365 * 24 * 60 * 60
             }
             let totalRange = maxDate.timeIntervalSince(minDate)
-            // Show about 1/4 of the total range, but minimum 1 year
             return max(totalRange / 4, 365 * 24 * 60 * 60)
         }
     }
     
-    /// Extended domain interval for prefetching data (±factor of visible length)
-    func extendedDomain(around date: Date, factor: Double = 3) -> ClosedRange<Date> {
-        let half = visibleDomainLength(for: selectedPeriod) * factor
-        return (date.addingTimeInterval(-half))...(date.addingTimeInterval(half))
-    }
-    
     func timeSnapUnit(for period: TimePeriod) -> TimeInterval {
         switch period {
-        case .week: return 24 * 60 * 60 // 1 day
-        case .month: return 7 * 24 * 60 * 60 // 1 week
-        case .year: return 30 * 24 * 60 * 60 // 1 month
-        case .total: return 90 * 24 * 60 * 60 // 3 months
+        case .week: return 24 * 60 * 60
+        case .month: return 7 * 24 * 60 * 60
+        case .year: return 30 * 24 * 60 * 60
+        case .total: return 90 * 24 * 60 * 60
         }
     }
     
@@ -1217,8 +1395,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
     
-    /// Get visible operations based on current scroll position
-    /// This is used for dynamic Y-axis calculation based on visible data
     var visibleOperations: [BathScaleWeightSummary] {
         let visibleStart = xScrollPosition.addingTimeInterval(-visibleDomainLength(for: selectedPeriod) / 2)
         let visibleEnd = xScrollPosition.addingTimeInterval(visibleDomainLength(for: selectedPeriod) / 2)
@@ -1226,163 +1402,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         return continuousOperations.filter { summary in
             return summary.date >= visibleStart && summary.date <= visibleEnd
         }
-    }
-    
-    /// Calculate Y-axis range based on visible data points only
-    /// This provides dynamic scaling like Apple Health app
-    func calculateYAxisRangeForVisibleData() -> ClosedRange<Double> {
-        let visibleOps = visibleOperations.isEmpty ? continuousOperations : visibleOperations
-        
-        let weightValues = visibleOps.map { summary -> Double in
-            if isWeightlessModeEnabled {
-                // In weightless mode, calculate differences from anchor weight
-                guard let anchorWeight = weightlessAnchorWeight else { return 0 }
-                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                // Normal mode - use actual weights
-                return convertStoredWeightToDisplay(Int(summary.weight))
-            }
-        }
-        let metricValues = selectedMetricLabel != nil ? visibleOps.compactMap { getMetricValue(for: $0) } : []
-        
-        let allValues = weightValues + metricValues
-        guard !allValues.isEmpty else { 
-            if isWeightlessModeEnabled {
-                // For weightless mode, use a reasonable range for differences
-                return -10.0...10.0
-            } else {
-                let defaultRange = accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70.0...90.0 : 170.0...190.0
-                return defaultRange
-            }
-        }
-        
-        let minValue = allValues.min() ?? (isWeightlessModeEnabled ? -10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70 : 170))
-        let maxValue = allValues.max() ?? (isWeightlessModeEnabled ? 10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 90 : 190))
-        
-        // Calculate the actual data range
-        let dataRange = maxValue - minValue
-        
-        // For very small ranges, ensure we have enough visual space
-        let minRange = isWeightlessModeEnabled ? 2.0 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 2.0 : 5.0)
-        let effectiveRange = max(dataRange, minRange)
-        
-        // Add padding to prevent clipping (15% on each side for better visibility)
-        let padding = effectiveRange * 0.15
-        
-        return (minValue - padding)...(maxValue + padding)
-    }
-    
-    /// Get Y-axis ticks based on visible data for dynamic scaling
-    /// This creates evenly spaced, readable tick marks based on visible data
-    func getYAxisTicksForVisibleData() -> [Double] {
-        let range = calculateYAxisRangeForVisibleData()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
-        
-        // Calculate optimal number of ticks (5-7 ticks for readability)
-        let optimalTickCount = 6
-        let roughStep = dataRange / Double(optimalTickCount - 1)
-        
-        // Normalize step to human-friendly increments
-        let normalizedStep = normalizeStep(roughStep)
-        
-        // Generate ticks from min to max
-        var ticks: [Double] = []
-        var currentTick = minValue
-        
-        while currentTick <= maxValue + 0.001 { // Small epsilon for floating point comparison
-            ticks.append(currentTick)
-            currentTick += normalizedStep
-        }
-        
-        // Always include goal weight if it exists and is within range
-        if goalWeight > 0 {
-            let goalValue = goalWeightForDisplay
-            if goalValue >= minValue && goalValue <= maxValue {
-                // Only add if not already close to an existing tick
-                if !ticks.contains(where: { abs($0 - goalValue) < normalizedStep * 0.1 }) {
-                    ticks.append(goalValue)
-                }
-            }
-        }
-        
-        return ticks.sorted()
-    }
-    
-    /// Calculate Y-axis scale domain based on visible data
-    func getYScaleDomainForVisibleData() -> ClosedRange<Double> {
-        let range = calculateYAxisRangeForVisibleData()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
-        
-        // Add minimal padding to prevent clipping (5%)
-        let padding = dataRange * 0.05
-        
-        return (minValue - padding)...(maxValue + padding)
-    }
-    
-    /// Get X-axis values with buffer to prevent edge clipping
-    /// This ensures points at the edges are fully visible
-    func xAxisValuesWithBuffer(for period: TimePeriod) -> [Date] {
-        let allDates = continuousOperations.map(\.date)
-        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
-        
-        var dates: [Date] = []
-        
-        switch period {
-        case .week:
-            // For week view, add buffer days before and after
-            let bufferDays: TimeInterval = 1 * 24 * 60 * 60 // 1 day buffer
-            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferDays))
-            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferDays))
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .day, value: 1, to: current) ?? current
-            }
-            
-        case .month:
-            // For month view, add buffer weeks
-            let bufferWeeks: TimeInterval = 7 * 24 * 60 * 60 // 1 week buffer
-            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferWeeks))
-            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferWeeks))
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .weekOfYear, value: 1, to: current) ?? current
-            }
-            
-        case .year:
-            // For year view, add buffer months
-            let bufferMonths: TimeInterval = 30 * 24 * 60 * 60 // 1 month buffer
-            let startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate.addingTimeInterval(-bufferMonths))) ?? minDate
-            let endDate = calendar.date(from: calendar.dateComponents([.year, .month], from: maxDate.addingTimeInterval(bufferMonths))) ?? maxDate
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
-            }
-            
-        case .total:
-            // For total view, add buffer quarters
-            let bufferQuarters: TimeInterval = 90 * 24 * 60 * 60 // 3 months buffer
-            let startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate.addingTimeInterval(-bufferQuarters))) ?? minDate
-            let endDate = calendar.date(from: calendar.dateComponents([.year, .month], from: maxDate.addingTimeInterval(bufferQuarters))) ?? maxDate
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .month, value: 3, to: current) ?? current
-            }
-        }
-        
-        return dates
     }
     
     /// Calculate Y-axis range based on ALL data (not just visible data)
@@ -1501,6 +1520,227 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         return (minValue - padding)...(maxValue + padding)
     }
     
+    // MARK: - Dynamic Y-Axis Calculation for Visible Data
+    
+    /// Calculate Y-axis range based on visible data points for dynamic scaling
+    /// This provides responsive Y-axis that adjusts to visible data during scrolling
+    func calculateYAxisRangeForVisibleData() -> ClosedRange<Double> {
+        let visibleWeightValues = chartSeriesData.compactMap { series -> Double? in
+            // Only consider weight series for Y-axis calculation
+            guard series.series == DashboardStrings.weight else { return nil }
+            return series.value
+        }
+        
+        let metricValues = selectedMetricLabel != nil ? chartSeriesData.compactMap { series -> Double? in
+            guard series.series == selectedMetricLabel else { return nil }
+            return series.value
+        } : []
+        
+        let allVisibleValues = visibleWeightValues + metricValues
+        guard !allVisibleValues.isEmpty else { 
+            // Fallback to all data range if no visible data
+            return calculateYAxisRangeForAllData()
+        }
+        
+        let minValue = allVisibleValues.min() ?? 0
+        let maxValue = allVisibleValues.max() ?? 1
+        
+        // Calculate the actual data range
+        let dataRange = maxValue - minValue
+        
+        // For very small ranges, ensure we have enough visual space
+        let minRange = isWeightlessModeEnabled ? 2.0 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 2.0 : 5.0)
+        let effectiveRange = max(dataRange, minRange)
+        
+        // Add padding to prevent clipping (20% on each side for better visibility)
+        let padding = effectiveRange * 0.20
+        
+        // Always include goal weight in the range if it exists
+        var finalMin = minValue - padding
+        var finalMax = maxValue + padding
+        
+        if goalWeight > 0 {
+            let goalValue = goalWeightForDisplay
+            finalMin = min(finalMin, goalValue - (effectiveRange * 0.1))
+            finalMax = max(finalMax, goalValue + (effectiveRange * 0.1))
+        }
+        
+        return finalMin...finalMax
+    }
+    
+    /// Get Y-axis ticks based on visible data with goal weight always included
+    /// This provides dynamic Y-axis that adjusts to visible data during scrolling
+    func getYAxisTicksForVisibleData() -> [Double] {
+        let range = calculateYAxisRangeForVisibleData()
+        let minValue = range.lowerBound
+        let maxValue = range.upperBound
+        let dataRange = maxValue - minValue
+        
+        // Calculate optimal number of ticks (5-7 ticks for readability)
+        let optimalTickCount = 6
+        let roughStep = dataRange / Double(optimalTickCount - 1)
+        
+        // Normalize step to human-friendly increments
+        let normalizedStep = normalizeStep(roughStep)
+        
+        // Generate ticks from min to max
+        var ticks: [Double] = []
+        var currentTick = minValue
+        
+        while currentTick <= maxValue + 0.001 { // Small epsilon for floating point comparison
+            ticks.append(currentTick)
+            currentTick += normalizedStep
+        }
+        
+        // Always include goal weight if it exists and is within reasonable range
+        if goalWeight > 0 {
+            let goalValue = goalWeightForDisplay
+            if goalValue >= minValue - normalizedStep && goalValue <= maxValue + normalizedStep {
+                // Only add if not already close to an existing tick
+                if !ticks.contains(where: { abs($0 - goalValue) < normalizedStep * 0.1 }) {
+                    ticks.append(goalValue)
+                }
+            }
+        }
+        
+        return ticks.sorted()
+    }
+    
+    /// Calculate Y-axis scale domain based on visible data
+    /// This provides dynamic scaling that adjusts during scrolling
+    func getYScaleDomainForVisibleData() -> ClosedRange<Double> {
+        let range = calculateYAxisRangeForVisibleData()
+        let minValue = range.lowerBound
+        let maxValue = range.upperBound
+        let dataRange = maxValue - minValue
+        
+        // Add minimal padding to prevent clipping (5%)
+        let padding = dataRange * 0.05
+        
+        return (minValue - padding)...(maxValue + padding)
+    }
+    
+    /// Get X-axis values with buffer to prevent edge clipping
+    /// This ensures points at the edges are fully visible
+    func xAxisValuesWithBuffer(for period: TimePeriod) -> [Date] {
+        let allDates = continuousOperations.map(\.date)
+        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
+        
+        var dates: [Date] = []
+        
+        switch period {
+        case .week:
+            // For week view, add buffer days before and after
+            let bufferDays: TimeInterval = 1 * 24 * 60 * 60 // 1 day buffer
+            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferDays))
+            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferDays))
+            
+            var current = startDate
+            while current <= endDate {
+                dates.append(current)
+                current = calendar.date(byAdding: .day, value: 1, to: current) ?? current
+            }
+            
+        case .month:
+            // For month view, add buffer weeks
+            let bufferWeeks: TimeInterval = 7 * 24 * 60 * 60 // 1 week buffer
+            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferWeeks))
+            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferWeeks))
+            
+            var current = startDate
+            while current <= endDate {
+                dates.append(current)
+                current = calendar.date(byAdding: .weekOfYear, value: 1, to: current) ?? current
+            }
+            
+        case .year:
+            // For year view, add buffer months
+            let bufferMonths: TimeInterval = 30 * 24 * 60 * 60 // 1 month buffer
+            let startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate.addingTimeInterval(-bufferMonths))) ?? minDate
+            let endDate = calendar.date(from: calendar.dateComponents([.year, .month], from: maxDate.addingTimeInterval(bufferMonths))) ?? maxDate
+            
+            var current = startDate
+            while current <= endDate {
+                dates.append(current)
+                current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
+            }
+            
+        case .total:
+            // For total view, add buffer quarters
+            let bufferQuarters: TimeInterval = 90 * 24 * 60 * 60 // 3 months buffer
+            let startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate.addingTimeInterval(-bufferQuarters))) ?? minDate
+            let endDate = calendar.date(from: calendar.dateComponents([.year, .month], from: maxDate.addingTimeInterval(bufferQuarters))) ?? maxDate
+            
+            var current = startDate
+            while current <= endDate {
+                dates.append(current)
+                current = calendar.date(byAdding: .month, value: 3, to: current) ?? current
+            }
+        }
+        
+        return dates
+    }
+    
+    /// Get the weight to display based on selection state
+    /// When a point is selected, show that specific weight
+    /// When no point is selected, show average of visible range
+    var displayWeightForSelection: Double? {
+        if let selectedEntry = selectedEntry {
+            // If a point is selected, show that specific weight
+            return convertStoredWeightToDisplay(Int(selectedEntry.weight ?? 0))
+        } else {
+            // If no point is selected, show average of visible range
+            return calculateAverageWeightForVisibleRange()
+        }
+    }
+    
+    /// Calculate average weight for the currently visible range
+    /// This is used when no specific point is selected
+    private func calculateAverageWeightForVisibleRange() -> Double? {
+        let visibleOps = getVisibleOperations()
+        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
+        
+        // Check if weightless mode is enabled
+        if isWeightlessModeEnabled {
+            return calculateWeightlessAverageForVisibleRange(opsToUse)
+        }
+        
+        // Calculate average weight for visible operations
+        let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
+        guard !weights.isEmpty else { return nil }
+        return weights.reduce(0, +) / Double(weights.count)
+    }
+    
+    /// Calculate weightless average for visible range
+    /// In weightless mode, shows average difference from anchor weight
+    private func calculateWeightlessAverageForVisibleRange(_ operations: [BathScaleWeightSummary]) -> Double? {
+        guard let anchorWeight = weightlessAnchorWeight else { return nil }
+        
+        let visibleOps = getVisibleOperations()
+        let opsToUse = visibleOps.isEmpty ? operations : visibleOps
+        
+        // Calculate average weight for visible operations
+        let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
+        guard !weights.isEmpty else { return nil }
+        let averageWeight = weights.reduce(0, +) / Double(weights.count)
+        return averageWeight - anchorWeight
+    }
+    
+    /// Get the label text for weight display
+    /// Shows "Selected" when a point is selected, otherwise shows period average
+    var weightDisplayLabel: String {
+        return "\(selectedPeriod.rawValue) average"
+    }
+    
+    /// Check if there are any entries in the system (across all time periods)
+    var hasAnyEntries: Bool {
+        return !dailySummaries.isEmpty || !monthlySummaries.isEmpty
+    }
+    
+    /// Check if there are entries but none in the current time period
+    var hasEntriesButNoneInCurrentPeriod: Bool {
+        return hasAnyEntries && continuousOperations.isEmpty
+    }
 }
 
 /// Dashboard store with incremental updates for daily and monthly summaries.
@@ -1553,6 +1793,11 @@ extension DashboardStore {
             monthlyCache[monthKey] = monthSummary
         }
         updatePublishedArrays()
+        
+        // Trigger UI updates for unit and weightless mode changes
+        await MainActor.run {
+            handleEntryChange()
+        }
     }
     
     /// Call this when an entry is deleted
@@ -1576,6 +1821,11 @@ extension DashboardStore {
             monthlyCache.removeValue(forKey: monthKey)
         }
         updatePublishedArrays()
+        
+        // Trigger UI updates for unit and weightless mode changes
+        await MainActor.run {
+            handleEntryChange()
+        }
     }
     
     /// Call this when an entry is updated
@@ -1583,6 +1833,18 @@ extension DashboardStore {
         // For simplicity, treat as delete+add
         await onEntryDeleted(entry)
         await onEntryAdded(entry)
+    }
+    
+    /// Call this when unit settings change
+    @MainActor
+    func onUnitSettingsChanged() {
+        handleUnitChange()
+    }
+    
+    /// Call this when weightless mode settings change
+    @MainActor
+    func onWeightlessModeSettingsChanged() {
+        handleWeightlessModeChange()
     }
     
     // MARK: - Helpers

@@ -13,37 +13,11 @@ struct WeightTrendView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
-                HStack{
-                    VStack(alignment: .leading, spacing: .zero ) {
-                        Text("\(dashboardStore.selectedPeriod.rawValue) average")
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
-                            .padding(.leading, .spacingSM)
+            VStack(alignment: .leading,spacing: 0) {
+                
+               weightInfoSection(dashboardStore: dashboardStore)
 
-                        WeightDisplayView(
-                            weightText: dashboardStore.formatWeightDisplayText(
-                                dashboardStore.selectedEntry != nil
-                                    ? dashboardStore.convertStoredWeightToDisplay(Int(dashboardStore.selectedEntry?.weight ?? 0))
-                                    : dashboardStore.displayWeight
-                            ),
-                            unitText: dashboardStore.accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
-                        )
-
-                        if let label = dashboardStore.weightLabel {
-                            Text(label)
-                                .fontOpenSans(.subHeading2)
-                                .foregroundColor(theme.textSubheading)
-                                .padding(.leading, .spacingSM)
-                                .padding(.top, .spacingXS)
-                        }
-                    }
-
-                    Spacer()
-                }
-                .padding(.bottom, 8)
-
-               // GraphView(dashboardStore: dashboardStore)
+               GraphView(dashboardStore: dashboardStore)
 
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
@@ -59,6 +33,26 @@ struct WeightTrendView: View {
             .background(theme.textInverse)
             .edgesIgnoringSafeArea(.all)
             .zIndex(1)
+        }
+    }
+    
+    @ViewBuilder
+    func weightInfoSection(
+        dashboardStore: DashboardStore
+    ) -> some View {
+        VStack(alignment: .leading, spacing: .zero) {
+            // Show label based on selection state
+            Text(dashboardStore.weightDisplayLabel)
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.textSubheading)
+                .padding(.leading, .spacingSM)
+
+            WeightDisplayView(
+                weightText: dashboardStore.formatWeightDisplayText(
+                    dashboardStore.displayWeightForSelection
+                ),
+                unitText: dashboardStore.accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+            )
         }
     }
 }

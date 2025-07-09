@@ -284,27 +284,10 @@ struct DashboardScreen: View {
     private func onAppearActions() {
         store.loadLatestEntryData()
         store.loadGoalCardData()
-        // Ensure chart shows the latest period for the current selected period when dashboard appears
-        if let latestDate = store.continuousOperations.map(\.date).max() {
-            let targetDate: Date
-            
-            switch store.selectedPeriod {
-            case .week:
-                // For week view, show the latest week
-                targetDate = latestDate
-            case .month:
-                // For month view, show the latest month
-                targetDate = latestDate
-            case .year:
-                // For year view, show the latest year
-                targetDate = latestDate
-            case .total:
-                // For total view, show the latest data
-                targetDate = latestDate
-            }
-            
-            store.updateScrollPositionDebounced(to: targetDate)
-        }
+        // Handle any settings changes
+        store.handleSettingsChange()
+        // Ensure chart shows the latest entries by default
+        store.ensureLatestEntriesVisible()
     }
 
     private func handleSelectedMetricInfoChange(_ newValue: String?) {

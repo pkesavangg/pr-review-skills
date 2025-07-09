@@ -11,42 +11,52 @@ import Charts
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
+    
+    // Check if there are any entries to display
+    private var hasEntries: Bool {
+        !dashboardStore.continuousOperations.isEmpty
+    }
+    
+    // Get the appropriate empty state message
+    private var emptyStateMessage: String {
+        if dashboardStore.hasEntriesButNoneInCurrentPeriod {
+            return DashboardStrings.noEntriesInPeriodMessage(dashboardStore.selectedPeriod.rawValue)
+        } else {
+            return DashboardStrings.noEntriesMessage
+        }
+    }
         
     var body: some View {
+        VStack(alignment: .leading){
+            Text(dashboardStore.weightLabel)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                    .padding(.leading, .spacingSM)
+                    .padding(.vertical, .spacingXS)
+
+            if hasEntries {
+                // Show chart when there are entries
+                chartView
+            } else {
+                // Show empty state message when there are no entries
+                emptyStateView
+            }
+        }
+    }
+    
+    // MARK: - Chart View
+    private var chartView: some View {
         HStack(spacing: 0) {
             Chart {
-                // Grid lines
-                ForEach(dashboardStore.getYAxisTicksForAllData(), id: \.self) { tick in
-                    if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
-                        RuleMark(y: .value("YGrid", tick))
-                            .lineStyle(StrokeStyle(lineWidth: 1))
-                            .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
-                            .zIndex(-1)
-                    }
-                }
-
-                // Render all series data
-                ForEach(dashboardStore.chartSeriesData) { series in
-                    LineMark(
-                        x: .value("Date", series.date),
-                        y: .value(series.series, series.value)
-                    )
-                    .foregroundStyle(by: .value("Series", series.series))
-                    .interpolationMethod(.catmullRom)
-                    .lineStyle(StrokeStyle(lineWidth: 3))
-                    
-                    PointMark(
-                        x: .value("Date", series.date),
-                        y: .value(series.series, series.value)
-                    )
-                    .symbolSize(40)
-                    .foregroundStyle(by: .value("Series", series.series))
-                }
+                yAxisGridLines
+                chartSeries
+                crosshairContent
             }
             .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.selectedPeriod))
             .chartScrollableAxes(.horizontal)
+            .chartScrollTargetBehavior(.paging)
             .chartScrollTargetBehavior(.valueAligned(unit: dashboardStore.timeSnapUnit(for: dashboardStore.selectedPeriod)))
-            .chartYScale(domain: dashboardStore.getYScaleDomainForAllData())
+            .chartYScale(domain: dashboardStore.getCurrentYScaleDomain())
             .chartForegroundStyleScale([
                 DashboardStrings.weight: theme.actionPrimary,
                 DashboardStrings.bmi: theme.actionSecondary,
@@ -62,55 +72,163 @@ struct GraphView: View {
                 DashboardStrings.bmrKcal: theme.actionSecondary,
                 DashboardStrings.metAge: theme.actionSecondary
             ])
-            .chartYAxis {
-                AxisMarks(values: dashboardStore.getYAxisTicksForAllData()) { value in
-                    if let doubleValue = value.as(Double.self) {
-                        if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
-                            AxisValueLabel {
-                                goalWeightBubbleLabel(doubleValue)
-                            }
-                        } else {
-                            AxisValueLabel {
-                                Text(dashboardStore.formatWeightDisplayText(doubleValue))
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(theme.textSubheading)
-                            }
-                        }
-                    }
-                }
-            }
+            .chartYAxis { yAxisMarks }
             .chartLegend(.hidden)
-            .chartXAxis {
-                AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.selectedPeriod)) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel {
-                        if let date = value.as(Date.self),
-                           let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.selectedPeriod) {
-                            Text(labelString)
-                                .font(.caption)
-                                .foregroundColor(.gray)
+            .chartXAxis { xAxisMarks }
+            .chartXSelection(value: Binding(
+                get: { dashboardStore.selectedXValue },
+                set: { newValue in
+                    dashboardStore.selectedXValue = newValue
+                    if let selectedDate = newValue {
+                        Task { @MainActor in
+                            dashboardStore.handleChartSelection(at: selectedDate)
                         }
                     }
                 }
-            }
+            ))
             .frame(height: 265)
             .frame(maxWidth: .infinity, minHeight: 240)
             .padding(.horizontal)
             .background(
                 GeometryReader { geo in
                     theme.textInverse
-                        .onAppear { dashboardStore.chartHeight = geo.size.height }
+                        .onAppear { 
+                            dashboardStore.chartHeight = geo.size.height 
+                        }
                 }
             )
-            .onPreferenceChange(AnnotationHeightKey.self) { dashboardStore.annotationHeight = $0 }
+            .onPreferenceChange(AnnotationHeightKey.self) { height in
+                dashboardStore.annotationHeight = height
+            }
             .accessibilityLabel(Text("Weight chart"))
+            .onAppear {
+                // Set initial scroll position to latest data
+                if let latestDate = dashboardStore.continuousOperations.map(\.date).max() {
+                    dashboardStore.xScrollPosition = latestDate
+                }
+            }
+            // Add scroll gesture detection for dynamic Y-axis
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 3)
+                    .onChanged { value in
+                        Task { @MainActor in
+                            dashboardStore.handleScrollGestureChanged(translation: value.translation)
+                        }
+                    }
+                    .onEnded { value in
+                        Task { @MainActor in
+                            dashboardStore.handleScrollGestureEnded(translation: value.translation)
+                        }
+                    }
+            )
         }
     }
+    
+    // MARK: - Empty State View
+    private var emptyStateView: some View {
+        VStack(spacing: .spacingMD) {
+            Spacer()
+            
+            Text(emptyStateMessage)
+                .fontOpenSans(.heading5)
+                .foregroundColor(theme.textHeading)
+                .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, .spacingLG)
+            
+            Spacer()
+        }
+        .frame(height: 265)
+        .frame(maxWidth: .infinity, minHeight: 240)
+        .padding(.horizontal)
+        .background(theme.textInverse)
+    }
+
+    // MARK: - Chart Content Builders
+    @ChartContentBuilder
+    private var yAxisGridLines: some ChartContent {
+        ForEach(dashboardStore.getCurrentYAxisTicks(), id: \.self) { tick in
+            if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
+                RuleMark(y: .value("YGrid", tick))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
+                    .zIndex(-1)
+            }
+        }
+    }
+    
+    @ChartContentBuilder
+    private var chartSeries: some ChartContent {
+        ForEach(dashboardStore.chartSeriesData) { series in
+                 
+            LineMark(
+                x: .value("Date", series.date),
+                y: .value(series.series, series.value)
+            )
+            .foregroundStyle(by: .value("Series", series.series))
+            .interpolationMethod(.catmullRom)
+            .lineStyle(StrokeStyle(lineWidth: 3))
+            
+            PointMark(
+                x: .value("Date", series.date),
+                y: .value(series.series, series.value)
+            )
+            .symbolSize(series.date == dashboardStore.selectedPoint?.date ? 200 : 64)
+            .foregroundStyle(by: .value("Series", series.series))
+        }
+    }
+    
+    @ChartContentBuilder
+    private var crosshairContent: some ChartContent {
+        if let selectedPoint = dashboardStore.selectedPoint, dashboardStore.showCrosshair {
+            // Dotted vertical line
+            RuleMark(
+                x: .value("Date", selectedPoint.date)
+            )
+            .zIndex(-100)
+            .foregroundStyle(theme.actionSecondary)
+            .lineStyle(StrokeStyle(lineWidth: 2))
+        }
+    }
+    
+    // MARK: - Axis Marks Builders
+    private var yAxisMarks: some AxisContent {
+        AxisMarks(values: dashboardStore.getCurrentYAxisTicks()) { value in
+            if let doubleValue = value.as(Double.self) {
+                if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
+                    AxisValueLabel {
+                        goalWeightBubbleLabel(doubleValue)
+                    }
+                } else {
+                    AxisValueLabel {
+                        Text(dashboardStore.formatWeightDisplayText(doubleValue))
+                            .font(.body)
+                            .fontWeight(.medium)
+                            .foregroundColor(theme.textSubheading)
+                    }
+                }
+            }
+        }
+    }
+    
+    private var xAxisMarks: some AxisContent {
+        AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.selectedPeriod)) { value in
+            AxisGridLine()
+            AxisTick()
+            AxisValueLabel {
+                if let date = value.as(Date.self),
+                   let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.selectedPeriod) {
+                    Text(labelString)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+    }
+    
+
 
     // MARK: - Axis Label Helpers
-
     @ViewBuilder
     private func goalWeightBubbleLabel(_ value: Double) -> some View {
         Text(dashboardStore.formatWeightDisplayText(value))

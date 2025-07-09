@@ -60,4 +60,10 @@ struct DashboardStrings {
     static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
            return "\(unit) to \(goalWeight) \(unit) goal weight"
        }
+    
+    // Empty state messages
+    static let noEntriesMessage = "To collect your first entry, connect a scale or add a manual entry."
+    static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
+        return "You haven't added any entries this \(timePeriod)."
+    }
 }
