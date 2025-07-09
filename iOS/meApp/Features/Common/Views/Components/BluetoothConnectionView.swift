@@ -59,7 +59,7 @@ struct BluetoothConnectionView: View {
                             .multilineTextAlignment(.center)
 
                         if showErrorCode {
-                            Text("Error Code: \(errorCode ?? "")")
+                            Text(scaleSetupStrings.errorCode(errorCode ?? ""))
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textBody)
                         }

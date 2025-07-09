@@ -21,6 +21,9 @@ struct ScaleSetupStrings {
     static let gatheringNetworksTitle = "Gathering Networks"
     static let connectingToBluetooth = "Connecting to Bluetooth"
     static let connectionError = "Connection Error"
+    static let errorCode: (String) -> String = { errorCode in
+        "Error Code: \(errorCode)"
+    }
     
     /// Finish view strings
     struct FinishViewStrings {
