@@ -294,6 +294,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             scaleToSave.accountId = userId
             scaleToSave.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
             scaleToSave.nickname = scale.nickname ?? "Bluetooth Smart Scale"
+            scaleToSave.sku = scale.sku ?? ""
+            scaleToSave.deviceType = scale.deviceType
+            scaleToSave.broadcastId = scale.broadcastId
+            scaleToSave.bathScale = scale.bathScale
             var metaData = deviceDetails
             let scaleType = scale.bathScale?.scaleType ?? ""
             if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue || scaleType == ScaleSourceType.bluetooth.rawValue) {
@@ -326,9 +330,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 }
             }
             scaleToSave.metaData = metaData
+            print("Adding new device: \(scaleToSave.bathScale?.scaleType)", scale.sku ?? "No SKU")
             let savedScale = try await scaleService.createDevice(scaleToSave)
+            await self.scaleService.syncAllScalesWithRemote()
             try await scaleService.syncDevices(tempDevice: nil)
-            return .success(savedScale)
+            return .success(scaleToSave)
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
@@ -778,7 +784,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
         // Check if this is a known device
         let isKnown = bluetoothScales.contains { scale in
-            scale.broadcastId == deviceDetails.broadcastId
+            scale.broadcastIdString == deviceDetails.broadcastId
         }
         let isNew = !isKnown
 
@@ -798,10 +804,29 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             id: UUID().uuidString,
             accountId: activeAccount?.accountId ?? "",
             mac: deviceDetails.macAddress,
-            broadcastId: deviceDetails.broadcastId,
+            deviceName: deviceDetails.deviceName,
+            broadcastId: convertHexToInt(deviceDetails.broadcastId ?? ""),
             broadcastIdString: deviceDetails.broadcastIdString,
             isConnected: false,
         )
+    }
+    
+    private func convertHexToInt(_ hex: String) -> Int64 {
+        // Ensure even-length hex string
+        let evenHex = hex.count % 2 == 0 ? hex : "0" + hex
+
+        // Step 1: Split into 2-character chunks
+        let bytes = stride(from: 0, to: evenHex.count, by: 2).map {
+            let start = evenHex.index(evenHex.startIndex, offsetBy: $0)
+            let end = evenHex.index(start, offsetBy: 2)
+            return String(evenHex[start..<end])
+        }
+
+        // Step 2: Reverse the chunks (handle endianness)
+        let reversedHex = bytes.reversed().joined().uppercased()
+
+        // Step 3: Convert to Int64
+        return Int64(reversedHex, radix: 16) ?? Int64(0)
     }
 
     private func mapProtocolToScaleType(_ protocolType: String) -> ScaleSourceType {

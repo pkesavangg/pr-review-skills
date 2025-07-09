@@ -157,7 +157,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 let connectedDevices = try localRepository.context.fetch(descriptor)
                 var connectedDevicesDict: [String: Any] = [:]
                 for device in connectedDevices {
-                    if let broadcastId = device.broadcastId {
+                    if let broadcastId = device.broadcastIdString {
                         connectedDevicesDict[broadcastId] = [
                             "id": device.id,
                             "name": device.deviceName ?? "",
@@ -199,7 +199,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     nonisolated func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
         await MainActor.run {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastId == broadcastId })
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
             do {
                 if let device = try localRepository.context.fetch(descriptor).first {
                     device.isWifiConfigured = isConfigured
@@ -271,7 +271,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         // Create locally and mark as unsynced - sync will handle server creation
         let createdDevice = try await localRepository.createScale(device)
         logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server")
-
+        await self.syncAllScalesWithRemote()
         await refreshScalesFromLocal()
         return createdDevice
     }
@@ -329,11 +329,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             device.isWifiConfigured = false
 
             // Ensure broadcastIdString is populated so that look-ups work reliably
-            if (device.broadcastIdString == nil || device.broadcastIdString?.isEmpty == true) {
-                if let bidStr = device.broadcastId, let bidInt = Int(bidStr) {
+            if device.broadcastIdString?.isEmpty != false {
+                if let bidInt64 = device.broadcastId {
                     let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "") ?? .bluetoothScale
                     let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
-                    device.broadcastIdString = ProtocolConversionTools.convertIntToHex(bidInt, protocolType: protocolType)
+                    device.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(bidInt64), protocolType: protocolType)
                 }
             }
 
@@ -438,6 +438,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 } else {
                     // Create new device on server
                     do {
+                        print("Creating device on server with DTO: \(dto)")
                         let createdDTO = try await remoteRepo.createScale(dto)
                         // Update local device with server ID
                         device.id = createdDTO.id ?? device.id

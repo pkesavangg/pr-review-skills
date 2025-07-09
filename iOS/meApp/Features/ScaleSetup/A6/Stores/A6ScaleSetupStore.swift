@@ -8,7 +8,6 @@
 import Foundation
 import SwiftUI
 import Combine
-
 /// Store responsible for orchestrating the A6 (LCBT) scale-setup multi-step flow.
 @MainActor
 final class A6ScaleSetupStore: ObservableObject {
@@ -16,13 +15,22 @@ final class A6ScaleSetupStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperService
     /// Centralised permission handling service.
     @Injector private var permissionsService: PermissionsService
+    /// Bluetooth service for device discovery
+    @Injector private var bluetoothService: BluetoothService
+    
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
+    /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
+    private var deviceDiscoveryCancellable: AnyCancellable? = nil
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
     /// Callback used by the screen to dismiss itself.
     var dismissAction: DismissAction?
+    /// Discovered scale information
+    private var discoveredScale: Device?
+    /// Discovery event from Bluetooth service
+    private var discoveryEvent: DeviceDiscoveryEvent?
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -38,13 +46,13 @@ final class A6ScaleSetupStore: ObservableObject {
     }
     // Connection status shown on the BluetoothConnectionView.
     @Published var connectionState: ConnectionState = .loading
-
+    
     /// All steps in the setup flow. Exposed as read-only so views can iterate.
     @Published private(set) var steps: [A6ScaleSetupStep] = A6ScaleSetupStep.allCases
-
+    
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
-
+    
     /// Task handling time-based transitions during testing.
     private var stepTimerTask: Task<Void, Never>? = nil
     private let tag = "A6ScaleSetupStore"
@@ -64,7 +72,12 @@ final class A6ScaleSetupStore: ObservableObject {
                     subtitle: scaleSetupStrings.wakeYourScaleSubtitle
                 ))
             case .connectingBluetooth:
-                return AnyView(BluetoothConnectionView(state: connectionState))
+                return AnyView(
+                    BluetoothConnectionView(
+                        state: connectionState,
+                        onTryAgain: { [weak self] in self?.retryPairing() }
+                    )
+                )
             case .setupFinished:
                 let lang = scaleSetupStrings.FinishViewStrings.self
                 return AnyView(
@@ -101,45 +114,6 @@ final class A6ScaleSetupStore: ObservableObject {
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
     }
-
-    // MARK: - Step Change Handling
-
-    private func handleStepChange() {
-        // TODO: Implement step change handling logic.
-        // Cancel any outstanding timer when changing steps.
-        stepTimerTask?.cancel()
-
-        switch currentStep {
-        case .wakeUp:
-            // After 3 seconds, automatically move to the next step.
-            stepTimerTask = Task {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                await MainActor.run { [weak self] in
-                    self?.moveToNextStep()
-                }
-            }
-
-        case .connectingBluetooth:
-            // Simulate the connection lifecycle: loading → failure → success.
-            connectionState = .loading
-            stepTimerTask = Task {
-                // After 2 s show failure.
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                await MainActor.run { [weak self] in self?.connectionState = .failure }
-
-                // After 3 s show success.
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                await MainActor.run { [weak self] in self?.connectionState = .success }
-
-                // After 2 s move to the finish step.
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                await MainActor.run { [weak self] in self?.moveToNextStep() }
-            }
-
-        default:
-            break
-        }
-    }
     
     // MARK: - Configuration
     func configure(with sku: String) {
@@ -147,6 +121,12 @@ final class A6ScaleSetupStore: ObservableObject {
         self.scaleItem = resolved
         currentStepIndex = 0
         currentStep = steps.first ?? .intro
+        
+        // Reset discovery state
+        discoveredScale = nil
+        discoveryEvent = nil
+        deviceDiscoveryCancellable = nil
+        stepTimerTask?.cancel()
         
         // Evaluate initial next-button state.
         updateNextEnabled()
@@ -176,6 +156,108 @@ final class A6ScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Handles the pairing process when entering the *wake-up* step.
+    private func pair() {
+        // Start scanning for devices when entering wake-up step
+        // Subscribe to discovery events (ensure we don't create multiple subscriptions).
+        // Reset discovery state
+        discoveredScale = nil
+        discoveryEvent = nil
+        deviceDiscoveryCancellable = nil
+        stepTimerTask?.cancel()
+        deviceDiscoveryCancellable?.cancel()
+        Task { bluetoothService.scanForPairing() }
+        
+        if deviceDiscoveryCancellable == nil {
+            deviceDiscoveryCancellable = bluetoothService.deviceDiscoveredPublisher
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] discoveryEvent in
+                    self?.handleDeviceDiscovery(discoveryEvent)
+                }
+        }
+            
+        /// Start a timer to handle the wake-up step timeout.
+        stepTimerTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(AppConstants.bluetoothTimeoutNs))
+            await MainActor.run {
+                guard let self else { return }
+                // Still on wake-up step and nothing discovered → failure
+                if self.discoveredScale == nil && self.currentStep == .wakeUp {
+                    self.moveToNextStep()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        self.connectionState = .failure
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Invoked from the *Try Again* button of `BluetoothConnectionView`.
+    private func retryPairing() {
+        // Jump back to wake-up step
+        if let wakeUpIndex = steps.firstIndex(of: .wakeUp) {
+            currentStepIndex = wakeUpIndex
+        }
+    }
+    
+    // MARK: - Step Change Handling
+    
+    private func handleStepChange() {
+        switch currentStep {
+        case .wakeUp:
+            self.pair()
+        case .connectingBluetooth:
+            self.connectionState = .loading
+            Task {
+               await self.saveDiscoveredScale()
+                self.connectionState = .success
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    self.moveToNextStep()
+                }
+            }
+        default:
+            break
+        }
+    }
+    
+    // MARK: - Scale Saving
+    private func saveDiscoveredScale() async {
+        guard let discoveryEvent = discoveryEvent, var scale = discoveredScale else { return }
+        scale.sku = scaleItem?.sku ?? discoveryEvent.device.sku
+        scale.deviceType = DeviceType.scale.rawValue
+        scale.bathScale = scale.bathScale ?? BathScale(scaleType: ScaleSourceType.lcbt.rawValue, bodyComp: scale.bathScale?.bodyComp ?? false)
+        print("Saving discovered scale: \(scale.id) with event: \(discoveryEvent)", discoveryEvent.device.broadcastId, discoveryEvent.device.broadcastIdString)
+
+        do {
+            let result = await bluetoothService.addNewDevice(scale, metaData: nil)
+            switch result {
+            case .success(let savedScale):
+                LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // MARK: - Device Discovery Handling
+    private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
+        // Only handle discovery during wake-up step
+        guard currentStep == .wakeUp else { return }
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        stepTimerTask?.cancel()
+        self.discoveryEvent = event
+        self.discoveredScale = event.device
+        
+        // Check if this is a known scale (isNew = false means it's known)
+        if !event.isNew {
+            showKnownScaleAlert()
+        } else {
+            // New scale discovered - move to next step
+            moveToNextStep()
+        }
+    }
+    
     /// Evaluates whether the required Bluetooth permission has already been granted.
     private func isBluetoothPermissionEnabled() -> Bool {
         // The PermissionService tracks GG SDK permissions. Treat `ENABLED` as satisfied.
@@ -189,22 +271,22 @@ final class A6ScaleSetupStore: ObservableObject {
             isNextEnabled = true
             return
         }
-
+        
         // Evaluate individual Bluetooth-related permissions
         let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
         let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-
+        
         // Automatically request the missing permission giving priority to `.bluetooth`
         if !bluetoothEnabled {
             Task { await permissionsService.handlePermission(.bluetooth) }
         } else if !bluetoothSwitchEnabled {
             Task { await permissionsService.handlePermission(.bluetoothSwitch) }
         }
-
+        
         // Enable the Next button only when both permissions are granted
         isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled
     }
-
+    
     /// Returns an adjusted step index by skipping the *permissions* page when the Bluetooth
     /// permission requirements are already fulfilled.
     /// - Parameters:
@@ -221,8 +303,27 @@ final class A6ScaleSetupStore: ObservableObject {
         return idx
     }
     
+    /// Shows an alert when a known scale is discovered.
+    private func showKnownScaleAlert() {
+        let alertStrings = AlertStrings.knownScaleDiscoveredAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message,
+            buttons: [
+                AlertButtonModel(title: alertStrings.exitButton, type: .primary) { [weak self] _ in
+                    self?.dismissAction?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
     // Cancel timers on deinit.
     deinit {
+        discoveredScale = nil
+        discoveryEvent = nil
+        deviceDiscoveryCancellable = nil
+        deviceDiscoveryCancellable?.cancel()
         stepTimerTask?.cancel()
     }
 }

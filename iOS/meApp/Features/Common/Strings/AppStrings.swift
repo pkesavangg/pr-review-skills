@@ -475,6 +475,12 @@ struct AlertStrings {
         static let pairButton = "PAIR"
     }
     
+    struct knownScaleDiscoveredAlert {
+        static let title = "Known Scale Discovered"
+        static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+        static let exitButton = "Exit"
+    }
+    
     struct PermissionAlerts {
         // MARK: - Bluetooth
         static let bluetoothDisabledTitle = "Bluetooth is Disconnected"
