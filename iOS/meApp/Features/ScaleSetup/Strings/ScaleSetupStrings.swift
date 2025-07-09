@@ -16,4 +16,7 @@ struct ScaleSetupStrings {
     static let modelTitle: (String) -> String = { sku in
         "Model \(sku)"
     }
+    static let wakeYourScaleTitle = "Wake Your Scale"
+    static let wakeYourScaleSubtitle = "Give it a little tap, so your phone can find it."
+    static let gatheringNetworksTitle = "Gathering Networks"
 }

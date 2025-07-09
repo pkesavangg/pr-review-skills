@@ -9,11 +9,17 @@ import SwiftUI
 
 struct ConnectionIndicatorView: View {
     let image: String
-    let isFailure: Bool
+    var isFailure: Bool = false
     var showPulsingCircle: Bool = true
 
     @State private var pulse = false
     @Environment(\.appTheme) var theme
+
+    // MARK: - Animation Constants
+    /// Maximum diameter of the pulsing circle.
+    private let pulsingCircleSize: CGFloat = 172
+    /// Minimum scale (relative to `pulsingCircleSize`) the circle should shrink to when animating.
+    private let minScale: CGFloat = 100 / 172 // Matches previous 100-pt minimum
 
     var shouldPulse: Bool {
         showPulsingCircle && !isFailure
@@ -24,8 +30,8 @@ struct ConnectionIndicatorView: View {
             if shouldPulse {
                 Circle()
                     .fill(theme.statusIconLoading)
-                    .frame(width: pulse ? 172 : 100, height: pulse ? 172 : 100)
-                    .scaleEffect(pulse ? 1.15 : 1.0)
+                    .frame(width: pulsingCircleSize, height: pulsingCircleSize)
+                    .scaleEffect(pulse ? 1.0 : minScale) // animate scale only
                     .opacity(pulse ? 0.7 : 1.0)
                     .animation(
                         .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
@@ -40,7 +46,8 @@ struct ConnectionIndicatorView: View {
             AppIconView(icon: image, size: IconSize(width: 59, height: 59))
                 .foregroundColor(theme.backgroundPrimary)
         }
-        .frame(width: shouldPulse ? 172 : 89, height: shouldPulse ? 172 : 89)
+        .frame(width: shouldPulse ? pulsingCircleSize : 89,
+               height: shouldPulse ? pulsingCircleSize : 89)
         .onAppear {
             if shouldPulse {
                 pulse = true

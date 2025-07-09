@@ -34,6 +34,8 @@ final class A6ScaleSetupStore: ObservableObject {
     @Published private(set) var currentStep: A6ScaleSetupStep = .intro
     @Published private(set) var steps: [A6ScaleSetupStep] = A6ScaleSetupStep.allCases
     @Published var isNextEnabled: Bool = true
+    private let tag = "A6ScaleSetupStore"
+    private let scaleSetupStrings = ScaleSetupStrings.self
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -44,6 +46,10 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .bluetooth))
+            case .searching:
+                return AnyView(ConnectionPromptView(
+                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle
+                ))
             default:
                 return AnyView(EmptyView()) // Placeholder – to be implemented later
             }
