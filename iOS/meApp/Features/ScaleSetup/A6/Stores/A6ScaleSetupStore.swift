@@ -31,9 +31,22 @@ final class A6ScaleSetupStore: ObservableObject {
             updateNextEnabled()
         }
     }
-    @Published private(set) var currentStep: A6ScaleSetupStep = .intro
+    
+    // Observe step changes to trigger the timers.
+    @Published private(set) var currentStep: A6ScaleSetupStep = .intro {
+        didSet { handleStepChange() }
+    }
+    // Connection status shown on the BluetoothConnectionView.
+    @Published var connectionState: ConnectionState = .loading
+
+    /// All steps in the setup flow. Exposed as read-only so views can iterate.
     @Published private(set) var steps: [A6ScaleSetupStep] = A6ScaleSetupStep.allCases
+
+    /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
+
+    /// Task handling time-based transitions during testing.
+    private var stepTimerTask: Task<Void, Never>? = nil
     private let tag = "A6ScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
     
@@ -46,12 +59,18 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .bluetooth))
-            case .searching:
+            case .wakeUp:
                 return AnyView(ConnectionPromptView(
                     subtitle: scaleSetupStrings.wakeYourScaleSubtitle
                 ))
-            default:
-                return AnyView(EmptyView()) // Placeholder – to be implemented later
+            case .connectingBluetooth:
+                return AnyView(BluetoothConnectionView(state: connectionState))
+            case .setupFinished:
+                let lang = scaleSetupStrings.FinishViewStrings.self
+                return AnyView(
+                    ScaleSetupFinishView(title: lang.title, description: lang.description)
+                        .environmentObject(Theme.shared)
+                )
             }
         }
     }
@@ -81,6 +100,45 @@ final class A6ScaleSetupStore: ObservableObject {
         let previousIndex = adjustedIndex(from: currentStepIndex - 1, direction: -1)
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
+    }
+
+    // MARK: - Step Change Handling
+
+    private func handleStepChange() {
+        // TODO: Implement step change handling logic.
+        // Cancel any outstanding timer when changing steps.
+        stepTimerTask?.cancel()
+
+        switch currentStep {
+        case .wakeUp:
+            // After 3 seconds, automatically move to the next step.
+            stepTimerTask = Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                await MainActor.run { [weak self] in
+                    self?.moveToNextStep()
+                }
+            }
+
+        case .connectingBluetooth:
+            // Simulate the connection lifecycle: loading → failure → success.
+            connectionState = .loading
+            stepTimerTask = Task {
+                // After 2 s show failure.
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                await MainActor.run { [weak self] in self?.connectionState = .failure }
+
+                // After 3 s show success.
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                await MainActor.run { [weak self] in self?.connectionState = .success }
+
+                // After 2 s move to the finish step.
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                await MainActor.run { [weak self] in self?.moveToNextStep() }
+            }
+
+        default:
+            break
+        }
     }
     
     // MARK: - Configuration
@@ -155,5 +213,10 @@ final class A6ScaleSetupStore: ObservableObject {
             idx += direction
         }
         return idx
+    }
+    
+    // Cancel timers on deinit.
+    deinit {
+        stepTimerTask?.cancel()
     }
 }

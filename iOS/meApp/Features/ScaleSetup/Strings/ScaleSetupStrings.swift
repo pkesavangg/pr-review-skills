@@ -19,4 +19,13 @@ struct ScaleSetupStrings {
     static let wakeYourScaleTitle = "Wake Your Scale"
     static let wakeYourScaleSubtitle = "Give it a little tap, so your phone can find it."
     static let gatheringNetworksTitle = "Gathering Networks"
+    static let connectingToBluetooth = "Connecting to Bluetooth"
+    static let connectionError = "Connection Error"
+    
+    /// Finish view strings
+    struct FinishViewStrings {
+        static let title = "Your scale is paired and ready to go!"
+        static let description = "Next time you weigh in, just open Weight Gurus and step on the scale."
+        static let appSyncDescription = "To sync new entries, tap the icon at the bottom right of the app when you see the result code display on your scale's screen."
+    }
 }

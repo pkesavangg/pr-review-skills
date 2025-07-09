@@ -42,13 +42,15 @@ struct A6ScaleSetupScreen: View {
                 views: stepViews,
                 shouldApplyHorizontalPadding: { index in
                     // Apply padding for all steps except the searching step
-                    setupStore.steps[index] != .searching
+                    setupStore.steps[index] != .wakeUp
                 }
             )
             
-            // Footer Buttons
-            footerButtons
-                .padding(.spacingSM)
+           if !(setupStore.currentStep == .wakeUp || setupStore.currentStep == .connectingBluetooth) {
+               // Footer Buttons
+               footerButtons
+                   .padding(.spacingSM)
+           }
         }
         .onAppear {
             setupStore.dismissAction = dismiss
@@ -63,7 +65,7 @@ struct A6ScaleSetupScreen: View {
             ButtonView(text: commonLang.back,
                        type: .inlineTextPrimary,
                        size: .small,
-                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .finish,
+                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished,
                        action: {
                 withAnimation {
                     hideKeyboard()
@@ -73,7 +75,7 @@ struct A6ScaleSetupScreen: View {
 
             Spacer()
 
-            ButtonView(text: setupStore.currentStep == .finish ? commonLang.finish : commonLang.next,
+            ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,

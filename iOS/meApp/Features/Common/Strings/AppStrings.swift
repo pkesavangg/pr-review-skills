@@ -52,6 +52,8 @@ struct CommonStrings {
     static let allow = "Allow"
     static let ignore = "Ignore"
     static let enable = "Enable"
+    static let tryAgain = "Try Again"
+    static let support = "Support"
 }
 
 /// Constants for entry strings used in the app

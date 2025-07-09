@@ -162,9 +162,9 @@ final class AppSyncSetupStore: ObservableObject {
                 }
             ))
         case .finish:
-            let lang = AppSyncStrings.FinishViewStrings.self
+            let lang = ScaleSetupStrings.FinishViewStrings.self
             return AnyView(
-                ScaleSetupFinishView(title: lang.title, description: lang.description, isAppSyncScaleSetup: true)
+                ScaleSetupFinishView(title: lang.title, description: lang.appSyncDescription, isAppSyncScaleSetup: true)
                     .environmentObject(Theme.shared)
             )
         }
