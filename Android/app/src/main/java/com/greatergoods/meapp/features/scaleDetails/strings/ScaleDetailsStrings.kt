@@ -9,6 +9,7 @@ object ScaleDetailsStrings {
     const val WeightOnly = "Weight Only"
     const val DisplayMetrics = "Display Metrics"
     const val Users = "Users"
+    const val UserNumber = "User Number"
     const val ScaleName = "Scale Name"
     const val Connection = "Connection"
     const val Bluetooth = "Bluetooth"

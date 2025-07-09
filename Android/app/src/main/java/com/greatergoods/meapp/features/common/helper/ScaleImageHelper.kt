@@ -10,11 +10,9 @@ object ScaleUtility {
      */
     fun scaleImageResource(sku: String?): Int {
         // Special case: SKU 0378 uses the image for 0383
-        val targetSku = if (sku == "0378") "0383" else sku
-
         return try {
             // Use reflection to get the field from R.drawable class
-            val fieldName = "_$targetSku"
+            val fieldName = "scale_$sku"
             val field = R.drawable::class.java.getDeclaredField(fieldName)
             field.getInt(null) // Static field, so pass null
         } catch (e: Exception) {
