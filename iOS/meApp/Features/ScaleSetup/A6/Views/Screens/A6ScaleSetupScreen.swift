@@ -69,7 +69,7 @@ struct A6ScaleSetupScreen: View {
 
             Spacer()
 
-            ButtonView(text: setupStore.currentStepIndex == setupStore.steps.count - 1 ? commonLang.finish : commonLang.next,
+            ButtonView(text: setupStore.currentStep == .finish ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,

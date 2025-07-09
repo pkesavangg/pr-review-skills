@@ -14,6 +14,9 @@ import Combine
 final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
+    // MARK: - Private
+    private var scaleItem: ScaleItemInfo?
+    var dismissAction: DismissAction?
 
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -59,10 +62,6 @@ final class A6ScaleSetupStore: ObservableObject {
         currentStepIndex = 0
         currentStep = steps.first ?? .intro
     }
-
-    // MARK: - Private
-    private var scaleItem: ScaleItemInfo?
-    var dismissAction: DismissAction?
 
     // MARK: - Exit / Help
 
