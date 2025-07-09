@@ -79,15 +79,13 @@ object ServiceModule {
         connectivityObserver: IConnectivityObserver,
         dialogQueueService: IDialogQueueService,
         appNavigationService: IAppNavigationService,
-        userSettingsRepository: IUserSettingsRepository,
-        storageClearService: StorageClearService
+        storageClearService: StorageClearService,
     ): IAccountService =
         AccountService(
             accountRepository,
             connectivityObserver,
             dialogQueueService,
             appNavigationService,
-            userSettingsRepository,
             storageClearService
         )
 

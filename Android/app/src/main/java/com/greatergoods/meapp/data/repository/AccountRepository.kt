@@ -121,14 +121,11 @@ constructor(
      * @param profileData The profile data to update
      * @return The updated account from the database
      */
-    override suspend fun updateProfile(profileData: ProfileUpdateRequest): Account {
+    override suspend fun updateProfile(profileData: ProfileUpdateRequest) {
         try {
             // Call API to update profile
             val response = userAPI.updateProfile(profileData)
             val updatedAccountInfo = response.account
-
-            // Update the account in the DB with the new info
-            val updatedAccount =
                 updateAccount(
                     updatedAccountInfo.id,
                     PartialAccount(
@@ -142,7 +139,6 @@ constructor(
                         isSynced = true,
                     ),
                 )
-            return updatedAccount
         } catch (e: HttpException) {
             if (HttpErrorResponse.isNetworkError(e.code())) {
                 updateAccount(
@@ -237,7 +233,7 @@ constructor(
     override suspend fun updateAccount(
         accountId: String,
         partialUpdate: PartialAccount,
-    ): Account {
+    ) {
         // Get current account entity from database by ID
         val accountEntity =
             accountDao.getAccountEntity(accountId)
@@ -261,9 +257,8 @@ constructor(
                 zipcode = partialUpdate.zipcode ?: accountEntity.zipcode,
             )
 
-        // Update account entity in database using simple @Update
+        // Update account entity in database
         accountDao.updateAccount(updatedAccountEntity)
-        return AccountEntityMapper.toDomain(updatedAccountEntity)
     }
 
     /**
@@ -361,7 +356,7 @@ constructor(
     override suspend fun updateAccountInfo(
         accountId: String,
         accountInfo: AccountInfo,
-    ): Account {
+    ) {
         // Use updateAccount with only the profile fields from API response
         val partialUpdate =
             PartialAccount(
@@ -372,9 +367,8 @@ constructor(
                 gender = accountInfo.gender,
                 zipcode = accountInfo.zipcode,
             )
-
-        AppLog.d(TAG, "Updated account $accountId with API response data")
-        return updateAccount(accountId, partialUpdate)
+      updateAccount(accountId, partialUpdate)
+      AppLog.d(TAG, "Updated account $accountId with API response data")
     }
 
     override suspend fun markAccountExpired(accountId: String) {
@@ -382,14 +376,14 @@ constructor(
         AppLog.d(TAG, "Marked account $accountId as expired")
     }
 
+
     /**
-     * Gets all accounts with unsynced data (isSynced = false) from the database.
-     * Used by offline handler service to sync pending changes.
-     * @return List of accounts that need to be synced
+     * Gets the active account if it is not synced.
+     * @return The active account if it exists and is not synced, otherwise null
      */
-    override suspend fun getUnsyncedAccounts(): List<Account> =
-        accountDao.getUnsyncedAccounts().first().map { accountEntity ->
-            AccountEntityMapper.toDomain(accountEntity)
+    override suspend fun getUnsyncedActiveAccount(): Account? =
+        accountDao.getUnsyncedActiveAccount().first()?.let { accountWithRelations ->
+            AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
         }
 
     /**
@@ -617,6 +611,64 @@ constructor(
             AppLog.d(TAG, "Set theme mode to $themeMode for account: ${activeAccount.id}")
         } else {
             AppLog.w(TAG, "No active account found, cannot set theme mode")
+        }
+    }
+
+    /**
+     * Syncs all account settings with server data.
+     * Updates local database with the latest settings from server.
+     * @param accountInfo The account info from server containing latest settings
+     */
+    override suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo) {
+        AppLog.d(TAG, "Syncing all settings for account: ${accountInfo.id}")
+
+        try {
+            // Update basic account info first
+            updateAccountInfo(accountInfo.id, accountInfo)
+
+            // Update weightless settings
+            val weightlessSetting = WeightlessSettingsEntity(
+                accountId = accountInfo.id,
+                isWeightlessOn = accountInfo.isWeightlessOn,
+                weightlessTimestamp = accountInfo.weightlessTimestamp ?: "0",
+                weightlessWeight = accountInfo.weightlessWeight ?: 0.0f,
+                isSynced = true,
+            )
+            accountDao.updateWeightlessSettings(weightlessSetting)
+
+            // Update weight composition settings
+            val weightCompSettings = WeightCompSettingsEntity(
+                accountId = accountInfo.id,
+                height = accountInfo.height,
+                activityLevel = accountInfo.activityLevel,
+                weightUnit = accountInfo.weightUnit,
+                isSynced = true,
+            )
+            accountDao.updateWeightCompSettings(weightCompSettings)
+
+            // Update goal settings
+            val goalSettings = GoalSettingsEntity(
+              accountId = accountInfo.id,
+              goalType = accountInfo.goalType ?: "maintain",
+              weight = accountInfo.initialWeight ?: 0.0f,
+              goalWeight = accountInfo.goalWeight?.toString() ?: "0",
+              goalPercent = accountInfo.goalPercent.toFloat(),
+              isSynced = true,
+            )
+            accountDao.updateGoalSettings(goalSettings)
+
+            // Update notification settings
+            val notificationSettings = NotificationSettingsEntity(
+              accountId = accountInfo.id,
+              shouldSendEntryNotifications = accountInfo.shouldSendEntryNotifications,
+              shouldSendWeightInEntryNotifications = accountInfo.shouldSendWeightInEntryNotifications,
+              isSynced = true,
+            )
+            accountDao.updateNotificationSettings(notificationSettings)
+            AppLog.d(TAG, "Successfully synced all settings for account: ${accountInfo.id}")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e.toString())
+            throw e
         }
     }
 }

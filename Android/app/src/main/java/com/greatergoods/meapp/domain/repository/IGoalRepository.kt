@@ -47,9 +47,9 @@ interface IGoalRepository {
     fun calculateGoalPercent(goal: Goal, currentWeight: Double): Int?
 
     /**
-     * Gets accounts with unsynced goal settings changes.
-     * Used by offline handler service for syncing goal settings specifically.
-     * @return List of accounts with pending goal settings changes
+     * Gets the active account if it has unsynced goal settings.
+     * Used by offline handler service to sync pending goal changes for active account.
+     * @return The active account with unsynced goal settings, or null if active account is synced
      */
-    suspend fun getUnsyncedGoalAccountsFromDB(): List<Account>
+    suspend fun getUnsyncedActiveGoalAccountFromDB(): Account?
 }

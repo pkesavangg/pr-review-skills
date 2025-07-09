@@ -29,13 +29,14 @@ interface IBodyCompositionRepository {
     suspend fun updateBodyCompInDB(
         accountId: String,
         bodyComposition: WeightCompSettingsEntity
-    ): Account
+    )
 
     /**
-     * Gets all accounts with unsynced body composition data from the database.
-     * Used by offline handler service to sync pending body composition changes.
+     * Gets the active account if it has unsynced body composition data.
+     * Used by offline handler service to sync pending body composition changes for active account.
+     * @return The active account with unsynced body comp data, or null if active account is synced
      */
-    suspend fun getUnsyncedBodyCompAccountsFromDB(): List<Account>
+    suspend fun getUnsyncedActiveBodyCompAccountFromDB(): Account?
 
     /**
      * Gets the active account from the database.
