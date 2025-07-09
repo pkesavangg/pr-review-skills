@@ -42,5 +42,6 @@ dependencies {
   androidTestImplementation(libs.androidx.espresso.core)
   implementation(libs.androidx.hilt.navigation.fragment)
   api(libs.gg.bluetooth.android)
+  implementation(libs.androidx.datastore.preferences)
 
 }
