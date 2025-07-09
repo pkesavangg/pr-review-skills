@@ -16,7 +16,14 @@ final class A6ScaleSetupStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperService
     /// Centralised permission handling service.
     @Injector private var permissionsService: PermissionsService
-
+    // MARK: - Private
+    private var cancellables = Set<AnyCancellable>()
+    
+    /// Resolved scale metadata used across the setup flow.
+    private var scaleItem: ScaleItemInfo?
+    /// Callback used by the screen to dismiss itself.
+    var dismissAction: DismissAction?
+    
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -27,7 +34,7 @@ final class A6ScaleSetupStore: ObservableObject {
     @Published private(set) var currentStep: A6ScaleSetupStep = .intro
     @Published private(set) var steps: [A6ScaleSetupStep] = A6ScaleSetupStep.allCases
     @Published var isNextEnabled: Bool = true
-
+    
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
         guard let scaleItem else { return [] }
@@ -42,75 +49,7 @@ final class A6ScaleSetupStore: ObservableObject {
             }
         }
     }
-
-    // MARK: - Navigation Helpers
-    func moveToNextStep() {
-        var nextIndex = currentStepIndex + 1
-
-        // Skip the permissions page if the Bluetooth permission is already granted.
-        while nextIndex < steps.count,
-              steps[nextIndex] == A6ScaleSetupStep.permissions,
-              isBluetoothPermissionEnabled() {
-            nextIndex += 1
-        }
-
-        guard nextIndex < steps.count else {
-            dismissAction?()
-            return
-        }
-
-        currentStepIndex = nextIndex
-    }
-
-    func moveToPreviousStep() {
-        var previousIndex = currentStepIndex - 1
-
-        // Skip the permissions page when navigating backwards if already satisfied.
-        while previousIndex >= 0,
-              steps[previousIndex] == A6ScaleSetupStep.permissions,
-              isBluetoothPermissionEnabled() {
-            previousIndex -= 1
-        }
-
-        guard previousIndex >= 0 else { return }
-        currentStepIndex = previousIndex
-    }
-
-    // MARK: - Configuration
-    func configure(with sku: String) {
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
-        self.scaleItem = resolved
-        currentStepIndex = 0
-        currentStep = steps.first ?? .intro
-
-        // Evaluate initial next-button state.
-        updateNextEnabled()
-    }
-
-    // MARK: - Private
-    private var cancellables = Set<AnyCancellable>()
-
-    /// Resolved scale metadata used across the setup flow.
-    private var scaleItem: ScaleItemInfo?
-    /// Callback used by the screen to dismiss itself.
-    var dismissAction: DismissAction?
     
-    /// Evaluates whether the required Bluetooth permission has already been granted.
-    private func isBluetoothPermissionEnabled() -> Bool {
-        // The PermissionService tracks GG SDK permissions. Treat `ENABLED` as satisfied.
-        permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED &&
-        permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-    }
-
-    /// Updates `isNextEnabled` depending on the current step and permission state.
-    private func updateNextEnabled() {
-        guard currentStep == .permissions else {
-            isNextEnabled = true
-            return
-        }
-        isNextEnabled = isBluetoothPermissionEnabled()
-    }
-
     // MARK: - Lifecycle
     init() {
         // Observe permission updates so the footer button reacts instantly.
@@ -121,9 +60,53 @@ final class A6ScaleSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-
+    
+    // MARK: - Navigation Helpers
+    func moveToNextStep() {
+        var nextIndex = currentStepIndex + 1
+        
+        // Skip the permissions page if the Bluetooth permission is already granted.
+        while nextIndex < steps.count,
+              steps[nextIndex] == A6ScaleSetupStep.permissions,
+              isBluetoothPermissionEnabled() {
+            nextIndex += 1
+        }
+        
+        guard nextIndex < steps.count else {
+            dismissAction?()
+            return
+        }
+        
+        currentStepIndex = nextIndex
+    }
+    
+    func moveToPreviousStep() {
+        var previousIndex = currentStepIndex - 1
+        
+        // Skip the permissions page when navigating backwards if already satisfied.
+        while previousIndex >= 0,
+              steps[previousIndex] == A6ScaleSetupStep.permissions,
+              isBluetoothPermissionEnabled() {
+            previousIndex -= 1
+        }
+        
+        guard previousIndex >= 0 else { return }
+        currentStepIndex = previousIndex
+    }
+    
+    // MARK: - Configuration
+    func configure(with sku: String) {
+        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
+        self.scaleItem = resolved
+        currentStepIndex = 0
+        currentStep = steps.first ?? .intro
+        
+        // Evaluate initial next-button state.
+        updateNextEnabled()
+    }
+    
     // MARK: - Exit / Help
-
+    
     /// Presents a confirmation alert before abandoning the setup flow.
     func handleExit() {
         let alertLang = AlertStrings.ExitSetupAlert.self
@@ -139,4 +122,20 @@ final class A6ScaleSetupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-} 
+    
+    /// Evaluates whether the required Bluetooth permission has already been granted.
+    private func isBluetoothPermissionEnabled() -> Bool {
+        // The PermissionService tracks GG SDK permissions. Treat `ENABLED` as satisfied.
+        permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED &&
+        permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+    }
+    
+    /// Updates `isNextEnabled` depending on the current step and permission state.
+    private func updateNextEnabled() {
+        guard currentStep == .permissions else {
+            isNextEnabled = true
+            return
+        }
+        isNextEnabled = isBluetoothPermissionEnabled()
+    }
+}
