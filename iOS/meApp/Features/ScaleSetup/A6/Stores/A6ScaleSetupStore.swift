@@ -156,6 +156,12 @@ final class A6ScaleSetupStore: ObservableObject {
     
     /// Presents a confirmation alert before abandoning the setup flow.
     func handleExit() {
+        /// For the last step, simply dismiss the setup.
+        if currentStep == .setupFinished {
+            dismissAction?()
+            return
+        }
+        
         let alertLang = AlertStrings.ExitSetupAlert.self
         let alert = AlertModel(
             title: alertLang.title,
