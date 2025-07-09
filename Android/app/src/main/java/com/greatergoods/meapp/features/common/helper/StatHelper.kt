@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.common.helper
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.greatergoods.meapp.domain.model.common.Progress
+import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
 import com.greatergoods.meapp.features.common.helper.StatMeta.metricStatMetaMap
 import com.greatergoods.meapp.features.common.helper.StatMeta.milestoneStatMetaMap
@@ -22,9 +23,32 @@ import kotlin.math.roundToInt
  */
 object StatHelper {
   /**
+   * Returns the value for a given MetricKey from a DashboardMetric.
+   */
+  fun getMetricValue(item: DashboardMetric, key: MetricKey, useShort: Boolean = false): Stat {
+    val value = when (key) {
+      MetricKey.WEIGHT -> item.weight
+      MetricKey.BMI -> item.bmi
+      MetricKey.BODY_FAT -> item.bodyFat?.toDouble()?.rounded()
+      MetricKey.MUSCLE_MASS -> item.muscleMass?.toDouble()?.rounded()
+      MetricKey.BODY_WATER -> item.bodyWater?.toDouble()?.rounded()
+      MetricKey.HEART_RATE -> item.heartRate
+      MetricKey.BONE_MASS -> item.boneMass?.toDouble()?.rounded()
+      MetricKey.VISCERAL_FAT -> item.visceralFatLevel?.roundToInt()
+      MetricKey.SUBCUTANEOUS_FAT -> item.subcutaneousFatPercent?.toDouble()?.rounded()
+      MetricKey.PROTEIN -> item.proteinPercent?.toDouble()?.rounded()
+      MetricKey.SKELETAL_MUSCLE -> item.skeletalMusclePercent?.toDouble()?.rounded()
+      MetricKey.BMR -> item.bmr?.toInt()
+      MetricKey.METABOLIC_AGE -> item.metabolicAge?.toInt()
+      else -> null
+    }
+    return DashboardKey.Metric(key).toStat(value, useShort, item.unit)
+  }
+
+  /**
    * Create a Stat for a given DashboardKey and value. Handles special cases.
    */
-  fun DashboardKey.toStat(value: Any?, useShort: Boolean = false): Stat {
+  fun DashboardKey.toStat(value: Any?, useShort: Boolean = false, unit: WeightUnit = WeightUnit.LB): Stat {
     val meta = when (this) {
       is DashboardKey.Metric -> {
         metricStatMetaMap[key] ?: throw IllegalArgumentException("Unknown MetricKey: $key")
@@ -42,10 +66,15 @@ object StatHelper {
       else -> null
     }
     val prefix = meta.valuePrefix(useShort).takeIf { it.isNotEmpty() }
+    val calculatedUnit = if (this is DashboardKey.Metric && (this.key == MetricKey.WEIGHT)) {
+      unit.label
+    } else {
+      meta.unitProvider(useShort)
+    }
     return Stat(
       label = meta.labelProvider(useShort),
       value = valueStr,
-      unit = meta.unitProvider(useShort),
+      unit = calculatedUnit,
       icon = if (!useShort) meta.icon else null,
       key = this,
       valuePrefix = prefix,
@@ -58,27 +87,14 @@ object StatHelper {
   fun getMetrics(
     item: DashboardMetric,
     visibleKeys: List<MetricKey>? = null,
+    filterWeight: Boolean = true,
     useShort: Boolean = false,
     filterNulls: Boolean = true
   ): List<Stat> {
-    val keysToUse = (visibleKeys ?: MetricKey.entries).filter { it != MetricKey.UNRECOGNIZED }
+    val keysToUse = (visibleKeys
+      ?: MetricKey.entries).filter { it != MetricKey.UNRECOGNIZED && if (filterWeight) it != MetricKey.WEIGHT else true }
     return keysToUse.map { key ->
-      val value = when (key) {
-        MetricKey.BMI -> item.bmi
-        MetricKey.BODY_FAT -> item.bodyFat?.toDouble()?.rounded()
-        MetricKey.MUSCLE_MASS -> item.muscleMass?.toDouble()?.rounded()
-        MetricKey.BODY_WATER -> item.bodyWater?.toDouble()?.rounded()
-        MetricKey.HEART_RATE -> item.heartRate
-        MetricKey.BONE_MASS -> item.boneMass?.toDouble()?.rounded()
-        MetricKey.VISCERAL_FAT -> item.visceralFatLevel?.roundToInt()
-        MetricKey.SUBCUTANEOUS_FAT -> item.subcutaneousFatPercent?.toDouble()?.rounded()
-        MetricKey.PROTEIN -> item.proteinPercent?.toDouble()?.rounded()
-        MetricKey.SKELETAL_MUSCLE -> item.skeletalMusclePercent?.toDouble()?.rounded()
-        MetricKey.BMR -> item.bmr?.toInt()
-        MetricKey.METABOLIC_AGE -> item.metabolicAge?.toInt()
-        else -> null
-      }
-      DashboardKey.Metric(key).toStat(value, useShort)
+      getMetricValue(item, key, useShort)
     }.let { metrics ->
       if (filterNulls) metrics.filter { it.value != null } else metrics
     }
@@ -153,6 +169,9 @@ internal object StatMeta {
    * Metadata for each MetricKey stat (label, unit, icon).
    */
   val metricStatMetaMap = mapOf(
+    MetricKey.WEIGHT to StatMeta(
+      labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.WEIGHT, useShort) },
+    ),
     MetricKey.BMI to StatMeta(
       labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.BMI, useShort) },
       unit = "",

@@ -25,76 +25,76 @@ import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
 internal fun MetricItem(
-    stat: Stat,
-    modifier: Modifier = Modifier,
-    index: Int,
-    size: Int = 1,
+  stat: Stat,
+  modifier: Modifier = Modifier,
+  index: Int,
+  size: Int = 1,
 ) {
-    val bgColor = StatHelper.getBgColor(index, size)
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .background(bgColor)
-                .padding(all = MeTheme.spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = stat.label,
-            style = MeTheme.typography.body2,
-            color = MeTheme.colorScheme.textBody,
+  val bgColor = StatHelper.getBgColor(index, size)
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .background(bgColor)
+        .padding(all = MeTheme.spacing.sm),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween,
+  ) {
+    Text(
+      text = stat.label,
+      style = MeTheme.typography.body2,
+      color = MeTheme.colorScheme.textBody,
+    )
+    Row {
+      Text(
+        text = buildString {
+          if (stat.valuePrefix != null) {
+            append(stat.valuePrefix)
+            append(" ")
+          }
+          append(stat.value)
+          if (stat.unit != null) {
+            append(stat.unit)
+          }
+        },
+        style = MeTheme.typography.body2,
+        color = MeTheme.colorScheme.textBody,
+      )
+      Spacer(modifier = Modifier.width(MeTheme.spacing.x2s))
+      if (stat.icon != null) {
+        AppIcon(
+          id = stat.icon,
+          contentDescription = stat.label,
         )
-        Row {
-            Text(
-                text = buildString {
-                    if (stat.valuePrefix != null) {
-                        append(stat.valuePrefix)
-                        append(" ")
-                    }
-                    append(stat.value)
-                    if (stat.unit != null) {
-                        append(stat.unit)
-                    }
-                },
-                style = MeTheme.typography.body2,
-                color = MeTheme.colorScheme.textBody,
-            )
-            Spacer(modifier = Modifier.width(MeTheme.spacing.x2s))
-            if (stat.icon != null) {
-                AppIcon(
-                    id = stat.icon,
-                    contentDescription = stat.label,
-                )
-            }
-        }
+      }
     }
+  }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HistoryDetailItemDetails(
-    item: ScaleEntry,
+  item: ScaleEntry,
 ) {
-    val metrics = getMetrics(fromScaleEntry(item))
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(MeTheme.colorScheme.primaryBackground),
-    ) {
-        metrics.forEachIndexed { index, metric ->
-            MetricItem(
-                stat = metric,
-                index = index,
-                size = metrics.size,
-            )
-        }
-        if (metrics.size % 2 != 0) {
-            HorizontalDivider(
-                thickness = 0.5.dp,
-                color = MeTheme.colorScheme.utility,
-            )
-        }
+  val metrics = getMetrics(fromScaleEntry(item))
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .background(MeTheme.colorScheme.primaryBackground),
+  ) {
+    metrics.forEachIndexed { index, metric ->
+      MetricItem(
+        stat = metric,
+        index = index,
+        size = metrics.size,
+      )
     }
+    if (metrics.size % 2 != 0) {
+      HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MeTheme.colorScheme.utility,
+      )
+    }
+  }
 }

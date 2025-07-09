@@ -1,40 +1,45 @@
 package com.greatergoods.meapp.features.metricinfo
 
-import androidx.lifecycle.ViewModel
+import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
+import com.greatergoods.meapp.features.common.helper.StatHelper
+import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.proto.MetricKey
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.lifecycle.HiltViewModel
 
-/**
- * ViewModel for the Metric Info screen.
- * Manages the selected metric segment and metric data.
- */
-class MetricInfoViewModel : ViewModel() {
+@HiltViewModel(
+  assistedFactory = MetricInfoViewModel.Factory::class,
+)
+class MetricInfoViewModel @AssistedInject constructor(
+  @Assisted val info: DashboardMetric,
+  @Assisted val key: MetricKey
+) : BaseIntentViewModel<MetricInfoState, MetricInfoIntent>(
+  reducer = MetricInfoReducer(),
+) {
 
-    private val _selectedSegment = MutableStateFlow(MetricKey.BMI)
-    /**
-     * Currently selected metric segment.
-     */
-    val selectedSegment: StateFlow<MetricKey> = _selectedSegment.asStateFlow()
+  @AssistedFactory
+  interface Factory {
+    fun create(info: DashboardMetric, key: MetricKey = MetricKey.BMI): MetricInfoViewModel
+  }
 
-    private val _metricValue = MutableStateFlow("18.3")
-    /**
-     * Current metric value to display.
-     */
-    val metricValue: StateFlow<String> = _metricValue.asStateFlow()
+  init {
+    handleIntent(MetricInfoIntent.SetMetricInfo(info))
+    handleIntent(MetricInfoIntent.SelectSegment(key))
+  }
 
-    private val _metricUnit = MutableStateFlow("%")
-    /**
-     * Current metric unit to display.
-     */
-    val metricUnit: StateFlow<String> = _metricUnit.asStateFlow()
+  override fun provideInitialState(): MetricInfoState = MetricInfoState()
 
-    /**
-     * Select a metric segment.
-     */
-    fun selectSegment(key: MetricKey) {
-        _selectedSegment.value = key
-        // TODO: Update _metricValue and _metricUnit based on segment
+  override fun handleIntent(intent: MetricInfoIntent) {
+    when (intent) {
+      is MetricInfoIntent.SelectSegment -> {
+        val stat = StatHelper.getMetricValue(info, intent.key)
+        handleIntent(MetricInfoIntent.SetStat(stat))
+      }
+
+      else -> Unit
     }
+    super.handleIntent(intent)
+  }
 }

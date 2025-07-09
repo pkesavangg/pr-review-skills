@@ -18,9 +18,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummary
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.enums.GraphSegment
+import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.getSourceFromSegment
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Stat
@@ -31,6 +36,7 @@ import com.greatergoods.meapp.features.dashboard.components.HistoryGraph
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardIntent
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardState
 import com.greatergoods.meapp.features.dashboard.viewmodel.DashboardViewModel
+import com.greatergoods.meapp.proto.MetricKey
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -61,9 +67,13 @@ fun DashboardScreen() {
 @Composable
 private fun DashboardScreenContent(state: DashboardState, handleIntent: (DashboardIntent) -> Unit) {
   val scrollState = rememberScrollState()
+  val scope = rememberCoroutineScope()
+  val navBackStack = LocalNavBackStack.current
   var metricData: List<PeriodBodyScaleSummary> by remember {
     mutableStateOf(listOf())
   }
+  var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
+
   var selectedStat: Stat? by remember {
     mutableStateOf(null)
   }
@@ -80,9 +90,17 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
 
   AppScaffold(title = null) {
     Column(modifier = Modifier.verticalScroll(scrollState)) {
-      HistoryGraph(state, selectedStat) {
-        metricData = it
-      }
+      HistoryGraph(
+        state = state,
+        selectedSegment = selectedSegment,
+        selectedStat = selectedStat,
+        onSelectSegment = {
+          selectedSegment = it
+        },
+        onSelected = {
+          metricData = it
+        },
+      )
       DashboardMetrics(
         metricData = metricData,
         inEditMode = inEditMode,
@@ -118,6 +136,17 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
           }
           inEditMode = editMode
+        },
+        onMetricInfoClick = {
+          scope.launch {
+            navBackStack.addRoute(
+              route = AppRoute.Dashboard.MetricInfo(
+                info = fromPeriodSummary(metricData.first()),
+                key = (selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.BMI,
+                source = getSourceFromSegment(selectedSegment),
+              ),
+            )
+          }
         },
       )
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))

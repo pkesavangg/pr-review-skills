@@ -69,7 +69,7 @@ fun HistoryScreenContent(
                         onItemClick = { item ->
                             if (item.entryTimestamp != null) {
                                 coroutineScope.launch {
-                                    navBackStack.addRoute(AppRoute.MonthDetails(item.entryTimestamp))
+                                    navBackStack.addRoute(AppRoute.History.MonthDetails(item.entryTimestamp))
                                 }
                             }
                         },

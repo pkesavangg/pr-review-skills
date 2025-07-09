@@ -14,10 +14,12 @@ import com.greatergoods.meapp.features.debugMenu.screen.DebugMenuScreen
 import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
+import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.manualEntry.EntryScreen
+import com.greatergoods.meapp.features.metricinfo.MetricInfoScreen
 import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.scaleDetails.screens.ScaleDetailsScreen
 import com.greatergoods.meapp.features.scaleMode.screens.ScaleModeScreen
@@ -30,39 +32,55 @@ import com.greatergoods.meapp.features.weightless.screen.WeightlessScreen
  *
  */
 fun EntryProviderBuilder<NavKey>.authEntries() {
-    entry<AppRoute.Auth.Landing> { LandingScreen() }
-    entry<AppRoute.Auth.Login> { credentials ->
-        LoginScreen(credentials.email)
-    }
-    entry<AppRoute.Auth.Signup> { SignupScreen() }
-    entry<AppRoute.Auth.MultiAccountLanding> { MultiAccountLandingScreen() }
+  entry<AppRoute.Auth.Landing> { LandingScreen() }
+  entry<AppRoute.Auth.Login> { credentials ->
+    LoginScreen(credentials.email)
+  }
+  entry<AppRoute.Auth.Signup> { SignupScreen() }
+  entry<AppRoute.Auth.MultiAccountLanding> { MultiAccountLandingScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {
-    entry<AppRoute.Main.Dashboard> { DashboardScreen() }
-    entry<AppRoute.Main.History> { HistoryScreen() }
-    entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
-    entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
-    entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
+  entry<AppRoute.Main.Dashboard> { DashboardScreen() }
+  entry<AppRoute.Main.History> { HistoryScreen() }
+  entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
+  entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
+  entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
 }
 
 fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
-    entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
-    entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
-    entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
-    entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
-    entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
-    entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
-    entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
-    entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
-    entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
-    entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
-        ScaleDetailsScreen(scaleInfo.broadcastId)
-    }
+  entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
+  entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
+  entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
+  entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
+  entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
+  entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
+  entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
+  entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
+  entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
+  entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
+    ScaleDetailsScreen(scaleInfo.broadcastId)
+  }
 }
 
 fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
-    entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
-        ScaleModeScreen(scaleInfo.scaleId)
-    }
+  entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
+    ScaleModeScreen(scaleInfo.scaleId)
+  }
+}
+
+fun EntryProviderBuilder<NavKey>.dashboardEntries() {
+  entry<AppRoute.Dashboard.MetricInfo> { metricInfo ->
+    MetricInfoScreen(
+      info = metricInfo.info,
+      key = metricInfo.key,
+      source = metricInfo.source,
+    )
+  }
+}
+
+fun EntryProviderBuilder<NavKey>.historyEntries() {
+  entry<AppRoute.History.MonthDetails> { monthDetails ->
+    HistoryDetailScreen(monthDetails.month)
+  }
 }
