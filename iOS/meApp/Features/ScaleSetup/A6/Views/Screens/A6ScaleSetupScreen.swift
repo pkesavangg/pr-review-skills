@@ -16,7 +16,7 @@ struct A6ScaleSetupScreen: View {
 
     // MARK: - Input
     let sku: String
-    var commonLang = CommonStrings.self
+    let commonLang = CommonStrings.self
 
     private let scaleSetupLang = ScaleSetupStrings.self
 
