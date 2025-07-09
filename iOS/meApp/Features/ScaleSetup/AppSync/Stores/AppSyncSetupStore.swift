@@ -91,18 +91,34 @@ final class AppSyncSetupStore: ObservableObject {
     }
     
     // MARK: - Navigation helpers
+
     func moveToNextStep() {
-        guard currentStepIndex < steps.count - 1 else {
-            // Finished – invoke completion callback
-            self.saveScale()
+        var nextIndex = currentStepIndex + 1
+
+        // Skip the permissions step if the camera permission is already enabled.
+        while nextIndex < steps.count, steps[nextIndex] == .permissions, isCameraPermissionEnabled() {
+            nextIndex += 1
+        }
+
+        // Reached the end – save and exit.
+        guard nextIndex < steps.count else {
+            saveScale()
             return
         }
-        currentStepIndex += 1
+
+        currentStepIndex = nextIndex
     }
     
     func moveToPreviousStep() {
-        guard currentStepIndex > 0 else { return }
-        currentStepIndex -= 1
+        var previousIndex = currentStepIndex - 1
+
+        // Skip the permissions step when navigating backwards if it is already satisfied.
+        while previousIndex >= 0, steps[previousIndex] == .permissions, isCameraPermissionEnabled() {
+            previousIndex -= 1
+        }
+
+        guard previousIndex >= 0 else { return }
+        currentStepIndex = previousIndex
     }
     
     // MARK: - Validation Helpers
@@ -223,5 +239,10 @@ final class AppSyncSetupStore: ObservableObject {
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
             }
         }
+    }
+    
+    /// Returns `true` when the camera permission has already been granted.
+    private func isCameraPermissionEnabled() -> Bool {
+        permissionsService.getPermissionState(.CAMERA) == .ENABLED
     }
 }
