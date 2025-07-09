@@ -39,8 +39,7 @@ struct A6ScaleSetupScreen: View {
             // Currently only the intro step is implemented; other steps will render placeholders.
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews,
-                shouldApplyHorizontalPadding: { _ in true }
+                views: stepViews
             )
             // Footer Buttons
             footerButtons
