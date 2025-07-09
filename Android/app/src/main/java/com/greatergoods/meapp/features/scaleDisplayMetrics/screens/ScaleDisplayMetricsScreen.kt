@@ -15,12 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Screens.ScaleMetricsNotes
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Screens.ScaleMetricsSettingScreen
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
-import com.greatergoods.meapp.features.scaleDisplayMetrics.components.DisplayMetricsScreen
 import com.greatergoods.meapp.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsIntent
 import com.greatergoods.meapp.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsState
 import com.greatergoods.meapp.features.scaleDisplayMetrics.strings.ScaleDisplayMetricsStrings
@@ -64,7 +65,7 @@ fun ScaleDisplayMetricsScreenContent(
       }
     },
     actions = {
-      if (state.hasChanges) {
+      if (state.hasUpdated) {
         AppText(
           text = ScaleDisplayMetricsStrings.Save,
           textType = TextType.ListTitle1,
@@ -84,6 +85,16 @@ fun ScaleDisplayMetricsScreenContent(
           .verticalScroll(rememberScrollState())
           .padding(vertical = spacing.md, horizontal = spacing.sm),
     ) {
+      // Notes
+      state.scale?.let { scale ->
+        ScaleMetricsNotes(
+          scale = scale,
+          onUpdateScaleMode = {
+            handleIntent(ScaleDisplayMetricsIntent.UpdateScaleMode)
+          },
+        )
+      }
+
       // Description
       AppText(
         text = ScaleDisplayMetricsStrings.Description,
@@ -92,13 +103,15 @@ fun ScaleDisplayMetricsScreenContent(
       )
 
       // Display Metrics Component
-      DisplayMetricsScreen(
-        currentMetrics = state.enabledMetrics,
-        onMetricsChanged = { enabledMetrics ->
-          handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
-        },
-        modifier = Modifier.weight(1f),
-      )
+      state.scale?.let { scale ->
+        ScaleMetricsSettingScreen(
+          scale = scale,
+          onMetricsChanged = { enabledMetrics ->
+            handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
+          },
+          modifier = Modifier.weight(1f),
+        )
+      }
     }
   }
 }
@@ -174,7 +187,7 @@ fun ScaleDisplayMetricsScreenPreview() {
     ScaleDisplayMetricsState(
       scale = dummyDevice,
       enabledMetrics = listOf("bmi", "bodyFatPercent", "musclePercent", "bodyWaterPercent"),
-      hasChanges = true,
+      hasUpdated = true,
     )
 
   MeAppTheme {

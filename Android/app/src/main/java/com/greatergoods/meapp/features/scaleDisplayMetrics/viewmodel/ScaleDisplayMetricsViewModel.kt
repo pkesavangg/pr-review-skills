@@ -1,12 +1,17 @@
 package com.greatergoods.meapp.features.scaleDisplayMetrics.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsIntent
 import com.greatergoods.meapp.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsReducer
 import com.greatergoods.meapp.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsState
+import com.greatergoods.meapp.features.scaleDisplayMetrics.strings.ScaleDisplayMetricsStrings
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -34,8 +39,9 @@ class ScaleDisplayMetricsViewModel
     override fun handleIntent(intent: ScaleDisplayMetricsIntent) {
       super.handleIntent(intent)
       when (intent) {
-        ScaleDisplayMetricsIntent.Back -> navigateBack()
+        ScaleDisplayMetricsIntent.Back -> onBack()
         ScaleDisplayMetricsIntent.Save -> saveDisplayMetrics()
+        ScaleDisplayMetricsIntent.UpdateScaleMode -> onUpdateScaleMode()
         else -> {}
       }
     }
@@ -59,13 +65,12 @@ class ScaleDisplayMetricsViewModel
       val currentState = state.value
       val scale = currentState.scale
       if (scale == null) {
-        // TODO: Show error toast
+        showToast(ScaleDisplayMetricsStrings.Toast.Error)
         return
       }
       viewModelScope.launch {
         try {
-          // TODO: Show loading dialog
-          // dialogQueueService.showLoader(message = "Saving...")
+          dialogQueueService.showLoader(message = ScaleDisplayMetricsStrings.LoaderMessage)
 
           // Create updated preferences with new display metrics
           val preferences =
@@ -77,23 +82,42 @@ class ScaleDisplayMetricsViewModel
           val success = deviceService.updateScalePreferences(scaleId, preferences)
 
           if (success) {
-            // TODO: Dismiss loader and show success toast
-            // dialogQueueService.dismissLoader()
-            // showToast("Display metrics updated successfully.")
-
-            // Refresh scale data to get updated preferences
+            dialogQueueService.dismissLoader()
             deviceService.syncScales()
+            showToast(ScaleDisplayMetricsStrings.Toast.Success)
             navigateBack()
           } else {
-            // TODO: Show error toast
-            // showToast("Error updating display metrics.")
+            showToast(ScaleDisplayMetricsStrings.Toast.Error)
           }
         } catch (err: Exception) {
-          // TODO: Log error and show error toast
-          // Log.e("ScaleDisplayMetricsViewModel", "Error saving display metrics", err)
-          // dialogQueueService.dismissLoader()
-          // showToast("Error updating display metrics.")
+          dialogQueueService.dismissLoader()
+          showToast(ScaleDisplayMetricsStrings.Toast.Error)
         }
+      }
+    }
+
+    private fun onBack() {
+      if (state.value.hasUpdated) {
+        dialogQueueService.enqueue(
+          DialogModel.Confirm(
+            title = AppPopupStrings.UnsavedExitPopup.Title,
+            message = AppPopupStrings.UnsavedExitPopup.Message,
+            confirmText = AppPopupStrings.UnsavedExitPopup.Leave,
+            cancelText = AppPopupStrings.UnsavedExitPopup.Cancel,
+            onConfirm = {
+              navigateBack()
+              initScaleDisplayMetrics()
+            },
+          ),
+        )
+      } else {
+        navigateBack()
+      }
+    }
+
+    private fun onUpdateScaleMode() {
+      viewModelScope.launch {
+        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
       }
     }
 
@@ -101,5 +125,15 @@ class ScaleDisplayMetricsViewModel
       viewModelScope.launch {
         navigationService.navigateBack()
       }
+    }
+
+    private fun showToast(message: String) {
+      dialogQueueService.showToast(
+        Toast(
+          title = null,
+          message = message,
+          action = null,
+        ),
+      )
     }
   }

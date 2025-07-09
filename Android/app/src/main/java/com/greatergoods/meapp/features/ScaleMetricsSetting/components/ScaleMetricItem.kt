@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.scaleDisplayMetrics.components
+package com.greatergoods.meapp.features.ScaleMetricsSetting.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,8 +22,8 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.AppToggle
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
-import com.greatergoods.meapp.features.scaleDisplayMetrics.model.ScaleMetric
-import com.greatergoods.meapp.features.scaleDisplayMetrics.model.scaleMetrics
+import com.greatergoods.meapp.features.ScaleMetricsSetting.model.ScaleMetric
+import com.greatergoods.meapp.features.ScaleMetricsSetting.model.scaleMetrics
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -38,7 +38,7 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
  * @param modifier Modifier for the composable.
  */
 @Composable
-fun DisplayMetricItem(
+fun ScaleMetricItem(
   metric: ScaleMetric,
   isDragging: Boolean,
   onToggle: (Boolean) -> Unit,
@@ -86,7 +86,7 @@ fun DisplayMetricItem(
 
       Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
       ) {
         // Drag handle
         AppIcon(
@@ -116,21 +116,21 @@ private fun DisplayMetricItemPreview() {
   MeAppTheme {
     Column {
       // Enabled metric
-      DisplayMetricItem(
+      ScaleMetricItem(
         metric = scaleMetrics.first(),
         isDragging = false,
         onToggle = {},
       )
       Spacer(Modifier.height(spacing.md))
       // Dragging metric
-      DisplayMetricItem(
+      ScaleMetricItem(
         metric = scaleMetrics.first(),
         isDragging = true,
         onToggle = {},
       )
       Spacer(Modifier.height(spacing.md))
       // Disabled metric (drag handle visible but dimmed)
-      DisplayMetricItem(
+      ScaleMetricItem(
         metric = scaleMetrics.first().copy(isEnabled = false),
         isDragging = false,
         onToggle = {},

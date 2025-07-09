@@ -2,7 +2,6 @@ package com.greatergoods.meapp.features.scaleDisplayMetrics.reducer
 
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
-import android.util.Log
 
 /**
  * State for ScaleDisplayMetricsScreen.
@@ -10,7 +9,7 @@ import android.util.Log
 data class ScaleDisplayMetricsState(
   val scale: Device? = null,
   val enabledMetrics: List<String> = emptyList(),
-  val hasChanges: Boolean = false,
+  val hasUpdated: Boolean = false,
 ) : IReducer.State
 
 /**
@@ -24,6 +23,8 @@ sealed interface ScaleDisplayMetricsIntent : IReducer.Intent {
   data class UpdateMetrics(
     val enabledMetrics: List<String>,
   ) : ScaleDisplayMetricsIntent
+
+  object UpdateScaleMode : ScaleDisplayMetricsIntent
 
   object Back : ScaleDisplayMetricsIntent
 
@@ -44,21 +45,20 @@ class ScaleDisplayMetricsReducer : IReducer<ScaleDisplayMetricsState, ScaleDispl
         state.copy(
           scale = intent.scale,
           enabledMetrics = displayMetrics,
-          hasChanges = false,
+          hasUpdated = false,
         )
       }
 
       is ScaleDisplayMetricsIntent.UpdateMetrics -> {
         val originalMetrics = state.scale?.displayMetrics ?: emptyList()
         val hasChanges = intent.enabledMetrics != originalMetrics
-        Log.d("Metrics updated: ", intent.enabledMetrics.toString())
         state.copy(
           enabledMetrics = intent.enabledMetrics,
-          hasChanges = hasChanges,
+          hasUpdated = hasChanges,
         )
       }
 
-      ScaleDisplayMetricsIntent.Save -> state.copy(hasChanges = false)
+      ScaleDisplayMetricsIntent.Save -> state.copy(hasUpdated = false)
       else -> state.copy()
     }
 }

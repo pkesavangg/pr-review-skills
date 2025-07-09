@@ -1,11 +1,7 @@
-package com.greatergoods.meapp.features.scaleDisplayMetrics.components
+package com.greatergoods.meapp.features.ScaleMetricsSetting.Screens
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,13 +10,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
+import com.greatergoods.meapp.features.ScaleMetricsSetting.components.ScaleMetricItem
 import com.greatergoods.meapp.features.common.components.AppDraggableList
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.scaleDisplayMetrics.Helper.DisplayMetricsHelper
-import com.greatergoods.meapp.features.scaleDisplayMetrics.model.ScaleMetric
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 
 /**
@@ -28,23 +23,26 @@ import com.greatergoods.meapp.theme.MeTheme.borderRadius
  * Metrics are grouped into body composition metrics (with icons) and other metrics (text-only).
  * Each group can be reordered independently, but the final output combines all enabled metrics.
  *
- * @param currentMetrics Current ordered list of metric keys from the scale.
+ * @param scale The device scale containing display metrics and configuration.
  * @param onMetricsChanged Callback when metrics are reordered or toggled, returns ordered list of enabled metric keys.
  * @param modifier Modifier for the composable.
+ * @param onUpdateScaleMode Callback when update button is clicked for scale mode notifications.
  */
 @Composable
-fun DisplayMetricsScreen(
-  currentMetrics: List<String> = emptyList(),
+fun ScaleMetricsSettingScreen(
+  scale: Device,
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
+  val currentMetrics = scale.displayMetrics ?: emptyList()
+
   // Separate state for each metric group
   var bodyMetricsState by remember(currentMetrics) {
-    mutableStateOf(DisplayMetricsHelper.createOrderedMetrics(currentMetrics).first)
+    mutableStateOf(ScaleMetricsHelper.createOrderedMetrics(currentMetrics).first)
   }
 
   var otherMetricsState by remember(currentMetrics) {
-    mutableStateOf(DisplayMetricsHelper.createOrderedMetrics(currentMetrics).second)
+    mutableStateOf(ScaleMetricsHelper.createOrderedMetrics(currentMetrics).second)
   }
 
   // Helper function to emit combined enabled metrics
@@ -73,9 +71,9 @@ fun DisplayMetricsScreen(
         keySelector = { "body_${it.key}" },
         itemContent = { metric ->
           DraggableItem(
-            isDraggable = metric.isEnabled
+            isDraggable = metric.isEnabled,
           ) { isDragging ->
-            DisplayMetricItem(
+            ScaleMetricItem(
               metric = metric,
               isDragging = isDragging,
               onToggle = { isEnabled ->
@@ -84,17 +82,12 @@ fun DisplayMetricsScreen(
                     if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
                   }
                 emitCombinedMetrics()
-              }
+              },
             )
           }
-        }
+        },
       )
     }
-
-    // Visual separator between sections
-    Spacer(
-      modifier = Modifier.height(MeTheme.spacing.md),
-    )
 
     // Other Metrics Section (Goals and Averages)
     Column(
@@ -111,9 +104,9 @@ fun DisplayMetricsScreen(
         keySelector = { "other_${it.key}" },
         itemContent = { metric ->
           DraggableItem(
-            isDraggable = metric.isEnabled
+            isDraggable = metric.isEnabled,
           ) { isDragging ->
-            DisplayMetricItem(
+            ScaleMetricItem(
               metric = metric,
               isDragging = isDragging,
               onToggle = { isEnabled ->
@@ -122,10 +115,10 @@ fun DisplayMetricsScreen(
                     if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
                   }
                 emitCombinedMetrics()
-              }
+              },
             )
           }
-        }
+        },
       )
     }
   }
@@ -134,9 +127,33 @@ fun DisplayMetricsScreen(
 @PreviewTheme
 @Composable
 fun DisplayMetricsScreenPreview() {
-  MeAppTheme {
-    DisplayMetricsScreen(
-      currentMetrics =
+  val dummyDevice =
+    Device(
+      id = "1",
+      accountId = "1",
+      peripheralIdentifier = null,
+      nickname = "My Smart Scale",
+      sku = "0412",
+      mac = null,
+      password = null,
+      isDeleted = false,
+      deviceName = "AccuCheck Verve Smart Scale",
+      deviceType = null,
+      broadcastId = null,
+      broadcastIdString = null,
+      userNumber = null,
+      protocolType = null,
+      createdAt = "June 27, 2023",
+      lastModified = null,
+      isSynced = false,
+      isConnected = true,
+      wifiMac = "greatergoods1",
+      isWifiConfigured = true,
+      token = null,
+      scaleType = "Bluetooth/Wi-Fi",
+      bodyComp = true,
+      displayName = null,
+      displayMetrics =
         listOf(
           "bmi",
           "bodyFatPercent",
@@ -155,6 +172,29 @@ fun DisplayMetricsScreenPreview() {
           "weeklyAverage",
           "monthlyAverage",
         ),
+      shouldFactoryReset = false,
+      shouldMeasureImpedance = true,
+      shouldMeasurePulse = false,
+      timeFormat = null,
+      tzOffset = null,
+      wifiFotaScheduleTime = null,
+      prefsUpdatedAt = null,
+      modelNumber = null,
+      serialNumber = null,
+      firmwareRevision = null,
+      hardwareRevision = null,
+      softwareRevision = null,
+      manufacturerName = null,
+      systemId = null,
+      latestVersion = null,
+      hasNumericUsers = null,
+      isWeighOnlyModeEnabledByOthers = false,
+      hasServerID = true,
+    )
+
+  MeAppTheme {
+    ScaleMetricsSettingScreen(
+      scale = dummyDevice,
       onMetricsChanged = { enabledKeys ->
         println("Enabled metrics: $enabledKeys")
       },

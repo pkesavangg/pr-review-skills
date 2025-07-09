@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.scaleDisplayMetrics.model
+package com.greatergoods.meapp.features.ScaleMetricsSetting.model
 
 import com.greatergoods.meapp.resources.AppIcons
 
