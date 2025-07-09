@@ -63,33 +63,16 @@ final class A6ScaleSetupStore: ObservableObject {
     
     // MARK: - Navigation Helpers
     func moveToNextStep() {
-        var nextIndex = currentStepIndex + 1
-        
-        // Skip the permissions page if the Bluetooth permission is already granted.
-        while nextIndex < steps.count,
-              steps[nextIndex] == A6ScaleSetupStep.permissions,
-              isBluetoothPermissionEnabled() {
-            nextIndex += 1
-        }
-        
+        let nextIndex = adjustedIndex(from: currentStepIndex + 1, direction: 1)
         guard nextIndex < steps.count else {
             dismissAction?()
             return
         }
-        
         currentStepIndex = nextIndex
     }
     
     func moveToPreviousStep() {
-        var previousIndex = currentStepIndex - 1
-        
-        // Skip the permissions page when navigating backwards if already satisfied.
-        while previousIndex >= 0,
-              steps[previousIndex] == A6ScaleSetupStep.permissions,
-              isBluetoothPermissionEnabled() {
-            previousIndex -= 1
-        }
-        
+        let previousIndex = adjustedIndex(from: currentStepIndex - 1, direction: -1)
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
     }
@@ -136,6 +119,35 @@ final class A6ScaleSetupStore: ObservableObject {
             isNextEnabled = true
             return
         }
-        isNextEnabled = isBluetoothPermissionEnabled()
+
+        // Evaluate individual Bluetooth-related permissions
+        let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
+        let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+
+        // Automatically request the missing permission giving priority to `.bluetooth`
+        if !bluetoothEnabled {
+            Task { await permissionsService.handlePermission(.bluetooth) }
+        } else if !bluetoothSwitchEnabled {
+            Task { await permissionsService.handlePermission(.bluetoothSwitch) }
+        }
+
+        // Enable the Next button only when both permissions are granted
+        isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled
+    }
+
+    /// Returns an adjusted step index by skipping the *permissions* page when the Bluetooth
+    /// permission requirements are already fulfilled.
+    /// - Parameters:
+    ///   - index: The candidate index to navigate to.
+    ///   - direction: `+1` when moving forward; `-1` when moving backwards.
+    /// - Returns: A new index that omits the permissions page if it can be skipped.
+    private func adjustedIndex(from index: Int, direction: Int) -> Int {
+        var idx = index
+        while idx >= 0 && idx < steps.count,
+              steps[idx] == .permissions,
+              isBluetoothPermissionEnabled() {
+            idx += direction
+        }
+        return idx
     }
 }
