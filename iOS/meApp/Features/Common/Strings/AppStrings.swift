@@ -105,6 +105,7 @@ struct ToastStrings {
     static let weightHistorySynced = "Weight history successfully synced."
     static let hkIntegrationRemoved = "Apple Health integration removed."
     static let hkIntegrationSynced = "Apple Health is synced!"
+    static let saveScaleError = "Error saving scale. Please restart the app and try again."
 }
 
 /// Constants for help modal strings used in the app
@@ -456,6 +457,15 @@ struct AlertStrings {
         static let message = "Apple Health will not sync with Weight Gurus."
         static let cancelButton = "cancel"
         static let exitButton = "exit setup"
+    }
+    
+    struct DeviceAlreadyPairedAlert {
+        static let title = "Device Already Paired"
+        static let message: (String) -> String = { sku in
+            "The device with SKU: \(sku) is already paired. Do you want to pair it again?"
+        }
+        static let returnButton = "RETURN"
+        static let pairButton = "PAIR"
     }
 }
 
