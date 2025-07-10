@@ -251,4 +251,7 @@ extension View {
         }
     }
     
+    func deviceDiscoverSheetStyle() -> some View {
+        self.modifier(DeviceDiscoverSheetModifier())
+    }
 }

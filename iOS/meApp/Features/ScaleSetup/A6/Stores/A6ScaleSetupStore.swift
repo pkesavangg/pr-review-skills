@@ -57,6 +57,7 @@ final class A6ScaleSetupStore: ObservableObject {
     private var stepTimerTask: Task<Void, Never>? = nil
     private let tag = "A6ScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
+    private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -119,15 +120,33 @@ final class A6ScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Configuration
-    func configure(with sku: String) {
+    /// Configures the store for the given SKU, optionally injecting a previously-discovered
+    /// scale and its discovery event (used when the flow originates from the *Scale Discovered* sheet).
+    /// - Parameters:
+    ///   - sku:            The model/SKU (e.g. "0378").
+    ///   - discoveredScale: The scale object discovered by Bluetooth (optional).
+    ///   - discoveryEvent:  The raw discovery event emitted by `BluetoothService` (optional).
+    ///   - startStep:       The initial step for the wizard (defaults to `.intro`).
+    func configure(with sku: String,
+                   discoveredScale: Device? = nil,
+                   discoveryEvent: DeviceDiscoveryEvent? = nil) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
-        currentStepIndex = 0
-        currentStep = steps.first ?? .intro
-        
-        // Reset discovery state
+        // Reset pairing/discovery state
         resetDiscoveryState()
+        // Inject discovery context if provided.
+        self.discoveredScale = discoveredScale
+        self.discoveryEvent = discoveryEvent
         
+        
+        
+        // Set the starting step (defaults to intro, but may be connectingBluetooth for direct flow)
+        let startStep: A6ScaleSetupStep = discoveredScale != nil && discoveryEvent != nil ? .connectingBluetooth : .intro
+        if let idx = steps.firstIndex(of: startStep) {
+            currentStepIndex = idx
+        } else {
+            currentStepIndex = 0
+        }
         // Evaluate initial next-button state.
         updateNextEnabled()
     }
@@ -183,7 +202,8 @@ final class A6ScaleSetupStore: ObservableObject {
         
         /// Start a timer to handle the wake-up step timeout.
         stepTimerTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(AppConstants.bluetoothTimeoutNs))
+            guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
+            try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
             await MainActor.run {
                 guard let self else { return }
                 // Still on wake-up step and nothing discovered → failure

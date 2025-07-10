@@ -185,3 +185,5 @@ final class Device {
 
 /// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.
 extension Device: @unchecked Sendable {}
+// Extend `Device` to conform to `Identifiable` so it can be used with SwiftUI's `.sheet(item:)` API.
+extension Device: Identifiable {}

@@ -91,7 +91,7 @@ final class LoggerService: LoggerServiceProtocol {
         try await loggerRepository.deleteAllLogs()
     }
     
-    func deleteOldLogs(_ olderThanDays: Int = AppConstants.logRetentionDays) async throws {
+    func deleteOldLogs(_ olderThanDays: Int = AppConstants.TimeoutsAndRetention.logRetentionDays) async throws {
         try await loggerRepository.deleteLogsOlderThan(olderThanDays: olderThanDays)
     }
         

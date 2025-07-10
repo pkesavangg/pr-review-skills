@@ -54,12 +54,18 @@ struct CommonStrings {
     static let enable = "Enable"
     static let tryAgain = "Try Again"
     static let support = "Support"
+    static let connect = "Connect"
 }
 
 /// Constants for entry strings used in the app
 struct EntryStrings {
     static let noEntries = "No Entries"
     static let toStart = "To start, connect a scale or add a manual entry."
+}
+
+/// Constants for scale discovered sheet strings used in the app
+struct ScaleDiscoveredSheetStrings {
+    static let title = "New Scale Discovered"
 }
 
 
@@ -516,6 +522,7 @@ struct LoaderStrings {
     static let loading = "Loading..."
     static let removingIntegration = "Removing integration..."
     static let syncing = "Syncing..."
+    static let deletingScale = "Deleting scale..."
 }
 
 struct URLStrings {

@@ -13,15 +13,24 @@ struct A6ScaleSetupScreen: View {
     @StateObject private var setupStore = A6ScaleSetupStore()
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
-
+    
     // MARK: - Input
     let sku: String
+    let discoveredScale: Device?
+    let discoveryEvent: DeviceDiscoveryEvent?
     let commonLang = CommonStrings.self
-
+    
     private let scaleSetupLang = ScaleSetupStrings.self
-
+    
+    // Custom init so callers can omit optional params.
+    init(sku: String, discoveredScale: Device? = nil, discoveryEvent: DeviceDiscoveryEvent? = nil) {
+        self.sku = sku
+        self.discoveredScale = discoveredScale
+        self.discoveryEvent = discoveryEvent
+    }
+    
     private var stepViews: [AnyView] { setupStore.stepViews }
-
+    
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
@@ -42,7 +51,7 @@ struct A6ScaleSetupScreen: View {
                 onTrailingTap: {},
                 canShowPresentationIndicator: true
             )
-
+            
             // Currently only the intro step is implemented; other steps will render placeholders.
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
@@ -53,20 +62,22 @@ struct A6ScaleSetupScreen: View {
                 }
             )
             
-           if !(setupStore.currentStep == .wakeUp || setupStore.currentStep == .connectingBluetooth) {
-               // Footer Buttons
-               footerButtons
-                   .padding(.spacingSM)
-           }
+            if !(setupStore.currentStep == .wakeUp || setupStore.currentStep == .connectingBluetooth) {
+                // Footer Buttons
+                footerButtons
+                    .padding(.spacingSM)
+            }
         }
         .onAppear {
             setupStore.dismissAction = dismiss
-            setupStore.configure(with: sku)
+            setupStore.configure(with: sku,
+                                 discoveredScale: discoveredScale,
+                                 discoveryEvent: discoveryEvent)
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
     }
-
+    
     private var footerButtons: some View {
         HStack {
             ButtonView(text: commonLang.back,
@@ -79,9 +90,9 @@ struct A6ScaleSetupScreen: View {
                     setupStore.moveToPreviousStep()
                 }
             })
-
+            
             Spacer()
-
+            
             ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
@@ -97,6 +108,6 @@ struct A6ScaleSetupScreen: View {
 }
 
 #Preview {
-    A6ScaleSetupScreen(sku: "0378")
+    A6ScaleSetupScreen(sku: "0378", discoveredScale: nil, discoveryEvent: nil)
         .environmentObject(Theme.shared)
-} 
+}

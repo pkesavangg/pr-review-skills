@@ -860,4 +860,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         // Attempt to refresh published state; propagate any errors to the caller
         try await updatePublishedState()
     }
+    
+    deinit {
+      cancellables.forEach { $0.cancel() }
+      cancellables.removeAll()
+    }
 }

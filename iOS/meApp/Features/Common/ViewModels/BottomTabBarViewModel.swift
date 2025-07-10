@@ -13,6 +13,12 @@ import Combine
 @MainActor
 class BottomTabBarViewModel: ObservableObject {
     @Injector var feedService: FeedService
+    // Inject Bluetooth service to listen for new scale discovery events
+    @Injector var bluetoothService: BluetoothService
+    // Publisher-driven sheet presentation for newly discovered scales
+    @Published var discoveredScale: Device? = nil
+    /// Holds the most recent Bluetooth discovery event used by the *Scale Discovered* sheet.
+    @Published var discoveryEvent: DeviceDiscoveryEvent? = nil
     @Published var selectedTab: BottomTab = .dash
     @Published var showSettingsBadge: Bool = false
     @Published var showAppSync: Bool = false
@@ -23,6 +29,7 @@ class BottomTabBarViewModel: ObservableObject {
     /// Holds a pending navigation request to be performed by `SettingsScreen` once it appears.
     /// This is set when the user taps *Connect* in the *Add Apple Health Integration* modal.
     @Published var pendingSettingsNavigation: SettingsRoute? = nil
+    @Published var setupPayload: ScaleDiscoverSheetInfo? = nil
     
     // MARK: - Dependencies
     @Injector private var healthKitService: HealthKitService
@@ -35,7 +42,18 @@ class BottomTabBarViewModel: ObservableObject {
     
     init() {
         self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
-        // TODO: Update the app sync display based on the app sync scale defined in the paired scale list
+        // Subscribe to Bluetooth discovery events to surface the half-sheet when appropriate
+        bluetoothService.deviceDiscoveredPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                let device = event.device
+                if self.shouldShowDiscoveredScale(for: event) {
+                    self.discoveredScale = event.device
+                    self.discoveryEvent = event
+                }
+            }
+            .store(in: &cancellables)
         
         // Perform Apple Health integration check on launch
         Task { [weak self] in
@@ -95,7 +113,26 @@ class BottomTabBarViewModel: ObservableObject {
         selectTab(.settings)
         pendingSettingsNavigation = .goal
     }
-
+    
+    /// Dismisses the “Scale Discovered” sheet.
+    func dismissDiscoveredScaleSheet() {
+        discoveredScale = nil
+        discoveryEvent = nil
+    }
+    
+    // MARK: - Connect Action from Scale Discovered Sheet
+    func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?) {
+        let sku = event?.deviceInfo.sku ?? event?.deviceInfo.sku ?? ""
+        // TODO: Need to handle for 0412 sku
+        guard sku == "0378" || sku == "0383" else {
+            return
+        }
+        bluetoothService.isSetupInProgress = true
+        setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event)
+        // Ensure sheet dismissed
+        dismissDiscoveredScaleSheet()
+    }
+    
     // MARK: - Apple Health Integration Prompt
     /// Checks whether the user should be prompted to add Apple Health integration
     /// and shows the modal if needed.
@@ -167,5 +204,19 @@ class BottomTabBarViewModel: ObservableObject {
         
         let modalData = ModalData(presentedView: AnyView(modalView))
         notificationService.showModal(modalData)
+    }
+    
+    // MARK: - Scale Discovery Handling
+    private func shouldShowDiscoveredScale(for event: DeviceDiscoveryEvent) -> Bool {
+        /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
+        guard !bluetoothService.isSetupInProgress,
+              bluetoothService.canShowScaleDiscoveredModal,
+              !(bluetoothService.skipDevices.contains(event.device.mac ?? "")),
+              event.isNew,
+              discoveredScale == nil,
+              !event.deviceInfo.sku.isEmpty else {
+            return false
+        }
+        return true
     }
 }
