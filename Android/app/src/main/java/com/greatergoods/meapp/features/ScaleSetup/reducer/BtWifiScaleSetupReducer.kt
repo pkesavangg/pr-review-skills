@@ -9,7 +9,10 @@ import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 data class BtWifiScaleSetupState(
   val currentStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
   val sku: String = "0412",
-  val steps: List<BtWifiSetupStep> = listOf(BtWifiSetupStep.SCALE_INFO),
+  val steps: List<BtWifiSetupStep> = listOf(
+    BtWifiSetupStep.SCALE_INFO,
+    BtWifiSetupStep.WAKEUP
+  ),
   val isLoading: Boolean = false,
   val error: String? = null,
   val isSetupFinished: Boolean = false,

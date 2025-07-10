@@ -24,138 +24,138 @@ import kotlinx.coroutines.launch
   assistedFactory = BtWifiScaleSetupViewModel.Factory::class,
 )
 class BtWifiScaleSetupViewModel
-  @AssistedInject
-  constructor(
-    @Assisted private val sku: String,
-  ) : BaseIntentViewModel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
-      reducer = BtWifiScaleSetupReducer(),
-    ) {
-    @AssistedFactory
-    interface Factory {
-      fun create(sku: String): BtWifiScaleSetupViewModel
-    }
+@AssistedInject
+constructor(
+  @Assisted private val sku: String,
+) : BaseIntentViewModel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
+  reducer = BtWifiScaleSetupReducer(),
+) {
+  @AssistedFactory
+  interface Factory {
+    fun create(sku: String): BtWifiScaleSetupViewModel
+  }
 
-    private val TAG = "BtWifiScaleSetupViewModel"
+  private val TAG = "BtWifiScaleSetupViewModel"
 
-    override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
+  override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
-    override fun handleIntent(intent: BtWifiScaleSetupIntent) {
-      super.handleIntent(intent)
-      when (intent) {
-        BtWifiScaleSetupIntent.Next -> onNext()
-        BtWifiScaleSetupIntent.Back -> onBack()
-        BtWifiScaleSetupIntent.Skip -> onSkip()
-        is BtWifiScaleSetupIntent.ExitSetup ->
-          onExitSetup(
-            intent.isSetupFinished,
-            intent.isConnected,
-          )
-
-        BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
-        else -> {}
-      }
-    }
-
-    init {
-      loadScaleInfo()
-    }
-
-    /**
-     * Loads scale information based on the provided SKU.
-     */
-    private fun loadScaleInfo() {
-      AppLog.d(TAG, "Loading scale info for SKU: $sku")
-      handleIntent(BtWifiScaleSetupIntent.SetScaleSku(sku))
-    }
-
-    /**
-     * Handles moving to the next step in the setup process.
-     */
-    private fun onNext() {
-      val currentState = state.value
-      AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
-
-      if (currentState.isLastStep) {
-        AppLog.d(TAG, "Reached last step, completing setup")
-        handleIntent(BtWifiScaleSetupIntent.ExitSetup(true, true))
-      } else {
-        AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.currentStep}")
-      }
-    }
-
-    /**
-     * Handles moving to the previous step in the setup process.
-     */
-    private fun onBack() {
-      val currentState = state.value
-      AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
-
-      if (currentState.isFirstStep) {
-        AppLog.d(TAG, "At first step, navigating back")
-        navigateTo(AppRoute.AccountSettings.AddEditScales)
-      } else {
-        AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.currentStep}")
-      }
-    }
-
-    /**
-     * Handles skipping the current step.
-     */
-    private fun onSkip() {
-      AppLog.d(TAG, "Skipping current step: ${state.value.currentStep}")
-      // For now, treat skip as next
-      onNext()
-    }
-
-    private fun onExitSetup(
-      isSetupFinished: Boolean,
-      isConnected: Boolean,
-    ) {
-      if (isSetupFinished) {
-        navigateBack()
-      } else {
-        dialogQueueService.enqueue(
-          DialogModel.Confirm(
-            title = ScaleSetupStrings.ExitSetupAlert.Title,
-            message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
-            confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-            cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
-            onConfirm = {
-              navigateBack()
-            },
-          ),
+  override fun handleIntent(intent: BtWifiScaleSetupIntent) {
+    when (intent) {
+      BtWifiScaleSetupIntent.Next -> onNext()
+      BtWifiScaleSetupIntent.Back -> onBack()
+      BtWifiScaleSetupIntent.Skip -> onSkip()
+      is BtWifiScaleSetupIntent.ExitSetup ->
+        onExitSetup(
+          intent.isSetupFinished,
+          intent.isConnected,
         )
-      }
-    }
 
-    /**
-     * Opens the Help modal.
-     */
-    private fun openHelpModal() {
+      BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
+      else -> {}
+    }
+    super.handleIntent(intent)
+  }
+
+  init {
+    loadScaleInfo()
+  }
+
+  /**
+   * Loads scale information based on the provided SKU.
+   */
+  private fun loadScaleInfo() {
+    AppLog.d(TAG, "Loading scale info for SKU: $sku")
+    handleIntent(BtWifiScaleSetupIntent.SetScaleSku(sku))
+  }
+
+  /**
+   * Handles moving to the next step in the setup process.
+   */
+  private fun onNext() {
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
+
+    if (currentState.isLastStep) {
+      AppLog.d(TAG, "Reached last step, completing setup")
+      handleIntent(BtWifiScaleSetupIntent.ExitSetup(true, true))
+    } else {
+      AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
+    }
+  }
+
+  /**
+   * Handles moving to the previous step in the setup process.
+   */
+  private fun onBack() {
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
+
+    if (currentState.isFirstStep) {
+      AppLog.d(TAG, "At first step, navigating back")
+      navigateTo(AppRoute.AccountSettings.AddEditScales)
+    } else {
+      AppLog.d(TAG, "After Back intent - new currentStep: ${state.value.currentStep}")
+    }
+  }
+
+  /**
+   * Handles skipping the current step.
+   */
+  private fun onSkip() {
+    AppLog.d(TAG, "Skipping current step: ${state.value.currentStep}")
+    // For now, treat skip as next
+    onNext()
+  }
+
+  private fun onExitSetup(
+    isSetupFinished: Boolean,
+    isConnected: Boolean,
+  ) {
+    if (isSetupFinished) {
+      navigateBack()
+    } else {
       dialogQueueService.enqueue(
-        DialogModel.Custom(
-          contentKey = DialogType.HelpPopup,
+        DialogModel.Confirm(
+          title = ScaleSetupStrings.ExitSetupAlert.Title,
+          message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
+          confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          onConfirm = {
+            navigateBack()
+          },
         ),
       )
     }
+  }
 
-    private fun navigateTo(route: AppRoute) {
-      viewModelScope.launch {
-        navigationService.navigateTo(route)
-      }
+  /**
+   * Opens the Help modal.
+   */
+  private fun openHelpModal() {
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.HelpPopup,
+      ),
+    )
+  }
+
+  private fun navigateTo(route: AppRoute) {
+    viewModelScope.launch {
+      navigationService.navigateTo(route)
     }
+  }
 
-    /**
-     * Navigates back from the setup screen.
-     */
-    private fun navigateBack() {
-      viewModelScope.launch {
-        try {
-          navigationService.navigateBack()
-          AppLog.d(TAG, "Successfully navigated back from scale setup")
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
-        }
+  /**
+   * Navigates back from the setup screen.
+   */
+  private fun navigateBack() {
+    viewModelScope.launch {
+      try {
+        navigationService.navigateBack()
+        AppLog.d(TAG, "Successfully navigated back from scale setup")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
       }
     }
   }
+}

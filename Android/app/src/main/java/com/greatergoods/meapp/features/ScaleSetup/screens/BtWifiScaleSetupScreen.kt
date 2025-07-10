@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
+import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
@@ -25,6 +26,7 @@ import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtWifiScaleSetupView
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
+import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -76,48 +78,62 @@ fun BtWifiScaleSetupScreenContent(
       steps = state.steps,
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
-      leadingContent = {
-        AppButton(
-          type = ButtonType.TextPrimary,
-          label = ScaleSetupStrings.backButton,
-          size = ButtonSize.Small,
-          enabled = !state.isFirstStep,
-          onClick = { onIntent(BtWifiScaleSetupIntent.Back) },
-        )
+      leadingContent = when (state.currentStep) {
+        BtWifiSetupStep.SCALE_INFO -> {
+          {
+            AppButton(
+              type = ButtonType.TextPrimary,
+              label = ScaleSetupStrings.backButton,
+              size = ButtonSize.Small,
+              onClick = { onIntent(BtWifiScaleSetupIntent.Back) },
+            )
+          }
+        }
+        else -> null
+
       },
-      middleContent = {
-        // Skip button can be added here when needed for other steps
+      middleContent = when (state.currentStep) {
+        BtWifiSetupStep.SCALE_INFO -> null // No skip button on wakeup step
+        else -> null // No skip button for other steps yet
       },
-      trailingContent = {
-        AppButton(
-          type = ButtonType.PrimaryFilled,
-          label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
-          size = ButtonSize.Small,
-          enabled = !state.isLoading,
-          onClick = {
-            focusManager.clearFocus()
-            onIntent(BtWifiScaleSetupIntent.Next)
-          },
-        )
+      trailingContent = when (state.currentStep) {
+        BtWifiSetupStep.SCALE_INFO -> {
+          {
+            AppButton(
+              type = ButtonType.PrimaryFilled,
+              label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
+              size = ButtonSize.Small,
+              enabled = !state.isLoading,
+              onClick = {
+                focusManager.clearFocus()
+                onIntent(BtWifiScaleSetupIntent.Next)
+              },
+            )
+          }
+        } // No next button on wakeup step
+        else -> null
       },
       pageContent = { step ->
-        Column(
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .verticalScroll(rememberScrollState())
-              .padding(MeTheme.spacing.md),
-        ) {
+
           when (step) {
             BtWifiSetupStep.SCALE_INFO -> {
               ScaleInfo(sku = state.sku)
+            }
+
+            BtWifiSetupStep.WAKEUP -> {
+              ScaleSetupLoader(
+                connectionState = ConnectionState.Loading,
+                title = "Wake Your Scale",
+                subtitle = "Give it a little tap, so your phone can find it.",
+                showIndicationOnly = true
+              )
             }
             // TODO: Add other steps as needed
             else -> {
               // Placeholder for other steps
             }
           }
-        }
+        
       },
     )
   }
