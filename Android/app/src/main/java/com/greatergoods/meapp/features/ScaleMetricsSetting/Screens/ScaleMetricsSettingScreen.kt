@@ -1,7 +1,9 @@
 package com.greatergoods.meapp.features.ScaleMetricsSetting.Screens
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,6 +19,7 @@ import com.greatergoods.meapp.features.common.components.AppDraggableList
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
+import com.greatergoods.meapp.theme.MeTheme.spacing
 
 /**
  * Display metrics screen with reorderable list of scale metrics.
@@ -88,6 +91,8 @@ fun ScaleMetricsSettingScreen(
         },
       )
     }
+
+    Spacer(Modifier.height(spacing.md))
 
     // Other Metrics Section (Goals and Averages)
     Column(
