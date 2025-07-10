@@ -137,7 +137,7 @@ final class Device {
             isDeleted: dto.isDeleted,
             deviceName: dto.name,
             deviceType: "scale",
-            broadcastId: Int64(dto.broadcastId ?? 0),
+            broadcastId: dto.broadcastId.map { Int64($0) },
             broadcastIdString: dto.broadcastIdString,
             userNumber: dto.userNumber.map { String($0) },
             protocolType: protocolType,
