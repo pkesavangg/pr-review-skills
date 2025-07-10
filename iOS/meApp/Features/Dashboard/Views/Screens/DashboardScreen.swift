@@ -116,6 +116,8 @@ struct DashboardScreen: View {
             },
             onTap: {
                 store.selectMetric(item.label)
+                // Only select the metric and show the line chart on tap
+                // Metric info sheet should only open on long press
             },
             isDropTarget: store.dropHoverId == item.label,
             onDrop: { _, _ in true },

@@ -9,12 +9,16 @@ import SwiftUI
 import SwiftData
 import Combine
 import Charts
+import os
 
 @MainActor
 class DashboardStore: ObservableObject, EntryServiceDelegate {
     @Injector private var notificationService: NotificationHelperService
     @Injector var accountService: AccountService
     @Injector private var logger : LoggerService
+    
+    private let perfLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "DashboardStore", category: "Scrolling")
+    
     @Published var isLoading: Bool = false
     @Published var loaderOverride: LoaderModel? = nil
     @Published var alertData: AlertModel? = nil
@@ -68,6 +72,9 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     @Published var selectedXValue: Date? = nil
     @Published var isScrolling: Bool = false
     @Published var hasDetectedScrollInCurrentGesture: Bool = false
+    
+    // Data change trigger for graph refresh
+    @Published var dataChangeTrigger: Int = 0
     
     private let calendar = Calendar.current
 
@@ -132,9 +139,37 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             let monthlyData = monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
             return limitToYearlyData(monthlyData)
         case .total:
-            // For total view, use monthly summaries (average of each month from start to current)
-            return monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
+            // For total view, check if entries are in the same era (same year)
+            let monthlyData = monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
+            if areEntriesInSameEra(monthlyData) {
+                // If entries are in the same era, treat like year view
+                return limitToYearlyData(monthlyData)
+            } else {
+                // If entries span multiple years, use all monthly summaries
+                return monthlyData
+            }
         }
+    }
+    
+    /// Check if all entries are in the same era (same year)
+    private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
+        guard !summaries.isEmpty else { return true }
+        
+        let years = Set(summaries.map { calendar.component(.year, from: $0.date) })
+        return years.count == 1
+    }
+    
+    /// Check if entries span less than a year
+    private func doEntriesSpanLessThanYear(_ summaries: [BathScaleWeightSummary]) -> Bool {
+        guard summaries.count >= 2 else { return true }
+        
+        let minDate = summaries.map(\.date).min() ?? Date()
+        let maxDate = summaries.map(\.date).max() ?? Date()
+        
+        let timeInterval = maxDate.timeIntervalSince(minDate)
+        let oneYearInSeconds: TimeInterval = 365 * 24 * 60 * 60
+        
+        return timeInterval < oneYearInSeconds
     }
     
     /// Limits monthly data to 12 values per year for year view
@@ -166,6 +201,10 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
 
         // If a point is selected, show its date
+        if let selectedPoint = selectedPoint {
+            return formatSelectedDate(selectedPoint.date)
+        }
+        
         if let selectedEntry = selectedEntry {
             if let date = selectedEntry.date {
                 return formatSelectedDate(date)
@@ -265,32 +304,33 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
     
     var displayWeight: Double? {
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
+        // If a point is selected, show its weight value
+        if let selectedPoint = selectedPoint {
+            if isWeightlessModeEnabled {
+                guard let anchorWeight = weightlessAnchorWeight else { return nil }
+                let currentWeight = convertStoredWeightToDisplay(Int(selectedPoint.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertStoredWeightToDisplay(Int(selectedPoint.weight))
+            }
+        }
+        
+        // When no point is selected, show average of all operations in current time period
+        let allOps = continuousOperations
         
         // Check if weightless mode is enabled
         if isWeightlessModeEnabled {
-            return calculateWeightlessDisplay(opsToUse)
+            return calculateWeightlessDisplay(allOps)
         }
         
-        switch selectedPeriod {
-        case .week:
-            // For week view, show the latest day's weight
-            return opsToUse.last.map { convertStoredWeightToDisplay(Int($0.weight)) }
-        case .month:
-            // For month view, show the latest day's weight
-            return opsToUse.last.map { convertStoredWeightToDisplay(Int($0.weight)) }
-        case .year:
-            // For year view, show the average of the visible monthly data
-            let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
-            guard !weights.isEmpty else { return nil }
-            return weights.reduce(0, +) / Double(weights.count)
-        case .total:
-            // For total view, show the average of all monthly data
-            let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
-            guard !weights.isEmpty else { return nil }
-            return weights.reduce(0, +) / Double(weights.count)
-        }
+        // Calculate average of all operations in current time period
+        let weights = allOps.map { convertStoredWeightToDisplay(Int($0.weight)) }
+        guard !weights.isEmpty else { return nil }
+        let averageWeight = weights.reduce(0, +) / Double(weights.count)
+        
+        print("Hello: displayWeight - All operations: \(allOps.count), Average weight: \(averageWeight)")
+        
+        return averageWeight
     }
     
     /// Check if weightless mode is enabled for the current account
@@ -326,31 +366,31 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     private func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary]) -> Double? {
         guard let anchorWeight = weightlessAnchorWeight else { return nil }
         
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? operations : visibleOps
+        // Use all operations in current time period, not just visible ones
+        let allOps = operations
         
         switch selectedPeriod {
         case .week:
             // For week view, show the difference from the latest day's weight
-            guard let latestWeight = opsToUse.last.map({ convertStoredWeightToDisplay(Int($0.weight)) }) else {
+            guard let latestWeight = allOps.last.map({ convertStoredWeightToDisplay(Int($0.weight)) }) else {
                 return nil
             }
             return latestWeight - anchorWeight
         case .month:
             // For month view, show the difference from the latest day's weight
-            guard let latestWeight = opsToUse.last.map({ convertStoredWeightToDisplay(Int($0.weight)) }) else {
+            guard let latestWeight = allOps.last.map({ convertStoredWeightToDisplay(Int($0.weight)) }) else {
                 return nil
             }
             return latestWeight - anchorWeight
         case .year:
-            // For year view, show the average difference from the visible monthly data
-            let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
+            // For year view, show the average difference from all monthly data
+            let weights = allOps.map { convertStoredWeightToDisplay(Int($0.weight)) }
             guard !weights.isEmpty else { return nil }
             let averageWeight = weights.reduce(0, +) / Double(weights.count)
             return averageWeight - anchorWeight
         case .total:
             // For total view, show the average difference from all monthly data
-            let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
+            let weights = allOps.map { convertStoredWeightToDisplay(Int($0.weight)) }
             guard !weights.isEmpty else { return nil }
             let averageWeight = weights.reduce(0, +) / Double(weights.count)
             return averageWeight - anchorWeight
@@ -454,6 +494,69 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
     
+    /// Update metric values with selected point data
+    private func updateMetricsWithSelectedPoint(_ selectedPoint: BathScaleWeightSummary) {
+        if let bmi = selectedPoint.bmi {
+            let formattedValue = BodyMetricsConvertor.convert(bmi, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
+        }
+        
+        if let bodyFat = selectedPoint.bodyFat {
+            let formattedValue = BodyMetricsConvertor.convert(bodyFat, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
+        }
+        
+        if let muscleMass = selectedPoint.muscleMass {
+            let formattedValue = BodyMetricsConvertor.convert(muscleMass, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
+        }
+        
+        if let water = selectedPoint.water {
+            let formattedValue = BodyMetricsConvertor.convert(water, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.water, value: formattedValue)
+        }
+        
+        if let pulse = selectedPoint.pulse {
+            let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
+        }
+        
+        if let boneMass = selectedPoint.boneMass {
+            let formattedValue = BodyMetricsConvertor.convert(boneMass, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
+        }
+        
+        if let visceralFat = selectedPoint.visceralFatLevel {
+            let formattedValue = BodyMetricsConvertor.convert(visceralFat, shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
+        }
+        
+        if let subFat = selectedPoint.subcutaneousFatPercent {
+            let formattedValue = BodyMetricsConvertor.convert(subFat, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
+        }
+        
+        if let protein = selectedPoint.proteinPercent {
+            let formattedValue = BodyMetricsConvertor.convert(protein, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
+        }
+        
+        if let skelMuscle = selectedPoint.skeletalMusclePercent {
+            let formattedValue = BodyMetricsConvertor.convert(skelMuscle, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
+        }
+        
+        if let bmr = selectedPoint.bmr {
+            let formattedValue = BodyMetricsConvertor.convert(bmr, shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
+        }
+        
+        if let metabolicAge = selectedPoint.metabolicAge {
+            let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
+        }
+    }
+    
     private func updateMetricValue(for label: String, value: String) {
         if let index = metrics.firstIndex(where: { $0.label == label }) {
             metrics[index] = MetricItem(
@@ -489,6 +592,40 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
     
     func createEntryForMetricInfo() -> Entry {
+        // If a point is selected, use its values
+        if let selectedPoint = selectedPoint {
+            let entry = Entry(
+                id: UUID(),
+                entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
+                accountId: "dashboard",
+                operationType: OperationType.create.rawValue,
+                deviceType: "scale",
+                isSynced: true
+            )
+            entry.scaleEntry = BathScaleEntry(
+                weight: Int(selectedPoint.weight),
+                bodyFat: selectedPoint.bodyFat.map { Int($0) },
+                muscleMass: selectedPoint.muscleMass.map { Int($0) },
+                water: selectedPoint.water.map { Int($0) },
+                bmi: selectedPoint.bmi.map { Int($0) },
+                source: "dashboard"
+            )
+            entry.scaleEntryMetric = BathScaleMetric(
+                bmr: selectedPoint.bmr.map { Int($0) },
+                metabolicAge: Int(selectedPoint.metabolicAge ?? 0),
+                proteinPercent: selectedPoint.proteinPercent.map { Int($0) },
+                pulse: Int(selectedPoint.pulse ?? 0),
+                skeletalMusclePercent: selectedPoint.skeletalMusclePercent.map { Int($0) },
+                subcutaneousFatPercent: selectedPoint.subcutaneousFatPercent.map { Int($0) },
+                visceralFatLevel: selectedPoint.visceralFatLevel.map { Int($0) },
+                boneMass: selectedPoint.boneMass.map { Int($0) },
+                impedance: nil,
+                unit: nil
+            )
+            return entry
+        }
+        
+        // Fallback to using metric values from the dashboard
         let bmiStr = metrics.first(where: { $0.label == DashboardStrings.bmi })?.value
         let bodyFatStr = metrics.first(where: { $0.label == DashboardStrings.bodyFat })?.value
         let muscleStr = metrics.first(where: { $0.label == DashboardStrings.muscle })?.value
@@ -807,12 +944,16 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     @MainActor
     func handleUnitChange() {
         loadGoalCardData()
+        // Force graph refresh by incrementing data change trigger
+        dataChangeTrigger += 1
         objectWillChange.send()
     }
     
     /// Handle weightless mode change specifically
     @MainActor
     func handleWeightlessModeChange() {
+        // Force graph refresh by incrementing data change trigger
+        dataChangeTrigger += 1
         objectWillChange.send()
     }
     
@@ -826,14 +967,12 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     /// Handle entry changes (add/update/delete) with unit and weightless mode updates
     @MainActor
     func handleEntryChange() {
+        // Force graph refresh by incrementing data change trigger
+        dataChangeTrigger += 1
+        
+        // Update metrics with latest entry
         Task {
-            await loadInitialData()
-            loadLatestEntryData()
-            loadGoalCardData()
-            handleSettingsChange()
-            if let latestDate = continuousOperations.map(\.date).max() {
-                updateScrollPositionDebounced(to: latestDate)
-            }
+            await loadLatestEntryData()
         }
     }
     
@@ -867,37 +1006,9 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
         
-    /// Handle scroll end - disables dynamic Y-axis updates after a delay
-    @MainActor
-    func handleScrollEnd() {
-        scrollEndTimer?.invalidate()
-        scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.isScrolling = false
-                self?.showCrosshair = false
-                self?.selectedXValue = nil
-                self?.selectedPoint = nil
-                self?.selectEntry(nil)
-                self?.objectWillChange.send()
-            }
-        }
-    }
+
     
-    /// Handle scroll start - enables dynamic Y-axis updates
-    @MainActor
-    func handleScrollStart() {
-        scrollEndTimer?.invalidate()
-        
-        if !isScrolling {
-            isScrolling = true
-            // Clear selection when scrolling starts
-            showCrosshair = false
-            selectedXValue = nil
-            selectedPoint = nil
-            selectEntry(nil)
-            objectWillChange.send()
-        }
-    }
+
     
     /// Handle chart selection at a specific date
     @MainActor
@@ -919,6 +1030,8 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             // Clear selection if no point found
             self.selectedPoint = nil
             selectEntry(nil)
+            // Reset to latest entry values
+            resetMetricsToLatestEntry()
             return 
         }
         
@@ -926,39 +1039,16 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         self.selectedPoint = selectedPoint
         selectEntry(selectedPoint)
         
+        // Update metric values with selected point data
+        updateMetricsWithSelectedPoint(selectedPoint)
+        
         // Force UI update
         DispatchQueue.main.async {
             self.showCrosshair = true
         }
     }
     
-    /// Handle scroll gesture detection
-    @MainActor
-    func handleScrollGestureChanged(translation: CGSize) {
-        // Only detect horizontal scrolling gestures
-        let isHorizontalScroll = abs(translation.width) > abs(translation.height) * 1.5
-        let isSignificantMovement = abs(translation.width) > 8
-        
-        if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
-            hasDetectedScrollInCurrentGesture = true
-            handleScrollStart()
-        }
-    }
-    
-    /// Handle scroll gesture ended
-    @MainActor
-    func handleScrollGestureEnded(translation: CGSize) {
-        // Reset for next gesture
-        hasDetectedScrollInCurrentGesture = false
-        
-        // Only handle if it was a horizontal scroll
-        let isHorizontalScroll = abs(translation.width) > abs(translation.height) * 1.5
-        let isSignificantMovement = abs(translation.width) > 8
-        
-        if isHorizontalScroll && isSignificantMovement {
-            handleScrollEnd()
-        }
-    }
+
     
     /// Ensure chart shows the latest entries by default
     /// This method should be called when data is loaded or when switching periods
@@ -1021,6 +1111,8 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     /// Refresh graph data when unit changes
     @MainActor
     func refreshGraphData() {
+        // Force graph refresh by incrementing data change trigger
+        dataChangeTrigger += 1
         objectWillChange.send()
     }
     
@@ -1070,9 +1162,26 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     
     /// Generate series data for chart rendering
     var chartSeriesData: [GraphSeries] {
-        guard !continuousOperations.isEmpty else { return [] }
+        guard !continuousOperations.isEmpty else { 
+            print("Hello: DashboardStore - chartSeriesData - No continuous operations available")
+            return [] 
+        }
         
         var series: [GraphSeries] = []
+        
+        // Get weight values for normalization
+        let weightValues = continuousOperations.map { summary -> Double in
+            if isWeightlessModeEnabled {
+                guard let anchorWeight = weightlessAnchorWeight else { return 0 }
+                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertStoredWeightToDisplay(Int(summary.weight))
+            }
+        }
+        
+        let weightMin = weightValues.min() ?? 0
+        let weightMax = weightValues.max() ?? 1
         
         // Add weight series (always present) - convert to display unit
         for summary in continuousOperations {
@@ -1094,24 +1203,79 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             ))
         }
         
-        // Add selected metric series (if a metric is selected)
+        // Add selected metric series (if a metric is selected) - normalized to weight range
         if let selectedMetric = selectedMetricLabel, selectedMetric != DashboardStrings.weight {
             for summary in continuousOperations {
                 if let metricValue = getMetricValue(for: summary) {
+                    // Normalize metric value to weight range
+                    let normalizedValue = normalizeMetricValue(metricValue, for: selectedMetric, toWeightRange: weightMin...weightMax)
                     series.append(GraphSeries(
                         date: summary.date,
-                        value: metricValue,
+                        value: normalizedValue,
                         series: selectedMetric
                     ))
                 }
             }
         }
         
+        print("Hello: DashboardStore - chartSeriesData - Generated \(series.count) series data points")
+        print("Hello: DashboardStore - chartSeriesData - Weight series count: \(series.filter { $0.series == DashboardStrings.weight }.count)")
+        print("Hello: DashboardStore - chartSeriesData - Weight values: \(series.filter { $0.series == DashboardStrings.weight }.map { $0.value })")
+        
         return series
+    }
+    
+    /// Normalize metric value to weight range for chart display
+    private func normalizeMetricValue(_ value: Double, for metricLabel: String, toWeightRange weightRange: ClosedRange<Double>) -> Double {
+        let weightMin = weightRange.lowerBound
+        let weightMax = weightRange.upperBound
+        let weightSpan = weightMax - weightMin
+        
+        // Define metric ranges based on metric type
+        let (metricMin, metricMax): (Double, Double) = {
+            switch metricLabel {
+            case DashboardStrings.bmi:
+                return (18.0, 35.0) // BMI range
+            case DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water, 
+                 DashboardStrings.bone, DashboardStrings.subFat, DashboardStrings.protein, 
+                 DashboardStrings.skelMuscle:
+                return (0.0, 100.0) // Percentage ranges (0-100%)
+            case DashboardStrings.heartBpm:
+                return (40.0, 200.0) // Heart rate range
+            case DashboardStrings.visceralFat:
+                return (1.0, 30.0) // Visceral fat level range
+            case DashboardStrings.bmrKcal:
+                return (1000.0, 3000.0) // BMR range
+            case DashboardStrings.metAge:
+                return (15.0, 80.0) // Metabolic age range
+            default:
+                return (0.0, 100.0) // Default percentage range
+            }
+        }()
+        
+        let metricSpan = metricMax - metricMin
+        
+        // Clamp value to metric range
+        let clampedValue = max(metricMin, min(metricMax, value))
+        
+        // Normalize to weight range
+        let normalizedValue = weightMin + (clampedValue - metricMin) * weightSpan / metricSpan
+        
+        print("Hello: normalizeMetricValue - Metric: \(metricLabel), Original: \(value), Range: [\(metricMin), \(metricMax)], Normalized: \(normalizedValue), WeightRange: [\(weightMin), \(weightMax)]")
+        
+        return normalizedValue
     }
     
     func updateSelectedPeriod(_ period: TimePeriod) {
         selectedPeriod = period
+        
+        // Clear crosshair and selection when time period changes
+        showCrosshair = false
+        selectedPoint = nil
+        selectedXValue = nil
+        selectedEntry = nil
+        selectedWeight = nil
+        
         // Ensure chart shows the latest entries when switching periods
         ensureLatestEntriesVisible()
         selectedWeight = displayWeight
@@ -1139,15 +1303,14 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
     
-    func yAxisTicksWithGoal() -> [Double] {
-        var ticks = getYAxisTicks()
-        if !ticks.contains(goalWeight) { ticks.append(goalWeight) }
-        return ticks.sorted()
-    }
+    // MARK: - Y-Axis Calculation using YAxisCalculator
     
-    /// Calculate Y-axis range with proper padding and scaling
-    func calculateYAxisRange() -> ClosedRange<Double> {
-        let weightValues = continuousOperations.map { summary -> Double in
+    /// Get Y-axis scale based on all data points in current time period (not just visible)
+    func getCurrentYAxisScale() -> YAxisScale {
+        // Use all operations in the current time period, not just visible ones
+        let allOps = continuousOperations
+        
+        let allWeightValues = allOps.map { summary -> Double in
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return 0 }
                 let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
@@ -1156,27 +1319,132 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
                 return convertStoredWeightToDisplay(Int(summary.weight))
             }
         }
-        let metricValues = selectedMetricLabel != nil ? continuousOperations.compactMap { getMetricValue(for: $0) } : []
         
-        let allValues = weightValues + metricValues
-        guard !allValues.isEmpty else { 
+        // Filter out outliers for better Y-axis calculation
+        let filteredValues = filterOutliers(allWeightValues)
+        
+        // Use existing YAxisCalculator with chart height for optimal tick spacing
+        let scale = YAxisCalculator.calculateYAxis(
+            weights: filteredValues,
+            goalWeight: goalWeightForDisplay,
+            chartHeight: chartHeight,
+            minTickSpacing: 40
+        )
+        
+        // Log all data points for debugging
+        print("Hello: getCurrentYAxisScale - All operations count: \(allOps.count)")
+        print("Hello: getCurrentYAxisScale - All weight values: \(allWeightValues)")
+        print("Hello: getCurrentYAxisScale - Filtered values: \(filteredValues)")
+        print("Hello: getCurrentYAxisScale - Goal weight: \(goalWeightForDisplay)")
+        print("Hello: getCurrentYAxisScale - Chart height: \(chartHeight)")
+        print("Hello: getCurrentYAxisScale - Calculated scale: min=\(scale.min), max=\(scale.max), step=\(scale.step), labels=\(scale.labels), average=\(scale.average)")
+        print("Hello: getCurrentYAxisScale - Domain: \(scale.domain)")
+        
+        return scale
+    }
+    
+    /// Filter out outliers using IQR method
+    private func filterOutliers(_ values: [Double]) -> [Double] {
+        guard values.count > 1 else { return values }
+        
+        // For small datasets, use a more aggressive approach
+        if values.count <= 4 {
+            let sorted = values.sorted()
+            let median = sorted[sorted.count / 2]
+            
+            // Calculate the range of the data
+            let dataRange = sorted.last! - sorted.first!
+            
+            // For small datasets, filter out values that are too far from the median
+            // Use a tighter bound: median ± (range * 0.3)
+            let tolerance = dataRange * 0.3
+            let lowerBound = median - tolerance
+            let upperBound = median + tolerance
+            
+            let filtered = values.filter { $0 >= lowerBound && $0 <= upperBound }
+            print("Hello: filterOutliers - Small dataset filtering: values=\(values), median=\(median), range=\(dataRange), tolerance=\(tolerance), bounds=[\(lowerBound), \(upperBound)], filtered=\(filtered)")
+            return filtered
+        }
+        
+        // For larger datasets, use IQR method
+        let sorted = values.sorted()
+        let q1Index = values.count / 4
+        let q3Index = (values.count * 3) / 4
+        
+        let q1 = sorted[q1Index]
+        let q3 = sorted[q3Index]
+        let iqr = q3 - q1
+        
+        let lowerBound = q1 - (iqr * 1.5)
+        let upperBound = q3 + (iqr * 1.5)
+        
+        let filtered = values.filter { $0 >= lowerBound && $0 <= upperBound }
+        print("Hello: filterOutliers - IQR filtering: values=\(values), q1=\(q1), q3=\(q3), iqr=\(iqr), bounds=[\(lowerBound), \(upperBound)], filtered=\(filtered)")
+        return filtered
+    }
+    
+    /// Get current Y-axis ticks based on all data points in current time period
+    func getCurrentYAxisTicks() -> [Double] {
+        let scale = getCurrentYAxisScale()
+        let ticks = scale.labels.map { Double($0) }
+        print("Hello: DashboardStore - getCurrentYAxisTicks - Using ALL operations data")
+        print("Hello: DashboardStore - getCurrentYAxisTicks - Chart height: \(chartHeight)")
+        print("Hello: DashboardStore - getCurrentYAxisTicks - Optimal tick count: \(scale.labels.count)")
+        print("Hello: DashboardStore - getCurrentYAxisTicks - Final ticks: \(ticks)")
+        return ticks
+    }
+    
+    /// Get current Y-axis scale domain based on all data points in current time period
+    func getCurrentYScaleDomain() -> ClosedRange<Double> {
+        let scale = getCurrentYAxisScale()
+        let domain = scale.domain
+        
+        // Safety check: ensure domain includes all data points and goal weight
+        let allOps = continuousOperations
+        let allWeightValues = allOps.map { summary -> Double in
             if isWeightlessModeEnabled {
-                return -10.0...10.0
+                guard let anchorWeight = weightlessAnchorWeight else { return 0 }
+                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
+                return currentWeight - anchorWeight
             } else {
-                let defaultRange = accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70.0...90.0 : 170.0...190.0
-                return defaultRange
+                return convertStoredWeightToDisplay(Int(summary.weight))
             }
         }
         
-        let minValue = allValues.min() ?? (isWeightlessModeEnabled ? -10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70 : 170))
-        let maxValue = allValues.max() ?? (isWeightlessModeEnabled ? 10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 90 : 190))
+        if let minWeight = allWeightValues.min(),
+           let maxWeight = allWeightValues.max() {
+            // Calculate optimal domain that makes full use of chart height
+            let dataRange = maxWeight - minWeight
+            let goalWeight = goalWeightForDisplay
+            
+            // Include goal weight in the range calculation
+            let effectiveMin = min(minWeight, goalWeight)
+            let effectiveMax = max(maxWeight, goalWeight)
+            let effectiveRange = effectiveMax - effectiveMin
+            
+            // Add padding to ensure all data points are visible and make full use of chart height
+            let padding = max(effectiveRange * 0.15, 8.0) // Increased padding for better spacing
+            let adjustedMin = effectiveMin - padding
+            let adjustedMax = effectiveMax + padding
+            
+            print("Hello: DashboardStore - getCurrentYScaleDomain - Original domain: \(domain)")
+            print("Hello: DashboardStore - getCurrentYScaleDomain - All weights: \(allWeightValues)")
+            print("Hello: DashboardStore - getCurrentYScaleDomain - Goal weight: \(goalWeightForDisplay)")
+            print("Hello: DashboardStore - getCurrentYScaleDomain - Data range: \(dataRange), Effective range: \(effectiveRange)")
+            print("Hello: DashboardStore - getCurrentYScaleDomain - Optimal domain: \(adjustedMin)...\(adjustedMax)")
+            
+            return adjustedMin...adjustedMax
+        }
         
-        let dataRange = maxValue - minValue
-        let minRange = isWeightlessModeEnabled ? 2.0 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 2.0 : 5.0)
-        let effectiveRange = max(dataRange, minRange)
-        let padding = effectiveRange * 0.1
-        
-        return (minValue - padding)...(maxValue + padding)
+        print("Hello: DashboardStore - getCurrentYScaleDomain - Using all operations domain: \(domain)")
+        return domain
+    }
+    
+    /// Get average weight for display based on all data points in current time period
+    func getCurrentAverageWeight() -> Double {
+        let average = getCurrentYAxisScale().average
+        print("Hello: DashboardStore - getCurrentAverageWeight - Using ALL operations average: \(average)")
+        return average
     }
     
     /// Get metric value for a summary based on selected metric
@@ -1213,71 +1481,46 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
     
-    /// Get Y-axis ticks with proper spacing for the current data range
-    func getYAxisTicks() -> [Double] {
-        let range = calculateYAxisRange()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
+    
+    /// Get selected point's metric values for metric info sheet
+    func getSelectedPointMetricValues() -> [String: Double] {
+        guard let selectedPoint = selectedPoint else { return [:] }
         
-        let optimalTickCount = 6
-        let roughStep = dataRange / Double(optimalTickCount - 1)
-        let normalizedStep = normalizeStep(roughStep)
+        var metricValues: [String: Double] = [:]
         
-        var ticks: [Double] = []
-        var currentTick = minValue
+        // Add all available metrics from the selected point
+        if let bmi = selectedPoint.bmi { metricValues[DashboardStrings.bmi] = bmi }
+        if let bodyFat = selectedPoint.bodyFat { metricValues[DashboardStrings.bodyFat] = bodyFat }
+        if let muscle = selectedPoint.muscleMass { metricValues[DashboardStrings.muscle] = muscle }
+        if let water = selectedPoint.water { metricValues[DashboardStrings.water] = water }
+        if let heartBpm = selectedPoint.pulse { metricValues[DashboardStrings.heartBpm] = Double(heartBpm) }
+        if let bone = selectedPoint.boneMass { metricValues[DashboardStrings.bone] = bone }
+        if let visceralFat = selectedPoint.visceralFatLevel { metricValues[DashboardStrings.visceralFat] = visceralFat }
+        if let subFat = selectedPoint.subcutaneousFatPercent { metricValues[DashboardStrings.subFat] = subFat }
+        if let protein = selectedPoint.proteinPercent { metricValues[DashboardStrings.protein] = protein }
+        if let skelMuscle = selectedPoint.skeletalMusclePercent { metricValues[DashboardStrings.skelMuscle] = skelMuscle }
+        if let bmr = selectedPoint.bmr { metricValues[DashboardStrings.bmrKcal] = bmr }
+        if let metAge = selectedPoint.metabolicAge { metricValues[DashboardStrings.metAge] = Double(metAge) }
         
-        while currentTick <= maxValue + 0.001 {
-            ticks.append(currentTick)
-            currentTick += normalizedStep
+        return metricValues
+    }
+    
+    /// Returns true if we should show all x-axis labels (monthly) for .year or .total
+    /// Show all labels by default when entries are present, regardless of count
+    /// Updated to show all x-axis labels by default when entries are present
+    /// Note: This method is now primarily used for documentation as the logic has been simplified
+    private func shouldShowAllXAxisLabels(_ summaries: [BathScaleWeightSummary]) -> Bool {
+        // If there are any entries present, show all labels by default
+        if !summaries.isEmpty {
+            return true
         }
-        
-        if goalWeight > 0 {
-            let goalValue = goalWeightForDisplay
-            if goalValue >= minValue && goalValue <= maxValue {
-                if !ticks.contains(where: { abs($0 - goalValue) < normalizedStep * 0.1 }) {
-                    ticks.append(goalValue)
-                }
-            }
-        }
-        
-        return ticks.sorted()
+        // Fallback to original logic for edge cases
+        return summaries.count < 10 || doEntriesSpanLessThanYear(summaries)
     }
-    
-    /// Get current Y-axis ticks (alias for getYAxisTicks)
-    func getCurrentYAxisTicks() -> [Double] {
-        return getYAxisTicks()
-    }
-    
-    /// Get current Y-axis scale domain
-    func getCurrentYScaleDomain() -> ClosedRange<Double> {
-        return getYScaleDomain()
-    }
-    
-    /// Normalize step size to human-friendly increments
-    private func normalizeStep(_ roughStep: Double) -> Double {
-        let magnitude = pow(10, Foundation.floor(log10(roughStep)))
-        let normalized = roughStep / magnitude
-        
-        let cleanSteps: [Double] = [0.1, 0.2, 0.5, 1.0, 2.0, 2.5, 5.0, 10.0]
-        let closestStep = cleanSteps.min(by: { 
-            abs($0 - normalized) < abs($1 - normalized)
-        }) ?? 1.0
-        
-        return closestStep * magnitude
-    }
-    
-    /// Calculate Y-axis scale domain with proper padding
-    func getYScaleDomain() -> ClosedRange<Double> {
-        let range = calculateYAxisRange()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
-        let padding = dataRange * 0.05
-        
-        return (minValue - padding)...(maxValue + padding)
-    }
-    
+
+    /// Generate x-axis values for the chart
+    /// Always shows the complete time period regardless of data availability
+    /// This ensures all x-axis labels are displayed even with minimal data
     func xAxisValues(for period: TimePeriod) -> [Date] {
         let allDates = continuousOperations.map(\.date)
         guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
@@ -1286,49 +1529,133 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         
         switch period {
         case .week:
+            // Show full week (7 days) regardless of data range
+            // Use a simpler approach to ensure labels are shown
             var current = calendar.startOfDay(for: minDate)
-            let end = calendar.startOfDay(for: maxDate)
+            let end = calendar.date(byAdding: .day, value: 6, to: current) ?? current
             while current <= end {
                 dates.append(current)
                 current = calendar.date(byAdding: .day, value: 1, to: current) ?? current
             }
             
         case .month:
+            // Show full month (4-5 weeks) regardless of data range
+            // Use a simpler approach to ensure labels are shown
             var current = calendar.startOfDay(for: minDate)
-            let end = calendar.startOfDay(for: maxDate)
+            let end = calendar.date(byAdding: .weekOfYear, value: 4, to: current) ?? current
             while current <= end {
                 dates.append(current)
                 current = calendar.date(byAdding: .weekOfYear, value: 1, to: current) ?? current
             }
             
         case .year:
-            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
-            let endComponents = calendar.dateComponents([.year, .month], from: maxDate)
-            let end = calendar.date(from: endComponents) ?? maxDate
+            // Always show all 12 months regardless of data range
+            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
+            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: yearStart)) ?? yearStart
+            let end = calendar.date(byAdding: .month, value: 11, to: current) ?? current
             while current <= end {
                 dates.append(current)
                 current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
             }
             
         case .total:
-            var current = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
-            let endComponents = calendar.dateComponents([.year, .month], from: maxDate)
-            let end = calendar.date(from: endComponents) ?? maxDate
-            while current <= end {
-                dates.append(current)
-                current = calendar.date(byAdding: .month, value: 3, to: current) ?? current
+            if areEntriesInSameEra(continuousOperations) {
+                // For total time period with entries in same year, display like year time period
+                // Always show all 12 months regardless of data range
+                let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
+                var current = calendar.date(from: calendar.dateComponents([.year, .month], from: yearStart)) ?? yearStart
+                let end = calendar.date(byAdding: .month, value: 11, to: current) ?? current
+                while current <= end {
+                    dates.append(current)
+                    current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
+                }
+            } else {
+                // If spanning multiple years, show quarterly labels
+                var current = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
+                let endComponents = calendar.dateComponents([.year, .month], from: maxDate)
+                let end = calendar.date(from: endComponents) ?? maxDate
+                while current <= end {
+                    dates.append(current)
+                    current = calendar.date(byAdding: .month, value: 3, to: current) ?? current
+                }
             }
         }
         
         return dates
     }
-    
 
-    
-    func xAxisLabels(for period: TimePeriod) -> [Date] {
-        return xAxisValues(for: period)
+    func xAxisValuesWithBuffer(for period: TimePeriod) -> [Date] {
+        let allDates = continuousOperations.map(\.date)
+        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
+        
+        var dates: [Date] = []
+        
+        switch period {
+        case .week:
+            // Show full week with buffer
+            let bufferDays: TimeInterval = 1 * 24 * 60 * 60 // 1 day buffer
+            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferDays))
+            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferDays))
+            
+            var current = startDate
+            while current <= endDate {
+                dates.append(current)
+                current = calendar.date(byAdding: .day, value: 1, to: current) ?? current
+            }
+            
+        case .month:
+            // Show full month with buffer
+            let bufferWeeks: TimeInterval = 7 * 24 * 60 * 60 // 1 week buffer
+            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferWeeks))
+            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferWeeks))
+            
+            var current = startDate
+            while current <= endDate {
+                dates.append(current)
+                current = calendar.date(byAdding: .weekOfYear, value: 1, to: current) ?? current
+            }
+            
+        case .year:
+            // Always show all 12 months with buffer
+            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
+            let startDate = calendar.date(byAdding: .month, value: -1, to: yearStart) ?? yearStart
+            let endDate = calendar.date(byAdding: .month, value: 12, to: yearStart) ?? yearStart
+            
+            var current = startDate
+            while current <= endDate {
+                dates.append(current)
+                current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
+            }
+            
+        case .total:
+            if areEntriesInSameEra(continuousOperations) {
+                // For total time period with entries in same year, display like year time period
+                // Always show all 12 months with buffer
+                let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
+                let startDate = calendar.date(byAdding: .month, value: -1, to: yearStart) ?? yearStart
+                let endDate = calendar.date(byAdding: .month, value: 12, to: yearStart) ?? yearStart
+                
+                var current = startDate
+                while current <= endDate {
+                    dates.append(current)
+                    current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
+                }
+            } else {
+                let bufferQuarters: TimeInterval = 90 * 24 * 60 * 60 // 3 months buffer
+                let startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate.addingTimeInterval(-bufferQuarters))) ?? minDate
+                let endDate = calendar.date(from: calendar.dateComponents([.year, .month], from: maxDate.addingTimeInterval(bufferQuarters))) ?? maxDate
+                
+                var current = startDate
+                while current <= endDate {
+                    dates.append(current)
+                    current = calendar.date(byAdding: .month, value: 3, to: current) ?? current
+                }
+            }
+        }
+        
+        return dates
     }
-    
+
     func xLabelString(for date: Date, period: TimePeriod) -> String? {
         switch period {
         case .week:
@@ -1336,9 +1663,16 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         case .month:
             return "\(calendar.component(.day, from: date))"
         case .year:
+            // Always show month initials for year time period
             return Month.initial(for: calendar.component(.month, from: date))
         case .total:
-            return "\(calendar.component(.year, from: date))"
+            if areEntriesInSameEra(continuousOperations) {
+                // For total time period with entries in same year, display like year time period
+                // Always show month initials (J, F, M, etc.) when entries are in same era
+                return Month.initial(for: calendar.component(.month, from: date))
+            } else {
+                return "\(calendar.component(.year, from: date))"
+            }
         }
     }
     
@@ -1366,14 +1700,33 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         switch period {
         case .week: return 7 * 24 * 60 * 60
         case .month: return 30 * 24 * 60 * 60
-        case .year: return 365 * 24 * 60 * 60
-        case .total: 
-            let allDates = continuousOperations.map(\.date)
-            guard let minDate = allDates.min(), let maxDate = allDates.max() else {
-                return 365 * 24 * 60 * 60
+        case .year:
+            // Check if entries span less than a year
+            if doEntriesSpanLessThanYear(continuousOperations) {
+                // Show a smaller domain for better detail when data spans less than a year
+                return 180 * 24 * 60 * 60 // 6 months
+            } else {
+                return 365 * 24 * 60 * 60 // 1 year
             }
-            let totalRange = maxDate.timeIntervalSince(minDate)
-            return max(totalRange / 4, 365 * 24 * 60 * 60)
+        case .total: 
+            // Check if entries are in the same era (same year)
+            if areEntriesInSameEra(continuousOperations) {
+                // If in same era, treat like year view
+                if doEntriesSpanLessThanYear(continuousOperations) {
+                    // Show a smaller domain for better detail when data spans less than a year
+                    return 180 * 24 * 60 * 60 // 6 months
+                } else {
+                    return 365 * 24 * 60 * 60 // 1 year
+                }
+            } else {
+                // If spanning multiple years, calculate based on total range
+                let allDates = continuousOperations.map(\.date)
+                guard let minDate = allDates.min(), let maxDate = allDates.max() else {
+                    return 365 * 24 * 60 * 60
+                }
+                let totalRange = maxDate.timeIntervalSince(minDate)
+                return max(totalRange / 4, 365 * 24 * 60 * 60)
+            }
         }
     }
     
@@ -1381,8 +1734,30 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         switch period {
         case .week: return 24 * 60 * 60
         case .month: return 7 * 24 * 60 * 60
-        case .year: return 30 * 24 * 60 * 60
-        case .total: return 90 * 24 * 60 * 60
+        case .year:
+            // Check if entries span less than a year
+            if doEntriesSpanLessThanYear(continuousOperations) {
+                // Use monthly snap units for better precision
+                return 30 * 24 * 60 * 60
+            } else {
+                // Use quarterly snap units for better performance
+                return 90 * 24 * 60 * 60
+            }
+        case .total:
+            // Check if entries are in the same era (same year)
+            if areEntriesInSameEra(continuousOperations) {
+                // If in same era, treat like year view
+                if doEntriesSpanLessThanYear(continuousOperations) {
+                    // Use monthly snap units for better precision
+                    return 30 * 24 * 60 * 60
+                } else {
+                    // Use quarterly snap units for better performance
+                    return 90 * 24 * 60 * 60
+                }
+            } else {
+                // If spanning multiple years, use quarterly snap units
+                return 90 * 24 * 60 * 60
+            }
         }
     }
     
@@ -1390,9 +1765,19 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         let visibleStart = xScrollPosition.addingTimeInterval(-visibleDomainLength(for: selectedPeriod) / 2)
         let visibleEnd = xScrollPosition.addingTimeInterval(visibleDomainLength(for: selectedPeriod) / 2)
         
-        return continuousOperations.filter { summary in
+        let visibleOps = continuousOperations.filter { summary in
             return summary.date >= visibleStart && summary.date <= visibleEnd
         }
+        
+        print("Hello: getVisibleOperations - Scroll position: \(xScrollPosition)")
+        print("Hello: getVisibleOperations - Visible range: \(visibleStart) to \(visibleEnd)")
+        print("Hello: getVisibleOperations - Total operations: \(continuousOperations.count)")
+        print("Hello: getVisibleOperations - Visible operations: \(visibleOps.count)")
+        print("Hello: getVisibleOperations - Visible operation dates: \(visibleOps.map { $0.date })")
+        print("Hello: getVisibleOperations - All operation dates: \(continuousOperations.map { $0.date })")
+        print("Hello: getVisibleOperations - Latest operation date: \(continuousOperations.map { $0.date }.max() ?? Date())")
+        
+        return visibleOps
     }
     
     var visibleOperations: [BathScaleWeightSummary] {
@@ -1404,327 +1789,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
     
-    /// Calculate Y-axis range based on ALL data (not just visible data)
-    /// This provides stable Y-axis during scrolling for better performance
-    func calculateYAxisRangeForAllData() -> ClosedRange<Double> {
-        let weightValues = continuousOperations.map { summary -> Double in
-            if isWeightlessModeEnabled {
-                // In weightless mode, calculate differences from anchor weight
-                guard let anchorWeight = weightlessAnchorWeight else { return 0 }
-                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                // Normal mode - use actual weights
-                return convertStoredWeightToDisplay(Int(summary.weight))
-            }
-        }
-        let metricValues = selectedMetricLabel != nil ? continuousOperations.compactMap { getMetricValue(for: $0) } : []
-        
-        let allValues = weightValues + metricValues
-        guard !allValues.isEmpty else { 
-            if isWeightlessModeEnabled {
-                // For weightless mode, use a reasonable range for differences
-                return -10.0...10.0
-            } else {
-                let defaultRange = accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70.0...90.0 : 170.0...190.0
-                return defaultRange
-            }
-        }
-        
-        let minValue = allValues.min() ?? (isWeightlessModeEnabled ? -10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 70 : 170))
-        let maxValue = allValues.max() ?? (isWeightlessModeEnabled ? 10 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 90 : 190))
-        
-        // Calculate the actual data range
-        let dataRange = maxValue - minValue
-        
-        // For very small ranges, ensure we have enough visual space
-        let minRange = isWeightlessModeEnabled ? 2.0 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 2.0 : 5.0)
-        let effectiveRange = max(dataRange, minRange)
-        
-        // Add padding to prevent clipping (15% on each side for better visibility)
-        let padding = effectiveRange * 0.15
-        
-        return (minValue - padding)...(maxValue + padding)
-    }
-    
-    /// Get Y-axis ticks based on ALL data with buffer labels
-    /// This provides stable Y-axis during scrolling and prevents edge clipping
-    func getYAxisTicksForAllData() -> [Double] {
-        let range = calculateYAxisRangeForAllData()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
-        
-        // Calculate optimal number of ticks (5-7 ticks for readability)
-        let optimalTickCount = 6
-        let roughStep = dataRange / Double(optimalTickCount - 1)
-        
-        // Normalize step to human-friendly increments
-        let normalizedStep = normalizeStep(roughStep)
-        
-        // Generate ticks from min to max
-        var ticks: [Double] = []
-        var currentTick = minValue
-        
-        while currentTick <= maxValue + 0.001 { // Small epsilon for floating point comparison
-            ticks.append(currentTick)
-            currentTick += normalizedStep
-        }
-        
-        // Add buffer Y-axis labels to prevent edge clipping
-        // Always add one more tick above the highest data point to prevent clipping
-        let allWeightValues = continuousOperations.map { summary -> Double in
-            if isWeightlessModeEnabled {
-                guard let anchorWeight = weightlessAnchorWeight else { return 0 }
-                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                return convertStoredWeightToDisplay(Int(summary.weight))
-            }
-        }
-        
-        if let maxDataValue = allWeightValues.max() {
-            let highestTick = ticks.max() ?? maxValue
-            // Always add a buffer tick above the highest data point to prevent clipping
-            // This ensures that if the max weight in visible portion is 83, the max Y-axis label will be 85 (if interval is 5)
-            if maxDataValue <= highestTick {
-                ticks.append(highestTick + normalizedStep)
-            }
-        }
-        
-        // Always include goal weight if it exists and is within range
-        if goalWeight > 0 {
-            let goalValue = goalWeightForDisplay
-            if goalValue >= minValue && goalValue <= maxValue + normalizedStep {
-                // Only add if not already close to an existing tick
-                if !ticks.contains(where: { abs($0 - goalValue) < normalizedStep * 0.1 }) {
-                    ticks.append(goalValue)
-                }
-            }
-        }
-        
-        return ticks.sorted()
-    }
-    
-    /// Calculate Y-axis scale domain based on ALL data
-    /// This ensures stable scaling during scrolling
-    func getYScaleDomainForAllData() -> ClosedRange<Double> {
-        let range = calculateYAxisRangeForAllData()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
-        
-        // Add minimal padding to prevent clipping (5%)
-        let padding = dataRange * 0.05
-        
-        return (minValue - padding)...(maxValue + padding)
-    }
-    
-    // MARK: - Dynamic Y-Axis Calculation for Visible Data
-    
-    /// Calculate Y-axis range based on visible data points for dynamic scaling
-    /// This provides responsive Y-axis that adjusts to visible data during scrolling
-    func calculateYAxisRangeForVisibleData() -> ClosedRange<Double> {
-        let visibleWeightValues = chartSeriesData.compactMap { series -> Double? in
-            // Only consider weight series for Y-axis calculation
-            guard series.series == DashboardStrings.weight else { return nil }
-            return series.value
-        }
-        
-        let metricValues = selectedMetricLabel != nil ? chartSeriesData.compactMap { series -> Double? in
-            guard series.series == selectedMetricLabel else { return nil }
-            return series.value
-        } : []
-        
-        let allVisibleValues = visibleWeightValues + metricValues
-        guard !allVisibleValues.isEmpty else { 
-            // Fallback to all data range if no visible data
-            return calculateYAxisRangeForAllData()
-        }
-        
-        let minValue = allVisibleValues.min() ?? 0
-        let maxValue = allVisibleValues.max() ?? 1
-        
-        // Calculate the actual data range
-        let dataRange = maxValue - minValue
-        
-        // For very small ranges, ensure we have enough visual space
-        let minRange = isWeightlessModeEnabled ? 2.0 : (accountService.activeAccount?.weightSettings?.weightUnit == .kg ? 2.0 : 5.0)
-        let effectiveRange = max(dataRange, minRange)
-        
-        // Add padding to prevent clipping (20% on each side for better visibility)
-        let padding = effectiveRange * 0.20
-        
-        // Always include goal weight in the range if it exists
-        var finalMin = minValue - padding
-        var finalMax = maxValue + padding
-        
-        if goalWeight > 0 {
-            let goalValue = goalWeightForDisplay
-            finalMin = min(finalMin, goalValue - (effectiveRange * 0.1))
-            finalMax = max(finalMax, goalValue + (effectiveRange * 0.1))
-        }
-        
-        return finalMin...finalMax
-    }
-    
-    /// Get Y-axis ticks based on visible data with goal weight always included
-    /// This provides dynamic Y-axis that adjusts to visible data during scrolling
-    func getYAxisTicksForVisibleData() -> [Double] {
-        let range = calculateYAxisRangeForVisibleData()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
-        
-        // Calculate optimal number of ticks (5-7 ticks for readability)
-        let optimalTickCount = 6
-        let roughStep = dataRange / Double(optimalTickCount - 1)
-        
-        // Normalize step to human-friendly increments
-        let normalizedStep = normalizeStep(roughStep)
-        
-        // Generate ticks from min to max
-        var ticks: [Double] = []
-        var currentTick = minValue
-        
-        while currentTick <= maxValue + 0.001 { // Small epsilon for floating point comparison
-            ticks.append(currentTick)
-            currentTick += normalizedStep
-        }
-        
-        // Always include goal weight if it exists and is within reasonable range
-        if goalWeight > 0 {
-            let goalValue = goalWeightForDisplay
-            if goalValue >= minValue - normalizedStep && goalValue <= maxValue + normalizedStep {
-                // Only add if not already close to an existing tick
-                if !ticks.contains(where: { abs($0 - goalValue) < normalizedStep * 0.1 }) {
-                    ticks.append(goalValue)
-                }
-            }
-        }
-        
-        return ticks.sorted()
-    }
-    
-    /// Calculate Y-axis scale domain based on visible data
-    /// This provides dynamic scaling that adjusts during scrolling
-    func getYScaleDomainForVisibleData() -> ClosedRange<Double> {
-        let range = calculateYAxisRangeForVisibleData()
-        let minValue = range.lowerBound
-        let maxValue = range.upperBound
-        let dataRange = maxValue - minValue
-        
-        // Add minimal padding to prevent clipping (5%)
-        let padding = dataRange * 0.05
-        
-        return (minValue - padding)...(maxValue + padding)
-    }
-    
-    /// Get X-axis values with buffer to prevent edge clipping
-    /// This ensures points at the edges are fully visible
-    func xAxisValuesWithBuffer(for period: TimePeriod) -> [Date] {
-        let allDates = continuousOperations.map(\.date)
-        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
-        
-        var dates: [Date] = []
-        
-        switch period {
-        case .week:
-            // For week view, add buffer days before and after
-            let bufferDays: TimeInterval = 1 * 24 * 60 * 60 // 1 day buffer
-            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferDays))
-            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferDays))
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .day, value: 1, to: current) ?? current
-            }
-            
-        case .month:
-            // For month view, add buffer weeks
-            let bufferWeeks: TimeInterval = 7 * 24 * 60 * 60 // 1 week buffer
-            let startDate = calendar.startOfDay(for: minDate.addingTimeInterval(-bufferWeeks))
-            let endDate = calendar.startOfDay(for: maxDate.addingTimeInterval(bufferWeeks))
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .weekOfYear, value: 1, to: current) ?? current
-            }
-            
-        case .year:
-            // For year view, add buffer months
-            let bufferMonths: TimeInterval = 30 * 24 * 60 * 60 // 1 month buffer
-            let startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate.addingTimeInterval(-bufferMonths))) ?? minDate
-            let endDate = calendar.date(from: calendar.dateComponents([.year, .month], from: maxDate.addingTimeInterval(bufferMonths))) ?? maxDate
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .month, value: 1, to: current) ?? current
-            }
-            
-        case .total:
-            // For total view, add buffer quarters
-            let bufferQuarters: TimeInterval = 90 * 24 * 60 * 60 // 3 months buffer
-            let startDate = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate.addingTimeInterval(-bufferQuarters))) ?? minDate
-            let endDate = calendar.date(from: calendar.dateComponents([.year, .month], from: maxDate.addingTimeInterval(bufferQuarters))) ?? maxDate
-            
-            var current = startDate
-            while current <= endDate {
-                dates.append(current)
-                current = calendar.date(byAdding: .month, value: 3, to: current) ?? current
-            }
-        }
-        
-        return dates
-    }
-    
-    /// Get the weight to display based on selection state
-    /// When a point is selected, show that specific weight
-    /// When no point is selected, show average of visible range
-    var displayWeightForSelection: Double? {
-        if let selectedEntry = selectedEntry {
-            // If a point is selected, show that specific weight
-            return convertStoredWeightToDisplay(Int(selectedEntry.weight ?? 0))
-        } else {
-            // If no point is selected, show average of visible range
-            return calculateAverageWeightForVisibleRange()
-        }
-    }
-    
-    /// Calculate average weight for the currently visible range
-    /// This is used when no specific point is selected
-    private func calculateAverageWeightForVisibleRange() -> Double? {
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
-        
-        // Check if weightless mode is enabled
-        if isWeightlessModeEnabled {
-            return calculateWeightlessAverageForVisibleRange(opsToUse)
-        }
-        
-        // Calculate average weight for visible operations
-        let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
-        guard !weights.isEmpty else { return nil }
-        return weights.reduce(0, +) / Double(weights.count)
-    }
-    
-    /// Calculate weightless average for visible range
-    /// In weightless mode, shows average difference from anchor weight
-    private func calculateWeightlessAverageForVisibleRange(_ operations: [BathScaleWeightSummary]) -> Double? {
-        guard let anchorWeight = weightlessAnchorWeight else { return nil }
-        
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? operations : visibleOps
-        
-        // Calculate average weight for visible operations
-        let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
-        guard !weights.isEmpty else { return nil }
-        let averageWeight = weights.reduce(0, +) / Double(weights.count)
-        return averageWeight - anchorWeight
-    }
+
     
     /// Get the label text for weight display
     /// Shows "Selected" when a point is selected, otherwise shows period average
@@ -1740,6 +1805,54 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     /// Check if there are entries but none in the current time period
     var hasEntriesButNoneInCurrentPeriod: Bool {
         return hasAnyEntries && continuousOperations.isEmpty
+    }
+    
+    /// Reset metric values to latest entry data
+    func resetMetricsToLatestEntry() {
+        Task {
+            do {
+                guard let latestEntry = try await entryService.getLatestEntry() else {
+                    return
+                }
+                updateMetricsWithEntry(latestEntry)
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset metrics to latest entry: \(error)")
+            }
+        }
+    }
+
+    /// Update visible data after scroll ends
+    /// This recalculates Y-axis domain and ticks based on all data points in current time period
+    @MainActor
+    func updateVisibleDataAfterScroll() {
+        // Force UI update to recalculate Y-axis based on all data points
+        objectWillChange.send()
+        
+        // Update weight display to show average of all data points in current time period
+        let averageWeight = getCurrentAverageWeight()
+        print("Hello: updateVisibleDataAfterScroll - Average weight in current time period: \(averageWeight)")
+        
+        print("Hello: updateVisibleDataAfterScroll - Updated Y-axis domain and ticks based on all data points")
+    }
+    
+    private func handleScrollEnd() {
+        // Cancel any existing timer
+        scrollEndTimer?.invalidate()
+        
+        // Set a timer to detect when scrolling has truly ended
+        scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.isScrolling = false
+                self.showCrosshair = false
+                self.selectedXValue = nil  // Clear selection state
+                // Reset metrics to latest entry when scrolling ends
+                self.resetMetricsToLatestEntry()
+                // Update visible data after scroll ends
+                self.updateVisibleDataAfterScroll()
+                os_log("Scroll ended", log: self.perfLog, type: .info)
+            }
+        }
     }
 }
 
@@ -1852,6 +1965,9 @@ extension DashboardStore {
         dailySummaries = Array(dailyCache.values).sorted { $0.period < $1.period }
         monthlySummaries = Array(monthlyCache.values).sorted { $0.period < $1.period }
         
+        // Increment data change trigger to force graph refresh
+        dataChangeTrigger += 1
+        
         // Always initialize graph scroll position to the latest date when data is first loaded
         // This ensures the chart shows the latest entry by default
         if let latestDate = continuousOperations.map(\.date).max() {
@@ -1879,3 +1995,5 @@ extension DashboardStore {
     }
     
 }
+
+

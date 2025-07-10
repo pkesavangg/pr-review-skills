@@ -48,9 +48,22 @@ struct WeightTrendView: View {
                 .padding(.leading, .spacingSM)
 
             WeightDisplayView(
-                weightText: dashboardStore.formatWeightDisplayText(
-                    dashboardStore.displayWeightForSelection
-                ),
+                weightText: {
+                    // If a point is selected, show its weight value
+                    if let displayWeight = dashboardStore.displayWeight {
+                        let formattedWeight = dashboardStore.formatWeightDisplayText(displayWeight)
+                        print("Hello: WeightTrendView - Display weight: \(displayWeight)")
+                        print("Hello: WeightTrendView - Formatted weight text: \(formattedWeight)")
+                        return formattedWeight
+                    } else {
+                        // Fallback to average weight
+                        let averageWeight = dashboardStore.getCurrentAverageWeight()
+                        let formattedWeight = dashboardStore.formatWeightDisplayText(averageWeight)
+                        print("Hello: WeightTrendView - Average weight: \(averageWeight)")
+                        print("Hello: WeightTrendView - Formatted weight text: \(formattedWeight)")
+                        return formattedWeight
+                    }
+                }(),
                 unitText: dashboardStore.accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
             )
         }
