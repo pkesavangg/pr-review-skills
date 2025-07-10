@@ -32,6 +32,8 @@ object AppIcons {
     object Outlined {
         val Help = R.drawable.ic_info
         val Close = R.drawable.ic_close_outlined
+        val CheckedCircle = R.drawable.ic_circle_check_outlined
+        val MinusCircle = R.drawable.ic_circle_minus_outlined
     }
 
     object Filled {

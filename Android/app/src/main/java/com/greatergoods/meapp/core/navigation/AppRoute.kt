@@ -106,6 +106,9 @@ sealed class AppRoute : NavKey {
         data object DebugMenu : AccountSettings()
 
         @Serializable
+        data object AppPermissions : AccountSettings()
+
+        @Serializable
         data class ScaleDetails(
             val broadcastId: String,
         ) : AccountSettings()

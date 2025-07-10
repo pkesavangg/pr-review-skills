@@ -7,6 +7,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.features.MyAccounts.screen.MyAccountsScreen
 import com.greatergoods.meapp.features.addScale.screens.AddScaleScreen
 import com.greatergoods.meapp.features.addScale.screens.ChooseScaleScreen
+import com.greatergoods.meapp.features.appPermissions.AppPermissionsScreen
 import com.greatergoods.meapp.features.appSync.AppSync
 import com.greatergoods.meapp.features.changePassword.ChangePasswordScreen
 import com.greatergoods.meapp.features.dashboard.DashboardScreen
@@ -59,6 +60,7 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
         ScaleDetailsScreen(scaleInfo.broadcastId)
     }
+    entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
