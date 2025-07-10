@@ -13,120 +13,118 @@ struct LoginScreen: View {
     @Environment(\.appTheme) var theme
     @StateObject private var store = LoginStore()
     @FocusState private var focusedField: FocusField?
-
+    
     /// Optional e-mail address passed from previous screen to pre-populate the form
     var prefilledEmail: String? = nil
     var isFromAccountSwitching: Bool = false
-
+    
     let labels = InputFieldLabels.self
     let commonLang = CommonStrings.self
     let lang = LoginScreenStrings.self
     let legalStrings = LegalStrings.self
-
+    
     private var focusBinding: Binding<FocusField?> {
         Binding(
             get: { focusedField },
             set: { focusedField = $0 }
         )
     }
-
+    
     var body: some View {
-        ZStack {
-            theme.backgroundSecondary.ignoresSafeArea()
-
-            VStack {
-                NavbarHeaderView(
-                    title: isFromAccountSwitching ? commonLang.logIn.capitalized : "",
-                    leadingContent: { Image(AppAssets.xmark) },
-                    trailingContent: {
-                        Button {
-                            store.openHelp()
-                        } label: {
-                            Image(AppAssets.helpCircle)
-                        }
-                    },
-                    onLeadingTap: {
-                        if isFromAccountSwitching {
-                            store.handleExit()
-                        } else {
-                            router.navigateBack()
-                        }
-                    },
-                    onTrailingTap: {  },
-                    canShowPresentationIndicator: isFromAccountSwitching,
-                    shouldShowBackground: false
-                )
-
-                VStack(alignment: .center) {
-                    VStack(alignment: .leading) {
-                        Text(lang.welcomeBack)
-                            .fontOpenSans(.heading4)
-                            .foregroundColor(theme.textHeading)
-
-                        // Email Input Field
-                        AppInputField(
-                            config: TextInputConfig(
-                                label: labels.email,
-                                inputType: .email,
-                                errorMessage: store.emailError,
-                                focusField: .email
-                            ),
-                            value: $store.loginForm.email.value,
-                            focusedField: focusBinding
-                        ) {
-                            store.setEmailTouched()
-                            focusedField = .password
-                        }
-                        
-                        // Password Input Field
-                        AppInputField(
-                            config: TextInputConfig(
-                                label: labels.password,
-                                placeholder: lang.passwordPlaceholder,
-                                inputType: store.showPassword ? .text : .password,
-                                submitLabel: .done,
-                                errorMessage: store.passwordError
-                            ),
-                            value: $store.loginForm.password.value,
-                            focusedField: focusBinding
-                        ) {
-                            store.setPasswordTouched()
-                            focusedField = nil
-                            if store.isFormValid {
-                                Task { await store.logIn() }
-                            }
-                        }
+        VStack {
+            NavbarHeaderView(
+                title: isFromAccountSwitching ? commonLang.logIn.capitalized : "",
+                leadingContent: { Image(AppAssets.xmark) },
+                trailingContent: {
+                    Button {
+                        store.openHelp()
+                    } label: {
+                        Image(AppAssets.helpCircle)
                     }
-                    .padding(.vertical, .spacingMD)
-                    .padding(.horizontal, .spacingSM)
-
-                    ButtonView(
-                        text: commonLang.logIn,
-                        type: .filledPrimary,
-                        size: .large,
-                        isDisabled: !store.isFormValid || store.isFormSubmitting,
-                        action: {
-                            focusedField = nil
-                            store.loginForm.email.markAsDirty()
-                            store.loginForm.password.markAsDirty()
-                            if store.isFormValid {
-                                Task { await store.logIn() }
+                },
+                onLeadingTap: {
+                    if isFromAccountSwitching {
+                        store.handleExit()
+                    } else {
+                        router.navigateBack()
+                    }
+                },
+                onTrailingTap: {  },
+                canShowPresentationIndicator: isFromAccountSwitching,
+                shouldShowBackground: false
+            )
+            
+            VStack {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .center) {
+                        VStack(alignment: .leading) {
+                            Text(lang.welcomeBack)
+                                .fontOpenSans(.heading4)
+                                .foregroundColor(theme.textHeading)
+                            
+                            // Email Input Field
+                            AppInputField(
+                                config: TextInputConfig(
+                                    label: labels.email,
+                                    inputType: .email,
+                                    errorMessage: store.emailError,
+                                    focusField: .email
+                                ),
+                                value: $store.loginForm.email.value,
+                                focusedField: focusBinding
+                            ) {
+                                store.setEmailTouched()
+                                focusedField = .password
+                            }
+                            
+                            // Password Input Field
+                            AppInputField(
+                                config: TextInputConfig(
+                                    label: labels.password,
+                                    placeholder: lang.passwordPlaceholder,
+                                    inputType: store.showPassword ? .text : .password,
+                                    submitLabel: .done,
+                                    errorMessage: store.passwordError
+                                ),
+                                value: $store.loginForm.password.value,
+                                focusedField: focusBinding
+                            ) {
+                                store.setPasswordTouched()
+                                focusedField = nil
+                                if store.isFormValid {
+                                    Task { await store.logIn() }
+                                }
                             }
                         }
-                    )
-                    .padding(.bottom, .spacingSM)
-
-                    ButtonView(
-                        text: lang.forgotPassword,
-                        type: .textPrimary,
-                        size: .small,
-                        isDisabled: false,
-                        action: { store.showPasswordResetPrompt() }
-                    )
+                        .padding(.vertical, .spacingMD)
+                        
+                        ButtonView(
+                            text: commonLang.logIn,
+                            type: .filledPrimary,
+                            size: .large,
+                            isDisabled: !store.isFormValid || store.isFormSubmitting,
+                            action: {
+                                focusedField = nil
+                                store.loginForm.email.markAsDirty()
+                                store.loginForm.password.markAsDirty()
+                                if store.isFormValid {
+                                    Task { await store.logIn() }
+                                }
+                            }
+                        )
+                        .padding(.bottom, .spacingSM)
+                        
+                        ButtonView(
+                            text: lang.forgotPassword,
+                            type: .textPrimary,
+                            size: .small,
+                            isDisabled: false,
+                            action: { store.showPasswordResetPrompt() }
+                        )
+                    }
                 }
-
+                .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
                 Spacer()
-
                 VStack(spacing: .spacingXS / 2) {
                     Text(lang.byLoggingIn)
                         .fontOpenSans(.subHeading2)
@@ -151,9 +149,10 @@ struct LoginScreen: View {
                         )
                     }
                 }
-                .padding(.horizontal, .spacingSM)
             }
+            .padding(.horizontal, .spacingSM)
         }
+        .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .inAppBrowser(
             url: store.presentingBrowserURL,
@@ -168,7 +167,7 @@ struct LoginScreen: View {
             } else {
                 store.onLoginSuccess = { router.navigateBack() }
             }
-
+            
             // Prefill email if provided
             store.prefillEmailIfNeeded(prefilledEmail)
         }
