@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.data.api
 
 import com.greatergoods.meapp.domain.model.api.device.DeviceApiModel
+import com.greatergoods.meapp.domain.model.api.device.R4ScalePreferenceApiModel
+import com.greatergoods.meapp.domain.model.api.device.ScaleMetaDataApiModel
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -54,38 +56,23 @@ interface IDeviceAPI {
         @Body properties: Map<String, Any>
     ): Response<DeviceApiModel>
 
-    // /**
-    //  * Update scale metadata.
-    //  * @param scaleId The ID of the scale.
-    //  * @param metadata The metadata to update.
-    //  */
-    // @PATCH("$SCALES/{scaleId}/info")
-    // suspend fun updateScaleMetadata(
-    //     @Path("scaleId") scaleId: String,
-    //     @Body metadata: ScaleMetaData
-    // ): Response<Unit>
-    //
-    // /**
-    //  * Get scale preferences for the account.
-    //  */
-    // @GET(PREFERENCE)
-    // suspend fun getScalePreferences(): Response<List<R4ScalePreferenceDTO>>
-    //
-    // /**
-    //  * Save scale preferences for the account.
-    //  * @param preferences The preferences to save.
-    //  */
-    // @POST(PREFERENCE)
-    // suspend fun saveScalePreferences(
-    //     @Body preferences: R4ScalePreferenceDTO
-    // ): Response<R4ScalePreferenceDTO>
-    //
-    // /**
-    //  * Update scale preferences for the account.
-    //  * @param preferences The preferences to update.
-    //  */
-    // @PUT(PREFERENCE)
-    // suspend fun updateScalePreferences(
-    //     @Body preferences: R4ScalePreferenceDTO
-    // ): Response<Unit>
+    /**
+     * Update scale metadata.
+     * @param scaleId The ID of the scale.
+     * @param metadata The metadata to update.
+     */
+    @PATCH("$SCALES/{scaleId}/info")
+    suspend fun updateScaleMetadata(
+        @Path("scaleId") scaleId: String,
+        @Body metadata: ScaleMetaDataApiModel
+    ): Response<Unit>
+
+    /**
+     * Save/Update scale preferences for the account.
+     * @param preferences The preferences to save.
+     */
+    @POST(PREFERENCE)
+    suspend fun saveScalePreferences(
+        @Body preferences: R4ScalePreferenceApiModel
+    ): Response<R4ScalePreferenceApiModel>
 }

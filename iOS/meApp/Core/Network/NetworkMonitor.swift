@@ -12,12 +12,11 @@ import Combine
 
 // MARK: - Network Monitor
 @MainActor
-@Observable
-final class NetworkMonitor {
+final class NetworkMonitor: ObservableObject {
     static let shared = NetworkMonitor()
     
-    var isConnected = true
-    var connectionType: NWInterface.InterfaceType?
+    @Published var isConnected = true
+    @Published var connectionType: NWInterface.InterfaceType?
     
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue.global(qos: .background)

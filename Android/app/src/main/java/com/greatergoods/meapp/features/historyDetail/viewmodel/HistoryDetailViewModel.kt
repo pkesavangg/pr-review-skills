@@ -3,7 +3,9 @@ package com.greatergoods.meapp.features.historyDetail.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -11,7 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 
 @HiltViewModel(
-    assistedFactory = HistoryDetailViewModel.Factory::class
+    assistedFactory = HistoryDetailViewModel.Factory::class,
 )
 class HistoryDetailViewModel @AssistedInject constructor(
     private val entryService: IEntryService,
@@ -32,7 +34,10 @@ class HistoryDetailViewModel @AssistedInject constructor(
     private fun loadHistoryDetail() {
         viewModelScope.launch {
             entryService.monthDetails(month).collect {
-                handleIntent(HistoryDetailIntent.SetHistoryItems(month, it.filterIsInstance<ScaleEntry>()))
+                if (it.isNotEmpty())
+                    handleIntent(HistoryDetailIntent.SetHistoryItems(month, it.filterIsInstance<ScaleEntry>()))
+                else
+                    navigationService.navigateBack()
             }
         }
     }
@@ -46,7 +51,38 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 }
             }
 
+            is HistoryDetailIntent.DeleteEntry -> {
+                showDeleteEntryDialog(intent.entry)
+            }
+
             else -> Unit
+        }
+    }
+
+    private fun showDeleteEntryDialog(entry: ScaleEntry) {
+        viewModelScope.launch {
+            dialogQueueService.showDialog(
+                DialogModel.Confirm(
+                    title = HistoryDetailScreenStrings.DeleteEntryDialogTitle,
+                    message = HistoryDetailScreenStrings.DeleteEntryDialogMessage,
+                    confirmText = HistoryDetailScreenStrings.DeleteButton,
+                    cancelText = HistoryDetailScreenStrings.CancelButton,
+                    onConfirm = {
+                        dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
+                        viewModelScope.launch {
+                            entryService.deleteEntry(entry)
+                            dialogQueueService.dismissCurrent()
+                            dialogQueueService.dismissLoader()
+                        }
+                    },
+                    onCancel = {
+                        dialogQueueService.dismissCurrent()
+                    },
+                    onDismiss = {
+                        dialogQueueService.dismissCurrent()
+                    },
+                ),
+            )
         }
     }
 }

@@ -79,16 +79,12 @@ class NotificationRepository @Inject constructor(
     }
 
     /**
-     * Gets all accounts with unsynced notification settings from the database.
-     * Uses efficient SQL query to find accounts with unsynced notification data.
-     *
-     * @return List of accounts with unsynced notification data
+     * Gets the active account if it has unsynced notification settings.
      */
-    override suspend fun getUnsyncedNotificationAccountsFromDB(): List<Account> {
-        // Get accounts where either the main account is unsynced OR the notification settings are unsynced
-        val unsyncedNotificationAccounts = accountDao.getUnsyncedNotificationAccounts().first()
-        return unsyncedNotificationAccounts.map { accountWithRelations ->
-            AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
+    override suspend fun getUnsyncedActiveNotificationAccountFromDB(): Account? {
+        val unsyncedActiveAccount = accountDao.getUnsyncedActiveNotificationAccount().first()
+        return unsyncedActiveAccount?.let {
+            AccountEntityMapper.toDomainFromAccountWithRelations(it)
         }
     }
 }

@@ -3,11 +3,14 @@ package com.greatergoods.meapp.data.repository
 import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.data.storage.db.dao.DeviceDao
 import com.greatergoods.meapp.domain.model.api.device.DeviceApiModel
+import com.greatergoods.meapp.domain.model.api.device.R4ScalePreferenceApiModel
+import com.greatergoods.meapp.domain.model.api.device.ScaleMetaDataApiModel
 import com.greatergoods.meapp.domain.model.api.device.toApiModel
 import com.greatergoods.meapp.domain.model.api.device.toDomainModel
 import com.greatergoods.meapp.domain.model.api.device.toDomainModels
-import com.greatergoods.meapp.domain.model.storage.*
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.domain.model.storage.toDeviceDetails
+import com.greatergoods.meapp.domain.model.storage.toDeviceDomainModel
 import com.greatergoods.meapp.domain.repository.IDeviceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -131,6 +134,29 @@ class DeviceRepository
                 return true
             } else {
                 throw Exception("Failed to delete device from API: ${response.code()}")
+            }
+        }
+
+        override suspend fun saveScalePreferencesToApi(
+            preferences: R4ScalePreferenceApiModel,
+        ): R4ScalePreferenceApiModel {
+            val response = deviceApi.saveScalePreferences(preferences)
+            if (response.isSuccessful) {
+                return response.body() ?: preferences
+            } else {
+                throw Exception("Failed to save scale preferences to API: ${response.code()}")
+            }
+        }
+
+        override suspend fun saveScaleMetaDataToApi(
+            deviceId: String,
+            metaData: ScaleMetaDataApiModel,
+        ): Boolean {
+            val response = deviceApi.updateScaleMetadata(deviceId, metaData)
+            if (response.isSuccessful) {
+                return true
+            } else {
+                throw Exception("Failed to save scale meta data to API: ${response.code()}")
             }
         }
 

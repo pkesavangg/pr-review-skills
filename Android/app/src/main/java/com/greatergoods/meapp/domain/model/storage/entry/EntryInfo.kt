@@ -14,7 +14,7 @@ interface EntryInfo<T : BaseEntryEntity> {
     val bpmEntry: BpmEntryEntity?
     val scaleEntry: BodyScaleEntryEntity?
     val scaleEntryMetric: BodyScaleEntryMetricEntity?
-    fun toEntry(): Entry {
+    fun toEntry(): Entry? {
         val entryEntity = EntryEntity(
             id = entry.id,
             accountId = entry.accountId,
@@ -37,7 +37,6 @@ interface EntryInfo<T : BaseEntryEntity> {
                 entry = entryEntity,
                 bpmEntry = bpmEntry,
             )
-
             scaleEntry != null -> ScaleEntry(
                 entry = entryEntity,
                 scale = ScaleEntryWithMetrics(
@@ -45,8 +44,14 @@ interface EntryInfo<T : BaseEntryEntity> {
                     scaleEntryMetric = scaleEntryMetric,
                 ),
             )
-
-            else -> throw IllegalStateException("Unexpected null: both bpmEntry and scaleEntry are null.")
+            else -> {
+                // Log a warning for debugging
+                com.greatergoods.meapp.core.shared.utilities.logging.AppLog.w(
+                    "EntryInfo",
+                    "toEntry: both bpmEntry and scaleEntry are null for id=${entry.id}"
+                )
+                null
+            }
         }
     }
 }

@@ -8,37 +8,39 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
-import com.greatergoods.meapp.features.common.components.AppDraggableActionItem
-import com.greatergoods.meapp.features.common.components.AppDraggableList
+import com.greatergoods.meapp.features.common.components.AppSwipeableActionItem
+import com.greatergoods.meapp.features.common.components.AppSwipeableList
+import com.greatergoods.meapp.features.common.components.AppSwipeableListActions
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import android.R.attr.contentDescription
 
 /**
  * List of history detail items, using HistoryDetailItem for each row.
  * @param historyDetails List of history detail item models
- * @param onItemClick Callback when an item's "More Details" is clicked
  * @param onItemDelete Callback when an item's "Delete" is clicked
  */
 @Composable
 fun HistoryDetailList(
     historyDetails: List<ScaleEntry>,
-    onItemClick: (ScaleEntry) -> Unit,
     onItemDelete: (ScaleEntry) -> Unit,
 ) {
-    AppDraggableList(
+    AppSwipeableList(
         items = historyDetails,
         iconWidth = 88.dp,
         keySelector = { it.entry.id },
         trailingActions = { index, item ->
-            AppDraggableActionItem(
+          AppSwipeableListActions {
+            AppSwipeableActionItem(
                 itemWidth = 88.dp,
-                text = "Delete",
-                contentDescription = "Delete item",
+                text = HistoryDetailScreenStrings.DeleteButton,
+                contentDescription = HistoryDetailScreenStrings.DeleteEntryContentDescription,
                 backgroundColor = MeTheme.colorScheme.textError,
             ) {
                 onItemDelete(item)
-            }
+            }}
         },
     ) { item ->
         HistoryDetailItem(
@@ -132,7 +134,6 @@ fun HistoryDetailListPreview() {
             )
         HistoryDetailList(
             historyDetails = sampleItems,
-            onItemClick = {},
             onItemDelete = {},
         )
     }

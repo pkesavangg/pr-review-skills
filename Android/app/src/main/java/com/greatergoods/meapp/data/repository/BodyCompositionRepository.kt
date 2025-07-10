@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.data.repository
 
-import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
@@ -47,7 +46,7 @@ class BodyCompositionRepository @Inject constructor(
     override suspend fun updateBodyCompInDB(
         accountId: String,
         bodyComposition: WeightCompSettingsEntity
-    ): Account {
+    ) {
         // Create updated settings with all fields
         val updatedWeightCompSettings = WeightCompSettingsEntity(
             accountId = accountId,
@@ -57,24 +56,18 @@ class BodyCompositionRepository @Inject constructor(
             isSynced = bodyComposition.isSynced
         )
         accountDao.updateWeightCompSettings(updatedWeightCompSettings)
-        AppLog.d(TAG, "Updated body composition in DB for account: $accountId")
-
-        // Return the updated account with all relations
-        val updatedAccountWithRelations = accountDao.getAccount(accountId).first()
-            ?: throw IllegalStateException("Failed to retrieve updated account")
-
-        return AccountEntityMapper.toDomainFromAccountWithRelations(updatedAccountWithRelations)
     }
 
     /**
-     * Gets all accounts with unsynced body composition data from the database.
-     * Used by offline handler service to sync pending body composition changes.
+     * Gets the active account if it has unsynced body composition data.
+     * Used by offline handler service to sync pending body composition changes for active account.
+     * @return The active account with unsynced body comp data, or null if active account is synced
      */
-    override suspend fun getUnsyncedBodyCompAccountsFromDB(): List<Account> {
-        // Get accounts where either the main account is unsynced OR the weight comp settings are unsynced
-        val unsyncedBodyCompAccounts = accountDao.getUnsyncedBodyCompAccounts().first()
-        return unsyncedBodyCompAccounts.map { accountWithRelations ->
-            AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
+    override suspend fun getUnsyncedActiveBodyCompAccountFromDB(): Account? {
+        // Get active account if either the main account is unsynced OR the weight comp settings are unsynced
+        val unsyncedActiveAccount = accountDao.getUnsyncedActiveBodyCompAccount().first()
+        return unsyncedActiveAccount?.let {
+            AccountEntityMapper.toDomainFromAccountWithRelations(it)
         }
     }
 

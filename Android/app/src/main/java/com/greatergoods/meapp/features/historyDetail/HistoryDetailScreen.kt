@@ -76,8 +76,9 @@ fun HistoryDetailScreenContent(
                 else -> {
                     HistoryDetailList(
                         historyDetails = state.historyItems,
-                        onItemClick = { },
-                        onItemDelete = { },
+                        onItemDelete = {
+                            handleIntent(HistoryDetailIntent.DeleteEntry(it))
+                        },
                     )
                 }
             }
