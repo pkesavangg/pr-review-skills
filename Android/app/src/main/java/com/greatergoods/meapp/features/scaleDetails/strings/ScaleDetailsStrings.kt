@@ -6,6 +6,7 @@ object ScaleDetailsStrings {
     const val Settings = "Settings"
     const val Mode = "Mode"
     const val AllBodyMetrics = "All Body Metrics"
+    const val WeightOnly = "Weight Only"
     const val DisplayMetrics = "Display Metrics"
     const val Users = "Users"
     const val ScaleName = "Scale Name"

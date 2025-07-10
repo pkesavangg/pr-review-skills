@@ -97,25 +97,35 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: !scaleStore.addScaleForm.isValid,
                         action: {
-                            // Fetch the corresponding scale and trigger setup flow sheet.
-                            if let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) {
+                            // Find the scale matching the entered model number.
+                            guard let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) else { return }
+
+                            // Proceed to setup: clear UI state and show setup flow.
+                            let proceed = {
+                                focusedField = nil
+                                hideKeyboard()
+                                activeSheet = .setupFlow(scale)
+                                scaleStore.resetForm()
+                            }
+
+                            switch scale.setupType {
+                            case .appSync:
+                                // If scale is already paired, show alert; else proceed directly.
                                 let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
-                                let proceed = {
-                                    // Clear focus & reset form
-                                    focusedField = nil
-                                    hideKeyboard()
-                                    activeSheet = .setupFlow(scale)
-                                    scaleStore.resetForm()
-                                }
                                 if isDuplicate {
                                     scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
                                 } else {
                                     proceed()
                                 }
+
+                            default:
+                                // For other setup types, always proceed without this check it handled in the setup.
+                                proceed()
                             }
                         }
                     )
                     .padding(.bottom, .spacingSM)
+                    
                     ButtonView(
                         text: lang.cantFindModelNumber,
                         type: .textPrimary,
@@ -148,10 +158,14 @@ struct MyScalesScreen: View {
                             }
                         }
                     case .setupFlow(let scale):
-                        if scale.setupType == .appSync {
+                        switch scale.setupType {
+                        case .appSync:
                             AppSyncSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                        } else {
+                        case .lcbt:
+                            A6ScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
+                        default:
                             // TODO: Handle other setup types
                             VStack(spacing: .spacingMD) {
                                 Text("Setup flow coming soon")
@@ -192,9 +206,9 @@ struct MyScalesScreen: View {
                 }
             }
         }
-        .onAppear{
+        .onAppear(perform: {
             scaleStore.fetchScales()
-        }
+        })
         .onDisappear {
             scaleStore.resetForm()
         }

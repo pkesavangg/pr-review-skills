@@ -161,15 +161,12 @@ class GoalRepository
         }
 
         /**
-         * Gets accounts with unsynced goal settings changes.
-         * Used by offline handler service for syncing goal settings specifically.
-         * @return List of accounts with pending goal settings changes
+         * Gets the active account if it has unsynced goal settings.
          */
-        override suspend fun getUnsyncedGoalAccountsFromDB(): List<Account> {
-            AppLog.d(TAG, "Getting unsynced goal accounts")
-            val unsyncedGoalAccounts = accountDao.getUnsyncedGoalAccounts().first()
-            return unsyncedGoalAccounts.map { accountWithRelations ->
-                AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
+        override suspend fun getUnsyncedActiveGoalAccountFromDB(): Account? {
+            val unsyncedActiveAccount = accountDao.getUnsyncedActiveGoalAccount().first()
+            return unsyncedActiveAccount?.let {
+                AccountEntityMapper.toDomainFromAccountWithRelations(it)
             }
         }
     }

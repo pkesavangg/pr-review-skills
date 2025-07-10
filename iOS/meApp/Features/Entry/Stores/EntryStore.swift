@@ -152,6 +152,34 @@ final class EntryStore: ObservableObject {
         notificationService.dismissLoader()
     }
 
+    // MARK: - AppSync Edit Helpers
+    /// Populates the manual entry form with values coming from an AppSync scan so the
+    /// user can review and adjust before saving.
+    /// - Parameter metrics: The scanned body-composition metrics captured on the AppSync tab.
+    func populateFromAppSync(metrics: AppSyncEntryMetrics) {
+        // Update unit preference first so validation is correct before assigning values.
+        weightUnit = metrics.isMetric ? .kg : .lb
+        updateWeightValidators()
+
+        // Weight
+        let displayWeight = ConversionTools.convertStoredToDisplay(metrics.storedWeight, isMetric: metrics.isMetric)
+        manualEntryForm.weight.value = String(format: "%.1f", displayWeight)
+        manualEntryForm.weight.validate()
+
+        // BMI – already a plain decimal string in `metrics.bmi`
+        if let bmiStr = metrics.bmi {
+            manualEntryForm.bmi.value = bmiStr
+            manualEntryForm.bmi.validate()
+        }
+
+        assignPercent(metrics.bodyFat, to: manualEntryForm.bodyFat)
+        assignPercent(metrics.muscleMass, to: manualEntryForm.muscleMass)
+        assignPercent(metrics.waterWeight, to: manualEntryForm.bodyWater)
+
+        // Expand metrics accordion so the user sees the pre-filled values
+        showMetrics = true
+    }
+
     // MARK: - Private helpers
 
     private func initializeObservers() {
@@ -289,4 +317,11 @@ final class EntryStore: ObservableObject {
             })
         }
     }
-} 
+    
+    // Helper to strip trailing "%" and assign to field
+    private func assignPercent(_ source: String?, to control: FormControl<String>) {
+        guard let value = source?.replacingOccurrences(of: "%", with: "") else { return }
+        control.value = value
+        control.validate()
+    }
+}

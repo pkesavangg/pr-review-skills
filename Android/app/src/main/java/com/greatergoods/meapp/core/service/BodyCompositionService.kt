@@ -7,7 +7,6 @@ import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsE
 import com.greatergoods.meapp.domain.enums.AccountSettingsAction
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
-import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IBodyCompositionRepository
 import com.greatergoods.meapp.domain.services.BodyCompUpdateType
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
@@ -21,7 +20,6 @@ import javax.inject.Singleton
 /**
  * Implementation of body composition service for managing body composition settings.
  * Handles activity level, weight unit, and height updates with offline support.
- * Follows the same pattern as Angular updateBodycomp method.
  */
 @Singleton
 class BodyCompositionService
@@ -52,7 +50,7 @@ class BodyCompositionService
     override suspend fun updateBodyComposition(
       updateType: BodyCompUpdateType,
       bodyComposition: BodyCompUpdateRequest,
-    ): Account? =
+    ) {
       try {
         val activeAccount =
           bodyCompositionRepository.getActiveAccountFromDB()
@@ -68,9 +66,8 @@ class BodyCompositionService
               weightUnit = response.account.weightUnit,
               isSynced = true,
             )
-          val updatedAccount = bodyCompositionRepository.updateBodyCompInDB(activeAccount.id, bodyCompEntity)
+          bodyCompositionRepository.updateBodyCompInDB(activeAccount.id, bodyCompEntity)
           AppLog.i(TAG, "Body composition saved to DB with isSynced = true")
-          updatedAccount
         } else {
           val bodyCompEntity =
             WeightCompSettingsEntity(
@@ -80,14 +77,15 @@ class BodyCompositionService
               weightUnit = bodyComposition.weightUnit,
               isSynced = false,
             )
-          val updatedAccount = bodyCompositionRepository.updateBodyCompInDB(activeAccount.id, bodyCompEntity)
+          bodyCompositionRepository.updateBodyCompInDB(activeAccount.id, bodyCompEntity)
           AppLog.i(TAG, "Body composition saved to DB with isSynced = false for offline sync")
-          updatedAccount
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Body composition update failed", e.toString())
         null
       }
+    }
+
 
     /**
      * Shows success toast for export operation.

@@ -24,13 +24,13 @@ class ScaleDetailsViewModel
     @AssistedInject
     constructor(
         private val deviceService: IDeviceService,
-        @Assisted val broadcastId: String,
+        @Assisted val scaleId: String,
     ) : BaseIntentViewModel<ScaleDetailsState, ScaleDetailsIntent>(
             reducer = ScaleDetailsReducer(),
         ) {
         @AssistedFactory
         interface Factory {
-            fun create(broadcastId: String): ScaleDetailsViewModel
+            fun create(scaleId: String): ScaleDetailsViewModel
         }
 
         override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState()
@@ -70,7 +70,7 @@ class ScaleDetailsViewModel
         private fun setScaleDetails() {
             viewModelScope.launch {
                 deviceService.savedScales.collect { devices ->
-                    val device = devices.find { it.broadcastId == broadcastId }
+                    val device = devices.find { it.id == scaleId }
                     device?.let { scaleDevice ->
                         handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
                     }

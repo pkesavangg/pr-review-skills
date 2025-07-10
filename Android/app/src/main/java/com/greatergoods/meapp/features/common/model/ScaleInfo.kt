@@ -21,7 +21,7 @@ data class ScaleInfo(
     val bodyComp: Boolean,
     val isConnected: Boolean? = null,
     val isWifiConfigured: Boolean? = null,
-    val broadcastId: String? = null,
+    val scaleId: String? = null,
 )
 
 val SCALES =

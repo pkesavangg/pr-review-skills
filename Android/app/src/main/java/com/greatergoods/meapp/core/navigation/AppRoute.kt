@@ -107,7 +107,7 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data class ScaleDetails(
-            val broadcastId: String,
+            val scaleId: String,
         ) : AccountSettings()
     }
 
@@ -118,4 +118,13 @@ sealed class AppRoute : NavKey {
             val scaleId: String,
         ) : ScaleDetails()
     }
+
+  @Serializable
+  sealed class Integration : AppRoute() {
+    @Serializable
+    data object IntegrationList : Integration()
+
+    @Serializable
+    data object HealthConnect : Integration()
+  }
 }

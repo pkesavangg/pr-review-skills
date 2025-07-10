@@ -42,6 +42,14 @@ data class Account(
     val initialWeight: Double = 0.0, // initial weight when goal was set
     val metPreviousGoal: Boolean? = null, // whether previous goal was met
     val goalPercent: Double = 0.0, // calculated goal completion percentage
+
+  // Integration
+    val isFitbitOn: Boolean = false,
+    val isFitbitValid: Boolean = false,
+    val isHealthConnectOn: Boolean = false,
+    val isHealthKitOn: Boolean = false,
+    val isMfpOn: Boolean = false,
+    val isMfpValid: Boolean = false,
 ) {
     /**
      * Get the metric of account

@@ -92,7 +92,7 @@ fun ScaleModeScreenContent(
             }
         },
         actions = {
-            if (!isAllBodyMetrics) {
+            if (state.hasModeChanged) {
                 AppText(
                     text = ScaleModeStrings.Save,
                     textType = TextType.ListTitle1,
@@ -135,7 +135,7 @@ fun ScaleModeScreenContent(
                 key = SegmentButtonData::label,
                 selectedData = selectedMode,
                 onSelected = {
-                    handleIntent(ScaleModeIntent.SetMode(it.id == 0))
+                    handleIntent(ScaleModeIntent.SetMode(it.id == 0, true))
                 },
                 size = SegmentButtonSize.Large,
                 type = SegmentButtonType.Single,
@@ -159,7 +159,7 @@ fun ScaleModeScreenContent(
                     Spacer(modifier = Modifier.weight(1f))
                     AppToggle(
                         checked = isHeartRateOn,
-                        onCheckedChange = { handleIntent(ScaleModeIntent.SetHeartRate(it)) },
+                        onCheckedChange = { handleIntent(ScaleModeIntent.SetHeartRate(it, true)) },
                     )
                 }
                 AppText(
@@ -251,6 +251,7 @@ fun ScaleModeScreenPreview() {
             createdAt = "June 27, 2023",
             lastModified = null,
             isSynced = false,
+            hasServerID = true,
             isConnected = true,
             wifiMac = "greatergoods1",
             isWifiConfigured = true,

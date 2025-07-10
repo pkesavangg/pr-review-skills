@@ -15,24 +15,27 @@ data class AddScaleState(
     val form: FormGroup<AddScaleFormControls>,
     val isSubmitting: Boolean = false,
     val selectedSku: String? = null,
-    val savedScales: List<ScaleInfo> = emptyList<ScaleInfo>()
+    val savedScales: List<ScaleInfo> = emptyList<ScaleInfo>(),
 ) : IReducer.State
 
 /**
  * Form controls for AddScaleScreen.
  */
 data class AddScaleFormControls(
-    val modelNumber: FormControl<String>
+    val modelNumber: FormControl<String>,
 ) {
     companion object {
-        fun create() = AddScaleFormControls(
-            modelNumber = FormControl.create(
-                initialValue = "",
-                validators = listOf(
-                    FormValidations.skuValidator(),
-                ),
-            ),
-        )
+        fun create() =
+            AddScaleFormControls(
+                modelNumber =
+                    FormControl.create(
+                        initialValue = "",
+                        validators =
+                            listOf(
+                                FormValidations.skuValidator(),
+                            ),
+                    ),
+            )
     }
 }
 
@@ -41,23 +44,38 @@ data class AddScaleFormControls(
  */
 sealed interface AddScaleIntent : IReducer.Intent {
     object ShowHelp : AddScaleIntent
+
     object OpenScaleChooser : AddScaleIntent
+
     object Submit : AddScaleIntent
-    data class SetSavedScales(val scales: List<Device>) : AddScaleIntent
-    data class ScaleSelected(val sku: String) : AddScaleIntent
-    data class OpenScaleSettings(val broadcastId: String) : AddScaleIntent
+
+    data class SetSavedScales(
+        val scales: List<Device>,
+    ) : AddScaleIntent
+
+    data class ScaleSelected(
+        val sku: String,
+    ) : AddScaleIntent
+
+    data class OpenScaleSettings(
+        val scaleId: String,
+    ) : AddScaleIntent
 }
 
 /**
  * Reducer for AddScaleScreen.
  */
 class AddScaleReducer : IReducer<AddScaleState, AddScaleIntent> {
-    override fun reduce(state: AddScaleState, intent: AddScaleIntent): AddScaleState? = when (intent) {
-        AddScaleIntent.ShowHelp -> state.copy()
-        AddScaleIntent.Submit -> state.copy(isSubmitting = true)
-        AddScaleIntent.OpenScaleChooser -> state.copy()
-        is AddScaleIntent.SetSavedScales -> state.copy(savedScales = intent.scales.map { it.toScaleInfo() })
-        is AddScaleIntent.ScaleSelected -> state.copy(selectedSku = intent.sku)
-        is AddScaleIntent.OpenScaleSettings -> state.copy(selectedSku = intent.broadcastId)
-    }
+    override fun reduce(
+        state: AddScaleState,
+        intent: AddScaleIntent,
+    ): AddScaleState? =
+        when (intent) {
+            AddScaleIntent.ShowHelp -> state.copy()
+            AddScaleIntent.Submit -> state.copy(isSubmitting = true)
+            AddScaleIntent.OpenScaleChooser -> state.copy()
+            is AddScaleIntent.SetSavedScales -> state.copy(savedScales = intent.scales.map { it.toScaleInfo() })
+            is AddScaleIntent.ScaleSelected -> state.copy(selectedSku = intent.sku)
+            is AddScaleIntent.OpenScaleSettings -> state.copy(selectedSku = intent.scaleId)
+        }
 }

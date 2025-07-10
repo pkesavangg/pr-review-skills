@@ -14,6 +14,7 @@ import com.greatergoods.meapp.features.debugMenu.screen.DebugMenuScreen
 import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
+import com.greatergoods.meapp.features.integration.screen.IntegrationScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
@@ -57,7 +58,7 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
     entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
     entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
     entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
-        ScaleDetailsScreen(scaleInfo.broadcastId)
+        ScaleDetailsScreen(scaleInfo.scaleId)
     }
 }
 
@@ -65,4 +66,9 @@ fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
     entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
         ScaleModeScreen(scaleInfo.scaleId)
     }
+}
+
+fun EntryProviderBuilder<NavKey>.integrationEntries() {
+  entry<AppRoute.Integration.IntegrationList> { IntegrationScreen() }
+  entry<AppRoute.Integration.HealthConnect> { ChangePasswordScreen() }
 }

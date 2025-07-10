@@ -199,5 +199,10 @@ final class HistoryStore: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+    
+    deinit {
+      cancellables.forEach { $0.cancel() }
+      cancellables.removeAll()
+    }
 }
 
