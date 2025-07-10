@@ -21,7 +21,7 @@ struct PermissionListView: View {
     
     // MARK: Dependencies
     @Environment(\.appTheme) private var theme
-    @StateObject private var viewModel: PermissionsViewModel = PermissionsViewModel()
+    @StateObject private var viewModel: PermissionsListViewModel = PermissionsListViewModel()
     // MARK: Configuration
     private let categories: Set<Category>
     private let requiredCategories: Set<Category>
@@ -59,9 +59,9 @@ struct PermissionListView: View {
         case .wifi:
             config = ([.location], PermissionsStrings.locationPermissionDescription)
         }
-
+        
         let (resolvedCategories, description) = config
-
+        
         self.categories = resolvedCategories
         self.requiredCategories = [] // Initialize with no required categories to avoid showing red indicators when permissions are disabled
         self.headerDescription = description.isEmpty ? nil : description
@@ -106,7 +106,7 @@ struct PermissionListView: View {
     
     private var locationSection: some View {
         // Base rows for location services
-        var rows: [(String, Bool, PermissionsViewModel.PermissionType)] = [
+        var rows: [(String, Bool, PermissionType)] = [
             (
                 PermissionsStrings.locationAccessEnabled,
                 viewModel.locationServicesEnabled,
@@ -118,7 +118,7 @@ struct PermissionListView: View {
                 .location
             )
         ]
-
+        
         // For Wi-Fi–only setup flows add an extra Wi-Fi status row
         if setupType == .wifi {
             let wifiRowTitle: String
@@ -127,10 +127,10 @@ struct PermissionListView: View {
             } else {
                 wifiRowTitle = PermissionsStrings.wifiEnablePrompt
             }
-
+            
             rows.append((wifiRowTitle, viewModel.wifiNetworkName != nil, .wifiSwitch))
         }
-
+        
         return sectionView(
             title: PermissionsStrings.location,
             rows: rows,
@@ -233,7 +233,7 @@ struct PermissionListView: View {
     /// - Returns: A view containing the header and a card-styled list of rows.
     @ViewBuilder
     private func sectionView(title: String,
-                             rows: [(String, Bool, PermissionsViewModel.PermissionType)],
+                             rows: [(String, Bool, PermissionType)],
                              category: Category) -> some View {
         VStack(alignment: .leading) {
             sectionHeader(title)
@@ -242,7 +242,7 @@ struct PermissionListView: View {
                 ForEach(Array(rows.enumerated()), id: \.0) { index, row in
                     // Destructure the row tuple for better readability
                     let (label, isEnabled, permissionType) = row
-
+                    
                     ActionListItemView(config: ActionListItemConfig(
                         title: label,
                         chevronType: isEnabled ? .none : .right,
@@ -254,7 +254,7 @@ struct PermissionListView: View {
                         }
                     ))
                     .padding(.horizontal)
-
+                    
                     if index < rows.count - 1 {
                         Divider()
                             .frame(height: 1)

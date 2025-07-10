@@ -101,6 +101,7 @@ class ScaleStore: ObservableObject {
     init() {
         wireForm()
         fetchScales()
+        subscribeToScaleUpdates()
     }
     
     var passwordError: String? { wifiPasswordValidationForm.getError(for: wifiPasswordValidationForm.password) }
@@ -117,35 +118,33 @@ class ScaleStore: ObservableObject {
     }
     
     func resetForm() {
-        cancellables.forEach { $0.cancel() }
-        cancellables.removeAll()
+        // Reset form state
         addScaleForm = AddScaleForm()
+        
+        // Re-wire form and re-subscribe to scale updates so we don’t lose the publisher after a
+        // view disappearance/appearance cycle.
         wireForm()
-    }
-    
-    func getError() -> String? {
-        addScaleForm.getError(for: .modelNumber)
+        subscribeToScaleUpdates()
     }
     
     // MARK: - List & CRUD
     func fetchScales() {
-        isLoading = true
-        errorMessage = nil
         Task {
             do {
                 let devices = try await scaleService.getDevices()
                 await MainActor.run {
                     self.scales = devices
-                    self.isLoading = false
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = error.localizedDescription
                     self.scales = []
-                    self.isLoading = false
                 }
             }
         }
+    }
+    
+    func getError() -> String? {
+        addScaleForm.getError(for: .modelNumber)
     }
     
     // MARK: - Scale Detail Actions
@@ -272,12 +271,12 @@ class ScaleStore: ObservableObject {
         defer { isLoading = false }
         do {
             try await scaleService.deleteDevice(scaleId, showToast: true)
+            await scaleService.syncAllScalesWithRemote()
             await MainActor.run {
                 notificationService.showToast(ToastModel(title: "Deleted", message: "Scale deleted"))
                 if self.scale?.id == scaleId {
                     self.scale = nil
                 }
-                fetchScales()
                 onSuccess()
             }
         } catch {
@@ -320,19 +319,19 @@ class ScaleStore: ObservableObject {
     }
     
     func connectToWifiNetwork(wifiName: String) {
-           wifiConnectionState = .loading
-           // Simulate async connection (replace with your real logic)
-           DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
-               // Simulate success or failure randomly
-               let didSucceed = Bool.random()
-               DispatchQueue.main.async {
-                   // Add a slight delay for loader polish
-                   DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                       self.wifiConnectionState = didSucceed ? .success : .failure
-                   }
-               }
-           }
-       }
+        wifiConnectionState = .loading
+        // Simulate async connection (replace with your real logic)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
+            // Simulate success or failure randomly
+            let didSucceed = Bool.random()
+            DispatchQueue.main.async {
+                // Add a slight delay for loader polish
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.wifiConnectionState = didSucceed ? .success : .failure
+                }
+            }
+        }
+    }
     
     func scaleTypeTapped() {
         // TODO: Implement scaleTypeTapped action
@@ -367,7 +366,7 @@ class ScaleStore: ObservableObject {
     func openBIAModel(){
         notificationService.showModal(ModalData(
             presentedView: AnyView(BIAInfoModalView(){
-                   self.notificationService.dismissModal()
+                self.notificationService.dismissModal()
             }),
             backdropDismiss: true
         ))
@@ -411,7 +410,7 @@ class ScaleStore: ObservableObject {
     
     func getWifiMacAddressString() -> String {
         // TODO: Replace with actual MAC address from BluetoothService once integration is done
-            return "##:##:##:##:##:##"
+        return "##:##:##:##:##:##"
     }
     
     /// Shows an alert when the selected scale SKU is already paired and lets the user decide whether to pair again.
@@ -430,4 +429,21 @@ class ScaleStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    // MARK: - Private Helpers
+    
+    /// Subscribes to `ScaleService` updates and keeps `scales` in sync.
+    private func subscribeToScaleUpdates() {
+        scaleService.$scales
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] devices in
+                guard let self = self else { return }
+                self.scales = devices
+            }
+            .store(in: &cancellables)
+    }
+    
+    deinit {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+    }
 }

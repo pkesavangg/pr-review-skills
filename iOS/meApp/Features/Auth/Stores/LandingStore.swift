@@ -102,4 +102,9 @@ final class LandingStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-} 
+    
+    deinit {
+      cancellables.forEach { $0.cancel() }
+      cancellables.removeAll()
+    }
+}

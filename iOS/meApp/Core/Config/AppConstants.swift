@@ -3,6 +3,8 @@ import Foundation
 /// Application-wide constants
 struct AppConstants {
     static let logRetentionDays = 5 // Number of days to retain logs
+    static let bluetoothTimeoutNs = 300_000_000_000 // Timeout for Bluetooth operations in seconds 5 minutes
+
     struct Account {
         /// Maximum number of accounts that can be stored locally
         static let maxAccounts = 10
