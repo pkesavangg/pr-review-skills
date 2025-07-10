@@ -4,42 +4,54 @@ package com.greatergoods.meapp.features.appPermissions.strings
  * String constants for the App Permissions screen.
  */
 object AppPermissionsScreenStrings {
-    const val Title = "App Permissions"
-    const val Description = "Manage permissions for your health and fitness data"
+  const val Title = "App Permissions"
+  const val Description = "Control what Me.Health can access on your device."
 
-    //Bluetooth
-    const val BluetoothPermissions = "Bluetooth"
+  // Group Headers (from Figma)
+  const val BluetoothHeader = "Bluetooth"
+  const val LocationHeader = "Location"
+  const val CameraHeader = "Camera (AppSync)"
+  const val NotificationsHeader = "Notifications"
 
-    const val Notification = "Notification"
-    const val NotificationsDescription = "Send reminders and updates about your health journey"
+  // Bluetooth
+  const val BluetoothEnabledDescription = "Bluetooth authorized"
+  const val BluetoothDisabledDescription = "Allow Bluetooth access"
 
-    const val Camera = "Camera (AppSync)"
-    const val CameraDescription = "Take photos for profile picture and barcode scanning"
+  // Nearby Devices
+  const val NearbyDevicesEnabledDescription = "Nearby Devices authorized"
+  const val NearbyDevicesDisabledDescription = "Allow nearby devices access"
 
-    const val Location = "Location"
-    const val LocationDescription = "Detect nearby compatible scales and devices"
+  // Location
+  const val LocationEnabledDescription = "Location authorized"
+  const val LocationDisabledDescription = "Allow location access"
 
-    const val Bluetooth = "Bluetooth"
-    const val BluetoothDescription = "Connect to smart scales and health devices"
+  const val LocationSwitchEnabledDescription = "Location services authorized"
+  const val LocationSwitchDisabledDescription = "Allow location services access"
 
-    // Status Labels
-    const val Granted = "Granted"
-    const val Denied = "Denied"
-    const val NotRequested = "Not Requested"
+  const val NotificationsEnabledDescription = "Notifications authorized"
+  const val NotificationsDisabledDescription = "Allow notifications access"
 
-    // Actions
-    const val Grant = "Grant"
-    const val Settings = "Settings"
-    const val Refresh = "Refresh"
+  const val CameraEnabledDescription = "Camera authorized"
+  const val CameraDisabledDescription = "Allow camera access"
 
-    // Messages
-    const val PermissionRequired = "This permission is required for full functionality"
-    const val PermissionOptional = "This permission is optional but recommended"
-    const val OpenSettings = "Open device settings to manage permissions"
+  // Status Labels
+  const val Granted = "Granted"
+  const val Denied = "Denied"
+  const val NotRequested = "Not Requested"
 
-    // Error Messages
-    object Error {
-        const val PermissionCheck = "Unable to check permission status"
-        const val SettingsAccess = "Unable to open device settings"
-    }
+  // Actions
+  const val Grant = "Grant"
+  const val Settings = "Settings"
+  const val Refresh = "Refresh"
+
+  // Messages
+  const val PermissionRequired = "This permission is required for full functionality."
+  const val PermissionOptional = "This permission is optional but recommended."
+  const val OpenSettings = "Open device settings to manage permissions."
+
+  // Error Messages
+  object Error {
+    const val PermissionCheck = "Unable to check permission status."
+    const val SettingsAccess = "Unable to open device settings."
+  }
 }

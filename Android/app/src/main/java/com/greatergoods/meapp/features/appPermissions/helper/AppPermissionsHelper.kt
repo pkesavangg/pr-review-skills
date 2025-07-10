@@ -11,81 +11,102 @@ import com.greatergoods.meapp.features.common.components.PermissionItemStatus
  */
 data class PermissionItem(
   val key: String,
-  val checked: Boolean,
   val status: PermissionItemStatus,
-  val enabled: Boolean,
-  val required: Boolean,
-  val title: String,
-  val description: String?
+  val enabledDescription: String?,
+  val disabledDescription: String?,
+  val group: String
 )
 
 /**
- * Metadata for a permission type (title, description, required).
+ * UI model for a group of permission items.
  */
-data class PermissionMeta(
-  val title: String,
-  val description: String?,
-  val required: Boolean
+data class PermissionGroup(
+  val header: String,
+  val items: List<PermissionItem>
 )
 
 /**
- * Helper for mapping permission state map to UI models for the permissions screen.
+ * Helper for mapping permission state map to grouped UI models for the permissions screen.
  */
 object AppPermissionsHelper {
   /**
-   * Maps the permission state map to a list of UI models for the permissions screen.
+   * Metadata for each permission type.
    */
-  fun mapToPermissionItems(permissionMap: GGPermissionStatusMap): List<PermissionItem> {
-    // Canonical list of permissions and their metadata, in display order
-    val permissionMetas = listOf(
-      GGPermissionType.NOTIFICATION to PermissionMeta(
-        AppPermissionsScreenStrings.Notification,
-        AppPermissionsScreenStrings.NotificationsDescription,
-        false,
-      ),
-      GGPermissionType.BLUETOOTH_SWITCH to PermissionMeta(
-        AppPermissionsScreenStrings.Bluetooth,
-        AppPermissionsScreenStrings.BluetoothDescription,
-        true,
-      ),
-      GGPermissionType.NEARBY_DEVICE to PermissionMeta(
-        "Nearby Device",
-        "Detect nearby compatible devices (Android 12+)",
-        true,
-      ),
-      GGPermissionType.LOCATION_SWITCH to PermissionMeta(
-        "Location Switch",
-        "Location services must be enabled for Bluetooth scanning",
-        true,
-      ),
-      GGPermissionType.LOCATION to PermissionMeta(
-        AppPermissionsScreenStrings.Location,
-        AppPermissionsScreenStrings.LocationDescription,
-        true,
-      ),
-      GGPermissionType.CAMERA to PermissionMeta(
-        AppPermissionsScreenStrings.Camera,
-        AppPermissionsScreenStrings.CameraDescription,
-        false,
-      ),
-    )
+  private data class PermissionMeta(
+    val group: String,
+    val enabledDescription: String?,
+    val disabledDescription: String?
+  )
 
-    return permissionMetas.map { (type, meta) ->
+  private val permissionMetaMap = mapOf(
+    GGPermissionType.BLUETOOTH_SWITCH to PermissionMeta(
+      group = AppPermissionsScreenStrings.BluetoothHeader,
+      enabledDescription = AppPermissionsScreenStrings.BluetoothEnabledDescription,
+      disabledDescription = AppPermissionsScreenStrings.BluetoothDisabledDescription,
+    ),
+    GGPermissionType.NEARBY_DEVICE to PermissionMeta(
+      group = AppPermissionsScreenStrings.BluetoothHeader,
+      enabledDescription = AppPermissionsScreenStrings.NearbyDevicesEnabledDescription,
+      disabledDescription = AppPermissionsScreenStrings.NearbyDevicesDisabledDescription,
+    ),
+    GGPermissionType.LOCATION_SWITCH to PermissionMeta(
+      group = AppPermissionsScreenStrings.LocationHeader,
+      enabledDescription = AppPermissionsScreenStrings.LocationSwitchEnabledDescription,
+      disabledDescription = AppPermissionsScreenStrings.LocationSwitchDisabledDescription,
+    ),
+    GGPermissionType.LOCATION to PermissionMeta(
+      group = AppPermissionsScreenStrings.LocationHeader,
+      enabledDescription = AppPermissionsScreenStrings.LocationEnabledDescription,
+      disabledDescription = AppPermissionsScreenStrings.LocationDisabledDescription,
+    ),
+    GGPermissionType.NOTIFICATION to PermissionMeta(
+      group = AppPermissionsScreenStrings.NotificationsHeader,
+      enabledDescription = AppPermissionsScreenStrings.NotificationsEnabledDescription,
+      disabledDescription = AppPermissionsScreenStrings.NotificationsDisabledDescription,
+    ),
+    GGPermissionType.CAMERA to PermissionMeta(
+      group = AppPermissionsScreenStrings.CameraHeader,
+      enabledDescription = AppPermissionsScreenStrings.CameraEnabledDescription,
+      disabledDescription = AppPermissionsScreenStrings.CameraDisabledDescription,
+    ),
+  )
+
+  /**
+   * Maps the permission state map to a grouped list of UI models for the permissions screen.
+   */
+  fun mapToPermissionGroups(permissionMap: GGPermissionStatusMap): List<PermissionGroup> {
+    // Build PermissionItems for all known types
+    val items = permissionMetaMap.mapNotNull { (type, meta) ->
       val value = permissionMap[type] ?: PermissionState.NOT_DETERMINED
+      val status = when (value) {
+        PermissionState.ENABLED -> PermissionItemStatus.Granted
+        PermissionState.DISABLED, PermissionState.PERMANENTLY_DENIED -> PermissionItemStatus.Denied
+        PermissionState.NOT_REQUESTED, PermissionState.NOT_DETERMINED -> PermissionItemStatus.NotRequested
+        else -> PermissionItemStatus.NotRequested
+      }
       PermissionItem(
         key = type,
-        checked = value == PermissionState.ENABLED,
-        status = when (value) {
-          PermissionState.ENABLED -> PermissionItemStatus.Granted
-          PermissionState.DISABLED, PermissionState.PERMANENTLY_DENIED -> PermissionItemStatus.Denied
-          PermissionState.NOT_REQUESTED, PermissionState.NOT_DETERMINED -> PermissionItemStatus.NotRequested
-          else -> PermissionItemStatus.NotRequested
-        },
-        enabled = true, // Could be refined per permission
-        required = meta.required,
-        title = meta.title,
-        description = meta.description,
+        status = status,
+        enabledDescription = meta.enabledDescription,
+        disabledDescription = meta.disabledDescription,
+        group = meta.group,
       )
+    }
+    // Explicit group order: Bluetooth, Location, Camera, Notifications
+    val groupOrder = listOf(
+      AppPermissionsScreenStrings.BluetoothHeader,
+      AppPermissionsScreenStrings.LocationHeader,
+      AppPermissionsScreenStrings.CameraHeader,
+      AppPermissionsScreenStrings.NotificationsHeader
+    )
+    val groupedItems = items.groupBy { it.group }
+    return groupOrder.mapNotNull { groupHeader ->
+      groupedItems[groupHeader]?.let { groupItems ->
+        PermissionGroup(
+          header = groupHeader,
+          items = groupItems,
+        )
+      }
     }
   }
 }
