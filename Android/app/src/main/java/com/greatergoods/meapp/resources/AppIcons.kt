@@ -27,6 +27,7 @@ object AppIcons {
         val WeightOnlyMode = R.drawable.ic_weight_only
         val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
         val UserNameScale = R.drawable.scale_0412_user_name
+        val DragHandler = R.drawable.ic_drag_handle
     }
 
   object Outlined {

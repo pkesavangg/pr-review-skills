@@ -21,6 +21,7 @@ import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.manualEntry.EntryScreen
 import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.scaleDetails.screens.ScaleDetailsScreen
+import com.greatergoods.meapp.features.scaleDisplayMetrics.screens.ScaleDisplayMetricsScreen
 import com.greatergoods.meapp.features.scaleMode.screens.ScaleModeScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 import com.greatergoods.meapp.features.signup.SignupScreen
@@ -31,20 +32,20 @@ import com.greatergoods.meapp.features.weightless.screen.WeightlessScreen
  *
  */
 fun EntryProviderBuilder<NavKey>.authEntries() {
-    entry<AppRoute.Auth.Landing> { LandingScreen() }
-    entry<AppRoute.Auth.Login> { credentials ->
-        LoginScreen(credentials.email)
-    }
-    entry<AppRoute.Auth.Signup> { SignupScreen() }
-    entry<AppRoute.Auth.MultiAccountLanding> { MultiAccountLandingScreen() }
+  entry<AppRoute.Auth.Landing> { LandingScreen() }
+  entry<AppRoute.Auth.Login> { credentials ->
+    LoginScreen(credentials.email)
+  }
+  entry<AppRoute.Auth.Signup> { SignupScreen() }
+  entry<AppRoute.Auth.MultiAccountLanding> { MultiAccountLandingScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.topLevelEntries() {
-    entry<AppRoute.Main.Dashboard> { DashboardScreen() }
-    entry<AppRoute.Main.History> { HistoryScreen() }
-    entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
-    entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
-    entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
+  entry<AppRoute.Main.Dashboard> { DashboardScreen() }
+  entry<AppRoute.Main.History> { HistoryScreen() }
+  entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
+  entry<AppRoute.Main.Settings> { SettingsScreen() } // Placeholder for SettingsScreen
+  entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
 }
 
 fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
@@ -63,9 +64,12 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
 }
 
 fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
-    entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
-        ScaleModeScreen(scaleInfo.scaleId)
-    }
+  entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
+    ScaleModeScreen(scaleInfo.scaleId)
+  }
+  entry<AppRoute.ScaleDetails.ScaleDisplayMetrics> { scaleInfo ->
+    ScaleDisplayMetricsScreen(scaleInfo.scaleId)
+  }
 }
 
 fun EntryProviderBuilder<NavKey>.integrationEntries() {

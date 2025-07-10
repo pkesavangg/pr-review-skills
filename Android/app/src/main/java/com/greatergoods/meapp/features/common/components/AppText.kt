@@ -45,6 +45,7 @@ enum class TextType {
     ListTitle1,
     ListTitle2,
     ListSubtitle,
+    NoteTitle,
 }
 
 object TextTypeDefaults {
@@ -71,7 +72,7 @@ object TextTypeDefaults {
             TextType.Body ->
                 TextAppearance(
                     style = typography.body2,
-                    color = colorScheme.textBody,
+                    color = if (enabled) colorScheme.textBody else colorScheme.utility,
                 )
 
             TextType.Link ->
@@ -102,6 +103,12 @@ object TextTypeDefaults {
                 TextAppearance(
                     style = typography.subHeading2,
                     color = colorScheme.textSubheading,
+                )
+
+            TextType.NoteTitle ->
+                TextAppearance(
+                    style = typography.heading6,
+                    color = colorScheme.textHeading,
                 )
         }
     }

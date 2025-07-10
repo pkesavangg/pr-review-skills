@@ -18,91 +18,106 @@ import kotlinx.coroutines.launch
  * ViewModel for the ScaleDetails screen. Handles scale details logic and navigation.
  */
 @HiltViewModel(
-    assistedFactory = ScaleDetailsViewModel.Factory::class,
+  assistedFactory = ScaleDetailsViewModel.Factory::class,
 )
 class ScaleDetailsViewModel
-    @AssistedInject
-    constructor(
-        private val deviceService: IDeviceService,
-        @Assisted val scaleId: String,
-    ) : BaseIntentViewModel<ScaleDetailsState, ScaleDetailsIntent>(
-            reducer = ScaleDetailsReducer(),
-        ) {
-        @AssistedFactory
-        interface Factory {
-            fun create(scaleId: String): ScaleDetailsViewModel
-        }
-
-        override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState()
-
-        override fun handleIntent(intent: ScaleDetailsIntent) {
-            super.handleIntent(intent)
-            when (intent) {
-                ScaleDetailsIntent.EditName -> {
-                    // TODO: Handle edit name
-                }
-
-                ScaleDetailsIntent.DeleteScale -> {
-                    // TODO: Handle delete scale
-                }
-
-                ScaleDetailsIntent.OpenProductGuide -> {
-                    openProductGuide()
-                    // TODO: Handle open product guide
-                }
-
-                ScaleDetailsIntent.Back -> {
-                    navigateBack()
-                }
-
-                ScaleDetailsIntent.OpenScaleMode -> {
-                    openScaleMode()
-                }
-
-                else -> {}
-            }
-        }
-
-        init {
-            setScaleDetails()
-        }
-
-        private fun setScaleDetails() {
-            viewModelScope.launch {
-                deviceService.savedScales.collect { devices ->
-                    val device = devices.find { it.id == scaleId }
-                    device?.let { scaleDevice ->
-                        handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
-                    }
-                }
-            }
-        }
-
-        private fun openProductGuide() {
-            if (!state.value.scale
-                    ?.sku
-                    .isNullOrEmpty()
-            ) {
-                val sku = state.value.scale!!.sku
-                val url = "${AppConfig.PRODUCT_URL}/$sku"
-                openInAppBrowser(url)
-            }
-        }
-
-        private fun openScaleMode() {
-            viewModelScope.launch {
-                if (!state.value.scale
-                        ?.id
-                        .isNullOrEmpty()
-                ) {
-                    navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(state.value.scale!!.id))
-                }
-            }
-        }
-
-        private fun navigateBack() {
-            viewModelScope.launch {
-                navigationService.navigateBack()
-            }
-        }
+  @AssistedInject
+  constructor(
+    private val deviceService: IDeviceService,
+    @Assisted val scaleId: String,
+  ) : BaseIntentViewModel<ScaleDetailsState, ScaleDetailsIntent>(
+      reducer = ScaleDetailsReducer(),
+    ) {
+    @AssistedFactory
+    interface Factory {
+      fun create(scaleId: String): ScaleDetailsViewModel
     }
+
+    override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState()
+
+    override fun handleIntent(intent: ScaleDetailsIntent) {
+      super.handleIntent(intent)
+      when (intent) {
+        ScaleDetailsIntent.EditName -> {
+          // TODO: Handle edit name
+        }
+
+        ScaleDetailsIntent.DeleteScale -> {
+          // TODO: Handle delete scale
+        }
+
+        ScaleDetailsIntent.OpenProductGuide -> {
+          openProductGuide()
+          // TODO: Handle open product guide
+        }
+
+        ScaleDetailsIntent.Back -> {
+          navigateBack()
+        }
+
+        ScaleDetailsIntent.OpenScaleMode -> {
+          openScaleMode()
+        }
+
+        ScaleDetailsIntent.OpenScaleDisplayMetrics -> {
+          openScaleDisplayMetrics()
+        }
+
+        else -> {}
+      }
+    }
+
+    init {
+      setScaleDetails()
+    }
+
+    private fun setScaleDetails() {
+      viewModelScope.launch {
+        deviceService.savedScales.collect { devices ->
+          val device = devices.find { it.id == scaleId }
+          device?.let { scaleDevice ->
+            handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
+          }
+        }
+      }
+    }
+
+    private fun openProductGuide() {
+      if (!state.value.scale
+          ?.sku
+          .isNullOrEmpty()
+      ) {
+        val sku = state.value.scale!!.sku
+        val url = "${AppConfig.PRODUCT_URL}/$sku"
+        openInAppBrowser(url)
+      }
+    }
+
+    private fun openScaleMode() {
+      viewModelScope.launch {
+        if (!state.value.scale
+            ?.id
+            .isNullOrEmpty()
+        ) {
+          navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(state.value.scale!!.id))
+        }
+      }
+    }
+
+    private fun openScaleDisplayMetrics() {
+      viewModelScope.launch {
+        if (!state.value.scale
+            ?.id
+            .isNullOrEmpty()
+        ) {
+          navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(state.value.scale!!.id))
+        }
+      }
+    }
+
+    private fun navigateBack() {
+      viewModelScope.launch {
+        navigationService.navigateBack()
+      }
+    }
+  }
