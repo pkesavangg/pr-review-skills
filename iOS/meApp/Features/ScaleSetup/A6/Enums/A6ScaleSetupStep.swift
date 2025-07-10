@@ -11,14 +11,14 @@ import Foundation
 enum A6ScaleSetupStep: Int, CaseIterable {
     /// Introductory information about the scale (SKU, features, etc.).
     case intro = 0
-    /// Application permissions required for setup (Bluetooth / Location, etc.).
+    /// Application permissions required for setup (Bluetooth).
     case permissions
-    /// Searching / pairing progress UI.
-    case searching
-    /// Persisting the newly paired scale.
-    case saving
+    ///  Searching for the scale via Bluetooth.
+    case wakeUp
+    /// Connecting and saving scale information.
+    case connectingBluetooth
     /// Final success / completion screen.
-    case finish
+    case setupFinished
 
     /// Convenience property for page-based controls.
     var index: Int { rawValue }
