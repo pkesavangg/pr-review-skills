@@ -180,7 +180,7 @@ final class A6ScaleSetupStore: ObservableObject {
                     self?.handleDeviceDiscovery(discoveryEvent)
                 }
         }
-            
+        
         /// Start a timer to handle the wake-up step timeout.
         stepTimerTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(AppConstants.bluetoothTimeoutNs))
@@ -214,10 +214,12 @@ final class A6ScaleSetupStore: ObservableObject {
         case .connectingBluetooth:
             self.connectionState = .loading
             Task {
-               await self.saveDiscoveredScale()
-                self.connectionState = .success
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    self.moveToNextStep()
+                if discoveredScale != nil && discoveryEvent != nil {
+                    await self.saveDiscoveredScale()
+                    self.connectionState = .success
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self.moveToNextStep()
+                    }
                 }
             }
         default:
@@ -226,21 +228,21 @@ final class A6ScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Discovery State Management
-
+    
     /// Clears any active Bluetooth discovery subscriptions and timers and resets related state.
     private func resetDiscoveryState() {
         // Cancel active Combine subscription before releasing it.
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
-
+        
         // Nil out discovery data so subsequent runs start fresh.
         discoveredScale = nil
         discoveryEvent = nil
-
+        
         // Cancel any in-flight timeout task.
         stepTimerTask?.cancel()
     }
-
+    
     // MARK: - Scale Saving
     private func saveDiscoveredScale() async {
         guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
@@ -343,12 +345,14 @@ final class A6ScaleSetupStore: ObservableObject {
         // Cancel active Combine subscription before releasing it.
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
-
+        
         // Nil out discovery data so subsequent runs start fresh.
         discoveredScale = nil
         discoveryEvent = nil
-
+        
         // Cancel any in-flight timeout task.
         stepTimerTask?.cancel()
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
     }
 }
