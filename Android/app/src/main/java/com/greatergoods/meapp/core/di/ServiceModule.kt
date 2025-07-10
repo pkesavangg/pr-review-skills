@@ -11,7 +11,6 @@ import com.greatergoods.meapp.core.service.GoalService
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.core.service.NotificationService
 import com.greatergoods.meapp.core.service.OfflineHandlerService
-import com.greatergoods.meapp.core.service.PermissionService
 import com.greatergoods.meapp.core.service.StorageClearService
 import com.greatergoods.meapp.core.service.UserSettingsService
 import com.greatergoods.meapp.core.service.pushNotification.NotificationManager as GGNotificationManager
@@ -47,7 +46,6 @@ import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IGoalService
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
-import com.greatergoods.meapp.domain.services.IPermissionService
 import com.greatergoods.meapp.domain.services.IUserSettingsService
 import com.greatergoods.meapp.features.common.service.DialogQueueService
 import com.greatergoods.meapp.features.common.service.DialogUtility

@@ -61,69 +61,11 @@ sealed class AppRoute : NavKey {
   /**
    * Authentication-related navigation routes.
    */
+
   @Serializable
-  sealed class Auth :
-    AppRoute(),
-    PublicRoute {
+  sealed class Auth : AppRoute(), PublicRoute {
     @Serializable
-    sealed class Auth :
-        AppRoute(),
-        PublicRoute {
-        @Serializable
-        data object Landing : Auth()
-
-        @Serializable
-        data class Login(
-            val email: String? = null,
-        ) : Auth()
-
-        @Serializable
-        data object Signup : Auth()
-
-        @Serializable
-        data object MultiAccountLanding : Auth()
-    }
-
-    /**
-     * Profile-related navigation routes.
-     */
-    @Serializable
-    sealed class AccountSettings : AppRoute() {
-        @Serializable
-        data object ChangePassword : AccountSettings()
-
-        @Serializable
-        data object Profile : AccountSettings()
-
-        @Serializable
-        data object MyAccounts : AccountSettings()
-
-        @Serializable
-        data object Weightless : AccountSettings()
-
-        @Serializable
-        data object AddEditScales : AccountSettings()
-
-        @Serializable
-        data object ChooseScale : AccountSettings()
-
-        @Serializable
-        data object Goal : AccountSettings()
-
-        @Serializable
-        data object HelpScreen : AccountSettings()
-
-        @Serializable
-        data object DebugMenu : AccountSettings()
-
-        @Serializable
-        data object AppPermissions : AccountSettings()
-
-        @Serializable
-        data class ScaleDetails(
-            val broadcastId: String,
-        ) : AccountSettings()
-    }
+    data object Landing : Auth()
 
     @Serializable
     data class Login(
@@ -168,6 +110,9 @@ sealed class AppRoute : NavKey {
 
     @Serializable
     data object DebugMenu : AccountSettings()
+
+    @Serializable
+    data object AppPermissions : AccountSettings()
 
     @Serializable
     data class ScaleDetails(
