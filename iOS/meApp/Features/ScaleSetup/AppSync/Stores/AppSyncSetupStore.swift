@@ -76,11 +76,20 @@ final class AppSyncSetupStore: ObservableObject {
         self.scaleItem = resolved
         
         // Determine steps based on body-composition support.
-        if resolved.bodyComp {
-            steps = AppSyncSetupStep.allCases
-        } else {
-            steps = AppSyncSetupStep.allCases.filter { $0 != .addInfo }
-        }
+        // Build the base set of steps first (depends on body-composition support).
+        let baseSteps: [AppSyncSetupStep] = {
+            if resolved.bodyComp {
+                return AppSyncSetupStep.allCases
+            } else {
+                return AppSyncSetupStep.allCases.filter { $0 != .addInfo }
+            }
+        }()
+
+        // Skip the permission screen entirely when the camera permission is
+        // already enabled. This lets users who have granted the permission in
+        // advance jump straight to the next step without an unnecessary stop.
+        let cameraPermissionGranted = permissionsService.getPermissionState(.CAMERA) == .ENABLED
+        steps = cameraPermissionGranted ? baseSteps.filter { $0 != .permissions } : baseSteps
         
         // Reset navigation indices.
         currentStepIndex = 0
