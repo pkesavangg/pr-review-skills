@@ -30,7 +30,14 @@ struct A6ScaleSetupScreen: View {
                     AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
                         .foregroundColor(theme.statusIconPrimary)
                 },
-                trailingContent: { EmptyView() },
+                trailingContent: {
+                    Button {
+                        setupStore.showHelpModal()
+                    } label: {
+                        AppIconView(icon: AppAssets.helpCircle)
+                            .foregroundColor(theme.statusIconPrimary)
+                    }
+                },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},
                 canShowPresentationIndicator: true
@@ -39,12 +46,14 @@ struct A6ScaleSetupScreen: View {
             // Currently only the intro step is implemented; other steps will render placeholders.
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews,
-                shouldApplyHorizontalPadding: { _ in true }
+                views: stepViews
             )
-            // Footer Buttons
-            footerButtons
-                .padding(.spacingSM)
+            
+           if !(setupStore.currentStep == .wakeUp || setupStore.currentStep == .connectingBluetooth) {
+               // Footer Buttons
+               footerButtons
+                   .padding(.spacingSM)
+           }
         }
         .onAppear {
             setupStore.dismissAction = dismiss
@@ -59,7 +68,7 @@ struct A6ScaleSetupScreen: View {
             ButtonView(text: commonLang.back,
                        type: .inlineTextPrimary,
                        size: .small,
-                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .finish,
+                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished,
                        action: {
                 withAnimation {
                     hideKeyboard()
@@ -69,7 +78,7 @@ struct A6ScaleSetupScreen: View {
 
             Spacer()
 
-            ButtonView(text: setupStore.currentStep == .finish ? commonLang.finish : commonLang.next,
+            ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
