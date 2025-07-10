@@ -18,6 +18,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     var onTitleTap: (() -> Void)?
     var canShowBorder = false
     var canShowPresentationIndicator = false
+    var shouldShowBackground: Bool = true
     
     var body: some View {
         ZStack {
@@ -57,7 +58,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
         }
         .padding(.horizontal, .spacingSM)
         .frame(height: 56)
-        .background(theme.backgroundPrimary)
+        .background(shouldShowBackground ? theme.backgroundPrimary : Color.clear)
         .border(sides: [.bottom], thickness: canShowBorder ? 0.5 : 0)
         .overlay {
             if canShowPresentationIndicator {

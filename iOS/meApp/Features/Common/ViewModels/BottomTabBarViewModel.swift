@@ -47,7 +47,6 @@ class BottomTabBarViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 guard let self else { return }
-                let device = event.device
                 if self.shouldShowDiscoveredScale(for: event) {
                     self.discoveredScale = event.device
                     self.discoveryEvent = event

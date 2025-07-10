@@ -21,9 +21,8 @@ struct TabBarItemView: View {
         VStack(spacing: 0) {
             VStack {
                 Image(isSelected ? tab.filledIcon : tab.icon)
-                // TODO: After UX provide the transparent icons we can use the below code
-                // .renderingMode(.template)
-                // .foregroundColor(theme.actionSecondary)
+                 .renderingMode(.template)
+                 .foregroundColor(theme.actionSecondary)
             }
             .frame(width: 40, height: 40)
             .overlay {

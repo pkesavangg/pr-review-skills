@@ -53,9 +53,9 @@ struct LoginScreen: View {
                         }
                     },
                     onTrailingTap: {  },
-                    canShowPresentationIndicator: isFromAccountSwitching
+                    canShowPresentationIndicator: isFromAccountSwitching,
+                    shouldShowBackground: false
                 )
-                .padding(.bottom, .spacingLG)
 
                 VStack(alignment: .center) {
                     VStack(alignment: .leading) {
