@@ -77,7 +77,7 @@ struct LoginScreen: View {
                             store.setEmailTouched()
                             focusedField = .password
                         }
-                        
+
                         // Password Input Field
                         AppInputField(
                             config: TextInputConfig(

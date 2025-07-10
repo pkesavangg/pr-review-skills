@@ -6,32 +6,119 @@
 //
 import SwiftUI
 
-// Mark: - SwipeableModifier
-/// A view modifier that adds swipeable buttons to a view.
-/// This modifier allows you to add a set of swipeable buttons that appear when the view is swiped left.
+
+// MARK: - SwipeState
+/// The swipe gesture's current state
+enum SwipeState {
+    case closed
+    case expanded
+    case triggering
+}
+
+// MARK: - GestureVelocity
+/// Property wrapper to track gesture velocity
+@propertyWrapper
+struct GestureVelocity: DynamicProperty {
+    @State var previous: DragGesture.Value?
+    @State var current: DragGesture.Value?
+
+    func update(_ value: DragGesture.Value) {
+        if current != nil {
+            previous = current
+        }
+        current = value
+    }
+
+    func reset() {
+        previous = nil
+        current = nil
+    }
+
+    var projectedValue: GestureVelocity {
+        return self
+    }
+
+    var wrappedValue: CGVector {
+        value
+    }
+
+    private var value: CGVector {
+        guard let previous, let current else {
+            return .zero
+        }
+
+        let timeDelta = current.time.timeIntervalSince(previous.time)
+        let speedY = Double(current.translation.height - previous.translation.height) / timeDelta
+        let speedX = Double(current.translation.width - previous.translation.width) / timeDelta
+
+        return .init(dx: speedX, dy: speedY)
+    }
+}
+
+// MARK: - SwipeableModifier
+/// A view modifier that adds swipeable buttons to a view with proper list scroll support
 struct SwipeableModifier: ViewModifier {
     let swipeButtons: [SwipeButton]
     let buttonWidth: CGFloat
     let itemID: UUID
     var openItemID: Binding<UUID?>?
-    
-    @State private var offsetX: CGFloat = 0
-    @GestureState private var dragOffset: CGFloat = 0
-    
-    private var isSwipedOpen: Bool {
-        offsetX < 0
+
+    // MARK: - Configuration
+    private let swipeMinimumDistance: CGFloat = 15
+    private let expandThreshold: CGFloat = 50
+    private let rubberBandPower: CGFloat = 0.7
+    private let animationDuration: CGFloat = 0.3
+    private let velocityThreshold: CGFloat = 200
+    private let maxSwipeAngle: CGFloat = 45 // Maximum angle for horizontal swipe recognition
+
+    // MARK: - State
+    @State private var currentOffset: CGFloat = 0
+    @State private var savedOffset: CGFloat = 0
+    @State private var swipeState: SwipeState = .closed
+    @State private var isSwipedOpen: Bool = false
+    @GestureVelocity private var velocity: CGVector
+    @GestureState private var isDragging: Bool = false
+    @State private var dragStarted: Bool = false
+    @State private var isHorizontalSwipe: Bool = false
+    @State private var gestureStartPoint: CGPoint = .zero
+
+    // MARK: - Computed Properties
+    private var totalOffset: CGFloat {
+        currentOffset + savedOffset
     }
-    
+
+    private var totalButtonWidth: CGFloat {
+        CGFloat(swipeButtons.count) * buttonWidth
+    }
+
+    private var maxSwipeDistance: CGFloat {
+        totalButtonWidth + 20 // Small padding for overscroll
+    }
+
     func body(content: Content) -> some View {
+        let dragGesture = DragGesture(minimumDistance: swipeMinimumDistance)
+            .updating($isDragging) { value, state, _ in
+                state = true
+            }
+            .onChanged(onDragChanged)
+            .onEnded(onDragEnded)
+            .updatingVelocity($velocity)
+
         ZStack(alignment: .trailing) {
-            // Swipe buttons
+            // Background swipe buttons
             HStack(spacing: 0) {
                 ForEach(swipeButtons) { button in
-                    Button {
+                    Button(action: {
+                        // Only trigger if fully opened
                         if isSwipedOpen {
-                            button.action()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                closeSwipe()
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                button.action()
+                            }
                         }
-                    } label: {
+                    }) {
                         button.label()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
@@ -41,44 +128,174 @@ struct SwipeableModifier: ViewModifier {
                     .allowsHitTesting(isSwipedOpen)
                 }
             }
-            
+            .frame(width: totalButtonWidth)
+            .opacity(swipeState == .closed ? 0 : 1)
+
+            // Main content
             content
                 .background(Color.clear)
-                .offset(x: offsetX + dragOffset)
-                .gesture(
-                    swipeButtons.isEmpty ? nil :
-                    DragGesture()
-                        .updating($dragOffset) { value, state, _ in
-                            let maxSwipe = CGFloat(swipeButtons.count) * buttonWidth
-                            let translation = min(0, value.translation.width)
-                            let clamped = max(translation, -maxSwipe - 10) // Allow slight overscroll
-                            state = clamped
-                        }
-                        .onEnded { value in
-                            let totalWidth = CGFloat(swipeButtons.count) * buttonWidth
-                            let threshold = -totalWidth / 2
-                            withAnimation {
-                                if value.translation.width < threshold {
-                                    offsetX = -totalWidth
-                                    openItemID?.wrappedValue = itemID // mark this row as opened (only if single-open behavior is desired)
-                                } else {
-                                    offsetX = 0
-                                    if openItemID?.wrappedValue == itemID { openItemID?.wrappedValue = nil }
-                                }
-                            }
-                        }
-                )
+                .offset(x: totalOffset)
+                .animation(.interactiveSpring(response: animationDuration, dampingFraction: 0.8), value: totalOffset)
         }
         .clipped()
-        // Close if a different item becomes open (only in single-open mode)
-        .onChange(of: openItemID?.wrappedValue) { newValue in
-            guard let newValue else { return }
-            if newValue != itemID && offsetX != 0 {
-                withAnimation { offsetX = 0 }
+        .simultaneousGesture(
+            dragGesture,
+            including: swipeButtons.isEmpty ? .subviews : .all
+        )
+        .onChange(of: isDragging) { _, newValue in
+            if newValue {
+                dragStarted = true
+                // Mark this item as potentially opening only if it's a horizontal swipe
+                if swipeState == .closed && isHorizontalSwipe {
+                    openItemID?.wrappedValue = itemID
+                }
+            } else {
+                dragStarted = false
+                isHorizontalSwipe = false
             }
         }
-        .onChange(of: swipeButtons.count) {
-            if swipeButtons.count == 0 { offsetX = 0 }
+        .onChange(of: openItemID?.wrappedValue) { _, newValue in
+            // Close this item if another item is opened
+            if let newValue, newValue != itemID, swipeState != .closed {
+                closeSwipe()
+            }
+        }
+        .onChange(of: swipeButtons.count) { _, _ in
+            // Close if no buttons
+            if swipeButtons.isEmpty {
+                closeSwipe()
+            }
+        }
+    }
+
+    // MARK: - Gesture Handlers
+    private func onDragChanged(_ value: DragGesture.Value) {
+        $velocity.update(value)
+
+        // Calculate swipe angle to determine if it's horizontal
+        let deltaX = value.location.x - value.startLocation.x
+        let deltaY = value.location.y - value.startLocation.y
+        let angle = abs(atan2(deltaY, deltaX) * 180 / .pi)
+
+        // Check if this is a horizontal swipe
+        if !isHorizontalSwipe && abs(deltaX) > swipeMinimumDistance {
+            let isHorizontal = angle <= maxSwipeAngle || angle >= (180 - maxSwipeAngle)
+            if isHorizontal {
+                isHorizontalSwipe = true
+            }
+        }
+
+        // Only process horizontal swipes - this prevents interference with vertical scroll
+        guard isHorizontalSwipe else { return }
+
+        // Additional check: ensure horizontal movement is dominant
+        if abs(deltaY) > abs(deltaX) {
+            // Vertical movement is dominant, don't process
+            return
+        }
+
+        let translation = value.translation.width
+        let totalTranslation = savedOffset + translation
+
+        // Only allow left swipe (negative translation)
+        if totalTranslation > 0 {
+            // Apply rubber band effect for right swipe
+            let rubberBandOffset = pow(totalTranslation, rubberBandPower)
+            currentOffset = rubberBandOffset - savedOffset
+            return
+        }
+
+        // Calculate constrained offset
+        let constrainedOffset = max(totalTranslation, -maxSwipeDistance)
+        currentOffset = constrainedOffset - savedOffset
+
+        // Update state based on position
+        let absOffset = abs(totalTranslation)
+        if absOffset > totalButtonWidth {
+            swipeState = .triggering
+        } else if absOffset > expandThreshold {
+            swipeState = .expanded
+        } else {
+            swipeState = .closed
+        }
+    }
+
+    private func onDragEnded(_ value: DragGesture.Value) {
+        let translation = value.translation.width
+        let totalTranslation = savedOffset + translation
+        let gestureVelocity = $velocity.wrappedValue.dx
+
+        // Reset horizontal swipe flag
+        defer { isHorizontalSwipe = false }
+
+        // If this wasn't a horizontal swipe, don't process the end
+        guard isHorizontalSwipe else {
+            $velocity.reset()
+            return
+        }
+
+        // Don't allow positive swipes
+        if totalTranslation > 0 {
+            closeSwipe()
+            return
+        }
+
+        // Determine final state based on position and velocity
+        let absOffset = abs(totalTranslation)
+        let hasStrongVelocity = abs(gestureVelocity) > velocityThreshold
+        let velocityTowardsOpen = gestureVelocity < -velocityThreshold
+        let velocityTowardsClose = gestureVelocity > velocityThreshold
+
+        if velocityTowardsClose {
+            // Strong velocity towards closing
+            closeSwipe()
+        } else if velocityTowardsOpen && absOffset > expandThreshold / 2 {
+            // Strong velocity towards opening with minimum distance
+            openSwipe()
+        } else if absOffset > totalButtonWidth / 2 {
+            // Crossed halfway point
+            openSwipe()
+        } else {
+            // Default to close
+            closeSwipe()
+        }
+
+        $velocity.reset()
+    }
+
+    // MARK: - State Management
+    private func openSwipe() {
+        withAnimation(.interactiveSpring(response: animationDuration, dampingFraction: 0.8)) {
+            savedOffset = -totalButtonWidth
+            currentOffset = 0
+            swipeState = .expanded
+            isSwipedOpen = true
+        }
+        openItemID?.wrappedValue = itemID
+    }
+
+    private func closeSwipe() {
+        withAnimation(.interactiveSpring(response: animationDuration, dampingFraction: 0.8)) {
+            savedOffset = 0
+            currentOffset = 0
+            swipeState = .closed
+            isSwipedOpen = false
+        }
+
+        if openItemID?.wrappedValue == itemID {
+            openItemID?.wrappedValue = nil
+        }
+    }
+}
+
+// MARK: - Gesture Extensions
+extension Gesture where Value == DragGesture.Value {
+    func updatingVelocity(_ velocity: GestureVelocity) -> _EndedGesture<_ChangedGesture<Self>> {
+        onChanged { value in
+            velocity.update(value)
+        }
+        .onEnded { _ in
+            velocity.reset()
         }
     }
 }

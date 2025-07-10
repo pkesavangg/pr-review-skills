@@ -197,6 +197,7 @@ extension View {
             )
         )
     }
+  
     
     /// Applies a conditional wiggle animation to the view.
     /// - Parameter shouldWiggle: If true, applies the wiggle animation.

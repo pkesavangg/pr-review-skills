@@ -98,6 +98,45 @@ final class Entry {
             weight: self.scaleEntry?.weight.map { Double($0) },
         )
     }
+
+    /// Returns an array of (value, metric) pairs for all available body metrics in this entry.
+    var metricItems: [(value: Int, metric: BodyMetric)] {
+        var arr: [(Int, BodyMetric)] = []
+        if let bmi = scaleEntry?.bmi {
+            arr.append((bmi, .bmi))
+        }
+        if let bodyFat = scaleEntry?.bodyFat, bodyFat != 0 {
+            arr.append((bodyFat, .bodyFat))
+        }
+        if let muscleMass = scaleEntry?.muscleMass, muscleMass != 0 {
+            arr.append((muscleMass, .muscleMass))
+        }
+        if let water = scaleEntry?.water, water != 0 {
+            arr.append((water, .water))
+        }
+        if let heartRate = scaleEntryMetric?.pulse, heartRate != 0 {
+            arr.append((heartRate, .pulse))
+        }
+        if let boneMass = scaleEntryMetric?.boneMass, boneMass != 0 {
+            arr.append((boneMass, .boneMass))
+        }
+        if let visceralFat = scaleEntryMetric?.visceralFatLevel, visceralFat != 0 {
+            arr.append((visceralFat, .visceralFatLevel))
+        }
+        if let subcutaneousFat = scaleEntryMetric?.subcutaneousFatPercent, subcutaneousFat != 0 {
+            arr.append((subcutaneousFat, .subcutaneousFatPercent))
+        }
+        if let skeletalMuscles = scaleEntryMetric?.skeletalMusclePercent, skeletalMuscles != 0 {
+            arr.append((skeletalMuscles, .skeletalMusclePercent))
+        }
+        if let bmr = scaleEntryMetric?.bmr, bmr != 0 {
+            arr.append((bmr, .bmr))
+        }
+        if let metabolicAge = scaleEntryMetric?.metabolicAge, metabolicAge != 0 {
+            arr.append((metabolicAge, .metabolicAge))
+        }
+        return arr
+    }
 }
 
 /// @unchecked Sendable is used because Entry is a SwiftData @Model with thread-safe properties.
