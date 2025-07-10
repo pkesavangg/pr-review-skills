@@ -30,10 +30,18 @@ import com.greatergoods.meapp.theme.MeTheme
 import kotlin.math.roundToInt
 
 /**
- * A single draggable list item that can reveal one or more actions when swiped.
+ * Enum representing the anchors for swipe gestures.
+ */
+enum class SwipeAnchors {
+    Center,
+    End
+}
+
+/**
+ * A single swipeable list item that can reveal one or more actions when swiped.
  *
  * @param onActionOpened Callback when the action is fully revealed (swiped open).
- * @param isDraggable Whether the item is draggable.
+ * @param isSwipeable Whether the item is swipeable.
  * @param index The index of the item in the list.
  * @param iconWidth The width of the action icon area.
  * @param showAction Whether to show the action (i.e., if this item is open).
@@ -44,19 +52,19 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppDraggableListItem(
+fun AppSwipeableListItem(
     onActionOpened: (Int) -> Unit,
-    isDraggable: Boolean,
+    isSwipeable: Boolean,
     index: Int,
     iconWidth: Dp = 40.dp,
     showAction: Boolean,
     actionContent: @Composable RowScope.() -> Unit,
-    positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
-    velocityThreshold: Float = DragDefaults.VELOCITY_THRESHOLD,
+    positionalThreshold: Float = SwipeDefaults.POSITIONAL_THRESHOLD,
+    velocityThreshold: Float = SwipeDefaults.VELOCITY_THRESHOLD,
     content: @Composable (progress: Float) -> Unit,
 ) {
     val state =
-        rememberDraggableState(
+        rememberSwipeableState(
             iconWidth = iconWidth,
             positionalThreshold = positionalThreshold,
             velocityThreshold = velocityThreshold,
@@ -86,26 +94,26 @@ fun AppDraggableListItem(
             actionContent()
         }
 
-        DraggableContentBox(state, isDraggable, iconWidth, content)
+        SwipeableContentBox(state, isSwipeable, iconWidth, content)
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun rememberDraggableState(
+private fun rememberSwipeableState(
     iconWidth: Dp,
-    positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
-    velocityThreshold: Float = DragDefaults.VELOCITY_THRESHOLD,
-): AnchoredDraggableState<DragAnchors> {
+    positionalThreshold: Float = SwipeDefaults.POSITIONAL_THRESHOLD,
+    velocityThreshold: Float = SwipeDefaults.VELOCITY_THRESHOLD,
+): AnchoredDraggableState<SwipeAnchors> {
     val density = LocalDensity.current
     return remember(iconWidth, positionalThreshold, velocityThreshold) {
         val screenSizePx = with(density) { iconWidth.toPx() }
         AnchoredDraggableState(
-            initialValue = DragAnchors.Center,
+            initialValue = SwipeAnchors.Center,
             anchors =
                 DraggableAnchors {
-                    DragAnchors.Center at 0f
-                    DragAnchors.End at screenSizePx
+                    SwipeAnchors.Center at 0f
+                    SwipeAnchors.End at screenSizePx
                 },
             // TODO: Need to handle this
             // positionalThreshold = { positionalThreshold * it },
@@ -123,29 +131,29 @@ private fun rememberDraggableState(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HandleActionState(
-    state: AnchoredDraggableState<DragAnchors>,
+    state: AnchoredDraggableState<SwipeAnchors>,
     onActionOpened: (Int) -> Unit,
     index: Int,
     showAction: Boolean,
 ) {
     LaunchedEffect(state.currentValue) {
-        if (state.currentValue == DragAnchors.End) {
+        if (state.currentValue == SwipeAnchors.End) {
             onActionOpened(index)
         }
     }
 
     LaunchedEffect(showAction) {
-        if (!showAction && state.currentValue != DragAnchors.Center) {
-            state.animateTo(DragAnchors.Center)
+        if (!showAction && state.currentValue != SwipeAnchors.Center) {
+            state.animateTo(SwipeAnchors.Center)
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DraggableContentBox(
-    state: AnchoredDraggableState<DragAnchors>,
-    isDraggable: Boolean,
+private fun SwipeableContentBox(
+    state: AnchoredDraggableState<SwipeAnchors>,
+    isSwipeable: Boolean,
     iconWidth: Dp = 40.dp,
     content: @Composable (progress: Float) -> Unit,
 ) {
@@ -166,7 +174,7 @@ private fun DraggableContentBox(
                 }.anchoredDraggable(
                     state = state,
                     orientation = Orientation.Horizontal,
-                    enabled = isDraggable,
+                    enabled = isSwipeable,
                     reverseDirection = true,
                     interactionSource = remember { MutableInteractionSource() },
                 ),
@@ -180,16 +188,16 @@ private fun DraggableContentBox(
 
 @PreviewTheme
 @Composable
-private fun PreviewAppDraggableListItem() {
+private fun PreviewAppSwipeableListItem() {
     MeAppTheme {
-        AppDraggableListItem(
+        AppSwipeableListItem(
             onActionOpened = {},
-            isDraggable = true,
+            isSwipeable = true,
             index = 0,
             showAction = false,
             actionContent = {
-                AppDraggableListActions {
-                    AppDraggableActionItem(
+                AppSwipeableListActions {
+                    AppSwipeableActionItem(
                         iconId = AppIcons.Default.Delete,
                         contentDescription = "Delete",
                         backgroundColor = MeTheme.colorScheme.danger,

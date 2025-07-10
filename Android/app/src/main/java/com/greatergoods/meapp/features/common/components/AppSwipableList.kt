@@ -28,36 +28,36 @@ import kotlin.math.min
 import android.util.Log
 
 // --- Constants ---
-object DragDefaults {
+object SwipeDefaults {
     const val POSITIONAL_THRESHOLD = 0.5f
     const val VELOCITY_THRESHOLD = 100f
 }
 
 // --- Scope Interface and Implementation ---
-interface DraggableListItemScope {
+interface SwipeableListItemScope {
     @Composable
-    fun Draggable(content: @Composable (progress: Float) -> Unit)
+    fun Swipeable(content: @Composable (progress: Float) -> Unit)
 
     @Composable
     fun Static(content: @Composable () -> Unit)
 }
 
-private class DraggableListItemScopeImpl<T>(val item: T, val index: Int) : DraggableListItemScope {
-    private var draggableBuilder: (@Composable (Float) -> Unit)? = null
+private class SwipeableListItemScopeImpl<T>(val item: T, val index: Int) : SwipeableListItemScope {
+    private var swipeableBuilder: (@Composable (Float) -> Unit)? = null
     private var staticBuilder: (@Composable () -> Unit)? = null
     var initialized: Boolean by mutableStateOf(false)
 
-    fun buildDraggable(progress: Float): @Composable () -> Unit =
-        draggableBuilder?.let { { it(progress) } } ?: {
+    fun buildSwipeable(progress: Float): @Composable () -> Unit =
+        swipeableBuilder?.let { { it(progress) } } ?: {
             // Default fallback
-            Text("⚠️ No Draggable content defined for item at index $index")
+            Text("⚠️ No Swipeable content defined for item at index $index")
         }
 
     fun buildStatic(): (@Composable () -> Unit)? = staticBuilder
 
     @Composable
-    override fun Draggable(content: @Composable (progress: Float) -> Unit) {
-        draggableBuilder = content
+    override fun Swipeable(content: @Composable (progress: Float) -> Unit) {
+        swipeableBuilder = content
     }
 
     @Composable
@@ -65,24 +65,24 @@ private class DraggableListItemScopeImpl<T>(val item: T, val index: Int) : Dragg
         staticBuilder = content
     }
 
-    fun hasContent(): Boolean = draggableBuilder != null || staticBuilder != null
+    fun hasContent(): Boolean = swipeableBuilder != null || staticBuilder != null
 }
 
-// --- Main AppDraggableList Composable ---
+// --- Main AppSwipeableList Composable ---
 @Composable
-fun <T> AppDraggableList(
+fun <T> AppSwipeableList(
     items: List<T>,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     iconWidth: Dp = 56.dp,
     maxVisibleItems: Int? = null,
-    isItemDraggable: (T) -> Boolean = { true },
+    isItemSwipeable: (T) -> Boolean = { true },
     keySelector: (T) -> Any,
     trailingActions: @Composable RowScope.(index: Int, item: T) -> Unit = { _, _ -> },
-    positionalThreshold: Float = DragDefaults.POSITIONAL_THRESHOLD,
-    velocityThreshold: Float = DragDefaults.VELOCITY_THRESHOLD,
+    positionalThreshold: Float = SwipeDefaults.POSITIONAL_THRESHOLD,
+    velocityThreshold: Float = SwipeDefaults.VELOCITY_THRESHOLD,
     footerContent: @Composable (() -> Unit)? = null,
-    itemContent: @Composable DraggableListItemScope.(item: T) -> Unit,
+    itemContent: @Composable SwipeableListItemScope.(item: T) -> Unit,
 ) {
     var isMultiTouch by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
@@ -110,13 +110,13 @@ fun <T> AppDraggableList(
                 while (true) {
                     val event = awaitPointerEvent()
                     isMultiTouch = event.changes.size > 1
-                    // ... handle single-finger drag logic here ...
+                    // ... handle single-finger swipe logic here ...
                 }
             }
         }
     ) {
         itemsIndexed(items, key = { _, item -> keySelector(item) }) { index, item ->
-            val scope = remember(item) { DraggableListItemScopeImpl(item, index) }
+            val scope = remember(item) { SwipeableListItemScopeImpl(item, index) }
 
             // Run composable scope initializer
             if (!scope.initialized) {
@@ -124,13 +124,13 @@ fun <T> AppDraggableList(
                 scope.initialized = true
 
                 if (!scope.hasContent()) {
-                    Log.w("AppDraggableList", "⚠️ No Draggable or Static scope defined for item at index $index")
+                    Log.w("AppSwipeableList", "⚠️ No Swipeable or Static scope defined for item at index $index")
                 }
             }
 
-            AppDraggableListItem(
+            AppSwipeableListItem(
                 actionContent = { trailingActions(index, item) },
-                isDraggable = !lazyListState.isScrollInProgress && isItemDraggable(item) && !isMultiTouch,
+                isSwipeable = !lazyListState.isScrollInProgress && isItemSwipeable(item) && !isMultiTouch,
                 iconWidth = iconWidth,
                 index = index,
                 onActionOpened = { openedIdx ->
@@ -143,7 +143,7 @@ fun <T> AppDraggableList(
                 positionalThreshold = positionalThreshold,
                 velocityThreshold = velocityThreshold,
             ) { progress ->
-                val draggableContent = scope.buildDraggable(progress)
+                val swipeableContent = scope.buildSwipeable(progress)
                 if (index == 0 && !hasMeasured) {
                     Box(
                         modifier = Modifier.onGloballyPositioned { coordinates ->
@@ -154,10 +154,10 @@ fun <T> AppDraggableList(
                             }
                         },
                     ) {
-                        draggableContent()
+                        swipeableContent()
                     }
                 } else {
-                    draggableContent()
+                    swipeableContent()
                 }
             }
 
@@ -174,14 +174,14 @@ fun <T> AppDraggableList(
 
 @PreviewTheme
 @Composable
-private fun PreviewAppDraggableList() {
+private fun PreviewAppSwipeableList() {
     MeAppTheme {
         val items = listOf("Item 1", "Item 2", "Item 3")
-        AppDraggableList(
+        AppSwipeableList(
             items = items,
             itemContent = { item ->
-                Draggable {
-                    Text("Draggable: $item")
+                Swipeable {
+                    Text("Swipeable: $item")
                 }
                 Static {
                     Text("Static: $item")
@@ -189,7 +189,7 @@ private fun PreviewAppDraggableList() {
             },
             keySelector = { it },
             trailingActions = { _, item ->
-                AppDraggableListActions {
+                AppSwipeableListActions {
                     AppIcon(
                         id = AppIcons.Default.Delete,
                         contentDescription = "Delete",

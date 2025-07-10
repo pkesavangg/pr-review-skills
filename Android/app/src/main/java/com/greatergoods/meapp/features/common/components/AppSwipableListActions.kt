@@ -13,12 +13,12 @@ import androidx.compose.ui.graphics.Shape
 import com.greatergoods.meapp.theme.MeAppTheme
 
 /**
- * Displays trailing actions for a draggable list item, allowing any number of custom actions.
+ * Displays trailing actions for a swipeable list item, allowing any number of custom actions.
  *
  * @param actions Composable lambda for the actions to display (e.g., icons, buttons).
  */
 @Composable
-fun RowScope.AppDraggableListActions(
+fun RowScope.AppSwipeableListActions(
     shape: Shape = RectangleShape,
     actions: @Composable RowScope.() -> Unit,
 ) {
@@ -37,11 +37,11 @@ fun RowScope.AppDraggableListActions(
 
 @PreviewTheme
 @Composable
-private fun PreviewAppDraggableListActionsLight() {
+private fun PreviewAppSwipeableListActionsLight() {
     MeAppTheme {
         AppScaffold("") {
             Row {
-                AppDraggableListActions {
+                AppSwipeableListActions {
                     AppIcon(
                         id = com.greatergoods.meapp.resources.AppIcons.Default.Delete,
                         contentDescription = "Delete",

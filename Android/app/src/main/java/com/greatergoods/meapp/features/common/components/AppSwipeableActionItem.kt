@@ -27,7 +27,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 /**
- * A single action item for use in draggable list actions, with icon, optional text, background, and click handler.
+ * A single action item for use in swipeable list actions, with icon, optional text, background, and click handler.
  *
  * @param iconId The icon resource ID to display.
  * @param text Optional text to display next to the icon.
@@ -37,7 +37,7 @@ import com.greatergoods.meapp.theme.MeTheme
  * @param modifier Modifier for styling.
  */
 @Composable
-fun AppDraggableActionItem(
+fun AppSwipeableActionItem(
     iconId: Int? = null,
     itemWidth: Dp = 56.dp,
     modifier: Modifier = Modifier,
@@ -90,10 +90,10 @@ fun AppDraggableActionItem(
 
 @PreviewTheme
 @Composable
-private fun PreviewAppDraggableActionItemLight() {
+private fun PreviewAppSwipeableActionItemLight() {
     MeAppTheme {
         AppScaffold("") {
-            AppDraggableActionItem(
+            AppSwipeableActionItem(
                 iconId = AppIcons.Default.Delete,
                 text = "Delete",
                 contentDescription = "Delete item",
