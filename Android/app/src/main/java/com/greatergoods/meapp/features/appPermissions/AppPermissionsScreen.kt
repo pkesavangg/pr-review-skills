@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.features.appPermissions
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,22 +9,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.features.appPermissions.strings.AppPermissionsScreenStrings
 import com.greatergoods.meapp.features.appPermissions.viewmodel.AppPermissionsIntent
 import com.greatergoods.meapp.features.appPermissions.viewmodel.AppPermissionsState
 import com.greatergoods.meapp.features.appPermissions.viewmodel.AppPermissionsViewModel
-import com.greatergoods.meapp.features.appPermissions.viewmodel.AppPermissionStatus
+import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
@@ -37,9 +29,6 @@ import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 
 /**
  * App Permissions screen that displays the status of various Android permissions
@@ -47,10 +36,10 @@ import android.provider.Settings
  */
 @Composable
 fun AppPermissionsScreen() {
-    val viewModel: AppPermissionsViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
+  val viewModel: AppPermissionsViewModel = hiltViewModel()
+  val state by viewModel.state.collectAsState()
 
-    AppPermissionsContent(state, viewModel::handleIntent)
+  AppPermissionsContent(state, viewModel::handleIntent)
 }
 
 /**
@@ -58,157 +47,74 @@ fun AppPermissionsScreen() {
  */
 @Composable
 fun AppPermissionsContent(
-    state: AppPermissionsState,
-    handleIntent: (AppPermissionsIntent) -> Unit,
+  state: AppPermissionsState,
+  handleIntent: (AppPermissionsIntent) -> Unit,
 ) {
-    val context = LocalContext.current
-    var refreshTrigger by remember { mutableStateOf(0) }
 
-    // Launch effect to refresh permissions when screen is opened or refreshed
-    LaunchedEffect(refreshTrigger) {
-        handleIntent(AppPermissionsIntent.RefreshPermissions)
-    }
+  val permissionItems = AppPermissionsHelper.mapToPermissionItems(state.permissionMap)
 
-    // Permission launcher for requesting permissions
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { permissions ->
-        AppLog.i("AppPermissions", "Permission result: $permissions")
-        handleIntent(AppPermissionsIntent.RefreshPermissions)
-    }
-
-    AppScaffold(
-        navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {  }
-        },
-        title = AppPermissionsScreenStrings.Title
+  AppScaffold(
+    navigationIcon = {
+      AppIconButton(AppIcons.Default.Close) { }
+    },
+    title = AppPermissionsScreenStrings.Title,
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState())
+        .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
-        ) {
-            // Essential Permissions Section
-            AppText(
-                text = AppPermissionsScreenStrings.BluetoothPermissions,
-                textType = TextType.Title,
-                modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
-            )
+      // Essential Permissions Section
+      AppText(
+        text = AppPermissionsScreenStrings.BluetoothPermissions,
+        textType = TextType.Title,
+        modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
+      )
 
-            Column(
-                modifier = Modifier
-                    .clip(shape = RoundedCornerShape(MeTheme.borderRadius.md))
-                    .background(color = MeTheme.colorScheme.primaryBackground)
-            ) {
-                PermissionItem(
-                    checked = true,
-                    onCheckedChange = { },
-                    permissionStatus = PermissionItemStatus.Granted,
-                    enabled = true,
-                    required = true,
-                    content = {
-                        Column {
-                            AppText(
-                                text = "Camera Permission",
-                                textType = TextType.Subtitle,
-                            )
-                        }
-                    }
-                ) {
+      Column(
+        modifier = Modifier
+          .clip(shape = RoundedCornerShape(MeTheme.borderRadius.md))
+          .background(color = MeTheme.colorScheme.primaryBackground),
+      ) {
+        permissionItems.forEachIndexed { index, item ->
+          PermissionItem(
+            checked = item.checked,
+            onCheckedChange = { handleIntent(AppPermissionsIntent.RequestPermission(item.key)) },
+            permissionStatus = item.status,
+            enabled = item.enabled,
+            required = item.required,
+            content = {
+              Column {
+                AppText(
+                  text = item.title,
+                  textType = TextType.Subtitle,
+                )
+                item.description?.let {
+                  AppText(
+                    text = it,
+                    textType = TextType.Body,
+                  )
                 }
-
-                HorizontalDivider(color = MeTheme.colorScheme.utility)
-
-                PermissionItem(
-                    checked = false,
-                    onCheckedChange = { },
-                    permissionStatus = PermissionItemStatus.NotRequested,
-                    enabled = true,
-                    required = true,
-                    content = {
-                        Column {
-                            AppText(
-                                text = "Bluetooth Permission",
-                                textType = TextType.Subtitle,
-                            )
-                        }
-                    }
-                ) {
-                }
-
-                HorizontalDivider(color = MeTheme.colorScheme.utility)
-
-                PermissionItem(
-                    checked = false,
-                    onCheckedChange = { },
-                    permissionStatus = PermissionItemStatus.Denied,
-                    enabled = true,
-                    required = false,
-                    content = {
-                        Column {
-                            AppText(
-                                text = "Location Permission",
-                                textType = TextType.Subtitle,
-                            )
-                        }
-                    }
-                ) {
-                }
-            }
+              }
+            },
+          )
+          if (index < permissionItems.size - 1) {
+            HorizontalDivider(color = MeTheme.colorScheme.utility)
+          }
         }
+      }
     }
-}
-
-/**
- * Helper function to get permission status text.
- */
-private fun getPermissionStatusText(status: AppPermissionStatus): String {
-    return when (status) {
-        AppPermissionStatus.Granted -> AppPermissionsScreenStrings.Granted
-        AppPermissionStatus.Denied -> AppPermissionsScreenStrings.Denied
-        AppPermissionStatus.NotRequested -> AppPermissionsScreenStrings.NotRequested
-    }
-}
-
-/**
- * Helper function to convert PermissionStatus to PermissionItemStatus.
- */
-private fun getPermissionItemStatus(status: AppPermissionStatus): PermissionItemStatus {
-    return when (status) {
-        AppPermissionStatus.Granted -> PermissionItemStatus.Granted
-        AppPermissionStatus.Denied -> PermissionItemStatus.Denied
-        AppPermissionStatus.NotRequested -> PermissionItemStatus.NotRequested
-    }
-}
-
-/**
- * Helper function to open app settings.
- */
-private fun openAppSettings(context: android.content.Context) {
-    try {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.fromParts("package", context.packageName, null)
-        }
-        context.startActivity(intent)
-    } catch (e: Exception) {
-        AppLog.e("AppPermissions", "Failed to open app settings", e.toString())
-    }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun AppPermissionsScreenPreview() {
-    MeAppTheme {
-        AppPermissionsContent(
-            state = AppPermissionsState(
-                healthConnectPermission = AppPermissionStatus.Granted,
-                bluetoothPermission = AppPermissionStatus.Granted,
-                notificationsPermission = AppPermissionStatus.Denied,
-                cameraPermission = AppPermissionStatus.NotRequested,
-                locationPermission = AppPermissionStatus.Granted,
-            ),
-            handleIntent = {},
-        )
-    }
+  MeAppTheme {
+    AppPermissionsContent(
+      state = AppPermissionsState(),
+      handleIntent = {},
+    )
+  }
 }
