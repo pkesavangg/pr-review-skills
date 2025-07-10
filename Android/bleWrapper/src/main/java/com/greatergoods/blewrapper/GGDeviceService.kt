@@ -75,7 +75,7 @@ class GGDeviceService @Inject constructor(ggBleService: GGBLEService) : GGScanSe
     accountName: String,
     callback: (GGUserActionResponseType) -> Unit
   ) {
-    // ggBluetooth.restoreAccount(device, accountName, callback)
+    ggBluetooth.restoreAccount(device, accountName, callback)
   }
 
   /**
@@ -156,7 +156,7 @@ class GGDeviceService @Inject constructor(ggBleService: GGBLEService) : GGScanSe
   }
 
   fun startMeasurement(device: GGBTDevice) {
-    // ggBluetooth.subscribeToLiveData(device)
+    ggBluetooth.subscribeToLiveData(device)
   }
 
   fun syncDevices(devices: List<GGBTDevice>) {
@@ -187,17 +187,17 @@ class GGDeviceService @Inject constructor(ggBleService: GGBLEService) : GGScanSe
     ggBluetooth.updateSetting(device, listOf(setting))
   }
 
-  // fun changeMode(device: GGBTDevice, mode: String) {
-  //   ggBluetooth.updateSetting(
-  //     device,
-  //     listOf(
-  //       GGBTSetting(
-  //         key = GGBTSettingType.MUTE_MODE,
-  //         value = GGBTSettingValue.String(mode),
-  //       ),
-  //     ),
-  //   )
-  // }
+  fun changeMode(device: GGBTDevice, mode: String) {
+    ggBluetooth.updateSetting(
+      device,
+      listOf(
+        GGBTSetting(
+          key = GGBTSettingType.MUTE_MODE,
+          value = GGBTSettingValue.String(mode),
+        ),
+      ),
+    )
+  }
 
   fun tare(device: GGBTDevice) {
     ggBluetooth.tare(device)
