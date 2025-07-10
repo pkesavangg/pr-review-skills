@@ -338,8 +338,17 @@ final class A6ScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    // Cancel timers on deinit.
+    // Cancel active Combine subscription before releasing it.
     deinit {
-        resetDiscoveryState()
+        // Cancel active Combine subscription before releasing it.
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+
+        // Nil out discovery data so subsequent runs start fresh.
+        discoveredScale = nil
+        discoveryEvent = nil
+
+        // Cancel any in-flight timeout task.
+        stepTimerTask?.cancel()
     }
 }
