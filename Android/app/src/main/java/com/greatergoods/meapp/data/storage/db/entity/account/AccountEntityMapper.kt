@@ -76,6 +76,12 @@ object AccountEntityMapper {
             initialWeight = accountWithRelations.goalSettings?.weight?.toDouble() ?: 0.0,
             goalWeight = accountWithRelations.goalSettings?.goalWeight?.toDoubleOrNull() ?: 0.0,
             goalPercent = accountWithRelations.goalSettings?.goalPercent?.toDouble() ?: 0.0,
+            isFitbitOn = accountWithRelations.integrationsSettings?.isFitbitOn ?: false,
+            isFitbitValid = accountWithRelations.integrationsSettings?.isFitbitValid ?: false,
+            isHealthConnectOn = accountWithRelations.integrationsSettings?.isHealthConnectOn ?: false,
+            isHealthKitOn = accountWithRelations.integrationsSettings?.isHealthKitOn ?: false,
+            isMfpOn = accountWithRelations.integrationsSettings?.isMfpOn ?: false,
+            isMfpValid = accountWithRelations.integrationsSettings?.isMfpValid ?: false,
         )
     }
 }
