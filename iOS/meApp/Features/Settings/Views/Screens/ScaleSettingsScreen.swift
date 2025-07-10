@@ -18,7 +18,7 @@ struct ScaleSettingsScreen: View {
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
-                title: scale.deviceName,
+                title: scale.nickname ?? scale.deviceName,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
