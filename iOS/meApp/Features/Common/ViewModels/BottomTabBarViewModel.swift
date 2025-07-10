@@ -122,7 +122,7 @@ class BottomTabBarViewModel: ObservableObject {
     
     // MARK: - Connect Action from Scale Discovered Sheet
     func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?) {
-        let sku = event?.deviceInfo.sku ?? event?.deviceInfo.sku ?? ""
+        let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
         // TODO: Need to handle for 0412 sku
         guard sku == "0378" || sku == "0383" else {
             return
