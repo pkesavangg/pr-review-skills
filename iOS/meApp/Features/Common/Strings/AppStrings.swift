@@ -52,6 +52,8 @@ struct CommonStrings {
     static let allow = "Allow"
     static let ignore = "Ignore"
     static let enable = "Enable"
+    static let tryAgain = "Try Again"
+    static let support = "Support"
 }
 
 /// Constants for entry strings used in the app
@@ -471,6 +473,12 @@ struct AlertStrings {
         }
         static let returnButton = "RETURN"
         static let pairButton = "PAIR"
+    }
+    
+    struct knownScaleDiscoveredAlert {
+        static let title = "Known Scale Discovered"
+        static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+        static let exitButton = "Exit"
     }
     
     struct PermissionAlerts {

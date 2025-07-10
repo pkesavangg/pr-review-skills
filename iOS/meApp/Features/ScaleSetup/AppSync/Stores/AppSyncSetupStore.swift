@@ -76,11 +76,20 @@ final class AppSyncSetupStore: ObservableObject {
         self.scaleItem = resolved
         
         // Determine steps based on body-composition support.
-        if resolved.bodyComp {
-            steps = AppSyncSetupStep.allCases
-        } else {
-            steps = AppSyncSetupStep.allCases.filter { $0 != .addInfo }
-        }
+        // Build the base set of steps first (depends on body-composition support).
+        let baseSteps: [AppSyncSetupStep] = {
+            if resolved.bodyComp {
+                return AppSyncSetupStep.allCases
+            } else {
+                return AppSyncSetupStep.allCases.filter { $0 != .addInfo }
+            }
+        }()
+
+        // Skip the permission screen entirely when the camera permission is
+        // already enabled. This lets users who have granted the permission in
+        // advance jump straight to the next step without an unnecessary stop.
+        let cameraPermissionGranted = permissionsService.getPermissionState(.CAMERA) == .ENABLED
+        steps = cameraPermissionGranted ? baseSteps.filter { $0 != .permissions } : baseSteps
         
         // Reset navigation indices.
         currentStepIndex = 0
@@ -91,18 +100,62 @@ final class AppSyncSetupStore: ObservableObject {
     }
     
     // MARK: - Navigation helpers
+
     func moveToNextStep() {
-        guard currentStepIndex < steps.count - 1 else {
-            // Finished – invoke completion callback
-            self.saveScale()
+        var nextIndex = currentStepIndex + 1
+
+        // Skip the permissions step if the camera permission is already enabled.
+        while nextIndex < steps.count, steps[nextIndex] == .permissions, isCameraPermissionEnabled() {
+            nextIndex += 1
+        }
+
+        // Reached the end – save and exit.
+        guard nextIndex < steps.count else {
+            saveScale()
             return
         }
-        currentStepIndex += 1
+
+        currentStepIndex = nextIndex
     }
     
     func moveToPreviousStep() {
-        guard currentStepIndex > 0 else { return }
-        currentStepIndex -= 1
+        var previousIndex = currentStepIndex - 1
+
+        // Skip the permissions step when navigating backwards if it is already satisfied.
+        while previousIndex >= 0, steps[previousIndex] == .permissions, isCameraPermissionEnabled() {
+            previousIndex -= 1
+        }
+
+        guard previousIndex >= 0 else { return }
+        currentStepIndex = previousIndex
+    }
+    
+    // MARK: - Exit / Help
+    
+    /// Presents a confirmation alert before abandoning the setup flow.
+    func handleExit() {
+        let alertLang = AlertStrings.ExitSetupAlert.self
+        let alert = AlertModel(
+            title: alertLang.title,
+            message: alertLang.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.dismissAction?()
+                },
+                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Shows the generic Help modal used across the app.
+    func showHelpModal() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(HelpModalView {
+                self.notificationService.dismissModal()
+            })
+        ))
     }
     
     // MARK: - Validation Helpers
@@ -146,40 +199,12 @@ final class AppSyncSetupStore: ObservableObject {
                 }
             ))
         case .finish:
-            let lang = AppSyncStrings.FinishViewStrings.self
+            let lang = ScaleSetupStrings.FinishViewStrings.self
             return AnyView(
-                ScaleSetupFinishView(title: lang.title, description: lang.description, isAppSyncScaleSetup: true)
+                ScaleSetupFinishView(title: lang.title, description: lang.appSyncDescription, isAppSyncScaleSetup: true)
                     .environmentObject(Theme.shared)
             )
         }
-    }
-    
-    // MARK: - Exit / Help
-    
-    /// Presents a confirmation alert before abandoning the setup flow.
-    func handleExit() {
-        let alertLang = AlertStrings.ExitSetupAlert.self
-        let alert = AlertModel(
-            title: alertLang.title,
-            message: alertLang.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
-                    guard let self else { return }
-                    self.dismissAction?()
-                },
-                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-    
-    /// Shows the generic Help modal used across the app.
-    func showHelpModal() {
-        notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView {
-                self.notificationService.dismissModal()
-            })
-        ))
     }
     
     private func saveScale() {
@@ -223,5 +248,15 @@ final class AppSyncSetupStore: ObservableObject {
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
             }
         }
+    }
+    
+    /// Returns `true` when the camera permission has already been granted.
+    private func isCameraPermissionEnabled() -> Bool {
+        permissionsService.getPermissionState(.CAMERA) == .ENABLED
+    }
+    
+    deinit {
+      cancellables.forEach { $0.cancel() }
+      cancellables.removeAll()
     }
 }
