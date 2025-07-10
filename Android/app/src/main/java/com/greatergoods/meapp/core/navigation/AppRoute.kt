@@ -53,10 +53,11 @@ sealed class AppRoute : NavKey {
   sealed class History : AppRoute() {
     @Serializable
 
-  data class MonthDetails(
-    val month: String,
-  ) : AppRoute()
-    }
+    data class MonthDetails(
+      val month: String,
+    ) : AppRoute()
+  }
+
   /**
    * Authentication-related navigation routes.
    */
@@ -166,8 +167,8 @@ sealed class AppRoute : NavKey {
       val sku: String,
     ) : ScaleSetup()
   }
-}
-@Serializable
+
+  @Serializable
   sealed class Dashboard : AppRoute() {
     @Serializable
     data class MetricInfo(
@@ -177,3 +178,4 @@ sealed class AppRoute : NavKey {
     ) : Dashboard()
   }
 }
+

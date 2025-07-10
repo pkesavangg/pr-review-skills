@@ -76,15 +76,13 @@ object ServiceModule {
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
     appNavigationService: IAppNavigationService,
-    userSettingsRepository: IUserSettingsRepository,
-    storageClearService: StorageClearService
+    storageClearService: StorageClearService,
   ): IAccountService =
     AccountService(
       accountRepository,
       connectivityObserver,
       dialogQueueService,
       appNavigationService,
-      userSettingsRepository,
       storageClearService,
     )
 
@@ -170,18 +168,18 @@ object ServiceModule {
       accountRepository,
     )
 
-  /**
-   * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
-   * @param integrationRepository The repository for integration operations.
-   * @param dialogQueueService The service for managing dialog queues.
-   * @return [IntegrationService] instance.
-   */
-  @Provides
-  @Singleton
-  fun provideIntegrationService(
-    integrationRepository: IIntegrationRepository,
-    dialogQueueService: DialogQueueService,
-  ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
+  // /**
+  //  * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
+  //  * @param integrationRepository The repository for integration operations.
+  //  * @param dialogQueueService The service for managing dialog queues.
+  //  * @return [IntegrationService] instance.
+  //  */
+  // @Provides
+  // @Singleton
+  // fun provideIntegrationService(
+  //     integrationRepository: IIntegrationRepository,
+  //     dialogQueueService: DialogQueueService,
+  // ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
 
   /**
    * Provides the export service implementation.

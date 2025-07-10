@@ -10,6 +10,7 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.components.AppSwipeableActionItem
 import com.greatergoods.meapp.features.common.components.AppSwipeableList
+import com.greatergoods.meapp.features.common.components.AppSwipeableListActions
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -31,14 +32,15 @@ fun HistoryDetailList(
         iconWidth = 88.dp,
         keySelector = { it.entry.id },
         trailingActions = { index, item ->
-            AppDraggableActionItem(
+          AppSwipeableListActions {
+            AppSwipeableActionItem(
                 itemWidth = 88.dp,
                 text = HistoryDetailScreenStrings.DeleteButton,
                 contentDescription = HistoryDetailScreenStrings.DeleteEntryContentDescription,
                 backgroundColor = MeTheme.colorScheme.textError,
             ) {
                 onItemDelete(item)
-            }
+            }}
         },
     ) { item ->
         HistoryDetailItem(
