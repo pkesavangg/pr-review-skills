@@ -272,6 +272,16 @@ open class ReorderableLazyCollectionState<out T> internal constructor(
         draggingItem.contains(item.center)
     },
 ) : ReorderableLazyCollectionStateInterface {
+    // Public property to expose the viewport size
+    val viewportSize: IntSize
+        get() = state.layoutInfo.viewportSize
+    // Public property to expose the current dragging item's origin (offset in grid)
+    val draggingItemOrigin: IntOffset?
+        get() = draggingItemLayoutInfo?.offset
+    // Public property to expose the current dragging item's size
+    val draggingItemSize: IntSize?
+        get() = draggingItemLayoutInfo?.size
+
     private val onMoveStateMutex: Mutex = Mutex()
 
     internal val orientation: Orientation

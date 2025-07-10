@@ -2,6 +2,9 @@ package com.greatergoods.meapp.core.navigation
 
 import androidx.navigation3.runtime.NavKey
 import com.example.nav3integration.PublicRoute
+import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
+import com.greatergoods.meapp.features.metricinfo.MetricInfoSource
+import com.greatergoods.meapp.proto.MetricKey
 import kotlinx.serialization.Serializable
 
 /**
@@ -47,9 +50,13 @@ sealed class AppRoute : NavKey {
   }
 
   @Serializable
-  data class MonthDetails(
-    val month: String,
-  ) : AppRoute()
+  sealed class History : AppRoute() {
+    @Serializable
+
+    data class MonthDetails(
+      val month: String,
+    ) : AppRoute()
+  }
 
   /**
    * Authentication-related navigation routes.
@@ -160,4 +167,15 @@ sealed class AppRoute : NavKey {
       val sku: String,
     ) : ScaleSetup()
   }
+
+  @Serializable
+  sealed class Dashboard : AppRoute() {
+    @Serializable
+    data class MetricInfo(
+      val info: DashboardMetric,
+      val key: MetricKey = MetricKey.BMI,
+      val source: MetricInfoSource = MetricInfoSource.DAY
+    ) : Dashboard()
+  }
 }
+

@@ -129,19 +129,19 @@ fun <T> AppSwipeableList(
             }
 
             AppSwipeableListItem(
-                actionContent = { trailingActions(index, item) },
-                isSwipeable = !lazyListState.isScrollInProgress && isItemSwipeable(item) && !isMultiTouch,
-                iconWidth = iconWidth,
-                index = index,
-                onActionOpened = { openedIdx ->
+              actionContent = { trailingActions(index, item) },
+              isSwipeable = !lazyListState.isScrollInProgress && isItemSwipeable(item) && !isMultiTouch,
+              iconWidth = iconWidth,
+              index = index,
+              onActionOpened = { openedIdx ->
                     if (openIndex != openedIdx) {
                         openIndex = openedIdx
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 },
-                showAction = openIndex == index,
-                positionalThreshold = positionalThreshold,
-                velocityThreshold = velocityThreshold,
+              showAction = openIndex == index,
+              positionalThreshold = positionalThreshold,
+              velocityThreshold = velocityThreshold,
             ) { progress ->
                 val swipeableContent = scope.buildSwipeable(progress)
                 if (index == 0 && !hasMeasured) {

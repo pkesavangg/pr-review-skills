@@ -19,11 +19,13 @@ import com.greatergoods.meapp.features.debugMenu.screen.DebugMenuScreen
 import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
+import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
 import com.greatergoods.meapp.features.integration.screen.IntegrationScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
 import com.greatergoods.meapp.features.manualEntry.EntryScreen
+import com.greatergoods.meapp.features.metricinfo.MetricInfoScreen
 import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.scaleDetails.screens.ScaleDetailsScreen
 import com.greatergoods.meapp.features.scaleDisplayMetrics.screens.ScaleDisplayMetricsScreen
@@ -97,5 +99,21 @@ fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
   }
   entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
     AppsyncScaleSetupScreen(scaleInfo.sku)
+  }
+}
+
+fun EntryProviderBuilder<NavKey>.dashboardEntries() {
+  entry<AppRoute.Dashboard.MetricInfo> { metricInfo ->
+    MetricInfoScreen(
+      info = metricInfo.info,
+      key = metricInfo.key,
+      source = metricInfo.source,
+    )
+  }
+}
+
+fun EntryProviderBuilder<NavKey>.historyEntries() {
+  entry<AppRoute.History.MonthDetails> { monthDetails ->
+    HistoryDetailScreen(monthDetails.month)
   }
 }

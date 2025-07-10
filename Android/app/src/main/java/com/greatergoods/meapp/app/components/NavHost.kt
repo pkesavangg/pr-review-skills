@@ -18,7 +18,6 @@ import com.example.nav3integration.TopLevelBackStack
 import com.greatergoods.meapp.app.viewmodel.AppViewModel
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.NavigationObserver
-import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
 import com.greatergoods.meapp.features.home.HomeScreen
 import com.greatergoods.meapp.features.loading.LoadingScreen
 import kotlinx.coroutines.launch
@@ -29,8 +28,8 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun NavHost(
-    topLevelBackStack: TopLevelBackStack<NavKey>,
-    appViewModel: AppViewModel,
+  topLevelBackStack: TopLevelBackStack<NavKey>,
+  appViewModel: AppViewModel,
 ) {
     val coroutineScope = rememberCoroutineScope()
     NavigationObserver(
@@ -59,9 +58,8 @@ fun NavHost(
                 accountSettingsEntries()
                 scaleDetailEntries()
                 scaleSetupEntries()
-                entry<AppRoute.MonthDetails> { entry ->
-                    HistoryDetailScreen(entry.month)
-                }
+                 historyEntries()
+        dashboardEntries()
 
               integrationEntries()
             },
@@ -103,9 +101,6 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
             entryProvider {
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
                 topLevelEntries()
-                accountSettingsEntries()
-                scaleDetailEntries()
-                scaleSetupEntries()
             },
         transitionSpec = {
             // Slide in from right when navigating forward
