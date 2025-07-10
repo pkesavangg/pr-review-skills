@@ -121,6 +121,34 @@ final class AppSyncSetupStore: ObservableObject {
         currentStepIndex = previousIndex
     }
     
+    // MARK: - Exit / Help
+    
+    /// Presents a confirmation alert before abandoning the setup flow.
+    func handleExit() {
+        let alertLang = AlertStrings.ExitSetupAlert.self
+        let alert = AlertModel(
+            title: alertLang.title,
+            message: alertLang.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.dismissAction?()
+                },
+                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Shows the generic Help modal used across the app.
+    func showHelpModal() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(HelpModalView {
+                self.notificationService.dismissModal()
+            })
+        ))
+    }
+    
     // MARK: - Validation Helpers
     /// Updates `isNextEnabled` based on the current step and camera permission state.
     private func updateNextEnabled() {
@@ -170,34 +198,6 @@ final class AppSyncSetupStore: ObservableObject {
         }
     }
     
-    // MARK: - Exit / Help
-    
-    /// Presents a confirmation alert before abandoning the setup flow.
-    func handleExit() {
-        let alertLang = AlertStrings.ExitSetupAlert.self
-        let alert = AlertModel(
-            title: alertLang.title,
-            message: alertLang.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
-                    guard let self else { return }
-                    self.dismissAction?()
-                },
-                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-    
-    /// Shows the generic Help modal used across the app.
-    func showHelpModal() {
-        notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView {
-                self.notificationService.dismissModal()
-            })
-        ))
-    }
-    
     private func saveScale() {
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
         
@@ -244,5 +244,10 @@ final class AppSyncSetupStore: ObservableObject {
     /// Returns `true` when the camera permission has already been granted.
     private func isCameraPermissionEnabled() -> Bool {
         permissionsService.getPermissionState(.CAMERA) == .ENABLED
+    }
+    
+    deinit {
+      cancellables.forEach { $0.cancel() }
+      cancellables.removeAll()
     }
 }
