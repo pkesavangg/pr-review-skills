@@ -53,6 +53,7 @@ val LightColorScheme =
         danger = LightColorToken.danger,
         streak = LightColorToken.streak,
         utility = LightColorToken.utility,
+        glow = LightColorToken.glow,
         // Icon
         iconPrimary = LightColorToken.iconPrimary,
         iconPrimaryDisabled = LightColorToken.iconPrimaryDisabled,
@@ -105,6 +106,7 @@ val DarkColorScheme =
         danger = DarkColorToken.danger,
         streak = DarkColorToken.streak,
         utility = DarkColorToken.utility,
+        glow = DarkColorToken.glow,
         // Icon
         iconPrimary = DarkColorToken.iconPrimary,
         iconPrimaryDisabled = DarkColorToken.iconPrimaryDisabled,

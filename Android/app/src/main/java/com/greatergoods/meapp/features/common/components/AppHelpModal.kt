@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,8 +40,7 @@ fun AppHelpModal(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val themeMode = LocalAppTheme.current
-    val stampImage = if (themeMode == ThemeMode.LIGHT) AppIcons.Default.Stamp else AppIcons.Default.StampDark
+    val stampImage = AppIcons.Default.Stamp
     AppPopupModal {
         AppPopup(
             true,

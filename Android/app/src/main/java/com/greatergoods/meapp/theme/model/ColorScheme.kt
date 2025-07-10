@@ -34,6 +34,7 @@ data class ColorScheme(
     val danger: Color,
     val streak: Color,
     val utility: Color,
+    val glow: Color,
     // Icon
     val iconPrimary: Color,
     val iconPrimaryDisabled: Color,
@@ -115,6 +116,9 @@ data class ColorScheme(
             ColorSchemeKey.Danger -> danger
             ColorSchemeKey.Streak -> streak
             ColorSchemeKey.Utility -> utility
+            ColorSchemeKey.Glow -> glow
+
+            // Icon
             ColorSchemeKey.IconPrimary -> iconPrimary
             ColorSchemeKey.IconPrimaryDisabled -> iconPrimaryDisabled
             ColorSchemeKey.IconSecondary -> iconSecondary
