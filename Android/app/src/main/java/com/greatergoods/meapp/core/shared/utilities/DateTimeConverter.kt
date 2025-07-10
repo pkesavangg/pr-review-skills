@@ -22,9 +22,12 @@ object DateTimeConverter {
    * @param isoString The ISO formatted date-time string
    * @return Timestamp in milliseconds since epoch, or null if conversion fails
    */
-  fun isoToTimestamp(isoString: String): Long {
+  fun isoToTimestamp(isoString: String?): Long {
     return try {
-      ZonedDateTime.parse(isoString, formatter)
+      if (isoString == null) {
+        return 0L
+      }
+      ZonedDateTime.parse(isoString, this.formatter)
         .toInstant()
         .toEpochMilli()
     } catch (e: Exception) {

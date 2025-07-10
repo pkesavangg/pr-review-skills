@@ -209,7 +209,13 @@ fun AppButton(
     val maxLines = 1
 
     val buttonModifier = modifier
-        .height(height)
+        .then(
+          if (type != ButtonType.InlineTextPrimary || type != ButtonType.InlineTextSecondary) {
+            Modifier.height(height)
+          } else {
+            Modifier
+          }
+        )
         .defaultMinSize(minWidth = minWidth)
     val buttonColors =
         ButtonDefaults.buttonColors(

@@ -17,6 +17,9 @@ class BottomTabBarViewModel: ObservableObject {
     @Published var showSettingsBadge: Bool = false
     @Published var showAppSync: Bool = false
     @Published var showTabBar: Bool = true
+    /// Holds the body-composition metrics captured by AppSync when the user taps **Edit** on the confirmation card.
+    /// `ManualEntryScreen` will consume this to pre-populate its form, then reset it to `nil`.
+    @Published var pendingAppSyncEditMetrics: AppSyncEntryMetrics? = nil
     /// Holds a pending navigation request to be performed by `SettingsScreen` once it appears.
     /// This is set when the user taps *Connect* in the *Add Apple Health Integration* modal.
     @Published var pendingSettingsNavigation: SettingsRoute? = nil

@@ -43,11 +43,11 @@ fun AppUserList(
     contentPadding: PaddingValues = PaddingValues(),
     footerContent: @Composable (() -> Unit)? = null,
 ) {
-    AppDraggableList(
+    AppSwipeableList(
         items = accounts,
         iconWidth = 56.dp,
         maxVisibleItems = maxVisibleItems,
-        isItemDraggable = { canRemoveAccount },
+        isItemSwipeable = { canRemoveAccount },
         contentPadding = contentPadding,
         keySelector = { it.id },
         trailingActions = { index, item ->
@@ -68,10 +68,10 @@ fun AppUserList(
                         )
                     else -> RectangleShape
                 }
-            AppDraggableListActions(
+            AppSwipeableListActions (
                 shape = shape,
             ) {
-                AppDraggableActionItem(
+                AppSwipeableActionItem(
                     iconId = AppIcons.Default.Delete,
                     contentDescription = "Delete item",
                     backgroundColor = MeTheme.colorScheme.danger,
@@ -82,7 +82,7 @@ fun AppUserList(
         },
         footerContent = footerContent,
     ) { item ->
-        Draggable { progress ->
+        Swipeable { progress ->
             val isDragging = progress > 0f
             val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.sm
             val animatedCornerRadius by animateDpAsState(

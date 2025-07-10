@@ -9,7 +9,6 @@ import com.greatergoods.meapp.core.service.DeviceInfoService
 import com.greatergoods.meapp.core.service.DeviceService
 import com.greatergoods.meapp.core.service.GoalService
 import com.greatergoods.meapp.core.service.IAppNavigationService
-import com.greatergoods.meapp.core.service.IntegrationService
 import com.greatergoods.meapp.core.service.NotificationService
 import com.greatergoods.meapp.core.service.OfflineHandlerService
 import com.greatergoods.meapp.core.service.PermissionService
@@ -36,7 +35,6 @@ import com.greatergoods.meapp.domain.repository.IDeviceRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IGoalRepository
-import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
@@ -47,7 +45,6 @@ import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IExportService
 import com.greatergoods.meapp.domain.services.IGoalService
-import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.domain.services.INotificationService
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import com.greatergoods.meapp.domain.services.IPermissionService
@@ -69,258 +66,248 @@ import android.content.Context
 @Module
 @InstallIn(SingletonComponent::class)
 object ServiceModule {
-    /**
-     * Provides a singleton instance of [IAccountService].
-     * @param accountService The implementation of AccountService.
-     * @return [IAccountService] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideAccountService(
-        accountRepository: IAccountRepository,
-        connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService,
-        appNavigationService: IAppNavigationService,
-        userSettingsRepository: IUserSettingsRepository,
-        storageClearService: StorageClearService
-    ): IAccountService =
-        AccountService(
-            accountRepository,
-            connectivityObserver,
-            dialogQueueService,
-            appNavigationService,
-            userSettingsRepository,
-            storageClearService
-        )
-
-    /**
-     * Provides a singleton instance of [IAppEventService].
-     * @return [AppEventService] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
-
-    /**
-     * Provides a singleton instance of [GGNotificationManager] for notification operations.
-     * @param context The application context.
-     * @param notificationService The notification service dependency.
-     * @return [GGNotificationManager] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideNotificationManager(
-        @ApplicationContext context: Context,
-        notificationService: GGNotificationService,
-        appRepository: IAppRepository,
-    ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
-
-    /**
-     * Provides a singleton instance of [LogManager] for logging operations.
-     * @param logRepository The repository for storing logs.
-     * @return [LogManager] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideLogManager(
-        logRepository: ILogRepository,
-        connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService
-    ): LogManager = LogManager(
-        logRepository,connectivityObserver, dialogQueueService
-        )
-
-    /**
-     * Provides a singleton instance of [DialogQueueService] for managing dialog queues.
-     * @return [DialogQueueService] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideDialogQueueService(): IDialogQueueService = DialogQueueService()
-
-    /**
-     * Provides a singleton instance of [IDialogUtility] for common dialog operations.
-     * @param dialogQueueService The dialog queue service dependency.
-     * @return [DialogUtility] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility =
-        DialogUtility(dialogQueueService)
-
-    @Provides
-    @Singleton
-    fun provideEntryService(
-        entryRepository: IEntryRepository,
-        accountRepository: IAccountRepository,
-    ): IEntryService = EntryService(entryRepository, accountRepository)
-
-    @Provides
-    @Singleton
-    fun provideDeviceInfoService(
-        @ApplicationContext context: Context,
-        deviceInfoRepository: IDeviceInfoRepository,
-        connectivityObserver: IConnectivityObserver,
-        offlineHandlerService: IOfflineHandlerService,
-        appRepository: IAppRepository,
-        accountRepository: IAccountRepository,
-    ): IDeviceInfoService =
-        DeviceInfoService(
-            context,
-            deviceInfoRepository,
-            connectivityObserver,
-            offlineHandlerService,
-            appRepository,
-            accountRepository,
-        )
-
-    /**
-     * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
-     * @param integrationRepository The repository for integration operations.
-     * @param dialogQueueService The service for managing dialog queues.
-     * @return [IntegrationService] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideIntegrationService(
-        integrationRepository: IIntegrationRepository,
-        dialogQueueService: DialogQueueService,
-    ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
-
-    /**
-     * Provides the export service implementation.
-     */
-    @Provides
-    @Singleton
-    fun provideExportService(
-        exportAPI: IExportAPI,
-        accountService: IAccountService,
-        dialogQueueService: IDialogQueueService,
-    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
-
-    /**
-     * Provides the offline handler service implementation.
-     * Handles offline data synchronization and biological sex updates.
-     */
-    @Provides
-    @Singleton
-    fun provideOfflineHandlerService(
-        accountRepository: IAccountRepository,
-        bodyCompositionRepository: IBodyCompositionRepository,
-        notificationRepository: INotificationRepository,
-        userSettingsRepository: IUserSettingsRepository,
-        goalRepository: IGoalRepository,
-        connectivityObserver: IConnectivityObserver,
-    ): IOfflineHandlerService =
-        OfflineHandlerService(
-            accountRepository,
-            bodyCompositionRepository,
-            notificationRepository,
-            userSettingsRepository,
-            goalRepository,
-            connectivityObserver,
-        )
-
-    /**
-     * Provides the body composition service implementation.
-     * Handles activity level, weight unit, and height updates with offline support.
-     */
-    @Provides
-    @Singleton
-    fun provideBodyCompositionService(
-        bodyCompositionRepository: IBodyCompositionRepository,
-        connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService,
-    ): IBodyCompositionService =
-        BodyCompositionService(
-            bodyCompositionRepository,
-            connectivityObserver,
-            dialogQueueService,
-        )
-
-    /**
-     * Provides the notification service implementation.
-     * Handles notification settings with offline support.
-     */
-    @Provides
-    @Singleton
-    fun provideNotificationService(
-        notificationRepository: INotificationRepository,
-        connectivityObserver: IConnectivityObserver,
-    ): INotificationService =
-        NotificationService(
-            notificationRepository,
-            connectivityObserver,
-        )
-
-    @Provides
-    @Singleton
-    fun provideUserSettingsService(
-        userSettingsRepository: IUserSettingsRepository,
-        connectivityObserver: IConnectivityObserver,
-    ): IUserSettingsService = UserSettingsService(userSettingsRepository, connectivityObserver)
-
-    /**
-     * Provides the goal service implementation.
-     * Handles goal management, percentage calculation, and goal completion alerts.
-     */
-    @Provides
-    @Singleton
-    fun provideGoalService(
-        goalRepository: IGoalRepository,
-        connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService,
-    ): IGoalService = GoalService(goalRepository, connectivityObserver, dialogQueueService)
-
-
-    @Provides
-    @Singleton
-    fun provideDashboardService(
-        dashboardRepository: IDashboardRepository
-    ): IDashboardService =
-        DashboardService(dashboardRepository)
-
-    /**
-     * Provides the device service implementation.
-     * Handles scale/device data operations with automatic synchronization.
-     */
-    @Provides
-    @Singleton
-    fun provideDeviceService(
-        deviceRepository: IDeviceRepository
-    ): IDeviceService = DeviceService(deviceRepository)
-
-    @Provides
-    @Singleton
-    fun provideDataStores(
-        userDataStore: UserDataStore,
-        fcmDataStore: FcmDataStore,
-        healthConnectDataStore: HealthConnectDataStore,
-    ): Set<BaseProtoDataStore<*>> = setOf(
-        userDataStore,
-        fcmDataStore,
-        healthConnectDataStore,
+  /**
+   * Provides a singleton instance of [IAccountService].
+   * @param accountService The implementation of AccountService.
+   * @return [IAccountService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideAccountService(
+    accountRepository: IAccountRepository,
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+    storageClearService: StorageClearService,
+  ): IAccountService =
+    AccountService(
+      accountRepository,
+      connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
+      storageClearService,
     )
 
-    @Provides
-    @Singleton
-    fun provideStorageClearService(
-        @ApplicationContext context: Context,
-        appDatabase: AppDatabase,
-        dataStores: Set<@JvmSuppressWildcards BaseProtoDataStore<*>>,
-        navigationService: IAppNavigationService
-    ): StorageClearService = StorageClearService(
-        context = context,
-        appDatabase = appDatabase,
-        dataStores = dataStores,
-        navigationService = navigationService
+  /**
+   * Provides a singleton instance of [IAppEventService].
+   * @return [AppEventService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
+
+  /**
+   * Provides a singleton instance of [GGNotificationManager] for notification operations.
+   * @param context The application context.
+   * @param notificationService The notification service dependency.
+   * @return [GGNotificationManager] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideNotificationManager(
+    @ApplicationContext context: Context,
+    notificationService: GGNotificationService,
+    appRepository: IAppRepository,
+  ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
+
+  /**
+   * Provides a singleton instance of [LogManager] for logging operations.
+   * @param logRepository The repository for storing logs.
+   * @return [LogManager] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideLogManager(
+    logRepository: ILogRepository,
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService
+  ): LogManager = LogManager(
+    logRepository, connectivityObserver, dialogQueueService,
+  )
+
+  /**
+   * Provides a singleton instance of [DialogQueueService] for managing dialog queues.
+   * @return [DialogQueueService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideDialogQueueService(): IDialogQueueService = DialogQueueService()
+
+  /**
+   * Provides a singleton instance of [IDialogUtility] for common dialog operations.
+   * @param dialogQueueService The dialog queue service dependency.
+   * @return [DialogUtility] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideDialogUtility(dialogQueueService: IDialogQueueService): IDialogUtility =
+    DialogUtility(dialogQueueService)
+
+  @Provides
+  @Singleton
+  fun provideEntryService(
+    entryRepository: IEntryRepository,
+    goalRepository: IGoalRepository,
+    accountRepository: IAccountRepository,
+  ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository)
+
+  @Provides
+  @Singleton
+  fun provideDeviceInfoService(
+    @ApplicationContext context: Context,
+    deviceInfoRepository: IDeviceInfoRepository,
+    connectivityObserver: IConnectivityObserver,
+    offlineHandlerService: IOfflineHandlerService,
+    appRepository: IAppRepository,
+    accountRepository: IAccountRepository,
+  ): IDeviceInfoService =
+    DeviceInfoService(
+      context,
+      deviceInfoRepository,
+      connectivityObserver,
+      offlineHandlerService,
+      appRepository,
+      accountRepository,
     )
 
-    @Provides
-    @Singleton
-    fun providePermissionService(
-        @ApplicationContext context: Context,
-        connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService
-    ): IPermissionService = PermissionService(context, connectivityObserver, dialogQueueService)
+  // /**
+  //  * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
+  //  * @param integrationRepository The repository for integration operations.
+  //  * @param dialogQueueService The service for managing dialog queues.
+  //  * @return [IntegrationService] instance.
+  //  */
+  // @Provides
+  // @Singleton
+  // fun provideIntegrationService(
+  //     integrationRepository: IIntegrationRepository,
+  //     dialogQueueService: DialogQueueService,
+  // ): IIntegrationService = IntegrationService(integrationRepository, dialogQueueService)
+
+  /**
+   * Provides the export service implementation.
+   */
+  @Provides
+  @Singleton
+  fun provideExportService(
+    exportAPI: IExportAPI,
+    accountService: IAccountService,
+    dialogQueueService: IDialogQueueService,
+  ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
+
+  /**
+   * Provides the offline handler service implementation.
+   * Handles offline data synchronization and biological sex updates.
+   */
+  @Provides
+  @Singleton
+  fun provideOfflineHandlerService(
+    accountRepository: IAccountRepository,
+    bodyCompositionRepository: IBodyCompositionRepository,
+    notificationRepository: INotificationRepository,
+    userSettingsRepository: IUserSettingsRepository,
+    goalRepository: IGoalRepository,
+    connectivityObserver: IConnectivityObserver,
+  ): IOfflineHandlerService =
+    OfflineHandlerService(
+      accountRepository,
+      bodyCompositionRepository,
+      notificationRepository,
+      userSettingsRepository,
+      goalRepository,
+      connectivityObserver,
+    )
+
+  /**
+   * Provides the body composition service implementation.
+   * Handles activity level, weight unit, and height updates with offline support.
+   */
+  @Provides
+  @Singleton
+  fun provideBodyCompositionService(
+    bodyCompositionRepository: IBodyCompositionRepository,
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+  ): IBodyCompositionService =
+    BodyCompositionService(
+      bodyCompositionRepository,
+      connectivityObserver,
+      dialogQueueService,
+    )
+
+  /**
+   * Provides the notification service implementation.
+   * Handles notification settings with offline support.
+   */
+  @Provides
+  @Singleton
+  fun provideNotificationService(
+    notificationRepository: INotificationRepository,
+    connectivityObserver: IConnectivityObserver,
+  ): INotificationService =
+    NotificationService(
+      notificationRepository,
+      connectivityObserver,
+    )
+
+  @Provides
+  @Singleton
+  fun provideUserSettingsService(
+    userSettingsRepository: IUserSettingsRepository,
+    connectivityObserver: IConnectivityObserver,
+  ): IUserSettingsService = UserSettingsService(userSettingsRepository, connectivityObserver)
+
+  /**
+   * Provides the goal service implementation.
+   * Handles goal management, percentage calculation, and goal completion alerts.
+   */
+  @Provides
+  @Singleton
+  fun provideGoalService(
+    goalRepository: IGoalRepository,
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+  ): IGoalService = GoalService(goalRepository, connectivityObserver, dialogQueueService)
+
+  @Provides
+  @Singleton
+  fun provideDashboardService(
+    dashboardRepository: IDashboardRepository
+  ): IDashboardService =
+    DashboardService(dashboardRepository)
+
+  /**
+   * Provides the device service implementation.
+   * Handles scale/device data operations with automatic synchronization.
+   */
+  @Provides
+  @Singleton
+  fun provideDeviceService(
+    deviceRepository: IDeviceRepository
+  ): IDeviceService = DeviceService(deviceRepository)
+
+  @Provides
+  @Singleton
+  fun provideDataStores(
+    userDataStore: UserDataStore,
+    fcmDataStore: FcmDataStore,
+    healthConnectDataStore: HealthConnectDataStore,
+  ): Set<BaseProtoDataStore<*>> = setOf(
+    userDataStore,
+    fcmDataStore,
+    healthConnectDataStore,
+  )
+
+  @Provides
+  @Singleton
+  fun provideStorageClearService(
+    @ApplicationContext context: Context,
+    appDatabase: AppDatabase,
+    dataStores: Set<@JvmSuppressWildcards BaseProtoDataStore<*>>,
+    navigationService: IAppNavigationService
+  ): StorageClearService = StorageClearService(
+    context = context,
+    appDatabase = appDatabase,
+    dataStores = dataStores,
+    navigationService = navigationService,
+  )
 }
