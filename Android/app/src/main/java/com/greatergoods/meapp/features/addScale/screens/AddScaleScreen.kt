@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.addScale.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleFormControls
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
@@ -52,142 +52,144 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AddScaleScreen(viewModel: AddScaleViewModel = hiltViewModel()) {
-    val state by viewModel.state.collectAsState()
-    AddScaleScreenContent(state, viewModel::handleIntent)
+  val state by viewModel.state.collectAsState()
+  AddScaleScreenContent(state, viewModel::handleIntent)
 }
 
 @Composable
 fun AddScaleScreenContent(
-    state: AddScaleState,
-    handleIntent: (AddScaleIntent) -> Unit,
+  state: AddScaleState,
+  handleIntent: (AddScaleIntent) -> Unit,
 ) {
-    val backStack = LocalNavBackStack.current
-    val coroutineScope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
-    val modelNumberControl = state.form.controls.modelNumber
-    val modelNumberFocusRequester = remember { FocusRequester() }
-    val interactionSource = remember { MutableInteractionSource() }
+  val backStack = LocalNavBackStack.current
+  val coroutineScope = rememberCoroutineScope()
+  val focusManager = LocalFocusManager.current
+  val modelNumberControl = state.form.controls.modelNumber
+  val modelNumberFocusRequester = remember { FocusRequester() }
+  val interactionSource = remember { MutableInteractionSource() }
 
-    AppScaffold(
-        title = AddScaleScreenStrings.Header,
-        navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
-                coroutineScope.launch {
-                    backStack.removeLast()
-                }
-            }
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = { focusManager.clearFocus() },
-                ),
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
-            ) {
-                AppText(
-                    text = AddScaleScreenStrings.Title,
-                    textType = TextType.Title,
-                )
-                Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-                AppText(
-                    text = AddScaleScreenStrings.Subtitle,
-                    textType = TextType.Body,
-                )
-                Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-                AppInput(
-                    formControl = modelNumberControl,
-                    label = AddScaleScreenStrings.ModelNumberLabel,
-                    type = AppInputType.NUMERIC_STRING,
-                    imeAction = ImeAction.Done,
-                    onImeAction = {
-                        // handle submit
-                        focusManager.clearFocus()
-                    },
-                    showTrailingIcon = true,
-                    showTrailingIconAlways = true,
-                    trailingIconId = AppIcons.Outlined.Help,
-                    onTrailingAction = { handleIntent(AddScaleIntent.ShowHelp) },
-                    modifier =
-                        Modifier
-                            .semantics { contentType = ContentType.PhoneNumber }
-                            .focusRequester(modelNumberFocusRequester),
-                )
+  AppScaffold(
+    title = AddScaleScreenStrings.Header,
+    navigationIcon = {
+      AppIconButton(AppIcons.Default.Close) {
+        coroutineScope.launch {
 
-                Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-
-                AppButton(
-                    label = AddScaleScreenStrings.Submit,
-                    type = ButtonType.PrimaryFilled,
-                    size = ButtonSize.Large,
-                    enabled = state.form.isValid,
-                    onClick = { handleIntent(AddScaleIntent.Submit) },
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
-                Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-                AppButton(
-                    label = AddScaleScreenStrings.CantFindModelNumber,
-                    type = ButtonType.TextPrimary,
-                    onClick = { handleIntent(AddScaleIntent.OpenScaleChooser) },
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
-                Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-                if (state.savedScales.isNotEmpty()) {
-                    AppText(
-                        text = AddScaleScreenStrings.MyScales,
-                        textType = TextType.Title,
-                    )
-                }
-            }
-            if (state.savedScales.isNotEmpty()) {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth(),
-                ) {
-                    state.savedScales.forEach { scaleInfo ->
-                        AppScaleCard(
-                            scale = scaleInfo,
-                            isSavedScale = true,
-                            onClick = { selectedScaleInfo ->
-                                selectedScaleInfo.scaleId?.let { id ->
-                                    handleIntent(AddScaleIntent.OpenScaleSettings(id))
-                                }
-                            },
-                        )
-                    }
-                }
-            }
+          backStack.removeLast()
         }
+      }
+    },
+  ) {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .verticalScroll(rememberScrollState())
+          .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = { focusManager.clearFocus() },
+          ),
+    ) {
+      Column(
+        modifier =
+          Modifier
+            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+      ) {
+        AppText(
+          text = AddScaleScreenStrings.Title,
+          textType = TextType.Title,
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        AppText(
+          text = AddScaleScreenStrings.Subtitle,
+          textType = TextType.Body,
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+        AppInput(
+          formControl = modelNumberControl,
+          label = AddScaleScreenStrings.ModelNumberLabel,
+          type = AppInputType.NUMERIC_STRING,
+          imeAction = ImeAction.Done,
+          onImeAction = {
+              handleIntent(AddScaleIntent.Submit)
+              focusManager.clearFocus()
+          },
+          showTrailingIcon = true,
+          showTrailingIconAlways = true,
+          trailingIconId = AppIcons.Outlined.Help,
+          onTrailingAction = { handleIntent(AddScaleIntent.ShowHelp) },
+          modifier =
+            Modifier
+              .semantics { contentType = ContentType.PhoneNumber }
+              .focusRequester(modelNumberFocusRequester),
+        )
+
+        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+
+        AppButton(
+          label = AddScaleScreenStrings.Submit,
+          type = ButtonType.PrimaryFilled,
+          size = ButtonSize.Large,
+          enabled = state.form.isValid,
+          onClick = { handleIntent(AddScaleIntent.Submit)},
+          modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        AppButton(
+          label = AddScaleScreenStrings.CantFindModelNumber,
+          type = ButtonType.TextPrimary,
+          onClick = { handleIntent(AddScaleIntent.OpenScaleChooser) },
+          modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+        if (state.savedScales.isNotEmpty()) {
+          AppText(
+            text = AddScaleScreenStrings.MyScales,
+            textType = TextType.Title,
+          )
+        }
+      }
+      if (state.savedScales.isNotEmpty()) {
+        Column(
+          modifier =
+            Modifier
+              .fillMaxWidth(),
+        ) {
+          state.savedScales.forEach { scaleInfo ->
+            AppScaleCard(
+              scale = scaleInfo,
+              isSavedScale = true,
+              onClick = { selectedScaleInfo ->
+                selectedScaleInfo.scaleId?.let { id ->
+                  handleIntent(AddScaleIntent.OpenScaleSettings(id))
+                }
+              },
+            )
+          }
+        }
+      }
     }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun AddScaleScreenPreview() {
-    MeAppTheme {
-        val dummyAddScaleState =
-            AddScaleState(
-                form =
-                    FormGroup(
-                        controls =
-                            AddScaleFormControls(
-                                modelNumber = FormControl.create(""),
-                            ),
-                    ),
-                isSubmitting = false,
-            )
-        AddScaleScreenContent(
-            state = dummyAddScaleState,
-            handleIntent = {},
-        )
-    }
+  MeAppTheme {
+    val dummyAddScaleState =
+      AddScaleState(
+        form =
+          FormGroup(
+            controls =
+              AddScaleFormControls(
+                modelNumber = FormControl.create(""),
+              ),
+          ),
+        isSubmitting = false,
+      )
+    AddScaleScreenContent(
+      state = dummyAddScaleState,
+      handleIntent = {},
+    )
+  }
 }

@@ -5,6 +5,11 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.features.MyAccounts.screen.MyAccountsScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.AppsyncScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.BtScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.BtWifiScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.LcbtScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.WifiScaleSetupScreen
 import com.greatergoods.meapp.features.addScale.screens.AddScaleScreen
 import com.greatergoods.meapp.features.addScale.screens.ChooseScaleScreen
 import com.greatergoods.meapp.features.appSync.AppSync
@@ -75,4 +80,22 @@ fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
 fun EntryProviderBuilder<NavKey>.integrationEntries() {
   entry<AppRoute.Integration.IntegrationList> { IntegrationScreen() }
   entry<AppRoute.Integration.HealthConnect> { ChangePasswordScreen() }
+}
+
+fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
+  entry<AppRoute.ScaleSetup.BtWifiScaleSetup> { scaleInfo ->
+    BtWifiScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.BtScaleSetup> { scaleInfo ->
+    BtScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.LcbtScaleSetup> { scaleInfo ->
+    LcbtScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.WifiScaleSetup> { scaleInfo ->
+    WifiScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
+    AppsyncScaleSetupScreen(scaleInfo.sku)
+  }
 }

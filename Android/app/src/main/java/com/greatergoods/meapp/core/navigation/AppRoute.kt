@@ -132,4 +132,32 @@ sealed class AppRoute : NavKey {
     @Serializable
     data object HealthConnect : Integration()
   }
+
+  @Serializable
+  sealed class ScaleSetup : AppRoute() {
+    @Serializable
+    data class BtWifiScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class BtScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class LcbtScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class WifiScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class AppsyncScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+  }
 }
