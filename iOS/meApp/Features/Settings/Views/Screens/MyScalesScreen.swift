@@ -206,6 +206,9 @@ struct MyScalesScreen: View {
                 }
             }
         }
+        .onAppear(perform: {
+            scaleStore.fetchScales()
+        })
         .onDisappear {
             scaleStore.resetForm()
         }

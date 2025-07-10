@@ -100,6 +100,7 @@ class ScaleStore: ObservableObject {
     
     init() {
         wireForm()
+        fetchScales()
         subscribeToScaleUpdates()
     }
     
@@ -119,11 +120,27 @@ class ScaleStore: ObservableObject {
     func resetForm() {
         // Reset form state
         addScaleForm = AddScaleForm()
-
+        
         // Re-wire form and re-subscribe to scale updates so we don’t lose the publisher after a
         // view disappearance/appearance cycle.
         wireForm()
         subscribeToScaleUpdates()
+    }
+    
+    // MARK: - List & CRUD
+    func fetchScales() {
+        Task {
+            do {
+                let devices = try await scaleService.getDevices()
+                await MainActor.run {
+                    self.scales = devices
+                }
+            } catch {
+                await MainActor.run {
+                    self.scales = []
+                }
+            }
+        }
     }
     
     func getError() -> String? {
@@ -413,7 +430,7 @@ class ScaleStore: ObservableObject {
     }
     
     // MARK: - Private Helpers
-
+    
     /// Subscribes to `ScaleService` updates and keeps `scales` in sync.
     private func subscribeToScaleUpdates() {
         scaleService.$scales
