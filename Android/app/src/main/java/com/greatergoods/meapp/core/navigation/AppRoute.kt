@@ -107,7 +107,7 @@ sealed class AppRoute : NavKey {
 
         @Serializable
         data class ScaleDetails(
-            val broadcastId: String,
+            val scaleId: String,
         ) : AccountSettings()
     }
 

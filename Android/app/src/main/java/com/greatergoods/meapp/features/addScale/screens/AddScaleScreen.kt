@@ -158,8 +158,8 @@ fun AddScaleScreenContent(
                             scale = scaleInfo,
                             isSavedScale = true,
                             onClick = { selectedScaleInfo ->
-                                selectedScaleInfo.broadcastId?.let { broadcastId ->
-                                    handleIntent(AddScaleIntent.OpenScaleSettings(broadcastId))
+                                selectedScaleInfo.scaleId?.let { id ->
+                                    handleIntent(AddScaleIntent.OpenScaleSettings(id))
                                 }
                             },
                         )

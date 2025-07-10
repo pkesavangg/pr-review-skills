@@ -52,11 +52,11 @@ import kotlinx.coroutines.launch
  * ScaleDetails screen composable. Displays scale details and handles user interactions.
  */
 @Composable
-fun ScaleDetailsScreen(broadcastId: String) {
+fun ScaleDetailsScreen(scaleId: String) {
     val viewModel: ScaleDetailsViewModel =
         hiltViewModel<ScaleDetailsViewModel, ScaleDetailsViewModel.Factory>(
             creationCallback = { factory ->
-                factory.create(broadcastId)
+                factory.create(scaleId)
             },
         )
     val state by viewModel.state.collectAsState()
@@ -80,6 +80,14 @@ fun ScaleDetailsScreenContent(
     val scaleSetupType =
         device?.scaleType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
     val isConnected = device?.isConnected ?: false
+    val scaleMode =
+        if (device?.shouldMeasureImpedance ==
+            true
+        ) {
+            ScaleDetailsStrings.AllBodyMetrics
+        } else {
+            ScaleDetailsStrings.WeightOnly
+        }
 
     AppScaffold(
         title = scaleName,
@@ -108,8 +116,7 @@ fun ScaleDetailsScreenContent(
                             elevation = spacing.sm,
                             spotColor = Color(0x40FFFFFF),
                             ambientColor = Color(0x40FFFFFF),
-                        )
-                        .clip(RoundedCornerShape(borderRadius.sm)),
+                        ).clip(RoundedCornerShape(borderRadius.sm)),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -132,7 +139,7 @@ fun ScaleDetailsScreenContent(
                             add(
                                 SettingsItem(
                                     title = ScaleDetailsStrings.Mode,
-                                    type = SettingsItemType.Action(ScaleDetailsStrings.AllBodyMetrics),
+                                    type = SettingsItemType.Action(scaleMode),
                                     onClick = {
                                         handleIntent(ScaleDetailsIntent.OpenScaleMode)
                                     },
@@ -269,6 +276,7 @@ fun ScaleDetailsScreenPreview() {
             createdAt = "June 27, 2023",
             lastModified = null,
             isSynced = false,
+            hasServerID = true,
             isConnected = true,
             wifiMac = "greatergoods1",
             isWifiConfigured = true,
