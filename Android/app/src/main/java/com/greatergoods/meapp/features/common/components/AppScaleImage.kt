@@ -47,6 +47,7 @@ fun AppScaleImage(
       modifier =
         Modifier
           .size(ScaleImageDefaults.size(scaleImageSize))
+          .clip(RoundedCornerShape(borderRadius.xs))
           .shadow(
               shape = RoundedCornerShape(borderRadius.sm),
             elevation = spacing.sm,

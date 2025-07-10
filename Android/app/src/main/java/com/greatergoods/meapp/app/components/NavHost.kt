@@ -58,6 +58,7 @@ fun NavHost(
                 authEntries()
                 accountSettingsEntries()
                 scaleDetailEntries()
+                scaleSetupEntries()
                 entry<AppRoute.MonthDetails> { entry ->
                     HistoryDetailScreen(entry.month)
                 }
@@ -104,6 +105,7 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
                 topLevelEntries()
                 accountSettingsEntries()
                 scaleDetailEntries()
+                scaleSetupEntries()
             },
         transitionSpec = {
             // Slide in from right when navigating forward
