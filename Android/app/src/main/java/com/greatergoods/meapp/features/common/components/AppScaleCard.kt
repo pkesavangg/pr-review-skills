@@ -52,7 +52,7 @@ fun AppScaleCard(
       scale.setupType == ScaleSetupType.Lcbt ||
       scale.setupType == ScaleSetupType.BtWifiR4
   val showConnectionStatus =
-    isSavedScale && (isBluetoothSetup || isWifiSetup)
+    isSavedScale && isBluetoothSetup
 
   Surface(
     modifier =
@@ -134,7 +134,6 @@ fun AppScaleCard(
         )
         Spacer(modifier = Modifier.width(spacing.sm))
       }
-
 
       AppIcon(
         id = AppIcons.Default.RightCaret,
