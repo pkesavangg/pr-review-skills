@@ -52,11 +52,11 @@ sealed class AppRoute : NavKey {
   @Serializable
   sealed class History : AppRoute() {
     @Serializable
-    data class MonthDetails(
-      val month: String,
-    ) : AppRoute()
-  }
 
+  data class MonthDetails(
+    val month: String,
+  ) : AppRoute()
+    }
   /**
    * Authentication-related navigation routes.
    */
@@ -113,7 +113,7 @@ sealed class AppRoute : NavKey {
 
     @Serializable
     data class ScaleDetails(
-      val broadcastId: String,
+      val scaleId: String,
     ) : AccountSettings()
   }
 
@@ -123,9 +123,51 @@ sealed class AppRoute : NavKey {
     data class ScaleMode(
       val scaleId: String,
     ) : ScaleDetails()
+
+    @Serializable
+    data class ScaleDisplayMetrics(
+      val scaleId: String,
+    ) : ScaleDetails()
   }
 
   @Serializable
+  sealed class Integration : AppRoute() {
+    @Serializable
+    data object IntegrationList : Integration()
+
+    @Serializable
+    data object HealthConnect : Integration()
+  }
+
+  @Serializable
+  sealed class ScaleSetup : AppRoute() {
+    @Serializable
+    data class BtWifiScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class BtScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class LcbtScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class WifiScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+
+    @Serializable
+    data class AppsyncScaleSetup(
+      val sku: String,
+    ) : ScaleSetup()
+  }
+}
+@Serializable
   sealed class Dashboard : AppRoute() {
     @Serializable
     data class MetricInfo(

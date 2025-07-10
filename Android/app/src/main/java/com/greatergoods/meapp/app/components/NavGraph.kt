@@ -5,6 +5,11 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entry
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.features.MyAccounts.screen.MyAccountsScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.AppsyncScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.BtScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.BtWifiScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.LcbtScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleSetup.screens.WifiScaleSetupScreen
 import com.greatergoods.meapp.features.addScale.screens.AddScaleScreen
 import com.greatergoods.meapp.features.addScale.screens.ChooseScaleScreen
 import com.greatergoods.meapp.features.appSync.AppSync
@@ -15,6 +20,7 @@ import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
+import com.greatergoods.meapp.features.integration.screen.IntegrationScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
 import com.greatergoods.meapp.features.login.screen.LoginScreen
@@ -22,6 +28,7 @@ import com.greatergoods.meapp.features.manualEntry.EntryScreen
 import com.greatergoods.meapp.features.metricinfo.MetricInfoScreen
 import com.greatergoods.meapp.features.profile.screen.ProfileScreen
 import com.greatergoods.meapp.features.scaleDetails.screens.ScaleDetailsScreen
+import com.greatergoods.meapp.features.scaleDisplayMetrics.screens.ScaleDisplayMetricsScreen
 import com.greatergoods.meapp.features.scaleMode.screens.ScaleModeScreen
 import com.greatergoods.meapp.features.settings.SettingsScreen
 import com.greatergoods.meapp.features.signup.SignupScreen
@@ -49,23 +56,49 @@ fun EntryProviderBuilder<NavKey>.topLevelEntries() {
 }
 
 fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
-  entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
-  entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
-  entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
-  entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
-  entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
-  entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
-  entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
-  entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
-  entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
-  entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
-    ScaleDetailsScreen(scaleInfo.broadcastId)
-  }
+    entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
+    entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
+    entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
+    entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
+    entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
+    entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
+    entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
+    entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
+    entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
+    entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
+        ScaleDetailsScreen(scaleInfo.scaleId)
+    }
 }
 
 fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
   entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
     ScaleModeScreen(scaleInfo.scaleId)
+  }
+  entry<AppRoute.ScaleDetails.ScaleDisplayMetrics> { scaleInfo ->
+    ScaleDisplayMetricsScreen(scaleInfo.scaleId)
+  }
+}
+
+fun EntryProviderBuilder<NavKey>.integrationEntries() {
+  entry<AppRoute.Integration.IntegrationList> { IntegrationScreen() }
+  entry<AppRoute.Integration.HealthConnect> { ChangePasswordScreen() }
+}
+
+fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
+  entry<AppRoute.ScaleSetup.BtWifiScaleSetup> { scaleInfo ->
+    BtWifiScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.BtScaleSetup> { scaleInfo ->
+    BtScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.LcbtScaleSetup> { scaleInfo ->
+    LcbtScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.WifiScaleSetup> { scaleInfo ->
+    WifiScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
+    AppsyncScaleSetupScreen(scaleInfo.sku)
   }
 }
 

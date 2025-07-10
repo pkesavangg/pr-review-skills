@@ -3,14 +3,12 @@ package com.greatergoods.meapp.core.service
 import com.greatergoods.meapp.core.config.HttpErrorConfig
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.api.auth.SignupRequest
 import com.greatergoods.meapp.domain.model.api.user.AccountToken
 import com.greatergoods.meapp.domain.model.api.user.ProfileUpdateRequest
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.repository.IAccountRepository
-import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.MaxAccountsReachedException
@@ -37,7 +35,6 @@ class AccountService
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
     private val appNavigationService: IAppNavigationService,
-    private val userSettingsRepository: IUserSettingsRepository,
     private val storageClearService: StorageClearService,
   ) : BaseService(connectivityObserver, dialogQueueService),
     IAccountService {
@@ -247,29 +244,35 @@ class AccountService
      * @param profileUpdateRequest The profile data to update
      * @return The updated account or null if update fails
      */
-    override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account? =
+    override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest) =
       try {
-        AppLog.d(TAG, "updateProfile() called for accountId: ${profileUpdateRequest.id}")
-        val updatedAccount = accountRepository.updateProfile(profileUpdateRequest)
-        AppLog.i(TAG, "Profile updated successfully via API for account: \\${updatedAccount.id}")
-        updatedAccount.let { appNavigationService.emitAuthEvent(AuthState.ProfileUpdated(it)) }
+       accountRepository.updateProfile(profileUpdateRequest)
         showSuccessToast(
           ToastStrings.Success.UpdateProfileSuccess.Header,
           ToastStrings.Success.UpdateProfileSuccess.Message,
         )
-        updatedAccount
       } catch (e: HttpException) {
-        val header = ToastStrings.Error.UpdateProfileError.Header
-        val msg =
-          when (e.code()) {
-            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.UpdateProfileError.MessageNoConn
-            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
-            else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
+        when (e.code()) {
+          HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> {
+            // For no internet, we still want to show success since offline updates are allowed
+            showSuccessToast(
+              ToastStrings.Success.UpdateProfileSuccess.Header,
+              ToastStrings.Success.UpdateProfileSuccess.Message,
+            )
           }
-        showErrorToast(header, msg)
-        AppLog.e(TAG, "Profile update failed", e.toString())
-        throw e
+          else -> {
+            // For other errors, show error toast
+            val header = ToastStrings.Error.UpdateProfileError.Header
+            val msg = when (e.code()) {
+              HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
+              HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
+              else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
+            }
+            showErrorToast(header, msg)
+            AppLog.e(TAG, "Profile update failed", e.toString())
+            throw e
+          }
+        }
       }
 
     /**
@@ -304,17 +307,9 @@ class AccountService
         }
         AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
         val accountInfo = accountRepository.getAccount(activeAccount.id)
-        // Update account data with API response
-        accountRepository.updateAccountInfo(activeAccount.id, accountInfo)
-        val weightlessSetting =
-          WeightlessSettingsEntity(
-            accountId = accountInfo.id,
-            isWeightlessOn = accountInfo.isWeightlessOn,
-            weightlessTimestamp = accountInfo.weightlessTimestamp ?: "0",
-            weightlessWeight = accountInfo.weightlessWeight ?: 0.0f,
-            isSynced = true,
-          )
-        userSettingsRepository.updateWeightless(weightlessSetting)
+
+        // Sync all settings with server data
+        accountRepository.syncAccountSettingsWithServer(accountInfo)
         AppLog.d(TAG, "Active account login status check successful")
         true
       } catch (e: Exception) {
@@ -400,10 +395,8 @@ class AccountService
         return if (account?.isActiveAccount == true && accountId == account.id) {
           // Mark account as expired in database
           accountRepository.markAccountExpired(accountId)
-
           // Clear account tokens from DataStore
           accountRepository.clearAccountTokens(accountId)
-
           AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
           account
         } else {
@@ -490,7 +483,7 @@ class AccountService
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
         // Switch to the account using the repository method
         accountRepository.switchToAccount(account.id)
-        AppLog.d(TAG, "Successfully switched to account: ${account.email}")
+         AppLog.d(TAG, "Successfully switched to account: ${account.email}")
         appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
         true
       } catch (e: Exception) {

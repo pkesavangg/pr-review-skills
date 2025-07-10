@@ -35,10 +35,4 @@ struct AppSyncStrings {
         static let description = "Set your scale on a hard, flat surface, step on, and wait for your results. When you see the barcode on the scale, press NEXT and aim your phone's camera at the code."
         static let boldWords: [String] = ["NEXT"]
     }
-    
-    ///
-    struct FinishViewStrings {
-        static let title = "Your scale is paired and ready to go!"
-        static let description = "To sync new entries, tap the icon at the bottom right of the app when you see the result code display on your scale's screen."
-    }
 }

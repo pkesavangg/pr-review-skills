@@ -28,120 +28,86 @@ class UserSettingsRepository
     ) : IUserSettingsRepository {
         private val TAG = "UserSettingsRepository"
 
-        override suspend fun updateWeightless(weightlessRequest: WeightlessSettingsEntity) {
-            // Update local database
-            val activeAccount = accountDao.getActiveAccount().first()
-            activeAccount?.let { account ->
-                val weightlessSettingsEntity =
-                    WeightlessSettingsEntity(
-                        accountId = account.account.id,
-                        isWeightlessOn = weightlessRequest.isWeightlessOn ?: false, // Default to false if null
-                        weightlessTimestamp = weightlessRequest.weightlessTimestamp ?: "0", // Default to "0" if null
-                        weightlessWeight = weightlessRequest.weightlessWeight ?: 0.0f, // Default to 0.0 if null
-                        isSynced = true,
-                    )
-                accountDao.updateWeightlessSettings(weightlessSettingsEntity)
-            }
-        }
-
         /**
          * Updates the streak setting for the active account.
          * @param streakRequest The streak setting to update
          * @return Updated account with new streak settings
          */
-        override suspend fun updateStreakSetting(streakRequest: StreakRequest): Account? =
-            try {
-                AppLog.d(TAG, "Updating streak setting: $streakRequest")
+        override suspend fun updateStreakSetting(streakRequest: StreakRequest) {
+          try {
+            val response: AccountResponse = userSettingsAPI.updateStreak(streakRequest)
+            val streaksSettingsEntity =
+              StreaksSettingsEntity(
+                accountId = response.account.id,
+                isStreakOn = response.account.isStreakOn,
+                streakTimestamp = System.currentTimeMillis().toString(),
+                isSynced = true,
+              )
+            accountDao.updateStreaksSettings(streaksSettingsEntity)
+            // Return updated account
+          } catch (e: Exception) {
+            // Handle offline mode - update local database only
+            val activeAccount = accountDao.getActiveAccount().first()
+            activeAccount?.let { account ->
+              val streaksSettingsEntity =
+                StreaksSettingsEntity(
+                  accountId = account.account.id,
+                  isStreakOn = streakRequest.isStreakOn,
+                  streakTimestamp = streakRequest.streakTimestamp ?: System.currentTimeMillis().toString(),
+                  isSynced = false,
+                )
+              accountDao.updateStreaksSettings(streaksSettingsEntity)
+              AppLog.e(TAG, "Error updating streak setting to server", e.toString())
 
-                val response: AccountResponse = userSettingsAPI.updateStreak(streakRequest)
-                val activeAccount = accountDao.getActiveAccount().first()
-                activeAccount?.let { account ->
-                    val streaksSettingsEntity =
-                        StreaksSettingsEntity(
-                            accountId = account.account.id,
-                            isStreakOn = streakRequest.isStreakOn,
-                            streakTimestamp = streakRequest.streakTimestamp ?: System.currentTimeMillis().toString(),
-                            isSynced = true,
-                        )
-                    accountDao.updateStreaksSettings(streaksSettingsEntity)
-                    // Return updated account
-                    val updatedAccount = accountDao.getActiveAccount().first()
-                    updatedAccount?.let { AccountEntityMapper.toDomainFromAccountWithRelations(it) }
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error updating streak setting", e.toString())
-
-                // Handle offline mode - update local database only
-                val activeAccount = accountDao.getActiveAccount().first()
-                activeAccount?.let { account ->
-                    val streaksSettingsEntity =
-                        StreaksSettingsEntity(
-                            accountId = account.account.id,
-                            isStreakOn = streakRequest.isStreakOn,
-                            streakTimestamp = streakRequest.streakTimestamp ?: System.currentTimeMillis().toString(),
-                            isSynced = false,
-                        )
-                    accountDao.updateStreaksSettings(streaksSettingsEntity)
-
-                    // Return updated account
-                    val updatedAccount = accountDao.getActiveAccount().first()
-                    updatedAccount?.let { AccountEntityMapper.toDomainFromAccountWithRelations(it) }
-                }
             }
+          }
+        }
+
 
         /**
          * Updates the weightless setting for the active account.
          * @param weightlessRequest The weightless setting to update
          * @return Updated account with new weightless settings
          */
-        override suspend fun updateWeightlessSetting(weightlessRequest: WeightlessRequest): Account? =
-            try {
-                AppLog.d(TAG, "Updating weightless setting: $weightlessRequest")
-                val response: AccountResponse = userSettingsAPI.updateWeightless(weightlessRequest)
-                // Update local database
-                val activeAccount = accountDao.getActiveAccount().first()
-                activeAccount?.let { account ->
-                    val weightlessSettingsEntity =
-                        WeightlessSettingsEntity(
-                            accountId = account.account.id,
-                            isWeightlessOn = weightlessRequest.isWeightlessOn,
-                            weightlessTimestamp =
-                                weightlessRequest.weightlessTimestamp ?: System
-                                    .currentTimeMillis()
-                                    .toString(),
-                            weightlessWeight = weightlessRequest.weightlessWeight?.toFloat() ?: 0.0f,
-                            isSynced = true,
-                        )
-                    accountDao.updateWeightlessSettings(weightlessSettingsEntity)
+        override suspend fun updateWeightlessSetting(weightlessRequest: WeightlessRequest)  {
+          try {
+            AppLog.d(TAG, "Updating weightless setting: $weightlessRequest")
+            val response: AccountResponse = userSettingsAPI.updateWeightless(weightlessRequest)
+            // Update local database
+            val weightlessSettingsEntity =
+              WeightlessSettingsEntity(
+                accountId = response.account.id,
+                isWeightlessOn = response.account.isWeightlessOn,
+                weightlessTimestamp =
+                  response.account.weightlessTimestamp ?: System
+                    .currentTimeMillis()
+                    .toString(),
+                weightlessWeight = response.account.weightlessWeight ?: 0.0f,
+                isSynced = true,
+              )
+            accountDao.updateWeightlessSettings(weightlessSettingsEntity)
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Error updating weightless setting", e.toString())
 
-                    // Return updated account
-                    val updatedAccount = accountDao.getActiveAccount().first()
-                    updatedAccount?.let { AccountEntityMapper.toDomainFromAccountWithRelations(it) }
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error updating weightless setting", e.toString())
-
-                // Handle offline mode - update local database only
-                val activeAccount = accountDao.getActiveAccount().first()
-                activeAccount?.let { account ->
-                    val weightlessSettingsEntity =
-                        WeightlessSettingsEntity(
-                            accountId = account.account.id,
-                            isWeightlessOn = weightlessRequest.isWeightlessOn,
-                            weightlessTimestamp =
-                                weightlessRequest.weightlessTimestamp ?: System
-                                    .currentTimeMillis()
-                                    .toString(),
-                            weightlessWeight = weightlessRequest.weightlessWeight?.toFloat() ?: 0.0f,
-                            isSynced = false,
-                        )
-                    accountDao.updateWeightlessSettings(weightlessSettingsEntity)
-
-                    // Return updated account
-                    val updatedAccount = accountDao.getActiveAccount().first()
-                    updatedAccount?.let { AccountEntityMapper.toDomainFromAccountWithRelations(it) }
-                }
+            // Handle offline mode - update local database only
+            val activeAccount = accountDao.getActiveAccount().first()
+            activeAccount?.let { account ->
+              val weightlessSettingsEntity =
+                WeightlessSettingsEntity(
+                  accountId = account.account.id,
+                  isWeightlessOn = weightlessRequest.isWeightlessOn,
+                  weightlessTimestamp =
+                    weightlessRequest.weightlessTimestamp ?: System
+                      .currentTimeMillis()
+                      .toString(),
+                  weightlessWeight = weightlessRequest.weightlessWeight?.toFloat() ?: 0.0f,
+                  isSynced = false,
+                )
+              accountDao.updateWeightlessSettings(weightlessSettingsEntity)
             }
+          }
+        }
+
 
         /**
          * Updates streak setting offline (stores locally for later sync).
@@ -184,59 +150,47 @@ class UserSettingsRepository
                 AppLog.d(TAG, "Updating weightless setting offline: $request")
 
                 val activeAccount = accountDao.getActiveAccount().first()
-                activeAccount?.let { account ->
-                    val weightlessSettingsEntity =
-                        WeightlessSettingsEntity(
-                            accountId = account.account.id,
-                            isWeightlessOn = request.isWeightlessOn ?: false, // Default to false if null
-                            weightlessTimestamp = request.weightlessTimestamp ?: System.currentTimeMillis().toString(),
-                            weightlessWeight = request.weightlessWeight?.toFloat() ?: 0.0f,
-                            isSynced = false, // Mark as unsynced for offline mode
-                        )
-                    accountDao.updateWeightlessSettings(weightlessSettingsEntity)
+              if(activeAccount !== null){
+                activeAccount.let { account ->
+                  val weightlessSettingsEntity =
+                    WeightlessSettingsEntity(
+                      accountId = account.account.id,
+                      isWeightlessOn = request.isWeightlessOn, // Default to false if null
+                      weightlessTimestamp = request.weightlessTimestamp ?: System.currentTimeMillis().toString(),
+                      weightlessWeight = request.weightlessWeight?.toFloat() ?: 0.0f,
+                      isSynced = false, // Mark as unsynced for offline mode
+                    )
+                  accountDao.updateWeightlessSettings(weightlessSettingsEntity)
 
-                    // Return updated account
-                    val updatedAccount = accountDao.getActiveAccount().first()
-                    updatedAccount?.let { AccountEntityMapper.toDomainFromAccountWithRelations(it) }
+                  // Return updated account
+                  val updatedAccount = accountDao.getActiveAccount().first()
+                  updatedAccount?.let { AccountEntityMapper.toDomainFromAccountWithRelations(it) }
                 }
+              } else {
+                null
+              }
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error updating weightless setting offline", e.toString())
                 null
             }
 
         /**
-         * Gets accounts with unsynced streak settings changes.
-         * Used by offline handler service for syncing streak settings specifically.
-         * @return List of accounts with pending streak settings changes
+         * Gets the active account if it has unsynced streak settings.
          */
-        override suspend fun getUnsyncedStreakAccountsFromDB(): List<Account> =
-            try {
-                AppLog.d(TAG, "Getting unsynced streak accounts")
-
-                val unsyncedAccounts = accountDao.getUnsyncedStreakAccounts().first()
-                unsyncedAccounts.map { accountWithRelations ->
-                    AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error getting unsynced streak accounts", e.toString())
-                emptyList()
+        override suspend fun getUnsyncedActiveStreakAccountFromDB(): Account? {
+            val unsyncedActiveAccount = accountDao.getUnsyncedActiveStreakAccount().first()
+            return unsyncedActiveAccount?.let {
+                AccountEntityMapper.toDomainFromAccountWithRelations(it)
             }
+        }
 
         /**
-         * Gets accounts with unsynced weightless settings changes.
-         * Used by offline handler service for syncing weightless settings specifically.
-         * @return List of accounts with pending weightless settings changes
+         * Gets the active account if it has unsynced weightless settings.
          */
-        override suspend fun getUnsyncedWeightlessAccountsFromDB(): List<Account> =
-            try {
-                AppLog.d(TAG, "Getting unsynced weightless accounts")
-
-                val unsyncedAccounts = accountDao.getUnsyncedWeightlessAccounts().first()
-                unsyncedAccounts.map { accountWithRelations ->
-                    AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error getting unsynced weightless accounts", e.toString())
-                emptyList()
+        override suspend fun getUnsyncedActiveWeightlessAccountFromDB(): Account? {
+            val unsyncedActiveAccount = accountDao.getUnsyncedActiveWeightlessAccount().first()
+            return unsyncedActiveAccount?.let {
+                AccountEntityMapper.toDomainFromAccountWithRelations(it)
             }
+        }
     }

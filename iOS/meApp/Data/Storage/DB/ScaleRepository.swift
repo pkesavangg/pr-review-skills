@@ -63,7 +63,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Gets all devices that haven't been synced with the API.
     /// - Returns: An array of unsynced devices.
     func getUnsyncedDevices() async throws -> [Device] {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isSynced == false  })
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { ($0.isSynced ?? false) == false  })
         return try context.fetch(descriptor)
     }
 
@@ -143,7 +143,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [Device], preserveUnsynced unsyncedDevices: [Device]) async throws {
         // Delete only synced devices for this account (preserve unsynced ones)
         let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
-            $0.accountId == accountId && $0.isSynced == true
+            $0.accountId == accountId && ($0.isSynced ?? false) == true
         })
         let syncedDevices = try context.fetch(syncedDescriptor)
 
@@ -197,7 +197,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// - Returns: An array of devices marked as deleted and unsynced.
     func getDevicesMarkedForDeletion() async throws -> [Device] {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
-            $0.isDeleted == true && $0.isSynced == false
+            $0.isDeleted ?? false == true && ($0.isSynced ?? false) == false
         })
         return try context.fetch(descriptor)
     }

@@ -39,9 +39,9 @@ interface INotificationRepository {
     suspend fun getActiveAccountFromDB(): Account?
 
     /**
-     * Gets all accounts with unsynced notification settings from the database.
-     *
-     * @return List of accounts with unsynced notification data
+     * Gets the active account if it has unsynced notification settings.
+     * Used by offline handler service to sync pending notification changes for active account.
+     * @return The active account with unsynced notification settings, or null if active account is synced
      */
-    suspend fun getUnsyncedNotificationAccountsFromDB(): List<Account>
+    suspend fun getUnsyncedActiveNotificationAccountFromDB(): Account?
 }

@@ -8,7 +8,6 @@ import Combine
 /// It focuses on high-level orchestration and business logic, leaving the underlying Bluetooth /
 /// plugin implementation to concrete service classes (e.g. `BluetoothService`).
 ///
-/// Similar to `AccountServiceProtocol`, the API surface is grouped into logical sections for clarity.
 @MainActor
 protocol BluetoothServiceProtocol {
 
@@ -16,6 +15,9 @@ protocol BluetoothServiceProtocol {
 
     /// Flag that determines if UI modals can be shown for newly discovered scales.
     var canShowScaleDiscoveredModal: Bool { get }
+
+    /// Indicates whether a setup is currently in progress.
+    var isSetupInProgress: Bool { get set }
 
     // MARK: - Publishers
     /// Publisher for unified device discovery events containing device, protocol type, and isNew flag.
@@ -33,11 +35,8 @@ protocol BluetoothServiceProtocol {
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { get }
 
-    /// Indicates whether a setup is currently in progress.
-    var isSetupInProgress: Bool { get set }
-
     // MARK: - Lifecycle / Initialisation
-    /// Initializes the Bluetooth service.
+    /// Initializes the Bluetooth service and subscribes to account changes.
     func initialize()
 
     /// Stops all ongoing Bluetooth operations and scanning.
@@ -60,79 +59,75 @@ protocol BluetoothServiceProtocol {
 
     // MARK: - Device Synchronisation
     /// Forces a re-sync of locally stored devices with the Bluetooth plugin and re-starts scanning.
-    func resyncAndScan() async throws
-
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func resyncAndScan() async -> Result<Void, BluetoothServiceError>
     /// Synchronises the provided device list with the Bluetooth plugin.
     /// - Parameter devices: The devices to sync. Passing an empty array clears the list.
     func syncDevices(_ devices: [Device])
 
     // MARK: - Device CRUD
     /// Adds a newly discovered scale to persistent storage and returns the saved model.
-    func addNewDevice(_ device: Device, metaData: DeviceMetaData?) async throws -> Device
-
+    /// - Returns: Result<Device, BluetoothServiceError>
+    func addNewDevice(_ device: Device, metaData: DeviceMetaData?) async -> Result<Device, BluetoothServiceError>
     /// Confirms a smart pairing operation with the specified device.
-    /// - Parameters:
-    ///   - device: The device to confirm pairing with.
-    ///   - token: The authentication token for the device.
-    ///   - displayName: The display name for the scale.
-    ///   - userNumber: Optional user number for the device.
-    /// - Returns: The result of the user creation operation.
-    func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async throws -> UserCreationResponse
-
+    /// - Returns: Result<UserCreationResponse, BluetoothServiceError>
+    func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError>
     /// Deletes a scale from storage (and optionally from the physical device).
-    /// - Parameters:
-    ///   - device: The device to delete.
-    ///   - disconnect: Whether to actively disconnect before deletion.
-    func deleteDevice(_ device: Device, disconnect: Bool) async throws -> UserDeletionResponse
-
+    /// - Returns: Result<UserDeletionResponse, BluetoothServiceError>
+    func deleteDevice(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError>
     /// Disconnects the specified device without deleting it from storage.
-    /// - Parameter broadcastId: The broadcast ID of the device to disconnect.
-    func disconnectDevice(broadcastId: String) async throws
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError>
 
     // MARK: - WiFi Configuration
     /// Retrieves the available Wi-Fi networks from the given device.
-    func getWifiList(for device: Device) async throws -> [WifiDetails]
-
+    /// - Returns: Result<[WifiDetails], BluetoothServiceError>
+    func getWifiList(for device: Device) async -> Result<[WifiDetails], BluetoothServiceError>
     /// Configures Wi-Fi on the given device.
-    func setupWifi(on device: Device, config: WifiConfig) async throws
-
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func setupWifi(on device: Device, config: WifiConfig) async -> Result<Void, BluetoothServiceError>
     /// Cancels a pending Wi-Fi configuration.
-    func cancelWifi(on device: Device) async throws
-
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func cancelWifi(on device: Device) async -> Result<Void, BluetoothServiceError>
     /// Retrieves the currently connected Wi-Fi SSID for an R4 scale.
-    func getConnectedWifiSSID(broadcastId: String) async throws -> String
+    /// - Returns: Result<String, BluetoothServiceError>
+    func getConnectedWifiSSID(broadcastId: String) async -> Result<String, BluetoothServiceError>
 
     // MARK: - Settings & Firmware
     /// Updates a list of settings on the device.
-    func updateSetting(on device: Device, settings: [DeviceSetting]) async throws
-
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func updateSetting(on device: Device, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError>
     /// Initiates a firmware update on the device.
-    func updateFirmware(on device: Device, timestamp: UInt32) async throws
-
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func updateFirmware(on device: Device, timestamp: UInt32) async -> Result<Void, BluetoothServiceError>
     /// Clears stored data on the device (e.g., history, user).
-    func clearData(on device: Device, dataType: DeviceClearType) async throws
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func clearData(on device: Device, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError>
 
     // MARK: - Profile / Account Operations
     /// Updates the user profile (height, weight, age, etc.) on all connected R4 scales.
-    func updateUserProfileForR4Scales() async throws -> Bool
-
+    /// - Returns: Result<Bool, BluetoothServiceError>
+    func updateUserProfileForR4Scales() async -> Result<Bool, BluetoothServiceError>
     /// Updates account-specific preferences (display name, metrics, etc.) on the device.
-    func updateAccount(on device: Device, preference: R4ScalePreference) async throws -> UserCreationResponse
+    /// - Returns: Result<UserCreationResponse, BluetoothServiceError>
+    func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError>
 
     // MARK: - Device Information
     /// Retrieves generic device information (model, serial, firmware, …).
-    func getDeviceInfo(for device: Device) async throws -> DeviceInfo
-
+    /// - Returns: Result<DeviceInfo, BluetoothServiceError>
+    func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError>
     /// Retrieves the Wi-Fi MAC address for an R4 scale.
-    func getWifiMacAddress(for device: Device) async throws -> String
-
+    /// - Returns: Result<String, BluetoothServiceError>
+    func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError>
     /// Retrieves live measurement data while a user is on the scale.
-    func getMeasurementLiveData(broadcastId: String) async throws -> MeasurementLiveData
-
+    /// - Returns: Result<MeasurementLiveData, BluetoothServiceError>
+    func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError>
     /// Retrieves the list of users stored on the scale (R4 only).
-    func getScaleUserList(for device: Device) async throws -> [DeviceUser]
+    /// - Returns: Result<[DeviceUser], BluetoothServiceError>
+    func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError>
 
     // MARK: - Alerts & Utility
     /// Triggers the in-app alert required when weight-only mode is enabled by another user.
-    func updateWeightOnlyMode(on device: Device?) async throws
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func updateWeightOnlyMode(on device: Device?) async -> Result<Void, BluetoothServiceError>
 }

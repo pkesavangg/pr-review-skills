@@ -116,14 +116,10 @@ class ProfileViewModel @Inject constructor(
                 dob = DateTimeValue.getDateFormatFromMilliseconds(formControls.birthday.value.getTimestamp()),
             )
             try {
-                val success = accountService.updateProfile(profileUpdateRequest)
-                if (success?.isLoggedIn ?: false) {
-                    handleIntent(ProfileIntent.Success)
-                    navigateBack()
-                    AppLog.i("ProfileViewModel", "Profile updated successfully")
-                } else {
-                    handleIntent(ProfileIntent.Error(ProfileStrings.Error.MessageGeneric))
-                }
+              accountService.updateProfile(profileUpdateRequest)
+              handleIntent(ProfileIntent.Success)
+              navigateBack()
+              AppLog.i("ProfileViewModel", "Profile updated successfully")
             } catch (e: Exception) {
                 AppLog.e("ProfileViewModel", "Profile update failed", e.toString())
                 handleIntent(ProfileIntent.Error(ProfileStrings.Error.MessageGeneric))

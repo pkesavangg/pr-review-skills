@@ -48,6 +48,12 @@ struct CommonStrings {
     static let no = "No"
     static let iOS = "iOS"
     static let finish = "Finish"
+    static let permissions = "Permissions"
+    static let allow = "Allow"
+    static let ignore = "Ignore"
+    static let enable = "Enable"
+    static let tryAgain = "Try Again"
+    static let support = "Support"
 }
 
 /// Constants for entry strings used in the app
@@ -105,6 +111,8 @@ struct ToastStrings {
     static let weightHistorySynced = "Weight history successfully synced."
     static let hkIntegrationRemoved = "Apple Health integration removed."
     static let hkIntegrationSynced = "Apple Health is synced!"
+    static let saveScaleError = "Error saving scale. Please restart the app and try again."
+    static let restartApp = "Please restart your app and try again."
 }
 
 /// Constants for help modal strings used in the app
@@ -457,6 +465,43 @@ struct AlertStrings {
         static let cancelButton = "cancel"
         static let exitButton = "exit setup"
     }
+    
+    struct DeviceAlreadyPairedAlert {
+        static let title = "Device Already Paired"
+        static let message: (String) -> String = { sku in
+            "The device with SKU: \(sku) is already paired. Do you want to pair it again?"
+        }
+        static let returnButton = "RETURN"
+        static let pairButton = "PAIR"
+    }
+    
+    struct knownScaleDiscoveredAlert {
+        static let title = "Known Scale Discovered"
+        static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+        static let exitButton = "Exit"
+    }
+    
+    struct PermissionAlerts {
+        // MARK: - Bluetooth
+        static let bluetoothDisabledTitle = "Bluetooth is Disconnected"
+        static let bluetoothDisabledMessage = "From Settings, go to Bluetooth and ensure it’s on and accepting new connections."
+        static let bluetoothAuthDisabledTitle = "Bluetooth Access is Disabled"
+        static let bluetoothAuthDisabledMessage = "To sync with your device, please enable Bluetooth access."
+
+        // MARK: - Location
+        static let locationDisabledTitle = "Location Services are Off"
+        static let locationDisabledMessage = "From Settings, go to Privacy & Security > Location Services and ensure it’s on."
+        static let locationAuthTitle = "Weight Gurus needs location permissions."
+        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn’t store this data. On the next screen, select ‘Allow while using app.’ Choosing ‘Allow once’ will block future connections with the scale."
+
+        // MARK: - Camera
+        static let cameraDisabledTitle = "Camera Access is Disabled"
+        static let cameraDisabledMessage = "You will not be able to pair or sync with your AppSync scale. Please enable Camera access in Settings."
+
+        // MARK: - Notification
+        static let notificationDisabledTitle = "Notifications are disabled!"
+        static let notificationDisabledMessage = "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
+    }
 }
 
 struct LoaderStrings {
@@ -597,5 +642,15 @@ struct AppAssets {
     static let plusCircleDark = "plusCircleDark"
     static let minusCircleDark = "minusCircleDark"
     static let minusCircleClear = "minusCircleClear"
+}
+
+/// Constants used in the AppSync entry result confirmation card
+struct AppSyncEntryCardStrings {
+    static let title = "Your AppSync Scan was successful!"
+    static let weight = "Weight"
+    static let bodyFat = "Body Fat"
+    static let muscleMass = "Muscle Mass"
+    static let waterWeight = "Water Weight"
+    static let bmi = "BMI"
 }
 

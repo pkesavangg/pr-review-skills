@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.core.service
 
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.model.api.device.R4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.repository.IDeviceRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
@@ -71,6 +72,7 @@ class DeviceService
     /**
      * Sync scales from the API and update the local database.
      * This method fetches scales from the server and merges them with local unsynced scales.
+     * For scales without server IDs, it generates UUIDs once and stores them persistently.
      */
     override suspend fun syncScales() {
       if (currentAccountId == null) {
@@ -84,25 +86,73 @@ class DeviceService
         val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
         AppLog.d(tag, "Fetched ${apiDevices.size} devices from API")
 
-        // 2. Save API devices to DB with correct accountId
-        for (device in apiDevices) {
-          // Ensure the device has the correct accountId
-          val deviceWithAccountId = device.copy(accountId = currentAccountId!!)
-          AppLog.d(tag, "Saving device ${device.id} with accountId: ${deviceWithAccountId.accountId}")
-          deviceRepository.saveDeviceToDb(deviceWithAccountId)
+        // 2. Process API devices to handle ID generation properly
+        val processedDevices =
+          apiDevices.map { apiDevice ->
+            // Check if this device already exists in the database
+            val existingDevice =
+              try {
+                when {
+                  // First try to find by MAC address
+                  !apiDevice.mac.isNullOrEmpty() -> {
+                    AppLog.d(tag, "Checking for existing device by MAC: ${apiDevice.mac}")
+                    deviceRepository.getDeviceByMac(apiDevice.mac!!).first()
+                  }
+                  // Then try to find by broadcast ID
+                  !apiDevice.broadcastId.isNullOrEmpty() -> {
+                    AppLog.d(
+                      tag,
+                      "Checking for existing device by broadcast ID: ${apiDevice.broadcastId}",
+                    )
+                    deviceRepository.getDeviceByBroadcastId(apiDevice.broadcastId!!).first()
+                  }
+
+                  else -> null
+                }
+              } catch (e: Exception) {
+                AppLog.d(tag, "No existing device found or error occurred: ${e.message}")
+                null
+              }
+
+            // If device exists and API device doesn't have server ID, use existing ID
+            if (existingDevice != null && !apiDevice.hasServerID) {
+              AppLog.d(tag, "Using existing device ID ${existingDevice.id} for device without server ID")
+              // Update the existing device with new API data but keep the existing ID
+              apiDevice.copy(
+                id = existingDevice.id,
+                accountId = currentAccountId!!,
+                hasServerID = existingDevice.hasServerID, // Keep existing hasServerID status
+                isSynced = true,
+              )
+            } else {
+              // Ensure the device has the correct accountId and sync status
+              apiDevice.copy(
+                accountId = currentAccountId!!,
+                isSynced = true,
+              )
+            }
+          }
+
+        // 3. Save processed devices to DB
+        for (device in processedDevices) {
+          AppLog.d(
+            tag,
+            "Saving device ${device.id} with accountId: ${device.accountId}, hasServerID: ${device.hasServerID}",
+          )
+          deviceRepository.saveDeviceToDb(device)
         }
         AppLog.d(tag, "Saved API devices to DB")
 
-        // 3. Get unsynced local devices
+        // 4. Get unsynced local devices
         val unsyncedDevices = deviceRepository.getUnsyncedDevices()
         AppLog.d(tag, "Found ${unsyncedDevices.size} unsynced local devices")
 
-        // 4. Merge: API devices + unsynced local devices (not in API)
-        val apiDeviceIds = apiDevices.map { it.id }.toSet()
-        val mergedDevices = apiDevices.toMutableList()
+        // 5. Merge: API devices + unsynced local devices (not in API)
+        val apiDeviceIds = processedDevices.map { it.id }.toSet()
+        val mergedDevices = processedDevices.toMutableList()
         mergedDevices.addAll(unsyncedDevices.filter { !apiDeviceIds.contains(it.id) })
 
-        // 5. Update StateFlow
+        // 6. Update StateFlow
         _savedScales.value = mergedDevices
         AppLog.d(tag, "Scale sync completed. Total devices: ${mergedDevices.size}")
       } catch (e: Exception) {
@@ -182,6 +232,35 @@ class DeviceService
         AppLog.d(tag, "Scale nickname updated successfully")
       } catch (e: Exception) {
         AppLog.e(tag, "Error updating scale nickname", e.toString())
+      }
+    }
+
+    /**
+     * Update scale preferences for a specific device.
+     *
+     * @param deviceId The ID of the device
+     * @param preferences The preferences to update
+     * @return True if successful, false otherwise
+     */
+    override suspend fun updateScalePreferences(
+      deviceId: String,
+      preferences: R4ScalePreferenceApiModel,
+    ): Boolean {
+      AppLog.d(tag, "Updating scale preferences for device: $deviceId")
+      return try {
+        val updatedPreference =
+          preferences.copy(
+            wifiFotaScheduleTime = 0,
+            tzOffset = getTimeZoneInMinutes(),
+          )
+        // TODO("Update preferences to the scale via ggBluetoothPlugin")
+        // Save preferences to API
+        deviceRepository.saveScalePreferencesToApi(updatedPreference)
+        AppLog.d(tag, "Scale preferences updated successfully")
+        true
+      } catch (e: Exception) {
+        AppLog.e(tag, "Error updating scale preferences", e.toString())
+        false
       }
     }
 
@@ -291,4 +370,10 @@ class DeviceService
      * @return True if an account ID is set, false otherwise
      */
     override suspend fun isInitialized(): Boolean = currentAccountId != null
+
+    private fun getTimeZoneInMinutes(): Int {
+      val timeZone = java.util.TimeZone.getDefault()
+      val offsetInMillis = timeZone.getOffset(System.currentTimeMillis())
+      return offsetInMillis / (60 * 1000) // convert milliseconds to minutes
+    }
   }

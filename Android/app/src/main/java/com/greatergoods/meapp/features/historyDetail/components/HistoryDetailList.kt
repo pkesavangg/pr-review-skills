@@ -8,8 +8,8 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
-import com.greatergoods.meapp.features.common.components.AppDraggableActionItem
-import com.greatergoods.meapp.features.common.components.AppDraggableList
+import com.greatergoods.meapp.features.common.components.AppSwipeableActionItem
+import com.greatergoods.meapp.features.common.components.AppSwipeableList
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -26,7 +26,7 @@ fun HistoryDetailList(
     historyDetails: List<ScaleEntry>,
     onItemDelete: (ScaleEntry) -> Unit,
 ) {
-    AppDraggableList(
+    AppSwipeableList(
         items = historyDetails,
         iconWidth = 88.dp,
         keySelector = { it.entry.id },

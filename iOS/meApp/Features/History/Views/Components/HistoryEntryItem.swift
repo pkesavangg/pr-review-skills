@@ -166,7 +166,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             id: UUID(),
             entryTimestamp: "2025-12-16T14:10:00Z",
             accountId: "123",
-            operationType: "create",
+            operationType: OperationType.create.rawValue,
             deviceType: "scale",
             isSynced: true
         )
