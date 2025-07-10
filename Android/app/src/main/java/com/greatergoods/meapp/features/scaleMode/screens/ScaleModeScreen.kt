@@ -45,7 +45,6 @@ import com.greatergoods.meapp.features.scaleMode.reducer.ScaleModeState
 import com.greatergoods.meapp.features.scaleMode.strings.ScaleModeStrings
 import com.greatergoods.meapp.features.scaleMode.viewmodel.ScaleModeViewModel
 import com.greatergoods.meapp.resources.AppIcons
-import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
@@ -204,7 +203,7 @@ fun ScaleModeScreenContent(
                     Image(
                         painter =
                             painterResource(
-                                id = AppIcons.Default.BodyMetricsOffScale,
+                                id = AppIcons.Default.WeightOnlyModeScale,
                             ),
                         contentDescription = null,
                     )

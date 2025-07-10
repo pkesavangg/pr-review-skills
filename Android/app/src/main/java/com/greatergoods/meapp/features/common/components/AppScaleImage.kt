@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.helper.ScaleUtility
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 
 enum class ScaleImageSize { Small, Medium, Large }
@@ -41,17 +42,17 @@ fun AppScaleImage(
   scaleImageSize: ScaleImageSize = ScaleImageSize.Small,
 ) {
   // TODO: Update color tokens for glow effect
-  val glowColor = if (isSystemInDarkTheme()) 0x40FFFFFF else 0x40000000
   Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
       modifier =
         Modifier
           .size(ScaleImageDefaults.size(scaleImageSize))
           .shadow(
+              shape = RoundedCornerShape(borderRadius.sm),
             elevation = spacing.sm,
-            spotColor = Color(glowColor),
-            ambientColor = Color(glowColor),
-          ).clip(RoundedCornerShape(borderRadius.xs)),
+            spotColor = colorScheme.glow,
+            ambientColor = colorScheme.glow,
+          ),
       contentAlignment = Alignment.Center,
     ) {
       Image(
