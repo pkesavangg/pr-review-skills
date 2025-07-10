@@ -75,7 +75,10 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(
                     BluetoothConnectionView(
                         state: connectionState,
-                        onTryAgain: { [weak self] in self?.retryPairing() }
+                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onSupport: {
+                            [weak self] in self?.showHelpModal()
+                        }
                     )
                 )
             case .setupFinished:
@@ -156,6 +159,15 @@ final class A6ScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Shows the generic Help modal used across the app.
+    func showHelpModal() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(HelpModalView {
+                self.notificationService.dismissModal()
+            })
+        ))
+    }
+    
     /// Handles the pairing process when entering the *wake-up* step.
     private func pair() {
         // Start scanning for devices when entering wake-up step
@@ -222,12 +234,10 @@ final class A6ScaleSetupStore: ObservableObject {
     
     // MARK: - Scale Saving
     private func saveDiscoveredScale() async {
-        guard let discoveryEvent = discoveryEvent, var scale = discoveredScale else { return }
+        guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
         scale.sku = scaleItem?.sku ?? discoveryEvent.device.sku
         scale.deviceType = DeviceType.scale.rawValue
         scale.bathScale = scale.bathScale ?? BathScale(scaleType: ScaleSourceType.lcbt.rawValue, bodyComp: scale.bathScale?.bodyComp ?? false)
-        print("Saving discovered scale: \(scale.id) with event: \(discoveryEvent)", discoveryEvent.device.broadcastId, discoveryEvent.device.broadcastIdString)
-
         do {
             let result = await bluetoothService.addNewDevice(scale, metaData: nil)
             switch result {
@@ -235,6 +245,7 @@ final class A6ScaleSetupStore: ObservableObject {
                 LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+                self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
             }
         }
     }
