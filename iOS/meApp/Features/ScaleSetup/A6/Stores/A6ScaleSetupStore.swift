@@ -126,10 +126,7 @@ final class A6ScaleSetupStore: ObservableObject {
         currentStep = steps.first ?? .intro
         
         // Reset discovery state
-        discoveredScale = nil
-        discoveryEvent = nil
-        deviceDiscoveryCancellable = nil
-        stepTimerTask?.cancel()
+        resetDiscoveryState()
         
         // Evaluate initial next-button state.
         updateNextEnabled()
@@ -173,11 +170,7 @@ final class A6ScaleSetupStore: ObservableObject {
         // Start scanning for devices when entering wake-up step
         // Subscribe to discovery events (ensure we don't create multiple subscriptions).
         // Reset discovery state
-        discoveredScale = nil
-        discoveryEvent = nil
-        deviceDiscoveryCancellable = nil
-        stepTimerTask?.cancel()
-        deviceDiscoveryCancellable?.cancel()
+        resetDiscoveryState()
         Task { bluetoothService.scanForPairing() }
         
         if deviceDiscoveryCancellable == nil {
@@ -232,6 +225,22 @@ final class A6ScaleSetupStore: ObservableObject {
         }
     }
     
+    // MARK: - Discovery State Management
+
+    /// Clears any active Bluetooth discovery subscriptions and timers and resets related state.
+    private func resetDiscoveryState() {
+        // Cancel active Combine subscription before releasing it.
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+
+        // Nil out discovery data so subsequent runs start fresh.
+        discoveredScale = nil
+        discoveryEvent = nil
+
+        // Cancel any in-flight timeout task.
+        stepTimerTask?.cancel()
+    }
+
     // MARK: - Scale Saving
     private func saveDiscoveredScale() async {
         guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
@@ -331,10 +340,6 @@ final class A6ScaleSetupStore: ObservableObject {
     
     // Cancel timers on deinit.
     deinit {
-        discoveredScale = nil
-        discoveryEvent = nil
-        deviceDiscoveryCancellable = nil
-        deviceDiscoveryCancellable?.cancel()
-        stepTimerTask?.cancel()
+        resetDiscoveryState()
     }
 }
