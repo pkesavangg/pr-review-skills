@@ -2,6 +2,8 @@ package com.greatergoods.meapp.core.shared.utilities
 
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import java.time.Instant
+import java.time.LocalDate
+import java.time.Period
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -59,5 +61,12 @@ object DateTimeConverter {
     } catch (e: Exception) {
       false
     }
+  }
+
+  fun calculateAge(dobString: String): Int {
+    val formatter = DateTimeFormatter.ISO_DATE_TIME
+    val dob = ZonedDateTime.parse(dobString, formatter).toLocalDate()
+    val today = LocalDate.now()
+    return Period.between(dob, today).years
   }
 }

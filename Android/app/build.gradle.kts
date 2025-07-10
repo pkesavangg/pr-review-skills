@@ -144,6 +144,7 @@ dependencies {
   implementation(project(":notification"))
   implementation(project(":app:healthconnect"))
   implementation(project(":app:appsync"))
+  implementation(project(":bleWrapper"))
 
   // Play Store Review
   implementation(libs.play.review)
