@@ -30,6 +30,4 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// - Parameters:
     ///   - scales: The scales to update.
     func updateAllScalesStatus(_ scales: [Device]?) async throws
-    
-    func syncAllScalesWithRemote() async
 }

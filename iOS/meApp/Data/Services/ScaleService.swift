@@ -437,7 +437,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 } else {
                     // Create new device on server
                     do {
-                        print("Creating device on server with DTO: \(dto)")
                         let createdDTO = try await remoteRepo.createScale(dto)
                         // Update local device with server ID
                         device.id = createdDTO.id ?? device.id
