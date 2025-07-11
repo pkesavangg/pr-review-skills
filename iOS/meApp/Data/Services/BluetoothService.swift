@@ -841,12 +841,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             try? await entryService.saveNewEntry(entry)
             newEntryReceivedSubject.send(entry)
         } else if let entryList = entriesData as? GGEntryList {
-            // Handle multiple entries
-            let entries = entryList.list.compactMap { convertGGEntry($0) }
-            for entry in entries {
-                try? await entryService.saveNewEntry(entry)
-            }
-            newEntryReceivedSubject.send(entries[0])
+          // Handle multiple entries
+          let entries = entryList.list.compactMap { convertGGEntry($0) }
+          for entry in entries {
+            try? await entryService.saveNewEntry(entry)
+          }
+          if !entries.isEmpty {
+              newEntryReceivedSubject.send(entries[0])
+          }
         }
     }
     
