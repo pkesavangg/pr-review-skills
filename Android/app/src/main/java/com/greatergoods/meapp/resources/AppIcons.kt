@@ -93,5 +93,6 @@ object AppIcons {
 
   object Setup {
     val Accuchecked = R.drawable.accuchecked
+    val AccucheckLogo = R.drawable.accucheck_logo
   }
 }

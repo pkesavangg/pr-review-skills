@@ -55,6 +55,7 @@ constructor(
         )
 
       BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
+      BtWifiScaleSetupIntent.OpenAccucheckModal -> openAccucheckModel()
       else -> {}
     }
     super.handleIntent(intent)
@@ -575,5 +576,13 @@ constructor(
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
     }
+  }
+
+  private fun openAccucheckModel() {
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.AccucheckModal,
+      ),
+    )
   }
 }

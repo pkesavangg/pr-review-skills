@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.addScale.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -64,6 +64,7 @@ fun AddScaleScreenContent(
   val backStack = LocalNavBackStack.current
   val coroutineScope = rememberCoroutineScope()
   val focusManager = LocalFocusManager.current
+  val keyboardController = LocalSoftwareKeyboardController.current
   val modelNumberControl = state.form.controls.modelNumber
   val modelNumberFocusRequester = remember { FocusRequester() }
   val interactionSource = remember { MutableInteractionSource() }
@@ -111,8 +112,9 @@ fun AddScaleScreenContent(
           type = AppInputType.NUMERIC_STRING,
           imeAction = ImeAction.Done,
           onImeAction = {
-              handleIntent(AddScaleIntent.Submit)
-              focusManager.clearFocus()
+            keyboardController?.hide()
+            handleIntent(AddScaleIntent.Submit)
+            focusManager.clearFocus()
           },
           showTrailingIcon = true,
           showTrailingIconAlways = true,
@@ -131,7 +133,10 @@ fun AddScaleScreenContent(
           type = ButtonType.PrimaryFilled,
           size = ButtonSize.Large,
           enabled = state.form.isValid,
-          onClick = { handleIntent(AddScaleIntent.Submit)},
+          onClick = {
+            keyboardController?.hide()
+            handleIntent(AddScaleIntent.Submit)
+          },
           modifier = Modifier.align(Alignment.CenterHorizontally),
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))

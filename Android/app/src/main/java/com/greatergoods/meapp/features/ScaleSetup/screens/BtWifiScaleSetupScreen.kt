@@ -214,7 +214,7 @@ fun BtWifiScaleSetupScreenContent(
               subtitle = BtWifiScaleSetupStrings.ScaleConnected.Subtitle,
               setupImage = AppIcons.Setup.Accuchecked,
               contentButtonText = BtWifiScaleSetupStrings.ScaleConnected.WhatsThisButton,
-              contentButtonClick = {},
+              contentButtonClick = { onIntent(BtWifiScaleSetupIntent.OpenAccucheckModal) },
             )
           }
 

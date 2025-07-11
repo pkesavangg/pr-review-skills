@@ -76,6 +76,7 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   object OpenHelp : BtWifiScaleSetupIntent
 
   object TryAgain : BtWifiScaleSetupIntent
+  object OpenAccucheckModal : BtWifiScaleSetupIntent
 }
 
 /**
@@ -107,7 +108,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
             errorCode = null,
           )
         } else {
-          state.copy(errorCode = null) // No change if at last step or can't proceed
+          state.copy(errorCode = null, isSetupFinished = state.isLastStep) // No change if at last step or can't proceed
         }
       }
 
