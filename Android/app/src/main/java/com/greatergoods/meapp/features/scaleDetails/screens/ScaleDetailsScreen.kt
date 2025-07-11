@@ -67,20 +67,18 @@ fun ScaleDetailsScreenContent(
   val backStack = LocalNavBackStack.current
   val coroutineScope = rememberCoroutineScope()
   val device = state.scale
-  val scaleName = device?.nickname ?: device?.deviceName ?: ""
+  val scaleName = device?.nickname ?: device?.device?.deviceName ?: ""
   val scaleSetupType =
-    device?.scaleType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
+    device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
-  val isConnected = device?.isConnected ?: false
- val scaleMode =
-        if (device?.shouldMeasureImpedance ==
-            true
-        ) {
-            ScaleDetailsStrings.AllBodyMetrics
-        } else {
-            ScaleDetailsStrings.WeightOnly
-        }
-        
+  val isConnected = device?.connectionStatus == com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED
+  val scaleMode =
+    if (device?.preferences?.shouldMeasureImpedance == true) {
+      ScaleDetailsStrings.AllBodyMetrics
+    } else {
+      ScaleDetailsStrings.WeightOnly
+    }
+
   AppScaffold(
     title = scaleName,
     navigationIcon = {
@@ -99,7 +97,11 @@ fun ScaleDetailsScreenContent(
           .padding(vertical = spacing.md, horizontal = spacing.sm),
     ) {
       // Scale Image
-      AppScaleImage(sku = device?.sku ?: "", modifier = Modifier.fillMaxWidth(), scaleImageSize = ScaleImageSize.Large)
+      AppScaleImage(
+        sku = device?.getSKU() ?: "",
+        modifier = Modifier.fillMaxWidth(),
+        scaleImageSize = ScaleImageSize.Large,
+      )
       Spacer(modifier = Modifier.height(spacing.xl))
       // Settings Section - Show different items based on setup type
       SettingsSection(
@@ -128,7 +130,7 @@ fun ScaleDetailsScreenContent(
               add(
                 SettingsItem(
                   title = ScaleDetailsStrings.Users,
-                  type = SettingsItemType.Action(device?.displayName ?: ""),
+                  type = SettingsItemType.Action(device?.preferences?.displayName ?: ""),
                   enabled = isConnected,
                 ),
               )
@@ -138,7 +140,7 @@ fun ScaleDetailsScreenContent(
                 title = ScaleDetailsStrings.ScaleName,
                 type =
                   SettingsItemType.TextOnly(
-                    device?.nickname ?: device?.deviceName ?: "",
+                    device?.nickname ?: device?.device?.deviceName ?: "",
                   ),
               ),
             )
@@ -197,11 +199,11 @@ fun ScaleDetailsScreenContent(
               title = ScaleDetailsStrings.ScaleType,
               type =
                 SettingsItemType.CustomIcon(
-                  text = ScaleSetupType.toLabel(device?.scaleType),
+                  text = ScaleSetupType.toLabel(device?.deviceType),
                   icon = {
                     AppIcon(
                       id = ScaleDataHelper.scaleTypeIcon(scaleSetupType),
-                      contentDescription = ScaleSetupType.toLabel(device?.scaleType),
+                      contentDescription = ScaleSetupType.toLabel(device?.deviceType),
                       type = AppIconType.Primary,
                     )
                   },
@@ -209,11 +211,11 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(device?.sku ?: ""),
+              type = SettingsItemType.TextOnly(device?.getSKU() ?: ""),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,
-              type = SettingsItemType.TextDate(device?.createdAt ?: ""),
+              type = SettingsItemType.TextDate(""), // Not available in GGDevice
             ),
             SettingsItem(
               title = ScaleDetailsStrings.ProductGuide,
@@ -241,52 +243,21 @@ fun ScaleDetailsScreenContent(
 @PreviewTheme
 @Composable
 fun ScaleDetailsScreenPreview() {
-  val dummyDevice =
-    Device(
-      id = "1",
-      accountId = "1",
-      peripheralIdentifier = null,
-      nickname = null,
-      sku = "0412",
-      mac = null,
-      password = null,
-      isDeleted = false,
+  val dummyDevice = Device(
+    id = "1",
+    device = com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail(
       deviceName = "AccuCheck Verve Smart Scale",
-      deviceType = null,
-      broadcastId = null,
-      broadcastIdString = null,
-      userNumber = null,
-      protocolType = null,
-      createdAt = "June 27, 2023",
-      lastModified = null,
-      isSynced = false,
-      hasServerID = true,
-      isConnected = true,
-      wifiMac = "greatergoods1",
-      isWifiConfigured = true,
-      token = null,
-      scaleType = "Bluetooth/Wi-Fi",
-      bodyComp = true,
-      displayName = null,
-      displayMetrics = null,
-      shouldFactoryReset = false,
-      shouldMeasureImpedance = false,
+      macAddress = "greatergoods1",
+      identifier = "identifier1",
+    ),
+    connectionStatus = com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED,
+    alreadyPaired = true,
+    userNumber = 1,
+    preferences = com.greatergoods.meapp.domain.model.storage.Preferences(
+      shouldMeasureImpedance = true,
       shouldMeasurePulse = false,
-      timeFormat = null,
-      tzOffset = null,
-      wifiFotaScheduleTime = null,
-      prefsUpdatedAt = null,
-      modelNumber = null,
-      serialNumber = null,
-      firmwareRevision = null,
-      hardwareRevision = null,
-      softwareRevision = null,
-      manufacturerName = null,
-      systemId = null,
-      latestVersion = null,
-      hasNumericUsers = null,
-      isWeighOnlyModeEnabledByOthers = false,
-    )
+    ),
+  )
   val dummyState = ScaleDetailsState(scale = dummyDevice)
   ScaleDetailsScreenContent(state = dummyState, handleIntent = {})
 }

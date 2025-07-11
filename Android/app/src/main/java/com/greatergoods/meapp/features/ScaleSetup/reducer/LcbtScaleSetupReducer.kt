@@ -7,9 +7,9 @@ import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
  * State for LcbtScaleSetupScreen.
  */
 data class LcbtScaleSetupState(
-  val currentStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO,
+  val currentStep: LcbtScaleSetupStep = LcbtScaleSetupStep.ScaleInfo,
   val sku: String = "0378",
-  val steps: List<LcbtScaleSetupStep> = listOf(LcbtScaleSetupStep.SCALE_INFO),
+  val steps: List<LcbtScaleSetupStep> = listOf(LcbtScaleSetupStep.ScaleInfo),
   val isLoading: Boolean = false,
   val error: String? = null,
   val isSetupFinished: Boolean = false,

@@ -1,72 +1,91 @@
 package com.greatergoods.meapp.features.ScaleSetup.enums
 
-enum class BtWifiSetupStep {
-  SCALE_INFO,
-  PERMISSIONS,
-  WAKEUP,
-  CONNECTING_BLUETOOTH,
-  GATHERING_NETWORK,
-  DUPLICATES_FOUND,
-  AVAILABLE_WIFI_LIST,
-  WIFI_PASSWORD,
-  CONNECTING_WIFI,
-  CUSTOMIZE_SETTINGS,
-  VIEW_SETTINGS,
-  UPDATE_SETTINGS,
-  STEP_ON,
-  MEASUREMENT,
-  SCALE_CONNECTED,
+
+/**
+ * Steps for Bluetooth + WiFi scale setup flow.
+ */
+sealed class BtWifiSetupStep {
+    object ScaleInfo : BtWifiSetupStep()
+    object Permissions : BtWifiSetupStep()
+    object Wakeup : BtWifiSetupStep()
+    object ConnectingBluetooth : BtWifiSetupStep()
+    object GatheringNetwork : BtWifiSetupStep()
+    object DuplicatesFound : BtWifiSetupStep()
+    object AvailableWifiList : BtWifiSetupStep()
+    data class WifiPassword(val ssid: String) : BtWifiSetupStep()
+    object ConnectingWifi : BtWifiSetupStep()
+    object CustomizeSettings : BtWifiSetupStep()
+    object ViewSettings : BtWifiSetupStep()
+    object UpdateSettings : BtWifiSetupStep()
+    object StepOn : BtWifiSetupStep()
+    object Measurement : BtWifiSetupStep()
+    object ScaleConnected : BtWifiSetupStep()
 }
 
-enum class WifiScaleSetupStep {
-  SCALE_INFO,
-  PERMISSIONS,
-  WIFI_PASSWORD,
-  SELECT_USER,
-  ACTIVATE_SCALE,
-  CONNECTING_SCALE,
-  ERROR_GUIDE,
-  TROUBLE_SHOOTING,
-  SWITCH_WIFI,
-  SCALE_COUNTS,
-  STEP_ON,
-  SCALE_CONNECTED,
+/**
+ * Steps for WiFi-only scale setup flow.
+ */
+sealed class WifiScaleSetupStep {
+    object ScaleInfo : WifiScaleSetupStep()
+    object Permissions : WifiScaleSetupStep()
+    data class WifiPassword(val ssid: String) : WifiScaleSetupStep()
+    object SelectUser : WifiScaleSetupStep()
+    object ActivateScale : WifiScaleSetupStep()
+    object ConnectingScale : WifiScaleSetupStep()
+    object ErrorGuide : WifiScaleSetupStep()
+    object TroubleShooting : WifiScaleSetupStep()
+    object SwitchWifi : WifiScaleSetupStep()
+    object ScaleCounts : WifiScaleSetupStep()
+    object StepOn : WifiScaleSetupStep()
+    object ScaleConnected : WifiScaleSetupStep()
 }
 
-enum class BtScaleSetupStep {
-  SCALE_INFO,
-  PERMISSIONS,
-  SELECT_USER,
-  CONNECTING_BLUETOOTH,
-  FIND_USER,
-  STEP_ON,
-  SETUP_FINISHED,
+/**
+ * Steps for Bluetooth-only scale setup flow.
+ */
+sealed class BtScaleSetupStep {
+    object ScaleInfo : BtScaleSetupStep()
+    object Permissions : BtScaleSetupStep()
+    object SelectUser : BtScaleSetupStep()
+    object ConnectingBluetooth : BtScaleSetupStep()
+    object FindUser : BtScaleSetupStep()
+    object StepOn : BtScaleSetupStep()
+    object SetupFinished : BtScaleSetupStep()
 }
 
-enum class LcbtScaleSetupStep {
-  SCALE_INFO,
-  PERMISSIONS,
-  STEP_ON,
-  CONNECTING_BLUETOOTH,
-  SETUP_FINISHED,
+/**
+ * Steps for LCBT scale setup flow.
+ */
+sealed class LcbtScaleSetupStep {
+    object ScaleInfo : LcbtScaleSetupStep()
+    object Permissions : LcbtScaleSetupStep()
+    object StepOn : LcbtScaleSetupStep()
+    object ConnectingBluetooth : LcbtScaleSetupStep()
+    object SetupFinished : LcbtScaleSetupStep()
 }
 
-enum class AppsyncScaleSetupStep {
-  SCALE_INFO,
-  PERMISSIONS,
-  ACTIVATE_SCALE,
-  ADD_INFO,
-  STEP_ON,
-  OPEN_CAMERA,
-  SETUP_FINISHED,
+/**
+ * Steps for Appsync scale setup flow.
+ */
+sealed class AppsyncScaleSetupStep {
+    object ScaleInfo : AppsyncScaleSetupStep()
+    object Permissions : AppsyncScaleSetupStep()
+    object ActivateScale : AppsyncScaleSetupStep()
+    object AddInfo : AppsyncScaleSetupStep()
+    object StepOn : AppsyncScaleSetupStep()
+    object OpenCamera : AppsyncScaleSetupStep()
+    object SetupFinished : AppsyncScaleSetupStep()
 }
 
+/**
+ * Enum for customize settings steps.
+ */
 enum class CustomizeSettings(
-  val value: Int,
+    val value: Int,
 ) {
-  NONE(-1),
-  DASHBOARD_METRICS(0),
-  SCALE_METRICS(1),
-  SCALE_MODE(2),
-  SCALE_USERNAME(3),
+    NONE(-1),
+    DASHBOARD_METRICS(0),
+    SCALE_METRICS(1),
+    SCALE_MODE(2),
+    SCALE_USERNAME(3),
 }

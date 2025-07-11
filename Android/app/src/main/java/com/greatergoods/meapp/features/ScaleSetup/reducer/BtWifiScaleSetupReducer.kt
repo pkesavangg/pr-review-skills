@@ -42,7 +42,7 @@ data class WifiPasswordFormControls(
  * State for BtWifiScaleSetupScreen.
  */
 data class BtWifiScaleSetupState(
-  val currentStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
+  val currentStep: BtWifiSetupStep = BtWifiSetupStep.ScaleInfo,
   val sku: String = "0412",
   val steps: List<BtWifiSetupStep> = listOf(
     BtWifiSetupStep.SCALE_INFO,

@@ -7,9 +7,9 @@ import com.greatergoods.meapp.features.ScaleSetup.enums.BtScaleSetupStep
  * State for BtScaleSetupScreen.
  */
 data class BtScaleSetupState(
-  val currentStep: BtScaleSetupStep = BtScaleSetupStep.SCALE_INFO,
+  val currentStep: BtScaleSetupStep = BtScaleSetupStep.ScaleInfo,
   val sku: String = "0375",
-  val steps: List<BtScaleSetupStep> = listOf(BtScaleSetupStep.SCALE_INFO),
+  val steps: List<BtScaleSetupStep> = listOf(BtScaleSetupStep.ScaleInfo),
   val isLoading: Boolean = false,
   val error: String? = null,
   val isSetupFinished: Boolean = false,

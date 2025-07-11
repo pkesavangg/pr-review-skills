@@ -109,7 +109,7 @@ fun BtScaleSetupScreenContent(
               .padding(MeTheme.spacing.md),
         ) {
           when (step) {
-            BtScaleSetupStep.SCALE_INFO -> {
+            BtScaleSetupStep.ScaleInfo -> {
               ScaleInfo(sku = state.sku)
             }
             // TODO: Add other steps as needed

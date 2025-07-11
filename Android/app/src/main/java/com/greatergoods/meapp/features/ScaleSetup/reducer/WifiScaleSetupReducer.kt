@@ -7,9 +7,9 @@ import com.greatergoods.meapp.features.ScaleSetup.enums.WifiScaleSetupStep
  * State for WifiScaleSetupScreen.
  */
 data class WifiScaleSetupState(
-  val currentStep: WifiScaleSetupStep = WifiScaleSetupStep.SCALE_INFO,
+  val currentStep: WifiScaleSetupStep = WifiScaleSetupStep.ScaleInfo,
   val sku: String = "0384",
-  val steps: List<WifiScaleSetupStep> = listOf(WifiScaleSetupStep.SCALE_INFO),
+  val steps: List<WifiScaleSetupStep> = listOf(WifiScaleSetupStep.ScaleInfo),
   val isLoading: Boolean = false,
   val error: String? = null,
   val isSetupFinished: Boolean = false,

@@ -7,6 +7,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.CustomizeScaleSettings
@@ -31,7 +32,6 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import kotlinx.coroutines.delay
 
 @Composable
 fun BtWifiScaleSetupScreen(
@@ -56,7 +56,7 @@ fun BtWifiScaleSetupScreenContent(
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
-  val lang = BtWifiScaleSetupStrings
+  BtWifiScaleSetupStrings
 
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
@@ -65,7 +65,7 @@ fun BtWifiScaleSetupScreenContent(
       try {
         pagerState.animateScrollToPage(state.currentStepIndex)
       } finally {
-        delay(100)
+        withFrameNanos { }
         isAnimating.value = false
       }
     }
@@ -93,12 +93,10 @@ fun BtWifiScaleSetupScreenContent(
             )
           }
         }
-
         else -> null
-
       },
       middleContent = when (state.currentStep) {
-        BtWifiSetupStep.SCALE_CONNECTED -> {
+        is BtWifiSetupStep.ScaleConnected -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
@@ -142,17 +140,15 @@ fun BtWifiScaleSetupScreenContent(
               },
             )
           }
-        } // No next button on wakeup step
+        }
         else -> null
       },
       pageContent = { step ->
-
         when (step) {
-          BtWifiSetupStep.SCALE_INFO -> {
+          is BtWifiSetupStep.ScaleInfo -> {
             ScaleInfo(sku = state.sku)
           }
-
-          BtWifiSetupStep.WAKEUP -> {
+          is BtWifiSetupStep.Wakeup -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.WakeupScale.Title(state.currentStepConnectionState),
@@ -169,8 +165,7 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
-
-          BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
+          is BtWifiSetupStep.ConnectingBluetooth -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingBluetooth.Title(state.currentStepConnectionState),
@@ -184,8 +179,7 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
-
-          BtWifiSetupStep.GATHERING_NETWORK -> {
+          is BtWifiSetupStep.GatheringNetwork -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
@@ -293,8 +287,7 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
-
-          BtWifiSetupStep.SCALE_CONNECTED -> {
+          is BtWifiSetupStep.ScaleConnected -> {
             ScaleSetupLoader(
               title = BtWifiScaleSetupStrings.ScaleConnected.Title,
               subtitle = BtWifiScaleSetupStrings.ScaleConnected.Subtitle,
@@ -303,13 +296,11 @@ fun BtWifiScaleSetupScreenContent(
               contentButtonClick = { onIntent(BtWifiScaleSetupIntent.OpenAccucheckModal) },
             )
           }
-
           // TODO: Add other steps as needed
           else -> {
             // Placeholder for other steps
           }
         }
-
       },
     )
   }
