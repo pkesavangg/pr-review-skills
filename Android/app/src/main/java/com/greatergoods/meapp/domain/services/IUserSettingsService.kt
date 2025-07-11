@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.domain.services
 
-import com.greatergoods.meapp.domain.model.storage.Account.Account
-
 /**
  * Service interface for user settings operations.
  * Handles business logic for streak and weightless mode settings.
@@ -13,7 +11,7 @@ interface IUserSettingsService {
      * @param isStreakOn Boolean indicating if streak should be enabled
      * @return Updated account with new streak settings
      */
-    suspend fun toggleStreakSetting(isStreakOn: Boolean): Account?
+    suspend fun toggleStreakSetting(isStreakOn: Boolean)
 
     /**
      * Toggles the weightless setting for the active account.
@@ -24,5 +22,5 @@ interface IUserSettingsService {
     suspend fun toggleWeightlessSetting(
         isWeightlessOn: Boolean,
         weightlessWeight: Double? = null
-    ): Account?
+    )
 }

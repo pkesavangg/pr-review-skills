@@ -141,65 +141,93 @@ interface AccountDao {
     @Update
     suspend fun updateIntegrationsSettings(settings: IntegrationsSettingsEntity)
 
-    // Sync Operations
+    /**
+     * Gets the active account if it is not synced.
+     * @return Flow of the active account with all relations if it exists and is not synced, otherwise null
+     */
     @Transaction
-    @Query("SELECT * FROM account WHERE isSynced = 0")
-    fun getUnsyncedAccounts(): Flow<List<AccountEntity>>
+    @Query("SELECT * FROM account WHERE isActiveAccount = 1 AND isSynced = 0")
+    fun getUnsyncedActiveAccount(): Flow<Account?>
 
+    /**
+     * Gets the active account if it has unsynced body composition data.
+     * @return Flow of the active account with all relations if it exists and has unsynced body comp data, otherwise null
+     */
     @Transaction
     @Query(
         """
         SELECT * FROM account
-        WHERE accountId IN (
+        WHERE isActiveAccount = 1
+        AND (accountId IN (
             SELECT accountId FROM weight_comp_settings WHERE isSynced = 0
-        ) OR isSynced = 0
-    """,
+        ) OR isSynced = 0)
+        """
     )
-    fun getUnsyncedBodyCompAccounts(): Flow<List<Account>>
+    fun getUnsyncedActiveBodyCompAccount(): Flow<Account?>
 
+    /**
+     * Gets the active account if it has unsynced notification settings.
+     * @return Flow of the active account with all relations if it exists and has unsynced notification settings, otherwise null
+     */
     @Transaction
     @Query(
         """
         SELECT * FROM account
-        WHERE accountId IN (
+        WHERE isActiveAccount = 1
+        AND (accountId IN (
             SELECT accountId FROM notification_settings WHERE isSynced = 0
-        ) OR isSynced = 0
-    """,
+        ) OR isSynced = 0)
+        """
     )
-    fun getUnsyncedNotificationAccounts(): Flow<List<Account>>
+    fun getUnsyncedActiveNotificationAccount(): Flow<Account?>
 
+    /**
+     * Gets the active account if it has unsynced streak settings.
+     * @return Flow of the active account with all relations if it exists and has unsynced streak settings, otherwise null
+     */
     @Transaction
     @Query(
         """
         SELECT * FROM account
-        WHERE accountId IN (
+        WHERE isActiveAccount = 1
+        AND accountId IN (
             SELECT accountId FROM streaks_settings WHERE isSynced = 0
         )
-    """,
+        """
     )
-    fun getUnsyncedStreakAccounts(): Flow<List<Account>>
+    fun getUnsyncedActiveStreakAccount(): Flow<Account?>
 
+    /**
+     * Gets the active account if it has unsynced weightless settings.
+     * @return Flow of the active account with all relations if it exists and has unsynced weightless settings, otherwise null
+     */
     @Transaction
     @Query(
         """
         SELECT * FROM account
-        WHERE accountId IN (
+        WHERE isActiveAccount = 1
+        AND accountId IN (
             SELECT accountId FROM weightless_settings WHERE isSynced = 0
         )
-    """,
+        """
     )
-    fun getUnsyncedWeightlessAccounts(): Flow<List<Account>>
+    fun getUnsyncedActiveWeightlessAccount(): Flow<Account?>
 
+    /**
+     * Gets the active account if it has unsynced goal settings.
+     * @return Flow of the active account with all relations if it exists and has unsynced goal settings, otherwise null
+     */
     @Transaction
     @Query(
         """
         SELECT * FROM account
-        WHERE accountId IN (
+        WHERE isActiveAccount = 1
+        AND accountId IN (
             SELECT accountId FROM goal_settings WHERE isSynced = 0
         )
-    """,
+        """
     )
-    fun getUnsyncedGoalAccounts(): Flow<List<Account>>
+    fun getUnsyncedActiveGoalAccount(): Flow<Account?>
 
     @Query("UPDATE account SET isSynced = 1")
     suspend fun markAllAccountsSynced()

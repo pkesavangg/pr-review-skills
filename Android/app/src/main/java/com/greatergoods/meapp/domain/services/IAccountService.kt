@@ -79,7 +79,7 @@ interface IAccountService {
      * @param profileUpdateRequest The profile data to update
      * @return The updated [Account] or null if update fails
      */
-    suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest): Account?
+    suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest)
 
     /**
      * Checks login status for the active account by calling the API and updating local data.

@@ -12,9 +12,13 @@ import SwiftUI
 struct HistoryMonthListScreen: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var historyStore = HistoryStore()
+    @EnvironmentObject var historyStore: HistoryStore
+    @EnvironmentObject var router: Router<HistoryRoute>
     @State private var selectedEntry: Entry?
     @State private var selectedMetric: BodyMetric?
+    @State private var showDeleteAlert = false
+    @State private var entryToDelete: Entry? = nil
+    @State private var openItemID: UUID? = nil
 
     let month: HistoryMonth
 
@@ -31,8 +35,8 @@ struct HistoryMonthListScreen: View {
         VStack(spacing: 0) {
           NavbarHeaderView<Image, Image>(
                 title: title,
-                leadingContent: { Image(AppAssets.xmark) },
-                onLeadingTap: { dismiss() }
+                leadingContent: { Image(AppAssets.chevronLeft) },
+                onLeadingTap: { router.navigateBack() }
             )
             .background(theme.backgroundPrimary)
 
@@ -41,6 +45,7 @@ struct HistoryMonthListScreen: View {
                 .edgesIgnoringSafeArea(.bottom)
         }
         .background(theme.backgroundSecondary)
+        .navigationBarBackButtonHidden(true)
         .onAppear {
             historyStore.selectMonth(month)
         }
@@ -71,12 +76,15 @@ struct HistoryMonthListScreen: View {
                                   historyStore.toggleEntry(entry)
                               },
                               onDelete: {
-                                  historyStore.deleteEntry(entry)
+                                  historyStore.showDeleteEntryAlert(entry: entry, onCancel: {
+                                    // Let the swipe modifier handle closing naturally
+                                  })
                               },
                               onMetricTap: { entry, metric in
                                   selectedEntry = entry
                                   selectedMetric = metric
-                              }
+                              },
+                              openItemID: $openItemID
                           )
                       }
                   }

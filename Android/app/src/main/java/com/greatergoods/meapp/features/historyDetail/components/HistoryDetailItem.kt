@@ -33,8 +33,8 @@ import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppScaffold
-import com.greatergoods.meapp.features.common.components.DraggableListItemScope
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.SwipeableListItemScope
 import com.greatergoods.meapp.features.common.helper.StatHelper.getMetrics
 import com.greatergoods.meapp.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.getDate
@@ -44,14 +44,14 @@ import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 
 @Composable
-fun DraggableListItemScope.HistoryDetailItem(
+fun SwipeableListItemScope.HistoryDetailItem(
     item: ScaleEntry,
     modifier: Modifier = Modifier,
 ) {
     val bodyMetric = fromScaleEntry(item)
     var isExpanded by remember { mutableStateOf(false) }
 
-    Draggable {
+    Swipeable {
         HistoryDetailItemHeader(
             item = item,
             canExpand = getMetrics(bodyMetric).isNotEmpty(),
@@ -171,7 +171,7 @@ fun HistoryDetailItemHeader(
 
 @PreviewTheme
 @Composable
-private fun DraggableListItemScope.HistoryDetailItemPreview() {
+private fun SwipeableListItemScope.HistoryDetailItemPreview() {
     MeAppTheme {
         AppScaffold("") {
             HistoryDetailItem(

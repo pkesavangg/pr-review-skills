@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -14,12 +15,14 @@ fun MEImage(
     darkMode: Int,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
+    contentScale: ContentScale = ContentScale.Fit
 ) {
     val image = if (isSystemInDarkTheme()) darkMode else lightMode
     Image(
         painter = painterResource(id = image),
         contentDescription = contentDescription,
         modifier = modifier,
+        contentScale = contentScale
     )
 }
 

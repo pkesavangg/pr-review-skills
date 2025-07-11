@@ -13,6 +13,7 @@ import com.greatergoods.meapp.domain.repository.IEntryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -64,21 +65,20 @@ class EntryRepository @Inject constructor(
     /**
      * Gets an entry by its ID.
      */
-    override suspend fun getEntryById(id: Long): Entry? = entryDao.getEntryById(id)?.toEntry()
+    override suspend fun getEntryById(id: Long): Entry? =
+        entryDao.getEntryById(id)?.toEntry()
 
     /**
      * Gets the latest valid entry for an account.
      */
     override suspend fun getLatestEntry(accountId: String): Flow<Entry>? =
-        entryDao.getLatestEntry(accountId)?.map { flow ->
-            flow.toEntry()
-        }
+        entryDao.getLatestEntry(accountId)?.mapNotNull { it.toEntry() }
 
     /**
      * Gets all valid entries for an account.
      */
     override suspend fun getEntriesByAccount(accountId: String): List<Entry> =
-        entryDao.getEntriesByAccount(accountId).map { it.toEntry() }
+        entryDao.getEntriesByAccount(accountId).mapNotNull { it.toEntry() }
 
     /**
      * Gets valid entries for an account within a time range.
@@ -87,16 +87,17 @@ class EntryRepository @Inject constructor(
         accountId: String,
         startTime: String,
         endTime: String
-    ): Flow<List<Entry>> = entryDao.getEntriesByTimeRange(accountId, startTime, endTime).map { flow ->
-        flow.map { it.toEntry() }
-    }
+    ): Flow<List<Entry>> =
+        entryDao.getEntriesByTimeRange(accountId, startTime, endTime).map { flow ->
+            flow.mapNotNull { it.toEntry() }
+        }
 
     /**
      * Gets valid entries for an account by device type.
      */
     override fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>> =
         entryDao.getEntriesByDeviceType(accountId, deviceType).map { flow ->
-            flow.map { it.toEntry() }
+            flow.mapNotNull { it.toEntry() }
         }
 
     /**
@@ -111,7 +112,7 @@ class EntryRepository @Inject constructor(
         calendar.add(Calendar.DAY_OF_YEAR, -days)
         val startDate = calendar.timeInMillis.toString()
         return entryDao.getEntriesByTimeRange(accountId, startDate, endDate).map { flow ->
-            flow.map { it.toEntry() }
+            flow.mapNotNull { it.toEntry() }
         }
     }
 
@@ -124,14 +125,14 @@ class EntryRepository @Inject constructor(
      */
     override fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>> =
         entryDao.getEntriesByOperationType(accountId, operationType).map { flow ->
-            flow.map { it.toEntry() }
+            flow.mapNotNull { it.toEntry() }
         }
 
     /**
      * Gets all unsynced entries for an account.
      */
     override suspend fun getUnSynced(accountId: String): List<Entry> =
-        entryDao.getUnSynced(accountId).map { it.toEntry() }
+        entryDao.getUnSynced(accountId).mapNotNull { it.toEntry() }
 
     /**
      * Increments the attempts count for an entry.
@@ -142,7 +143,7 @@ class EntryRepository @Inject constructor(
      * Gets failed operations for an account.
      */
     override suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<Entry> =
-        entryDao.getFailedOperations(accountId, maxAttempts).map { it.toEntry() }
+        entryDao.getFailedOperations(accountId, maxAttempts).mapNotNull { it.toEntry() }
 
     /**
      * Clears all unsynced entries for an account.
@@ -191,7 +192,7 @@ class EntryRepository @Inject constructor(
      */
     override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>> =
         entryDao.getMonthDetail(accountId, month).map { views ->
-            views.map { it.toEntry() }
+            views.mapNotNull { it.toEntry() }
         }
 
     /**
@@ -234,4 +235,47 @@ class EntryRepository @Inject constructor(
      */
     override fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
         entryDao.getDaywiseBodyScaleLatestWithJoin(accountId)
+
+    /**
+     * Get the oldest entry for an account.
+     * @param accountId The account ID
+     * @return The oldest entry if found, null otherwise
+     */
+    override suspend fun getOldestEntry(accountId: String): Entry? =
+        entryDao.getOldestEntry(accountId)?.toEntry()
+
+    /**
+     * Get entry timestamps for streak calculation.
+     * Returns one entry timestamp per day, ordered with newest first.
+     * @param accountId The account ID
+     * @return List of entry timestamps for streak calculation
+     */
+    override suspend fun getStreakData(accountId: String): List<String> =
+        entryDao.getStreakData(accountId)
+
+    /**
+     * Get the total count of entries for an account.
+     * @param accountId The account ID
+     * @return The total count of entries
+     */
+    override suspend fun getTotalCount(accountId: String): Int =
+        entryDao.getTotalCount(accountId)
+
+    /**
+     * Get the longest streak count for an account.
+     * @param accountId The account ID
+     * @return The longest streak count
+     */
+    override suspend fun getLongestStreakCount(accountId: String): Int =
+        entryDao.getLongestStreakCount(accountId)
+
+    /**
+     * Get entries for an account in a specific date range (inclusive).
+     * @param accountId The account ID
+     * @param startDate The start date (ISO 8601 string)
+     * @param endDate The end date (ISO 8601 string)
+     * @return List of entries in the date range
+     */
+    override suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<Entry> =
+        entryDao.getEntriesInRange(accountId, startDate, endDate).mapNotNull { it.toEntry() }
 }

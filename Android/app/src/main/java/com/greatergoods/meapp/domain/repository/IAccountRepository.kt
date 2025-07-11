@@ -63,7 +63,7 @@ interface IAccountRepository {
      * @param profileData The profile data to update
      * @return The updated Account
      */
-    suspend fun updateProfile(profileData: ProfileUpdateRequest): Account
+    suspend fun updateProfile(profileData: ProfileUpdateRequest)
 
     /**
      * Refreshes the token via API and returns a Token.
@@ -89,7 +89,7 @@ interface IAccountRepository {
      * @param partialUpdate Partial account data to update
      * @return The updated Account
      */
-    suspend fun updateAccount(accountId: String, partialUpdate: PartialAccount): Account
+    suspend fun updateAccount(accountId: String, partialUpdate: PartialAccount)
 
     /**
      * Updates account info by ID using the provided account entity.
@@ -98,7 +98,7 @@ interface IAccountRepository {
      * @param accountInfo The account info from API response
      * @return The updated Account
      */
-    suspend fun updateAccountInfo(accountId: String, accountInfo: AccountInfo): Account
+    suspend fun updateAccountInfo(accountId: String, accountInfo: AccountInfo)
 
     /**
      * Deactivates all accounts except the given account ID.
@@ -155,10 +155,10 @@ interface IAccountRepository {
     fun getActiveAccount(): Flow<Account?>
 
     /**
-     * Gets all accounts with unsynced data (isSynced = false) from the database.
-     * @return List of accounts that need to be synced
+     * Gets the active account if it is not synced.
+     * @return The active account if it exists and is not synced, otherwise null
      */
-    suspend fun getUnsyncedAccounts(): List<Account>
+    suspend fun getUnsyncedActiveAccount(): Account?
 
     /**
      * Logs out the account both remotely (API) and locally (DB, tokens).
@@ -218,4 +218,11 @@ interface IAccountRepository {
      * Deletes the current user account via API and clears local data.
      */
     suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean)
+
+    /**
+     * Syncs all account settings with server data.
+     * Updates local database with the latest settings from server.
+     * @param accountInfo The account info from server containing latest settings
+     */
+    suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo)
 }
