@@ -88,6 +88,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
+                self?.handlePermissionChange()
             }
             .store(in: &cancellables)
         
@@ -133,8 +134,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
         
-        // Set the starting step (defaults to intro, but may be connectingBluetooth for direct flow)
-        let startStep: BtWifiScaleSetupStep = discoveredScale != nil && discoveryEvent != nil ? .connectingBluetooth : .intro
+        // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
+        let startStep: BtWifiScaleSetupStep = {
+            if discoveredScale != nil && discoveryEvent != nil {
+                // When opened from sheet modal, go to permissions if enabled, otherwise connectingBluetooth
+                return arePermissionsEnabled() ? .permissions : .connectingBluetooth
+            } else {
+                // Normal flow starts at intro
+                return .intro
+            }
+        }()
         if let idx = steps.firstIndex(of: startStep) {
             currentStepIndex = idx
         } else {
@@ -184,6 +193,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // For now, just placeholder
     }
     
+    /// Handles permission changes during the setup flow
+    private func handlePermissionChange() {
+        let showError = !hasAllBtPermissions()
+        if showError {
+            if currentStep == .wakeup {
+                // Navigate back to permissions screen if on wakeup step
+                if let permissionStepIndex = steps.firstIndex(of: .permissions) {
+                    currentStepIndex = permissionStepIndex
+                }
+            }
+            // TODO: Handle wifi error screen and measurement error screen later
+            // if currentStep == .gatheringNetwork {
+            //     gotoWifiErrorScreen()
+            // }
+            // if currentStep == .stepOn && scaleSetupError != .updateSettingsFailed {
+            //     gotoMeasurementErrorScreen()
+            // }
+        }
+    }
+    
     // MARK: - Helper Methods
     private func stepName(for step: BtWifiScaleSetupStep) -> String {
         switch step {
@@ -225,6 +254,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // For BtWifi, we need both Bluetooth and Location permissions
         permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED &&
         permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED && isNetworkConnected
+    }
+    
+    /// Checks if all required permissions are available
+    private func hasAllBtPermissions() -> Bool {
+        return permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED &&
+        permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
     }
     
     /// Updates `isNextEnabled` depending on the current step and permission state.
