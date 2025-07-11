@@ -61,10 +61,9 @@ sealed class AppRoute : NavKey {
   /**
    * Authentication-related navigation routes.
    */
+
   @Serializable
-  sealed class Auth :
-    AppRoute(),
-    PublicRoute {
+  sealed class Auth : AppRoute(), PublicRoute {
     @Serializable
     data object Landing : Auth()
 
@@ -111,6 +110,9 @@ sealed class AppRoute : NavKey {
 
     @Serializable
     data object DebugMenu : AccountSettings()
+
+    @Serializable
+    data object AppPermissions : AccountSettings()
 
     @Serializable
     data class ScaleDetails(

@@ -208,7 +208,7 @@ fun SettingsScreenContent(
                             type = SettingsItemType.Action(),
                             onClick = {
                                 coroutineScope.launch {
-                                    // backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
+                                    backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
                                 }
                             },
                         ),

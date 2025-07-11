@@ -30,10 +30,12 @@ object AppIcons {
         val DragHandler = R.drawable.ic_drag_handle
     }
 
-  object Outlined {
-    val Help = R.drawable.ic_info
-    val Close = R.drawable.ic_close_outlined
-  }
+    object Outlined {
+        val Help = R.drawable.ic_info
+        val Close = R.drawable.ic_close_outlined
+        val CheckedCircle = R.drawable.ic_circle_check_outlined
+        val MinusCircle = R.drawable.ic_circle_minus_outlined
+    }
 
   object Filled {
     val Plus = R.drawable.ic_plus_selected
