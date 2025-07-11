@@ -183,6 +183,9 @@ struct MyScalesScreen: View {
                         case .lcbt:
                             A6ScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
+                        case .btWifiR4:
+                            BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil)
+                                .interactiveDismissDisabled(true)
                         default:
                             // TODO: Handle other setup types
                             VStack(spacing: .spacingMD) {

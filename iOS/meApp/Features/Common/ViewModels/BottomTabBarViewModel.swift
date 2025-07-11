@@ -122,12 +122,20 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Connect Action from Scale Discovered Sheet
     func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?) {
         let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
-        // TODO: Need to handle for 0412 sku
-        guard sku == "0378" || sku == "0383" else {
+        guard !sku.isEmpty, let setupType = event?.deviceInfo.setupType else { return }
+        bluetoothService.isSetupInProgress = true
+        
+        switch setupType {
+        case .lcbt:
+            setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event)
+        case .btWifiR4:
+            setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event)
+        default:
+            // Handle other setup types if needed
+            bluetoothService.isSetupInProgress = false
             return
         }
-        bluetoothService.isSetupInProgress = true
-        setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event)
+        
         // Ensure sheet dismissed
         dismissDiscoveredScaleSheet()
     }
