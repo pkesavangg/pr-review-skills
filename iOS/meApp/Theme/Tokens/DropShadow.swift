@@ -45,7 +45,7 @@ public extension View {
     }
     
     /// Apply theme-based glow shadow using theme.glow color (legacy - use themeShadow instead)
-    func glowDropShadow() -> some View {
+    func themeDropShadow() -> some View {
         self.modifier(ThemeGlowModifier())
     }
     
@@ -107,7 +107,7 @@ struct ThemeGlowModifier: ViewModifier {
  ```
  RoundedRectangle(cornerRadius: .radiusMD)
  .fill(Color.pink)
- .glowDropShadow()
+ .themeDropShadow()
  ```
  
  4. Layer blur:

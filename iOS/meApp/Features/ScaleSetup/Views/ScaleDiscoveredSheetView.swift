@@ -10,7 +10,6 @@ import SwiftUI
 /// Half-sheet UI shown when a new A6 Bluetooth scale is discovered.
 struct ScaleDiscoveredSheetView: View {
     @Environment(\.appTheme) private var theme
-    @EnvironmentObject var themeManager: Theme
     
     // Callbacks to inform the presenter about dismissal / connect actions.
     let onClose: () -> Void
@@ -55,7 +54,7 @@ struct ScaleDiscoveredSheetView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 175, height: 175)
-                        .glowDropShadow()
+                        .themeDropShadow()
                 }
                 
                 // Title
