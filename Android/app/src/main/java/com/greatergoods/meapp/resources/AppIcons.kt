@@ -3,32 +3,36 @@ package com.greatergoods.meapp.resources
 import com.greatergoods.meapp.R
 
 object AppIcons {
-    object Default {
-        val Close = R.drawable.ic_close
-        val Delete = R.drawable.ic_delete
-        val EyeOpened = R.drawable.ic_eye_open
-        val EyeClosed = R.drawable.ic_eye_close
-        val Banner = R.drawable.weight_gurus_banner
-        val Logo = R.drawable.ic_logo_light
-        val LogoDark = R.drawable.ic_logo_dark
-        val Plus = R.drawable.ic_plus_outlined
-        val Appsync = R.drawable.ic_appsync
-        val Graph = R.drawable.ic_graph
-        val History = R.drawable.ic_history
-        val Settings = R.drawable.ic_settings
-        val Placeholder = R.drawable.me_placeholder
-        val Stamp = R.drawable.gg_stamp
-        val RightCaret = R.drawable.ic_right_caret
-        val ChevronDown = R.drawable.ic_chevron_down
-        val profile = R.drawable.ic_profile
-        val Exclamation = R.drawable.ic_exclamation
-        val ModalNumber = R.drawable.modal_number
-        val ScalePlaceholder = R.drawable.placeholder_scale
-        val WeightOnlyMode = R.drawable.ic_weight_only
-        val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
-        val UserNameScale = R.drawable.scale_0412_user_name
-        val DragHandler = R.drawable.ic_drag_handle
-    }
+  object Default {
+    val Close = R.drawable.ic_close
+    val Delete = R.drawable.ic_delete
+    val EyeOpened = R.drawable.ic_eye_open
+    val EyeClosed = R.drawable.ic_eye_close
+    val Banner = R.drawable.weight_gurus_banner
+    val Logo = R.drawable.ic_logo
+    val BrandLogo = R.drawable.brand_logo
+    val WgLogo = R.drawable.wg_logo
+    val Plus = R.drawable.ic_plus_outlined
+    val Appsync = R.drawable.ic_appsync
+    val Graph = R.drawable.ic_graph
+    val History = R.drawable.ic_history
+    val Settings = R.drawable.ic_settings
+    val Placeholder = R.drawable.me_placeholder
+    val Stamp = R.drawable.gg_stamp
+    val RightCaret = R.drawable.ic_right_caret
+    val ChevronDown = R.drawable.ic_chevron_down
+    val profile = R.drawable.ic_profile
+    val DragHandler = R.drawable.ic_drag_handle
+    val Exclamation = R.drawable.ic_exclamation
+    val ErrorIndicator = R.drawable.error_indicator
+    val WifiIndicator = R.drawable.wifi_indicator
+    val BluetoothIndicator = R.drawable.bluetooth_indicator
+    val ModalNumber = R.drawable.modal_number
+    val ScalePlaceholder = R.drawable.placeholder_scale
+    val WeightOnlyMode = R.drawable.ic_weight_only
+    val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
+    val UserNameScale = R.drawable.scale_0412_user_name
+  }
 
     object Outlined {
         val Help = R.drawable.ic_info
@@ -49,6 +53,7 @@ object AppIcons {
   object Selection {
     val CircleUnselected = R.drawable.ic_circle_outline
     val CircleSelected = R.drawable.ic_check_circle_filled
+    val CircleClosed = R.drawable.ic_circle_close_filled
   }
 
   object Metrics {
@@ -84,5 +89,10 @@ object AppIcons {
     val Health_Connect_Logo = R.drawable.health_connect_logo
     val Health_Connect_Off = R.drawable.health_connect_off
     val Health_Connect_Off_Dark = R.drawable.health_connect_off_dark
+  }
+
+  object Setup {
+    val Accuchecked = R.drawable.accuchecked
+    val AccucheckLogo = R.drawable.accucheck_logo
   }
 }

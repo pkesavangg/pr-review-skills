@@ -31,7 +31,7 @@ fun ScaleInfo(
   Column(
     modifier = Modifier
       .fillMaxSize()
-      .padding(top = spacing.x3l),
+      .padding(top = spacing.x3l, start = spacing.sm, end = spacing.sm),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     val scaleName = SCALES.find { it -> it.sku == sku }?.productName
