@@ -54,7 +54,7 @@ final class Device {
     var wifiMac: String? // Wifi MAC (R4 scales)
     var isWifiConfigured: Bool? // If WiFi is configured
     var token: String? // Token for scale authentication
-    var isWeighOnlyModeEnabledByOthers: Bool? // If weight-only mode is enabled by other users
+    var isWeighOnlyModeEnabledByOthers: Bool? = false // If weight-only mode is enabled by other users
 
     // Relationships
     @Relationship(deleteRule: .cascade) var bathScale: BathScale?

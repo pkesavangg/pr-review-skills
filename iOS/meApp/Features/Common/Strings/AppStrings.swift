@@ -587,7 +587,7 @@ struct AppAssets {
     static let exclamationMark = "exclamationMark"
     static let weightOnlyMode = "weightOnlyMode"
     static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
-    static let weightOnlyModeAlertIcon = "weightOnlyModeAlertIcon"
+    static let weightOnlyModeAlertIcon = "weightOnlyMode"
     static let scaleIcon = "scaleIcon"
     static let  skuNumberSticker = "skuNumberSticker"
     static let userProfile = "userProfile"

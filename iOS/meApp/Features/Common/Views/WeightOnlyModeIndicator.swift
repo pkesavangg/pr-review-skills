@@ -14,6 +14,7 @@ struct WeightOnlyModeIndicator: View {
     @StateObject private var positionStore = FloatingButtonPositionStore()
     @State private var showWeightOnlyAlert = false
     @State private var isDragging = false
+    @State private var isPressed = false
     @State private var dragOffset = CGSize.zero
     @State private var currentPosition = CGPoint.zero
 
@@ -23,53 +24,66 @@ struct WeightOnlyModeIndicator: View {
     private let activeOpacity: Double = 1.0
     private let animationDuration: Double = 0.3
 
-    var body: some View {
+        var body: some View {
         GeometryReader { geometry in
-            Button(action: {
-                if !isDragging {
-                    showWeightOnlyAlert = true
-                }
-            }) {
-                Image(AppAssets.weightOnlyModeAlertIcon)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: buttonSize, height: buttonSize)
-                    .background(
-                        Circle()
-                            .fill(theme.backgroundPrimary)
-                            .shadow(
-                              color: theme.logoPrimary.opacity(0.3),
-                                radius: 8,
-                                x: 0,
-                                y: 4
-                            )
-                    )
-            }
-            .buttonStyle(PlainButtonStyle())
-            .opacity(isDragging ? activeOpacity : defaultOpacity)
-            .animation(.easeInOut(duration: animationDuration), value: isDragging)
-            .position(
-                x: currentPosition.x + dragOffset.width,
-                y: currentPosition.y + dragOffset.height
-            )
-            .animation(.easeInOut(duration: animationDuration), value: currentPosition)
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        if !isDragging {
-                            isDragging = true
+            // Custom draggable FAB that handles both tap and drag
+            AppIconView(icon: AppAssets.weightOnlyModeAlertIcon, size: IconSize(width: buttonSize * 0.6, height: buttonSize * 0.6))
+                .foregroundColor(theme.backgroundPrimary)
+                .frame(width: buttonSize, height: buttonSize)
+                .background(theme.actionPrimary)
+                .clipShape(Circle())
+                .dropShadow(DropShadow.glowBlack)
+                .scaleEffect(isPressed ? 0.95 : 1.0)
+                .opacity(isDragging ? activeOpacity : defaultOpacity)
+                .animation(.easeInOut(duration: animationDuration), value: isDragging)
+                .animation(.easeInOut(duration: 0.1), value: isPressed)
+                .position(
+                    x: currentPosition.x + dragOffset.width,
+                    y: currentPosition.y + dragOffset.height
+                )
+                .animation(.easeInOut(duration: animationDuration), value: currentPosition)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            if !isDragging && (abs(value.translation.width) > 5 || abs(value.translation.height) > 5) {
+                                isDragging = true
+                            }
+                            if isDragging {
+                                dragOffset = value.translation
+                            }
                         }
-                        dragOffset = value.translation
-                    }
-                    .onEnded { value in
-                        isDragging = false
-                        snapToSide(in: geometry, dragValue: value)
-                        dragOffset = .zero
-                    }
-            )
-            .onAppear {
-                loadInitialPosition(in: geometry)
-            }
+                        .onEnded { value in
+                            if isDragging {
+                                isDragging = false
+                                snapToSide(in: geometry, dragValue: value)
+                                dragOffset = .zero
+                            } else {
+                                // Handle tap - trigger haptic feedback and show alert
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                impactFeedback.impactOccurred()
+                                showWeightOnlyAlert = true
+                            }
+                        }
+                )
+                .simultaneousGesture(
+                    // Press animation gesture
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            if !isPressed {
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    isPressed = true
+                                }
+                            }
+                        }
+                        .onEnded { _ in
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                isPressed = false
+                            }
+                        }
+                )
+                .onAppear {
+                    loadInitialPosition(in: geometry)
+                }
         }
         .allowsHitTesting(true)
         .sheet(isPresented: $showWeightOnlyAlert) {
@@ -113,7 +127,7 @@ struct WeightOnlyModeIndicator: View {
         let isTopSide = position.y < windowHeight / 2
 
         // Calculate offsets based on screen size
-        let topOffset: CGFloat = windowWidth > 500 ? 85 : 65
+        let topOffset: CGFloat = 0
         let bottomOffset: CGFloat = windowWidth > 500 ? 120 : 90
         let leftOffset: CGFloat = windowWidth > 500 ? 20 : 8
         let rightOffset: CGFloat = windowWidth > 500 ? 120 : 90

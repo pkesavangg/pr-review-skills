@@ -6,21 +6,13 @@
 //
 
 import SwiftUI
-import Combine
 
 /// A view that displays an alert when weight-only mode is enabled by other users on connected scales
 /// Based on the Angular weight-only mode alert functionality
 struct WeightOnlyModeAlertView: View {
-    @Injector private var scaleService: ScaleService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var notificationService: NotificationHelperService
+    @StateObject private var store = WeightOnlyModeAlertStore()
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
-
-    @State private var isLoading = false
-    @State private var showingScaleList = false
-    @State private var weightOnlyScales: [Device] = []
-    @State private var cancellables = Set<AnyCancellable>()
 
     var body: some View {
         NavigationView {
@@ -29,9 +21,9 @@ struct WeightOnlyModeAlertView: View {
                 headerView
 
                 // Content
-                if isLoading {
+                if store.isLoading {
                     loadingView
-                } else if weightOnlyScales.isEmpty {
+                } else if store.weightOnlyScales.isEmpty {
                     emptyStateView
                 } else {
                     scalesListView
@@ -56,10 +48,7 @@ struct WeightOnlyModeAlertView: View {
             }
         }
         .onAppear {
-            loadWeightOnlyScales()
-        }
-        .onReceive(bluetoothService.deviceDiscoveredPublisher) { _ in
-            loadWeightOnlyScales()
+            store.loadWeightOnlyScales()
         }
     }
 
@@ -127,7 +116,7 @@ struct WeightOnlyModeAlertView: View {
 
             // Scales list
             LazyVStack(spacing: .spacingMD) {
-                ForEach(weightOnlyScales, id: \.id) { scale in
+                ForEach(store.weightOnlyScales, id: \.id) { scale in
                     scaleItemView(scale: scale)
                 }
             }
@@ -151,7 +140,7 @@ struct WeightOnlyModeAlertView: View {
                 Spacer()
 
                 Button(CommonStrings.enable) {
-                    enableBodyMetricsForScale(scale)
+                    store.enableBodyMetricsForScale(scale)
                 }
                 .font(.body3)
                 .fontWeight(.medium)
@@ -182,59 +171,6 @@ struct WeightOnlyModeAlertView: View {
             .frame(height: 44)
             .background(theme.backgroundSecondary)
             .cornerRadius(.radiusMD)
-        }
-    }
-
-    // MARK: - Actions
-
-        private func loadWeightOnlyScales() {
-        isLoading = true
-
-        Task {
-            do {
-                let allScales = try await scaleService.getDevices()
-                let filteredScales = allScales.filter { scale in
-                    scale.isWeighOnlyModeEnabledByOthers == true
-                }
-
-                await MainActor.run {
-                    self.weightOnlyScales = filteredScales
-                    self.isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    self.weightOnlyScales = []
-                    self.isLoading = false
-                }
-            }
-        }
-    }
-
-    private func enableBodyMetricsForScale(_ scale: Device) {
-        Task {
-            do {
-                // TODO: Implement the actual enabling logic based on scale type
-                // This would typically involve calling the bluetooth service
-                // to temporarily enable body metrics for the session
-
-                await MainActor.run {
-                    notificationService.showToast(
-                        ToastModel(
-                            title: WeightOnlyModeStrings.bodyMetricsEnabledMessage,
-                            message: WeightOnlyModeStrings.temporaryOverride
-                        )
-                    )
-                }
-            } catch {
-                await MainActor.run {
-                    notificationService.showToast(
-                        ToastModel(
-                            title: WeightOnlyModeStrings.enableFailedTitle,
-                            message: WeightOnlyModeStrings.enableFailedMessage
-                        )
-                    )
-                }
-            }
         }
     }
 }

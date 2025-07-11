@@ -16,16 +16,15 @@ struct WeightOnlyModeOverlay: ViewModifier {
     func body(content: Content) -> some View {
         ZStack {
             content
-
-            WeightOnlyModeOverlayContent(bluetoothService: bluetoothService)
+            WeightOnlyModeOverlayContent()
         }
     }
 }
 
 /// Internal view that handles the state and animation
 private struct WeightOnlyModeOverlayContent: View {
-    let bluetoothService: BluetoothService
-    @State private var shouldShowIndicator = false
+//    let bluetoothService: BluetoothService
+    @State private var shouldShowIndicator = true
 
     var body: some View {
         Group {
@@ -36,11 +35,11 @@ private struct WeightOnlyModeOverlayContent: View {
                     .animation(.easeInOut(duration: 0.3), value: shouldShowIndicator)
             }
         }
-        .onReceive(bluetoothService.showWeightOnlyModeAlertPublisher) { shouldShow in
-            withAnimation(.easeInOut(duration: 0.3)) {
-                shouldShowIndicator = shouldShow
-            }
-        }
+//        .onReceive(bluetoothService.showWeightOnlyModeAlertPublisher) { shouldShow in
+//            withAnimation(.easeInOut(duration: 0.3)) {
+//                shouldShowIndicator = shouldShow
+//            }
+//        }
     }
 }
 
