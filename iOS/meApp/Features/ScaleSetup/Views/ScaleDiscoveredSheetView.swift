@@ -90,8 +90,8 @@ struct ScaleDiscoveredSheetView: View {
 }
 
 // MARK: - Local test wrapper
-//#if DEBUG
-struct ScaleDiscoveredSheetTestView: View {
+#if DEBUG
+private struct ScaleDiscoveredSheetTestView: View {
     @State private var showSheet = false
     @Environment(\.appTheme) private var theme
     var body: some View {
@@ -143,4 +143,4 @@ struct ScaleDiscoveredSheetTestView: View {
     ScaleDiscoveredSheetTestView()
         .environmentObject(Theme.shared)
 }
-//#endif
+#endif
