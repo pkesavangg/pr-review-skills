@@ -300,6 +300,7 @@ final class A6ScaleSetupStore: ObservableObject {
     private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
         // Only handle discovery during wake-up step
         guard currentStep == .wakeUp else { return }
+        // Only handle LCBT/A6 scales
         guard event.deviceInfo.setupType == .lcbt else { return }
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
