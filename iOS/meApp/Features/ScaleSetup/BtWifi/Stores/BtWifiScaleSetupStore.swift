@@ -21,10 +21,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     let networkMonitor = NetworkMonitor.shared
     
-    // MARK: - Private
-    @Published private var isNetworkConnected: Bool = true
-    private var cancellables = Set<AnyCancellable>()
-    
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
     /// Callback used by the screen to dismiss itself.
@@ -33,6 +29,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var discoveredScale: Device?
     /// Discovery event from Bluetooth service
     private var discoveryEvent: DeviceDiscoveryEvent?
+    
+    // MARK: - Private
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -75,7 +74,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             .font(.body)
                             .foregroundColor(.secondary)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 )
             }
         }
@@ -95,7 +94,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         networkMonitor.$isConnected
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isConnected in
-                self?.isNetworkConnected = isConnected
                 self?.updateNextEnabled()
             }
             .store(in: &cancellables)
@@ -137,8 +135,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
             if discoveredScale != nil && discoveryEvent != nil {
-                // When opened from sheet modal, go to permissions if enabled, otherwise connectingBluetooth
-                return arePermissionsEnabled() ? .permissions : .connectingBluetooth
+                // When opened from sheet modal, go to connectingBluetooth if enabled, otherwise permissions
+                return arePermissionsEnabled()  ? .connectingBluetooth : .permissions
             } else {
                 // Normal flow starts at intro
                 return .intro
@@ -214,6 +212,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Helper Methods
+    // TODO: Need to remove after all steps are implemented
     private func stepName(for step: BtWifiScaleSetupStep) -> String {
         switch step {
         case .intro:
@@ -253,7 +252,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func arePermissionsEnabled() -> Bool {
         // For BtWifi, we need both Bluetooth and Location permissions
         permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED &&
-        permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED && isNetworkConnected
+        permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED && networkMonitor.isConnected
     }
     
     /// Checks if all required permissions are available
@@ -281,7 +280,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         // Enable the Next button only when all permissions are granted
-        isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && isNetworkConnected
+        isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
     }
     
     /// Returns an adjusted step index by skipping the permissions page when the
@@ -304,4 +303,4 @@ final class BtWifiScaleSetupStore: ObservableObject {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }
-} 
+}
