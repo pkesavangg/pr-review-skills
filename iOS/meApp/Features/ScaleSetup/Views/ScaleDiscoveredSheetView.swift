@@ -10,17 +10,17 @@ import SwiftUI
 /// Half-sheet UI shown when a new A6 Bluetooth scale is discovered.
 struct ScaleDiscoveredSheetView: View {
     @Environment(\.appTheme) private var theme
-
+    
     // Callbacks to inform the presenter about dismissal / connect actions.
     let onClose: () -> Void
     let onConnect: () -> Void
-
+    
     // Internal view-model handling timeout and disconnect logic.
     @StateObject private var viewModel: ScaleDiscoveredSheetViewModel
     
     private let commonLang = CommonStrings.self
     private let lang = ScaleDiscoveredSheetStrings.self
-
+    
     // MARK: – Initialiser
     init(device: Device,
          discoveryEvent: DeviceDiscoveryEvent?,
@@ -32,7 +32,7 @@ struct ScaleDiscoveredSheetView: View {
                                                                              discoveryEvent: discoveryEvent,
                                                                              onTimeout: onClose))
     }
-
+    
     // MARK: – Body
     var body: some View {
         VStack(spacing: .spacingSM) {
@@ -48,24 +48,32 @@ struct ScaleDiscoveredSheetView: View {
             }
             .padding(.top, .spacingSM)
             .padding(.horizontal, .spacingSM)
-
-            VStack(spacing: .spacingSM) {
+            
+            VStack(spacing: .spacingMD) {
                 // Scale artwork
                 if let image = viewModel.discoveryEvent?.deviceInfo.imgPath {
                     Image(image)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 150, height: 150)
-                        .dropShadow(DropShadow.glowWhite)
+                        .dropShadow(DropShadow.glowBlack)
                         .padding(.bottom, .spacingXS)
                 }
-
+                
                 // Title
-                Text(lang.title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .multilineTextAlignment(.center)
-
+                VStack(spacing: .spacingXS) {
+                    Text(lang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                        .multilineTextAlignment(.center)
+                    if let name = viewModel.device.nickname {
+                        Text(name)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                
                 // Connect CTA
                 ButtonView(
                     text: commonLang.connect,
@@ -88,7 +96,7 @@ struct ScaleDiscoveredSheetView: View {
 #if DEBUG
 private struct ScaleDiscoveredSheetTestView: View {
     @State private var showSheet = false
-
+    
     var body: some View {
         ButtonView(text: "Show Sheet", type: .filledPrimary, size: .large, isDisabled: false) {
             showSheet = true
@@ -111,4 +119,4 @@ private struct ScaleDiscoveredSheetTestView: View {
     ScaleDiscoveredSheetTestView()
         .environmentObject(Theme.shared)
 }
-#endif 
+#endif

@@ -13,6 +13,7 @@ struct LoginScreen: View {
     @Environment(\.appTheme) var theme
     @StateObject private var store = LoginStore()
     @FocusState private var focusedField: FocusField?
+    @State private var keyboardHeight: CGFloat = 0
     
     /// Optional e-mail address passed from previous screen to pre-populate the form
     var prefilledEmail: String? = nil
@@ -54,99 +55,119 @@ struct LoginScreen: View {
                 shouldShowBackground: false
             )
             
-            VStack {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .center) {
-                        VStack(alignment: .leading) {
-                            Text(lang.welcomeBack)
-                                .fontOpenSans(.heading4)
-                                .foregroundColor(theme.textHeading)
-                            
-                            // Email Input Field
-                            AppInputField(
-                                config: TextInputConfig(
-                                    label: labels.email,
-                                    inputType: .email,
-                                    errorMessage: store.emailError,
-                                    focusField: .email
-                                ),
-                                value: $store.loginForm.email.value,
-                                focusedField: focusBinding
-                            ) {
-                                store.setEmailTouched()
-                                focusedField = .password
-                            }
-                            
-                            // Password Input Field
-                            AppInputField(
-                                config: TextInputConfig(
-                                    label: labels.password,
-                                    placeholder: lang.passwordPlaceholder,
-                                    inputType: store.showPassword ? .text : .password,
-                                    submitLabel: .done,
-                                    errorMessage: store.passwordError
-                                ),
-                                value: $store.loginForm.password.value,
-                                focusedField: focusBinding
-                            ) {
-                                store.setPasswordTouched()
-                                focusedField = nil
-                                if store.isFormValid {
-                                    Task { await store.logIn() }
+            GeometryReader { geometry in
+                VStack {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .center) {
+                            VStack(spacing: 0) {
+                                Text(lang.welcomeBack)
+                                    .fontOpenSans(.heading4)
+                                    .foregroundColor(theme.textHeading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.bottom, .spacingLG)
+                                VStack {
+                                    // Email Input Field
+                                    AppInputField(
+                                        config: TextInputConfig(
+                                            label: labels.email,
+                                            inputType: .email,
+                                            errorMessage: store.emailError,
+                                            focusField: .email
+                                        ),
+                                        value: $store.loginForm.email.value,
+                                        focusedField: focusBinding
+                                    ) {
+                                        store.setEmailTouched()
+                                        focusedField = .password
+                                    }
+                                    
+                                    // Password Input Field
+                                    AppInputField(
+                                        config: TextInputConfig(
+                                            label: labels.password,
+                                            placeholder: lang.passwordPlaceholder,
+                                            inputType: store.showPassword ? .text : .password,
+                                            submitLabel: .done,
+                                            errorMessage: store.passwordError
+                                        ),
+                                        value: $store.loginForm.password.value,
+                                        focusedField: focusBinding
+                                    ) {
+                                        store.setPasswordTouched()
+                                        focusedField = nil
+                                        if store.isFormValid {
+                                            Task { await store.logIn() }
+                                        }
+                                    }
                                 }
+                                .padding(.bottom, .spacingSM)
+                                
+                                VStack(spacing: .spacingSM) {
+                                    ButtonView(
+                                        text: commonLang.logIn,
+                                        type: .filledPrimary,
+                                        size: .large,
+                                        isDisabled: !store.isFormValid || store.isFormSubmitting,
+                                        action: {
+                                            focusedField = nil
+                                            store.loginForm.email.markAsDirty()
+                                            store.loginForm.password.markAsDirty()
+                                            if store.isFormValid {
+                                                Task { await store.logIn() }
+                                            }
+                                        }
+                                    )
+                                    
+                                    ButtonView(
+                                        text: lang.forgotPassword,
+                                        type: .textPrimary,
+                                        size: .small,
+                                        isDisabled: false,
+                                        action: { store.showPasswordResetPrompt() }
+                                    )
+                                }
+                            }
+                            .padding(.top, .spacingLG)
+                            
+                            
+                            // Only show spacer when keyboard is not visible
+                            if keyboardHeight == 0 {
+                                Spacer()
+                                    .frame(minHeight: geometry.size.height * 0.15)
                             }
                         }
-                        .padding(.vertical, .spacingMD)
-                        
-                        ButtonView(
-                            text: commonLang.logIn,
-                            type: .filledPrimary,
-                            size: .large,
-                            isDisabled: !store.isFormValid || store.isFormSubmitting,
-                            action: {
-                                focusedField = nil
-                                store.loginForm.email.markAsDirty()
-                                store.loginForm.password.markAsDirty()
-                                if store.isFormValid {
-                                    Task { await store.logIn() }
-                                }
-                            }
-                        )
-                        .padding(.bottom, .spacingSM)
-                        
-                        ButtonView(
-                            text: lang.forgotPassword,
-                            type: .textPrimary,
-                            size: .small,
-                            isDisabled: false,
-                            action: { store.showPasswordResetPrompt() }
-                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: keyboardHeight > 0 ? 0 : geometry.size.height - 100)
                     }
-                }
-                .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
-                Spacer()
-                VStack(spacing: .spacingXS / 2) {
-                    Text(lang.byLoggingIn)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.actionSecondary)
-                    HStack {
-                        ButtonView(
-                            text: legalStrings.termsOfService,
-                            type: .textPrimary,
-                            size: .small,
-                            isDisabled: false,
-                            action: { store.openTerms() }
-                        )
-                        Text(legalStrings.andText)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.actionSecondary)
-                        ButtonView(
-                            text: legalStrings.privacyPolicy,
-                            type: .textPrimary,
-                            size: .small,
-                            isDisabled: false,
-                            action: { store.openPrivacy() }
-                        )
+                    .scrollDismissesKeyboard(.interactively)
+                    
+                    // Footer - only visible when keyboard is not shown
+                    if keyboardHeight == 0 {
+                        VStack(spacing: .spacingXS / 2) {
+                            Text(lang.byLoggingIn)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundColor(theme.actionSecondary)
+                            HStack {
+                                ButtonView(
+                                    text: legalStrings.termsOfService,
+                                    type: .textPrimary,
+                                    size: .small,
+                                    isDisabled: false,
+                                    action: { store.openTerms() }
+                                )
+                                Text(legalStrings.andText)
+                                    .fontOpenSans(.subHeading2)
+                                    .foregroundColor(theme.actionSecondary)
+                                ButtonView(
+                                    text: legalStrings.privacyPolicy,
+                                    type: .textPrimary,
+                                    size: .small,
+                                    isDisabled: false,
+                                    action: { store.openPrivacy() }
+                                )
+                            }
+                        }
+                        .padding(.bottom, .spacingSM)
                     }
                 }
             }
@@ -160,6 +181,7 @@ struct LoginScreen: View {
         )
         .presentLoader(loaderData: store.loaderData)
         .presentAlert(alertData: $store.alertData)
+        .keyboardObserver(keyboardHeight: $keyboardHeight)
         .onAppear {
             store.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {
