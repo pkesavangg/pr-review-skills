@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.ScaleSetup.strings
 
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+
 /**
  * Strings for Scale Setup screens.
  */
@@ -35,5 +37,23 @@ object ScaleSetupStrings {
     const val Skip = "Skip"
     const val Save = "Save"
     const val Refresh = "Refresh"
+  }
+
+  object ScalePermissions {
+    const val Title = "Permission Settings"
+    fun Subtitle(setupType: ScaleSetupType) = when (setupType) {
+      ScaleSetupType.AppSync -> "Weight Gurus needs Camera permission to Scan your scale."
+      ScaleSetupType.Wifi,
+      ScaleSetupType.EspTouchWifi -> "Weight Gurus needs Location permissions to connect with your scale."
+
+      ScaleSetupType.BtWifiR4,
+      ScaleSetupType.Bluetooth -> "Weight Gurus requires needs Bluetooth and Location permissions to connect with your scale."
+
+      ScaleSetupType.Lcbt -> "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
+    }
+  }
+
+  object WifiList {
+    const val NoNetworks = "Unable to gather networks.."
   }
 }

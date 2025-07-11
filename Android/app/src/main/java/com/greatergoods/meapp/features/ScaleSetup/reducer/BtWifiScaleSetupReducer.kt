@@ -15,6 +15,7 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.WAKEUP,
     BtWifiSetupStep.CONNECTING_BLUETOOTH,
     BtWifiSetupStep.GATHERING_NETWORK,
+    BtWifiSetupStep.AVAILABLE_WIFI_LIST,
     BtWifiSetupStep.CONNECTING_WIFI,
     BtWifiSetupStep.MEASUREMENT,
     BtWifiSetupStep.SCALE_CONNECTED,

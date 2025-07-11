@@ -12,6 +12,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
+import com.greatergoods.meapp.features.ScaleSetup.components.WifiNetwork
+import com.greatergoods.meapp.features.ScaleSetup.components.WifiSelection
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
@@ -104,6 +106,19 @@ fun BtWifiScaleSetupScreenContent(
               },
             )
           }
+        }
+        BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
+          {
+            AppButton(
+              type = ButtonType.InlineTextPrimary,
+              label = ScaleSetupStrings.SetupButtons.Skip,
+              size = ButtonSize.Small,
+              onClick = {
+                focusManager.clearFocus()
+                onIntent(BtWifiScaleSetupIntent.Skip)
+              },
+            )
+          }
         } // No skip button on wakeup step
         else -> null // No skip button for other steps yet
       },
@@ -177,6 +192,28 @@ fun BtWifiScaleSetupScreenContent(
               secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
+            )
+          }
+
+          BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
+            WifiSelection(
+              wifiList = listOf(WifiNetwork(
+                macAddress = "a8:63:7d:cd:fb:b0",
+                password = "password123",
+                rssi = 41,
+                ssid = "greatergoods1",
+              ),
+                                WifiNetwork(
+                                  macAddress = "b2:45:8e:12:34:56",
+                                  password = "",
+                                  rssi = 35,
+                                  ssid = "3diq2",
+                                ),),
+              title = BtWifiScaleSetupStrings.WifiList.Title,
+              subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
+              configuredSSID = null,
+              onSelect = {},
+              onRefresh = {}
             )
           }
 
