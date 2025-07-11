@@ -68,6 +68,29 @@ struct BottomTabBarView: View {
         }
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
+        // Half-sheet shown when a new scale is discovered via Bluetooth
+        .sheet(item: $viewModel.discoveredScale) { scale in
+            ScaleDiscoveredSheetView(
+                device: scale,
+                discoveryEvent: viewModel.discoveryEvent,
+                onClose: {
+                    viewModel.dismissDiscoveredScaleSheet()
+                },
+                onConnect: {
+                    viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                }
+            )
+            .deviceDiscoverSheetStyle()
+        }
+        // Setup flow presentation
+        .sheet(item: $viewModel.setupPayload, onDismiss: {
+            viewModel.bluetoothService.isSetupInProgress = false
+        }) { payload in
+            A6ScaleSetupScreen(sku: payload.sku,
+                               discoveredScale: payload.scale,
+                               discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+        }
     }
 
     // MARK: - Helpers

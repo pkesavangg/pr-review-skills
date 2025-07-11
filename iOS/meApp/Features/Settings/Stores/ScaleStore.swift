@@ -13,6 +13,7 @@ import Combine
 /// A store to manage scale settings and actions, including details for a selected scale.
 @MainActor
 class ScaleStore: ObservableObject {
+    
     // List State
     @Published var scales: [Device] = []
     @Published var isLoading: Bool = false
@@ -96,8 +97,9 @@ class ScaleStore: ObservableObject {
     // MARK: - Initialization
     @Injector var scaleService: ScaleService
     @Injector var notificationService: NotificationHelperService
-    let alertLang = AlertStrings.self
-    
+    @Injector var bluetoothService: BluetoothService
+    private let alertLang = AlertStrings.self
+    private let loaderLang = LoaderStrings.self
     init() {
         wireForm()
         fetchScales()
@@ -267,8 +269,7 @@ class ScaleStore: ObservableObject {
     }
     
     func deleteScale(scaleId: String, onSuccess: @escaping () -> Void) async {
-        isLoading = true
-        defer { isLoading = false }
+        notificationService.showLoader(LoaderModel(text: loaderLang.deletingScale))
         do {
             try await scaleService.deleteDevice(scaleId, showToast: true)
             await scaleService.syncAllScalesWithRemote()
@@ -284,6 +285,7 @@ class ScaleStore: ObservableObject {
                 errorMessage = error.localizedDescription
             }
         }
+        notificationService.dismissLoader()
     }
     
     func handleScaleDelete(scaleId: String, onSuccess: @escaping () -> Void) {

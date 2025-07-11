@@ -55,12 +55,18 @@ struct CommonStrings {
     static let enable = "Enable"
     static let tryAgain = "Try Again"
     static let support = "Support"
+    static let connect = "Connect"
 }
 
 /// Constants for entry strings used in the app
 struct EntryStrings {
     static let noEntries = "No Entries"
     static let toStart = "To start, connect a scale or add a manual entry."
+}
+
+/// Constants for scale discovered sheet strings used in the app
+struct ScaleDiscoveredSheetStrings {
+    static let title = "New Scale Discovered"
 }
 
 
@@ -120,7 +126,7 @@ struct ToastStrings {
 struct HelpStrings {
     static let question = "Have a question?"
     static let generalHelp = "We're here for you. Contact us and we'll be happy to help."
-    static let viewGuide = "View Getting Started Guide"
+    static let gettingStartedGuide = "Getting Started Guide"
 }
 
 struct HKIntegrationStrings {
@@ -524,6 +530,7 @@ struct LoaderStrings {
     static let loading = "Loading..."
     static let removingIntegration = "Removing integration..."
     static let syncing = "Syncing..."
+    static let deletingScale = "Deleting scale..."
     static let deletingEntry = "Deleting entry..."
 }
 
@@ -613,6 +620,8 @@ struct AppAssets {
     static let ggLogoLarge = "ggLogoLarge"
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
+    static let close = "close"
+    
 
     // MARK: - Scale images
     // MARK: - AppSync series

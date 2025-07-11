@@ -89,8 +89,8 @@ struct GoalStepView: View {
                 }
             }
             .padding(.bottom, .spacing3XL)
-            .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
+        .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
     }
 }
 

@@ -11,10 +11,12 @@ import SwiftUI
 struct HelpModalView: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var themeManager: Theme
+    // MARK: - Product Manual Browser State
+    @State var showProductBrowser: Bool = false
+    @State var productURL: URL? = nil
     
-    var showGuide: Bool = false
+    var skuToNavigate: String?
     let onClose: () -> Void
-    var onGuide: (() -> Void)?
     let appAssets = AppAssets.self
     let appConstants = AppConstants.Help.self
     let helpLang = HelpStrings.self
@@ -48,24 +50,30 @@ struct HelpModalView: View {
             }
             
             VStack(spacing: .spacingSM) {
+                if let sku = skuToNavigate {
+                    ButtonView(text: helpLang.gettingStartedGuide, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                        openProductManual(sku: sku)
+                    }
+                }
                 CallButtonView()
                 EmailButtonView()
             }
             .padding(.top, .spacingLG)
-            
-            // TODO: Need to confirm with UX if we need to show the guide button
-            if showGuide {
-                Text(helpLang.viewGuide)
-                    .fontOpenSans(.link1)
-                    .foregroundColor(theme.actionPrimary)
-                    .onTapGesture {
-                        onGuide?()
-                    }
-            }
         }
         .padding(.spacingMD)
         .background(theme.backgroundSecondary)
         .cornerRadius(.radiusXL)
+        .inAppBrowser(
+            url: productURL ?? URL(string: AppConstants.Product.baseURL)!,
+            isPresented: $showProductBrowser
+        )
+    }
+    
+    /// Presents the in-app browser for the given product SKU.
+    func openProductManual(sku: String) {
+        guard let url = URL(string: "\(AppConstants.Product.baseURL)/\(sku)") else { return }
+        productURL = url
+        showProductBrowser = true
     }
 }
 

@@ -285,7 +285,7 @@ class SettingsStore: ObservableObject {
             return "\(cm) cm"
         case .lb: // Imperial preference – show feet & inches
             let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            return "\(feet[0])' \(feet[1])"  // → 5'8
+            return "\(feet[0])' \(feet[1])”"  // → 5'8”
         case .none:
             return ""
         }

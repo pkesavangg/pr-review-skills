@@ -64,6 +64,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         firmwareUpdateProgressSubject.eraseToAnyPublisher()
     }
     
+    var skipDevices: [String] = []
+    
     // MARK: - Subjects for Scale Discovery
     private let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     private let newEntryReceivedSubject = PassthroughSubject<Entry, Never>()
@@ -76,7 +78,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var activeAccount: Account?
     private var isSmartScanStarted = false
     private var bluetoothScales: [Device] = []
-    private var skipDevices: [String] = []
     private var isWeightOnlyModeAlertDismissed = false
     private var lastProfileUpdateAccountId: String?
     
@@ -86,6 +87,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let entryService: EntryServiceProtocol
     private let logger: LoggerService
     private let ggBleSDK = GGBluetoothSwiftPackage.shared
+    private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let tag = "BluetoothService"
     
     // MARK: - Initialization
@@ -1050,7 +1052,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
         canShowScaleDiscoveredModal = false
         Task {
-            try await Task.sleep(nanoseconds: 5_000_000_000)
+            try await Task.sleep(nanoseconds: UInt64(timeoutConstants.discoveredScaleModalTimeout))
             await MainActor.run {
                 self.canShowScaleDiscoveredModal = true
             }

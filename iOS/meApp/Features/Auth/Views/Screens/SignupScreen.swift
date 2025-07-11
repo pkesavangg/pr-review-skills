@@ -60,12 +60,12 @@ struct SignupScreen: View {
                     signupStore.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
                 onTrailingTap: {},
-                canShowPresentationIndicator: isFromAccountSwitching
+                canShowPresentationIndicator: isFromAccountSwitching,
+                shouldShowBackground: false
             )
             
             ProgressBarView(progress: signupStore.progressValue)
-                .padding(.top, .spacingMD)
-                .padding(.horizontal, .spacingSM)
+                .padding(.spacingSM)
             
             SwiperView(
                 selectedIndex: $signupStore.currentStepIndex,
