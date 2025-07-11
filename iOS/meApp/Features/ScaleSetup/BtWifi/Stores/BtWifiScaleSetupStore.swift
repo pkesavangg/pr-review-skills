@@ -32,6 +32,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
+    /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
+    private var deviceDiscoveryCancellable: AnyCancellable? = nil
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -45,14 +47,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
         didSet { handleStepChange() }
     }
     
+    // Connection status shown on the BluetoothConnectionView.
+    @Published var connectionState: ConnectionState = .loading
+    
     /// All steps in the setup flow. Exposed as read-only so views can iterate.
     @Published private(set) var steps: [BtWifiScaleSetupStep] = BtWifiScaleSetupStep.allCases
     
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
     
+    /// Task handling time-based transitions during testing.
+    private var stepTimerTask: Task<Void, Never>? = nil
+    
     private let tag = "BtWifiScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
+    private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -63,6 +72,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .btWifi))
+            case .wakeup:
+                return AnyView(ConnectionPromptView(
+                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle
+                ))
+            case .connectingBluetooth:
+                return AnyView(
+                    BluetoothConnectionView(
+                        state: connectionState,
+                        setupType: .btWifiR4,
+                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onSupport: {
+                            [weak self] in self?.showHelpModal()
+                        }
+                    )
+                )
             default:
                 // For now, other screens show the step name as text
                 return AnyView(
@@ -128,6 +152,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
         
+        // Reset pairing/discovery state
+        resetDiscoveryState()
         // Inject discovery context if provided.
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
@@ -185,10 +211,66 @@ final class BtWifiScaleSetupStore: ObservableObject {
         ))
     }
     
+    /// Handles the pairing process when entering the *wake-up* step.
+    private func pair() {
+        // Start scanning for devices when entering wake-up step
+        // Subscribe to discovery events (ensure we don't create multiple subscriptions).
+        // Reset discovery state
+        resetDiscoveryState()
+        Task { bluetoothService.scanForPairing() }
+        
+        if deviceDiscoveryCancellable == nil {
+            deviceDiscoveryCancellable = bluetoothService.deviceDiscoveredPublisher
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] discoveryEvent in
+                    self?.handleDeviceDiscovery(discoveryEvent)
+                }
+        }
+        
+        /// Start a timer to handle the wake-up step timeout.
+        stepTimerTask = Task { [weak self] in
+            guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
+            try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
+            await MainActor.run {
+                guard let self else { return }
+                // Still on wake-up step and nothing discovered → failure
+                if self.discoveredScale == nil && self.currentStep == .wakeup {
+                    self.moveToNextStep()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        self.connectionState = .failure
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Invoked from the *Try Again* button of `BluetoothConnectionView`.
+    private func retryPairing() {
+        // Jump back to wake-up step
+        if let wakeUpIndex = steps.firstIndex(of: .wakeup) {
+            currentStepIndex = wakeUpIndex
+        }
+    }
+    
     // MARK: - Step Change Handling
     private func handleStepChange() {
-        // Handle step-specific logic here
-        // For now, just placeholder
+        switch currentStep {
+        case .wakeup:
+            self.pair()
+        case .connectingBluetooth:
+            self.connectionState = .loading
+            Task {
+                if discoveredScale != nil && discoveryEvent != nil {
+                    await self.confirmPair()
+                    self.connectionState = .success
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self.moveToNextStep()
+                    }
+                }
+            }
+        default:
+            break
+        }
     }
     
     /// Handles permission changes during the setup flow
@@ -196,7 +278,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let showError = !hasAllBtPermissions()
         if showError {
             if currentStep == .wakeup {
-                // Navigate back to permissions screen if on wakeup step
+                // Reset discovery state and navigate back to permissions screen
+                resetDiscoveryState()
                 if let permissionStepIndex = steps.firstIndex(of: .permissions) {
                     currentStepIndex = permissionStepIndex
                 }
@@ -209,6 +292,67 @@ final class BtWifiScaleSetupStore: ObservableObject {
             //     gotoMeasurementErrorScreen()
             // }
         }
+    }
+    
+    // MARK: - Discovery State Management
+    
+    /// Clears any active Bluetooth discovery subscriptions and timers and resets related state.
+    private func resetDiscoveryState() {
+        // Cancel active Combine subscription before releasing it.
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        
+        // Nil out discovery data so subsequent runs start fresh.
+        discoveredScale = nil
+        discoveryEvent = nil
+        
+        // Cancel any in-flight timeout task.
+        stepTimerTask?.cancel()
+    }
+    
+    // MARK: - Scale Pairing
+    /// Confirms the pairing with the discovered scale.
+    /// TODO: Implement the actual pairing functionality later.
+    private func confirmPair() async {
+        guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
+        // TODO: Implement pairing functionality
+        LoggerService.shared.log(level: .info, tag: tag, message: "Confirming pair with scale: \(scale.id)")
+    }
+    
+    // MARK: - Device Discovery Handling
+    private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
+        // Only handle discovery during wake-up step
+        guard currentStep == .wakeup else { return }
+        // Only handle BtWifi scales
+        guard event.deviceInfo.setupType == .btWifiR4 else { return }
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        stepTimerTask?.cancel()
+        self.discoveryEvent = event
+        self.discoveredScale = event.device
+        
+        // Check if this is a known scale (isNew = false means it's known)
+        if !event.isNew {
+            showKnownScaleAlert()
+        } else {
+            // New scale discovered - move to next step
+            moveToNextStep()
+        }
+    }
+    
+    /// Shows an alert when a known scale is discovered.
+    private func showKnownScaleAlert() {
+        let alertStrings = AlertStrings.knownScaleDiscoveredAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message,
+            buttons: [
+                AlertButtonModel(title: alertStrings.exitButton, type: .primary) { [weak self] _ in
+                    self?.dismissAction?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
     
     // MARK: - Helper Methods
@@ -300,6 +444,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     deinit {
+        // Cancel active Combine subscription before releasing it.
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        
+        // Nil out discovery data so subsequent runs start fresh.
+        discoveredScale = nil
+        discoveryEvent = nil
+        
+        // Cancel any in-flight timeout task.
+        stepTimerTask?.cancel()
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }

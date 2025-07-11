@@ -75,9 +75,18 @@ struct BtWifiScaleSetupScreen: View {
     }
     
     private var shouldShowFooter: Bool {
-        // Hide footer for specific steps if needed
-        // For now, show footer for all steps
-        return true
+        // Hide footer for specific steps
+        let stepsToHideFooter: [BtWifiScaleSetupStep] = [
+            .wakeup,
+            .connectingBluetooth,
+            .gatheringNetwork,
+            .connectingWifi,
+            .stepOn,
+            .measurement,
+            .scaleConnected
+        ]
+        
+        return !stepsToHideFooter.contains(setupStore.currentStep)
     }
     
     private var footerButtons: some View {

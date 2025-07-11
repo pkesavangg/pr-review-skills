@@ -76,6 +76,7 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(
                     BluetoothConnectionView(
                         state: connectionState,
+                        setupType: .lcbt,
                         onTryAgain: { [weak self] in self?.retryPairing() },
                         onSupport: {
                             [weak self] in self?.showHelpModal()

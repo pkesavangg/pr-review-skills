@@ -93,26 +93,26 @@ struct BottomTabBarView: View {
                 A6ScaleSetupScreen(sku: payload.sku,
                                    discoveredScale: payload.scale,
                                    discoveryEvent: payload.event)
-                    .interactiveDismissDisabled(true)
+                .interactiveDismissDisabled(true)
             case .btWifiR4:
                 BtWifiScaleSetupScreen(sku: payload.sku,
                                        discoveredScale: payload.scale,
                                        discoveryEvent: payload.event)
-                    .interactiveDismissDisabled(true)
+                .interactiveDismissDisabled(true)
             default:
                 // Fallback to A6 setup for other types
                 A6ScaleSetupScreen(sku: payload.sku,
                                    discoveredScale: payload.scale,
                                    discoveryEvent: payload.event)
-                    .interactiveDismissDisabled(true)
+                .interactiveDismissDisabled(true)
             }
         }
     }
-
+    
     // MARK: - Helpers
     private func handleTabSelection(_ tab: BottomTab) {
         guard viewModel.selectedTab != tab else { return }
-
+        
         Task {
             // Check if there is a deactivation handler for the selected tab
             // If there is, call it and await the result
