@@ -125,7 +125,7 @@ struct ToastStrings {
 struct HelpStrings {
     static let question = "Have a question?"
     static let generalHelp = "We're here for you. Contact us and we'll be happy to help."
-    static let viewGuide = "View Getting Started Guide"
+    static let gettingStartedGuide = "Getting Started Guide"
 }
 
 struct HKIntegrationStrings {
@@ -611,6 +611,7 @@ struct AppAssets {
     static let ggLogoLarge = "ggLogoLarge"
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
+    static let close = "close"
     
     // MARK: - Scale images
     // MARK: - AppSync series

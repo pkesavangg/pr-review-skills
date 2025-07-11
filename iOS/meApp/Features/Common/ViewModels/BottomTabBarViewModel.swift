@@ -210,7 +210,7 @@ class BottomTabBarViewModel: ObservableObject {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
         guard !bluetoothService.isSetupInProgress,
               bluetoothService.canShowScaleDiscoveredModal,
-              !(bluetoothService.skipDevices.contains(event.device.mac ?? "")),
+              !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
               !event.deviceInfo.sku.isEmpty else {
