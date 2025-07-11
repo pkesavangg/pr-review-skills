@@ -25,7 +25,7 @@ struct ScaleSetupIntroView: View {
                                 .scaledToFit()
                                 .frame(width: 180, height: 180)
                                 .cornerRadius(.radiusLG)
-                                .dropShadow(DropShadow.glowBlack)
+                                .glowDropShadow()
                                 .padding(.bottom, .spacingLG)
 
                             Text(scaleSetupLang.modelTitle(scale.sku))
