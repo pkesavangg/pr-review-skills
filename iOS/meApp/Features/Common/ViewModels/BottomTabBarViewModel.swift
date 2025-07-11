@@ -47,7 +47,6 @@ class BottomTabBarViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 guard let self else { return }
-                let device = event.device
                 if self.shouldShowDiscoveredScale(for: event) {
                     self.discoveredScale = event.device
                     self.discoveryEvent = event
@@ -211,7 +210,7 @@ class BottomTabBarViewModel: ObservableObject {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
         guard !bluetoothService.isSetupInProgress,
               bluetoothService.canShowScaleDiscoveredModal,
-              !(bluetoothService.skipDevices.contains(event.device.mac ?? "")),
+              !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
               !event.deviceInfo.sku.isEmpty else {

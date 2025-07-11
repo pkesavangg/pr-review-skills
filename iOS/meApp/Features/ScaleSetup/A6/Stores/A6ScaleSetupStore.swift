@@ -178,7 +178,7 @@ final class A6ScaleSetupStore: ObservableObject {
     /// Shows the generic Help modal used across the app.
     func showHelpModal() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView {
+            presentedView: AnyView(HelpModalView(skuToNavigate: scaleItem?.sku) {
                 self.notificationService.dismissModal()
             })
         ))

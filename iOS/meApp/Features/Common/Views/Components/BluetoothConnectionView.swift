@@ -72,7 +72,7 @@ struct BluetoothConnectionView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 180, height: 180)
-                            .dropShadow(DropShadow.glowBlack)
+                            .themeDropShadow()
 
                         VStack {
                             // Re-instantiate the loader every time the state changes so

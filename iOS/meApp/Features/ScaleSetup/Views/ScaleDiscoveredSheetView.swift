@@ -10,17 +10,17 @@ import SwiftUI
 /// Half-sheet UI shown when a new A6 Bluetooth scale is discovered.
 struct ScaleDiscoveredSheetView: View {
     @Environment(\.appTheme) private var theme
-
+    
     // Callbacks to inform the presenter about dismissal / connect actions.
     let onClose: () -> Void
     let onConnect: () -> Void
-
+    
     // Internal view-model handling timeout and disconnect logic.
     @StateObject private var viewModel: ScaleDiscoveredSheetViewModel
     
     private let commonLang = CommonStrings.self
     private let lang = ScaleDiscoveredSheetStrings.self
-
+    
     // MARK: – Initialiser
     init(device: Device,
          discoveryEvent: DeviceDiscoveryEvent?,
@@ -32,40 +32,45 @@ struct ScaleDiscoveredSheetView: View {
                                                                              discoveryEvent: discoveryEvent,
                                                                              onTimeout: onClose))
     }
-
+    
     // MARK: – Body
     var body: some View {
-        VStack(spacing: .spacingSM) {
+        VStack(spacing: .spacingXS) {
             // Close button – top-right aligned
             HStack {
                 Spacer()
                 Button {
                     viewModel.handleClose()
                 } label: {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 22, height: 20))
+                    AppIconView(icon: AppAssets.close, size: IconSize(width: 16, height: 16))
                         .foregroundColor(theme.statusIconPrimary)
                 }
             }
-            .padding(.top, .spacingSM)
-            .padding(.horizontal, .spacingSM)
-
-            VStack(spacing: .spacingSM) {
+            
+            VStack(spacing: .spacingMD) {
                 // Scale artwork
                 if let image = viewModel.discoveryEvent?.deviceInfo.imgPath {
                     Image(image)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 150, height: 150)
-                        .dropShadow(DropShadow.glowWhite)
-                        .padding(.bottom, .spacingXS)
+                        .frame(width: 175, height: 175)
+                        .themeDropShadow()
                 }
-
+                
                 // Title
-                Text(lang.title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .multilineTextAlignment(.center)
-
+                VStack(spacing: .spacingXS) {
+                    Text(lang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                        .multilineTextAlignment(.center)
+                    if let name = viewModel.discoveryEvent?.deviceInfo.productName {
+                        Text(name)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                
                 // Connect CTA
                 ButtonView(
                     text: commonLang.connect,
@@ -74,13 +79,12 @@ struct ScaleDiscoveredSheetView: View {
                     isDisabled: false,
                     action: onConnect
                 )
-                .padding(.horizontal, .spacingLG)
             }
-            Spacer(minLength: .spacingLG)
         }
-        .padding(.spacingXS)
+        .padding([.horizontal, .top], .spacingMD)
         .frame(maxWidth: .infinity)
-        .background(theme.backgroundSecondary)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(theme.backgroundPrimary)
     }
 }
 
@@ -88,22 +92,49 @@ struct ScaleDiscoveredSheetView: View {
 #if DEBUG
 private struct ScaleDiscoveredSheetTestView: View {
     @State private var showSheet = false
-
+    @Environment(\.appTheme) private var theme
     var body: some View {
         ButtonView(text: "Show Sheet", type: .filledPrimary, size: .large, isDisabled: false) {
             showSheet = true
         }
         .sheet(isPresented: $showSheet) {
-            // For testing we use a dummy device
-            let dummyDevice = Device(id: "test", accountId: "", mac: nil, deviceName: "Test", broadcastId: 0, broadcastIdString: "00", isConnected: false)
-            ScaleDiscoveredSheetView(device: dummyDevice, discoveryEvent: nil, onClose: { showSheet = false }, onConnect: {})
-                .presentationDetents([.fraction(0.5)])
-                .presentationDragIndicator(.hidden)
-                .presentationCornerRadius(.radiusXL)
-                .interactiveDismissDisabled(true)
+            let dummyDevice = Device(
+                id: UUID().uuidString,
+                accountId: "dummyAccountId",
+                mac: "00:11:22:33:44:55",
+                deviceName: "Dummy Scale",
+                broadcastId: 12345678,
+                broadcastIdString: "00ABCDEF",
+                isConnected: false
+            )
+            
+            let dummyDeviceInfo = ScaleItemInfo(
+                productName: "AccuCheck Verve Smart Scale",
+                sku: "0412",
+                imgPath: "0412",
+                setupType: .btWifiR4,
+                bodyComp: true
+            )
+            
+            let dummyDiscoveryEvent = DeviceDiscoveryEvent(
+                device: dummyDevice,
+                deviceInfo: dummyDeviceInfo,
+                protocolType: .R4,
+                isNew: true
+            )
+            
+            ScaleDiscoveredSheetView(
+                device: dummyDevice,
+                discoveryEvent: dummyDiscoveryEvent,
+                onClose: { showSheet = false },
+                onConnect: {}
+            )
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(.radiusXL)
+            .interactiveDismissDisabled(true)
+            .presentationDetents([.height(400)])
         }
-        .padding()
-        .background(Color.black.opacity(0.1))
+        .background(theme.textError)
     }
 }
 
@@ -111,4 +142,4 @@ private struct ScaleDiscoveredSheetTestView: View {
     ScaleDiscoveredSheetTestView()
         .environmentObject(Theme.shared)
 }
-#endif 
+#endif

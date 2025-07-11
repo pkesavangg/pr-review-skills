@@ -254,4 +254,11 @@ extension View {
     func deviceDiscoverSheetStyle() -> some View {
         self.modifier(DeviceDiscoverSheetModifier())
     }
+    
+    /// Attaches a keyboard observer to the view and provides keyboard height as a binding
+    /// - Parameter keyboardHeight: A binding to update with the current keyboard height
+    /// - Returns: A view that observes keyboard events
+    func keyboardObserver(keyboardHeight: Binding<CGFloat>) -> some View {
+        self.modifier(KeyboardObserverModifier(keyboardHeight: keyboardHeight))
+    }
 }
