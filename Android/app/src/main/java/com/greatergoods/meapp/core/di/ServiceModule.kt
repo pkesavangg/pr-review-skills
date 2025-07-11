@@ -152,24 +152,38 @@ object ServiceModule {
     accountRepository: IAccountRepository,
   ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository)
 
-  @Provides
-  @Singleton
-  fun provideDeviceInfoService(
-    @ApplicationContext context: Context,
-    deviceInfoRepository: IDeviceInfoRepository,
-    connectivityObserver: IConnectivityObserver,
-    offlineHandlerService: IOfflineHandlerService,
-    appRepository: IAppRepository,
-    accountRepository: IAccountRepository,
-  ): IDeviceInfoService =
-    DeviceInfoService(
-      context,
-      deviceInfoRepository,
-      connectivityObserver,
-      offlineHandlerService,
-      appRepository,
-      accountRepository,
-    )
+    /**
+     * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
+     * @param accountService The service for account management.
+     * @return [IntegrationService] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideIntegrationService(
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+        accountService: IAccountService,
+      integrationRepository: IIntegrationRepository
+    ): IIntegrationService = IntegrationService(connectivityObserver,dialogQueueService, accountService,integrationRepository)
+
+    @Provides
+    @Singleton
+    fun provideDeviceInfoService(
+        @ApplicationContext context: Context,
+        deviceInfoRepository: IDeviceInfoRepository,
+        connectivityObserver: IConnectivityObserver,
+        offlineHandlerService: IOfflineHandlerService,
+        appRepository: IAppRepository,
+        accountRepository: IAccountRepository,
+    ): IDeviceInfoService =
+        DeviceInfoService(
+            context,
+            deviceInfoRepository,
+            connectivityObserver,
+            offlineHandlerService,
+            appRepository,
+            accountRepository,
+        )
 
    /**
     * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
