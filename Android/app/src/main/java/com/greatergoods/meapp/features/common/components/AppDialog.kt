@@ -8,7 +8,7 @@ import com.greatergoods.meapp.features.common.model.ActionButton
 
 @Composable
 fun AppDialog(
-    title: String,
+    title: String? = null,
     body: String,
     confirmAction: ActionButton,
     modifier: Modifier = Modifier,
@@ -33,4 +33,15 @@ fun AppDialog(
 @PreviewTheme
 @Composable
 fun AppDialogPreview() {
+    AppDialog(
+        title = "Sample Title",
+        body = "This is a sample dialog body",
+        confirmAction = ActionButton("OK") {}
+    )
+
+    // Preview without title
+    AppDialog(
+        body = "This is a dialog without a title",
+        confirmAction = ActionButton("OK") {}
+    )
 }
