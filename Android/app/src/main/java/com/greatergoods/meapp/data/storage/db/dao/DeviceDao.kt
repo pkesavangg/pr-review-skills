@@ -191,6 +191,18 @@ interface DeviceDao {
     ): Int
 
     /**
+     * Update device hasServerID status.
+     * @param id The device ID
+     * @param hasServerID The new hasServerID status
+     * @return The number of rows updated
+     */
+    @Query("UPDATE device SET hasServerID = :hasServerID WHERE id = :id")
+    suspend fun updateHasServerID(
+        id: String,
+        hasServerID: Boolean,
+    ): Int
+
+    /**
      * Delete all devices for a specific user.
      * @param accountId The user ID
      * @return The number of rows deleted

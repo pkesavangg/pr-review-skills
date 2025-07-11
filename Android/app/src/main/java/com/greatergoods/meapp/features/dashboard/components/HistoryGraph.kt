@@ -40,10 +40,11 @@ import com.greatergoods.meapp.theme.MeTheme
 @Composable
 fun HistoryGraph(
     state: DashboardState,
+    selectedSegment: GraphSegment = GraphSegment.WEEK,
     selectedStat: Stat? = null,
+    onSelectSegment: (GraphSegment) -> Unit = {},
     onSelected: (List<PeriodBodyScaleSummary>) -> Unit
 ) {
-    var selectedSegment by remember { mutableStateOf(GraphSegment.WEEK) }
 
     var subText: String? by remember { mutableStateOf(null) }
 
@@ -168,7 +169,7 @@ fun HistoryGraph(
             selectedData = selectedSegment,
             key = GraphSegment::name,
             onSelected = { segment ->
-                selectedSegment = segment
+                onSelectSegment(segment)
                 entries = when (segment) {
                     GraphSegment.YEAR, GraphSegment.TOTAL -> state.monthWiseEntries
                     GraphSegment.MONTH, GraphSegment.WEEK -> state.dayWiseEntries

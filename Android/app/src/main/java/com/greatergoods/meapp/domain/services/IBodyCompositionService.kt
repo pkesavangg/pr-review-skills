@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.domain.services
 
 import com.greatergoods.meapp.domain.model.api.user.BodyCompUpdateRequest
-import com.greatergoods.meapp.domain.model.storage.Account.Account
 
 /**
  * Body composition update types for local database updates.
@@ -26,5 +25,5 @@ interface IBodyCompositionService {
      * @param bodyComposition The new value (String for activity level, WeightUnit for weight unit, Int for height)
      * @return The updated account or null if update fails
      */
-    suspend fun updateBodyComposition(updateType: BodyCompUpdateType, bodyComposition: BodyCompUpdateRequest): Account?
+    suspend fun updateBodyComposition(updateType: BodyCompUpdateType, bodyComposition: BodyCompUpdateRequest): Unit
 }

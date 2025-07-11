@@ -8,7 +8,7 @@ import com.google.gson.annotations.SerializedName
  */
 data class DeviceApiModel(
     @SerializedName("id")
-    val id: String,
+    val id: String?,
     
     @SerializedName("nickname")
     val nickname: String?,

@@ -20,47 +20,48 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
-import com.greatergoods.meapp.domain.model.storage.Device
 
 @Composable
 fun ChooseScaleScreen(viewModel: AddScaleViewModel = hiltViewModel()) {
-    ChooseScaleScreenContent(viewModel::handleIntent)
+  ChooseScaleScreenContent(viewModel::handleIntent)
 }
 
 @Composable
-fun ChooseScaleScreenContent(
-    handleIntent: (AddScaleIntent) -> Unit = {},
-) {
-    val backStack = LocalNavBackStack.current
-    val coroutineScope = rememberCoroutineScope()
+fun ChooseScaleScreenContent(handleIntent: (AddScaleIntent) -> Unit = {}) {
+  val backStack = LocalNavBackStack.current
+  val coroutineScope = rememberCoroutineScope()
 
-    AppScaffold(
-        title = ChooseScaleStrings.Header,
-        navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
-                coroutineScope.launch {
-                    backStack.removeLast()
-                }
-            }
-        },
-    ) {
-        Column(modifier = Modifier.padding(vertical = spacing.md)
-            .verticalScroll(rememberScrollState())) {
-            ScaleList(
-                onScaleSelected = { scaleInfo ->
-                    handleIntent(AddScaleIntent.ScaleSelected(scaleInfo.sku))
-                },
-            )
+  AppScaffold(
+    title = ChooseScaleStrings.Header,
+    navigationIcon = {
+      AppIconButton(AppIcons.Default.Close) {
+        coroutineScope.launch {
+          backStack.removeLast()
         }
+      }
+    },
+  ) {
+    Column(
+      modifier =
+        Modifier
+          .padding(vertical = spacing.md)
+          .verticalScroll(rememberScrollState()),
+    ) {
+      ScaleList(
+        onScaleSelected = { scaleInfo ->
+          handleIntent(AddScaleIntent.OpenSelectedScaleSetup(scaleInfo.sku))
+        },
+      )
     }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun ChooseScaleScreenPreview() {
-    MeAppTheme {
-        ChooseScaleScreenContent(
-            handleIntent = {},
-        )
-    }
+  MeAppTheme {
+    ChooseScaleScreenContent(
+      handleIntent = {},
+    )
+  }
 }

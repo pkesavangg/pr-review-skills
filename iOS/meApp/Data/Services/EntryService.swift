@@ -373,28 +373,51 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp)
     private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async {
-        // For each remote op, check if local entry exists
-        for remoteOp in remoteOps {
-            guard let remoteTimestamp = remoteOp.entryTimestamp else { continue }
-            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: remoteTimestamp)
-            if let localEntry = localEntries?.first {
-                // Conflict: keep the one with the latest serverTimestamp
+        // Group operations by timestamp to determine final state for each timestamp
+        let groupedOps = Dictionary(grouping: remoteOps) { op in
+            op.entryTimestamp ?? ""
+        }
+
+        for (timestamp, ops) in groupedOps {
+            guard !timestamp.isEmpty else { continue }
+
+            // Sort operations by serverTimestamp to process in chronological order
+            let sortedOps = ops.sorted {
+                ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "")
+            }
+
+            // Find the final operation for this timestamp (the latest one)
+            guard let finalOp = sortedOps.last else { continue }
+
+            // Check if local entry exists with this timestamp
+            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: timestamp)
+            let localEntry = localEntries?.first
+
+            if let localEntry = localEntry {
+                // Local entry exists - compare server timestamps
                 let localServerTS = localEntry.serverTimestamp ?? ""
-                let remoteServerTS = remoteOp.serverTimestamp ?? ""
+                let remoteServerTS = finalOp.serverTimestamp ?? ""
+
                 if remoteServerTS > localServerTS {
-                    //if remoteOp is delete, delete local entry
-                    if remoteOp.operationType == OperationType.delete.rawValue {
+                    // Remote is newer - apply the final operation
+                    if finalOp.operationType == OperationType.delete.rawValue {
+                        // Final state is deleted - remove from local storage
                         try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
                     } else {
-                      // Update local with remote
-                      let updated = Entry(from: remoteOp,accountId: accountId, isSynced: true)
-                      try? await localRepo.updateEntry(updated)
+                        // Final state is create - update local with remote
+                        let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                        try? await localRepo.updateEntry(updated)
                     }
                 }
             } else {
-                // Not found locally, insert
-              let newEntry = Entry(from: remoteOp, accountId: accountId, isSynced: true)
-                try? await localRepo.saveEntry(newEntry)
+                // No local entry - only create if final operation is create
+                if finalOp.operationType == OperationType.create.rawValue {
+                    // Final state is create - add to local storage
+                    let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                    try? await localRepo.saveEntry(newEntry)
+                }
+                // If final operation is delete and no local entry exists, nothing to do
+                // (entry was already deleted or never existed locally)
             }
         }
     }

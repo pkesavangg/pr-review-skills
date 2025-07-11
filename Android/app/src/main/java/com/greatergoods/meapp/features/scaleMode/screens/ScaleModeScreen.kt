@@ -45,7 +45,6 @@ import com.greatergoods.meapp.features.scaleMode.reducer.ScaleModeState
 import com.greatergoods.meapp.features.scaleMode.strings.ScaleModeStrings
 import com.greatergoods.meapp.features.scaleMode.viewmodel.ScaleModeViewModel
 import com.greatergoods.meapp.resources.AppIcons
-import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
@@ -92,7 +91,7 @@ fun ScaleModeScreenContent(
             }
         },
         actions = {
-            if (!isAllBodyMetrics) {
+            if (state.hasModeChanged) {
                 AppText(
                     text = ScaleModeStrings.Save,
                     textType = TextType.ListTitle1,
@@ -135,7 +134,7 @@ fun ScaleModeScreenContent(
                 key = SegmentButtonData::label,
                 selectedData = selectedMode,
                 onSelected = {
-                    handleIntent(ScaleModeIntent.SetMode(it.id == 0))
+                    handleIntent(ScaleModeIntent.SetMode(it.id == 0, true))
                 },
                 size = SegmentButtonSize.Large,
                 type = SegmentButtonType.Single,
@@ -159,7 +158,7 @@ fun ScaleModeScreenContent(
                     Spacer(modifier = Modifier.weight(1f))
                     AppToggle(
                         checked = isHeartRateOn,
-                        onCheckedChange = { handleIntent(ScaleModeIntent.SetHeartRate(it)) },
+                        onCheckedChange = { handleIntent(ScaleModeIntent.SetHeartRate(it, true)) },
                     )
                 }
                 AppText(
@@ -204,7 +203,7 @@ fun ScaleModeScreenContent(
                     Image(
                         painter =
                             painterResource(
-                                id = AppIcons.Default.BodyMetricsOffScale,
+                                id = AppIcons.Default.WeightOnlyModeScale,
                             ),
                         contentDescription = null,
                     )
@@ -251,6 +250,7 @@ fun ScaleModeScreenPreview() {
             createdAt = "June 27, 2023",
             lastModified = null,
             isSynced = false,
+            hasServerID = true,
             isConnected = true,
             wifiMac = "greatergoods1",
             isWifiConfigured = true,

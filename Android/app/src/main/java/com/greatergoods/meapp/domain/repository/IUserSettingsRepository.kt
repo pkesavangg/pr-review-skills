@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.domain.repository
 
-import com.greatergoods.meapp.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.greatergoods.meapp.domain.model.api.metrics.StreakRequest
 import com.greatergoods.meapp.domain.model.api.metrics.WeightlessRequest
 import com.greatergoods.meapp.domain.model.storage.Account.Account
@@ -10,27 +9,28 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
  * Handles streak and weightless mode settings.
  */
 interface IUserSettingsRepository {
-    suspend fun updateWeightless(weightlessRequest: WeightlessSettingsEntity)
-
     /**
      * Updates the streak setting for the active account.
      * @param streakRequest The streak setting to update
      * @return Updated account with new streak settings
+     * API + DB
      */
-    suspend fun updateStreakSetting(streakRequest: StreakRequest): Account?
+    suspend fun updateStreakSetting(streakRequest: StreakRequest): Unit
 
     /**
      * Updates the weightless setting for the active account.
      * @param weightlessRequest The weightless setting to update
      * @return Updated account with new weightless settings
+     * API + DB
      */
-    suspend fun updateWeightlessSetting(weightlessRequest: WeightlessRequest): Account?
+    suspend fun updateWeightlessSetting(weightlessRequest: WeightlessRequest)
 
     /**
      * Updates streak setting offline (stores locally for later sync).
      * Used when network is unavailable.
      * @param request The streak setting request
      * @return Updated account with new streak settings
+     * DB alone
      */
     suspend fun updateStreakSettingOffline(request: StreakRequest): Account?
 
@@ -43,16 +43,16 @@ interface IUserSettingsRepository {
     suspend fun updateWeightlessSettingOffline(request: WeightlessRequest): Account?
 
     /**
-     * Gets accounts with unsynced streak settings changes.
-     * Used by offline handler service for syncing streak settings specifically.
-     * @return List of accounts with pending streak settings changes
+     * Gets the active account if it has unsynced weightless settings.
+     * Used by offline handler service to sync pending weightless changes for active account.
+     * @return The active account with unsynced weightless settings, or null if active account is synced
      */
-    suspend fun getUnsyncedStreakAccountsFromDB(): List<Account>
+    suspend fun getUnsyncedActiveWeightlessAccountFromDB(): Account?
 
     /**
-     * Gets accounts with unsynced weightless settings changes.
-     * Used by offline handler service for syncing weightless settings specifically.
-     * @return List of accounts with pending weightless settings changes
+     * Gets the active account if it has unsynced streak settings.
+     * Used by offline handler service to sync pending streak changes for active account.
+     * @return The active account with unsynced streak settings, or null if active account is synced
      */
-    suspend fun getUnsyncedWeightlessAccountsFromDB(): List<Account>
+    suspend fun getUnsyncedActiveStreakAccountFromDB(): Account?
 }
