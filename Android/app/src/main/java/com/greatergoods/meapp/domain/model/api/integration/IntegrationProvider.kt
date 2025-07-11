@@ -15,38 +15,6 @@ sealed class IntegrationProvider(
   object HealthConnect : IntegrationProvider("healthConnect", "Health Connect")
 
   /**
-   * Gets the OAuth scope for this provider.
-   */
-  fun getOAuthScope(): String =
-    when (this) {
-      is Fitbit -> "profile weight"
-      is MyFitnessPal -> "measurements"
-      is HealthConnect -> "health_connect"
-    }
-
-  /**
-   * Gets the OAuth redirect URI for this provider.
-   * Based on actual implementation from wgApp4 config.ts
-   */
-  fun getOAuthRedirectUri(): String =
-    when (this) {
-      is Fitbit -> "https://api.weightgurus.com/v2/auth/fitbit"
-      is MyFitnessPal -> "https://api.weightgurus.com/v2/auth/myfitnesspal"
-      is HealthConnect -> "https://api.weightgurus.com/v2/auth/healthconnect"
-    }
-
-  /**
-   * Gets the client ID for this provider.
-   * Based on actual implementation from wgApp4 config.ts
-   */
-  fun getClientId(): String =
-    when (this) {
-      is Fitbit -> "22B2QV"
-      is MyFitnessPal -> "weightguru"
-      is HealthConnect -> "health_connect_client_id" // Replace with actual client ID when available
-    }
-
-  /**
    * Gets the OAuth authorization URL for this provider.
    * Based on actual implementation from wgApp4 config.ts
    */

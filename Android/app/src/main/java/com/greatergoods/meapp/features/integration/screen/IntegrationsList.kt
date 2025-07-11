@@ -43,18 +43,7 @@ fun IntegrationList(
       IntegrationListItem(
         integration = integration,
         onToggle = {
-          if (integration.isConnected) {
-            // Disable integration
-            handleIntent(IntegrationIntent.ShowDisconnectDialog(integration))
-          } else {
-            // Enable integration - you'll need to pass accountId here
-            // For now, using a placeholder accountId
-            handleIntent(
-              IntegrationIntent.ConnectIntegration(
-                provider = integration.provider,
-              ),
-            )
-          }
+          handleIntent.invoke(IntegrationIntent.OpenIntegration(integration))
         },
       )
       // Only show divider if not the last item

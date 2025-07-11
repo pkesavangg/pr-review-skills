@@ -11,6 +11,7 @@ import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
 import com.greatergoods.meapp.data.storage.db.entity.account.AccountEntityMapper
 import com.greatergoods.meapp.data.storage.db.entity.account.GoalSettingsEntity
+import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.StreaksSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
@@ -82,12 +83,12 @@ constructor(
     return addAccountFromLoginResponse(loginResponse)
   }
 
-  /**
-   * Gets account info via API for a specific account and returns AccountResponse.
-   * @param accountId The account ID to get info for
-   * @return AccountInfo for the specified account
-   */
-  override suspend fun getAccount(accountId: String): AccountInfo = authAPI.getAccountWithToken(accountId)
+    /**
+     * Gets account info via API for a specific account and returns AccountResponse.
+     * @param accountId The account ID to get info for
+     * @return AccountInfo for the specified account
+     */
+    override suspend fun getAccountFromAPI(accountId: String): AccountInfo = authAPI.getAccountWithToken(accountId)
 
   /**
    * Updates password via API and returns true if successful.
@@ -545,6 +546,13 @@ constructor(
         isStreakOn = account.isStreakOn,
         dashboardType = account.dashboardType,
         dashboardMetrics = account.dashboardMetrics,
+        shouldSendEntryNotifications = account.shouldSendEntryNotifications,
+        shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications,
+        goalType = account.goalType,
+        goalWeight = account.goalWeight?.toDouble(),
+        initialWeight = account.initialWeight?.toDouble() ?: 0.0,
+        metPreviousGoal = account.metPreviousGoal,
+        goalPercent = account.goalPercent.toDouble(),
       )
     return addAccount(userAccount)
   }
@@ -664,6 +672,19 @@ constructor(
         isSynced = true,
       )
       accountDao.updateNotificationSettings(notificationSettings)
+
+      // Update integration settings
+      val integrationsSettings = IntegrationsSettingsEntity(
+            accountId = accountInfo.id,
+            isFitbitOn = accountInfo.isFitbitOn,
+            isFitbitValid = accountInfo.isFitbitValid,
+            isHealthConnectOn = accountInfo.isHealthConnectOn,
+            isHealthKitOn = accountInfo.isHealthKitOn,
+            isMFPOn = accountInfo.isMFPOn,
+            isMFPValid = accountInfo.isMFPValid,
+            isSynced = true,
+          )
+      accountDao.insertIntegrationsSettings(integrationsSettings)
       AppLog.d(TAG, "Successfully synced all settings for account: ${accountInfo.id}")
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e.toString())

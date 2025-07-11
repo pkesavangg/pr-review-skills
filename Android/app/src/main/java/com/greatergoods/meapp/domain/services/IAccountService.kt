@@ -81,6 +81,8 @@ interface IAccountService {
      */
     suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest)
 
+    suspend fun refreshAccount()
+
     /**
      * Checks login status for the active account by calling the API and updating local data.
      * @return true if the account is still valid, false if expired or network unavailable

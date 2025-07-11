@@ -52,8 +52,8 @@ data class Account(
     val isFitbitValid: Boolean = false,
     val isHealthConnectOn: Boolean = false,
     val isHealthKitOn: Boolean = false,
-    val isMfpOn: Boolean = false,
-    val isMfpValid: Boolean = false,
+    val isMFPOn: Boolean = false,
+    val isMFPValid: Boolean = false,
 ) {
   /**
    * Get the metric of account

@@ -22,7 +22,7 @@ data class IntegrationsSettingsEntity(
     val isFitbitValid: Boolean,
     val isHealthConnectOn: Boolean,
     val isHealthKitOn: Boolean,
-    val isMfpOn: Boolean,
-    val isMfpValid: Boolean,
+    val isMFPOn: Boolean,
+    val isMFPValid: Boolean,
     val isSynced: Boolean
 )

@@ -300,14 +300,15 @@ class AccountService
       return try {
         AppLog.d(TAG, "Checking network availability for checkLoginStatusForActiveAccount()")
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+        // from local storage
         val activeAccount = getCurrentAccount()
         if (activeAccount == null) {
           AppLog.d(TAG, "No active account found in checkLoginStatusForActiveAccount(). Returning false.")
           return false
         }
         AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
-        val accountInfo = accountRepository.getAccount(activeAccount.id)
-
+        //from api
+        val accountInfo = accountRepository.getAccountFromAPI(activeAccount.id)
         // Sync all settings with server data
         accountRepository.syncAccountSettingsWithServer(accountInfo)
         AppLog.d(TAG, "Active account login status check successful")
@@ -356,7 +357,7 @@ class AccountService
           try {
             AppLog.d(TAG, "Checking login status for account: ${account.id}")
             // Get account info from API and update tokens for background operations
-            val accountInfo = accountRepository.getAccount(account.id)
+            val accountInfo = accountRepository.getAccountFromAPI(account.id)
             // Update account data with API response
             accountRepository.updateAccountInfo(account.id, accountInfo)
             AppLog.d(TAG, "Account ${account.id} login status check successful")
@@ -541,7 +542,33 @@ class AccountService
       }
     }
 
-    // endregion
+  /**
+   * Refreshes the current account data from the server.
+   * Updates the local account data with the latest information from the API.
+   * If network is unavailable or API call fails, continues with cached data.
+   */
+  override suspend fun refreshAccount() {
+    try {
+      val currentAccount = getCurrentAccount()
+      if (currentAccount == null) {
+        AppLog.w(TAG, "No active account found for refreshAccount()")
+        return
+      }
+      if (connectivityObserver.getCurrentNetworkState().available) {
+        AppLog.d(TAG, "Connection available, updating account from API")
+        try {
+          val accountInfo = accountRepository.getAccountFromAPI(currentAccount.id)
+          accountRepository.syncAccountSettingsWithServer(accountInfo)
+        } catch (e: Exception) {
+          AppLog.w(TAG, "Error getting account from API during refresh, using cached data", e.toString())
+        }
+      } else {
+        AppLog.d(TAG, "No network connection available, using cached account data")
+      }
+    } catch (e: Exception) {
+      throw e
+    }
+  }
 
     /**
      * Extension function to sort accounts: active account first, then others by lastActiveTime descending.

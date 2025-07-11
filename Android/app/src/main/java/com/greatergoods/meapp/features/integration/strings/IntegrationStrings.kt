@@ -1,64 +1,42 @@
 package com.greatergoods.meapp.features.integration.strings
 
-/**
- * Strings for the Integration screen.
- */
 object IntegrationStrings {
-  const val Title = "Integrations"
-  const val Subtitle = "Connect your favorite apps and devices"
-  const val AddIntegrationTitle = "Add Integration"
-  const val ConnectedIntegrationsTitle = "Connected Integrations"
-  const val NoIntegrationsMessage = "No integrations connected yet"
-  const val ConnectButton = "CONNECT"
-  const val DisconnectButton = "DISCONNECT"
-  const val ManageButton = "MANAGE"
+    const val Title = "Integrations"
 
-  // Provider names
-  const val FitbitProvider = "Fitbit"
-  const val MyFitnessPalProvider = "MyFitnessPal"
-  const val HealthConnectProvider = "Health Connect"
+    // Provider Names
+    const val FitbitProvider = "Fitbit"
+    const val MyFitnessPalProvider = "MyFitnessPal"
+    const val HealthConnectProvider = "Health Connect"
 
-  // Alert dialogs
-  object DisconnectDialog {
-    const val Title = "Disconnect Integration"
-    const val Message = "Are you sure you want to disconnect this integration? Your data will no longer sync."
-    const val ConfirmButton = "DISCONNECT"
-    const val CancelButton = "CANCEL"
-  }
+    // Actions
+    const val Connect = "Connect"
+    const val Remove = "Remove"
+    const val Cancel = "Cancel"
 
-  object ErrorDialog {
-    const val Title = "Connection Error"
-    const val Message = "Unable to connect to this service. Please try again."
-    const val RetryButton = "RETRY"
-    const val CancelButton = "CANCEL"
-  }
+    // Confirmation Messages
+    const val DisconnectConfirmMessage = "Are you sure you want to disconnect from this integration? This will stop syncing data."
+    const val DisconnectSuccess = "Successfully removed"
 
-  // Integration status messages
-  object Status {
-    const val Connected = "Connected"
-    const val Disconnected = "Disconnected"
-    const val Connecting = "Connecting..."
-    const val Disconnecting = "Disconnecting..."
-    const val Error = "Connection Error"
-  }
+    const val removeIntegration = "Remove Integration?"
+    const val removeAuthIntegration ="Are you sure you want to turn off this integration?"
+    const val remove = "remove"
 
-  // Platform requirements
-  object Requirements {
-    const val HealthConnectRequirement = "Requires Android 13+"
-    const val NoRequirement = "No special requirements"
-  }
+    const val authIntegrationCancelORFailed = "Sorry, something went wrong. Try again?"
+    const val failed = "Failed!"
+    const val cancel ="cancel"
+    const val retry = "retry"
+    const val pleaseWait ="Please wait..."
+    const val done ="Done!"
+    const val ok = "ok"
+    const val loading = "Loading..."
 
-  // Success messages
-  object Success {
-    const val ConnectedMessage = "Successfully connected to %s"
-    const val DisconnectedMessage = "Successfully disconnected from %s"
-  }
+    // Reintegrate Alert Strings
+    const val reintegrateAlertTitle = "Integration Issue"
+    const val pluralityThis = "this"
+    const val pluralityThese = "these"
+    const val removeAllIntegrations = "Remove All"
 
-  // Error messages
-  object Errors {
-    const val ConnectionFailed = "Failed to connect to %s"
-    const val DisconnectionFailed = "Failed to disconnect from %s"
-    const val NetworkError = "Network error. Please check your connection and try again."
-    const val OAuthError = "Authentication failed. Please try again."
-  }
+    fun removeIntegration(name: String) = "Remove $name"
+    fun reintegrateAlertMessage(plurality: String, names: String) =
+        "Unable to connect to $names! You may need to\n" + "re-enable ${plurality} integration by re-authorizing your account."
 }
