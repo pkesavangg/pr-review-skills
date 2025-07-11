@@ -226,7 +226,8 @@ struct DashboardScreen: View {
             unit: store.goalUnit.rawValue,
             isRemoved: store.isGoalCardRemoved,
             progress: store.goalProgress,
-            goalType: store.goalType
+            goalType: store.goalType,
+            isWeightlessMode: store.isWeightlessModeEnabled
         )
         .editModeOverlay(
             isEditMode: store.isEditMode,

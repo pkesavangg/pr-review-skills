@@ -1,47 +1,63 @@
-import Foundation
+ 
 import SwiftUI
 
 // MARK: - YAxisScale Model
 
 struct YAxisScale {
-    let min: Int
-    let max: Int
-    let step: Int
-    let labels: [Int]
+    let min: Double
+    let max: Double
+    let step: Double
+    let ticks: [Double]
     let domain: ClosedRange<Double>
     let average: Double
 }
 
 struct YAxisCalculator {
-
+    
+    /// Calculate Y-axis scale for chart display
+    /// - Parameters:
+    ///   - operations: Array of weight summaries
+    ///   - goalWeight: Goal weight for display
+    ///   - isWeightlessMode: Whether weightless mode is enabled
+    ///   - anchorWeight: Anchor weight for weightless mode
+    ///   - convertStoredWeightToDisplay: Function to convert stored weight to display weight
+    ///   - chartHeight: Chart height for optimal tick calculation
+    ///   - minTickSpacing: Minimum spacing between ticks
+    /// - Returns: YAxisScale with calculated domain and ticks
     static func calculateYAxis(
-        weights: [Double],
+        operations: [BathScaleWeightSummary],
         goalWeight: Double,
-        chartHeight: CGFloat = 265, // Default chart height
-        minTickSpacing: CGFloat = 40 // Minimum spacing between ticks in points
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertStoredWeightToDisplay: (Int) -> Double,
+        chartHeight: CGFloat = 265,
+        minTickSpacing: CGFloat = 40
     ) -> YAxisScale {
         
         // Calculate optimal number of ticks based on chart height
         let optimalTickCount = max(3, min(8, Int(chartHeight / minTickSpacing)))
         
-        guard !weights.isEmpty else {
+        guard !operations.isEmpty else {
             // No data — show goal weight as center
-            let goal = Int(goalWeight.rounded())
+            let goal = goalWeight
             let labels = [goal - 1, goal, goal + 1, goal + 2]
             return YAxisScale(
                 min: labels.first!,
                 max: labels.last!,
                 step: 1,
-                labels: labels,
-                domain: Double(labels.first!)...Double(labels.last!),
+                ticks: labels,
+                domain: labels.first!...labels.last!,
                 average: goalWeight
             )
         }
 
-        let average = calculateAverage(weights: weights)
-
-        let minValue = weights.min() ?? goalWeight
-        let maxValue = weights.max() ?? goalWeight
+        let average = calculateAverage(operations: operations, isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight, convertStoredWeightToDisplay: convertStoredWeightToDisplay)
+        let weightValues = extractWeightValues(operations: operations, isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight, convertStoredWeightToDisplay: convertStoredWeightToDisplay)
+        
+        guard let minValue = weightValues.min(),
+              let maxValue = weightValues.max() else {
+            return createFallbackScale(goalWeight: goalWeight)
+        }
 
         let scale = YAxisHelper.generateYAxis(
             minValue: minValue,
@@ -54,105 +70,186 @@ struct YAxisCalculator {
             min: scale.min,
             max: scale.max,
             step: scale.step,
-            labels: scale.labels,
-            domain: Double(scale.min)...Double(scale.max),
+            ticks: scale.ticks,
+            domain: scale.domain,
             average: average
         )
     }
-
-    static func calculateAverage(weights: [Double]) -> Double {
-        guard !weights.isEmpty else { return 0 }
-        if weights.count == 1 {
-            return weights[0] // fallback to same value
+    
+    /// Calculate average weight from operations
+    private static func calculateAverage(
+        operations: [BathScaleWeightSummary],
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertStoredWeightToDisplay: (Int) -> Double
+    ) -> Double {
+        let weightValues = extractWeightValues(operations: operations, isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight, convertStoredWeightToDisplay: convertStoredWeightToDisplay)
+        guard !weightValues.isEmpty else { return 0 }
+        if weightValues.count == 1 {
+            return weightValues[0]
         }
-        return weights.reduce(0, +) / Double(weights.count)
+        return weightValues.reduce(0, +) / Double(weightValues.count)
+    }
+    
+    /// Extract weight values from operations
+    private static func extractWeightValues(
+        operations: [BathScaleWeightSummary],
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertStoredWeightToDisplay: (Int) -> Double
+    ) -> [Double] {
+        return operations.map { summary -> Double in
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { return 0 }
+                // Convert stored weight to display and calculate difference
+                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertStoredWeightToDisplay(Int(summary.weight))
+            }
+        }
+    }
+    
+    /// Create fallback scale when no data is available
+    private static func createFallbackScale(goalWeight: Double) -> YAxisScale {
+        let labels = [goalWeight - 5, goalWeight, goalWeight + 5]
+        return YAxisScale(
+            min: labels.first!,
+            max: labels.last!,
+            step: 5,
+            ticks: labels,
+            domain: labels.first!...labels.last!,
+            average: goalWeight
+        )
     }
 }
 
+// MARK: - YAxisHelper
+
 fileprivate struct YAxisHelper {
+    
+    /// Generate Y-axis with optimal domain and ticks
+    /// - Parameters:
+    ///   - minValue: Minimum weight value
+    ///   - maxValue: Maximum weight value
+    ///   - goalWeight: Goal weight to include in range
+    ///   - desiredLabelCount: Desired number of tick labels
+    /// - Returns: Tuple with min, max, step, ticks, and domain
     static func generateYAxis(
         minValue: Double,
         maxValue: Double,
         goalWeight: Double,
         desiredLabelCount: Int = 4
-    ) -> (min: Int, max: Int, step: Int, labels: [Int]) {
+    ) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
         
         // Include goal weight in the range calculation
         let allValues = [minValue, maxValue, goalWeight]
         let dataMin = allValues.min() ?? minValue
         let dataMax = allValues.max() ?? maxValue
         
-        // Add smaller padding for more precise ranges
+        // Add padding for better visibility
         let range = dataMax - dataMin
-        let padding = range * 0.1 // 10% padding for better visibility
+        let padding = range * 0.1 // 10% padding
         
         let paddedMin = dataMin - padding
         let paddedMax = dataMax + padding
         
-        // Calculate appropriate step size based on the range and desired label count
+        // Calculate appropriate step size
         let totalRange = paddedMax - paddedMin
         let idealStep = totalRange / Double(desiredLabelCount - 1)
         
-        // Find the best step size from common increments
-        let stepSizes = [1, 2, 5, 10, 20, 25, 50, 100]
-        var bestStep = 1
+        // Find the best step size from common increments (whole numbers only)
+        let stepSizes: [Double] = [1, 2, 5, 10, 20, 25, 50, 100]
+        var bestStep = 1.0
         var bestFit = Double.infinity
         
         for step in stepSizes {
-            let stepDouble = Double(step)
-            let fit = abs(stepDouble - idealStep)
+            let fit = abs(step - idealStep)
             if fit < bestFit {
                 bestFit = fit
                 bestStep = step
             }
         }
         
+        // Ensure we have at least 3 ticks and at most 6 ticks
+        let estimatedTickCount = totalRange / bestStep
+        if estimatedTickCount < 3 {
+            // If too few ticks, try smaller steps
+            for step in stepSizes.reversed() {
+                if step < bestStep && (totalRange / step) >= 3 {
+                    bestStep = step
+                    break
+                }
+            }
+        } else if estimatedTickCount > 6 {
+            // If too many ticks, try larger steps
+            for step in stepSizes {
+                if step > bestStep && (totalRange / step) <= 6 {
+                    bestStep = step
+                    break
+                }
+            }
+        }
+        
+        // For very small ranges, ensure we have enough granularity (minimum step of 1)
+        if totalRange < 5 && bestStep > totalRange / 2 {
+            bestStep = max(1.0, totalRange / 3)
+        }
+        
         // Calculate start and end points to ensure even spacing
-        let start = Int(floor(paddedMin / Double(bestStep))) * bestStep
-        let end = start + (bestStep * (desiredLabelCount - 1))
+        let start = floor(paddedMin / bestStep) * bestStep
+        let end = start + (bestStep * Double(desiredLabelCount - 1))
         
-        // Generate labels with even spacing
-        let labels = Array(stride(from: start, through: end, by: bestStep))
+        // Generate ticks with even spacing
+        var ticks: [Double] = []
+        var currentTick = start
         
-        // Ensure goal weight is always included if it's within the range
-        var finalLabels = labels
-        let goalInt = Int(round(goalWeight))
+        while currentTick <= end {
+            ticks.append(currentTick)
+            currentTick += bestStep
+        }
         
-        if !finalLabels.contains(goalInt) {
-            // Check if goal weight is far below the domain
-            if goalInt < finalLabels.first! {
-                // Prepend goal weight and adjust spacing
-                finalLabels.insert(goalInt, at: 0)
-                // Recalculate spacing to maintain even distribution
-                let newRange = finalLabels.last! - finalLabels.first!
-                let newStep = newRange / (finalLabels.count - 1)
-                finalLabels = Array(stride(from: finalLabels.first!, through: finalLabels.last!, by: Int(newStep)))
-                print("Hello: YAxisHelper - Goal weight \(goalInt) prepended to labels")
+        // Ensure we have at least 3 ticks for better curve visibility
+        if ticks.count < 3 {
+            while ticks.count < 3 {
+                if let lastTick = ticks.last {
+                    ticks.append(lastTick + bestStep)
+                } else {
+                    ticks.append(start)
+                }
             }
-            // Check if goal weight is far above the domain
-            else if goalInt > finalLabels.last! {
-                // Append goal weight and adjust spacing
-                finalLabels.append(goalInt)
-                // Recalculate spacing to maintain even distribution
-                let newRange = finalLabels.last! - finalLabels.first!
-                let newStep = newRange / (finalLabels.count - 1)
-                finalLabels = Array(stride(from: finalLabels.first!, through: finalLabels.last!, by: Int(newStep)))
-                print("Hello: YAxisHelper - Goal weight \(goalInt) appended to labels")
+        }
+        
+        // For very small ranges, add extra ticks to ensure curve visibility (whole numbers only)
+        if totalRange < 10 && ticks.count < 5 {
+            let extraStep = max(1.0, bestStep / 2)
+            var extraTicks: [Double] = []
+            var extraTick = start
+            
+            while extraTick <= end {
+                if !ticks.contains(where: { abs($0 - extraTick) < bestStep * 0.1 }) {
+                    extraTicks.append(extraTick)
+                }
+                extraTick += extraStep
             }
-            // Goal weight is inside domain but not on a step boundary
-            else {
-                // Find the closest label to goal weight and replace it
-                let closestIndex = finalLabels.enumerated().min { abs($0.element - goalInt) < abs($1.element - goalInt) }?.offset ?? 0
-                finalLabels[closestIndex] = goalInt
-                finalLabels.sort()
-                print("Hello: YAxisHelper - Goal weight \(goalInt) inserted at closest position")
+            
+            // Add extra ticks while maintaining reasonable count
+            ticks.append(contentsOf: extraTicks.prefix(5 - ticks.count))
+            ticks.sort()
+        }
+        
+        // Ensure goal weight is included if it's within the domain
+        if goalWeight >= start && goalWeight <= end && !ticks.contains(where: { abs($0 - goalWeight) < bestStep * 0.1 }) {
+            // Find closest tick and replace it with goal weight
+            if let closestIndex = ticks.enumerated().min(by: { abs($0.element - goalWeight) < abs($1.element - goalWeight) })?.offset {
+                ticks[closestIndex] = goalWeight
             }
         }
         
         print("Hello: YAxisHelper - Input: minValue=\(minValue), maxValue=\(maxValue), goalWeight=\(goalWeight), desiredLabelCount=\(desiredLabelCount)")
         print("Hello: YAxisHelper - Calculated: dataMin=\(dataMin), dataMax=\(dataMax), range=\(range), padding=\(padding)")
-        print("Hello: YAxisHelper - Final: start=\(finalLabels.first!), end=\(finalLabels.last!), labels=\(finalLabels)")
+        print("Hello: YAxisHelper - Final: start=\(ticks.first!), end=\(ticks.last!), ticks=\(ticks)")
         
-        return (finalLabels.first!, finalLabels.last!, bestStep, finalLabels)
+        return (ticks.first!, ticks.last!, bestStep, ticks, ticks.first!...ticks.last!)
     }
 } 

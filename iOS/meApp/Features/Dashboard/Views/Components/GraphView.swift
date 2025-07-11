@@ -77,8 +77,8 @@ struct GraphView: View {
             .chartScrollTargetBehavior(.paging)
             .chartScrollTargetBehavior(.valueAligned(unit: dashboardStore.timeSnapUnit(for: dashboardStore.selectedPeriod)))
             .chartYScale(domain: {
-                let domain = getOptimalYScaleDomain()
-                return domain
+                let yAxisScale = dashboardStore.getYAxisScale()
+                return yAxisScale.domain
             }())
             .chartScrollPosition(x: Binding(
                 get: { dashboardStore.xScrollPosition },
@@ -103,6 +103,8 @@ struct GraphView: View {
             .chartYAxis { yAxisMarks }
             .chartLegend(.hidden)
             .chartXAxis { xAxisMarks }
+            .id(dashboardStore.dataChangeTrigger) // Force chart re-render when data changes
+            .id(dashboardStore.currentUnit) // Force chart re-render when unit changes
             .chartXSelection(value: Binding(
                 get: { dashboardStore.selectedXValue },
                 set: { newValue in
@@ -208,9 +210,9 @@ struct GraphView: View {
     // MARK: - Chart Content Builders
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
-        let ticks = getOptimalYAxisTicks()
+        let yAxisScale = dashboardStore.getYAxisScale()
         
-        ForEach(ticks, id: \.self) { tick in
+        ForEach(yAxisScale.ticks, id: \.self) { tick in
             if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
                 RuleMark(y: .value("YGrid", tick))
                     .lineStyle(StrokeStyle(lineWidth: 1))
@@ -258,9 +260,9 @@ struct GraphView: View {
     
     // MARK: - Axis Marks Builders
     private var yAxisMarks: some AxisContent {
-        let ticks = getOptimalYAxisTicks()
+        let yAxisScale = dashboardStore.getYAxisScale()
         
-        return AxisMarks(values: ticks) { value in
+        return AxisMarks(values: yAxisScale.ticks) { value in
             if let doubleValue = value.as(Double.self) {
                 if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
                     AxisValueLabel {
@@ -268,7 +270,7 @@ struct GraphView: View {
                     }
                 } else {
                     AxisValueLabel {
-                        Text(dashboardStore.formatWeightDisplayText(doubleValue))
+                        Text(dashboardStore.formatYAxisTickLabel(doubleValue))
                             .font(.body)
                             .fontWeight(.medium)
                             .foregroundColor(theme.textSubheading)
@@ -293,78 +295,12 @@ struct GraphView: View {
         }
     }
     
-    // MARK: - Dynamic Y-Axis Calculation Methods
-    
-    /// Get the current Y-axis scale domain based on all data points in current time period
-    private func getCurrentYScaleDomain() -> ClosedRange<Double> {
-        let domain = dashboardStore.getCurrentYScaleDomain()
-        return domain
-    }
-    
-    /// Get the optimal Y-axis domain that makes full use of chart height
-    private func getOptimalYScaleDomain() -> ClosedRange<Double> {
-        let scale = dashboardStore.getCurrentYAxisScale()
-        let domain = scale.domain
-        
-        // Ensure the domain spans the full chart height with even spacing
-        let allOps = dashboardStore.continuousOperations
-        let allWeightValues = allOps.map { summary -> Double in
-            if dashboardStore.isWeightlessModeEnabled {
-                guard let anchorWeight = dashboardStore.weightlessAnchorWeight else { return 0 }
-                let currentWeight = dashboardStore.convertStoredWeightToDisplay(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                return dashboardStore.convertStoredWeightToDisplay(Int(summary.weight))
-            }
-        }
-        
-        if let minWeight = allWeightValues.min(),
-           let maxWeight = allWeightValues.max() {
-            // Calculate the optimal range that makes full use of chart height
-            let dataRange = maxWeight - minWeight
-            let goalWeight = dashboardStore.goalWeightForDisplay
-            
-            // Include goal weight in the range calculation
-            let effectiveMin = min(minWeight, goalWeight)
-            let effectiveMax = max(maxWeight, goalWeight)
-            let effectiveRange = effectiveMax - effectiveMin
-            
-            // Add padding to ensure all data points are visible
-            let padding = max(effectiveRange * 0.1, 5.0) // At least 5 units of padding
-            let paddedMin = effectiveMin - padding
-            let paddedMax = effectiveMax + padding
-            
-            print("Hello: getOptimalYScaleDomain - Data range: \(dataRange), Goal weight: \(goalWeight)")
-            print("Hello: getOptimalYScaleDomain - Effective range: \(effectiveRange), Padding: \(padding)")
-            print("Hello: getOptimalYScaleDomain - Optimal domain: \(paddedMin)...\(paddedMax)")
-            
-            return paddedMin...paddedMax
-        }
-        
-        return domain
-    }
-    
-    /// Get the current Y-axis ticks based on all data points in current time period
-    private func getCurrentYAxisTicks() -> [Double] {
-        let ticks = dashboardStore.getCurrentYAxisTicks()
-        return ticks
-    }
-    
-    /// Get optimal Y-axis ticks that make full use of chart height
-    private func getOptimalYAxisTicks() -> [Double] {
-        let scale = dashboardStore.getCurrentYAxisScale()
-        let ticks = scale.labels.map { Double($0) }
-        
-        print("Hello: getOptimalYAxisTicks - Chart height: \(dashboardStore.chartHeight)")
-        print("Hello: getOptimalYAxisTicks - Optimal ticks: \(ticks)")
-        
-        return ticks
-    }
+
 
     // MARK: - Axis Label Helpers
     @ViewBuilder
     private func goalWeightBubbleLabel(_ value: Double) -> some View {
-        Text(dashboardStore.formatWeightDisplayText(value))
+        Text(dashboardStore.formatYAxisTickLabel(value))
             .fontWeight(.bold)
             .font(.body)
             .foregroundColor(.white)
@@ -378,6 +314,7 @@ struct GraphView: View {
                 }
             )
             .zIndex(100)
+            .id(dashboardStore.currentUnit) // Force goal weight bubble to recalculate when unit changes
     }
 }
 
