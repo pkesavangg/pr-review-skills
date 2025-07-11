@@ -152,19 +152,6 @@ object ServiceModule {
     accountRepository: IAccountRepository,
   ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository)
 
-    /**
-     * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
-     * @param accountService The service for account management.
-     * @return [IntegrationService] instance.
-     */
-    @Provides
-    @Singleton
-    fun provideIntegrationService(
-      connectivityObserver: IConnectivityObserver,
-      dialogQueueService: IDialogQueueService,
-        accountService: IAccountService,
-      integrationRepository: IIntegrationRepository
-    ): IIntegrationService = IntegrationService(connectivityObserver,dialogQueueService, accountService,integrationRepository)
 
     @Provides
     @Singleton
