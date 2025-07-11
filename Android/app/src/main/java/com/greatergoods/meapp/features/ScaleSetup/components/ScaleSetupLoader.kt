@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.ScaleSetup.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -7,14 +8,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupLoaderDefaults.getIcon
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupLoaderDefaults.getIndicationStatus
 import com.greatergoods.meapp.features.ScaleSetup.components.strings.SetupLoaderStrings
 import com.greatergoods.meapp.features.ScaleSetup.enums.LoaderIconType
+import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppScaleImage
 import com.greatergoods.meapp.features.common.components.AppText
@@ -73,23 +80,27 @@ object SetupLoaderDefaults {
  */
 @Composable
 fun ScaleSetupLoader(
-  connectionState: ConnectionState,
+  connectionState: ConnectionState? = null,
   modifier: Modifier = Modifier,
   scaleImageSku: String? = null,
   title: String? = null,
   subtitle: String? = null,
   errorCode: String? = null,
   showIndicationOnly: Boolean = false,
+  setupImage: Int? = null,
   indicatorIcon: LoaderIconType = LoaderIconType.Bluetooth,
-  primaryButtonText: String? = null,
-  secondaryButtonText: String? = null,
+  primaryButtonText: String = ScaleSetupStrings.SetupButtons.TryAgain,
+  secondaryButtonText: String = ScaleSetupStrings.SetupButtons.Support,
+  contentButtonText: String? = null,
   primaryButtonClick: (() -> Unit)? = null,
   secondaryButtonClick: (() -> Unit)? = null,
+  contentButtonClick: (() -> Unit)? = null
 ) {
 
   Column(
     modifier = modifier
-      .fillMaxSize(),
+      .fillMaxSize()
+      .verticalScroll(rememberScrollState()),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {
@@ -147,36 +158,63 @@ fun ScaleSetupLoader(
         Spacer(modifier = Modifier.height(spacing.lg))
       }
 
-      // Connection Indicator or Setup Loader
-      if (showIndicationOnly) {
-        ConnectionIndicator(
-          indicatorIcon = getIcon(indicatorIcon),
-          connectionState = getIndicationStatus(connectionState),
-        )
-      } else {
-        SetupLoader(
-          connectionState = connectionState,
-        )
-        Spacer(modifier = Modifier.height(spacing.md))
-        ConnectionIndicator(
-          indicatorIcon = getIcon(indicatorIcon),
-          connectionState = getIndicationStatus(connectionState),
-          showIndicatorAlone = true,
-        )
+      if (setupImage != null) {
+        Column(modifier = Modifier.fillMaxWidth(),
+               horizontalAlignment = Alignment.CenterHorizontally) {
+          Image(
+            painter = painterResource(id = setupImage),
+            contentDescription = null,
+          )
+          Spacer(modifier = Modifier.height(spacing.xs))
+          if (contentButtonText != null && contentButtonClick != null) {
+            AppButton(
+              label = contentButtonText,
+              type = ButtonType.InlineTextPrimary,
+              onClick = contentButtonClick,
+            )
+          }
+        }
       }
+
+      // Connection Indicator or Setup Loader
+      connectionState?.let {
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          if (showIndicationOnly) {
+            ConnectionIndicator(
+              indicatorIcon = getIcon(indicatorIcon),
+              connectionState = getIndicationStatus(connectionState),
+            )
+          } else {
+            SetupLoader(
+              connectionState = connectionState,
+            )
+            Spacer(modifier = Modifier.height(spacing.md))
+            ConnectionIndicator(
+              indicatorIcon = getIcon(indicatorIcon),
+              connectionState = getIndicationStatus(connectionState),
+              showIndicatorAlone = true,
+            )
+          }
+        }
+      }
+
+
     }
 
     // Buttons at the bottom (if provided)
-    if (primaryButtonText != null && primaryButtonClick != null) {
+    if (primaryButtonClick != null) {
       Column(
-        modifier = Modifier.padding(bottom = spacing.md),
+        modifier = Modifier
+          .padding(top = spacing.x2l),
       ) {
         AppButton(
           label = primaryButtonText,
           type = ButtonType.PrimaryFilled,
           onClick = primaryButtonClick,
         )
-        if (secondaryButtonText != null && secondaryButtonClick != null) {
+        if (secondaryButtonClick != null) {
           Spacer(modifier = Modifier.height(spacing.xs))
           AppButton(
             label = secondaryButtonText,
@@ -194,11 +232,12 @@ fun ScaleSetupLoader(
 private fun PreviewScaleSetupLoaderConnecting() {
   MeAppTheme {
     ScaleSetupLoader(
-      scaleImageSku = "0412",
       title = "Connecting to Bluetooth",
       subtitle = "Please wait while we connect your scale",
-      connectionState = ConnectionState.Loading,
-      showIndicationOnly = false,
+      setupImage = AppIcons.Setup.Accuchecked,
+      contentButtonText = "What's this?",
+      contentButtonClick = {}
+
     )
   }
 }

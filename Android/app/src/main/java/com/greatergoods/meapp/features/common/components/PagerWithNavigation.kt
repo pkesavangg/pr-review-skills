@@ -20,6 +20,7 @@ fun <T> HorizontalPagerWithBottomNavigation(
     pagerState: PagerState,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Transparent,
+    shouldCenterMiddleContent: Boolean = false,
     leadingContent: @Composable (() -> Unit)? = null,
     middleContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
@@ -31,6 +32,8 @@ fun <T> HorizontalPagerWithBottomNavigation(
         leadingContent = { leadingContent?.invoke() },
         middleContent = { middleContent?.invoke() },
         trailingContent = { trailingContent?.invoke() },
+        hasMiddleContentOnly = middleContent != null && leadingContent == null && trailingContent == null,
+        shouldCenterMiddleContent = shouldCenterMiddleContent,
         content = { innerModifier ->
                 AppHorizontalPager(
                     steps = steps,

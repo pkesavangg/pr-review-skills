@@ -90,4 +90,8 @@ object AppIcons {
     val Health_Connect_Off = R.drawable.health_connect_off
     val Health_Connect_Off_Dark = R.drawable.health_connect_off_dark
   }
+
+  object Setup {
+    val Accuchecked = R.drawable.accuchecked
+  }
 }

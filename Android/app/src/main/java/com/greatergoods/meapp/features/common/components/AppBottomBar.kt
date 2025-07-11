@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.components
 
 import AppHorizontalPager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +49,8 @@ import kotlinx.coroutines.launch
 fun PagerBottomAppBar(
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Transparent,
+    shouldCenterMiddleContent: Boolean = false,
+    hasMiddleContentOnly: Boolean = false,
     leadingContent: @Composable () -> Unit,
     middleContent: @Composable () -> Unit,
     trailingContent: @Composable () -> Unit,
@@ -66,17 +69,27 @@ fun PagerBottomAppBar(
                 containerColor = containerColor,
                 windowInsets = insets
             ) {
+              val buttonArrangement = when {
+                shouldCenterMiddleContent && hasMiddleContentOnly -> Arrangement.Center
+                shouldCenterMiddleContent -> Arrangement.SpaceBetween
+                else -> Arrangement.Start
+              }
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .padding(MeTheme.spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = buttonArrangement
                 ) {
                     leadingContent()
+                  if(!shouldCenterMiddleContent) {
                     Spacer(modifier = Modifier.weight(1f))
+                  }
                     middleContent()
+                  if(!shouldCenterMiddleContent) {
                     Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
+                  }
                     trailingContent()
                 }
             }
