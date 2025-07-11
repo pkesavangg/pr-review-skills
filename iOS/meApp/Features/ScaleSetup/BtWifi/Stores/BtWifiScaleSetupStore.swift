@@ -56,6 +56,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
     
+    let stepsToHideFooter: Set<BtWifiScaleSetupStep> = [
+        .wakeup,
+        .connectingBluetooth,
+        .gatheringNetwork,
+        .connectingWifi,
+        .stepOn,
+        .measurement,
+        .scaleConnected
+    ]
+    
     /// Task handling time-based transitions during testing.
     private var stepTimerTask: Task<Void, Never>? = nil
     
@@ -209,6 +219,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self.notificationService.dismissModal()
             })
         ))
+    }
+    
+    /// Checks if the footer should be shown based on the current step.
+    func shouldShowFooter() -> Bool {
+        return !stepsToHideFooter.contains(currentStep)
     }
     
     /// Handles the pairing process when entering the *wake-up* step.

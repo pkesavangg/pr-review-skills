@@ -46,14 +46,14 @@ struct BluetoothConnectionView: View {
         state == .failure && errorCode != nil && !errorCode!.isEmpty
     }
     
-    private var image: String {
+    private var image: String? {
         switch setupType {
         case .btWifiR4:
             return AppAssets.scale0412
         case .lcbt:
             return AppAssets.scale0383
         default:
-            return AppAssets.scale0383
+            return nil
         }
     }
     
@@ -80,11 +80,13 @@ struct BluetoothConnectionView: View {
                     
                     VStack(spacing: .spacingMD) {
                         // Loader dots between scale and indicator
-                        Image(image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 180, height: 180)
-                            .themeDropShadow()
+                        if let image = image {
+                            Image(image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 180, height: 180)
+                                .themeDropShadow()
+                        }
                         
                         VStack {
                             // Re-instantiate the loader every time the state changes so

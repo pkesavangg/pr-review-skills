@@ -59,7 +59,7 @@ struct BtWifiScaleSetupScreen: View {
             )
             
             // Footer Buttons - hide for specific steps if needed
-            if shouldShowFooter {
+            if setupStore.shouldShowFooter() {
                 footerButtons
                     .padding(.spacingSM)
             }
@@ -72,21 +72,6 @@ struct BtWifiScaleSetupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
-    }
-    
-    private var shouldShowFooter: Bool {
-        // Hide footer for specific steps
-        let stepsToHideFooter: [BtWifiScaleSetupStep] = [
-            .wakeup,
-            .connectingBluetooth,
-            .gatheringNetwork,
-            .connectingWifi,
-            .stepOn,
-            .measurement,
-            .scaleConnected
-        ]
-        
-        return !stepsToHideFooter.contains(setupStore.currentStep)
     }
     
     private var footerButtons: some View {
