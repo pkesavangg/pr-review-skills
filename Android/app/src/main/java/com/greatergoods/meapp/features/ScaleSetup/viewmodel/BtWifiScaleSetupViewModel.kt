@@ -547,6 +547,16 @@ constructor(
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during wifi connection", e.toString())
+      handleIntent(
+        BtWifiScaleSetupIntent.SetStepConnectionState(
+          BtWifiSetupStep.CONNECTING_WIFI,
+          ConnectionState.Error,
+        ),
+      )
+      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
+      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
   }
 
