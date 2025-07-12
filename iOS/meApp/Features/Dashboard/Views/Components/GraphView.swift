@@ -11,21 +11,21 @@ import Charts
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    
+
     // Check if there are any entries to display
     private var hasEntries: Bool {
         !dashboardStore.continuousOperations.isEmpty
     }
-    
+
     // Get the appropriate empty state message
     private var emptyStateMessage: String {
         if dashboardStore.hasEntriesButNoneInCurrentPeriod {
-            return DashboardStrings.noEntriesInPeriodMessage(dashboardStore.selectedPeriod.rawValue)
+            return DashboardStrings.noEntriesInPeriodMessage(dashboardStore.state.graph.selectedPeriod.rawValue)
         } else {
             return DashboardStrings.noEntriesMessage
         }
     }
-        
+
     var body: some View {
         VStack(alignment: .leading){
             Text(dashboardStore.weightLabel)
@@ -42,28 +42,12 @@ struct GraphView: View {
                 emptyStateView
             }
         }
-        .onChange(of: dashboardStore.isScrolling) { _, isScrolling in
-            // When scrolling stops, recalculate Y-axis based on visible operations
-            if !isScrolling {
-                // Use a timer to delay the recalculation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    if !dashboardStore.isScrolling {
-                        // Chart will automatically refresh when data changes
-                        // No need to manually trigger Y-axis updates
-                    }
-                }
-            }
-        }
-        .onChange(of: dashboardStore.selectedPeriod) { _, _ in
+        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             // Clear crosshair and selection when time period changes
-            dashboardStore.showCrosshair = false
-            dashboardStore.selectedPoint = nil
-            dashboardStore.selectedXValue = nil
-            dashboardStore.selectedEntry = nil
-            dashboardStore.selectedWeight = nil
+            dashboardStore.clearSelection()
         }
     }
-    
+
     // MARK: - Chart View
     private var chartView: some View {
         return HStack(spacing: 0) {
@@ -72,19 +56,20 @@ struct GraphView: View {
                 chartSeries
                 crosshairContent
             }
-            .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.selectedPeriod))
+            .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod))
             .chartScrollableAxes(.horizontal)
             .chartScrollTargetBehavior(.paging)
-            .chartScrollTargetBehavior(.valueAligned(unit: dashboardStore.timeSnapUnit(for: dashboardStore.selectedPeriod)))
+            .chartScrollTargetBehavior(.valueAligned(unit: dashboardStore.timeSnapUnit(for: dashboardStore.state.graph.selectedPeriod)))
             .chartYScale(domain: {
                 let yAxisScale = dashboardStore.getYAxisScale()
                 return yAxisScale.domain
             }())
             .chartScrollPosition(x: Binding(
-                get: { dashboardStore.xScrollPosition },
-                set: { dashboardStore.xScrollPosition = $0 }
+                get: { dashboardStore.state.graph.xScrollPosition },
+                set: { newPosition in
+                    dashboardStore.handleScrollPositionChange(newPosition)
+                }
             ))
-            .id(dashboardStore.dataChangeTrigger) // Force chart re-render when data changes
             .chartForegroundStyleScale([
                 DashboardStrings.weight: theme.actionPrimary,
                 DashboardStrings.bmi: theme.actionSecondary,
@@ -103,16 +88,15 @@ struct GraphView: View {
             .chartYAxis { yAxisMarks }
             .chartLegend(.hidden)
             .chartXAxis { xAxisMarks }
-            .id(dashboardStore.dataChangeTrigger) // Force chart re-render when data changes
-            .id(dashboardStore.currentUnit) // Force chart re-render when unit changes
             .chartXSelection(value: Binding(
-                get: { dashboardStore.selectedXValue },
+                get: {
+                    // Only return selected value if not currently scrolling
+                    dashboardStore.state.graph.isScrolling ? nil : dashboardStore.state.graph.selectedXValue
+                },
                 set: { newValue in
-                    dashboardStore.selectedXValue = newValue
-                    if let selectedDate = newValue {
-                        Task { @MainActor in
-                            dashboardStore.handleChartSelection(at: selectedDate)
-                        }
+                    // Only handle selection if not scrolling
+                    if !dashboardStore.state.graph.isScrolling {
+                        dashboardStore.handleChartSelection(at: newValue)
                     }
                 }
             ))
@@ -122,83 +106,45 @@ struct GraphView: View {
             .background(
                 GeometryReader { geo in
                     theme.textInverse
-                        .onAppear { 
-                            dashboardStore.chartHeight = geo.size.height 
+                        .onAppear {
+                            dashboardStore.state.graph.chartHeight = geo.size.height
                         }
                 }
             )
             .onPreferenceChange(AnnotationHeightKey.self) { height in
-                dashboardStore.annotationHeight = height
+                dashboardStore.state.graph.annotationHeight = height
             }
             .accessibilityLabel(Text("Weight chart"))
             .onAppear {
-                // Set initial scroll position to latest data
-                if let latestDate = dashboardStore.continuousOperations.map(\.date).max() {
-                    dashboardStore.xScrollPosition = latestDate
-                    print("Hello: GraphView - onAppear - Set scroll position to latest date: \(latestDate)")
-                }
+                dashboardStore.initializeChart()
             }
-            .onChange(of: dashboardStore.continuousOperations.count) { _, _ in
-                // When data changes, scroll to latest position
-                if let latestDate = dashboardStore.continuousOperations.map(\.date).max() {
-                    dashboardStore.xScrollPosition = latestDate
-                    print("Hello: GraphView - onChange - Updated scroll position to latest date: \(latestDate)")
-                }
-            }
-            // Add scroll gesture detection for dynamic Y-axis
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 3)
-                    .onChanged { value in
-                        // Only detect horizontal scrolling gestures
-                        let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                        let isSignificantMovement = abs(value.translation.width) > 8
-                        
-                        if isHorizontalScroll && isSignificantMovement && !dashboardStore.hasDetectedScrollInCurrentGesture {
-                            dashboardStore.hasDetectedScrollInCurrentGesture = true
-                            dashboardStore.isScrolling = true
-                            
-                            // Clear selection when scrolling starts
-                            dashboardStore.selectedXValue = nil
-                            dashboardStore.selectedPoint = nil
-                            dashboardStore.showCrosshair = false
-                            dashboardStore.selectEntry(nil)
-                        }
+            // Simplified scroll detection - only detect when scrolling starts/ends
+            .gesture(
+                DragGesture(minimumDistance: 10)
+                    .onChanged { _ in
+                        dashboardStore.handleScrollStart()
                     }
-                    .onEnded { value in
-                        // Reset for next gesture
-                        dashboardStore.hasDetectedScrollInCurrentGesture = false
-                        
-                        // Only handle if it was a horizontal scroll
-                        let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                        let isSignificantMovement = abs(value.translation.width) > 8
-                        
-                        if isHorizontalScroll && isSignificantMovement {
-                            // Set a timer to detect when scrolling has truly ended
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                dashboardStore.isScrolling = false
-                                // Reset metrics to latest entry when scrolling ends
-                                dashboardStore.resetMetricsToLatestEntry()
-                                // Update visible data after scroll ends
-                                dashboardStore.updateVisibleDataAfterScroll()
-                            }
-                        }
+                    .onEnded { _ in
+                        dashboardStore.handleScrollEndOptimized()
                     }
             )
         }
+        // Single chart refresh trigger for better performance
+        .id("\(dashboardStore.state.graph.selectedPeriod.rawValue)-\(dashboardStore.currentUnit.rawValue)-\(dashboardStore.state.graph.dataChangeTrigger)")
     }
-    
+
     // MARK: - Empty State View
     private var emptyStateView: some View {
         VStack(spacing: .spacingMD) {
             Spacer()
-            
+
             Text(emptyStateMessage)
                 .fontOpenSans(.heading5)
                 .foregroundColor(theme.textHeading)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, .spacingLG)
-            
+
             Spacer()
         }
         .frame(height: 265)
@@ -211,7 +157,7 @@ struct GraphView: View {
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
         let yAxisScale = dashboardStore.getYAxisScale()
-        
+
         ForEach(yAxisScale.ticks, id: \.self) { tick in
             if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
                 RuleMark(y: .value("YGrid", tick))
@@ -221,13 +167,13 @@ struct GraphView: View {
             }
         }
     }
-    
+
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
         let seriesData = dashboardStore.chartSeriesData
-        
+
         ForEach(seriesData) { series in
-                 
+
             LineMark(
                 x: .value("Date", series.date),
                 y: .value(series.series, series.value)
@@ -235,19 +181,19 @@ struct GraphView: View {
             .foregroundStyle(by: .value("Series", series.series))
             .interpolationMethod(.catmullRom)
             .lineStyle(StrokeStyle(lineWidth: 3))
-            
+
             PointMark(
                 x: .value("Date", series.date),
                 y: .value(series.series, series.value)
             )
-            .symbolSize(series.date == dashboardStore.selectedPoint?.date ? 200 : 64)
+            .symbolSize(series.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : 64)
             .foregroundStyle(by: .value("Series", series.series))
         }
     }
-    
+
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
-        if let selectedPoint = dashboardStore.selectedPoint, dashboardStore.showCrosshair {
+        if let selectedPoint = dashboardStore.state.graph.selectedPoint, dashboardStore.state.graph.showCrosshair {
             // Dotted vertical line
             RuleMark(
                 x: .value("Date", selectedPoint.date)
@@ -257,11 +203,11 @@ struct GraphView: View {
             .lineStyle(StrokeStyle(lineWidth: 2))
         }
     }
-    
+
     // MARK: - Axis Marks Builders
     private var yAxisMarks: some AxisContent {
         let yAxisScale = dashboardStore.getYAxisScale()
-        
+
         return AxisMarks(values: yAxisScale.ticks) { value in
             if let doubleValue = value.as(Double.self) {
                 if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
@@ -279,14 +225,14 @@ struct GraphView: View {
             }
         }
     }
-    
+
     private var xAxisMarks: some AxisContent {
-        AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.selectedPeriod)) { value in
+        AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
             AxisGridLine()
             AxisTick()
             AxisValueLabel {
                 if let date = value.as(Date.self),
-                   let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.selectedPeriod) {
+                   let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.state.graph.selectedPeriod) {
                     Text(labelString)
                         .font(.caption)
                         .foregroundColor(.gray)
@@ -294,8 +240,6 @@ struct GraphView: View {
             }
         }
     }
-    
-
 
     // MARK: - Axis Label Helpers
     @ViewBuilder
@@ -314,7 +258,6 @@ struct GraphView: View {
                 }
             )
             .zIndex(100)
-            .id(dashboardStore.currentUnit) // Force goal weight bubble to recalculate when unit changes
     }
 }
 

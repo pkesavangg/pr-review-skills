@@ -14,7 +14,7 @@ struct WeightTrendView: View {
     var body: some View {
         ZStack {
             VStack(alignment: .leading,spacing: 0) {
-                
+
                weightInfoSection(dashboardStore: dashboardStore)
 
                GraphView(dashboardStore: dashboardStore)
@@ -22,7 +22,7 @@ struct WeightTrendView: View {
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
                     selectedSegment: Binding(
-                        get: { dashboardStore.selectedPeriod },
+                        get: { dashboardStore.state.graph.selectedPeriod },
                         set: { dashboardStore.updateSelectedPeriod($0) }
                     )
                 )
@@ -35,7 +35,7 @@ struct WeightTrendView: View {
             .zIndex(1)
         }
     }
-    
+
     @ViewBuilder
     func weightInfoSection(
         dashboardStore: DashboardStore
@@ -64,7 +64,7 @@ struct WeightTrendView: View {
                         return formattedWeight
                     }
                 }(),
-                unitText: dashboardStore.accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+                unitText: dashboardStore.unitText
             )
         }
     }
