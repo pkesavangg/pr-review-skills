@@ -64,6 +64,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
     
+    /// Username for duplicate user handling
+    @Published var duplicateUserName: String = "" {
+        didSet {
+            updateNextEnabled()
+        }
+    }
+    
     let stepsToHideFooter: Set<BtWifiScaleSetupStep> = [
         .wakeup,
         .connectingBluetooth,
@@ -106,7 +113,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     )
                 )
             case .duplicatesFound:
-                return AnyView(DuplicateUserView())
+                return AnyView(DuplicateUserView()
+                    .environmentObject(self)
+                )
             default:
                 // For now, other screens show the step name as text
                 return AnyView(
@@ -290,10 +299,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             Task {
                 if discoveredScale != nil && discoveryEvent != nil {
                     await self.confirmPair()
-                    self.connectionState = .success
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        self.moveToNextStep()
-                    }
                 }
             }
         default:
@@ -357,8 +362,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        // Use cached display name
-        let displayName = self.firstName ?? "User"
+        // Use cached display name, or duplicateUserName if handling duplicate user
+        let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
         // Call confirmSmartPair
         let pairResult = await bluetoothService.confirmSmartPair(
             device: scale,
@@ -380,6 +385,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 break
             case .duplicateUserError:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Duplicate User Error \(response)")
+                // Navigate to duplicatesFound screen
+                if let duplicatesFoundIndex = steps.firstIndex(of: .duplicatesFound) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.currentStepIndex = duplicatesFoundIndex
+                    }
+                }
                 break
             case .memoryFull:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
@@ -407,7 +418,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         do {
             // Create unique scale ID using timestamp (similar to Date.now().toString() in TypeScript)
             let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
-            let displayName = self.firstName ?? "User"
+            let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
             
             // Set up the scale object similar to TypeScript version
             scale.id = scaleID
@@ -519,6 +530,24 @@ final class BtWifiScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Handles the save action from the duplicate user screen
+    func handleSaveDuplicateUser() {
+        // Continue with the setup process using the new user name
+        // This will retry the pairing process with the updated information
+        Task {
+            await self.confirmPair()
+        }
+    }
+    
+    /// Handles the restore account action from the duplicate user screen
+    func handleRestoreAccount() {
+        // TODO: Implement restore account functionality
+        // This should restore the existing account and continue with setup
+        LoggerService.shared.log(level: .info, tag: tag, message: "Restore account requested")
+        // For now, just move to the next step
+        moveToNextStep()
+    }
+    
     // MARK: - Helper Methods
     // TODO: Need to remove after all steps are implemented
     private func stepName(for step: BtWifiScaleSetupStep) -> String {
@@ -571,24 +600,27 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Updates `isNextEnabled` depending on the current step and permission state.
     private func updateNextEnabled() {
-        guard currentStep == .permissions else {
+        switch currentStep {
+        case .permissions:
+            // Evaluate individual permissions
+            let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
+            let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+            
+            // Automatically request missing permissions
+            if !bluetoothEnabled {
+                Task { await permissionsService.handlePermission(.bluetooth) }
+            } else if !bluetoothSwitchEnabled {
+                Task { await permissionsService.handlePermission(.bluetoothSwitch) }
+            }
+            
+            // Enable the Next button only when all permissions are granted
+            isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
+        case .duplicatesFound:
+            // Enable save button only when username is not empty
+            isNextEnabled = !duplicateUserName.isEmpty
+        default:
             isNextEnabled = true
-            return
         }
-        
-        // Evaluate individual permissions
-        let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
-        let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-        
-        // Automatically request missing permissions
-        if !bluetoothEnabled {
-            Task { await permissionsService.handlePermission(.bluetooth) }
-        } else if !bluetoothSwitchEnabled {
-            Task { await permissionsService.handlePermission(.bluetoothSwitch) }
-        }
-        
-        // Enable the Next button only when all permissions are granted
-        isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
     }
     
     /// Returns an adjusted step index by skipping the permissions page when the

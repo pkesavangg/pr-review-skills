@@ -11,13 +11,10 @@ struct DuplicateUserView: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var store: BtWifiScaleSetupStore
     
-    var onClickRestore: (() -> Void)? = nil
     let scaleSetupLang = ScaleSetupStrings.self
     
     @State var focusedField: FocusField?
     let labels = InputFieldLabels.self
-    
-    @State var userName: String = ""
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -39,7 +36,7 @@ struct DuplicateUserView: View {
                                 errorMessage: nil,
                                 focusField: .userName
                             ),
-                            value: $userName,
+                            value: $store.duplicateUserName,
                             focusedField: $focusedField
                         ) {
                             focusedField = .userName
@@ -48,7 +45,7 @@ struct DuplicateUserView: View {
                         
                         VStack {
                             ButtonView(text: "Restore account", type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                                
+                                store.handleRestoreAccount()
                             }
                             Text("Last active June 10, 2019")
                                 .fontOpenSans(.subHeading2)
@@ -66,7 +63,6 @@ struct DuplicateUserView: View {
                     .padding(.top, .spacingLG)
                 }
             }
-            .padding(.horizontal, .spacingLG)
         }
         .scrollDismissesKeyboard(.interactively)
         .background(theme.backgroundSecondary)
