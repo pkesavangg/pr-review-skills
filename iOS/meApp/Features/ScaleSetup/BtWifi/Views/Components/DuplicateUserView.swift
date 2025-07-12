@@ -1,0 +1,78 @@
+//
+//  DuplicateUserView.swift
+//  meApp
+//
+//  Created by Kesavan Panchabakesan on 12/07/25.
+//
+
+import SwiftUI
+
+struct DuplicateUserView: View {
+    @Environment(\.appTheme) private var theme
+    @EnvironmentObject var store: BtWifiScaleSetupStore
+    
+    var onClickRestore: (() -> Void)? = nil
+    let scaleSetupLang = ScaleSetupStrings.self
+    
+    @State var focusedField: FocusField?
+    let labels = InputFieldLabels.self
+    
+    @State var userName: String = ""
+    
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(spacing: .spacingXS) {
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text("A user with this name already exists on the scale.")
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
+                        
+                        Text("Choose a new user name to proceed. Or, if this is you, restore the existing account.")
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textHeading)
+                        
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: labels.userName,
+                                inputType: .text,
+                                errorMessage: nil,
+                                focusField: .userName
+                            ),
+                            value: $userName,
+                            focusedField: $focusedField
+                        ) {
+                            focusedField = .userName
+                        }
+                        .padding(.top, .spacingSM)
+                        
+                        VStack {
+                            ButtonView(text: "Restore account", type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                                
+                            }
+                            Text("Last active June 10, 2019")
+                                .fontOpenSans(.subHeading2)
+                                .foregroundColor(theme.textSubheading)
+                            
+                            Image("0412UserInfoScreen")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 223, height: 227)
+                                .padding(.top, .spacingLG)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        
+                    }
+                    .padding(.top, .spacingLG)
+                }
+            }
+            .padding(.horizontal, .spacingLG)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(theme.backgroundSecondary)
+    }
+}
+
+#Preview {
+    DuplicateUserView()
+}

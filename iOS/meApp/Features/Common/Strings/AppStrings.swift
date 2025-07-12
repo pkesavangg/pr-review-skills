@@ -241,6 +241,7 @@ struct FormErrorMessages {
 struct InputFieldLabels {
     static let firstName = "first name"
     static let lastName = "last name"
+    static let userName = "user name"
     static let email = "email"
     static let password = "password"
     static let confirmPassword = "confirm password"

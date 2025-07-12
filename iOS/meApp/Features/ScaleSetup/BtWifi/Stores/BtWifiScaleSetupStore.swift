@@ -105,6 +105,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         }
                     )
                 )
+            case .duplicatesFound:
+                return AnyView(DuplicateUserView())
             default:
                 // For now, other screens show the step name as text
                 return AnyView(
