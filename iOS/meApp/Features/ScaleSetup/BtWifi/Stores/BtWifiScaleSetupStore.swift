@@ -340,7 +340,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Confirms the pairing with the discovered scale.
     /// TODO: Implement the actual pairing functionality later.
     private func confirmPair() async {
-        guard let scale = discoveredScale else {
+        guard let scale = discoveredScale, discoveryEvent != nil else {
             LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing discovery event or scale")
             connectionState = .failure
             return
@@ -431,7 +431,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 scale.r4ScalePreference = R4ScalePreference(from: R4ScalePreferenceDTO(
                     scaleId: scaleID,
                     displayName: displayName,
-                    displayMetrics: getDefaultScaleMetrics(),
+                    displayMetrics: ScaleMetrics.defaultMetricsKeys,
                     shouldFactoryReset: false,
                     shouldMeasureImpedance: true,
                     shouldMeasurePulse: false,
@@ -462,28 +462,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
             connectionState = .failure
         }
-    }
-    
-    /// Returns default scale metrics for display preferences.
-    private func getDefaultScaleMetrics() -> [String] {
-        return [
-            "bmi",
-            "bodyFatPercent",
-            "musclePercent",
-            "bodyWaterPercent",
-            "heartRate",
-            "bonePercent",
-            "visceralFatLevel",
-            "subcutaneousFatPercent",
-            "proteinPercent",
-            "skeletalMusclePercent",
-            "bmr",
-            "metabolicAge",
-            "goalProgress",
-            "dailyAverage",
-            "weeklyAverage",
-            "monthlyAverage"
-        ]
     }
     
     /// Fetches the WiFi scale token for setup operations.

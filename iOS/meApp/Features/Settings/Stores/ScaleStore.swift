@@ -48,12 +48,8 @@ class ScaleStore: ObservableObject {
     @Published var datePairedValue: String = "12/25/2024" // TODO: Replace with actual date paired
     
     // Display Metrics State
-    @Published var progressMetrics: [ProgressMetricItem] = [
-        ProgressMetricItem(id: "goalProgress", label: ScaleModesStrings.goalProgress, isOn: true),
-        ProgressMetricItem(id: "dailyAverage", label: ScaleModesStrings.dailyAverage, isOn: true),
-        ProgressMetricItem(id: "weeklyAverage", label: ScaleModesStrings.weeklyAverage, isOn: true),
-        ProgressMetricItem(id: "monthlyAverage", label: ScaleModesStrings.monthlyAverage, isOn: true),
-    ]
+    @Published var progressMetrics: [ScaleMetricSetting] = ScaleMetrics.progressMetrics
+    
     
     // Banner States
     @Published var showWeightOnlyBanner: Bool = false
@@ -61,9 +57,8 @@ class ScaleStore: ObservableObject {
     @Published var showHeartRateBanner: Bool = false
     
     // Metrics State
-    @Published var metrics: [BodyMetricItem] = BodyMetrics.config.keys
-        .filter { $0 != .weight }
-        .map { BodyMetricItem(id: $0, isOn: true) }
+    @Published var metrics: [ScaleMetricSetting] = ScaleMetrics.bodyMetrics
+    
     
     // User Management State
     @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
