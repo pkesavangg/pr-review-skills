@@ -65,7 +65,7 @@ final class ScaleAPIRepository : ScaleRepositoryAPIProtocol{
         let endpoint = Endpoint.scaleR4Preference
         _ = try await httpClient.send(
             endpoint,
-            method: .patch,
+            method: .post,
             body: preference,
             needsAuth: true
         ) as EmptyResponse

@@ -18,6 +18,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     @Injector private var permissionsService: PermissionsService
     /// Bluetooth service for device discovery
     @Injector private var bluetoothService: BluetoothService
+    /// Account service for account operations
+    @Injector private var accountService: AccountService
+    /// Scale service for scale-related operations
+    @Injector private var wifiScaleService: WifiScaleService
     
     let networkMonitor = NetworkMonitor.shared
     
@@ -29,6 +33,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var discoveredScale: Device?
     /// Discovery event from Bluetooth service
     private var discoveryEvent: DeviceDiscoveryEvent?
+    /// Cached scale token to avoid repeated API calls
+    private var scaleToken: String?
+    /// Cached first name from active account
+    private var firstName: String?
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -116,6 +124,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Lifecycle
     init() {
+        // Cache the first name from active account
+        self.firstName = accountService.activeAccount?.firstName ?? "User"
+        
         // Observe permission updates so the footer button reacts instantly.
         permissionsService.$permissions
             .receive(on: DispatchQueue.main)
@@ -329,9 +340,167 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Confirms the pairing with the discovered scale.
     /// TODO: Implement the actual pairing functionality later.
     private func confirmPair() async {
-        guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
-        // TODO: Implement pairing functionality
-        LoggerService.shared.log(level: .info, tag: tag, message: "Confirming pair with scale: \(scale.id)")
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing discovery event or scale")
+            connectionState = .failure
+            return
+        }
+        
+        // Fetch scale token if not already cached
+        await fetchWifiScaleToken()
+        
+        guard let scaleToken = self.scaleToken else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to obtain scale token")
+            connectionState = .failure
+            return
+        }
+        
+        // Use cached display name
+        let displayName = self.firstName ?? "User"
+        // Call confirmSmartPair
+        let pairResult = await bluetoothService.confirmSmartPair(
+            device: scale,
+            token: scaleToken,
+            displayName: displayName,
+            userNumber: nil
+        )
+        switch pairResult {
+        case .success(let response):
+            switch response {
+            case .creationCompleted:
+                LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
+                await saveScale()
+                connectionState = .success
+                // Move to next step after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    self.moveToNextStep()
+                }
+                break
+            case .duplicateUserError:
+                LoggerService.shared.log(level: .error, tag: tag, message: "Duplicate User Error \(response)")
+                break
+            case .memoryFull:
+                LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
+                break
+            default:
+                connectionState = .failure
+                LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
+                break
+            }
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to pair scale: \(error.localizedDescription)")
+            connectionState = .failure
+        }
+    }
+    
+    /// Saves the discovered scale to persistent storage, similar to the TypeScript saveScale method.
+    private func saveScale() async {
+        guard let discoveryEvent = discoveryEvent,
+              let scale = discoveredScale,
+              let scaleToken = self.scaleToken else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveScale - missing required data")
+            return
+        }
+        
+        do {
+            // Create unique scale ID using timestamp (similar to Date.now().toString() in TypeScript)
+            let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
+            let displayName = self.firstName ?? "User"
+            
+            // Set up the scale object similar to TypeScript version
+            scale.id = scaleID
+            scale.accountId = accountService.activeAccount?.accountId ?? ""
+            scale.deviceName = discoveryEvent.deviceInfo.productName
+            scale.deviceType = DeviceType.scale.rawValue
+            scale.sku = scaleItem?.sku ?? discoveryEvent.device.sku
+            scale.mac = scale.mac ?? ""
+            scale.peripheralIdentifier = scale.mac?.replacingOccurrences(of: ":", with: "") ?? ""
+            scale.userNumber = "0"
+            scale.token = scaleToken
+            scale.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
+            scale.nickname = scale.nickname ?? "AccuCheck Verve Smart Scale"
+            
+            // Set up bath scale with proper scale type
+            scale.bathScale = BathScale(
+                scaleType: ScaleSourceType.btWifiR4.rawValue,
+                bodyComp: true
+            )
+            
+            // Create or update R4ScalePreference
+            if scale.r4ScalePreference == nil {
+                scale.r4ScalePreference = R4ScalePreference(from: R4ScalePreferenceDTO(
+                    scaleId: scaleID,
+                    displayName: displayName,
+                    displayMetrics: getDefaultScaleMetrics(),
+                    shouldFactoryReset: false,
+                    shouldMeasureImpedance: true,
+                    shouldMeasurePulse: false,
+                    timeFormat: "12",
+                    tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+                    wifiFotaScheduleTime: 0,
+                    updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
+                    isTemporary: false
+                ))
+            }
+            // Update preference properties
+            scale.r4ScalePreference?.id = scaleID
+            scale.r4ScalePreference?.isSynced = false
+            
+            // Save the scale using BluetoothService
+            try await accountService.updateDashboardType(type: .dashboard12)
+            
+            
+            let result = await bluetoothService.addNewDevice(scale, metaData: nil)
+            switch result {
+            case .success(let savedScale):
+                LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+                connectionState = .failure
+            }
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
+            connectionState = .failure
+        }
+    }
+    
+    /// Returns default scale metrics for display preferences.
+    private func getDefaultScaleMetrics() -> [String] {
+        return [
+            "bmi",
+            "bodyFatPercent",
+            "musclePercent",
+            "bodyWaterPercent",
+            "heartRate",
+            "bonePercent",
+            "visceralFatLevel",
+            "subcutaneousFatPercent",
+            "proteinPercent",
+            "skeletalMusclePercent",
+            "bmr",
+            "metabolicAge",
+            "goalProgress",
+            "dailyAverage",
+            "weeklyAverage",
+            "monthlyAverage"
+        ]
+    }
+    
+    /// Fetches the WiFi scale token for setup operations.
+    /// This demonstrates how to use the WiFi scale service from other services.
+    private func fetchWifiScaleToken() async {
+        if scaleToken != nil {
+            return
+        }
+        
+        do {
+            let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
+            self.scaleToken = scaleTokenResponse.token
+            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
+            connectionState = .failure
+        }
     }
     
     // MARK: - Device Discovery Handling

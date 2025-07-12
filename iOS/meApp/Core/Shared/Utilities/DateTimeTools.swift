@@ -188,7 +188,7 @@ final class DateTimeTools {
 
     /// Returns the user's current timezone offset from GMT in minutes (negative for compatibility with some APIs).
     static func getTimeZoneInMinutes() -> Int {
-        return -TimeZone.current.secondsFromGMT() / 60
+        return TimeZone.current.secondsFromGMT() / 60
     }
 
 
