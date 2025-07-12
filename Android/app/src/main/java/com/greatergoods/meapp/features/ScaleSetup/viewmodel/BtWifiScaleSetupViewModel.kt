@@ -96,7 +96,7 @@ constructor(
       var previousStep: BtWifiSetupStep? = null
 
       state.collect { currentState ->
-        val currentStep = currentState.currentStep as? BtWifiSetupStep
+        val currentStep = currentState.currentStep
 
         // Only trigger if step actually changed
         if (previousStep != null && previousStep != currentStep) {
@@ -104,15 +104,13 @@ constructor(
 
           // Call appropriate function based on the new step
           when (currentStep) {
-            is BtWifiSetupStep.Wakeup -> {
+            BtWifiSetupStep.WAKEUP -> {
               wakeUpScale()
             }
-
-            is BtWifiSetupStep.ConnectingBluetooth -> {
+            BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
               connectToBluetooth()
             }
-
-            is BtWifiSetupStep.GatheringNetwork -> {
+            BtWifiSetupStep.GATHERING_NETWORK -> {
               gatherNetworks()
             }
 
@@ -123,15 +121,12 @@ constructor(
             BtWifiSetupStep.CONNECTING_WIFI -> {
               connectToWifi()
             }
-
-            is BtWifiSetupStep.Permissions -> {
+            BtWifiSetupStep.PERMISSIONS -> {
               handlePermissions()
             }
-
-            is BtWifiSetupStep.Measurement -> {
+            BtWifiSetupStep.MEASUREMENT -> {
               collectMeasurement()
             }
-
             else -> {
               // No automatic action needed for other steps
             }
@@ -157,12 +152,12 @@ constructor(
       // For steps that need async operations, the functions will be called automatically
       // by observeStepChanges() when the step changes. Here we just handle the step transition.
       when (val step = currentState.currentStep) {
-        is BtWifiSetupStep.Wakeup,
-        is BtWifiSetupStep.Permissions,
-        is BtWifiSetupStep.ConnectingBluetooth,
-        is BtWifiSetupStep.GatheringNetwork,
-        is BtWifiSetupStep.ConnectingWifi,
-        is BtWifiSetupStep.Measurement,
+        BtWifiSetupStep.WAKEUP,
+        BtWifiSetupStep.PERMISSIONS,
+        BtWifiSetupStep.CONNECTING_BLUETOOTH,
+        BtWifiSetupStep.GATHERING_NETWORK,
+        BtWifiSetupStep.CONNECTING_WIFI,
+        BtWifiSetupStep.MEASUREMENT,
           -> {
           // These steps have async operations that prevent automatic progression
           // The user shouldn't be able to click Next while these are in progress
@@ -295,23 +290,23 @@ constructor(
 
     // Restart the appropriate function based on current step
     when (val step = currentState.currentStep) {
-      is BtWifiSetupStep.Wakeup -> {
+      BtWifiSetupStep.WAKEUP -> {
         wakeUpScale()
       }
 
-      is BtWifiSetupStep.ConnectingBluetooth -> {
+      BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
         connectToBluetooth()
       }
 
-      is BtWifiSetupStep.GatheringNetwork -> {
+      BtWifiSetupStep.GATHERING_NETWORK -> {
         gatherNetworks()
       }
 
-      is BtWifiSetupStep.ConnectingWifi -> {
+      BtWifiSetupStep.CONNECTING_WIFI -> {
         connectToWifi()
       }
 
-      is BtWifiSetupStep.Permissions -> {
+      BtWifiSetupStep.PERMISSIONS -> {
         handlePermissions()
       }
 
@@ -360,7 +355,7 @@ constructor(
 
     // Set loading state and prevent automatic next step
     handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
-    handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.Wakeup, ConnectionState.Loading))
+    handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.WAKEUP, ConnectionState.Loading))
 
     viewModelScope.launch {
       try {
@@ -368,16 +363,16 @@ constructor(
         if (discoveredScale != null) {
           AppLog.d(TAG, "Wake up successful, proceeding to next step")
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-          handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.ConnectingBluetooth))
+          handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
         } else {
           AppLog.w(TAG, "Wake up failed")
-          handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.Wakeup, ConnectionState.Error))
+          handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.WAKEUP, ConnectionState.Error))
           handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WAKEUP_001"))
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during wake up process", e.toString())
-        handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.Wakeup, ConnectionState.Error))
+        handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.WAKEUP, ConnectionState.Error))
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WAKEUP_002"))
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
@@ -391,7 +386,7 @@ constructor(
     handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
-        BtWifiSetupStep.ConnectingBluetooth,
+        BtWifiSetupStep.CONNECTING_BLUETOOTH,
         ConnectionState.Loading,
       ),
     )
@@ -410,18 +405,18 @@ constructor(
             GGUserActionResponseType.CREATION_COMPLETED -> {
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
-                  BtWifiSetupStep.ConnectingBluetooth,
+                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
                   ConnectionState.Success,
                 ),
               )
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.GatheringNetwork))
+              handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
             }
 
             GGUserActionResponseType.CREATION_FAILED -> {
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
-                  BtWifiSetupStep.ConnectingBluetooth,
+                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
                   ConnectionState.Error,
                 ),
               )
@@ -436,7 +431,7 @@ constructor(
         AppLog.e(TAG, "Error during bluetooth connection", e.toString())
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.ConnectingBluetooth,
+            BtWifiSetupStep.CONNECTING_BLUETOOTH,
             ConnectionState.Error,
           ),
         )
@@ -468,7 +463,7 @@ constructor(
     handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
-        BtWifiSetupStep.GatheringNetwork,
+        BtWifiSetupStep.GATHERING_NETWORK,
         ConnectionState.Loading,
       ),
     )
@@ -479,7 +474,7 @@ constructor(
           AppLog.d(TAG, "Network gathering successful")
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.GatheringNetwork,
+              BtWifiSetupStep.GATHERING_NETWORK,
               ConnectionState.Success,
             ),
           )
@@ -500,7 +495,7 @@ constructor(
         AppLog.e(TAG, "Error during network gathering", e.toString())
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.GatheringNetwork,
+            BtWifiSetupStep.GATHERING_NETWORK,
             ConnectionState.Error,
           ),
         )
@@ -524,17 +519,17 @@ constructor(
           AppLog.d(TAG, "Wifi connection successful")
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.ConnectingWifi,
+              BtWifiSetupStep.CONNECTING_WIFI,
               ConnectionState.Success,
             ),
           )
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-          handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.Measurement))
+          handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
         } else {
           AppLog.w(TAG, "Wifi connection failed")
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.ConnectingWifi,
+              BtWifiSetupStep.CONNECTING_WIFI,
               ConnectionState.Error,
             ),
           )
@@ -597,7 +592,7 @@ constructor(
       AppLog.e(TAG, "Error during wifi connection", e.toString())
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
-          BtWifiSetupStep.ConnectingWifi,
+          BtWifiSetupStep.CONNECTING_WIFI,
           ConnectionState.Error,
         ),
       )
@@ -613,7 +608,7 @@ constructor(
     handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
-        BtWifiSetupStep.Measurement,
+        BtWifiSetupStep.MEASUREMENT,
         ConnectionState.Loading,
       ),
     )
@@ -630,7 +625,7 @@ constructor(
           AppLog.d(TAG, "collect Measurement successful")
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.Measurement,
+              BtWifiSetupStep.MEASUREMENT,
               ConnectionState.Success,
             ),
           )
@@ -650,7 +645,7 @@ constructor(
           AppLog.w(TAG, "Measurement collection failed")
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.Measurement,
+              BtWifiSetupStep.MEASUREMENT,
               ConnectionState.Error,
             ),
           )
@@ -661,7 +656,7 @@ constructor(
         AppLog.e(TAG, "Error during measurement collection", e.toString())
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.Measurement,
+            BtWifiSetupStep.MEASUREMENT,
             ConnectionState.Error,
           ),
         )

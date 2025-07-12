@@ -96,7 +96,7 @@ fun BtWifiScaleSetupScreenContent(
         else -> null
       },
       middleContent = when (state.currentStep) {
-        is BtWifiSetupStep.ScaleConnected -> {
+        BtWifiSetupStep.SCALE_CONNECTED -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
@@ -109,7 +109,6 @@ fun BtWifiScaleSetupScreenContent(
             )
           }
         }
-
         BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
           {
             AppButton(
@@ -145,10 +144,10 @@ fun BtWifiScaleSetupScreenContent(
       },
       pageContent = { step ->
         when (step) {
-          is BtWifiSetupStep.ScaleInfo -> {
+          BtWifiSetupStep.SCALE_INFO -> {
             ScaleInfo(sku = state.sku)
           }
-          is BtWifiSetupStep.Wakeup -> {
+          BtWifiSetupStep.WAKEUP -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.WakeupScale.Title(state.currentStepConnectionState),
@@ -165,12 +164,11 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
-          is BtWifiSetupStep.ConnectingBluetooth -> {
+          BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingBluetooth.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
-              errorCode = state.errorCode,
               primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
@@ -179,13 +177,11 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
-          is BtWifiSetupStep.GatheringNetwork -> {
+          BtWifiSetupStep.GATHERING_NETWORK -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
-              scaleImageSku = if (state.currentStepConnectionState == ConnectionState.Error)
-                state.sku else null,
-              showIndicationOnly = state.currentStepConnectionState != ConnectionState.Error,
+              scaleImageSku = state.sku,
               primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
@@ -287,7 +283,7 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
-          is BtWifiSetupStep.ScaleConnected -> {
+          BtWifiSetupStep.SCALE_CONNECTED -> {
             ScaleSetupLoader(
               title = BtWifiScaleSetupStrings.ScaleConnected.Title,
               subtitle = BtWifiScaleSetupStrings.ScaleConnected.Subtitle,
@@ -296,7 +292,6 @@ fun BtWifiScaleSetupScreenContent(
               contentButtonClick = { onIntent(BtWifiScaleSetupIntent.OpenAccucheckModal) },
             )
           }
-          // TODO: Add other steps as needed
           else -> {
             // Placeholder for other steps
           }

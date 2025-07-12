@@ -2,79 +2,81 @@ package com.greatergoods.meapp.features.ScaleSetup.enums
 
 
 /**
- * Steps for Bluetooth + WiFi scale setup flow.
+ * Enum for Bluetooth + WiFi scale setup flow steps.
  */
-sealed class BtWifiSetupStep {
-    object ScaleInfo : BtWifiSetupStep()
-    object Permissions : BtWifiSetupStep()
-    object Wakeup : BtWifiSetupStep()
-    object ConnectingBluetooth : BtWifiSetupStep()
-    object GatheringNetwork : BtWifiSetupStep()
-    object DuplicatesFound : BtWifiSetupStep()
-    object AvailableWifiList : BtWifiSetupStep()
-    data class WifiPassword(val ssid: String) : BtWifiSetupStep()
-    object ConnectingWifi : BtWifiSetupStep()
-    object CustomizeSettings : BtWifiSetupStep()
-    object ViewSettings : BtWifiSetupStep()
-    object UpdateSettings : BtWifiSetupStep()
-    object StepOn : BtWifiSetupStep()
-    object Measurement : BtWifiSetupStep()
-    object ScaleConnected : BtWifiSetupStep()
+enum class BtWifiSetupStep {
+    SCALE_INFO,
+    PERMISSIONS,
+    WAKEUP,
+    CONNECTING_BLUETOOTH,
+    GATHERING_NETWORK,
+    DUPLICATES_FOUND,
+    AVAILABLE_WIFI_LIST,
+    // WifiPassword step data (ssid) should be stored in state, not here
+    WIFI_PASSWORD,
+    CONNECTING_WIFI,
+    CUSTOMIZE_SETTINGS,
+    VIEW_SETTINGS,
+    UPDATE_SETTINGS,
+    STEP_ON,
+    MEASUREMENT,
+    SCALE_CONNECTED
 }
 
 /**
- * Steps for WiFi-only scale setup flow.
+ * Enum for WiFi-only scale setup flow steps.
  */
-sealed class WifiScaleSetupStep {
-    object ScaleInfo : WifiScaleSetupStep()
-    object Permissions : WifiScaleSetupStep()
-    data class WifiPassword(val ssid: String) : WifiScaleSetupStep()
-    object SelectUser : WifiScaleSetupStep()
-    object ActivateScale : WifiScaleSetupStep()
-    object ConnectingScale : WifiScaleSetupStep()
-    object ErrorGuide : WifiScaleSetupStep()
-    object TroubleShooting : WifiScaleSetupStep()
-    object SwitchWifi : WifiScaleSetupStep()
-    object ScaleCounts : WifiScaleSetupStep()
-    object StepOn : WifiScaleSetupStep()
-    object ScaleConnected : WifiScaleSetupStep()
+enum class WifiScaleSetupStep {
+    SCALE_INFO,
+    PERMISSIONS,
+    // WifiPassword step data (ssid) should be stored in state, not here
+    WIFI_PASSWORD,
+    SELECT_USER,
+    ACTIVATE_SCALE,
+    CONNECTING_SCALE,
+    ERROR_GUIDE,
+    TROUBLE_SHOOTING,
+    SWITCH_WIFI,
+    SCALE_COUNTS,
+    STEP_ON,
+    SCALE_CONNECTED
 }
 
 /**
- * Steps for Bluetooth-only scale setup flow.
+ * Enum for Bluetooth-only scale setup flow steps.
  */
-sealed class BtScaleSetupStep {
-    object ScaleInfo : BtScaleSetupStep()
-    object Permissions : BtScaleSetupStep()
-    object SelectUser : BtScaleSetupStep()
-    object ConnectingBluetooth : BtScaleSetupStep()
-    object FindUser : BtScaleSetupStep()
-    object StepOn : BtScaleSetupStep()
-    object SetupFinished : BtScaleSetupStep()
+enum class BtScaleSetupStep {
+    SCALE_INFO,
+    PERMISSIONS,
+    SELECT_USER,
+    CONNECTING_BLUETOOTH,
+    FIND_USER,
+    STEP_ON,
+    SETUP_FINISHED
 }
 
 /**
- * Steps for LCBT scale setup flow.
+ * Enum for LCBT scale setup flow steps.
  */
-sealed class LcbtScaleSetupStep {
-    object ScaleInfo : LcbtScaleSetupStep()
-    object Permissions : LcbtScaleSetupStep()
-    object StepOn : LcbtScaleSetupStep()
-    object ConnectingBluetooth : LcbtScaleSetupStep()
-    object SetupFinished : LcbtScaleSetupStep()
+enum class LcbtScaleSetupStep {
+    SCALE_INFO,
+    PERMISSIONS,
+    STEP_ON,
+    CONNECTING_BLUETOOTH,
+    SETUP_FINISHED
 }
 
 /**
- * Steps for Appsync scale setup flow.
+ * Enum for Appsync scale setup flow steps.
  */
-sealed class AppsyncScaleSetupStep {
-    object ScaleInfo : AppsyncScaleSetupStep()
-    object Permissions : AppsyncScaleSetupStep()
-    object ActivateScale : AppsyncScaleSetupStep()
-    object AddInfo : AppsyncScaleSetupStep()
-    object StepOn : AppsyncScaleSetupStep()
-    object OpenCamera : AppsyncScaleSetupStep()
-    object SetupFinished : AppsyncScaleSetupStep()
+enum class AppsyncScaleSetupStep {
+    SCALE_INFO,
+    PERMISSIONS,
+    ACTIVATE_SCALE,
+    ADD_INFO,
+    STEP_ON,
+    OPEN_CAMERA,
+    SETUP_FINISHED
 }
 
 /**

@@ -7,9 +7,9 @@ import com.greatergoods.meapp.features.ScaleSetup.enums.AppsyncScaleSetupStep
  * State for AppsyncScaleSetupScreen.
  */
 data class AppsyncScaleSetupState(
-  val currentStep: AppsyncScaleSetupStep = AppsyncScaleSetupStep.ScaleInfo,
+  val currentStep: AppsyncScaleSetupStep = AppsyncScaleSetupStep.SCALE_INFO,
   val sku: String = "0341",
-  val steps: List<AppsyncScaleSetupStep> = listOf(AppsyncScaleSetupStep.ScaleInfo),
+  val steps: List<AppsyncScaleSetupStep> = listOf(AppsyncScaleSetupStep.SCALE_INFO),
   val isLoading: Boolean = false,
   val error: String? = null,
   val isSetupFinished: Boolean = false,

@@ -109,7 +109,7 @@ fun AppsyncScaleSetupScreenContent(
               .padding(MeTheme.spacing.md),
         ) {
           when (step) {
-            AppsyncScaleSetupStep.ScaleInfo -> {
+            AppsyncScaleSetupStep.SCALE_INFO -> {
               ScaleInfo(sku = state.sku)
             }
             // TODO: Add other steps as needed

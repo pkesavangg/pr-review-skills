@@ -109,7 +109,7 @@ fun LcbtScaleSetupScreenContent(
               .padding(MeTheme.spacing.md),
         ) {
           when (step) {
-            LcbtScaleSetupStep.ScaleInfo -> {
+            LcbtScaleSetupStep.SCALE_INFO -> {
               ScaleInfo(sku = state.sku)
             }
             // TODO: Add other steps as needed

@@ -109,7 +109,7 @@ fun WifiScaleSetupScreenContent(
               .padding(MeTheme.spacing.md),
         ) {
           when (step) {
-            WifiScaleSetupStep.ScaleInfo -> {
+            WifiScaleSetupStep.SCALE_INFO -> {
               ScaleInfo(
                 sku = state.sku,
                 buttonText = ScaleSetupStrings.ScaleInfo.WifiScaleButtonText,
