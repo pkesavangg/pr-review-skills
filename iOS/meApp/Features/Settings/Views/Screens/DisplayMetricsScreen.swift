@@ -48,7 +48,7 @@ struct DisplayMetricsScreen: View {
                             isOn: $metric.isEnabled,
                             text: metric.name,
                             icon: metric.imagePath,
-                            isDisabled: false
+                            isDisabled: !metric.isEnabled
                         )
                         .listRowBackground(theme.backgroundPrimary)
                         .listRowInsets(EdgeInsets())
