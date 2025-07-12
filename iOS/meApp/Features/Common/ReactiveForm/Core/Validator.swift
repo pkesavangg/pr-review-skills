@@ -126,6 +126,32 @@ extension Validator where Value == String {
     public static let skuMatch = Validator(type: .skuMatch) { value in
         SCALES.contains { $0.sku == value }
     }
+    
+    /// Validator that checks for duplicate usernames in a provided user list
+    public static func duplicateUser(userList: @escaping () -> [String]) -> Validator {
+        Validator(type: .duplicate) { value in
+            let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let userNames = userList().map { $0.lowercased() }
+            return !userNames.contains(trimmedValue)
+        }
+    }
+    
+    /// Validator that checks if username matches the required pattern
+    /// Pattern: ^[A-Za-z0-9 _]*[A-Za-z0-9][A-Za-z0-9 _]*$
+    /// Allows letters, numbers, spaces, and underscores, but must start and end with alphanumeric
+    public static let namePattern = Validator(type: .namePattern) { value in
+        let pattern = "^[A-Za-z0-9 _]*[A-Za-z0-9][A-Za-z0-9 _]*$"
+        let regex = try? NSRegularExpression(pattern: pattern, options: [])
+        let range = NSRange(location: 0, length: value.count)
+        return regex?.firstMatch(in: value, options: [], range: range) != nil
+    }
+    
+    /// Validator that checks if the display name is 'guest' (case-insensitive)
+    /// Returns false (invalid) if the value is 'guest'
+    public static let userNameUnavailable = Validator(type: .userNameUnavailable) { value in
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedValue.lowercased() != "guest"
+    }
 }
 
 // MARK: - Integer Validators

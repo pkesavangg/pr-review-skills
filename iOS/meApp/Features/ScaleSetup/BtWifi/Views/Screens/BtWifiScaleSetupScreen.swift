@@ -79,7 +79,7 @@ struct BtWifiScaleSetupScreen: View {
             ButtonView(text: commonLang.back,
                        type: .inlineTextPrimary,
                        size: .small,
-                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .scaleConnected || setupStore.currentStep == .duplicatesFound,
+                       isDisabled: setupStore.shouldDisableBackButton(),
                        action: {
                 withAnimation {
                     hideKeyboard()
@@ -89,19 +89,15 @@ struct BtWifiScaleSetupScreen: View {
             
             Spacer()
             
-            ButtonView(text: setupStore.currentStep == .scaleConnected ? commonLang.finish : 
-                           setupStore.currentStep == .duplicatesFound ? "Save" : commonLang.next,
+            ButtonView(text: setupStore.currentStep == .scaleConnected ? commonLang.finish :
+                        setupStore.currentStep == .duplicatesFound ? commonLang.save : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    if setupStore.currentStep == .duplicatesFound {
-                        setupStore.handleSaveDuplicateUser()
-                    } else {
-                        setupStore.moveToNextStep()
-                    }
+                    setupStore.handleNextButtonClick()
                 }
             })
         }
@@ -111,4 +107,4 @@ struct BtWifiScaleSetupScreen: View {
 #Preview {
     BtWifiScaleSetupScreen(sku: "0412", discoveredScale: nil, discoveryEvent: nil)
         .environmentObject(Theme.shared)
-} 
+}

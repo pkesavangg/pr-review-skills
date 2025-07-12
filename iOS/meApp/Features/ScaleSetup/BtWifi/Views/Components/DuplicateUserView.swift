@@ -16,16 +16,18 @@ struct DuplicateUserView: View {
     @State var focusedField: FocusField?
     let labels = InputFieldLabels.self
     
+    private let lang = BtWifiScaleSetupStrings.DuplicateUserViewStrings.self
+    
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(spacing: .spacingXS) {
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("A user with this name already exists on the scale.")
+                        Text(lang.title)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
                         
-                        Text("Choose a new user name to proceed. Or, if this is you, restore the existing account.")
+                        Text(lang.subtitle)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textHeading)
                         
@@ -33,10 +35,10 @@ struct DuplicateUserView: View {
                             config: TextInputConfig(
                                 label: labels.userName,
                                 inputType: .text,
-                                errorMessage: nil,
+                                errorMessage: store.userNameForm.getError(for: store.userNameForm.displayName),
                                 focusField: .userName
                             ),
-                            value: $store.duplicateUserName,
+                            value: $store.userNameForm.displayName.value,
                             focusedField: $focusedField
                         ) {
                             focusedField = .userName
@@ -44,14 +46,15 @@ struct DuplicateUserView: View {
                         .padding(.top, .spacingSM)
                         
                         VStack {
-                            ButtonView(text: "Restore account", type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                            ButtonView(text: lang.restoreAccountButton, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                                 store.handleRestoreAccount()
                             }
-                            Text("Last active June 10, 2019")
-                                .fontOpenSans(.subHeading2)
-                                .foregroundColor(theme.textSubheading)
-                            
-                            Image("0412UserInfoScreen")
+                            if let lastActive = store.duplicateUsernameLastActiveAt {
+                                Text("\(lang.lastActive) \(DateTimeTools.getFormattedDateFromTimestamp(lastActive).toLowerCase())")
+                                    .fontOpenSans(.subHeading2)
+                                    .foregroundColor(theme.textSubheading)
+                            }
+                            Image(AppAssets.userInfoScreen)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 223, height: 227)

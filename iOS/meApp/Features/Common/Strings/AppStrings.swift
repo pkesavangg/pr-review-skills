@@ -235,6 +235,9 @@ struct FormErrorMessages {
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
     static let modelNumberInvalid = "Model Number Invalid"
+    static let duplicate = "the scale can’t have duplicate user names"
+    static let namePattern = "please enter a valid name"
+    static let userNameUnavailable = "user name is unavailable"
 }
 
 /// Constants for input field labels used in the app
@@ -517,6 +520,13 @@ struct AlertStrings {
         static let notificationDisabledTitle = "Notifications are disabled!"
         static let notificationDisabledMessage = "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
     }
+    
+    struct ConfirmRestoreAlert {
+        static let title = "Confirm Account Restore"
+        static let message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
+        static let restoreButton = "Restore"
+        static let backButton = "Back"
+    }
 }
 
 struct LoaderStrings {
@@ -661,6 +671,7 @@ struct AppAssets {
     static let plusCircleDark = "plusCircleDark"
     static let minusCircleDark = "minusCircleDark"
     static let minusCircleClear = "minusCircleClear"
+    static let userInfoScreen = "0412UserInfoScreen"
 }
 
 /// Constants used in the AppSync entry result confirmation card

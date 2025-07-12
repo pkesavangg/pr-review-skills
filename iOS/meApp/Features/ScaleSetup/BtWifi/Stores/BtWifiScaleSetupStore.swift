@@ -70,6 +70,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
             updateNextEnabled()
         }
     }
+    @Published var duplicateUsernameLastActiveAt: Int64? = nil
+    
+    /// User list from the scale
+    @Published var userList: [DeviceUser] = []
+    
+    /// Current user found in the duplicate check
+    @Published var currentUser: DeviceUser?
+    
+    /// List of duplicate users with the same name
+    @Published var duplicateList: [DeviceUser] = []
+    
+    // MARK: - UserName Form
+    @Published var userNameForm = UserNameForm()
+    
     
     let stepsToHideFooter: Set<BtWifiScaleSetupStep> = [
         .wakeup,
@@ -86,6 +100,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     private let tag = "BtWifiScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
+    private let alertLang = AlertStrings.self
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     
     /// Convenience accessor building the views for each step.
@@ -116,6 +131,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 return AnyView(DuplicateUserView()
                     .environmentObject(self)
                 )
+                
+            case .gatheringNetwork:
+                return AnyView(ConnectionPromptView(
+                    title: ScaleSetupStrings.gatheringNetworksTitle,
+                    image: AppAssets.wifi
+                ))
             default:
                 // For now, other screens show the step name as text
                 return AnyView(
@@ -150,6 +171,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         networkMonitor.$isConnected
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isConnected in
+                self?.updateNextEnabled()
+            }
+            .store(in: &cancellables)
+        
+        // Observe form changes to update next button state
+        userNameForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
                 self?.updateNextEnabled()
             }
             .store(in: &cancellables)
@@ -210,6 +239,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         updateNextEnabled()
     }
     
+    
     // MARK: - Exit / Help
     
     /// Presents a confirmation alert before abandoning the setup flow.
@@ -248,6 +278,53 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return !stepsToHideFooter.contains(currentStep)
     }
     
+    /// Checks if the back button should be disabled based on the current step.
+    func shouldDisableBackButton() -> Bool {
+        return currentStep == .intro || currentStep == .duplicatesFound
+    }
+    
+    /// Handles the next button click based on the current step.
+    func handleNextButtonClick() {
+        if currentStep == .duplicatesFound {
+            handleSaveDuplicateUser()
+        } else {
+            moveToNextStep()
+        }
+    }
+    
+    /// Handles the restore account action from the duplicate user screen
+    func handleRestoreAccount() {
+        // Show confirmation alert similar to TypeScript version
+        let alertStrings = alertLang.ConfirmRestoreAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message,
+            buttons: [
+                AlertButtonModel(title: alertStrings.backButton, type: .secondary) { _ in },
+                AlertButtonModel(title: alertStrings.restoreButton, type: .primary) { [weak self] _ in
+                    Task {
+                        await self?.deleteUsers()
+                        // Navigate to connecting bluetooth screen
+                        self?.navigateToStep(.connectingBluetooth)
+                    }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Handles the save action from the duplicate user screen
+    private func handleSaveDuplicateUser() {
+        // Validate the form first
+        guard userNameForm.displayName.isValid else { return }
+        
+        // Update duplicateUserName with the form value
+        duplicateUserName = removeWhiteSpace(userNameForm.displayName.value)
+        
+        // Navigate to connecting bluetooth screen
+        navigateToStep(.connectingBluetooth)
+    }
+    
     /// Handles the pairing process when entering the *wake-up* step.
     private func pair() {
         // Start scanning for devices when entering wake-up step
@@ -284,9 +361,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Invoked from the *Try Again* button of `BluetoothConnectionView`.
     private func retryPairing() {
         // Jump back to wake-up step
-        if let wakeUpIndex = steps.firstIndex(of: .wakeup) {
-            currentStepIndex = wakeUpIndex
-        }
+        navigateToStep(.wakeup, delay: 0)
     }
     
     // MARK: - Step Change Handling
@@ -313,9 +388,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             if currentStep == .wakeup {
                 // Reset discovery state and navigate back to permissions screen
                 resetDiscoveryState()
-                if let permissionStepIndex = steps.firstIndex(of: .permissions) {
-                    currentStepIndex = permissionStepIndex
-                }
+                navigateToStep(.permissions, delay: 0)
             }
             // TODO: Handle wifi error screen and measurement error screen later
             // if currentStep == .gatheringNetwork {
@@ -385,12 +458,23 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 break
             case .duplicateUserError:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Duplicate User Error \(response)")
-                // Navigate to duplicatesFound screen
-                if let duplicatesFoundIndex = steps.firstIndex(of: .duplicatesFound) {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.currentStepIndex = duplicatesFoundIndex
-                    }
+                // Get user list from scale and check for duplicates
+                await getUserList()
+                checkDuplicateUserList()
+                
+                // Populate userNameForm with current user name and user list for validation
+                if let firstName = self.firstName {
+                    userNameForm.setDisplayName(firstName)
                 }
+                
+                // Convert DeviceUser list to ScaleUser list for form validation
+                let scaleUsers = userList.map { deviceUser in
+                    ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                }
+                userNameForm.updateUserList(scaleUsers)
+                
+                // Navigate to duplicatesFound screen
+                navigateToStep(.duplicatesFound)
                 break
             case .memoryFull:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
@@ -530,25 +614,99 @@ final class BtWifiScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    /// Handles the save action from the duplicate user screen
-    func handleSaveDuplicateUser() {
-        // Continue with the setup process using the new user name
-        // This will retry the pairing process with the updated information
-        Task {
-            await self.confirmPair()
+    /// Deletes duplicate users from the scale
+    private func deleteUsers() async {
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUsers - no discovered scale")
+            return
+        }
+        
+        // Delete all users in the duplicate list
+        for user in duplicateList {
+            scale.token = user.token
+            let result = await bluetoothService.deleteDevice(scale, disconnect: false)
+            switch result {
+            case .success:
+                LoggerService.shared.log(level: .info, tag: tag, message: "deleteUsers - deleted user: \(user.name)")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "deleteUsers - error deleting user: \(error.localizedDescription)")
+            }
+        }
+        
+        // Reset display name to first name
+        duplicateUserName = firstName ?? "User"
+        
+        // Reset the form with the first name
+        userNameForm.reset()
+        if let firstName = self.firstName {
+            userNameForm.setDisplayName(firstName)
+        }
+        
+        // Restart connection
+        await restartConnection()
+    }
+    
+    /// Restarts the connection process after deleting users
+    private func restartConnection() async {
+        // Reset duplicate user flags
+        self.userList = []
+        self.currentUser = nil
+        self.duplicateList = []
+        self.duplicateUsernameLastActiveAt = nil
+        
+        // Reset the form
+        self.userNameForm.reset()
+    }
+    
+    private func getUserList() async {
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "getUserList - no discovered scale")
+            return
+        }
+        
+        let result = await bluetoothService.getScaleUserList(for: scale)
+        switch result {
+        case .success(let users):
+            // Filter out the current scale token
+            self.userList = users.filter { user in
+                user.token != scale.token
+            }
+            LoggerService.shared.log(level: .info, tag: tag, message: "getUserList - retrieved \(self.userList.count) users")
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "getUserList - error getting scale users: \(error.localizedDescription)")
         }
     }
     
-    /// Handles the restore account action from the duplicate user screen
-    func handleRestoreAccount() {
-        // TODO: Implement restore account functionality
-        // This should restore the existing account and continue with setup
-        LoggerService.shared.log(level: .info, tag: tag, message: "Restore account requested")
-        // For now, just move to the next step
-        moveToNextStep()
+    /// Checks for duplicate users in the user list, similar to TypeScript checkDuplicateUserList()
+    private func checkDuplicateUserList() {
+        self.currentUser = userList.first { user in
+            user.name.lowercased() == (self.firstName?.lowercased() ?? "")
+        }
+        
+        // Find all users with the same name as current user
+        if let currentUser = self.currentUser {
+            self.duplicateList = userList.filter { user in
+                user.name == currentUser.name
+            }
+        }
+        duplicateUsernameLastActiveAt = Int64(duplicateList.first?.lastActive ?? 0)
+        LoggerService.shared.log(level: .info, tag: tag, message: "checkDuplicateUserList - found \(self.duplicateList.count) duplicate users")
     }
     
     // MARK: - Helper Methods
+    
+    /// Navigates to the specified step with an optional delay
+    /// - Parameters:
+    ///   - step: The step to navigate to
+    ///   - delay: Optional delay in seconds before navigation (default: 0.5)
+    private func navigateToStep(_ step: BtWifiScaleSetupStep, delay: TimeInterval = 0.5) {
+        if let stepIndex = steps.firstIndex(of: step) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                self.currentStepIndex = stepIndex
+            }
+        }
+    }
+    
     // TODO: Need to remove after all steps are implemented
     private func stepName(for step: BtWifiScaleSetupStep) -> String {
         switch step {
@@ -616,8 +774,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Enable the Next button only when all permissions are granted
             isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
         case .duplicatesFound:
-            // Enable save button only when username is not empty
-            isNextEnabled = !duplicateUserName.isEmpty
+            // Enable save button only when username is valid
+            isNextEnabled = userNameForm.displayName.isValid
         default:
             isNextEnabled = true
         }
