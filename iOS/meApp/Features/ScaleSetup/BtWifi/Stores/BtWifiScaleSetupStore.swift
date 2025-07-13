@@ -90,6 +90,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         .connectingBluetooth,
         .gatheringNetwork,
         .connectingWifi,
+        .maxUserCountExceeded,
         .stepOn,
         .measurement,
         .scaleConnected
@@ -128,10 +129,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     )
                 )
             case .duplicatesFound:
-                return AnyView(DuplicateUserView()
-                    .environmentObject(self)
-                )
-                
+                return AnyView(DuplicateUserView())
+            case .maxUserCountExceeded:
+                return AnyView(MaxUserListView(userList: userList))
             case .gatheringNetwork:
                 return AnyView(ConnectionPromptView(
                     title: ScaleSetupStrings.gatheringNetworksTitle,
@@ -305,6 +305,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     Task {
                         await self?.deleteUsers()
                         // Navigate to connecting bluetooth screen
+                        self?.navigateToStep(.connectingBluetooth, delay: 0)
+                    }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Handles the delete user action from the max user count exceeded screen
+    func handleDeleteUser(_ user: DeviceUser) {
+        let alertStrings = alertLang.ConfirmDeleteUserAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message(user.name),
+            buttons: [
+                AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
+                AlertButtonModel(title: alertStrings.deleteButton, type: .primary) { [weak self] _ in
+                    Task {
+                        await self?.deleteUserFromScale(user)
+                        // Navigate to connecting bluetooth screen
                         self?.navigateToStep(.connectingBluetooth)
                     }
                 }
@@ -453,7 +473,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 connectionState = .success
                 // Move to next step after a short delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    self.moveToNextStep()
+                    self.navigateToStep(.gatheringNetwork)
                 }
                 break
             case .duplicateUserError:
@@ -474,10 +494,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 userNameForm.updateUserList(scaleUsers)
                 
                 // Navigate to duplicatesFound screen
-                navigateToStep(.duplicatesFound)
+                navigateToStep(.duplicatesFound, delay: 0)
                 break
             case .memoryFull:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
+                await getUserList()
+                // Navigate to maxUserCountExceeded screen
+                navigateToStep(.maxUserCountExceeded, delay: 0)
                 break
             default:
                 connectionState = .failure
@@ -646,6 +669,28 @@ final class BtWifiScaleSetupStore: ObservableObject {
         await restartConnection()
     }
     
+    /// Deletes a specific user from the scale
+    private func deleteUserFromScale(_ user: DeviceUser) async {
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUserFromScale - no discovered scale")
+            return
+        }
+        
+        // Set the user's token to delete the correct user
+        scale.token = user.token
+        let result = await bluetoothService.deleteDevice(scale, disconnect: false)
+        
+        switch result {
+        case .success:
+            LoggerService.shared.log(level: .info, tag: tag, message: "deleteUserFromScale - deleted user: \(user.name)")
+            
+            // Remove the user from the local list
+            userList.removeAll { $0.token == user.token }
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUserFromScale - error deleting user: \(error.localizedDescription)")
+        }
+    }
+    
     /// Restarts the connection process after deleting users
     private func restartConnection() async {
         // Reset duplicate user flags
@@ -740,6 +785,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return "Measurement"
         case .scaleConnected:
             return "Scale Connected"
+        case .maxUserCountExceeded:
+            return "Max User Count Exceeded"
         }
     }
     

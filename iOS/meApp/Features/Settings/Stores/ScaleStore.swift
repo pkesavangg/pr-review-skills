@@ -63,6 +63,34 @@ class ScaleStore: ObservableObject {
     // User Management State
     @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
     @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
+    
+    // MARK: - User Management Computed Properties
+    /// Converts the current user to a DeviceUser object
+    var currentDeviceUser: DeviceUser {
+        DeviceUser(
+            name: currentUser,
+            token: "current-user-token", // TODO: Replace with actual token
+            lastActive: Int(Date().timeIntervalSince1970), // Current time for active user
+            isBodyMetricsEnabled: true // TODO: Replace with actual setting
+        )
+    }
+    
+    /// Converts other users to DeviceUser objects
+    var otherDeviceUsers: [DeviceUser] {
+        otherUsers.enumerated().map { index, userName in
+            DeviceUser(
+                name: userName,
+                token: "user-token-\(index)", // TODO: Replace with actual token
+                lastActive: Int(Date().timeIntervalSince1970) - (index + 1) * 86400, // Simulate different last active times
+                isBodyMetricsEnabled: true // TODO: Replace with actual setting
+            )
+        }
+    }
+    
+    /// All users combined as DeviceUser objects
+    var allDeviceUsers: [DeviceUser] {
+        [currentDeviceUser] + otherDeviceUsers
+    }
     @Published var isWifiLoading = false
     @Published var showPassword: Bool = false
     @Published var wifiPasswordValidationForm = WifiPasswordValidationForm()
@@ -343,11 +371,30 @@ class ScaleStore: ObservableObject {
     func saveUsers() {
         // TODO: Implement save users logic
     }
+    
     func deleteCurrentUser() {
         // TODO: Implement delete current user logic
+        // For now, just clear the current user
+        currentUser = ""
     }
+    
     func deleteOtherUser(at index: Int) {
         // TODO: Implement delete other user logic
+        guard index < otherUsers.count else { return }
+        otherUsers.remove(at: index)
+    }
+    
+    /// Deletes a user from the combined users array
+    /// - Parameter index: The index in the combined users array (0 = current user, 1+ = other users)
+    func deleteUser(at index: Int) {
+        if index == 0 {
+            // Delete current user
+            deleteCurrentUser()
+        } else {
+            // Delete other user (adjust index by -1 since index 0 is current user)
+            let otherUserIndex = index - 1
+            deleteOtherUser(at: otherUserIndex)
+        }
     }
     
     // MARK: - Product Guide URL helper & Browser Presentation

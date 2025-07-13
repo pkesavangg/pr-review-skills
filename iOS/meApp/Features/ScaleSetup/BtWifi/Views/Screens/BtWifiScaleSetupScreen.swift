@@ -64,6 +64,7 @@ struct BtWifiScaleSetupScreen: View {
                     .padding(.spacingSM)
             }
         }
+        .environmentObject(setupStore)
         .onAppear {
             setupStore.dismissAction = dismiss
             setupStore.configure(with: sku,

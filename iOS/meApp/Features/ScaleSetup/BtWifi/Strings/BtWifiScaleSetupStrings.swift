@@ -14,5 +14,10 @@ struct BtWifiScaleSetupStrings {
         static let restoreAccountButton = "Restore account"
         static let lastActive = "Last active"
     }
+    
+    struct MaxUserListViewStrings {
+        static let title = "User Limit Exceeded!"
+        static let subtitle = "Delete an inactive user to add yourself to the scale."
+    }
 }
     

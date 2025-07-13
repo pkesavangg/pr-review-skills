@@ -33,21 +33,28 @@ struct UsersScreen: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .spacingMD) {
-                    ListItemView(
-                        title: scaleStore.currentUser,
-                        subtitleTop: lang.userNameLabel,
-                        trailing: Button(action: { scaleStore.deleteCurrentUser() }) {
-                            Image(AppAssets.closeCircle)
-                                .foregroundColor(theme.actionPrimary)
-                        },
-                        rowHeight: 56,
-                        onTap: { scaleStore.deleteCurrentUser() }
-                    )
-                    .cornerRadius(.spacingXS)
+                    // Current User section
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text(lang.userNameLabel)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                        
+                        ListItemView(
+                            title: scaleStore.currentUser,
+                            trailing: Button(action: { scaleStore.deleteCurrentUser() }) {
+                                Image(AppAssets.closeCircle)
+                                    .foregroundColor(theme.actionPrimary)
+                            },
+                            rowHeight: 56,
+                            onTap: { scaleStore.deleteCurrentUser() }
+                        )
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(.radiusXS)
+                    }
                     .padding(.top, .spacingMD)
                     
-                    VStack(alignment: .leading){
-                        // Other Users section
+                    // Other Users section
+                    VStack(alignment: .leading, spacing: .spacingXS) {
                         Text(lang.otherUsersSection)
                             .fontOpenSans(.heading5)
                             .fontWeight(.bold)
@@ -56,29 +63,15 @@ struct UsersScreen: View {
                         Text(lang.maxUsers)
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.textSubheading)
-                            .padding(.bottom, .radiusXS)
                         
-                        VStack(spacing: 2) {
-                            ForEach(scaleStore.otherUsers.indices, id: \.self) { idx in
-                                ListItemView(
-                                    title: scaleStore.otherUsers[idx],
-                                    subtitle: lang.lastActive,
-                                    trailing: Button(action: { scaleStore.deleteOtherUser(at: idx) }) {
-                                        Image(AppAssets.trash)
-                                            .foregroundColor(theme.actionPrimary)
-                                    },
-                                    rowHeight: 56,
-                                    onTap: { scaleStore.deleteOtherUser(at: idx) },
-                                    verticalPadding: .spacingXS
-                                )
-                                if idx < scaleStore.otherUsers.count - 1 {
-                                    Divider()
-                                        .background(theme.statusUtilityPrimary)
+                        if !scaleStore.otherUsers.isEmpty {
+                            DeviceUserListView(
+                                users: scaleStore.otherDeviceUsers,
+                                onDeleteUser: { index in
+                                   // scaleStore.deleteOtherUser(at: index)
                                 }
-                            }
+                            )
                         }
-                        .background(theme.backgroundPrimary)
-                        .cornerRadius(.radiusXS)
                     }
                 }
                 .padding(.horizontal, .spacingSM)
