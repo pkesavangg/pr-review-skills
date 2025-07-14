@@ -1,12 +1,15 @@
-package com.greatergoods.meapp.features.ScaleSetup.components
+package com.greatergoods.meapp.features.ScaleCustomization.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationSettingsItem
 import com.greatergoods.meapp.features.ScaleSetup.enums.CustomizeSettings
+import com.greatergoods.meapp.features.ScaleSetup.model.CustomizeSettingsList
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
@@ -41,14 +44,32 @@ fun CustomizeScaleSettings(
       )
     }
 
-    Column {
-      // Customization list
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+      verticalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+      CustomizeSettingsList.forEach {
+        CustomizationSettingsItem(
+          settings = it,
+          onClick = onSelectSettings,
+        )
+      }
+
     }
   }
 }
 
-@PreviewTheme
+
+@PreviewTheme()
 @Composable
 fun CustomizeScaleSettingsPreview() {
-  MeAppTheme {}
+  MeAppTheme {
+    Column {
+      CustomizeScaleSettings(
+        title = "Customize your Settings",
+        subtitle = "You can update settings at any time.",
+        onSelectSettings = {},
+      )
+    }
+  }
 }

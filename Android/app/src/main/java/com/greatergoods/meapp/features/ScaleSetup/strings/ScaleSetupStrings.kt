@@ -36,6 +36,7 @@ object ScaleSetupStrings {
     const val Finish = "Finish"
     const val Skip = "Skip"
     const val Save = "Save"
+    const val Back = "Back"
     const val Refresh = "Refresh"
     const val Connect = "Connect"
     const val Next = "next"

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.features.ScaleModeSettings.screens.ScaleModeSettingsScreen
 import com.greatergoods.meapp.features.common.components.AnnotationPosition
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppIconButton
@@ -73,13 +74,7 @@ fun ScaleModeScreenContent(
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val isAllBodyMetrics = state.isAllBodyMetrics
-    val isHeartRateOn = state.isHeartRateOn
-    val modeOptions =
-        listOf(
-            SegmentButtonData(0, ScaleModeStrings.AllBodyMetrics),
-            SegmentButtonData(1, ScaleModeStrings.WeightOnly),
-        )
-    val selectedMode = if (isAllBodyMetrics) modeOptions[0] else modeOptions[1]
+
 
     AppScaffold(
         title = ScaleModeStrings.Title,
@@ -104,127 +99,16 @@ fun ScaleModeScreenContent(
             }
         },
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = spacing.md, horizontal = spacing.sm),
-            verticalArrangement = Arrangement.spacedBy(spacing.lg),
-        ) {
-            // Description with link
-            Column(verticalArrangement = Arrangement.Center) {
-                AppText(
-                    text = ScaleModeStrings.BioimpedanceDescription.format(ScaleModeStrings.BioimpedanceTitle),
-                    annotatedText = ScaleModeStrings.BioimpedanceTitle,
-                    annotationPosition = AnnotationPosition.Middle,
-                    spanStyle =
-                        SpanStyle(
-                            color = colorScheme.primaryAction,
-                            fontWeight = FontWeight.Bold,
-                            textDecoration = TextDecoration.Underline,
-                        ),
-                    textType = TextType.Body,
-                    onAnnotationClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
-                )
-            }
-            // Mode selector
-            SegmentButtonGroup(
-                data = modeOptions,
-                key = SegmentButtonData::label,
-                selectedData = selectedMode,
-                onSelected = {
-                    handleIntent(ScaleModeIntent.SetMode(it.id == 0, true))
-                },
-                size = SegmentButtonSize.Large,
-                type = SegmentButtonType.Single,
-            )
-            if (isAllBodyMetrics) {
-                // Heart Rate toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    AppIcon(
-                        id = AppIcons.Metrics.Pulse,
-                        contentDescription = ScaleModeStrings.HeartRate(isHeartRateOn),
-                        type = AppIconType.Default,
-                    )
-                    AppText(
-                        text = ScaleModeStrings.HeartRate(isHeartRateOn),
-                        textType = TextType.Body,
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    AppToggle(
-                        checked = isHeartRateOn,
-                        onCheckedChange = { handleIntent(ScaleModeIntent.SetHeartRate(it, true)) },
-                    )
-                }
-                AppText(
-                    text = ScaleModeStrings.HeartRateDescription,
-                    textType = TextType.SubHeading,
-                )
-                Surface(
-                    color = colorScheme.inverseAction,
-                    shape = RoundedCornerShape(borderRadius.sm),
-                    modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 0.dp,
-                ) {
-                    AppText(
-                        text = ScaleModeStrings.NoteMedical,
-                        annotatedText = ScaleModeStrings.Note,
-                        annotationPosition = AnnotationPosition.Start,
-                        spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
-                        textType = TextType.SubHeading,
-                        modifier = Modifier.padding(spacing.md),
-                    )
-                }
-            } else {
-                // Weight Only Mode UI
-                Row(
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-                ) {
-                    AppIcon(
-                        id = AppIcons.Default.WeightOnlyMode,
-                        contentDescription = "Weight Only Mode",
-                        type = AppIconType.Default,
-                    )
-                    AppText(
-                        text = ScaleModeStrings.WeightOnlyIndicator,
-                        textType = TextType.SubHeading,
-                    )
-                }
-                Column(
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                ) {
-                    Image(
-                        painter =
-                            painterResource(
-                                id = AppIcons.Default.WeightOnlyModeScale,
-                            ),
-                        contentDescription = null,
-                    )
-                }
-                Surface(
-                    color = colorScheme.inverseAction,
-                    shape = RoundedCornerShape(borderRadius.sm),
-                    modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 0.dp,
-                ) {
-                    AppText(
-                        text = ScaleModeStrings.NoteOtherUsers,
-                        annotatedText = ScaleModeStrings.Note,
-                        annotationPosition = AnnotationPosition.Start,
-                        spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
-                        textType = TextType.SubHeading,
-                        modifier = Modifier.padding(spacing.md),
-                    )
-                }
-            }
-        }
+      ScaleModeSettingsScreen(
+        isAllBodyMetrics = isAllBodyMetrics,
+        isHeartRateOn = state.isHeartRateOn,
+        onModeSelected = {
+          isAllBodyMetrics -> handleIntent(ScaleModeIntent.SetMode(isAllBodyMetrics, true))
+        },
+        onHeartRateToggle = {
+          isHeartRateOn -> handleIntent(ScaleModeIntent.SetHeartRate(isHeartRateOn, true)) },
+        onBioimpedanceClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
+        )
     }
 }
 
