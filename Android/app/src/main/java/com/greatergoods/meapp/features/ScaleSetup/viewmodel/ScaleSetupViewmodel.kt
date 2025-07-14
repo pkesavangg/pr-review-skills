@@ -7,10 +7,11 @@ import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Intent>(
-  private val protocolType: String,
   open val ggDeviceService: GGDeviceService,
   protected val reducer: IReducer<State, Intent>,
 ) : BaseIntentViewModel<State, Intent>(reducer) {
@@ -23,9 +24,13 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    */
   protected abstract fun onScanResponse(device: GGScanResponse.DeviceDetail)
 
+  protected abstract fun onEntryResponse(device: GGScanResponse.Entry)
+
   protected var discoveredScale: Device? = null
 
   private var deviceObservationJob: Job? = null
+
+  private var entryObservationJob: Job? = null
 
   /**
    * Starts observing device scan responses. Call this when you want to begin collecting devices.
@@ -33,34 +38,23 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
   protected fun startObservingDevices() {
     if (deviceObservationJob == null) {
       deviceObservationJob = viewModelScope.launch {
-        ggDeviceService.deviceCallbackFlow
+        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
           .collect { scanResponse ->
-            handleScanResponse(scanResponse)
+            onScanResponse(scanResponse as GGScanResponse.DeviceDetail)
           }
       }
     }
   }
 
-  /**
-   * Stops observing device scan responses. Call this to stop collecting devices.
-   */
-  protected fun stopObservingDevices() {
-    deviceObservationJob?.cancel()
-    deviceObservationJob = null
-  }
-
-  private fun handleScanResponse(scanResponse: GGScanResponse) {
-    when (scanResponse) {
-      is GGScanResponse.DeviceDetail -> {
-        handleDeviceDetail(scanResponse)
+  protected fun startObservingEntries() {
+    if (entryObservationJob == null) {
+      entryObservationJob = viewModelScope.launch {
+        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.Entry }
+          .collect { scanResponse ->
+            onEntryResponse(scanResponse as GGScanResponse.Entry)
+          }
       }
-
-      else -> null
     }
   }
 
-  private fun handleDeviceDetail(response: GGScanResponse.DeviceDetail) {
-    response.data
-    onScanResponse(response)
-  }
 }

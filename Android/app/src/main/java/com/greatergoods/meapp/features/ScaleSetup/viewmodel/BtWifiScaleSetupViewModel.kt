@@ -9,9 +9,11 @@ import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.ggbluetoothsdk.external.enums.GGWifiState
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
+import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
@@ -26,6 +28,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -39,9 +42,9 @@ class BtWifiScaleSetupViewModel
 @AssistedInject
 constructor(
   @Assisted private val sku: String,
-  override val ggDeviceService: GGDeviceService
+  override val ggDeviceService: GGDeviceService,
+  val accountService: IAccountService
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
-  GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.name,
   ggDeviceService,
   reducer = BtWifiScaleSetupReducer(),
 ) {
@@ -208,7 +211,9 @@ constructor(
     when (currentState.currentStep) {
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         // Skip to CUSTOMIZE_SETTINGS
-        handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+        ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!){
+        }
+        handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.STEP_ON))
       }
 
       else -> {
@@ -424,6 +429,18 @@ constructor(
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
             }
 
+            GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
+              ggDeviceService.deleteAccount(device = ggBtDevice){ deleteResponse ->
+                when (deleteResponse) {
+                  GGUserActionResponseType.DELETE_COMPLETED -> {
+                    connectToBluetooth()
+                  }
+
+                  else -> null
+                }
+              }
+            }
+
             else -> null
           }
         }
@@ -511,6 +528,12 @@ constructor(
    */
   private fun connectToWifi(ssid: String = "", password: String = "") {
     AppLog.d(TAG, "Starting wifi connection process")
+    handleIntent(
+      BtWifiScaleSetupIntent.SetStepConnectionState(
+        BtWifiSetupStep.CONNECTING_WIFI,
+        ConnectionState.Loading,
+      ),
+    )
     try {
       ggDeviceService.setupWifi(
         discoveredScale!!.toGGBTDevice(),
@@ -537,7 +560,8 @@ constructor(
           handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
-      } catch (e: Exception) {
+      }
+    } catch (e: Exception) {
         AppLog.e(TAG, "Error during wifi connection", e.toString())
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -559,11 +583,11 @@ constructor(
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
       handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
-  }
 
   private fun stepOn() {
     AppLog.d(TAG, "Starting wifi connection process")
-
+    ggDeviceService.syncDevices(listOf(discoveredScale!!.toGGBTDevice()))
+    startObservingEntries()
     handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -571,68 +595,14 @@ constructor(
         ConnectionState.Loading,
       ),
     )
-
-    viewModelScope.launch {
-      try {
-        // Simulate Step on
-        delay(5000) // Replace with actual step on logic
-
-        // TODO: Replace with actual step on logic
-        val steppedOn = true
-
-        if (steppedOn) {
-          AppLog.d(TAG, "Step on successful")
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-          // Check if this is the last step, if so complete setup
-          val currentState = state.value
-
-          // Move to next step if there are more steps
-          val nextIndex = currentState.currentStepIndex + 1
-          if (nextIndex < currentState.steps.size) {
-            handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(currentState.steps[nextIndex]))
-          }
-        } else {
-          AppLog.w(TAG, "Step on failed")
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during step on", e.toString())
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-      }
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error during wifi connection", e.toString())
-      handleIntent(
-        BtWifiScaleSetupIntent.SetStepConnectionState(
-          BtWifiSetupStep.CONNECTING_WIFI,
-          ConnectionState.Error,
-        ),
-      )
-      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
-      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-    }
   }
 
   private fun collectMeasurement() {
 
     AppLog.d(TAG, "Starting wifi connection process")
 
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
-    handleIntent(
-      BtWifiScaleSetupIntent.SetStepConnectionState(
-        BtWifiSetupStep.MEASUREMENT,
-        ConnectionState.Loading,
-      ),
-    )
-
     viewModelScope.launch {
       try {
-        // Simulate wifi connection
-        delay(4000) // Replace with actual wifi connection logic
-
-        // TODO: Replace with actual collect Measurement logic
-        val wifiConnected = true
-
-        if (wifiConnected) {
           AppLog.d(TAG, "collect Measurement successful")
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -652,17 +622,6 @@ constructor(
               handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(currentState.steps[nextIndex] as BtWifiSetupStep))
             }
           }
-        } else {
-          AppLog.w(TAG, "Measurement collection failed")
-          handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.MEASUREMENT,
-              ConnectionState.Error,
-            ),
-          )
-          handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASURE_001"))
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-        }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during measurement collection", e.toString())
         handleIntent(
@@ -700,4 +659,19 @@ constructor(
       else -> null
     }
   }
+
+  override fun onEntryResponse(response: GGScanResponse.Entry) {
+    val entry = response.data
+    when (response.type) {
+      GGScanResponseType.SINGLE_ENTRY -> {
+        collectMeasurement()
+      }
+
+      GGScanResponseType.MULTI_ENTRIES -> {
+        collectMeasurement()
+      }
+      else -> null
+    }
+  }
+
 }
