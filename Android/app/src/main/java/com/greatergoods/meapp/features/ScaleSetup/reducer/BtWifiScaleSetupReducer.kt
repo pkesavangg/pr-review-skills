@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.ScaleSetup.reducer
 
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
@@ -58,6 +59,7 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.SCALE_CONNECTED,
   ),
   val nextButtonText: String = ScaleSetupStrings.SetupButtons.Next,
+  val wifiList : List<GGWifiInfo> = emptyList(),
   val isLoading: Boolean = false,
   val errorCode: String? = null,
   val isSetupFinished: Boolean = false,
@@ -77,6 +79,8 @@ data class BtWifiScaleSetupState(
  * Intents for BtWifiScaleSetupScreen actions.
  */
 sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
+
+  data class SetWifiList(val wifiList : List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(
     val sku: String,
   ) : BtWifiScaleSetupIntent
@@ -136,6 +140,8 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
     intent: BtWifiScaleSetupIntent,
   ): BtWifiScaleSetupState? =
     when (intent) {
+
+      is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList)
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
       is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)
       is BtWifiScaleSetupIntent.SetLoading -> state.copy(isLoading = intent.isLoading)

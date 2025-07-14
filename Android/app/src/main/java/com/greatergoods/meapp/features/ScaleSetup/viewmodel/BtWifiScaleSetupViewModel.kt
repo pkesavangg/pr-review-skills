@@ -479,6 +479,7 @@ constructor(
             ),
           )
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
           handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.AVAILABLE_WIFI_LIST))
         } else {
           AppLog.w(TAG, "Network gathering failed")

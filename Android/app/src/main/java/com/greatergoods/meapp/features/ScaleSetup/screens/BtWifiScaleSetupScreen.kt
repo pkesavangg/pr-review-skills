@@ -14,8 +14,6 @@ import com.greatergoods.meapp.features.ScaleSetup.components.CustomizeScaleSetti
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
-import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
-import com.greatergoods.meapp.features.ScaleSetup.components.WifiNetwork
 import com.greatergoods.meapp.features.ScaleSetup.components.WifiSelection
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
@@ -193,20 +191,7 @@ fun BtWifiScaleSetupScreenContent(
 
           BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
             WifiSelection(
-              wifiList = listOf(
-                WifiNetwork(
-                  macAddress = "a8:63:7d:cd:fb:b0",
-                  password = "password123",
-                  rssi = 41,
-                  ssid = "greatergoods1",
-                ),
-                WifiNetwork(
-                  macAddress = "b2:45:8e:12:34:56",
-                  password = "",
-                  rssi = 35,
-                  ssid = "3diq2",
-                ),
-              ),
+              wifiList = state.wifiList,
               title = BtWifiScaleSetupStrings.WifiList.Title,
               subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
               configuredSSID = null,
