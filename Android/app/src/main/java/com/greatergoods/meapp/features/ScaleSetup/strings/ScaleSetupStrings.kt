@@ -37,6 +37,8 @@ object ScaleSetupStrings {
     const val Skip = "Skip"
     const val Save = "Save"
     const val Refresh = "Refresh"
+    const val Connect = "Connect"
+    const val Next = "next"
   }
 
   object ScalePermissions {

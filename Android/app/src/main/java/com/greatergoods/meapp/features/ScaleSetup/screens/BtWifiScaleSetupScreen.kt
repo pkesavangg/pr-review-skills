@@ -9,9 +9,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.ScaleSetup.components.CustomizeScaleSettings
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
+import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
 import com.greatergoods.meapp.features.ScaleSetup.components.WifiNetwork
 import com.greatergoods.meapp.features.ScaleSetup.components.WifiSelection
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
@@ -107,10 +109,11 @@ fun BtWifiScaleSetupScreenContent(
             )
           }
         }
+
         BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
           {
             AppButton(
-              type = ButtonType.InlineTextPrimary,
+              type = ButtonType.TextTertiary,
               label = ScaleSetupStrings.SetupButtons.Skip,
               size = ButtonSize.Small,
               onClick = {
@@ -127,7 +130,7 @@ fun BtWifiScaleSetupScreenContent(
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
-              label = ScaleSetupStrings.nextButton,
+              label = state.nextButtonText,
               size = ButtonSize.Small,
               enabled = !state.isLoading && state.canProceedToNext,
               onClick = {
@@ -197,23 +200,49 @@ fun BtWifiScaleSetupScreenContent(
 
           BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
             WifiSelection(
-              wifiList = listOf(WifiNetwork(
-                macAddress = "a8:63:7d:cd:fb:b0",
-                password = "password123",
-                rssi = 41,
-                ssid = "greatergoods1",
+              wifiList = listOf(
+                WifiNetwork(
+                  macAddress = "a8:63:7d:cd:fb:b0",
+                  password = "password123",
+                  rssi = 41,
+                  ssid = "greatergoods1",
+                ),
+                WifiNetwork(
+                  macAddress = "b2:45:8e:12:34:56",
+                  password = "",
+                  rssi = 35,
+                  ssid = "3diq2",
+                ),
               ),
-                                WifiNetwork(
-                                  macAddress = "b2:45:8e:12:34:56",
-                                  password = "",
-                                  rssi = 35,
-                                  ssid = "3diq2",
-                                ),),
               title = BtWifiScaleSetupStrings.WifiList.Title,
               subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
               configuredSSID = null,
-              onSelect = {},
-              onRefresh = {}
+              onSelect = {
+                state.wifiPasswordForm.ssid.onValueChange(it)
+                onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+                onIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.WIFI_PASSWORD))
+              },
+              onRefresh = {
+                onIntent(BtWifiScaleSetupIntent.RefreshNetworks)
+              },
+            )
+          }
+
+          BtWifiSetupStep.WIFI_PASSWORD -> {
+            SetupForm(
+              formControl = state.wifiPasswordForm.password,
+              title = BtWifiScaleSetupStrings.WifiPassword.Title,
+              label = BtWifiScaleSetupStrings.WifiPassword.PasswordLabel,
+              subtitle = BtWifiScaleSetupStrings.WifiPassword.Subtitle,
+              subtitleAnnotatedText = state.wifiPasswordForm.ssid.value,
+              hasToggle = true,
+              toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
+              toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
+              onToggleChanged = {
+                state.wifiPasswordForm.noPasswordNetwork.onValueChange(it)
+                state.wifiPasswordForm.password.reset()
+                onIntent(BtWifiScaleSetupIntent.HandlePasswordNetworkStatus)
+              },
             )
           }
 
@@ -228,6 +257,23 @@ fun BtWifiScaleSetupScreenContent(
               secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
+            )
+          }
+
+          BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
+            CustomizeScaleSettings(
+              title = BtWifiScaleSetupStrings.CustomizeSettings.Title,
+              subtitle = BtWifiScaleSetupStrings.CustomizeSettings.Subtitle,
+              onSelectSettings = { it },
+            )
+          }
+
+          BtWifiSetupStep.STEP_ON -> {
+            ScaleSetupLoader(
+              title = BtWifiScaleSetupStrings.StepOn.Title,
+              subtitle = BtWifiScaleSetupStrings.StepOn.Subtitle,
+              setupImage = AppIcons.Setup.StepOnGif,
+              isGifImage = true,
             )
           }
 

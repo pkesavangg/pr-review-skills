@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import com.greatergoods.meapp.features.ScaleSetup.components.strings.SetupLoader
 import com.greatergoods.meapp.features.ScaleSetup.enums.LoaderIconType
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.AppButton
+import com.greatergoods.meapp.features.common.components.AppGifImage
 import com.greatergoods.meapp.features.common.components.AppScaleImage
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonType
@@ -88,6 +90,7 @@ fun ScaleSetupLoader(
   errorCode: String? = null,
   showIndicationOnly: Boolean = false,
   setupImage: Int? = null,
+  isGifImage: Boolean = false,
   indicatorIcon: LoaderIconType = LoaderIconType.Bluetooth,
   primaryButtonText: String = ScaleSetupStrings.SetupButtons.TryAgain,
   secondaryButtonText: String = ScaleSetupStrings.SetupButtons.Support,
@@ -159,12 +162,22 @@ fun ScaleSetupLoader(
       }
 
       if (setupImage != null) {
-        Column(modifier = Modifier.fillMaxWidth(),
-               horizontalAlignment = Alignment.CenterHorizontally) {
-          Image(
-            painter = painterResource(id = setupImage),
-            contentDescription = null,
-          )
+        Column(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          if (isGifImage) {
+            AppGifImage(
+              id = setupImage,
+              modifier = Modifier.size(370.dp, 211.dp),
+            )
+          } else {
+            Image(
+              painter = painterResource(id = setupImage),
+              contentDescription = null,
+            )
+          }
+
           Spacer(modifier = Modifier.height(spacing.xs))
           if (contentButtonText != null && contentButtonClick != null) {
             AppButton(
@@ -200,7 +213,6 @@ fun ScaleSetupLoader(
         }
       }
 
-
     }
 
     // Buttons at the bottom (if provided)
@@ -234,10 +246,8 @@ private fun PreviewScaleSetupLoaderConnecting() {
     ScaleSetupLoader(
       title = "Connecting to Bluetooth",
       subtitle = "Please wait while we connect your scale",
-      setupImage = AppIcons.Setup.Accuchecked,
-      contentButtonText = "What's this?",
-      contentButtonClick = {}
-
+      setupImage = AppIcons.Setup.StepOnGif,
+      isGifImage = true,
     )
   }
 }

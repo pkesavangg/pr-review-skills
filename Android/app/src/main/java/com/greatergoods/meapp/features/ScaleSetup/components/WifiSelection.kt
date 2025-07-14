@@ -18,10 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
-import com.greatergoods.meapp.features.appPermissions.helper.PermissionGroup
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppText
@@ -68,7 +66,7 @@ fun WifiSelection(
   Column(
     modifier = Modifier
       .fillMaxSize()
-      .padding(vertical = spacing.sm, horizontal = spacing.md),
+      .padding(vertical = spacing.md, horizontal = spacing.sm),
   ) {
     AppText(
       text = title,
@@ -95,14 +93,16 @@ fun WifiSelection(
           connectedWifi?.let { wifi ->
             item {
 
-                AppText(
-                  text = "Connected Network",
-                  textType = TextType.ListTitle2,
-                  modifier = Modifier.padding(bottom = spacing.xs),
-                )
-              Column(modifier = Modifier
-                .clip(RoundedCornerShape(borderRadius.sm))
-                .padding(bottom = spacing.sm)) {
+              AppText(
+                text = "Connected Network",
+                textType = TextType.ListTitle2,
+                modifier = Modifier.padding(bottom = spacing.xs),
+              )
+              Column(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(borderRadius.sm))
+                  .padding(bottom = spacing.sm),
+              ) {
                 WifiItem(
                   ssid = wifi.ssid,
                   isConfigured = true,
@@ -124,8 +124,9 @@ fun WifiSelection(
           }
 
           items(availableNetworks) { wifi ->
-            Column(modifier = Modifier
-              .clip(RoundedCornerShape(borderRadius.sm))) {
+            Column(
+              modifier = Modifier,
+            ) {
               WifiItem(
                 ssid = wifi.ssid,
                 isConfigured = false,
@@ -141,8 +142,10 @@ fun WifiSelection(
           }
         }
       }
-      Column(modifier = Modifier.fillMaxSize(),
-             horizontalAlignment = Alignment.CenterHorizontally) {
+      Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
         Spacer(Modifier.height(spacing.md))
         AppButton(
           label = ScaleSetupStrings.SetupButtons.Refresh,
@@ -150,7 +153,6 @@ fun WifiSelection(
           onClick = { onRefresh() },
         )
       }
-
     }
   }
 }
@@ -196,8 +198,6 @@ private fun WifiItem(
       )
     }
   }
-
-
 }
 
 @PreviewTheme()
