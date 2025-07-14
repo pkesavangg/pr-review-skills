@@ -22,35 +22,9 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
 
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
-    private let calendar = Calendar.current
-    private let perfLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "DashboardStore", category: "Scrolling")
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-
-    private let originalMetrics: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
-        (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.bodyFatUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.muscleUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.waterUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.heartBpmUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.boneUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, nil),
-        (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.subFatUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.proteinUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.skelMuscleUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.bmrKcalUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, nil)
-    ]
-
-    private let originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
-        (DashboardStrings.placeholder, DashboardStrings.currentStreak, nil, nil, AppAssets.streak),
-        (DashboardStrings.placeholder, DashboardStrings.longestStreak, nil, nil, AppAssets.longestStreak),
-        (DashboardStrings.placeholder, DashboardStrings.lbsWeek, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.lbsMonth, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.lbsYear, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.lbsTotal, nil, nil, nil)
-    ]
 
     // MARK: - Managers (Business Logic)
     private let metricsManager: DashboardMetricsManager
@@ -67,10 +41,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         self.streakManager = DashboardStreakManager()
         self.dataManager = DashboardDataManager()
         self.goalManager = DashboardGoalManager()
-
-        // Initialize state with default values
-        state.metrics.metrics = originalMetrics.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
-        state.streak.streakItems = originalStreakItems.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
 
         // Set up reactive bindings
         setupBindings()
@@ -135,22 +105,18 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     var metricsToShow: [MetricItem] {
-        if state.ui.isEditMode {
-            if state.metrics.metricType == .four {
-                let fourLabels: Set<String> = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-                return state.metrics.metrics.filter { fourLabels.contains($0.label) }
-            } else {
-                return state.metrics.metrics
-            }
-        } else {
-            return state.metrics.metricsToShow
-        }
+        return metricsManager.getMetricsToShow(
+            isEditMode: state.ui.isEditMode,
+            metricType: state.metrics.metricType
+        )
     }
 
-    let streakColumns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+    var streakColumns: [GridItem] {
+        return streakManager.getStreakGridColumns()
+    }
 
     var streakItemsToShow: [MetricItem] {
-        state.ui.isEditMode ? state.streak.streakItems : state.streak.streakItemsToShow
+        return streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
     }
 
     var isAnyItemBeingDragged: Bool {
@@ -158,39 +124,44 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     var allContentRemoved: Bool {
-        metricsToShow.isEmpty && (!state.ui.isEditMode && state.ui.isGoalCardRemoved) && (!shouldShowStreakGrid)
+        metricsToShow.isEmpty && (!state.ui.isEditMode && state.ui.isGoalCardRemoved) && (!streakManager.shouldShowStreakGrid())
     }
 
     var shouldShowStreakGrid: Bool {
-        !streakItemsToShow.isEmpty
+        streakManager.shouldShowStreakGrid()
     }
 
+    // Delegate data operations to DataManager
     var continuousOperations: [BathScaleWeightSummary] {
         dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
+    }
+
+    var visibleOperations: [BathScaleWeightSummary] {
+        graphManager.getVisibleOperations(from: continuousOperations)
     }
 
     var hasAnyEntries: Bool {
         state.data.hasAnyEntries
     }
 
+    // Delegate weightless mode to managers
     var isWeightlessModeEnabled: Bool {
-        return accountService.activeAccount?.weightlessSettings?.isWeightlessOn ?? false
+        accountService.activeAccount?.weightlessSettings?.isWeightlessOn ?? false
     }
 
     var weightlessAnchorWeight: Double? {
         guard let weightlessWeight = accountService.activeAccount?.weightlessSettings?.weightlessWeight else {
             return nil
         }
-        return convertStoredWeightToDisplay(Int(weightlessWeight))
+        return goalManager.convertWeightToDisplay(Int(weightlessWeight))
     }
 
+    // Delegate goal operations to GoalManager
     var goalWeightForDisplay: Double {
-        if isWeightlessModeEnabled {
-            guard let anchorWeight = weightlessAnchorWeight else { return state.goal.goalWeight }
-            return state.goal.goalWeight - anchorWeight
-        } else {
-            return state.goal.goalWeight
-        }
+        return goalManager.getGoalWeightForDisplay(
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight
+        )
     }
 
     var displayWeight: Double? {
@@ -198,24 +169,23 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         if let selectedPoint = state.graph.selectedPoint {
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return nil }
-                let currentWeight = convertStoredWeightToDisplay(Int(selectedPoint.weight))
+                let currentWeight = goalManager.convertWeightToDisplay(Int(selectedPoint.weight))
                 return currentWeight - anchorWeight
             } else {
-                return convertStoredWeightToDisplay(Int(selectedPoint.weight))
+                return goalManager.convertWeightToDisplay(Int(selectedPoint.weight))
             }
         }
 
         // When no point is selected, show average of visible region if available
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
+        let opsToUse = visibleOperations
 
         // Check if weightless mode is enabled
         if isWeightlessModeEnabled {
-            return calculateWeightlessDisplay(opsToUse)
+            return calculateWeightlessDisplay(opsToUse, anchorWeight: weightlessAnchorWeight)
         }
 
         // Calculate average of operations in visible region (or all if no visible region)
-        let weights = opsToUse.map { convertStoredWeightToDisplay(Int($0.weight)) }
+        let weights = opsToUse.map { goalManager.convertWeightToDisplay(Int($0.weight)) }
         guard !weights.isEmpty else { return nil }
         let averageWeight = weights.reduce(0, +) / Double(weights.count)
 
@@ -223,7 +193,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     var weightLabel: String {
-        guard !continuousOperations.isEmpty else {
+        guard !visibleOperations.isEmpty else {
             return fallbackTimeLabel()
         }
 
@@ -236,14 +206,13 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             if let date = selectedEntry.date {
                 return formatSelectedDate(date)
             }
-            if let originalSummary = findOriginalSummary(for: selectedEntry) {
+            if let originalSummary = continuousOperations.first(where: { $0.entryTimestamp == selectedEntry.entryTimestamp }) {
                 return formatSelectedDate(originalSummary.date)
             }
         }
 
         // Otherwise show the period range for visible data
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
+        let opsToUse = visibleOperations
         guard let minDate = opsToUse.map(\.date).min(),
               let maxDate = opsToUse.map(\.date).max() else {
             return fallbackTimeLabel()
@@ -252,6 +221,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         return formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
     }
 
+    // Delegate metric operations to MetricsManager
     var selectedBodyMetric: BodyMetric {
         guard let selectedLabel = state.ui.selectedMetricLabel else { return .weight }
         return metricsManager.getBodyMetric(for: selectedLabel)
@@ -269,29 +239,30 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         return "\(state.graph.selectedPeriod.rawValue) average"
     }
 
+    // Delegate chart data generation to GraphManager
     var chartSeriesData: [GraphSeries] {
-        return graphManager.generateChartData(
+        graphManager.generateChartData(
             from: continuousOperations,
             selectedMetric: state.ui.selectedMetricLabel,
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight,
-            convertWeight: convertStoredWeightToDisplay
+            convertWeight: goalManager.convertWeightToDisplay
         )
     }
 
     /// Returns the average weight for the current visible or all operations
     @MainActor
     func getCurrentAverageWeight() -> Double {
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
+        let visibleOps = visibleOperations
+        let opsToUse = visibleOps.isEmpty ? visibleOperations : visibleOps
 
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return 0 }
-                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
+                let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
                 return currentWeight - anchorWeight
             } else {
-                return convertStoredWeightToDisplay(Int(summary.weight))
+                return goalManager.convertWeightToDisplay(Int(summary.weight))
             }
         }
 
@@ -310,74 +281,23 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         hasAnyEntries && continuousOperations.isEmpty
     }
 
-    /// Returns the visible domain length for the given period
+    // Delegate time calculations to GraphManager
     func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
-        // Use the same logic as the old store
-        switch period {
-        case .week: return 7 * 24 * 60 * 60
-        case .month: return 30 * 24 * 60 * 60
-        case .year:
-            if let ops = Optional(continuousOperations), doEntriesSpanLessThanYear(ops) {
-                return 180 * 24 * 60 * 60 // 6 months
-            } else {
-                return 365 * 24 * 60 * 60 // 1 year
-            }
-        case .total:
-            if let ops = Optional(continuousOperations), areEntriesInSameEra(ops) {
-                if doEntriesSpanLessThanYear(ops) {
-                    return 180 * 24 * 60 * 60 // 6 months
-                } else {
-                    return 365 * 24 * 60 * 60 // 1 year
-                }
-            } else {
-                let allDates = continuousOperations.map(\.date)
-                guard let minDate = allDates.min(), let maxDate = allDates.max() else {
-                    return 365 * 24 * 60 * 60
-                }
-                let totalRange = maxDate.timeIntervalSince(minDate)
-                return max(totalRange / 4, 365 * 24 * 60 * 60)
-            }
-        }
-    }
-
-    /// Returns the time snap unit for the given period
-    func timeSnapUnit(for period: TimePeriod) -> TimeInterval {
-        switch period {
-        case .week:
-            return 7 * 24 * 60 * 60
-        case .month:
-            return 30 * 24 * 60 * 60
-        case .year:
-            if let ops = Optional(continuousOperations), doEntriesSpanLessThanYear(ops) {
-                return 30 * 24 * 60 * 60
-            } else {
-                return 90 * 24 * 60 * 60
-            }
-        case .total:
-            if let ops = Optional(continuousOperations), areEntriesInSameEra(ops) {
-                if doEntriesSpanLessThanYear(ops) {
-                    return 30 * 24 * 60 * 60
-                } else {
-                    return 90 * 24 * 60 * 60
-                }
-            } else {
-                return 90 * 24 * 60 * 60
-            }
-        }
+        return graphManager.visibleDomainLength(for: period)
     }
 
     /// Updates visible data after scroll ends (forces UI update and logs average weight)
     func updateVisibleDataAfterScroll() {
         objectWillChange.send()
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
+        let visibleOps = visibleOperations
+        let opsToUse = visibleOps.isEmpty ? visibleOperations : visibleOps
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return 0 }
-                let currentWeight = convertStoredWeightToDisplay(Int(summary.weight))
+                let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
                 return currentWeight - anchorWeight
             } else {
-                return convertStoredWeightToDisplay(Int(summary.weight))
+                return goalManager.convertWeightToDisplay(Int(summary.weight))
             }
         }
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
@@ -386,157 +306,20 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         print("Hello: updateVisibleDataAfterScroll - Updated Y-axis domain and ticks based on visible operations")
     }
 
-    /// Returns x-axis values with buffer for the given period (fix: always return a value)
+    // Delegate X-axis operations to GraphManager
     func xAxisValuesWithBuffer(for period: TimePeriod) -> [Date] {
-        // Use the same logic as the old store
-        let allDates = continuousOperations.map(\.date)
-        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
-        let entryCount = continuousOperations.count
-        _ = shouldRepeatXAxisLabels(for: period)
-        switch period {
-        case .week:
-            if entryCount < 7 {
-                let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
-                var dates: [Date] = []
-                for dayOffset in -1..<8 {
-                    if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) {
-                        dates.append(dayDate)
-                    }
-                }
-                return dates
-            } else {
-                let totalWeeks = max(10, Int(ceil(maxDate.timeIntervalSince(minDate) / (7 * 24 * 60 * 60))))
-                let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
-                let bufferWeeks = 3
-                var dates: [Date] = []
-                for weekOffset in -bufferWeeks..<(totalWeeks + bufferWeeks) {
-                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
-                        for dayOffset in 0..<7 {
-                            if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekDate) {
-                                dates.append(dayDate)
-                            }
-                        }
-                    }
-                }
-                return dates
-            }
-        case .month:
-            if entryCount < 20 {
-                let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
-                var dates: [Date] = []
-                for weekOffset in -1..<6 {
-                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthStart) {
-                        dates.append(weekDate)
-                    }
-                }
-                return dates
-            } else {
-                let totalMonths = max(8, Int(ceil(maxDate.timeIntervalSince(minDate) / (30 * 24 * 60 * 60))))
-                let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
-                let bufferMonths = 3
-                var dates: [Date] = []
-                for monthOffset in -bufferMonths..<(totalMonths + bufferMonths) {
-                    if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
-                        for weekOffset in 0..<5 {
-                            if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthDate) {
-                                dates.append(weekDate)
-                            }
-                        }
-                    }
-                }
-                return dates
-            }
-        case .year:
-            if entryCount < 12 {
-                let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-                var dates: [Date] = []
-                for monthOffset in -1..<13 {
-                    if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearStart) {
-                        dates.append(monthDate)
-                    }
-                }
-                return dates
-            } else {
-                let totalYears = max(5, Int(ceil(maxDate.timeIntervalSince(minDate) / (365 * 24 * 60 * 60))))
-                let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-                let bufferYears = 2
-                var dates: [Date] = []
-                for yearOffset in -bufferYears..<(totalYears + bufferYears) {
-                    if let yearDate = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
-                        for monthOffset in 0..<12 {
-                            if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearDate) {
-                                dates.append(monthDate)
-                            }
-                        }
-                    }
-                }
-                return dates
-            }
-        case .total:
-            if areEntriesInSameEra(continuousOperations) {
-                if entryCount < 12 {
-                    let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-                    var dates: [Date] = []
-                    for monthOffset in -1..<13 {
-                        if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearStart) {
-                            dates.append(monthDate)
-                        }
-                    }
-                    return dates
-                } else {
-                    let totalYears = max(5, Int(ceil(maxDate.timeIntervalSince(minDate) / (365 * 24 * 60 * 60))))
-                    let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-                    let bufferYears = 2
-                    var dates: [Date] = []
-                    for yearOffset in -bufferYears..<(totalYears + bufferYears) {
-                        if let yearDate = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
-                            for monthOffset in 0..<12 {
-                                if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearDate) {
-                                    dates.append(monthDate)
-                                }
-                            }
-                        }
-                    }
-                    return dates
-                }
-                let totalQuarters = max(12, Int(ceil(maxDate.timeIntervalSince(minDate) / (90 * 24 * 60 * 60))))
-                let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
-                let bufferQuarters = 3
-                var dates: [Date] = []
-                for quarterOffset in -bufferQuarters..<(totalQuarters + bufferQuarters) {
-                    if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
-                        dates.append(quarterDate)
-                    }
-                }
-                return dates
-            }
-        }
-        return [] // Ensure all code paths return a value
+        return graphManager.generateXAxisValues(for: period, from: continuousOperations)
     }
 
-    /// Returns the x-axis label string for a given date and period
     func xLabelString(for date: Date, period: TimePeriod) -> String? {
-        switch period {
-        case .week:
-            return WeekDay.abbreviation(for: calendar.component(.weekday, from: date))
-        case .month:
-            return "\(calendar.component(.day, from: date))"
-        case .year:
-            return Month.initial(for: calendar.component(.month, from: date))
-        case .total:
-            if areEntriesInSameEra(continuousOperations) {
-                return Month.initial(for: calendar.component(.month, from: date))
-            } else {
-                return "\(calendar.component(.year, from: date))"
-            }
-        }
+        graphManager.formatXAxisLabel(for: date, period: period, operations: continuousOperations)
     }
 
     /// Selects an entry for the chart
     func selectEntry(_ entry: BathScaleWeightSummary?) {
         if let entry = entry {
             state.graph.selectedEntry = BathScaleOperationDTO(from: entry)
-            state.graph.selectedWeight = convertStoredWeightToDisplay(Int(entry.weight))
+            state.graph.selectedWeight = goalManager.convertWeightToDisplay(Int(entry.weight))
         } else {
             state.graph.selectedEntry = nil
             state.graph.selectedWeight = nil
@@ -544,11 +327,11 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         objectWillChange.send()
     }
 
-    /// Resets metric values to the latest entry data
+    // Delegate metric operations to MetricsManager
     func resetMetricsToLatestEntry() {
         Task {
             do {
-                guard let latestEntry = try await entryService.getLatestEntry() else {
+                guard let latestEntry = try await dataManager.getLatestEntry() else {
                     return
                 }
                 try await metricsManager.updateMetrics(with: latestEntry)
@@ -619,7 +402,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     func loadLatestEntryData() {
         Task {
             do {
-                guard let latestEntry = try await entryService.getLatestEntry() else { return }
+                guard let latestEntry = try await dataManager.getLatestEntry() else { return }
 
                 if let weight = latestEntry.scaleEntry?.weight {
                     state.data.latestWeightStored = weight
@@ -633,6 +416,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
+    // Delegate goal loading to GoalManager
     func loadGoalCardData() {
         Task {
             do {
@@ -644,6 +428,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
+    // Delegate data loading to DataManager
     private func loadInitialData() async {
         do {
             try await dataManager.loadInitialData()
@@ -653,6 +438,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
+    // Delegate configuration loading to respective managers
     private func loadDashboardConfigurationFromAPI() async {
         do {
             try await metricsManager.loadMetricsFromAPI()
@@ -683,8 +469,8 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
+    // Delegate entry lifecycle to DataManager
     // MARK: - Entry Lifecycle Management
-
     internal func onEntryAdded(_ entry: Entry) async {
         do {
             try await dataManager.handleEntryAdded(entry)
@@ -717,12 +503,15 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
 
     // MARK: - UI Action Methods
 
+    // Delegate metric management to MetricsManager
     func toggleMetricRemovalInReorderedArray(at reorderedIndex: Int) {
         let metricsToShow = self.metricsToShow
         guard reorderedIndex < metricsToShow.count else { return }
         let metric = metricsToShow[reorderedIndex]
         guard let originalIndex = state.metrics.metrics.firstIndex(where: { $0.id == metric.id }) else { return }
-        toggleMetricRemoval(at: originalIndex)
+        Task {
+            try? await metricsManager.toggleMetricVisibility(at: originalIndex)
+        }
     }
 
     func isMetricRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
@@ -730,15 +519,18 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         guard reorderedIndex < metricsToShow.count else { return false }
         let metric = metricsToShow[reorderedIndex]
         guard let originalIndex = state.metrics.metrics.firstIndex(where: { $0.id == metric.id }) else { return false }
-        return isMetricRemoved(at: originalIndex)
+        return originalIndex >= state.metrics.activeMetricsCount
     }
 
+    // Delegate streak management to StreakManager
     func toggleStreakRemovalInReorderedArray(at reorderedIndex: Int) {
         let streakItemsToShow = self.streakItemsToShow
         guard reorderedIndex < streakItemsToShow.count else { return }
         let streak = streakItemsToShow[reorderedIndex]
         guard let originalIndex = state.streak.streakItems.firstIndex(where: { $0.id == streak.id }) else { return }
-        toggleStreakRemoval(at: originalIndex)
+        Task {
+            try? await streakManager.toggleStreakVisibility(at: originalIndex)
+        }
     }
 
     func isStreakRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
@@ -746,48 +538,10 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         guard reorderedIndex < streakItemsToShow.count else { return false }
         let streak = streakItemsToShow[reorderedIndex]
         guard let originalIndex = state.streak.streakItems.firstIndex(where: { $0.id == streak.id }) else { return false }
-        return isStreakRemoved(at: originalIndex)
+        return streakManager.isStreakRemoved(at: originalIndex)
     }
 
-    func toggleMetricRemoval(at index: Int) {
-        guard index < state.metrics.metrics.count else { return }
-        let metric = state.metrics.metrics[index]
-        let isCurrentlyRemoved = isMetricRemoved(at: index)
-        state.metrics.metrics.remove(at: index)
-        if isCurrentlyRemoved {
-            state.metrics.metrics.insert(metric, at: state.metrics.activeMetricsCount)
-            state.metrics.activeMetricsCount += 1
-        } else {
-            state.metrics.metrics.append(metric)
-            state.metrics.activeMetricsCount -= 1
-        }
-        state.ui.resetDragState()
-    }
-
-    func isMetricRemoved(at index: Int) -> Bool {
-        guard index < state.metrics.metrics.count else { return false }
-        return index >= state.metrics.activeMetricsCount
-    }
-
-    func toggleStreakRemoval(at index: Int) {
-        guard index < state.streak.streakItems.count else { return }
-        let item = state.streak.streakItems[index]
-        let isCurrentlyRemoved = isStreakRemoved(at: index)
-        state.streak.streakItems.remove(at: index)
-        if isCurrentlyRemoved {
-            state.streak.streakItems.insert(item, at: state.streak.activeStreakItemsCount)
-            state.streak.activeStreakItemsCount += 1
-        } else {
-            state.streak.streakItems.append(item)
-            state.streak.activeStreakItemsCount -= 1
-        }
-        state.ui.resetDragState()
-    }
-
-    func isStreakRemoved(at index: Int) -> Bool {
-        guard index < state.streak.streakItems.count else { return false }
-        return index >= state.streak.activeStreakItemsCount
-    }
+    // Remove duplicate methods - now handled by managers
 
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
@@ -805,10 +559,10 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
+    // Delegate graph operations to GraphManager
     func ensureLatestEntriesVisible() {
-        guard let latestDate = continuousOperations.map(\.date).max() else { return }
         Task {
-            await graphManager.updateScrollPosition(to: latestDate)
+            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
         }
     }
 
@@ -817,6 +571,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         objectWillChange.send()
     }
 
+    // Delegate save operations to MetricsManager
     func saveChanges() {
         state.ui.isLoading = true
         state.ui.loaderOverride = LoaderModel(text: lang.saving)
@@ -862,10 +617,13 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.state.ui.isLoading = false
                 self.state.ui.loaderOverride = nil
-                self.restoreOriginalMetricOrder()
-                self.restoreOriginalStreakOrder()
-                self.state.metrics.activeMetricsCount = self.originalMetrics.count
-                self.state.streak.activeStreakItemsCount = self.originalStreakItems.count
+
+                // Delegate reset operations to managers
+                Task {
+                    try? await self.metricsManager.resetMetricsToDefaults()
+                    try? await self.streakManager.resetStreakData()
+                }
+
                 self.state.ui.isGoalCardRemoved = false
 
                 Task {
@@ -922,6 +680,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
+    // Delegate chart selection to GraphManager
     func handleChartSelection(at selectedDate: Date?) {
         // Only handle selection if not currently scrolling
         guard !state.graph.isScrolling else { return }
@@ -938,44 +697,32 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     func getVisibleOperations() -> [BathScaleWeightSummary] {
-        return graphManager.getVisibleOperations(from: continuousOperations)
+        return visibleOperations
     }
 
+    // Delegate Y-axis calculations to GraphManager
     func getYAxisScale() -> YAxisScale {
-        // Use visible operations for Y-axis calculation if available, otherwise use all operations
-        let visibleOps = getVisibleOperations()
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
-
         return graphManager.getYAxisScale(
-            from: opsToUse,
+            from: visibleOperations,
             goalWeight: goalWeightForDisplay,
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight,
-            convertWeight: convertStoredWeightToDisplay,
+            convertWeight: goalManager.convertWeightToDisplay,
             chartHeight: state.graph.chartHeight
         )
     }
 
     // MARK: - Helper Methods
 
+    // Remove duplicate - use GoalManager method
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
-        let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
-        if unit == .kg {
-            return ConversionTools.convertStoredToKg(storedWeight)
-        } else {
-            return ConversionTools.convertStoredToLbs(storedWeight)
-        }
+        return goalManager.convertWeightToDisplay(storedWeight)
     }
 
+    // Delegate weight formatting to GoalManager
     func formatWeightDisplayText(_ weight: Double?) -> String {
         guard let weight = weight else { return "0.0" }
-
-        if isWeightlessModeEnabled {
-            let prefix = weight >= 0 ? "+" : ""
-            return String(format: "%@%.1f", prefix, weight)
-        } else {
-            return String(format: "%.1f", weight)
-        }
+        return goalManager.formatWeightForDisplay(weight, isWeightlessMode: isWeightlessModeEnabled)
     }
 
     func formatYAxisTickLabel(_ weight: Double) -> String {
@@ -997,6 +744,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
 
+    // Delegate entry creation to MetricsManager
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
         return metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
     }
@@ -1007,36 +755,23 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
 
     // MARK: - Private Helper Methods
 
-    private func restoreOriginalMetricOrder() {
-        state.metrics.metrics = originalMetrics.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
-        state.metrics.activeMetricsCount = originalMetrics.count
-    }
+    // Remove - now handled by managers
 
-    private func restoreOriginalStreakOrder() {
-        state.streak.streakItems = originalStreakItems.map { MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon) }
-    }
-
-    private func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary]) -> Double? {
-        guard let anchorWeight = weightlessAnchorWeight else { return nil }
+    private func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary], anchorWeight: Double?) -> Double? {
+        guard let anchorWeight = anchorWeight else { return nil }
         let allOps = operations
 
         switch state.graph.selectedPeriod {
         case .week, .month:
-            guard let latestWeight = allOps.last.map({ convertStoredWeightToDisplay(Int($0.weight)) }) else {
+            guard let latestWeight = allOps.last.map({ goalManager.convertWeightToDisplay(Int($0.weight)) }) else {
                 return nil
             }
             return latestWeight - anchorWeight
         case .year, .total:
-            let weights = allOps.map { convertStoredWeightToDisplay(Int($0.weight)) }
+            let weights = allOps.map { goalManager.convertWeightToDisplay(Int($0.weight)) }
             guard !weights.isEmpty else { return nil }
             let averageWeight = weights.reduce(0, +) / Double(weights.count)
             return averageWeight - anchorWeight
-        }
-    }
-
-    private func findOriginalSummary(for dto: BathScaleOperationDTO) -> BathScaleWeightSummary? {
-        return continuousOperations.first { summary in
-            summary.entryTimestamp == dto.entryTimestamp
         }
     }
 
@@ -1093,37 +828,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
-    // MARK: - Private Helper Methods for Graph Logic
-
-    /// Returns true if all entries are in the same era (same year)
-    private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
-        guard !summaries.isEmpty else { return true }
-        let years = Set(summaries.map { calendar.component(.year, from: $0.date) })
-        return years.count == 1
-    }
-
-    /// Returns true if entries span less than a year
-    private func doEntriesSpanLessThanYear(_ summaries: [BathScaleWeightSummary]) -> Bool {
-        guard summaries.count >= 2 else { return true }
-        let minDate = summaries.map { $0.date }.min() ?? Date()
-        let maxDate = summaries.map { $0.date }.max() ?? Date()
-        let timeInterval = maxDate.timeIntervalSince(minDate)
-        let oneYearInSeconds: TimeInterval = 365 * 24 * 60 * 60
-        return timeInterval < oneYearInSeconds
-    }
-
-    /// Returns true if we should repeat x-axis labels based on entry count thresholds
-    private func shouldRepeatXAxisLabels(for period: TimePeriod) -> Bool {
-        let entryCount = continuousOperations.count
-        switch period {
-        case .week:
-            return entryCount >= 7
-        case .month:
-            return entryCount >= 20
-        case .year, .total:
-            return entryCount >= 12
-        }
-    }
+    // Remove graph helper methods - now in GraphManager
 
     // MARK: - Graph State Management
 
@@ -1136,15 +841,12 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         resetMetricsToLatestEntry()
     }
 
-    /// Initialize chart with latest data position
+    // Delegate chart initialization to GraphManager
     @MainActor
     func initializeChart() {
-        // Set initial scroll position to latest data
-        if let latestDate = continuousOperations.map(\.date).max() {
-            state.graph.xScrollPosition = latestDate
+        Task {
+            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
         }
-
-        // Ensure weight display shows correct initial value
         updateWeightDisplayForCurrentView()
     }
 
@@ -1168,7 +870,6 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         guard !state.graph.isScrolling else { return }
 
         state.graph.isScrolling = true
-        state.graph.hasDetectedScrollInCurrentGesture = true
 
         // Clear selection when scrolling starts
         clearSelection()
@@ -1223,13 +924,16 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     private func updateMetricsForCurrentView() {
         if let selectedPoint = state.graph.selectedPoint {
             // If a point is selected, show its values
-            updateMetricsWithSelectedPoint(selectedPoint)
+            Task {
+                try? await metricsManager.updateMetrics(with: selectedPoint)
+            }
         } else {
             // If no selection, show average of visible region or latest entry
-            let visibleOps = getVisibleOperations()
+            let visibleOps = visibleOperations
             if !visibleOps.isEmpty && visibleOps.count > 1 {
                 // Show average metrics for visible region
-                updateMetricsWithAverageOfOperations(visibleOps)
+                // For now, just reset to latest - could implement average later
+                resetMetricsToLatestEntry()
             } else {
                 // Fallback to latest entry
                 resetMetricsToLatestEntry()
@@ -1237,106 +941,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         }
     }
 
-    /// Update metrics with values from a selected point
-    @MainActor
-    private func updateMetricsWithSelectedPoint(_ point: BathScaleWeightSummary) {
-        // Implementation for updating metrics with selected point values
-        // This would update the metrics array with values from the selected point
-        Task {
-            do {
-                // Create a temporary entry from the selected point for metric updates
-                let tempEntry = BathScaleOperationDTO(from: point)
-                if let entry = convertDTOToEntry(tempEntry) {
-                    try await metricsManager.updateMetrics(with: entry)
-                }
-            } catch {
-                logger.log(level: .error, tag: "DashboardStore", message: "Failed to update metrics with selected point: \(error)")
-            }
-        }
-    }
-
-    /// Update metrics with average values from a set of operations
-    @MainActor
-    private func updateMetricsWithAverageOfOperations(_ operations: [BathScaleWeightSummary]) {
-        guard !operations.isEmpty else {
-            resetMetricsToLatestEntry()
-            return
-        }
-
-        // Calculate averages for each metric type
-        let averageMetrics = calculateAverageMetrics(from: operations)
-
-        // Update the metrics array with calculated averages
-        updateMetricsWithCalculatedValues(averageMetrics)
-    }
-
-    /// Calculate average metrics from a collection of operations
-    private func calculateAverageMetrics(from operations: [BathScaleWeightSummary]) -> [String: Double] {
-        var averages: [String: Double] = [:]
-
-        // Calculate BMI average
-        let bmiValues = operations.compactMap { $0.bmi }
-        if !bmiValues.isEmpty {
-            averages[DashboardStrings.bmi] = bmiValues.reduce(0, +) / Double(bmiValues.count)
-        }
-
-        // Calculate Body Fat average
-        let bodyFatValues = operations.compactMap { $0.bodyFat }
-        if !bodyFatValues.isEmpty {
-            averages[DashboardStrings.bodyFat] = bodyFatValues.reduce(0, +) / Double(bodyFatValues.count)
-        }
-
-        // Calculate Muscle Mass average
-        let muscleValues = operations.compactMap { $0.muscleMass }
-        if !muscleValues.isEmpty {
-            averages[DashboardStrings.muscle] = muscleValues.reduce(0, +) / Double(muscleValues.count)
-        }
-
-        // Calculate Water average
-        let waterValues = operations.compactMap { $0.water }
-        if !waterValues.isEmpty {
-            averages[DashboardStrings.water] = waterValues.reduce(0, +) / Double(waterValues.count)
-        }
-
-        // Calculate other metrics...
-        let pulseValues = operations.compactMap { $0.pulse }
-        if !pulseValues.isEmpty {
-            averages[DashboardStrings.heartBpm] = Double(pulseValues.reduce(0, +)) / Double(pulseValues.count)
-        }
-
-        return averages
-    }
-
-    /// Update metrics array with calculated average values
-    private func updateMetricsWithCalculatedValues(_ calculatedValues: [String: Double]) {
-        for i in 0..<state.metrics.metrics.count {
-            let metricLabel = state.metrics.metrics[i].label
-
-            if let averageValue = calculatedValues[metricLabel] {
-                let formattedValue = formatMetricValue(averageValue, for: metricLabel)
-                state.metrics.metrics[i].value = formattedValue
-            }
-        }
-    }
-
-    /// Format metric value based on its type
-    private func formatMetricValue(_ value: Double, for metricLabel: String) -> String {
-        switch metricLabel {
-        case DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water:
-            return String(format: "%.1f", value)
-        case DashboardStrings.heartBpm, DashboardStrings.visceralFat, DashboardStrings.metAge:
-            return String(format: "%.0f", value)
-        default:
-            return String(format: "%.1f", value)
-        }
-    }
-
-    /// Convert BathScaleOperationDTO to Entry for metric processing
-    private func convertDTOToEntry(_ dto: BathScaleOperationDTO) -> Entry? {
-        // This would need to be implemented based on your Entry model structure
-        // For now, return nil to prevent compilation errors
-        return nil
-    }
+    // Remove duplicate helper methods - now handled by managers
 
     // MARK: - Memory Management
 

@@ -11,10 +11,11 @@ import Charts
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
+    @State private var hasDetectedScrollInCurrentGesture = false
 
     // Check if there are any entries to display
     private var hasEntries: Bool {
-        !dashboardStore.continuousOperations.isEmpty
+      !dashboardStore.visibleOperations.isEmpty
     }
 
     // Get the appropriate empty state message
@@ -59,7 +60,6 @@ struct GraphView: View {
             .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod))
             .chartScrollableAxes(.horizontal)
             .chartScrollTargetBehavior(.paging)
-            .chartScrollTargetBehavior(.valueAligned(unit: dashboardStore.timeSnapUnit(for: dashboardStore.state.graph.selectedPeriod)))
             .chartYScale(domain: {
                 let yAxisScale = dashboardStore.getYAxisScale()
                 return yAxisScale.domain
@@ -67,6 +67,7 @@ struct GraphView: View {
             .chartScrollPosition(x: Binding(
                 get: { dashboardStore.state.graph.xScrollPosition },
                 set: { newPosition in
+                    print("Hello: GraphView - chartScrollPosition - newPosition: \(newPosition)")
                     dashboardStore.handleScrollPositionChange(newPosition)
                 }
             ))
@@ -119,13 +120,26 @@ struct GraphView: View {
                 dashboardStore.initializeChart()
             }
             // Simplified scroll detection - only detect when scrolling starts/ends
-            .gesture(
-                DragGesture(minimumDistance: 10)
-                    .onChanged { _ in
-                        dashboardStore.handleScrollStart()
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 3)
+                    .onChanged { value in
+                        let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                        let isSignificantMovement = abs(value.translation.width) > 8
+
+                        if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
+                            hasDetectedScrollInCurrentGesture = true
+                            dashboardStore.handleScrollStart()
+                        }
                     }
-                    .onEnded { _ in
-                        dashboardStore.handleScrollEndOptimized()
+                    .onEnded { value in
+                        hasDetectedScrollInCurrentGesture = false
+
+                        let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                        let isSignificantMovement = abs(value.translation.width) > 8
+
+                        if isHorizontalScroll && isSignificantMovement {
+                            dashboardStore.handleScrollEndOptimized()
+                        }
                     }
             )
         }

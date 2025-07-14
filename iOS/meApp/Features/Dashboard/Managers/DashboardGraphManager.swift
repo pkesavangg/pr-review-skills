@@ -344,7 +344,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return normalizedValue
     }
 
-    private func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
+    func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
         switch period {
         case .week:
             return DashboardConstants.TimeInterval.week

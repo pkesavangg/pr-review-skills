@@ -86,12 +86,12 @@ struct GraphState {
 
     // Scroll and interaction state
     var isScrolling: Bool = false
-    var hasDetectedScrollInCurrentGesture: Bool = false
     var showCrosshair: Bool = false
     var scrollEndTimer: Timer? = nil
 
     // Data change trigger for graph refresh
     var dataChangeTrigger: Int = 0
+    var hasDetectedScrollInCurrentGesture: Bool = false
 
     mutating func clearSelection() {
         selectedEntry = nil
