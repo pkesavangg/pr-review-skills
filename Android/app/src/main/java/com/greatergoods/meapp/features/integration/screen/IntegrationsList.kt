@@ -43,7 +43,13 @@ fun IntegrationList(
       IntegrationListItem(
         integration = integration,
         onToggle = {
-          handleIntent.invoke(IntegrationIntent.OpenIntegration(integration))
+          // Handle Health Connect navigation separately
+          if (integration.provider == IntegrationProvider.HealthConnect) {
+            handleIntent.invoke(IntegrationIntent.NavigateToHealthConnect)
+          } else {
+            // Use existing logic for other integrations
+            handleIntent.invoke(IntegrationIntent.OpenIntegration(integration))
+          }
         },
       )
       // Only show divider if not the last item
@@ -53,8 +59,6 @@ fun IntegrationList(
     }
   }
 }
-
-
 
 @PreviewTheme
 @Composable

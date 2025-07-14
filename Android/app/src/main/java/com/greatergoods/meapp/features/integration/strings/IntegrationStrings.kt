@@ -1,7 +1,14 @@
 package com.greatergoods.meapp.features.integration.strings
 
+/**
+ * String constants for the Integration screen.
+ */
 object IntegrationStrings {
     const val Title = "Integrations"
+
+    // Health Connect
+    const val HealthConnectTitle = "Health Connect"
+    const val HealthConnectDescription = "Connect with Health Connect to sync your health and fitness data across apps."
 
     // Provider Names
     const val FitbitProvider = "Fitbit"

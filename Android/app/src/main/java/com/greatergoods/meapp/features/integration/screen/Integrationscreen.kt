@@ -73,7 +73,6 @@ fun IntegrationScreenPreview() {
         val dummyState = IntegrationState(
             integrations = emptyList(),
         )
-
         IntegrationContent(
             state = dummyState,
             handleIntent = {},

@@ -75,6 +75,9 @@ sealed class IntegrationIntent : IReducer.Intent {
     val isConnected: Boolean,
     val isValid: Boolean = true,
   ) : IntegrationIntent()
+
+  data object NavigateToHealthConnect : IntegrationIntent()
+
 }
 
 /**
@@ -155,5 +158,10 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
           }
         state.copy(integrations = updatedIntegrations)
       }
+
+      is IntegrationIntent.NavigateToHealthConnect ->{
+        state
+      }
+
     }
 }

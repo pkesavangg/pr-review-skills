@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.integration.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ChromeTabState
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
@@ -21,16 +22,14 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel for the Integration screen. Handles integration state, connection logic, and navigation.
- * @property accountService Service for account management and getting active account.
- * @property integrationService Service for managing integrations with third-party providers.
+ * ViewModel for managing Integration screen state and handling user intents.
  */
 @HiltViewModel
 class IntegrationViewModel @Inject constructor(
-    private val accountService: IAccountService,
-    private val integrationService: IIntegrationService,
+  private val accountService: IAccountService,
+  private val integrationService: IIntegrationService,
 ) : BaseIntentViewModel<IntegrationState, IntegrationIntent>(
-    reducer = IntegrationReducer(),
+  reducer = IntegrationReducer(),
 ) {
 
     /**
@@ -77,6 +76,7 @@ class IntegrationViewModel @Inject constructor(
                 intent.provider,
                 intent.error
             )
+            is IntegrationIntent.NavigateToHealthConnect -> navigateToHealthConnect()
             else -> {
                 // Handle other intents that don't need special processing
             }
@@ -292,7 +292,7 @@ class IntegrationViewModel @Inject constructor(
 
     private fun disconnectAuthIntegration() {
         dialogQueueService.enqueue(
-            DialogModel.Confirm(
+          DialogModel.Confirm(
                 title = IntegrationStrings.removeIntegration,
                 message = IntegrationStrings.removeAuthIntegration,
                 confirmText = IntegrationStrings.remove,
@@ -452,7 +452,7 @@ class IntegrationViewModel @Inject constructor(
         }
 
         dialogQueueService.enqueue(
-            DialogModel.Confirm(
+          DialogModel.Confirm(
                 title = IntegrationStrings.reintegrateAlertTitle,
                 message = IntegrationStrings.reintegrateAlertMessage(pluralityText, namesText),
                 confirmText = disableButtonText,
@@ -509,7 +509,7 @@ class IntegrationViewModel @Inject constructor(
             refreshIntegrationStatus()
             if (disableResults.all { it } && inactiveProviders.size > 1) {
                 dialogQueueService.enqueue(
-                    DialogModel.Alert(
+                  DialogModel.Alert(
                         title = "",
                         message = IntegrationStrings.done,
                         dismissText = IntegrationStrings.ok,
@@ -522,7 +522,7 @@ class IntegrationViewModel @Inject constructor(
 
     private fun showErrorAlert() {
         dialogQueueService.enqueue(
-            DialogModel.Confirm(
+          DialogModel.Confirm(
                 title = IntegrationStrings.failed,
                 message = IntegrationStrings.authIntegrationCancelORFailed,
                 confirmText = IntegrationStrings.retry,
@@ -539,7 +539,7 @@ class IntegrationViewModel @Inject constructor(
 
     private fun showSuccessAlert() {
         dialogQueueService.enqueue(
-            DialogModel.Alert(
+          DialogModel.Alert(
                 title = "",
                 message = IntegrationStrings.done,
                 dismissText = IntegrationStrings.ok,
@@ -549,5 +549,19 @@ class IntegrationViewModel @Inject constructor(
 
                 ),
         )
+    }
+
+    /**
+     * Navigates to the Health Connect integration screen.
+     */
+    private fun navigateToHealthConnect() {
+        viewModelScope.launch {
+            try {
+                navigationService.navigateTo(AppRoute.Integration.HealthConnect)
+                AppLog.d("IntegrationViewModel", "Navigating to Health Connect integration")
+            } catch (e: Exception) {
+                AppLog.e("IntegrationViewModel", "Failed to navigate to Health Connect", e.toString())
+            }
+        }
     }
 }

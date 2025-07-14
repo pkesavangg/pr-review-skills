@@ -21,6 +21,7 @@ import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
+import com.greatergoods.meapp.features.integration.HealthConnectIntegrationScreen
 import com.greatergoods.meapp.features.integration.screen.IntegrationScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
@@ -83,7 +84,7 @@ fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
 
 fun EntryProviderBuilder<NavKey>.integrationEntries() {
   entry<AppRoute.Integration.IntegrationList> { IntegrationScreen() }
-  entry<AppRoute.Integration.HealthConnect> { ChangePasswordScreen() }
+  entry<AppRoute.Integration.HealthConnect> { HealthConnectIntegrationScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
