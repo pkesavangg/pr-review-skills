@@ -369,6 +369,22 @@ constructor(
    */
   override suspend fun isInitialized(): Boolean = currentAccountId != null
 
+  /**
+   * Get scale token from the API.
+   * @return The scale token as a string.
+   */
+  override suspend fun getScaleToken(): String {
+    AppLog.d(tag, "Getting scale token from API")
+    return try {
+      val token = deviceRepository.getScaleTokenFromApi()
+      AppLog.d(tag, "Scale token retrieved successfully")
+      token
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error getting scale token", e.toString())
+      throw e
+    }
+  }
+
   private fun getTimeZoneInMinutes(): Int {
     val timeZone = java.util.TimeZone.getDefault()
     val offsetInMillis = timeZone.getOffset(System.currentTimeMillis())

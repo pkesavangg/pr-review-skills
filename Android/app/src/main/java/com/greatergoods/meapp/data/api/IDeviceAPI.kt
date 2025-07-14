@@ -3,12 +3,14 @@ package com.greatergoods.meapp.data.api
 import com.greatergoods.meapp.domain.model.api.device.DeviceApiModel
 import com.greatergoods.meapp.domain.model.api.device.R4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.api.device.ScaleMetaDataApiModel
+import com.greatergoods.meapp.domain.model.api.device.ScaleTokenResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Query
 import retrofit2.http.Path
 
 /**
@@ -19,9 +21,16 @@ interface IDeviceAPI {
     companion object Companion {
         private const val SCALES = "paired-scale"
         private const val PREFERENCE = "scale-r4/preference"
+        private const val ACCOUNT_SCALE = "account/scale"
     }
 
-    /**ƒ
+    /**
+     * Get scale token for the account.
+     */
+    @GET("account/scale?r=4")
+    suspend fun getScaleToken(): Response<ScaleTokenResponse>
+
+    /**
      * Get all paired scales for the account.
      */
     @GET(SCALES)
