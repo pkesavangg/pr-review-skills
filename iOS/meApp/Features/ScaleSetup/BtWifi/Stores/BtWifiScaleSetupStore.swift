@@ -183,7 +183,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             connectedWifiNetwork: connectedWifiNetwork,
                             wifiNetworks: wifiNetworks,
                             onRefresh: { [weak self] in
-                                self?.refreshWifiNetworks()
+                                self?.scaleSetupError = .none
+                                self?.navigateToStep(.gatheringNetwork)
                             },
                             onNetworkSelected: { [weak self] network in
                                 self?.selectedWifiNetwork = network
