@@ -105,6 +105,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private let tag = "BtWifiScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
     private let alertLang = AlertStrings.self
+    private let commonLang = CommonStrings.self
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     
     /// Convenience accessor building the views for each step.
@@ -160,6 +161,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 )
             }
+        }
+    }
+    
+    var nextButtonText: String {
+        switch currentStep {
+        case .scaleConnected:
+            return commonLang.finish
+        case .gatheringNetwork:
+            return scaleSetupError == .duplicatesFound ? commonLang.save : commonLang.next
+        default:
+            return commonLang.next
         }
     }
     
