@@ -10,4 +10,8 @@ enum BtWifiScaleSetupError {
     case none
     case duplicatesFound
     case maxUserReached
+    case noNetworkFound
+    case wifiConnectionFailed
+    case updateSettingsFailed
+    case collectMeasurementFailed
 }

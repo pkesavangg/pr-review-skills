@@ -77,29 +77,33 @@ struct BtWifiScaleSetupScreen: View {
     
     private var footerButtons: some View {
         HStack {
-            ButtonView(text: commonLang.back,
-                       type: .inlineTextPrimary,
-                       size: .small,
-                       isDisabled: setupStore.shouldDisableBackButton(),
-                       action: {
-                withAnimation {
-                    hideKeyboard()
-                    setupStore.moveToPreviousStep()
-                }
-            })
-            
-            Spacer()
-            
-            ButtonView(text: setupStore.nextButtonText,
-                       type: .filledPrimary,
-                       size: .small,
-                       isDisabled: !setupStore.isNextEnabled,
-                       action: {
-                withAnimation {
-                    hideKeyboard()
-                    setupStore.handleNextButtonClick()
-                }
-            })
+            if setupStore.currentStep == .availableWifiList {
+                Spacer()
+                ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {})
+                Spacer()
+            } else {
+                ButtonView(text: commonLang.back,
+                           type: .inlineTextPrimary,
+                           size: .small,
+                           isDisabled: setupStore.shouldDisableBackButton(),
+                           action: {
+                    withAnimation {
+                        hideKeyboard()
+                        setupStore.moveToPreviousStep()
+                    }
+                })
+                Spacer()
+                ButtonView(text: setupStore.nextButtonText,
+                           type: .filledPrimary,
+                           size: .small,
+                           isDisabled: !setupStore.isNextEnabled,
+                           action: {
+                    withAnimation {
+                        hideKeyboard()
+                        setupStore.handleNextButtonClick()
+                    }
+                })
+            }
         }
     }
 }

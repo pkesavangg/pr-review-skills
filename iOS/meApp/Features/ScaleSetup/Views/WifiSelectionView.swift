@@ -14,6 +14,7 @@ struct WifiSelectionView: View {
     let connectedWifiNetwork: WifiDetails?
     let wifiNetworks: [WifiDetails]
     let onRefresh: () -> Void
+    let onNetworkSelected: (WifiDetails) -> Void
     
     private let lang = BtWifiScaleSetupStrings.WifiScreenStrings.self
     
@@ -37,7 +38,6 @@ struct WifiSelectionView: View {
             }
             .padding(.top, .spacingMD)
         }
-        .padding(.horizontal, .spacingSM)
         .frame(maxHeight: .infinity)
         .background(theme.backgroundSecondary)
     }
@@ -65,7 +65,7 @@ struct WifiSelectionView: View {
                 .fontWeight(.bold)
                 .foregroundColor(theme.textHeading)
             
-            WifiNetworksListView(networks: [network])
+            WifiNetworksListView(networks: [network], onNetworkSelected: onNetworkSelected)
         }
     }
     
@@ -79,7 +79,7 @@ struct WifiSelectionView: View {
                     .foregroundColor(theme.textHeading)
             }
             
-            WifiNetworksListView(networks: networks)
+            WifiNetworksListView(networks: networks, onNetworkSelected: onNetworkSelected)
         }
     }
     
@@ -104,6 +104,7 @@ struct WifiSelectionView: View {
             WifiDetails(macAddress: "11:22:33:44:55:66", ssid: "Office WiFi"),
             WifiDetails(macAddress: "aa:bb:cc:dd:ee:00", ssid: "Guest Network")
         ],
-        onRefresh: {}
+        onRefresh: {},
+        onNetworkSelected: { _ in }
     )
 }

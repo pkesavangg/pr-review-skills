@@ -86,6 +86,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// List of duplicate users with the same name
     @Published var duplicateList: [DeviceUser] = []
     
+    /// WiFi networks list fetched from the scale
+    @Published var wifiNetworks: [WifiDetails] = []
+    
+    /// Connected WiFi network details
+    @Published var connectedWifiNetwork: WifiDetails?
+    
+    /// Selected WiFi network for password entry
+    @Published var selectedWifiNetwork: WifiDetails?
+    
+    /// Error code for the WifiConnectionView/BluetoothConnectionView
+    @Published var errorCode: String? = nil
+    
     // MARK: - UserName Form
     @Published var userNameForm = UserNameForm()
     
@@ -126,7 +138,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     BluetoothConnectionView(
                         state: connectionState,
                         setupType: .btWifiR4,
-                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onTryAgain: { [weak self] in
+                            self?.scaleSetupError = .none
+                            self?.navigateToStep(.gatheringNetwork)
+                        },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
                         }
@@ -147,9 +162,60 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     image: AppAssets.wifi
                                 )
                             }
+                        default:
+                            EmptyView()
                         }
                     }
                 )
+            case .availableWifiList:
+                switch scaleSetupError {
+                case .noNetworkFound:
+                    return AnyView(WifiConnectionView(
+                        state: .noNetworks,
+                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onSupport: {
+                            [weak self] in self?.showHelpModal()
+                        }
+                    ))
+                default:
+                    return AnyView(
+                        WifiSelectionView(
+                            connectedWifiNetwork: connectedWifiNetwork,
+                            wifiNetworks: wifiNetworks,
+                            onRefresh: { [weak self] in
+                                self?.refreshWifiNetworks()
+                            },
+                            onNetworkSelected: { [weak self] network in
+                                self?.selectedWifiNetwork = network
+                                self?.navigateToStep(.wifiPassword)
+                            }
+                        )
+                    )
+                }
+                
+            case .wifiPassword:
+                if let selectedNetwork = selectedWifiNetwork {
+                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork))
+                } else {
+                    return AnyView(WifiConnectionView(
+                        state: .noNetworks,
+                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onSupport: {
+                            [weak self] in self?.showHelpModal()
+                        }
+                    ))
+                }
+            case .connectingWifi:
+                return AnyView(WifiConnectionView(
+                    state: connectionState,
+                    errorCode: errorCode,
+                    onTryAgain: { [weak self] in
+                        self?.navigateToStep(.wifiPassword)
+                    },
+                    onSupport: {
+                        [weak self] in self?.showHelpModal()
+                    }
+                ))
             default:
                 // For now, other screens show the step name as text
                 return AnyView(
@@ -170,6 +236,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return commonLang.finish
         case .gatheringNetwork:
             return scaleSetupError == .duplicatesFound ? commonLang.save : commonLang.next
+        case .wifiPassword:
+            return commonLang.connect
         default:
             return commonLang.next
         }
@@ -417,9 +485,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Invoked from the *Try Again* button of `BluetoothConnectionView`.
     private func retryPairing() {
-        // Reset error state and navigate back to wake-up step
-        scaleSetupError = .none
-        navigateToStep(.wakeup)
+        // Handle different error cases
+        if scaleSetupError == .noNetworkFound {
+            // For no network found, refresh the WiFi networks
+            refreshWifiNetworks()
+        } else {
+            // For other errors, reset error state and navigate back to wake-up step
+            scaleSetupError = .none
+            navigateToStep(.wakeup)
+        }
     }
     
     // MARK: - Step Change Handling
@@ -441,7 +515,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 if savedScale != nil && connectionState == .success {
                     if let savedScale = self.savedScale {
                         Task {
-                            let res = await self.bluetoothService.getWifiList(for: savedScale)
+                            await self.fetchWifiNetworks(for: savedScale)
                         }
                     }
                 }
@@ -647,6 +721,73 @@ final class BtWifiScaleSetupStore: ObservableObject {
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             connectionState = .failure
+        }
+    }
+    
+    /// Fetches WiFi networks from the scale and handles error cases
+    private func fetchWifiNetworks(for scale: Device) async {
+        do {
+            // Get connected WiFi SSID first
+            let connectedSSIDResult = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
+            var connectedSSID: String?
+            switch connectedSSIDResult {
+            case .success(let ssid):
+                connectedSSID = ssid.isEmpty ? nil : ssid
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get connected WiFi SSID: \(error.localizedDescription)")
+                connectedSSID = nil
+            }
+            
+            // Get WiFi networks list
+            let wifiListResult = await bluetoothService.getWifiList(for: scale)
+            var networks: [WifiDetails] = []
+            
+            switch wifiListResult {
+            case .success(let wifiList):
+                networks = wifiList
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi networks: \(error.localizedDescription)")
+                throw error
+            }
+            
+            await MainActor.run {
+                self.wifiNetworks = networks
+                
+                // Find connected network in the list
+                if let connectedSSID = connectedSSID {
+                    self.connectedWifiNetwork = networks.first { $0.ssid == connectedSSID }
+                }
+                
+                // Check if no networks were found
+                if networks.isEmpty {
+                    self.scaleSetupError = .noNetworkFound
+                } else {
+                    self.scaleSetupError = .none
+                }
+                
+                // Navigate to available WiFi list
+                self.navigateToStep(.availableWifiList)
+            }
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi networks: \(networks.count) networks found")
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi networks: \(error.localizedDescription)")
+            await MainActor.run {
+                self.scaleSetupError = .noNetworkFound
+                self.navigateToStep(.availableWifiList)
+            }
+        }
+    }
+    
+    /// Refreshes the WiFi networks list
+    private func refreshWifiNetworks() {
+        guard let savedScale = self.savedScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "refreshWifiNetworks - no saved scale available")
+            return
+        }
+        
+        Task {
+            await fetchWifiNetworks(for: savedScale)
         }
     }
     
@@ -859,7 +1000,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Cleanup Methods
-
+    
     // Disconnects scale if it's not saved to ensure it shouldn't appears again in discovery.
     private func disconnectDevice() {
         guard let broadcastId = discoveredScale?.broadcastIdString, !broadcastId.isEmpty, savedScale == nil else { return }
@@ -867,7 +1008,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
         }
     }
-
+    
     // Cancels Wi-Fi to hide connecting to wifi screen on 0412 scale.
     private func cancelWifi() {
         if let discoveredScale = discoveredScale {
