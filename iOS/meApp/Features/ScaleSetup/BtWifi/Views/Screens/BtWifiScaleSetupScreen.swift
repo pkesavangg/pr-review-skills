@@ -89,8 +89,7 @@ struct BtWifiScaleSetupScreen: View {
             
             Spacer()
             
-            ButtonView(text: setupStore.currentStep == .scaleConnected ? commonLang.finish :
-                        setupStore.currentStep == .duplicatesFound ? commonLang.save : commonLang.next,
+            ButtonView(text: setupStore.nextButtonText,
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
