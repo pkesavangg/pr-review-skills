@@ -14,6 +14,7 @@ import com.greatergoods.meapp.features.ScaleSetup.components.CustomizeScaleSetti
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
+import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
 import com.greatergoods.meapp.features.ScaleSetup.components.WifiSelection
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent

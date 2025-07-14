@@ -110,9 +110,11 @@ constructor(
             BtWifiSetupStep.WAKEUP -> {
               wakeUpScale()
             }
+
             BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
               connectToBluetooth()
             }
+
             BtWifiSetupStep.GATHERING_NETWORK -> {
               gatherNetworks()
             }
@@ -124,12 +126,15 @@ constructor(
             BtWifiSetupStep.CONNECTING_WIFI -> {
               connectToWifi()
             }
+
             BtWifiSetupStep.PERMISSIONS -> {
               handlePermissions()
             }
+
             BtWifiSetupStep.MEASUREMENT -> {
               collectMeasurement()
             }
+
             else -> {
               // No automatic action needed for other steps
             }
@@ -211,7 +216,7 @@ constructor(
     when (currentState.currentStep) {
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         // Skip to CUSTOMIZE_SETTINGS
-        ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!){
+        ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {
         }
         handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.STEP_ON))
       }
@@ -430,7 +435,7 @@ constructor(
             }
 
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
-              ggDeviceService.deleteAccount(device = ggBtDevice){ deleteResponse ->
+              ggDeviceService.deleteAccount(device = ggBtDevice) { deleteResponse ->
                 when (deleteResponse) {
                   GGUserActionResponseType.DELETE_COMPLETED -> {
                     connectToBluetooth()
@@ -498,16 +503,6 @@ constructor(
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
           handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.AVAILABLE_WIFI_LIST))
-        } else {
-          AppLog.w(TAG, "Network gathering failed")
-          handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.GATHERING_NETWORK,
-              ConnectionState.Error,
-            ),
-          )
-          handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_001"))
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during network gathering", e.toString())
@@ -562,17 +557,6 @@ constructor(
         }
       }
     } catch (e: Exception) {
-        AppLog.e(TAG, "Error during wifi connection", e.toString())
-        handleIntent(
-          BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.CONNECTING_WIFI,
-            ConnectionState.Error,
-          ),
-        )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
-      }
-    } catch (e: Exception) {
       AppLog.e(TAG, "Error during wifi connection", e.toString())
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -581,8 +565,10 @@ constructor(
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
-      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     }
+  }
+
 
   private fun stepOn() {
     AppLog.d(TAG, "Starting wifi connection process")
@@ -642,6 +628,7 @@ constructor(
         contentKey = DialogType.AccucheckModal,
       ),
     )
+  }
   /**
    * Callback when a new device matching the protocol is found during setup.
    * @param device The GGDeviceDetail of the new device found.
