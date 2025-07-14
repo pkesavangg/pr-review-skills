@@ -23,19 +23,20 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.features.common.components.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 // --- Scope Interface and Implementation ---
 interface DraggableListItemScope {
-    @Composable
-    fun DraggableItem(
-        isDraggable: Boolean = true,
-        content: @Composable (isDragging: Boolean) -> Unit
-    )
+  @Composable
+  fun DraggableItem(
+    isDraggable: Boolean = true,
+    content: @Composable (isDragging: Boolean) -> Unit
+  )
 
-    @Composable
-    fun StaticItem(content: @Composable () -> Unit)
+  @Composable
+  fun StaticItem(content: @Composable () -> Unit)
 }
 
 private class DraggableListItemScopeImpl<T>(
@@ -103,6 +104,7 @@ fun <T> AppDraggableList(
     state = lazyListState,
     contentPadding = contentPadding,
     verticalArrangement = verticalArrangement,
+    userScrollEnabled = false,
     modifier = modifier,
   ) {
     items(
@@ -121,37 +123,37 @@ fun <T> AppDraggableList(
         }
       }
 
-              ReorderableItem(
-          state = reorderableState,
-          key = keySelector(item),
-        ) { isDragging ->
-          Column {
-            // Draggable content
-            val draggableContent = scope.buildDraggable(isDragging)
+      ReorderableItem(
+        state = reorderableState,
+        key = keySelector(item),
+      ) { isDragging ->
+        Column {
+          // Draggable content
+          val draggableContent = scope.buildDraggable(isDragging)
 
-            Box(
-              modifier = if (scope.isDraggable()) {
-                Modifier.draggableHandle(
-                  onDragStarted = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                    onDragStarted()
-                  },
-                  onDragStopped = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                    onDragStopped()
-                  },
-                )
-              } else {
-                Modifier
-              }
-            ) {
-              draggableContent()
-            }
-
-            // Static content (if any)
-            scope.buildStatic()?.invoke()
+          Box(
+            modifier = if (scope.isDraggable()) {
+              Modifier.draggableHandle(
+                onDragStarted = {
+                  hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                  onDragStarted()
+                },
+                onDragStopped = {
+                  hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                  onDragStopped()
+                },
+              )
+            } else {
+              Modifier
+            },
+          ) {
+            draggableContent()
           }
+
+          // Static content (if any)
+          scope.buildStatic()?.invoke()
         }
+      }
     }
   }
 }
@@ -181,7 +183,7 @@ private fun PreviewAppDraggableList() {
         keySelector = { "body_$it" },
         itemContent = { item ->
           DraggableItem(
-            isDraggable = item != "Body Fat" // Example: Body Fat is not draggable
+            isDraggable = item != "Body Fat", // Example: Body Fat is not draggable
           ) { isDragging ->
             Text(
               text = "📊 $item ${if (isDragging) "(Dragging)" else if (item == "Body Fat") "(Disabled)" else ""}",

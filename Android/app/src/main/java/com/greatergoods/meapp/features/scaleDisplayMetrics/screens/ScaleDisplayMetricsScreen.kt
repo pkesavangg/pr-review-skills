@@ -2,11 +2,9 @@ package com.greatergoods.meapp.features.scaleDisplayMetrics.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -78,39 +76,41 @@ fun ScaleDisplayMetricsScreenContent(
       }
     },
   ) {
-    Column(
+    LazyColumn(
       modifier =
         Modifier
           .fillMaxSize()
-          .verticalScroll(rememberScrollState())
           .padding(vertical = spacing.md, horizontal = spacing.sm),
     ) {
-      // Notes
-      state.scale?.let { scale ->
-        ScaleMetricsNotes(
-          scale = scale,
-          onUpdateScaleMode = {
-            handleIntent(ScaleDisplayMetricsIntent.UpdateScaleMode)
-          },
+      item {
+        // Notes
+        state.scale?.let { scale ->
+          ScaleMetricsNotes(
+            scale = scale,
+            onUpdateScaleMode = {
+              handleIntent(ScaleDisplayMetricsIntent.UpdateScaleMode)
+            },
+          )
+        }
+
+        // Description
+        AppText(
+          text = ScaleDisplayMetricsStrings.Description,
+          textType = TextType.Body,
+          modifier = Modifier.padding(bottom = spacing.md),
         )
       }
 
-      // Description
-      AppText(
-        text = ScaleDisplayMetricsStrings.Description,
-        textType = TextType.Body,
-        modifier = Modifier.padding(bottom = spacing.md),
-      )
-
-      // Display Metrics Component
-      state.scale?.let { scale ->
-        ScaleMetricsSettingScreen(
-          scale = scale,
-          onMetricsChanged = { enabledMetrics ->
-            handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
-          },
-          modifier = Modifier.weight(1f),
-        )
+        item {
+        // Display Metrics Component
+        state.scale?.let { scale ->
+          ScaleMetricsSettingScreen(
+            currentMetrics = scale.preferences?.displayMetrics ?: emptyList(),
+            onMetricsChanged = { enabledMetrics ->
+              handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
+            },
+          )
+        }
       }
     }
   }

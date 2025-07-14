@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 
-import androidx.compose.runtime.withFrameMillis
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
@@ -14,6 +13,7 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
@@ -27,10 +27,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -45,6 +43,7 @@ constructor(
   @Assisted private val sku: String,
   override val ggDeviceService: GGDeviceService,
   private val deviceService: IDeviceService,
+  private val dashboardService: IDashboardService
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
   ggDeviceService,
   reducer = BtWifiScaleSetupReducer(),
@@ -109,7 +108,11 @@ constructor(
           // Call appropriate function based on the new step
           when (currentStep) {
             BtWifiSetupStep.WAKEUP -> {
-              wakeUpScale()
+              handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+            }
+
+            BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
+              loadDashboardKeys()
             }
 
             BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
@@ -413,66 +416,66 @@ constructor(
       ),
     )
 
-      try {
-        val ggBtDevice = discoveredScale!!.toGGBTDevice()
+    try {
+      val ggBtDevice = discoveredScale!!.toGGBTDevice()
 
-        ggDeviceService.pairDevice(
-          device = ggBtDevice,
-        ) {
-          when (it) {
-            GGUserActionResponseType.CREATION_COMPLETED -> {
-              viewModelScope.launch {
-                handleIntent(
-                  BtWifiScaleSetupIntent.SetStepConnectionState(
-                    BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                    ConnectionState.Success,
-                  ),
-                )
-                delay(1000)
-                handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-                handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
-              }
-            }
-
-            GGUserActionResponseType.CREATION_FAILED -> {
+      ggDeviceService.pairDevice(
+        device = ggBtDevice,
+      ) {
+        when (it) {
+          GGUserActionResponseType.CREATION_COMPLETED -> {
+            viewModelScope.launch {
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
                   BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                  ConnectionState.Error,
+                  ConnectionState.Success,
                 ),
               )
-              handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
+              delay(1000)
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+              handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
             }
+          }
 
-            GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
-              ggDeviceService.deleteAccount(device = ggBtDevice) { deleteResponse ->
-                when (deleteResponse) {
-                  GGUserActionResponseType.DELETE_COMPLETED -> {
-                    connectToBluetooth()
-                  }
+          GGUserActionResponseType.CREATION_FAILED -> {
+            handleIntent(
+              BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                ConnectionState.Error,
+              ),
+            )
+            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
+            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          }
 
-                  else -> null
+          GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
+            ggDeviceService.deleteAccount(device = ggBtDevice) { deleteResponse ->
+              when (deleteResponse) {
+                GGUserActionResponseType.DELETE_COMPLETED -> {
+                  connectToBluetooth()
                 }
+
+                else -> null
               }
             }
+          }
 
-            else -> null
+          else -> null
 
-          }}
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during bluetooth connection", e.toString())
-        handleIntent(
-          BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.CONNECTING_BLUETOOTH,
-            ConnectionState.Error,
-          ),
-        )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+        }
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during bluetooth connection", e.toString())
+      handleIntent(
+        BtWifiScaleSetupIntent.SetStepConnectionState(
+          BtWifiSetupStep.CONNECTING_BLUETOOTH,
+          ConnectionState.Error,
+        ),
+      )
+      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
+      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
-
+  }
 
   /**
    * Handles permissions step.
@@ -702,6 +705,14 @@ constructor(
     )
   }
 
+  private fun loadDashboardKeys() {
+    viewModelScope.launch {
+      dashboardService.getVisibleKeys().collect { dashboardKeys ->
+        handleIntent(BtWifiScaleSetupIntent.SetDashboardKeys(dashboardKeys))
+      }
+    }
+  }
+
   /**
    * Callback when a new device matching the protocol is found during setup.
    * @param device The GGDeviceDetail of the new device found.
@@ -714,11 +725,11 @@ constructor(
     when (response.type) {
       GGScanResponseType.NEW_DEVICE -> {
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
-            discoveredScale = device
-            AppLog.d(TAG, "Wake up successful, proceeding to next step")
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-            handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-            stopObservingDevices()
+          discoveredScale = device
+          AppLog.d(TAG, "Wake up successful, proceeding to next step")
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
+          stopObservingDevices()
         }
       }
 

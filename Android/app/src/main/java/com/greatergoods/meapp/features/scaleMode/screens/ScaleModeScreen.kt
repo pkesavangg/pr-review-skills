@@ -99,19 +99,26 @@ fun ScaleModeScreenContent(
             }
         },
     ) {
-      ScaleModeSettingsScreen(
-        isAllBodyMetrics = isAllBodyMetrics,
-        isHeartRateOn = state.isHeartRateOn,
-        onModeSelected = {
-          isAllBodyMetrics -> handleIntent(ScaleModeIntent.SetMode(isAllBodyMetrics, true))
-        },
-        onHeartRateToggle = {
-          isHeartRateOn -> handleIntent(ScaleModeIntent.SetHeartRate(isHeartRateOn, true)) },
-        onBioimpedanceClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
+      Column(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = spacing.md, horizontal = spacing.sm),
+      ) {
+        ScaleModeSettingsScreen(
+          isAllBodyMetrics = isAllBodyMetrics,
+          isHeartRateOn = state.isHeartRateOn,
+          onModeSelected = { isAllBodyMetrics ->
+            handleIntent(ScaleModeIntent.SetMode(isAllBodyMetrics, true))
+          },
+          onHeartRateToggle = { isHeartRateOn -> handleIntent(ScaleModeIntent.SetHeartRate(isHeartRateOn, true)) },
+          onBioimpedanceClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
         )
+      }
     }
   }
-}
+
 
 @PreviewTheme
 @Composable

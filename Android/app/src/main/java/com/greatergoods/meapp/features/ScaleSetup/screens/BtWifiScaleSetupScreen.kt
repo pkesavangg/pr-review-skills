@@ -93,6 +93,7 @@ fun BtWifiScaleSetupScreenContent(
             )
           }
         }
+
         else -> null
       },
       middleContent = when (state.currentStep) {
@@ -109,6 +110,7 @@ fun BtWifiScaleSetupScreenContent(
             )
           }
         }
+
         BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
           {
             AppButton(
@@ -141,6 +143,7 @@ fun BtWifiScaleSetupScreenContent(
             )
           }
         }
+
         else -> null
       },
       pageContent = { step ->
@@ -148,6 +151,7 @@ fun BtWifiScaleSetupScreenContent(
           BtWifiSetupStep.SCALE_INFO -> {
             ScaleInfo(sku = state.sku)
           }
+
           BtWifiSetupStep.WAKEUP -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
@@ -165,6 +169,7 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
+
           BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
@@ -259,7 +264,7 @@ fun BtWifiScaleSetupScreenContent(
             CustomizeScaleSettings(
               title = BtWifiScaleSetupStrings.CustomizeSettings.Title,
               subtitle = BtWifiScaleSetupStrings.CustomizeSettings.Subtitle,
-              onSelectSettings = { it },
+              state = state,
             )
           }
 
@@ -299,6 +304,7 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
+
           BtWifiSetupStep.SCALE_CONNECTED -> {
             ScaleSetupLoader(
               title = BtWifiScaleSetupStrings.ScaleConnected.Title,
@@ -308,6 +314,7 @@ fun BtWifiScaleSetupScreenContent(
               contentButtonClick = { onIntent(BtWifiScaleSetupIntent.OpenAccucheckModal) },
             )
           }
+
           else -> {
             // Placeholder for other steps
           }

@@ -31,36 +31,10 @@ fun SettingsLayout(
   onHelp: () -> Unit,
   content: @Composable () -> Unit,
 ) {
-  PagerBottomAppBar(
-    leadingContent = {
-      AppButton(
-        type = ButtonType.TextPrimary,
-        label = ScaleSetupStrings.SetupButtons.Back,
-        size = ButtonSize.Small,
-        onClick = { onBack() },
-      )
-    },
-    middleContent = {},
-    trailingContent = {
-      AppButton(
-        type = ButtonType.PrimaryFilled,
-        label = ScaleSetupStrings.SetupButtons.Save,
-        size = ButtonSize.Small,
-        enabled = enableSave,
-        onClick = { onSave() },
-      )
-    },
-    content = { modifier ->
-      ScaleSetupHeader(
-        sku = "0412",
-        onBack = { onExit() },
-        onHelp = { onHelp() },
-      ) {
+
         Column(
           modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = spacing.md, horizontal = spacing.sm),
         ) {
           AppText(
             text = title,
@@ -79,9 +53,6 @@ fun SettingsLayout(
 
         }
       }
-    },
-  )
-}
 
 @PreviewTheme()
 @Composable

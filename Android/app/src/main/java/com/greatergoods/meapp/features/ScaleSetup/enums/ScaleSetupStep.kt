@@ -21,6 +21,13 @@ enum class BtWifiSetupStep {
   SCALE_CONNECTED,
 }
 
+enum class CUSTOMIZE_SETTINGS {
+  DASHBOARD_METRICS,
+  SCALE_MODE,
+  SCALE_METRICS,
+  SCALE_USERNAME,
+}
+
 /**
  * Enum for WiFi-only scale setup flow steps.
  */

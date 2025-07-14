@@ -23,14 +23,14 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.reorderable.ReorderableItem
+import com.greatergoods.meapp.features.common.components.reorderable.rememberReorderableLazyGridState
 import com.greatergoods.meapp.features.common.helper.StatHelper
 import com.greatergoods.meapp.features.common.helper.graph.GraphUtil.averageSummary
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyGridState
 
 /**
  * Composable for the dashboard metrics section that displays health metrics in a grid layout.
@@ -44,60 +44,60 @@ import sh.calvin.reorderable.rememberReorderableLazyGridState
  */
 @Composable
 fun DashboardMetrics(
-    metricData: List<PeriodBodyScaleSummary>,
-    inEditMode: Boolean = false,
-    visibleKeys: List<DashboardKey> = listOf(),
-    selectedStat: Stat? = null,
-    onMetricClick: (Stat?) -> Unit,
-    onMetricsChanged: (List<DashboardKey>) -> Unit = { }
+  metricData: List<PeriodBodyScaleSummary>,
+  inEditMode: Boolean = false,
+  visibleKeys: List<DashboardKey> = listOf(),
+  selectedStat: Stat? = null,
+  onMetricClick: (Stat?) -> Unit = {},
+  onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
-    var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
+  var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
 
-    val latestSummary = averageSummary(metricData)
-    val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
-    val metricKeys = localVisibleKeys.mapNotNull { key ->
-        when (key) {
-            is DashboardKey.Metric -> key.key
-            is DashboardKey.Milestone -> null
-        }
+  val latestSummary = averageSummary(metricData)
+  val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
+  val metricKeys = localVisibleKeys.mapNotNull { key ->
+    when (key) {
+      is DashboardKey.Metric -> key.key
+      is DashboardKey.Milestone -> null
     }
-    val visibleMetrics = StatHelper.getMetrics(
-        dashboardMetric,
-        visibleKeys = metricKeys,
-        useShort = true,
-        filterNulls = false,
-    )
-    val allMetrics = StatHelper.getMetrics(
-        dashboardMetric,
-        visibleKeys = null,
-        useShort = true,
-        filterNulls = false,
-    )
-    val hiddenMetrics = allMetrics.filter { it !in visibleMetrics }
+  }
+  val visibleMetrics = StatHelper.getMetrics(
+    dashboardMetric,
+    visibleKeys = metricKeys,
+    useShort = true,
+    filterNulls = false,
+  )
+  val allMetrics = StatHelper.getMetrics(
+    dashboardMetric,
+    visibleKeys = null,
+    useShort = true,
+    filterNulls = false,
+  )
+  val hiddenMetrics = allMetrics.filter { it !in visibleMetrics }
 
-    val onMetricMoved = { fromVisible: Boolean, toVisible: Boolean, metric: Stat ->
-        val metricKey = metric.key
-        if (fromVisible && !toVisible) {
-            val newKeys = localVisibleKeys.filterNot { it == metricKey }
-            localVisibleKeys = newKeys
-            onMetricsChanged(newKeys)
-        } else if (!fromVisible && toVisible) {
-            val newKeys = localVisibleKeys + metricKey
-            localVisibleKeys = newKeys
-            onMetricsChanged(newKeys)
-        }
+  val onMetricMoved = { fromVisible: Boolean, toVisible: Boolean, metric: Stat ->
+    val metricKey = metric.key
+    if (fromVisible && !toVisible) {
+      val newKeys = localVisibleKeys.filterNot { it == metricKey }
+      localVisibleKeys = newKeys
+      onMetricsChanged(newKeys)
+    } else if (!fromVisible && toVisible) {
+      val newKeys = localVisibleKeys + metricKey
+      localVisibleKeys = newKeys
+      onMetricsChanged(newKeys)
     }
+  }
 
-    DashboardMetricsGrid(
-        visibleMetrics = visibleMetrics,
-        hiddenMetrics = hiddenMetrics,
-        inEditMode = inEditMode,
-        selectedStat = selectedStat,
-        onMetricClick = onMetricClick,
-        onMetricMoved = onMetricMoved,
-    )
+  DashboardMetricsGrid(
+    visibleMetrics = visibleMetrics,
+    hiddenMetrics = hiddenMetrics,
+    inEditMode = inEditMode,
+    selectedStat = selectedStat,
+    onMetricClick = onMetricClick,
+    onMetricMoved = onMetricMoved,
+  )
 
-    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+  Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 }
 
 /**
@@ -105,119 +105,119 @@ fun DashboardMetrics(
  */
 @Composable
 private fun DashboardMetricsGrid(
-    visibleMetrics: List<Stat>,
-    hiddenMetrics: List<Stat>,
-    inEditMode: Boolean,
-    selectedStat: Stat?,
-    onMetricClick: (Stat?) -> Unit,
-    onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
+  visibleMetrics: List<Stat>,
+  hiddenMetrics: List<Stat>,
+  inEditMode: Boolean,
+  selectedStat: Stat?,
+  onMetricClick: (Stat?) -> Unit,
+  onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
 ) {
-    var localVisibleMetrics by remember(visibleMetrics) { mutableStateOf(visibleMetrics) }
-    val hapticFeedback = LocalHapticFeedback.current
-    val lazyGridState = rememberLazyGridState()
-    val reorderableState = rememberReorderableLazyGridState(
-        lazyGridState = lazyGridState,
-        onMove = { from, to ->
-            localVisibleMetrics = localVisibleMetrics.toMutableList().apply {
-                add(to.index, removeAt(from.index))
-            }
+  var localVisibleMetrics by remember(visibleMetrics) { mutableStateOf(visibleMetrics) }
+  val hapticFeedback = LocalHapticFeedback.current
+  val lazyGridState = rememberLazyGridState()
+  val reorderableState = rememberReorderableLazyGridState(
+    lazyGridState = lazyGridState,
+    onMove = { from, to ->
+      localVisibleMetrics = localVisibleMetrics.toMutableList().apply {
+        add(to.index, removeAt(from.index))
+      }
 
-            hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-        },
-    )
+      hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+    },
+  )
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        state = lazyGridState,
-        contentPadding = PaddingValues(MeTheme.spacing.sm),
-        userScrollEnabled = false,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 500.dp),
-        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-        verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    ) {
-        // Visible metrics
-        items(
-            items = localVisibleMetrics,
-            key = { stat -> getMetricKey(stat, isVisible = true) },
-        ) { metric ->
-            val isSelected = selectedStat?.key == metric.key
-            Box {
-                StatCard(
-                    stat = metric,
-                    isPlaceHolder = true,
-                )
-                ReorderableItem(
-                    state = reorderableState,
-                    key = getMetricKey(metric, isVisible = true),
-                    enabled = inEditMode,
-                ) { isDragging ->
-                    AnimatedStatCard(
-                        stat = metric,
-                        isDragging = isDragging,
-                        inEditMode = inEditMode,
-                        isSelected = isSelected,
-                        modifier = Modifier.draggableHandle(
-                            enabled = inEditMode,
-                            onDragStarted = {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                            },
-                            onDragStopped = {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                            },
-                        ),
+  LazyVerticalGrid(
+    columns = GridCells.Fixed(3),
+    state = lazyGridState,
+    contentPadding = PaddingValues(MeTheme.spacing.sm),
+    userScrollEnabled = false,
+    modifier = Modifier
+      .fillMaxWidth()
+      .heightIn(max = 500.dp),
+    horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+  ) {
+    // Visible metrics
+    items(
+      items = localVisibleMetrics,
+      key = { stat -> getMetricKey(stat, isVisible = true) },
+    ) { metric ->
+      val isSelected = selectedStat?.key == metric.key
+      Box {
+        StatCard(
+          stat = metric,
+          isPlaceHolder = true,
+        )
+        ReorderableItem(
+          state = reorderableState,
+          key = getMetricKey(metric, isVisible = true),
+          enabled = inEditMode,
+        ) { isDragging ->
+          AnimatedStatCard(
+            stat = metric,
+            isDragging = isDragging,
+            inEditMode = inEditMode,
+            isSelected = isSelected,
+            modifier = Modifier.draggableHandle(
+              enabled = inEditMode,
+              onDragStarted = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+              },
+              onDragStopped = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+              },
+            ),
 
-                        onBadgeClick = {
-                            onMetricMoved(true, false, metric)
-                        },
-                        onClick = {
-                            onMetricClick(if (isSelected) null else metric)
-                        },
+            onBadgeClick = {
+              onMetricMoved(true, false, metric)
+            },
+            onClick = {
+              onMetricClick(if (isSelected) null else metric)
+            },
 
-                        )
-                }
-            }
+            )
         }
-
-        // Hidden metrics (only when in edit mode)
-        if (inEditMode) {
-            items(
-                items = hiddenMetrics,
-                key = { stat -> getMetricKey(stat, isVisible = false) },
-            ) { metric ->
-                AnimatedStatCard(
-                    stat = metric,
-                    isVisible = false,
-                    inEditMode = true,
-                    isSelected = null,
-                    onBadgeClick = {
-                        onMetricMoved(false, true, metric)
-                    },
-                )
-            }
-        }
+      }
     }
+
+    // Hidden metrics (only when in edit mode)
+    if (inEditMode) {
+      items(
+        items = hiddenMetrics,
+        key = { stat -> getMetricKey(stat, isVisible = false) },
+      ) { metric ->
+        AnimatedStatCard(
+          stat = metric,
+          isVisible = false,
+          inEditMode = true,
+          isSelected = null,
+          onBadgeClick = {
+            onMetricMoved(false, true, metric)
+          },
+        )
+      }
+    }
+  }
 }
 
 /**
  * Generates a unique key for metric items in the grid.
  */
 private fun getMetricKey(stat: Stat, isVisible: Boolean): String {
-    val prefix = if (isVisible) "visible" else "hidden"
-    return when (stat.key) {
-        is DashboardKey.Metric -> "$prefix-${stat.key.key.name}"
-        is DashboardKey.Milestone -> "$prefix-${stat.key.key.name}"
-    }
+  val prefix = if (isVisible) "visible" else "hidden"
+  return when (stat.key) {
+    is DashboardKey.Metric -> "$prefix-${stat.key.key.name}"
+    is DashboardKey.Milestone -> "$prefix-${stat.key.key.name}"
+  }
 }
 
 @PreviewTheme
 @Composable
 private fun DashboardMetricsPreview() {
-    MeAppTheme {
-        DashboardMetrics(
-            metricData = listOf(),
-            onMetricClick = {},
-        ) {}
-    }
+  MeAppTheme {
+    DashboardMetrics(
+      metricData = listOf(),
+      onMetricClick = {},
+    ) {}
+  }
 }

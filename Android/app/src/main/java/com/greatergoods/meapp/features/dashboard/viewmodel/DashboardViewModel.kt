@@ -11,7 +11,6 @@ import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -61,15 +60,7 @@ constructor(
   private fun subscribeMetrics() {
     viewModelScope.launch {
       // Combine both metric and milestone keys into a single DashboardKey list
-      combine(
-        dashboardService.getVisibleMetricKeys(),
-        dashboardService.getVisibleMilestoneKeys(),
-      ) { metricKeys, milestoneKeys ->
-        val combinedKeys = mutableListOf<DashboardKey>()
-        combinedKeys.addAll(metricKeys.map { DashboardKey.Metric(it) })
-        combinedKeys.addAll(milestoneKeys.map { DashboardKey.Milestone(it) })
-        combinedKeys
-      }.collect {
+      dashboardService.getVisibleKeys().collect {
         handleIntent(DashboardIntent.SetVisibleKeys(it))
       }
     }
