@@ -31,7 +31,6 @@ object AppIcons {
     val ScalePlaceholder = R.drawable.placeholder_scale
     val WeightOnlyMode = R.drawable.ic_weight_only
     val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
-    val UserNameScale = R.drawable.scale_0412_user_name
   }
 
     object Outlined {
@@ -95,6 +94,11 @@ object AppIcons {
     val Accuchecked = R.drawable.accuchecked
     val AccucheckLogo = R.drawable.accucheck_logo
     val StepOnGif = R.raw.step_on
+    val MetricCard = R.drawable.ic_card_grid
+    val Graph = R.drawable.ic_graph
+    val Scale = R.drawable.ic_scale
+    val UserNameScale = R.drawable.scale_0412_user_name
+
   }
 
 

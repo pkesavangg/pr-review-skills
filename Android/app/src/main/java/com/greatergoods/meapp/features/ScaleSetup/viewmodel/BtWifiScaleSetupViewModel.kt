@@ -115,6 +115,10 @@ constructor(
               connectToBluetooth()
             }
 
+            BtWifiSetupStep.DUPLICATES_FOUND -> {
+              handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Save))
+            }
+
             BtWifiSetupStep.GATHERING_NETWORK -> {
               gatherNetworks()
             }
@@ -129,6 +133,14 @@ constructor(
 
             BtWifiSetupStep.PERMISSIONS -> {
               handlePermissions()
+            }
+
+            BtWifiSetupStep.UPDATE_SETTINGS -> {
+              updateSettings()
+            }
+
+            BtWifiSetupStep.STEP_ON -> {
+              stepOn()
             }
 
             BtWifiSetupStep.MEASUREMENT -> {
@@ -164,6 +176,7 @@ constructor(
         BtWifiSetupStep.PERMISSIONS,
         BtWifiSetupStep.CONNECTING_BLUETOOTH,
         BtWifiSetupStep.GATHERING_NETWORK,
+        BtWifiSetupStep.UPDATE_SETTINGS,
         BtWifiSetupStep.CONNECTING_WIFI,
         BtWifiSetupStep.MEASUREMENT,
           -> {
@@ -174,6 +187,10 @@ constructor(
         }
 
         else -> {
+          if (currentState.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST) {
+            // TODO: IF wifi configured move to BtWifiSetupStep.CUSTOMIZE_SETTINGS else
+            //  move to BtWifiSetupStep.WIFI_PASSWORD
+          }
           // For other steps (like SCALE_INFO, AVAILABLE_WIFI_LIST), let the normal flow continue
           // The base class will handle the intent and call the reducer
         }
@@ -322,6 +339,10 @@ constructor(
 
       BtWifiSetupStep.STEP_ON -> {
         stepOn()
+      }
+
+      BtWifiSetupStep.UPDATE_SETTINGS -> {
+        updateSettings()
       }
 
       BtWifiSetupStep.MEASUREMENT -> {
@@ -617,6 +638,68 @@ constructor(
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASURE_002"))
+        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+      }
+    }
+  }
+
+  private fun updateSettings() {
+    AppLog.d(TAG, "Starting settings update process")
+
+    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
+    handleIntent(
+      BtWifiScaleSetupIntent.SetStepConnectionState(
+        BtWifiSetupStep.UPDATE_SETTINGS,
+        ConnectionState.Loading,
+      ),
+    )
+
+    viewModelScope.launch {
+      try {
+        // Simulate settings update process
+        delay(4000) // Replace with actual settings update logic
+
+        // TODO: Replace with actual updateSettings(R4 scale Preference and Dashboard Metrics) logic
+        val settingsUpdated = true
+
+        if (settingsUpdated) {
+          AppLog.d(TAG, "Settings update successful")
+          handleIntent(
+            BtWifiScaleSetupIntent.SetStepConnectionState(
+              BtWifiSetupStep.UPDATE_SETTINGS,
+              ConnectionState.Success,
+            ),
+          )
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+
+          // Check if this is the last step
+          val currentState = state.value
+
+          // Move to next step if there are more steps
+          val nextIndex = currentState.currentStepIndex + 1
+          if (nextIndex < currentState.steps.size) {
+            handleIntent(SetCurrentStep(currentState.steps[nextIndex]))
+          }
+        } else {
+          AppLog.w(TAG, "Settings update failed")
+          handleIntent(
+            BtWifiScaleSetupIntent.SetStepConnectionState(
+              BtWifiSetupStep.UPDATE_SETTINGS,
+              ConnectionState.Error,
+            ),
+          )
+          handleIntent(BtWifiScaleSetupIntent.SetErrorCode("UPDATE_001"))
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during settings update", e.toString())
+        handleIntent(
+          BtWifiScaleSetupIntent.SetStepConnectionState(
+            BtWifiSetupStep.UPDATE_SETTINGS,
+            ConnectionState.Error,
+          ),
+        )
+        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("UPDATE_002"))
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
     }

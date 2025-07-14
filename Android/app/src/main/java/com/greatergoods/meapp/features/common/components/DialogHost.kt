@@ -7,7 +7,7 @@ import com.greatergoods.meapp.features.addScale.screens.ModelNumberHelpDialog
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
-import com.greatergoods.meapp.features.scaleMode.screens.BiaModal
+import com.greatergoods.meapp.features.ScaleModeSettings.screens.BiaModal
 import com.greatergoods.meapp.features.settings.components.AccountSwitchInfoModal
 
 enum class DialogType {

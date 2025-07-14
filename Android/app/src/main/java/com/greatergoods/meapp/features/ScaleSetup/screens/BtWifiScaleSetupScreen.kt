@@ -10,7 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.features.ScaleSetup.components.CustomizeScaleSettings
+import com.greatergoods.meapp.features.ScaleCustomization.screens.CustomizeScaleSettings
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
@@ -81,6 +81,7 @@ fun BtWifiScaleSetupScreenContent(
       shouldCenterMiddleContent = true,
       leadingContent = when (state.currentStep) {
         BtWifiSetupStep.SCALE_INFO,
+        BtWifiSetupStep.DUPLICATES_FOUND,
         BtWifiSetupStep.WIFI_PASSWORD -> {
           {
             AppButton(
@@ -125,6 +126,7 @@ fun BtWifiScaleSetupScreenContent(
       },
       trailingContent = when (state.currentStep) {
         BtWifiSetupStep.SCALE_INFO,
+        BtWifiSetupStep.DUPLICATES_FOUND,
         BtWifiSetupStep.WIFI_PASSWORD -> {
           {
             AppButton(
@@ -176,6 +178,20 @@ fun BtWifiScaleSetupScreenContent(
               } else null,
             )
           }
+
+          BtWifiSetupStep.DUPLICATES_FOUND -> {
+            SetupForm(
+              formControl = state.usernameForm.username,
+              title = BtWifiScaleSetupStrings.DuplicateUser.Title,
+              subtitle = BtWifiScaleSetupStrings.DuplicateUser.Subtitle,
+              label = BtWifiScaleSetupStrings.DuplicateUser.UsernameLabel,
+              supportingImage = AppIcons.Setup.UserNameScale,
+              supportingButtonLabel = BtWifiScaleSetupStrings.DuplicateUser.RestoreAccountButton,
+              supportText = BtWifiScaleSetupStrings.DuplicateUser.LastActive(""),
+              onSupportingButtonClick = {},
+            )
+          }
+
           BtWifiSetupStep.GATHERING_NETWORK -> {
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
@@ -244,6 +260,20 @@ fun BtWifiScaleSetupScreenContent(
               title = BtWifiScaleSetupStrings.CustomizeSettings.Title,
               subtitle = BtWifiScaleSetupStrings.CustomizeSettings.Subtitle,
               onSelectSettings = { it },
+            )
+          }
+
+          BtWifiSetupStep.UPDATE_SETTINGS -> {
+            ScaleSetupLoader(
+              connectionState = state.currentStepConnectionState,
+              title = BtWifiScaleSetupStrings.UpdateSettings.Title(state.currentStepConnectionState),
+              showIndicationOnly = true,
+              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+              } else null,
+              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+              } else null,
             )
           }
 

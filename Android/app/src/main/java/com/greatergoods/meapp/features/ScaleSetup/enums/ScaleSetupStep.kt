@@ -5,22 +5,20 @@ package com.greatergoods.meapp.features.ScaleSetup.enums
  * Enum for Bluetooth + WiFi scale setup flow steps.
  */
 enum class BtWifiSetupStep {
-    SCALE_INFO,
-    PERMISSIONS,
-    WAKEUP,
-    CONNECTING_BLUETOOTH,
-    GATHERING_NETWORK,
-    DUPLICATES_FOUND,
-    AVAILABLE_WIFI_LIST,
-    // WifiPassword step data (ssid) should be stored in state, not here
-    WIFI_PASSWORD,
-    CONNECTING_WIFI,
-    CUSTOMIZE_SETTINGS,
-    VIEW_SETTINGS,
-    UPDATE_SETTINGS,
-    STEP_ON,
-    MEASUREMENT,
-    SCALE_CONNECTED
+  SCALE_INFO,
+  PERMISSIONS,
+  WAKEUP,
+  CONNECTING_BLUETOOTH,
+  GATHERING_NETWORK,
+  DUPLICATES_FOUND,
+  AVAILABLE_WIFI_LIST,
+  WIFI_PASSWORD,
+  CONNECTING_WIFI,
+  CUSTOMIZE_SETTINGS,
+  UPDATE_SETTINGS,
+  STEP_ON,
+  MEASUREMENT,
+  SCALE_CONNECTED,
 }
 
 /**
