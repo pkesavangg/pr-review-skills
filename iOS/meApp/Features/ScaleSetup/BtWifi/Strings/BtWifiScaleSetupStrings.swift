@@ -19,5 +19,16 @@ struct BtWifiScaleSetupStrings {
         static let title = "User Limit Exceeded!"
         static let subtitle = "Delete an inactive user to add yourself to the scale."
     }
-}
     
+    struct WifiScreenStrings {
+        static let refresh = "Refresh"
+        static let multipleNetworksInfo = "If you have multiple Wi-Fi networks, pick the 2.4 GHz network closest to your scale."
+        static let continueNetworkPrompt = "Continue or choose a different 2.4 GHz Wi-Fi network."
+        static let alreadyConnected = "The scale has already been connected to Wi-Fi"
+        static let continueOrChooseDiff = "Continue or choose a different 2.4 GHz Wi-Fi network."
+        static let selectNetwork = "Select a 2.4 GHz Network"
+        static let pickClosestNetwork = "If you have multiple Wi-Fi networks, pick the 2.4 GHz network closest to your scale."
+        static let connectedNetwork = "Connected Network"
+        static let availableNetworks = "Available Networks"
+    }
+}
