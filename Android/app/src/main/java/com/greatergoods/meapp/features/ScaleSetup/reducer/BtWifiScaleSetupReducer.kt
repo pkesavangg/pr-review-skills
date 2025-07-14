@@ -39,6 +39,24 @@ data class WifiPasswordFormControls(
 }
 
 /**
+ * Controls for Scale Username form.
+ */
+data class ScaleUsernameFormControls(
+  val username: FormControl<String>,
+) {
+  companion object {
+    fun create() = ScaleUsernameFormControls(
+      username = FormControl.create(
+        initialValue = "",
+        validators = listOf(
+          FormValidations.required(),
+        ),
+      ),
+    )
+  }
+}
+
+/**
  * State for BtWifiScaleSetupScreen.
  */
 data class BtWifiScaleSetupState(
@@ -48,11 +66,13 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.SCALE_INFO,
     BtWifiSetupStep.WAKEUP,
     BtWifiSetupStep.CONNECTING_BLUETOOTH,
+    BtWifiSetupStep.DUPLICATES_FOUND,
     BtWifiSetupStep.GATHERING_NETWORK,
     BtWifiSetupStep.AVAILABLE_WIFI_LIST,
     BtWifiSetupStep.WIFI_PASSWORD,
     BtWifiSetupStep.CONNECTING_WIFI,
     BtWifiSetupStep.CUSTOMIZE_SETTINGS,
+    BtWifiSetupStep.UPDATE_SETTINGS,
     BtWifiSetupStep.STEP_ON,
     BtWifiSetupStep.MEASUREMENT,
     BtWifiSetupStep.SCALE_CONNECTED,
@@ -65,6 +85,7 @@ data class BtWifiScaleSetupState(
   val stepConnectionStates: Map<BtWifiSetupStep, ConnectionState> = mapOf(),
   val canProceedToNext: Boolean = true,
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
+  val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create()
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0

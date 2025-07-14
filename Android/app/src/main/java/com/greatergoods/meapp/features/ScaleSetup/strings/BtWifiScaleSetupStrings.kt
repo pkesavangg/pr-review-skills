@@ -70,6 +70,14 @@ object BtWifiScaleSetupStrings {
     const val NetworkPasswordToggleLabel = "Network has no password"
   }
 
+  object DuplicateUser {
+    const val Title = "A user with this name already exists on the scale. "
+    const val Subtitle = "Choose a new user name to proceed. Or, if this is you, restore the existing account."
+    const val UsernameLabel = "Username"
+    const val RestoreAccountButton = "Restore Account"
+    fun LastActive(date: String) = "last active $date"
+  }
+
   object CustomizeSettings {
     const val Title = "Customize your Settings"
     const val Subtitle = "You can update settings at any time."

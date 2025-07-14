@@ -28,10 +28,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.ScaleSetup.components.strings.ScaleFormStrings
 import com.greatergoods.meapp.features.common.components.AnnotationPosition
+import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppInput
 import com.greatergoods.meapp.features.common.components.AppInputType
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.AppToggle
+import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
@@ -71,6 +73,9 @@ fun <T> SetupForm(
   toggleChecked: Boolean = false,
   onToggleChanged: ((Boolean) -> Unit)? = null,
   supportingImage: Int? = null,
+  supportingButtonLabel: String? = null,
+  supportText: String? = null,
+  onSupportingButtonClick: (() -> Unit)? = null,
   onImeAction: (() -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
@@ -117,6 +122,25 @@ fun <T> SetupForm(
             enabled = !(hasToggle && toggleChecked),
             modifier = Modifier.fillMaxWidth(),
         )
+
+      if (supportingButtonLabel != null && onSupportingButtonClick != null) {
+        Column( modifier = Modifier.fillMaxWidth(),
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          AppButton(
+            label = supportingButtonLabel,
+            type = ButtonType.InlineTextPrimary,
+            onClick = onSupportingButtonClick
+          )
+          supportText?.let {
+            AppText(
+              text = supportText,
+              textType = TextType.Body,
+              modifier = Modifier.padding(bottom = spacing.lg),
+            )
+          }
+        }
+      }
 
         // Toggle Section
         if (hasToggle && toggleLabel != null && onToggleChanged != null) {
@@ -165,21 +189,6 @@ fun SetupFormPreview() {
             verticalArrangement = Arrangement.spacedBy(32.dp),
             modifier = Modifier.padding(16.dp),
         ) {
-            // Wi-Fi Password Form with Toggle
-            SetupForm(
-                formControl = passwordControl,
-                title = ScaleFormStrings.WifiPasswordTitle,
-                subtitle = ScaleFormStrings.WifiPasswordSubtitle,
-                label = ScaleFormStrings.PasswordLabel,
-                inputType = AppInputType.PASSWORD,
-                hasToggle = true,
-                toggleLabel = ScaleFormStrings.NoPasswordToggleLabel,
-                toggleChecked = toggleState,
-                onToggleChanged = { toggleState = it
-                                  passwordControl.reset()},
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // User Name Form without Toggle
             SetupForm(
@@ -189,7 +198,10 @@ fun SetupFormPreview() {
                 label = ScaleFormStrings.UserNameLabel,
                 inputType = AppInputType.TEXT,
                 hasToggle = false,
-                supportingImage = AppIcons.Default.UserNameScale, // Placeholder
+                supportingImage = AppIcons.Setup.UserNameScale, // Placeholder
+                supportingButtonLabel = "Restore Account",
+                onSupportingButtonClick = {},
+                supportText = "Last active June 10, 2019"
             )
         }
     }
