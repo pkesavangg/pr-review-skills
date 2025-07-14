@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
+import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupReducer
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
@@ -48,6 +49,8 @@ constructor(
       BtWifiScaleSetupIntent.Back -> onBack()
       BtWifiScaleSetupIntent.Skip -> onSkip()
       BtWifiScaleSetupIntent.TryAgain -> onTryAgain()
+      BtWifiScaleSetupIntent.RefreshNetworks -> onRefreshNetworks()
+      BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> handlePasswordNetworkStatus()
       is BtWifiScaleSetupIntent.ExitSetup ->
         onExitSetup(
           intent.isSetupFinished,
@@ -102,6 +105,10 @@ constructor(
               gatherNetworks()
             }
 
+            BtWifiSetupStep.WIFI_PASSWORD -> {
+              handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Connect))
+            }
+
             BtWifiSetupStep.CONNECTING_WIFI -> {
               connectToWifi()
             }
@@ -153,8 +160,8 @@ constructor(
         }
 
         else -> {
-          // For other steps (like SCALE_INFO), let the reducer handle normal Next flow
-          // Do nothing special, let the normal flow continue
+          // For other steps (like SCALE_INFO, AVAILABLE_WIFI_LIST), let the normal flow continue
+          // The base class will handle the intent and call the reducer
         }
       }
       AppLog.d(TAG, "After Next intent - new currentStep: ${state.value.currentStep}")
@@ -172,8 +179,16 @@ constructor(
       AppLog.d(TAG, "At first step, navigating back")
       navigateTo(AppRoute.AccountSettings.AddEditScales)
     } else {
-      handleIntent(BtWifiScaleSetupIntent.Back)
-      AppLog.d(TAG, "After Back intent - new currentStep: ${state.value.currentStep}")
+      when (currentState.currentStep) {
+        BtWifiSetupStep.WIFI_PASSWORD,
+        BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
+          handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
+        }
+
+        else -> {}
+      }
+      // Let the base class handle the Back intent through the reducer
+      AppLog.d(TAG, "Moving to previous step - will be handled by reducer")
     }
   }
 
@@ -181,9 +196,20 @@ constructor(
    * Handles skipping the current step.
    */
   private fun onSkip() {
-    AppLog.d(TAG, "Skipping current step: ${state.value.currentStep}")
-    // For now, treat skip as next
-    onNext()
+    val currentState = state.value
+    AppLog.d(TAG, "Skipping current step: ${currentState.currentStep}")
+
+    when (currentState.currentStep) {
+      BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
+        // Skip to CUSTOMIZE_SETTINGS
+        handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+      }
+
+      else -> {
+        // For other steps, treat skip as next
+        onNext()
+      }
+    }
   }
 
   private fun onExitSetup(
@@ -203,6 +229,33 @@ constructor(
             navigateBack()
           },
         ),
+      )
+    }
+  }
+
+  /**
+   * Handles refreshing networks - goes back to GATHERING_NETWORK step.
+   */
+  private fun onRefreshNetworks() {
+    AppLog.d(TAG, "Refreshing networks, going back to GATHERING_NETWORK")
+    // Let the base class handle the RefreshNetworks intent through the reducer
+  }
+
+  /**
+   * Handles password network status toggle by dynamically adding/removing validation.
+   * Reads the current status from the wifiPasswordForm.noPasswordNetwork control.
+   */
+  private fun handlePasswordNetworkStatus() {
+    val currentState = state.value
+    val isNoPasswordNetwork = currentState.wifiPasswordForm.noPasswordNetwork.value
+    AppLog.d(TAG, "Handling password network status, isNoPasswordNetwork: $isNoPasswordNetwork")
+    if (isNoPasswordNetwork) {
+      // No password network - remove required validation
+      currentState.wifiPasswordForm.password.removeValidator("required")
+    } else {
+      // Password network - add required validation
+      currentState.wifiPasswordForm.password.addValidator(
+        com.greatergoods.meapp.features.common.helper.form.FormValidations.required(),
       )
     }
   }
@@ -249,6 +302,10 @@ constructor(
 
       BtWifiSetupStep.PERMISSIONS -> {
         handlePermissions()
+      }
+
+      BtWifiSetupStep.STEP_ON -> {
+        stepOn()
       }
 
       BtWifiSetupStep.MEASUREMENT -> {
@@ -421,7 +478,7 @@ constructor(
             ),
           )
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-          handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.CONNECTING_WIFI))
+          handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.AVAILABLE_WIFI_LIST))
         } else {
           AppLog.w(TAG, "Network gathering failed")
           handleIntent(
@@ -509,6 +566,47 @@ constructor(
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
+        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
+      }
+    }
+  }
+
+  private fun stepOn() {
+    AppLog.d(TAG, "Starting wifi connection process")
+
+    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
+    handleIntent(
+      BtWifiScaleSetupIntent.SetStepConnectionState(
+        BtWifiSetupStep.MEASUREMENT,
+        ConnectionState.Loading,
+      ),
+    )
+
+    viewModelScope.launch {
+      try {
+        // Simulate Step on
+        delay(5000) // Replace with actual step on logic
+
+        // TODO: Replace with actual step on logic
+        val steppedOn = true
+
+        if (steppedOn) {
+          AppLog.d(TAG, "Step on successful")
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          // Check if this is the last step, if so complete setup
+          val currentState = state.value
+
+          // Move to next step if there are more steps
+          val nextIndex = currentState.currentStepIndex + 1
+          if (nextIndex < currentState.steps.size) {
+            handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(currentState.steps[nextIndex]))
+          }
+        } else {
+          AppLog.w(TAG, "Step on failed")
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during step on", e.toString())
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
     }
