@@ -4,7 +4,6 @@ import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
-import com.greatergoods.meapp.features.appPermissions.viewmodel.AppPermissionsIntent
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
@@ -162,18 +161,6 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
         }
       }
 
-      is BtWifiScaleSetupIntent.Back -> {
-        val prevIndex = state.currentStepIndex - 1
-        if (prevIndex >= 0) {
-          state.copy(
-            currentStep = state.steps[prevIndex],
-            canProceedToNext = true, // Reset when going back
-          )
-        } else {
-          state.copy() // No change if at first step
-        }
-      }
-
       is BtWifiScaleSetupIntent.Skip -> state.copy()
       is BtWifiScaleSetupIntent.ExitSetup ->
         state.copy(
@@ -191,6 +178,6 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.RefreshNetworks -> state.copy(currentStep = BtWifiSetupStep.GATHERING_NETWORK)
       BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> state.copy() // Logic handled in ViewModel
 
-      else -> state.copy()
+      else -> state
     }
 }

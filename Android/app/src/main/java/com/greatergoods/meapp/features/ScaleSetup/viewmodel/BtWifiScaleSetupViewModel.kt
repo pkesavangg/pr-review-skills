@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
+import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupReducer
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
@@ -178,8 +179,16 @@ constructor(
       AppLog.d(TAG, "At first step, navigating back")
       navigateTo(AppRoute.AccountSettings.AddEditScales)
     } else {
-      handleIntent(BtWifiScaleSetupIntent.Back)
-      AppLog.d(TAG, "After Back intent - new currentStep: ${state.value.currentStep}")
+      when (currentState.currentStep) {
+        BtWifiSetupStep.WIFI_PASSWORD,
+        BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
+          handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
+        }
+
+        else -> {}
+      }
+      // Let the base class handle the Back intent through the reducer
+      AppLog.d(TAG, "Moving to previous step - will be handled by reducer")
     }
   }
 
@@ -189,12 +198,13 @@ constructor(
   private fun onSkip() {
     val currentState = state.value
     AppLog.d(TAG, "Skipping current step: ${currentState.currentStep}")
-    
+
     when (currentState.currentStep) {
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         // Skip to CUSTOMIZE_SETTINGS
         handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
       }
+
       else -> {
         // For other steps, treat skip as next
         onNext()
@@ -228,7 +238,7 @@ constructor(
    */
   private fun onRefreshNetworks() {
     AppLog.d(TAG, "Refreshing networks, going back to GATHERING_NETWORK")
-    handleIntent(BtWifiScaleSetupIntent.RefreshNetworks)
+    // Let the base class handle the RefreshNetworks intent through the reducer
   }
 
   /**
@@ -238,16 +248,14 @@ constructor(
   private fun handlePasswordNetworkStatus() {
     val currentState = state.value
     val isNoPasswordNetwork = currentState.wifiPasswordForm.noPasswordNetwork.value
-    
     AppLog.d(TAG, "Handling password network status, isNoPasswordNetwork: $isNoPasswordNetwork")
-    
     if (isNoPasswordNetwork) {
       // No password network - remove required validation
       currentState.wifiPasswordForm.password.removeValidator("required")
     } else {
       // Password network - add required validation
       currentState.wifiPasswordForm.password.addValidator(
-        com.greatergoods.meapp.features.common.helper.form.FormValidations.required()
+        com.greatergoods.meapp.features.common.helper.form.FormValidations.required(),
       )
     }
   }
@@ -558,7 +566,7 @@ constructor(
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
       }
     }
   }

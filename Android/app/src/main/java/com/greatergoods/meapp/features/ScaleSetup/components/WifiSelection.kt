@@ -86,7 +86,10 @@ fun WifiSelection(
         modifier = Modifier.padding(bottom = spacing.lg),
       )
     } else {
-      LazyColumn {
+      LazyColumn(
+        modifier = Modifier
+          .clip(RoundedCornerShape(borderRadius.sm)),
+      ) {
         // Show connected network section if there's a configured SSID
         configuredSSID?.let { configuredSsid ->
           val connectedWifi = wifiList.find { it.ssid == configuredSsid }
@@ -100,7 +103,6 @@ fun WifiSelection(
               )
               Column(
                 modifier = Modifier
-                  .clip(RoundedCornerShape(borderRadius.sm))
                   .padding(bottom = spacing.sm),
               ) {
                 WifiItem(
@@ -194,7 +196,7 @@ private fun WifiItem(
         id = AppIcons.Default.RightCaret,
         contentDescription = "Right caret",
         modifier = Modifier.size(16.dp),
-        onClick = { onClick },
+        onClick = onClick,
       )
     }
   }

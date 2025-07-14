@@ -81,12 +81,14 @@ fun BtWifiScaleSetupScreenContent(
       pagerState = pagerState,
       shouldCenterMiddleContent = true,
       leadingContent = when (state.currentStep) {
-        BtWifiSetupStep.SCALE_INFO -> {
+        BtWifiSetupStep.SCALE_INFO,
+        BtWifiSetupStep.WIFI_PASSWORD -> {
           {
             AppButton(
               type = ButtonType.TextPrimary,
               label = ScaleSetupStrings.backButton,
               size = ButtonSize.Small,
+              enabled = !state.isFirstStep,
               onClick = { onIntent(BtWifiScaleSetupIntent.Back) },
             )
           }
@@ -126,7 +128,8 @@ fun BtWifiScaleSetupScreenContent(
         else -> null // No skip button for other steps yet
       },
       trailingContent = when (state.currentStep) {
-        BtWifiSetupStep.SCALE_INFO -> {
+        BtWifiSetupStep.SCALE_INFO,
+        BtWifiSetupStep.WIFI_PASSWORD -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
