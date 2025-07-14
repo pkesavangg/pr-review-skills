@@ -45,7 +45,6 @@ enum BtWifiScaleSetupStep: Int, CaseIterable {
 /// Represents different error states that can occur during the setup flow.
 enum BtWifiScaleSetupError {
     case none
-    case bluetoothConnectionFailed
     case duplicatesFound
     case maxUserReached
 }

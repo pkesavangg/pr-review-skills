@@ -12,7 +12,7 @@ struct BtWifiScaleSetupStrings {
         static let title = "A user with this name already exists on the scale."
         static let subtitle = "Choose a new user name to proceed. Or, if this is you, restore the existing account."
         static let restoreAccountButton = "Restore account"
-        static let lastActive = "Last active"
+        static let lastActive = "last active"
     }
     
     struct MaxUserListViewStrings {

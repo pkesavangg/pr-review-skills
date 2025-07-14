@@ -49,7 +49,7 @@ struct DuplicateUserView: View {
                             ButtonView(text: lang.restoreAccountButton, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                                 store.handleRestoreAccount()
                             }
-                            if let lastActive = store.duplicateUsernameLastActiveAt {
+                            if let lastActive = store.duplicateUserLastActiveAt {
                                 Text("\(lang.lastActive) \(DateTimeTools.getFormattedDateFromTimestamp(lastActive).toLowerCase())")
                                     .fontOpenSans(.subHeading2)
                                     .foregroundColor(theme.textSubheading)
