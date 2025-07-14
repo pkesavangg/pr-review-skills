@@ -41,10 +41,3 @@ enum BtWifiScaleSetupStep: Int, CaseIterable {
     /// Convenience property for page-based controls.
     var index: Int { rawValue }
 }
-
-/// Represents different error states that can occur during the setup flow.
-enum BtWifiScaleSetupError {
-    case none
-    case duplicatesFound
-    case maxUserReached
-}
