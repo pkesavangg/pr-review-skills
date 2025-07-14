@@ -245,11 +245,6 @@ fileprivate struct YAxisHelper {
                 ticks[closestIndex] = goalWeight
             }
         }
-        
-        print("Hello: YAxisHelper - Input: minValue=\(minValue), maxValue=\(maxValue), goalWeight=\(goalWeight), desiredLabelCount=\(desiredLabelCount)")
-        print("Hello: YAxisHelper - Calculated: dataMin=\(dataMin), dataMax=\(dataMax), range=\(range), padding=\(padding)")
-        print("Hello: YAxisHelper - Final: start=\(ticks.first!), end=\(ticks.last!), ticks=\(ticks)")
-        
         return (ticks.first!, ticks.last!, bestStep, ticks, ticks.first!...ticks.last!)
     }
 } 

@@ -406,9 +406,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
         let weights = allOps.map { convertStoredWeightToDisplay(Int($0.weight)) }
         guard !weights.isEmpty else { return nil }
         let averageWeight = weights.reduce(0, +) / Double(weights.count)
-
-        print("Hello: displayWeight - All operations: \(allOps.count), Average weight: \(averageWeight)")
-
         return averageWeight
     }
 
@@ -1580,7 +1577,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
     /// Generate series data for chart rendering
     var chartSeriesData: [GraphSeries] {
         guard !continuousOperations.isEmpty else {
-            print("Hello: DashboardStore - chartSeriesData - No continuous operations available")
             return []
         }
 
@@ -1601,13 +1597,10 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
         guard let weightMin = weightValues.min(),
               let weightMax = weightValues.max(),
               weightMax > weightMin else {
-            print("Hello: DashboardStore - chartSeriesData - No valid weight range found")
             return []
         }
 
         let weightRange = weightMin...weightMax
-
-        print("Hello: DashboardStore - chartSeriesData - Weight range: [\(weightMin), \(weightMax)]")
 
         // Add weight series (always present) - convert to display unit
         for summary in continuousOperations {
@@ -1643,11 +1636,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
                 }
             }
         }
-
-        print("Hello: DashboardStore - chartSeriesData - Generated \(series.count) series data points")
-        print("Hello: DashboardStore - chartSeriesData - Weight series count: \(series.filter { $0.series == DashboardStrings.weight }.count)")
-        print("Hello: DashboardStore - chartSeriesData - Weight values: \(series.filter { $0.series == DashboardStrings.weight }.map { $0.value })")
-
         return series
     }
 
@@ -1724,9 +1712,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
             // Normalize to weight range using fallback range (WeightGraph approach)
             let fallbackSpan = fallbackMax - fallbackMin
             let normalizedValue = weightMin + (clampedValue - fallbackMin) * weightSpan / fallbackSpan
-
-            print("Hello: normalizeMetricValue - Using fallback range for \(metricLabel), Original: \(value), Range: [\(fallbackMin), \(fallbackMax)], Normalized: \(normalizedValue)")
-
             return normalizedValue
         }
 
@@ -1736,9 +1721,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
         // Normalize to weight range using actual metric range (WeightGraph approach)
         let metricSpan = metricMax - metricMin
         let normalizedValue = weightMin + (clampedValue - metricMin) * weightSpan / metricSpan
-
-        print("Hello: normalizeMetricValue - Metric: \(metricLabel), Original: \(value), Actual Range: [\(metricMin), \(metricMax)], Normalized: \(normalizedValue), WeightRange: [\(weightMin), \(weightMax)]")
-
         return normalizedValue
     }
 
@@ -1817,7 +1799,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
 
         guard !weightValues.isEmpty else { return 0 }
         let average = weightValues.reduce(0, +) / Double(weightValues.count)
-        print("Hello: DashboardStore - getCurrentAverageWeight - Using visible operations average: \(average)")
         return average
     }
 
@@ -1927,8 +1908,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
 
         let entryCount = continuousOperations.count
         let shouldRepeat = shouldRepeatXAxisLabels(for: period)
-
-        print("Hello: xAxisValues - Period: \(period), Entry count: \(entryCount), Should repeat: \(shouldRepeat)")
 
         switch period {
         case .week:
@@ -2075,9 +2054,7 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
 
         let entryCount = continuousOperations.count
         let shouldRepeat = shouldRepeatXAxisLabels(for: period)
-
-        print("Hello: xAxisValuesWithBuffer - Period: \(period), Entry count: \(entryCount), Should repeat: \(shouldRepeat)")
-
+        
         switch period {
         case .week:
             if entryCount < 7 {
@@ -2343,12 +2320,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
         let visibleOps = continuousOperations.filter { summary in
             return summary.date >= visibleStart && summary.date <= visibleEnd
         }
-
-        print("Hello: getVisibleOperations - Scroll position: \(xScrollPosition)")
-        print("Hello: getVisibleOperations - Visible range: \(visibleStart) to \(visibleEnd)")
-        print("Hello: getVisibleOperations - Total operations: \(continuousOperations.count)")
-        print("Hello: getVisibleOperations - Visible operations: \(visibleOps.count)")
-
         return visibleOps
     }
 
@@ -2411,10 +2382,9 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
         }
 
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
-            print("Hello: updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
+            logger.log(level: .info, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
         }
 
-        print("Hello: updateVisibleDataAfterScroll - Updated Y-axis domain and ticks based on visible operations")
     }
 
     /// Handle scroll phase changes for iOS 18+
@@ -2447,15 +2417,10 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
             // Update visible data after scroll ends for better Y-axis calculation
             updateVisibleDataAfterScroll()
 
-            // Log scroll end for debugging
-            os_log("ScrollPhase: idle - Scroll ended", log: perfLog, type: .info)
-
-            print("Hello: handleScrollPhaseChange - iOS 18+ ScrollPhase: idle")
-
         case .tracking:
             // User is touching but hasn't started scrolling yet
             hasDetectedScrollInCurrentGesture = false
-            print("Hello: handleScrollPhaseChange - iOS 18+ ScrollPhase: tracking")
+        
 
         case .interacting:
             // User is actively scrolling
@@ -2469,21 +2434,18 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
                 showCrosshair = false
                 selectEntry(nil)
             }
-            print("Hello: handleScrollPhaseChange - iOS 18+ ScrollPhase: interacting")
-
         case .decelerating:
             // User stopped scrolling, chart is decelerating to final position
             isScrolling = true
-            print("Hello: handleScrollPhaseChange - iOS 18+ ScrollPhase: decelerating")
-
+           
         case .animating:
             // System is animating to a final target (programmatic scroll)
             isScrolling = true
-            print("Hello: handleScrollPhaseChange - iOS 18+ ScrollPhase: animating")
-
+          
         @unknown default:
             // Handle any future cases
-            print("Hello: handleScrollPhaseChange - iOS 18+ ScrollPhase: unknown case")
+            logger.log(level: .info, tag: "DashboardStore", message: "handleScrollPhaseChange - iOS 18+ ScrollPhase: unknown case")
+
         }
     }
 
@@ -2511,10 +2473,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
                 // Update visible data after scroll ends for better Y-axis calculation
                 self.updateVisibleDataAfterScroll()
 
-                // Log scroll end for debugging
-                os_log("Scroll ended with enhanced page snapping", log: self.perfLog, type: .info)
-
-                print("Hello: handleScrollEnd - Enhanced scroll end handling completed")
             }
         }
     }
@@ -2551,11 +2509,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
 
                 // Update visible data after scroll ends for better Y-axis calculation
                 self.updateVisibleDataAfterScroll()
-
-                // Log scroll end for debugging
-                os_log("Scroll ended with custom snapping for iOS <18", log: self.perfLog, type: .info)
-
-                print("Hello: handleScrollEndWithCustomSnapping - Custom snapping completed")
             }
         }
     }
@@ -2580,7 +2533,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
             withAnimation(.easeInOut(duration: 0.3)) {
                 xScrollPosition = nearest
             }
-            print("Hello: applyCustomSnapping - Snapped to position: \(nearest)")
         }
     }
 
@@ -2682,13 +2634,11 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
             if #available(iOS 18.0, *) {
                 // iOS 18+: Built-in snapping handles positioning, just update position
                 xScrollPosition = nearest
-                print("Hello: snapToNearestPosition - iOS 18+ snapped to position: \(nearest)")
             } else {
                 // iOS <18: Animate to snap position for smoother experience
                 withAnimation(.easeInOut(duration: 0.3)) {
                     xScrollPosition = nearest
                 }
-                print("Hello: snapToNearestPosition - iOS <18 animated to position: \(nearest)")
             }
         }
     }
@@ -2723,7 +2673,7 @@ extension DashboardStoreOld {
             updatePublishedArrays()
         } catch {
             // Handle error (log, show alert, etc.)
-            print("Error loading initial dashboard data: \(error)")
+            logger.log(level: .info, tag: "DashboardStore", message: "Error loading initial dashboard data: \(error)")
         }
     }
 

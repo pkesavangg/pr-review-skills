@@ -67,7 +67,6 @@ struct GraphView: View {
             .chartScrollPosition(x: Binding(
                 get: { dashboardStore.state.graph.xScrollPosition },
                 set: { newPosition in
-                    print("Hello: GraphView - chartScrollPosition - newPosition: \(newPosition)")
                     dashboardStore.handleScrollPositionChange(newPosition)
                 }
             ))

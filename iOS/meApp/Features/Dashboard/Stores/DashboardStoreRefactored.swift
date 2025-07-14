@@ -301,9 +301,9 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
             }
         }
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
-            print("Hello: updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
+            logger.log(level: .info, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
         }
-        print("Hello: updateVisibleDataAfterScroll - Updated Y-axis domain and ticks based on visible operations")
+       
     }
 
     // Delegate X-axis operations to GraphManager
