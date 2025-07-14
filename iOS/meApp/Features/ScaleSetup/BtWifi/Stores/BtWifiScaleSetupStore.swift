@@ -269,7 +269,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Presents a confirmation alert before abandoning the setup flow.
     func handleExit() {
         /// For the last step, simply dismiss the setup.
-        if currentStep == .scaleConnected || currentStep == .scaleConnected {
+        if currentStep == .scaleConnected {
             dismissAction?()
             return
         }

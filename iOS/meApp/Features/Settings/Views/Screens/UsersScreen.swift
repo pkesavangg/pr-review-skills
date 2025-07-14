@@ -68,7 +68,8 @@ struct UsersScreen: View {
                             DeviceUserListView(
                                 users: scaleStore.otherDeviceUsers,
                                 onDeleteUser: { index in
-                                   // scaleStore.deleteOtherUser(at: index)
+                                    // TODO: Need to handle deletion of other users
+                                    // scaleStore.deleteOtherUser(at: index)
                                 }
                             )
                         }

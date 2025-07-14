@@ -467,7 +467,6 @@ struct AlertStrings {
         static let title = "Are you sure you want to exit?"
         static let preConnectionExitMessage = "The scale will not be connected."
         static let postConnectionExitMessage = "If you exit early, you may not be able to access some features until set up."
-        static let wifiSetupExitMessage = "Wi-Fi settings will not be updated."
         static let goBackButton = "Go Back"
         static let exitButton = "Exit"
     }
@@ -543,7 +542,7 @@ struct AlertStrings {
             "Deleting \(userName) will remove them as a user of the scale and they’ll need to reconnect."
         }
         static let deleteButton = "Delete"
-        static let goBackButton = "GO back"
+        static let goBackButton = "Go Back"
     }
 }
 
