@@ -9,7 +9,7 @@ import Foundation
 
 struct MetricItem: Identifiable, Equatable {
     let id = UUID()
-    let value: String
+    var value: String
     let label: String
     let unit: String?
     let preLabel: String?

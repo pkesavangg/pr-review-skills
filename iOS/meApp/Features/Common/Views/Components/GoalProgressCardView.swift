@@ -8,6 +8,7 @@ struct GoalProgressCardView: View {
     let isRemoved: Bool
     let progress: CGFloat
     let goalType: GoalType
+    let isWeightlessMode: Bool
 
     let lang = DashboardStrings.self
     @Environment(\.appTheme) private var theme
@@ -31,8 +32,8 @@ struct GoalProgressCardView: View {
             DeltaHeader
             ProgressBarView(
                 progress: progress,
-                leftLabel: String(format: "%.1f %@", startWeight, unit),
-                rightLabel: String(format: "%.1f %@", goalWeight, unit),
+                leftLabel: formatWeightLabel(startWeight),
+                rightLabel: formatWeightLabel(goalWeight),
                 progressBarColor: isRemoved ? theme.actionTertiary : theme.statusSuccess,
                 labelForegroundColor: theme.textSubheading
             )
@@ -44,7 +45,7 @@ struct GoalProgressCardView: View {
     private var maintainGoalView: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             DeltaText
-            Text(lang.gainGoalWeightLabel(String(goalWeight), unit))
+            Text(lang.gainGoalWeightLabel(formatWeightLabel(goalWeight), unit))
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .padding(.top, 6)
@@ -63,10 +64,32 @@ struct GoalProgressCardView: View {
     }
     
     private var DeltaText: some View {
-        Text(String(format: "%@%.1f", deltaPrefix, abs(delta)))
+        Text(formatDeltaText())
             .fontOpenSans(.heading3)
             .fontWeight(.bold)
             .foregroundColor(theme.textHeading)
+    }
+    
+    private func formatDeltaText() -> String {
+        if isWeightlessMode {
+            // In weightless mode, show +/- prefix for all values
+            let prefix = delta >= 0 ? lang.plus : lang.minus
+            return String(format: "%@%.1f", prefix, abs(delta))
+        } else {
+            // Normal mode - use goal type prefix
+            return String(format: "%@%.1f", deltaPrefix, abs(delta))
+        }
+    }
+    
+    private func formatWeightLabel(_ weight: Double) -> String {
+        if isWeightlessMode {
+            // In weightless mode, show +/- prefix for differences from anchor
+            let prefix = weight >= 0 ? lang.plus : lang.minus
+            return String(format: "%@%.1f", prefix, abs(weight))
+        } else {
+            // Normal mode - show actual weight values
+            return String(format: "%.1f", weight)
+        }
     }
     
     private var deltaPrefix: String {
@@ -87,7 +110,8 @@ struct GoalProgressCardView: View {
             unit: "lbs",
             isRemoved: false,
             progress: 0.58,
-            goalType: .lose
+            goalType: .lose,
+            isWeightlessMode: false
         )
         GoalProgressCardView(
             delta: 5.0,
@@ -96,7 +120,8 @@ struct GoalProgressCardView: View {
             unit: "lbs",
             isRemoved: false,
             progress: 0.3,
-            goalType: .gain
+            goalType: .gain,
+            isWeightlessMode: true
         )
         GoalProgressCardView(
             delta: 0.0,
@@ -105,7 +130,8 @@ struct GoalProgressCardView: View {
             unit: "lbs",
             isRemoved: false,
             progress: 1.0,
-            goalType: .maintain
+            goalType: .maintain,
+            isWeightlessMode: false
         )
     }
     .padding()
