@@ -37,7 +37,7 @@ fun ScaleMetricsSettingScreen(
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
-  val currentMetrics = scale.displayMetrics ?: emptyList()
+  val currentMetrics = scale.preferences?.displayMetrics ?: emptyList()
 
   // Separate state for each metric group
   var bodyMetricsState by remember(currentMetrics) {
@@ -132,70 +132,37 @@ fun ScaleMetricsSettingScreen(
 @PreviewTheme
 @Composable
 fun DisplayMetricsScreenPreview() {
-  val dummyDevice =
-    Device(
-      id = "1",
-      accountId = "1",
-      peripheralIdentifier = null,
-      nickname = "My Smart Scale",
-      sku = "0412",
-      mac = null,
-      password = null,
-      isDeleted = false,
-      deviceName = "AccuCheck Verve Smart Scale",
-      deviceType = null,
-      broadcastId = null,
-      broadcastIdString = null,
-      userNumber = null,
-      protocolType = null,
-      createdAt = "June 27, 2023",
-      lastModified = null,
-      isSynced = false,
-      isConnected = true,
-      wifiMac = "greatergoods1",
-      isWifiConfigured = true,
-      token = null,
-      scaleType = "Bluetooth/Wi-Fi",
-      bodyComp = true,
-      displayName = null,
-      displayMetrics =
-        listOf(
-          "bmi",
-          "bodyFatPercent",
-          "musclePercent",
-          "bodyWaterPercent",
-          "heartRate",
-          "bonePercent",
-          "visceralFatLevel",
-          "subcutaneousFatPercent",
-          "proteinPercent",
-          "skeletalMusclePercent",
-          "bmr",
-          "metabolicAge",
-          "goalProgress",
-          "dailyAverage",
-          "weeklyAverage",
-          "monthlyAverage",
-        ),
-      shouldFactoryReset = false,
+  val dummyDevice = Device(
+    id = "1",
+    nickname = "My Smart Scale",
+    device = null,
+    preferences = com.greatergoods.meapp.domain.model.storage.Preferences(
+      displayMetrics = listOf(
+        "bmi",
+        "bodyFatPercent",
+        "musclePercent",
+        "bodyWaterPercent",
+        "heartRate",
+        "bonePercent",
+        "visceralFatLevel",
+        "subcutaneousFatPercent",
+        "proteinPercent",
+        "skeletalMusclePercent",
+        "bmr",
+        "metabolicAge",
+        "goalProgress",
+        "dailyAverage",
+        "weeklyAverage",
+        "monthlyAverage",
+      ),
       shouldMeasureImpedance = true,
       shouldMeasurePulse = false,
-      timeFormat = null,
-      tzOffset = null,
-      wifiFotaScheduleTime = null,
-      prefsUpdatedAt = null,
-      modelNumber = null,
-      serialNumber = null,
-      firmwareRevision = null,
-      hardwareRevision = null,
-      softwareRevision = null,
-      manufacturerName = null,
-      systemId = null,
-      latestVersion = null,
-      hasNumericUsers = null,
-      isWeighOnlyModeEnabledByOthers = false,
-      hasServerID = true,
-    )
+    ),
+    isWeighOnlyModeEnabledByOthers = false,
+    hasServerID = true,
+    isWifiConfigured = true,
+    wifiMac = "greatergoods1",
+  )
 
   MeAppTheme {
     ScaleMetricsSettingScreen(

@@ -53,23 +53,23 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ScaleModeScreen(scaleId: String) {
-    val viewModel: ScaleModeViewModel =
-        hiltViewModel<ScaleModeViewModel, ScaleModeViewModel.Factory>(
-            creationCallback = { factory -> factory.create(scaleId) },
-        )
-    val state by viewModel.state.collectAsState()
+  val viewModel: ScaleModeViewModel =
+    hiltViewModel<ScaleModeViewModel, ScaleModeViewModel.Factory>(
+      creationCallback = { factory -> factory.create(scaleId) },
+    )
+  val state by viewModel.state.collectAsState()
 
-    BackHandler {
-        viewModel.handleIntent(ScaleModeIntent.Back)
-    }
+  BackHandler {
+    viewModel.handleIntent(ScaleModeIntent.Back)
+  }
 
-    ScaleModeScreenContent(state, viewModel::handleIntent)
+  ScaleModeScreenContent(state, viewModel::handleIntent)
 }
 
 @Composable
 fun ScaleModeScreenContent(
-    state: ScaleModeState,
-    handleIntent: (ScaleModeIntent) -> Unit,
+  state: ScaleModeState,
+  handleIntent: (ScaleModeIntent) -> Unit,
 ) {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -110,62 +110,32 @@ fun ScaleModeScreenContent(
         onBioimpedanceClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
         )
     }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun ScaleModeScreenPreview() {
-    val dummyDevice =
-        Device(
-            id = "1",
-            accountId = "1",
-            peripheralIdentifier = null,
-            nickname = "My Smart Scale",
-            sku = "0412",
-            mac = null,
-            password = null,
-            isDeleted = false,
-            deviceName = "AccuCheck Verve Smart Scale",
-            deviceType = null,
-            broadcastId = null,
-            broadcastIdString = null,
-            userNumber = null,
-            protocolType = null,
-            createdAt = "June 27, 2023",
-            lastModified = null,
-            isSynced = false,
-            hasServerID = true,
-            isConnected = true,
-            wifiMac = "greatergoods1",
-            isWifiConfigured = true,
-            token = null,
-            scaleType = "Bluetooth/Wi-Fi",
-            bodyComp = true,
-            displayName = null,
-            displayMetrics = null,
-            shouldFactoryReset = false,
-            shouldMeasureImpedance = true,
-            shouldMeasurePulse = false,
-            timeFormat = null,
-            tzOffset = null,
-            wifiFotaScheduleTime = null,
-            prefsUpdatedAt = null,
-            modelNumber = null,
-            serialNumber = null,
-            firmwareRevision = null,
-            hardwareRevision = null,
-            softwareRevision = null,
-            manufacturerName = null,
-            systemId = null,
-            latestVersion = null,
-            hasNumericUsers = null,
-            isWeighOnlyModeEnabledByOthers = false,
-        )
-    val dummyState =
-        ScaleModeState(
-            scale = dummyDevice,
-            isAllBodyMetrics = true,
-            isHeartRateOn = false,
-        )
-    ScaleModeScreenContent(state = dummyState, handleIntent = {})
+  val dummyDevice = Device(
+    id = "1",
+    device = com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail(
+      deviceName = "AccuCheck Verve Smart Scale",
+      macAddress = "greatergoods1",
+      identifier = "identifier1",
+    ),
+    connectionStatus = com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED,
+    alreadyPaired = true,
+    userNumber = 1,
+    preferences = com.greatergoods.meapp.domain.model.storage.Preferences(
+      shouldMeasureImpedance = true,
+      shouldMeasurePulse = false,
+    ),
+  )
+  val dummyState =
+    ScaleModeState(
+      scale = dummyDevice,
+      isAllBodyMetrics = true,
+      isHeartRateOn = false,
+    )
+  ScaleModeScreenContent(state = dummyState, handleIntent = {})
 }

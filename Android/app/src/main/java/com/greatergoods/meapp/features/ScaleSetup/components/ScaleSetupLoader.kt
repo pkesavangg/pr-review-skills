@@ -20,7 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupLoaderDefaults.getIcon
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupLoaderDefaults.getIndicationStatus
-import com.greatergoods.meapp.features.ScaleSetup.components.strings.SetupLoaderStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.SetupLoaderStrings
 import com.greatergoods.meapp.features.ScaleSetup.enums.LoaderIconType
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.AppButton

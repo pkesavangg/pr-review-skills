@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIcon
@@ -56,7 +57,7 @@ data class WifiNetwork(
  */
 @Composable
 fun WifiSelection(
-  wifiList: List<WifiNetwork> = emptyList(),
+  wifiList: List<GGWifiInfo> = emptyList(),
   title: String,
   subtitle: String,
   configuredSSID: String? = null,
@@ -207,75 +208,10 @@ private fun WifiItem(
 private fun WifiSelectionPreview() {
   MeAppTheme {
     WifiSelection(
-      wifiList = listOf(
-        WifiNetwork(
-          macAddress = "a8:63:7d:cd:fb:b0",
-          password = "password123",
-          rssi = 41,
-          ssid = "greatergoods1",
-        ),
-        WifiNetwork(
-          macAddress = "b2:45:8e:12:34:56",
-          password = "",
-          rssi = 35,
-          ssid = "3diq2",
-        ),
-        WifiNetwork(
-          macAddress = "c1:67:9a:78:90:12",
-          password = "wifi_pass",
-          rssi = 28,
-          ssid = "vivo 1904",
-        ),
-        WifiNetwork(
-          macAddress = "d3:89:bc:34:56:78",
-          password = "network_key",
-          rssi = 22,
-          ssid = "MAS-TEL_e6e0",
-        ),
-        WifiNetwork(
-          macAddress = "e4:12:cd:90:12:34",
-          password = "admin123",
-          rssi = 18,
-          ssid = "3DIQAdmin",
-        ),
-      ),
+      wifiList = emptyList(),
       title = "Select WiFi Network",
       subtitle = "Choose a WiFi network to configure your scale",
       configuredSSID = "greatergoods1",
-      onSelect = { },
-      onRefresh = { },
-    )
-  }
-}
-
-@PreviewTheme()
-@Composable
-private fun WifiSelectionDarkPreview() {
-  MeAppTheme {
-    WifiSelection(
-      wifiList = listOf(
-        WifiNetwork(
-          macAddress = "a8:63:7d:cd:fb:b0",
-          password = "password123",
-          rssi = 41,
-          ssid = "greatergoods1",
-        ),
-        WifiNetwork(
-          macAddress = "b2:45:8e:12:34:56",
-          password = "",
-          rssi = 35,
-          ssid = "3diq2",
-        ),
-        WifiNetwork(
-          macAddress = "c1:67:9a:78:90:12",
-          password = "wifi_pass",
-          rssi = 28,
-          ssid = "vivo 1904",
-        ),
-      ),
-      title = "Select WiFi Network",
-      subtitle = "Choose a WiFi network to configure your scale",
-      configuredSSID = null,
       onSelect = { },
       onRefresh = { },
     )

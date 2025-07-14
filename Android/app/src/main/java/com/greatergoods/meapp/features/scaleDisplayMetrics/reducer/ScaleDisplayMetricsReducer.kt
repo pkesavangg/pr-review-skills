@@ -41,7 +41,7 @@ class ScaleDisplayMetricsReducer : IReducer<ScaleDisplayMetricsState, ScaleDispl
   ): ScaleDisplayMetricsState? =
     when (intent) {
       is ScaleDisplayMetricsIntent.SetScale -> {
-        val displayMetrics = intent.scale.displayMetrics ?: emptyList()
+        val displayMetrics = intent.scale.preferences?.displayMetrics ?: emptyList()
         state.copy(
           scale = intent.scale,
           enabledMetrics = displayMetrics,
@@ -50,7 +50,7 @@ class ScaleDisplayMetricsReducer : IReducer<ScaleDisplayMetricsState, ScaleDispl
       }
 
       is ScaleDisplayMetricsIntent.UpdateMetrics -> {
-        val originalMetrics = state.scale?.displayMetrics ?: emptyList()
+        val originalMetrics = state.scale?.preferences?.displayMetrics ?: emptyList()
         val hasChanges = intent.enabledMetrics != originalMetrics
         state.copy(
           enabledMetrics = intent.enabledMetrics,

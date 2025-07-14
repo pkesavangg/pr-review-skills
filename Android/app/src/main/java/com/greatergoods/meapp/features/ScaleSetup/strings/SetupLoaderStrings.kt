@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.ScaleSetup.components.strings
+package com.greatergoods.meapp.features.ScaleSetup.strings
 
 /**
  * Strings for SetupLoader component.
@@ -11,4 +11,4 @@ object SetupLoaderStrings {
     const val ConnectionFailedTitle = "Connection Failed"
     const val DefaultSubtitle = "Please wait while we connect your scale"
     const val DefaultErrorSubtitle = "Something went wrong during setup"
-} 
+}
