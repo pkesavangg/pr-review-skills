@@ -35,7 +35,7 @@ class UserSettingsService
      * @param isStreakOn Boolean indicating if streak should be enabled
      * @return Updated account with new streak settings
      */
-    override suspend fun toggleStreakSetting(isStreakOn: Boolean): Account? =
+    override suspend fun toggleStreakSetting(isStreakOn: Boolean) {
       try {
         AppLog.d(TAG, "Toggling streak setting to: $isStreakOn")
 
@@ -59,6 +59,8 @@ class UserSettingsService
         throw e
       }
 
+    }
+
     /**
      * Toggles the weightless setting for the active account.
      * Handles both online and offline scenarios.
@@ -69,7 +71,7 @@ class UserSettingsService
     override suspend fun toggleWeightlessSetting(
       isWeightlessOn: Boolean,
       weightlessWeight: Double?,
-    ): Account? =
+    ) {
       try {
         AppLog.d(TAG, "Toggling weightless setting to: $isWeightlessOn, weight: $weightlessWeight")
 
@@ -93,4 +95,6 @@ class UserSettingsService
         AppLog.e(TAG, "Error toggling weightless setting", e.toString())
         throw e
       }
+    }
+
   }

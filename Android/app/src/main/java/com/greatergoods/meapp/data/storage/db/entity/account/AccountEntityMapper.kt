@@ -30,42 +30,6 @@ object AccountEntityMapper {
         )
 
     /**
-     * Maps a database [AccountEntity] to a domain [Account].
-     * Note: This mapper only handles basic AccountEntity properties.
-     * For full Account with settings, use the toDomainFromAccountWithRelations method.
-     */
-    fun toDomain(entity: AccountEntity): DomainAccount =
-        DomainAccount(
-            id = entity.id,
-            firstName = entity.firstName,
-            lastName = entity.lastName,
-            dob = entity.dob,
-            email = entity.email,
-            expiresAt = entity.expiresAt,
-            fcmToken = entity.fcmToken,
-            gender = entity.gender,
-            isActiveAccount = entity.isActiveAccount,
-            isLoggedIn = entity.isLoggedIn,
-            isExpired = entity.isExpired,
-            isSynced = entity.isSynced,
-            lastActiveTime = entity.lastActiveTime,
-            zipcode = entity.zipcode,
-            // Default values for settings (use toDomainFromAccountWithRelations for full mapping)
-            weightUnit = WeightUnit.LB,
-            isWeightlessOn = false,
-            height = null,
-            activityLevel = null,
-            weightlessTimestamp = null,
-            weightlessWeight = null,
-            isStreakOn = false,
-            streakTimestamp = null,
-            dashboardType = null,
-            dashboardMetrics = null,
-            shouldSendEntryNotifications = false,
-            shouldSendWeightInEntryNotifications = false,
-        )
-
-    /**
      * Maps a database [Account] (with all relations) to a domain [Account].
      * This handles the full Account entity with all related settings.
      */
@@ -112,6 +76,12 @@ object AccountEntityMapper {
             initialWeight = accountWithRelations.goalSettings?.weight?.toDouble() ?: 0.0,
             goalWeight = accountWithRelations.goalSettings?.goalWeight?.toDoubleOrNull() ?: 0.0,
             goalPercent = accountWithRelations.goalSettings?.goalPercent?.toDouble() ?: 0.0,
+            isFitbitOn = accountWithRelations.integrationsSettings?.isFitbitOn ?: false,
+            isFitbitValid = accountWithRelations.integrationsSettings?.isFitbitValid ?: false,
+            isHealthConnectOn = accountWithRelations.integrationsSettings?.isHealthConnectOn ?: false,
+            isHealthKitOn = accountWithRelations.integrationsSettings?.isHealthKitOn ?: false,
+            isMfpOn = accountWithRelations.integrationsSettings?.isMfpOn ?: false,
+            isMfpValid = accountWithRelations.integrationsSettings?.isMfpValid ?: false,
         )
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a summary of entries for a given month, including average weight and body metrics.
-struct HistoryMonth: Codable, Equatable, Identifiable {
+struct HistoryMonth: Codable, Equatable, Identifiable, Hashable {
     /// Unique identifier for the month (could be the first entry's id or a composite key)
     let id: String
     /// Average or representative weight for the month

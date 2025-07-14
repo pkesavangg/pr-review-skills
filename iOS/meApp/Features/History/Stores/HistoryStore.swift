@@ -41,13 +41,17 @@ final class HistoryStore: ObservableObject {
     // MARK: - Init ------------------------------------------------------
 
     init() {
-        // Refresh only the affected month when a new entry is stored.
+        // Refresh only the affected month when a new entry is stored or deleted.
+        let refreshMonthForEntry: (Entry) -> Void = { [weak self] entry in
+            guard let self = self else { return }
+            let monthKey = String(entry.entryTimestamp.prefix(7))
+            Task { await self.refreshMonth(monthKey) }
+        }
         entryService.entrySaved
-            .sink { [weak self] entry in
-                guard let self = self else { return }
-                let monthKey = String(entry.entryTimestamp.prefix(7))
-                Task { await self.refreshMonth(monthKey) }
-            }
+            .sink(receiveValue: refreshMonthForEntry)
+            .store(in: &cancellables)
+        entryService.entryDeleted
+            .sink(receiveValue: refreshMonthForEntry)
             .store(in: &cancellables)
     }
 
@@ -85,8 +89,39 @@ final class HistoryStore: ObservableObject {
 
     func deleteEntry(_ entry: Entry) {
         Task { [weak self] in
-            await self?.deleteEntryInternal(entry)
+            guard let self = self else { return }
+            // Show confirmation alert first
+            let loader = LoaderModel(text: LoaderStrings.deletingEntry)
+            self.notificationService.showLoader(loader)
+            await self.deleteEntryInternal(entry)
+            await self.refreshSelectedMonth()
+            self.notificationService.dismissLoader()
         }
+    }
+
+    /// Presents a delete entry confirmation alert.
+    /// - Parameters:
+    ///   - entry: The entry to be deleted.
+    ///   - onConfirm: Executed when user confirms deletion.
+    ///   - onCancel:  Executed when user cancels (optional).
+    func showDeleteEntryAlert(entry: Entry, onCancel: (() -> Void)? = nil) {
+        let alert = AlertModel(
+          title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+              AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                  Task {
+                    self.deleteEntry(entry)
+                    onCancel?()
+                  }
+
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    onCancel?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 
     // MARK: - Manual Refresh -------------------------------------------------
@@ -163,6 +198,11 @@ final class HistoryStore: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+    
+    deinit {
+      cancellables.forEach { $0.cancel() }
+      cancellables.removeAll()
     }
 }
 

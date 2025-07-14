@@ -112,16 +112,7 @@ class ScaleInfoUtils {
     /// - Parameter sku: The scale SKU
     /// - Returns: Image path string or nil
     private func resolveImagePath(for sku: String) -> String? {
-        switch sku {
-        case "0383", "0378":
-            return "scale_images_png_0383" // PNG format for these SKUs
-
-        case "0412":
-            return "scale_images_svg_\(sku)" // SVG format for 0412
-
-        default:
-            return "scale_images_png_\(sku)" // Default to PNG format
-        }
+        SCALES.first(where: { $0.sku == sku })?.imgPath ?? nil
     }
 }
 

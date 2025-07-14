@@ -4,7 +4,6 @@ import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.storage.db.entity.account.NotificationSettingsEntity
 import com.greatergoods.meapp.data.storage.db.entity.account.WeightCompSettingsEntity
-import com.greatergoods.meapp.domain.model.PartialAccount
 import com.greatergoods.meapp.domain.model.api.goal.GoalData
 import com.greatergoods.meapp.domain.model.api.metrics.StreakRequest
 import com.greatergoods.meapp.domain.model.api.metrics.WeightlessRequest
@@ -72,213 +71,162 @@ class OfflineHandlerService
      * Syncs profile data for accounts that have unsynced profile changes.
      */
     private suspend fun syncProfileData() {
-      val unsyncedAccounts = accountRepository.getUnsyncedAccounts()
-      if (unsyncedAccounts.isEmpty()) {
-        AppLog.d(TAG, "No unsynced profile accounts found")
+      val unSyncedAccount = accountRepository.getUnsyncedActiveAccount()
+      if(unSyncedAccount == null){
         return
       }
-
-      for (account in unsyncedAccounts) {
         try {
-          // Sync profile data (basic info like name, email, gender, etc.)
           val profileUpdateRequest =
             ProfileUpdateRequest(
-              id = account.id,
-              firstName = account.firstName,
-              lastName = account.lastName,
-              email = account.email,
-              dob = account.dob,
-              gender = account.gender,
-              zipcode = account.zipcode,
+              id = unSyncedAccount.id,
+              firstName = unSyncedAccount.firstName,
+              lastName = unSyncedAccount.lastName,
+              email = unSyncedAccount.email,
+              dob = unSyncedAccount.dob,
+              gender = unSyncedAccount.gender,
+              zipcode = unSyncedAccount.zipcode,
             )
-          val profileResponse = accountRepository.updateProfile(profileUpdateRequest)
-          val profileUpdate =
-            PartialAccount(
-              firstName = profileResponse.firstName,
-              lastName = profileResponse.lastName,
-              email = profileResponse.email,
-              dob = profileResponse.dob,
-              gender = profileResponse.gender,
-              zipcode = profileResponse.zipcode,
-              isSynced = true,
-            )
-          // Update account with profile response and mark as synced
-          accountRepository.updateAccount(profileResponse.id, profileUpdate)
-          AppLog.i(TAG, "Successfully synced profile data for account: ${account.id}")
+           accountRepository.updateProfile(profileUpdateRequest)
+          AppLog.i(TAG, "Successfully synced profile data for account: ${unSyncedAccount.id}")
         } catch (e: Exception) {
-          AppLog.e(TAG, "Error syncing profile data for account ${account.id}", e.toString())
+          AppLog.e(TAG, "Error syncing profile data for account ${unSyncedAccount.id}", e.toString())
         }
-      }
     }
 
     /**
-     * Syncs body composition data for accounts that have unsynced body comp changes.
+     * Syncs body composition data for the active account if it has unsynced changes.
      */
     private suspend fun syncBodyCompositionData() {
-      val unsyncedBodyCompAccounts = bodyCompositionRepository.getUnsyncedBodyCompAccountsFromDB()
-      if (unsyncedBodyCompAccounts.isEmpty()) {
-        AppLog.d(TAG, "No unsynced body composition accounts found")
+      val unsyncedAccount = bodyCompositionRepository.getUnsyncedActiveBodyCompAccountFromDB()
+      if (unsyncedAccount == null) {
+        AppLog.d(TAG, "No unsynced body composition data for active account")
         return
       }
-      for (account in unsyncedBodyCompAccounts) {
-        try {
-          // Sync body composition data (height, activity level, weight unit)
-          val bodyCompUpdateRequest =
-            BodyCompUpdateRequest(
-              height = account.height ?: 1700,
-              activityLevel = account.activityLevel ?: "normal",
-              weightUnit = account.weightUnit.value,
-            )
-          val bodyCompResponse = bodyCompositionRepository.updateBodyCompInAPI(bodyCompUpdateRequest)
-          // Insert WeightCompSettings entity with data from account
-          val weightCompSettings =
-            WeightCompSettingsEntity(
-              accountId = bodyCompResponse.account.id,
-              height = bodyCompResponse.account.height,
-              activityLevel = bodyCompResponse.account.activityLevel,
-              weightUnit = bodyCompResponse.account.weightUnit,
-              isSynced = true,
-            )
-          bodyCompositionRepository.updateBodyCompInDB(account.id, weightCompSettings)
-          // Update account with body comp response and mark as synced
-          AppLog.i(TAG, "Successfully synced body composition data for account: ${account.id}")
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Error syncing body composition data for account ${account.id}", e.toString())
-        }
+      try {
+        // Sync body composition data (height, activity level, weight unit)
+        val bodyCompUpdateRequest =
+          BodyCompUpdateRequest(
+            height = unsyncedAccount.height ?: 1700,
+            activityLevel = unsyncedAccount.activityLevel ?: "normal",
+            weightUnit = unsyncedAccount.weightUnit.value,
+          )
+        val bodyCompResponse = bodyCompositionRepository.updateBodyCompInAPI(bodyCompUpdateRequest)
+        // Insert WeightCompSettings entity with data from account
+        val weightCompSettings =
+          WeightCompSettingsEntity(
+            accountId = bodyCompResponse.account.id,
+            height = bodyCompResponse.account.height,
+            activityLevel = bodyCompResponse.account.activityLevel,
+            weightUnit = bodyCompResponse.account.weightUnit,
+            isSynced = true,
+          )
+        bodyCompositionRepository.updateBodyCompInDB(unsyncedAccount.id, weightCompSettings)
+        AppLog.i(TAG, "Successfully synced body composition data for account: ${unsyncedAccount.id}")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error syncing body composition data for account ${unsyncedAccount.id}", e.toString())
       }
     }
 
     /**
-     * Syncs notification settings for accounts that have unsynced notification changes.
+     * Syncs notification settings for the active account if it has unsynced changes.
      */
     private suspend fun syncNotificationData() {
-      val unsyncedNotificationAccounts = notificationRepository.getUnsyncedNotificationAccountsFromDB()
-      if (unsyncedNotificationAccounts.isEmpty()) {
-        AppLog.d(TAG, "No unsynced notification accounts found")
+      val unsyncedAccount = notificationRepository.getUnsyncedActiveNotificationAccountFromDB()
+      if (unsyncedAccount == null) {
+        AppLog.d(TAG, "No unsynced notification data for active account")
         return
       }
+      try {
+        // Sync notification settings (entry notifications and weight in notifications)
+        val notificationSettingsRequest =
+          NotificationSettingsRequest(
+            shouldSendEntryNotifications = unsyncedAccount.shouldSendEntryNotifications ?: false,
+            shouldSendWeightInEntryNotifications = unsyncedAccount.shouldSendWeightInEntryNotifications ?: false,
+          )
+        val notificationResponse =
+          notificationRepository.updateNotificationSettingsInAPI(notificationSettingsRequest)
 
-      for (account in unsyncedNotificationAccounts) {
-        try {
-          // Sync notification settings (entry notifications and weight in notifications)
-          val notificationSettingsRequest =
-            NotificationSettingsRequest(
-              shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
-              shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
-            )
-          val notificationResponse =
-            notificationRepository.updateNotificationSettingsInAPI(notificationSettingsRequest)
-
-          // Create NotificationSettings entity with data from API response
-          val notificationSettings =
-            NotificationSettingsEntity(
-              accountId = notificationResponse.account.id,
-              shouldSendEntryNotifications = notificationResponse.account.shouldSendEntryNotifications,
-              shouldSendWeightInEntryNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
-              isSynced = true,
-            )
-          notificationRepository.updateNotificationSettingsInDB(account.id, notificationSettings)
-
-          AppLog.i(TAG, "Successfully synced notification settings for account: ${account.id}")
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Error syncing notification settings for account ${account.id}", e.toString())
-        }
+        // Create NotificationSettings entity with data from API response
+        val notificationSettings =
+          NotificationSettingsEntity(
+            accountId = notificationResponse.account.id,
+            shouldSendEntryNotifications = notificationResponse.account.shouldSendEntryNotifications,
+            shouldSendWeightInEntryNotifications = notificationResponse.account.shouldSendWeightInEntryNotifications,
+            isSynced = true,
+          )
+        notificationRepository.updateNotificationSettingsInDB(unsyncedAccount.id, notificationSettings)
+        AppLog.i(TAG, "Successfully synced notification settings for account: ${unsyncedAccount.id}")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error syncing notification settings for account ${unsyncedAccount.id}", e.toString())
       }
     }
 
     /**
-     * Syncs goal data for accounts that have unsynced goal changes.
+     * Syncs goal data for the active account if it has unsynced changes.
      */
     private suspend fun syncGoalData() {
-      AppLog.d("TAG", "Syncing goal data")
+      val unsyncedAccount = goalRepository.getUnsyncedActiveGoalAccountFromDB()
+      if (unsyncedAccount == null) {
+        AppLog.d(TAG, "No unsynced goal data for active account")
+        return
+      }
       try {
-        val unsyncedAccounts = goalRepository.getUnsyncedGoalAccountsFromDB()
-        if (unsyncedAccounts.isEmpty()) {
-          AppLog.d(TAG, "No unsynced goal settings found")
-          return
-        }
-        AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced goal settings")
-        for (account in unsyncedAccounts) {
-          try {
-            AppLog.d(TAG, "Syncing goal settings for account: ${account.id}")
-            val goalData =
-              GoalData(
-                goalWeight = account.goalWeight ?: 0.0,
-                initialWeight = account.initialWeight,
-                type = account.goalType ?: "maintain",
-                metPreviousGoal = account.metPreviousGoal,
-              )
-            goalRepository.updateGoalSetting(goalData)
-            AppLog.i(TAG, "Successfully synced goal settings for account: ${account.id}")
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to sync goal settings for account ${account.id}", e.toString())
-          }
-        }
+        val goalData =
+          GoalData(
+            goalWeight = unsyncedAccount.goalWeight ?: 0.0,
+            initialWeight = unsyncedAccount.initialWeight,
+            type = unsyncedAccount.goalType ?: "maintain",
+            metPreviousGoal = unsyncedAccount.metPreviousGoal,
+          )
+        goalRepository.updateGoalSetting(goalData)
+        AppLog.i(TAG, "Successfully synced goal settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error syncing goal data", e.toString())
+        AppLog.e(TAG, "Failed to sync goal settings for account ${unsyncedAccount.id}", e.toString())
       }
     }
 
     /**
-     * Syncs streak settings for accounts with unsynced changes.
+     * Syncs streak settings for the active account if it has unsynced changes.
      */
     private suspend fun syncStreakSettings() {
-      AppLog.d(TAG, "Syncing streak settings")
+      val unsyncedAccount = userSettingsRepository.getUnsyncedActiveStreakAccountFromDB()
+      if (unsyncedAccount == null) {
+        AppLog.d(TAG, "No unsynced streak data for active account")
+        return
+      }
       try {
-        val unsyncedAccounts = userSettingsRepository.getUnsyncedStreakAccountsFromDB()
-        if (unsyncedAccounts.isEmpty()) {
-          AppLog.d(TAG, "No unsynced streak settings found")
-          return
-        }
-        AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced streak settings")
-        for (account in unsyncedAccounts) {
-          try {
-            AppLog.d(TAG, "Syncing streak settings for account: ${account.id}")
-            val streakRequest =
-              StreakRequest(
-                isStreakOn = account.isStreakOn ?: false,
-                streakTimestamp = account.streakTimestamp,
-              )
-            userSettingsRepository.updateStreakSetting(streakRequest)
-            AppLog.i(TAG, "Successfully synced streak settings for account: ${account.id}")
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to sync streak settings for account ${account.id}", e.toString())
-          }
-        }
+        val streakRequest =
+          StreakRequest(
+            isStreakOn = unsyncedAccount.isStreakOn ?: false,
+            streakTimestamp = unsyncedAccount.streakTimestamp,
+          )
+        userSettingsRepository.updateStreakSetting(streakRequest)
+        AppLog.i(TAG, "Successfully synced streak settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error syncing streak settings", e.toString())
+        AppLog.e(TAG, "Failed to sync streak settings for account ${unsyncedAccount.id}", e.toString())
       }
     }
 
     /**
-     * Syncs weightless settings for accounts with unsynced changes.
+     * Syncs weightless settings for the active account if it has unsynced changes.
      */
     private suspend fun syncWeightlessSettings() {
+      val unsyncedAccount = userSettingsRepository.getUnsyncedActiveWeightlessAccountFromDB()
+      if (unsyncedAccount == null) {
+        AppLog.d(TAG, "No unsynced weightless data for active account")
+        return
+      }
       try {
-        val unsyncedAccounts = userSettingsRepository.getUnsyncedWeightlessAccountsFromDB()
-
-        if (unsyncedAccounts.isEmpty()) {
-          AppLog.d(TAG, "No unsynced weightless settings found")
-          return
-        }
-        AppLog.d(TAG, "Found ${unsyncedAccounts.size} accounts with unsynced weightless settings")
-        for (account in unsyncedAccounts) {
-          try {
-            AppLog.d(TAG, "Syncing weightless settings for account: ${account.id}")
-            val weightlessRequest =
-              WeightlessRequest(
-                isWeightlessOn = account.isWeightlessOn ?: false,
-                weightlessTimestamp = account.weightlessTimestamp,
-                weightlessWeight = account.weightlessWeight?.toDouble(),
-              )
-            userSettingsRepository.updateWeightlessSetting(weightlessRequest)
-            AppLog.i(TAG, "Successfully synced weightless settings for account: ${account.id}")
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to sync weightless settings for account ${account.id}", e.toString())
-          }
-        }
+        val weightlessRequest =
+          WeightlessRequest(
+            isWeightlessOn = unsyncedAccount.isWeightlessOn ?: false,
+            weightlessTimestamp = unsyncedAccount.weightlessTimestamp,
+            weightlessWeight = unsyncedAccount.weightlessWeight?.toDouble(),
+          )
+        userSettingsRepository.updateWeightlessSetting(weightlessRequest)
+        AppLog.i(TAG, "Successfully synced weightless settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error syncing weightless settings", e.toString())
+        AppLog.e(TAG, "Failed to sync weightless settings for account ${unsyncedAccount.id}", e.toString())
       }
     }
   }

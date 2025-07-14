@@ -52,8 +52,8 @@ struct EmailStepView: View {
                 .padding(.top, .spacingLG)
                 Spacer()
             }
-            .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
+        .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
     }
 }
 

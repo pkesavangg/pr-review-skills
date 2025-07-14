@@ -20,17 +20,20 @@ fun <T> HorizontalPagerWithBottomNavigation(
     pagerState: PagerState,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Transparent,
-    leadingContent: @Composable () -> Unit,
+    shouldCenterMiddleContent: Boolean = false,
+    leadingContent: @Composable (() -> Unit)? = null,
     middleContent: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable () -> Unit,
+    trailingContent: @Composable (() -> Unit)? = null,
     pageContent: @Composable (T) -> Unit,
 ) {
     PagerBottomAppBar(
         modifier = modifier,
         containerColor = containerColor,
-        leadingContent = leadingContent,
+        leadingContent = { leadingContent?.invoke() },
         middleContent = { middleContent?.invoke() },
-        trailingContent = trailingContent,
+        trailingContent = { trailingContent?.invoke() },
+        hasMiddleContentOnly = middleContent != null && leadingContent == null && trailingContent == null,
+        shouldCenterMiddleContent = shouldCenterMiddleContent,
         content = { innerModifier ->
                 AppHorizontalPager(
                     steps = steps,
@@ -64,24 +67,24 @@ fun PagerWithBottomNavigationPreview() {
         HorizontalPagerWithBottomNavigation(
             steps = pages,
             pagerState = pagerState,
-            leadingContent = {
-                if (!isFirstPage) {
+            leadingContent = if (!isFirstPage) {
+                {
                     AppButton(type = ButtonType.TextPrimary, label = "BACK", size = ButtonSize.Small) {
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(currentPage - 1)
                         }
                     }
                 }
-            },
-            middleContent = {
-                if (!isLastPage) {
+            } else null,
+            middleContent = if (!isLastPage) {
+                {
                     AppButton(type = ButtonType.TextTertiary, label = "SKIP",size = ButtonSize.Small) {
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(pages.lastIndex)
                         }
                     }
                 }
-            },
+            } else null,
             trailingContent = {
                 AppButton(
                     type = ButtonType.PrimaryFilled,

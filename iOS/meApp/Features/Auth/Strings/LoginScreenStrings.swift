@@ -10,7 +10,7 @@ import Foundation
 struct LoginScreenStrings {
     static let welcomeBack = "Welcome back!"
     static let forgotPassword = "forgot password?"
-    static let byLoggingIn = "By logging in, you are agreeing to our"
+    static let byLoggingIn = "by logging in, you are agreeing to our"
     static let passwordPlaceholder = "Enter your password"
 }
 

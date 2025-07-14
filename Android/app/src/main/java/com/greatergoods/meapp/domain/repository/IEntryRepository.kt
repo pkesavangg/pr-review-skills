@@ -201,4 +201,42 @@ interface IEntryRepository {
      * @return Flow of latest entries per day as PeriodBodyScaleSummary.
      */
     fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+
+    /**
+     * Get the oldest entry for an account.
+     * @param accountId The account ID
+     * @return The oldest entry if found, null otherwise
+     */
+    suspend fun getOldestEntry(accountId: String): Entry?
+
+    /**
+     * Get entry timestamps for streak calculation.
+     * Returns one entry timestamp per day, ordered with newest first.
+     * @param accountId The account ID
+     * @return List of entry timestamps for streak calculation
+     */
+    suspend fun getStreakData(accountId: String): List<String>
+
+    /**
+     * Get the total count of entries for an account.
+     * @param accountId The account ID
+     * @return The total count of entries
+     */
+    suspend fun getTotalCount(accountId: String): Int
+
+    /**
+     * Get the longest streak count for an account.
+     * @param accountId The account ID
+     * @return The longest streak count
+     */
+    suspend fun getLongestStreakCount(accountId: String): Int
+
+    /**
+     * Get entries for an account in a specific date range (inclusive).
+     * @param accountId The account ID
+     * @param startDate The start date (ISO 8601 string)
+     * @param endDate The end date (ISO 8601 string)
+     * @return List of entries in the date range
+     */
+    suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<Entry>
 }

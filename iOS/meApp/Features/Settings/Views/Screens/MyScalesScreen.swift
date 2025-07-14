@@ -14,23 +14,41 @@ struct MyScalesScreen: View {
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
-
+    
     // Consolidated sheet presentation state
-    private enum ActiveSheet: Identifiable {
+    private enum ActiveSheet: Identifiable, Equatable {
         case scaleList
         case setupFlow(ScaleItemInfo)
-
+        
         var id: String {
             switch self {
             case .scaleList:
                 return "scaleList"
             case .setupFlow(let scale):
-                // SKU uniquely identifies a scale
                 return scale.sku
             }
         }
+        
+        // Custom Equatable conformance is required because `ScaleItemInfo`
+        // itself may not conform to Equatable or may need to be compared using specific logic.
+        // This implementation allows SwiftUI to compare two ActiveSheet values properly.
+        //
+        // It's especially needed for:
+        // - .onChange(of: activeSheet), which requires the observed type to conform to Equatable
+        // - ensuring SwiftUI detects sheet transitions and doesn't suppress updates
+        static func == (lhs: ActiveSheet, rhs: ActiveSheet) -> Bool {
+            switch (lhs, rhs) {
+            case (.scaleList, .scaleList):
+                return true
+            case let (.setupFlow(lhsScale), .setupFlow(rhsScale)):
+                return lhsScale.sku == rhsScale.sku
+            default:
+                return false
+            }
+        }
     }
-
+    
+    
     @State private var activeSheet: ActiveSheet?
     
     private var focusBinding: Binding<FocusField?> {
@@ -97,25 +115,35 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: !scaleStore.addScaleForm.isValid,
                         action: {
-                            // Fetch the corresponding scale and trigger setup flow sheet.
-                            if let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) {
+                            // Find the scale matching the entered model number.
+                            guard let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) else { return }
+                            
+                            // Proceed to setup: clear UI state and show setup flow.
+                            let proceed = {
+                                focusedField = nil
+                                hideKeyboard()
+                                activeSheet = .setupFlow(scale)
+                                scaleStore.resetForm()
+                            }
+                            
+                            switch scale.setupType {
+                            case .appSync:
+                                // If scale is already paired, show alert; else proceed directly.
                                 let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
-                                let proceed = {
-                                    // Clear focus & reset form
-                                    focusedField = nil
-                                    hideKeyboard()
-                                    activeSheet = .setupFlow(scale)
-                                    scaleStore.resetForm()
-                                }
                                 if isDuplicate {
                                     scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
                                 } else {
                                     proceed()
                                 }
+                                
+                            default:
+                                // For other setup types, always proceed without this check it handled in the setup.
+                                proceed()
                             }
                         }
                     )
                     .padding(.bottom, .spacingSM)
+                    
                     ButtonView(
                         text: lang.cantFindModelNumber,
                         type: .textPrimary,
@@ -148,10 +176,14 @@ struct MyScalesScreen: View {
                             }
                         }
                     case .setupFlow(let scale):
-                        if scale.setupType == .appSync {
+                        switch scale.setupType {
+                        case .appSync:
                             AppSyncSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                        } else {
+                        case .lcbt:
+                            A6ScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
+                        default:
                             // TODO: Handle other setup types
                             VStack(spacing: .spacingMD) {
                                 Text("Setup flow coming soon")
@@ -161,6 +193,19 @@ struct MyScalesScreen: View {
                             }
                             .padding()
                         }
+                    }
+                }
+                .onChange(of: activeSheet) { _, newSheet in
+                    // Observe changes to the activeSheet state.
+                    // This is used to track whether a setup flow is being shown,
+                    // and toggle the Bluetooth setup in-progress flag accordingly.
+                    switch newSheet {
+                    case .setupFlow:
+                        // A setup flow sheet is being presented → start setup tracking
+                        scaleStore.bluetoothService.isSetupInProgress = true
+                    default:
+                        // Either the sheet was dismissed or it's a non-setup sheet → stop setup tracking
+                        scaleStore.bluetoothService.isSetupInProgress = false
                     }
                 }
                 
@@ -192,9 +237,9 @@ struct MyScalesScreen: View {
                 }
             }
         }
-        .onAppear{
+        .onAppear(perform: {
             scaleStore.fetchScales()
-        }
+        })
         .onDisappear {
             scaleStore.resetForm()
         }

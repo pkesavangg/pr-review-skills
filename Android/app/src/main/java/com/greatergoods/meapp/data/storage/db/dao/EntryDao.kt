@@ -28,104 +28,104 @@ import java.util.Map.entry
  */
 @Dao
 interface EntryDao {
-    /**
-     * Insert an Entry with related BpmEntry and BodyScaleEntry in a single transaction.
-     * @param entry The complete entry data to insert
-     * @return The row ID of the inserted EntryEntity
-     */
-    @Transaction
-    suspend fun insert(entry: Entry): Long {
-        val entryId = insertEntryEntity(entry.entry)
+  /**
+   * Insert an Entry with related BpmEntry and BodyScaleEntry in a single transaction.
+   * @param entry The complete entry data to insert
+   * @return The row ID of the inserted EntryEntity
+   */
+  @Transaction
+  suspend fun insert(entry: Entry): Long {
+    val entryId = insertEntryEntity(entry.entry)
 
-        if (entry is BpmEntry) insertBpm(entry.bpmEntry.copy(id = entryId))
-        else if (entry is ScaleEntry) {
-            insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
-            if (entry.scale.scaleEntryMetric != null) {
-                insertBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = entryId))
-            }
-        }
-        return entryId
+    if (entry is BpmEntry) insertBpm(entry.bpmEntry.copy(id = entryId))
+    else if (entry is ScaleEntry) {
+      insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
+      if (entry.scale.scaleEntryMetric != null) {
+        insertBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = entryId))
+      }
     }
+    return entryId
+  }
 
-    /**
-     * Insert a list of entries with their related details in a single transaction.
-     * @param entries The list of Entry objects to insert
-     */
-    @Transaction
-    suspend fun insert(entries: List<Entry>) {
-        entries.forEach {
-            insert(it)
-        }
+  /**
+   * Insert a list of entries with their related details in a single transaction.
+   * @param entries The list of Entry objects to insert
+   */
+  @Transaction
+  suspend fun insert(entries: List<Entry>) {
+    entries.forEach {
+      insert(it)
     }
+  }
 
-    @Transaction
-    suspend fun update(entry: Entry): Long {
-        val updatedId = update(entry.entry).toLong()
+  @Transaction
+  suspend fun update(entry: Entry): Long {
+    val updatedId = update(entry.entry).toLong()
 
-        if (entry is BpmEntry) {
-            updateBpm(entry.bpmEntry.copy(id = updatedId))
-        } else if (entry is ScaleEntry) {
-            updateBodyScale(entry.scale.scaleEntry.copy(id = updatedId))
-            if (entry.scale.scaleEntryMetric != null) {
-                updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = updatedId))
-            }
-        }
-        return updatedId
+    if (entry is BpmEntry) {
+      updateBpm(entry.bpmEntry.copy(id = updatedId))
+    } else if (entry is ScaleEntry) {
+      updateBodyScale(entry.scale.scaleEntry.copy(id = updatedId))
+      if (entry.scale.scaleEntryMetric != null) {
+        updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = updatedId))
+      }
     }
+    return updatedId
+  }
 
-    /**
-     * Marks an entry as deleted if it is not already marked as deleted.
-     * Inserts a new delete operation entry with the current timestamp if needed.
-     * @param entry The entry to mark as deleted.
-     */
-    @Transaction
-    suspend fun delete(entry: Entry) {
-        val deleteEntry = entry.entry.copy(
-            id = 0,
-            operationType = "DELETE",
-            opTimestamp = entry.entry.opTimestamp,
-        )
-        insertEntryEntity(deleteEntry)
-    }
+  /**
+   * Marks an entry as deleted if it is not already marked as deleted.
+   * Inserts a new delete operation entry with the current timestamp if needed.
+   * @param entry The entry to mark as deleted.
+   */
+  @Transaction
+  suspend fun delete(entry: Entry) {
+    val deleteEntry = entry.entry.copy(
+      id = 0,
+      operationType = "DELETE",
+      opTimestamp = entry.entry.opTimestamp,
+    )
+    insertEntryEntity(deleteEntry)
+  }
 
-    /**
-     * Deletes an entry by its ID.
-     * @param id The ID of the entry to delete.
-     */
-    @Transaction
-    @Query("DELETE FROM entry WHERE id = :id")
-    suspend fun deleteById(id: Long): Int
+  /**
+   * Deletes an entry by its ID.
+   * @param id The ID of the entry to delete.
+   */
+  @Transaction
+  @Query("DELETE FROM entry WHERE id = :id")
+  suspend fun deleteById(id: Long): Int
 
-    // Get Methods
-    /**
-     * Get the latest entry for a specific account with all related details.
-     * @param accountId The account ID
-     * @return The latest Entry with relations if found, null otherwise
-     */
-    @Transaction
-    @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
-    fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry>?
+  // Get Methods
+  /**
+   * Get the latest entry for a specific account with all related details.
+   * @param accountId The account ID
+   * @return The latest Entry with relations if found, null otherwise
+   */
+  @Transaction
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
+  fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry>?
 
-    /**
-     * Get all entries with their related details for a specific account.
-     * This method uses @Transaction to ensure all related data is fetched atomically.
-     * @param accountId The account ID
-     * @return List of Entry containing entries and their related data for the account
-     */
-    @Transaction
-    @Query("SELECT * FROM entry_view WHERE accountId = :accountId")
-    suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
+  /**
+   * Get all entries with their related details for a specific account.
+   * This method uses @Transaction to ensure all related data is fetched atomically.
+   * @param accountId The account ID
+   * @return List of Entry containing entries and their related data for the account
+   */
+  @Transaction
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId")
+  suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
 
-    /**
-     * Get entries within a time range for a specific account.
-     * @param accountId The account ID
-     * @param startTime The start time in ISO 8601 format
-     * @param endTime The end time in ISO 8601 format
-     * @return A Flow of entries within the time range with relations
-     */
-    @Transaction
-    @Query(
-        """
+  /**
+   * Get entries within a time range for a specific account.
+   * @param accountId The account ID
+   * @param startTime The start time in ISO 8601 format
+   * @param endTime The end time in ISO 8601 format
+   * @return A Flow of entries within the time range with relations
+   */
+  @Transaction
+  @Query(
+    """
         SELECT *
         FROM entry_view
         WHERE accountId = :accountId
@@ -139,245 +139,245 @@ interface EntryDao {
           )
         ORDER BY datetime(entryTimestamp) DESC
     """,
-    )
-    fun getEntriesByTimeRange(
-        accountId: String,
-        startTime: String,
-        endTime: String,
-    ): Flow<List<PopulatedActiveEntry>>
+  )
+  fun getEntriesByTimeRange(
+    accountId: String,
+    startTime: String,
+    endTime: String,
+  ): Flow<List<PopulatedActiveEntry>>
 
-    /**
-     * Get entries by device type for a specific account with all related details.
-     * @param accountId The account ID
-     * @param deviceType The device type
-     * @return A Flow of entries for the specified device type with relations
-     */
-    @Transaction
-    @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND deviceType = :deviceType")
-    fun getEntriesByDeviceType(
-        accountId: String,
-        deviceType: String,
-    ): Flow<List<PopulatedActiveEntry>>
+  /**
+   * Get entries by device type for a specific account with all related details.
+   * @param accountId The account ID
+   * @param deviceType The device type
+   * @return A Flow of entries for the specified device type with relations
+   */
+  @Transaction
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND deviceType = :deviceType")
+  fun getEntriesByDeviceType(
+    accountId: String,
+    deviceType: String,
+  ): Flow<List<PopulatedActiveEntry>>
 
-    /**
-     * Get an entry by its ID with all related details.
-     * @param id The entry ID
-     * @return The Entry with relations if found, null otherwise
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE id = :id")
-    suspend fun getEntryById(id: Long): PopulatedEntry?
+  /**
+   * Get an entry by its ID with all related details.
+   * @param id The entry ID
+   * @return The Entry with relations if found, null otherwise
+   */
+  @Transaction
+  @Query("SELECT * FROM entry WHERE id = :id")
+  suspend fun getEntryById(id: Long): PopulatedEntry?
 
-    /**
-     * Get entries by operation type for a specific account.
-     * @param accountId The account ID
-     * @param operationType The operation type
-     * @return A Flow of entries with the specified operation type
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId AND operationType = :operationType")
-    fun getEntriesByOperationType(
-        accountId: String,
-        operationType: String,
-    ): Flow<List<PopulatedEntry>>
+  /**
+   * Get entries by operation type for a specific account.
+   * @param accountId The account ID
+   * @param operationType The operation type
+   * @return A Flow of entries with the specified operation type
+   */
+  @Transaction
+  @Query("SELECT * FROM entry WHERE accountId = :accountId AND operationType = :operationType")
+  fun getEntriesByOperationType(
+    accountId: String,
+    operationType: String,
+  ): Flow<List<PopulatedEntry>>
 
-    // UnSynced Operations
+  // UnSynced Operations
 
-    /**
-     * Get all operations in the UnSynced for an account.
-     * @param accountId The account ID
-     * @return List of EntryEntity objects in the UnSynced
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId AND isSynced = 0 ORDER BY entryTimestamp ASC")
-    suspend fun getUnSynced(accountId: String): List<PopulatedEntry>
+  /**
+   * Get all operations in the UnSynced for an account.
+   * @param accountId The account ID
+   * @return List of EntryEntity objects in the UnSynced
+   */
+  @Transaction
+  @Query("SELECT * FROM entry WHERE accountId = :accountId AND isSynced = 0 ORDER BY entryTimestamp ASC")
+  suspend fun getUnSynced(accountId: String): List<PopulatedEntry>
 
-    /**
-     * Update the attempts count for an operation in the UnSynced.
-     * @param entry The EntryEntity to update attempts for
-     * @return The number of rows updated
-     */
-    @Query("UPDATE entry SET attempts = attempts + 1 WHERE id = :id")
-    suspend fun incrementAttempts(id: Long): Int
+  /**
+   * Update the attempts count for an operation in the UnSynced.
+   * @param entry The EntryEntity to update attempts for
+   * @return The number of rows updated
+   */
+  @Query("UPDATE entry SET attempts = attempts + 1 WHERE id = :id")
+  suspend fun incrementAttempts(id: Long): Int
 
-    /**
-     * Get failed operations in the UnSynced for an account.
-     * @param accountId The account ID
-     * @param maxAttempts The maximum number of attempts to consider an operation as failed
-     * @return List of EntryEntity objects that have failed operations
-     */
-    @Transaction
-    @Query("SELECT * FROM entry WHERE accountId = :accountId AND attempts >= :maxAttempts AND isSynced = 0")
-    suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<PopulatedEntry>
+  /**
+   * Get failed operations in the UnSynced for an account.
+   * @param accountId The account ID
+   * @param maxAttempts The maximum number of attempts to consider an operation as failed
+   * @return List of EntryEntity objects that have failed operations
+   */
+  @Transaction
+  @Query("SELECT * FROM entry WHERE accountId = :accountId AND attempts >= :maxAttempts AND isSynced = 0")
+  suspend fun getFailedOperations(accountId: String, maxAttempts: Int): List<PopulatedEntry>
 
-    /**
-     * Clear the UnSynced for an account.
-     * @param accountId The account ID
-     * @return The number of rows deleted
-     */
-    @Query("DELETE FROM entry WHERE accountId = :accountId AND isSynced = 0")
-    suspend fun clearUnSynced(accountId: String): Int
+  /**
+   * Clear the UnSynced for an account.
+   * @param accountId The account ID
+   * @return The number of rows deleted
+   */
+  @Query("DELETE FROM entry WHERE accountId = :accountId AND isSynced = 0")
+  suspend fun clearUnSynced(accountId: String): Int
 
-    /**
-     * Delete all entries for an account.
-     * @param accountId The account ID
-     * @return The number of rows deleted
-     */
-    @Query("DELETE FROM entry WHERE accountId = :accountId")
-    suspend fun deleteAllEntriesForAccount(accountId: String): Int
+  /**
+   * Delete all entries for an account.
+   * @param accountId The account ID
+   * @return The number of rows deleted
+   */
+  @Query("DELETE FROM entry WHERE accountId = :accountId")
+  suspend fun deleteAllEntriesForAccount(accountId: String): Int
 
-    // Update methods for EntryEntity
-    /**
-     * Insert a new entry into the database.
-     * @param entry The entry entity to insert
-     * @return The row ID of the inserted entry
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEntryEntity(entry: EntryEntity): Long
+  // Update methods for EntryEntity
+  /**
+   * Insert a new entry into the database.
+   * @param entry The entry entity to insert
+   * @return The row ID of the inserted entry
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertEntryEntity(entry: EntryEntity): Long
 
-    /**
-     * Insert a list of entry entities into the database.
-     * @param entries The list of entry entities to insert
-     * @return List of row IDs of the inserted entries
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEntryEntity(entries: List<EntryEntity>): List<Long>
+  /**
+   * Insert a list of entry entities into the database.
+   * @param entries The list of entry entities to insert
+   * @return List of row IDs of the inserted entries
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertEntryEntity(entries: List<EntryEntity>): List<Long>
 
-    /**
-     * Insert a new BPM entity into the database.
-     * @param bpm The BpmEntity to insert.
-     * @return The row ID of the inserted entity.
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBpm(bpm: BpmEntryEntity): Long
+  /**
+   * Insert a new BPM entity into the database.
+   * @param bpm The BpmEntity to insert.
+   * @return The row ID of the inserted entity.
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBpm(bpm: BpmEntryEntity): Long
 
-    /**
-     * Insert a list of BPM entities into the database.
-     * @param bpm The list of BpmEntryEntity to insert.
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBpm(bpm: List<BpmEntryEntity>)
+  /**
+   * Insert a list of BPM entities into the database.
+   * @param bpm The list of BpmEntryEntity to insert.
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBpm(bpm: List<BpmEntryEntity>)
 
-    /**
-     * Insert a new BodyScaleEntry entity into the database.
-     * @param scale The BodyScaleEntryEntity to insert.
-     * @return The row ID of the inserted entity.
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBodyScale(scale: BodyScaleEntryEntity): Long
+  /**
+   * Insert a new BodyScaleEntry entity into the database.
+   * @param scale The BodyScaleEntryEntity to insert.
+   * @return The row ID of the inserted entity.
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBodyScale(scale: BodyScaleEntryEntity): Long
 
-    /**
-     * Insert a list of BodyScaleEntry entities into the database.
-     * @param scales The list of BodyScaleEntryEntity to insert.
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBodyScale(scales: List<BodyScaleEntryEntity>)
+  /**
+   * Insert a list of BodyScaleEntry entities into the database.
+   * @param scales The list of BodyScaleEntryEntity to insert.
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBodyScale(scales: List<BodyScaleEntryEntity>)
 
-    /**
-     * Insert a new BodyScaleEntryMetric entity into the database.
-     * @param metric The BodyScaleEntryMetricEntity to insert.
-     * @return The row ID of the inserted entity.
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Long
+  /**
+   * Insert a new BodyScaleEntryMetric entity into the database.
+   * @param metric The BodyScaleEntryMetricEntity to insert.
+   * @return The row ID of the inserted entity.
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Long
 
-    /**
-     * Insert a list of BodyScaleEntryMetric entities into the database.
-     * @param metrics The list of BodyScaleEntryMetricEntity to insert.
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBodyScaleMetric(metrics: List<BodyScaleEntryMetricEntity>)
+  /**
+   * Insert a list of BodyScaleEntryMetric entities into the database.
+   * @param metrics The list of BodyScaleEntryMetricEntity to insert.
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBodyScaleMetric(metrics: List<BodyScaleEntryMetricEntity>)
 
-    // Update methods for EntryEntity
-    /**
-     * Update an existing entry in the database.
-     * @param entry The entry entity to update
-     * @return The number of rows updated
-     */
-    @Update
-    suspend fun update(entry: EntryEntity): Int
+  // Update methods for EntryEntity
+  /**
+   * Update an existing entry in the database.
+   * @param entry The entry entity to update
+   * @return The number of rows updated
+   */
+  @Update
+  suspend fun update(entry: EntryEntity): Int
 
-    /**
-     * Update an existing BPM entity in the database.
-     * @param bpm The BpmEntity to update.
-     * @return The number of rows updated.
-     */
-    @Update
-    suspend fun updateBpm(bpm: BpmEntryEntity): Int
+  /**
+   * Update an existing BPM entity in the database.
+   * @param bpm The BpmEntity to update.
+   * @return The number of rows updated.
+   */
+  @Update
+  suspend fun updateBpm(bpm: BpmEntryEntity): Int
 
-    /**
-     * Update an existing BodyScaleEntry entity in the database.
-     * @param scale The BodyScaleEntryEntity to update.
-     * @return The number of rows updated.
-     */
-    @Update
-    suspend fun updateBodyScale(scale: BodyScaleEntryEntity): Int
+  /**
+   * Update an existing BodyScaleEntry entity in the database.
+   * @param scale The BodyScaleEntryEntity to update.
+   * @return The number of rows updated.
+   */
+  @Update
+  suspend fun updateBodyScale(scale: BodyScaleEntryEntity): Int
 
-    /**
-     * Update an existing BodyScaleEntryMetric entity in the database.
-     * @param metric The BodyScaleEntryMetricEntity to update.
-     * @return The number of rows updated.
-     */
-    @Update
-    suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
+  /**
+   * Update an existing BodyScaleEntryMetric entity in the database.
+   * @param metric The BodyScaleEntryMetricEntity to update.
+   * @return The number of rows updated.
+   */
+  @Update
+  suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
 
-    /**
-     * Get entries for a specific month.
-     * @param accountId The account ID
-     * @param month The month in YYYY-MM format
-     * @return Flow of list of entries for the specified month
-     */
-    @Transaction
-    @Query(
-        """
+  /**
+   * Get entries for a specific month.
+   * @param accountId The account ID
+   * @param month The month in YYYY-MM format
+   * @return Flow of list of entries for the specified month
+   */
+  @Transaction
+  @Query(
+    """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
         AND strftime('%Y-%m', datetime(entryTimestamp)) = :month
         ORDER BY datetime(entryTimestamp) DESC
     """,
-    )
-    fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
+  )
+  fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
 
-    /**
-     * Get the operation count for an account.
-     * @param accountId The account ID
-     * @return The number of operations
-     */
-    @Query("SELECT COUNT(*) FROM entry WHERE accountId = :accountId")
-    suspend fun getOperationCount(accountId: String): Int
+  /**
+   * Get the operation count for an account.
+   * @param accountId The account ID
+   * @return The number of operations
+   */
+  @Query("SELECT COUNT(*) FROM entry WHERE accountId = :accountId")
+  suspend fun getOperationCount(accountId: String): Int
 
-    /**
-     * Get metrics for a specific entry.
-     * @param entryId The ID of the entry
-     * @return Flow of BodyScaleEntryMetricEntity for the entry
-     */
-    @Query("SELECT * FROM body_scale_entry_metric WHERE id = :entryId")
-    fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity>
+  /**
+   * Get metrics for a specific entry.
+   * @param entryId The ID of the entry
+   * @return Flow of BodyScaleEntryMetricEntity for the entry
+   */
+  @Query("SELECT * FROM body_scale_entry_metric WHERE id = :entryId")
+  fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity>
 
-    /**
-     * Insert a list of scale entries into the database.
-     * @param entries The list of BodyScaleEntryEntity objects to insert
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertScaleEntries(entries: List<BodyScaleEntryEntity>)
+  /**
+   * Insert a list of scale entries into the database.
+   * @param entries The list of BodyScaleEntryEntity objects to insert
+   */
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertScaleEntries(entries: List<BodyScaleEntryEntity>)
 
-    /**
-     * Get a scale entry by its ID.
-     * @param entryId The ID of the entry
-     * @return The BodyScaleEntryEntity if found, null otherwise
-     */
-    @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
-    suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
+  /**
+   * Get a scale entry by its ID.
+   * @param entryId The ID of the entry
+   * @return The BodyScaleEntryEntity if found, null otherwise
+   */
+  @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
+  suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
 
-    /**
-     * Get monthly averages of body scale data for an account.
-     *
-     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
-     * all relevant body scale and metric fields. If you need to reuse this join pattern elsewhere,
-     * consider creating a database VIEW or a temporary table for maintainability and performance.
-     */
-    @Query(
-        """
+  /**
+   * Get monthly averages of body scale data for an account.
+   *
+   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
+   * all relevant body scale and metric fields. If you need to reuse this join pattern elsewhere,
+   * consider creating a database VIEW or a temporary table for maintainability and performance.
+   */
+  @Query(
+    """
         SELECT
           strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
           MAX(e.entryTimestamp) AS entryTimestamp,
@@ -403,20 +403,20 @@ interface EntryDao {
         GROUP BY period
         ORDER BY period DESC
     """,
-    )
-    fun getMonthlyBodyScaleAveragesWithJoin(
-        accountId: String
-    ): Flow<List<PeriodBodyScaleSummary>>
+  )
+  fun getMonthlyBodyScaleAveragesWithJoin(
+    accountId: String
+  ): Flow<List<PeriodBodyScaleSummary>>
 
-    /**
-     * Get the latest body scale entry for each month for an account.
-     *
-     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
-     * all relevant body scale and metric fields for the latest entry in each month. For repeated
-     * use, consider creating a VIEW or temporary table.
-     */
-    @Query(
-        """
+  /**
+   * Get the latest body scale entry for each month for an account.
+   *
+   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
+   * all relevant body scale and metric fields for the latest entry in each month. For repeated
+   * use, consider creating a VIEW or temporary table.
+   */
+  @Query(
+    """
         SELECT
           strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
           e.entryTimestamp,
@@ -447,19 +447,19 @@ interface EntryDao {
           )
         ORDER BY period DESC
     """,
-    )
-    fun getMonthlyBodyScaleLatestWithJoin(
-        accountId: String
-    ): Flow<List<PeriodBodyScaleSummary>>
+  )
+  fun getMonthlyBodyScaleLatestWithJoin(
+    accountId: String
+  ): Flow<List<PeriodBodyScaleSummary>>
 
-    /**
-     * Get daywise averages of body scale data for an account.
-     *
-     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
-     * all relevant body scale and metric fields by day. For repeated use, consider a VIEW or temp table.
-     */
-    @Query(
-        """
+  /**
+   * Get daywise averages of body scale data for an account.
+   *
+   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
+   * all relevant body scale and metric fields by day. For repeated use, consider a VIEW or temp table.
+   */
+  @Query(
+    """
         SELECT
           strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS period,
           MAX(e.entryTimestamp) AS entryTimestamp,
@@ -478,27 +478,27 @@ interface EntryDao {
           AVG(bsem.boneMass) AS boneMass,
           AVG(bsem.impedance) AS impedance,
           MAX(e.unit) AS unit
-        FROM entry AS e
+        FROM entry_view AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
         WHERE e.accountId = :accountId
         GROUP BY period
         ORDER BY period DESC
     """,
-    )
-    fun getDaywiseBodyScaleAveragesWithJoin(
-        accountId: String
-    ): Flow<List<PeriodBodyScaleSummary>>
+  )
+  fun getDaywiseBodyScaleAveragesWithJoin(
+    accountId: String
+  ): Flow<List<PeriodBodyScaleSummary>>
 
-    /**
-     * Get the latest body scale entry for each day for an account.
-     *
-     * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
-     * all relevant body scale and metric fields for the latest entry in each day. For repeated
-     * use, consider a VIEW or temp table.
-     */
-    @Query(
-        """
+  /**
+   * Get the latest body scale entry for each day for an account.
+   *
+   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
+   * all relevant body scale and metric fields for the latest entry in each day. For repeated
+   * use, consider a VIEW or temp table.
+   */
+  @Query(
+    """
 WITH daily_entries AS (
   SELECT
     strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS day,
@@ -596,13 +596,13 @@ SELECT
 FROM distinct_days d
 ORDER BY d.day DESC
     """,
-    )
-    fun getDaywiseBodyScaleLatestWithJoin(
-        accountId: String
-    ): Flow<List<PeriodBodyScaleSummary>>
+  )
+  fun getDaywiseBodyScaleLatestWithJoin(
+    accountId: String
+  ): Flow<List<PeriodBodyScaleSummary>>
 
-    @Query(
-        """
+  @Query(
+    """
     WITH entries_with_period AS (
         SELECT
             e.entryTimestamp,
@@ -645,8 +645,109 @@ ORDER BY d.day DESC
     FROM joined
     ORDER BY period DESC
     """,
-    )
-    fun getMonthlyHistory(
-        accountId: String
-    ): Flow<List<HistoryMonth>>
+  )
+  fun getMonthlyHistory(
+    accountId: String
+  ): Flow<List<HistoryMonth>>
+
+  /**
+   * Get the oldest entry for an account.
+   * @param accountId The account ID
+   * @return The oldest entry if found, null otherwise
+   */
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY entryTimestamp ASC LIMIT 1")
+  suspend fun getOldestEntry(accountId: String): PopulatedActiveEntry?
+
+  /**
+   * Get entry timestamps for streak calculation.
+   * Returns one entry timestamp per day, ordered with newest first.
+   * @param accountId The account ID
+   * @return List of entry timestamps for streak calculation
+   */
+  @Query(
+    """
+        SELECT entryTimestamp
+        FROM entry_view
+        WHERE accountId = :accountId
+        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
+        ORDER BY entryTimestamp DESC
+        """,
+  )
+  suspend fun getStreakData(accountId: String): List<String>
+
+  /**
+   * Get the total count of entries for an account.
+   * @param accountId The account ID
+   * @return The total count of entries
+   */
+  @Query("SELECT COUNT(entryTimestamp) as total FROM entry_view WHERE accountId = :accountId")
+  suspend fun getTotalCount(accountId: String): Int
+
+  /**
+   * Get the longest streak count for an account.
+   * @param accountId The account ID
+   * @return The longest streak count
+   */
+  @Query(
+    """
+        WITH RECURSIVE dates AS (
+            SELECT
+                strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime')) AS date
+            FROM entry_view
+            WHERE accountId = :accountId
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
+            ORDER BY date ASC
+        ),
+        streak_calc AS (
+            SELECT
+                date,
+                1 AS streak_length,
+                date AS streak_start
+            FROM dates
+            WHERE date = (SELECT MIN(date) FROM dates)
+
+            UNION ALL
+
+            SELECT
+                d.date,
+                CASE
+                    WHEN julianday(d.date) = julianday(sc.date) + 1 THEN sc.streak_length + 1
+                    ELSE 1
+                END AS streak_length,
+                CASE
+                    WHEN julianday(d.date) = julianday(sc.date) + 1 THEN sc.streak_start
+                    ELSE d.date
+                END AS streak_start
+            FROM dates d
+            JOIN streak_calc sc ON d.date > sc.date
+            WHERE d.date = (
+                SELECT MIN(d2.date)
+                FROM dates d2
+                WHERE d2.date > sc.date
+            )
+        )
+        SELECT COALESCE(MAX(streak_length), 0) AS longestStreak
+        FROM streak_calc
+        """,
+  )
+  suspend fun getLongestStreakCount(accountId: String): Int
+
+  /**
+   * Get entries for an account in a specific date range (inclusive).
+   * @param accountId The account ID
+   * @param startDate The start date (ISO 8601 string)
+   * @param endDate The end date (ISO 8601 string)
+   * @return List of entries in the date range
+   */
+  @Transaction
+  @Query(
+    """
+        SELECT * FROM entry_view
+        WHERE accountId = :accountId
+          AND datetime(entryTimestamp) >= datetime(:startDate)
+          AND datetime(entryTimestamp) <= datetime(:endDate)
+        ORDER BY datetime(entryTimestamp) DESC
+    """,
+  )
+  suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<PopulatedActiveEntry>
 }

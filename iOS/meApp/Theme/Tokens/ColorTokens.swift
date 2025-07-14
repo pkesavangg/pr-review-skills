@@ -52,6 +52,7 @@ struct ColorTokens {
             // Support
             supportOverlay: neutral500,
             supportToastBackground: blue100,
+            glow: neutral700,
             
             // Action
             actionPrimary: blue900,

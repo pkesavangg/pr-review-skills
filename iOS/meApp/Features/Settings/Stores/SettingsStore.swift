@@ -59,9 +59,6 @@ class SettingsStore: ObservableObject {
     @Published var selectedSegment: GoalTypeSegment = .loseGain
     @Published var latestWeight: Int = 0
     
-    // MARK: - Toggle States
-    @Published var streaksEnabled: Bool = true
-    
     // MARK: - Message Indicators
     @Published var hasUnreadMessages: Bool = true
     
@@ -134,9 +131,6 @@ class SettingsStore: ObservableObject {
     /// Syncs local settings states with account data
     private func syncSettingsStates() {
         guard let account = activeAccount else { return }
-        
-        // Sync streaks enabled state
-        streaksEnabled = account.streaksSettings?.isStreakOn ?? true
         
         // TODO: Sync hasUnreadMessages from message service
         hasUnreadMessages = feedService.getUnreadFeedCount() > 0
@@ -291,7 +285,7 @@ class SettingsStore: ObservableObject {
             return "\(cm) cm"
         case .lb: // Imperial preference – show feet & inches
             let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            return "\(feet[0])' \(feet[1])"  // → 5'8
+            return "\(feet[0])' \(feet[1])”"  // → 5'8”
         case .none:
             return ""
         }
@@ -686,28 +680,6 @@ class SettingsStore: ObservableObject {
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
                 logger.log(level: .error, tag: tag, message: "Notification preference update failed:", data: error.localizedDescription)
-            }
-            notificationService.dismissLoader()
-        }
-    }
-    
-    // MARK: - Streak Helpers
-    func updateStreakStatus(_ isOn: Bool) {
-        guard let account = activeAccount else { return }
-        guard account.streaksSettings?.isStreakOn != isOn else { return }
-        
-        streaksEnabled = isOn // Update local state immediately
-        let timestamp = DateTimeTools.getCurrentDatetimeIsoString()
-        Task {
-            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
-            do {
-                _ = try await accountService.updateStreak(isStreakOn: isOn, streakTimestamp: timestamp)
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.streakSettingUpdated))
-                logger.log(level: .info, tag: tag, message: "Streak status updated to \(isOn)")
-            } catch {
-                streaksEnabled = !isOn // Revert on failure
-                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
-                logger.log(level: .error, tag: tag, message: "Streak status update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
         }

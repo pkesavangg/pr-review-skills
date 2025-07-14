@@ -42,7 +42,7 @@ final class Device {
     var isDeleted: Bool? // If the device is deleted
     var deviceName: String? // Device name
     var deviceType: String? // Device type (e.g., 'scale', 'bgm')
-    var broadcastId: String? // Broadcast ID
+    var broadcastId: Int64? // Broadcast ID
     var broadcastIdString: String? // Broadcast ID as string
     var userNumber: String? // User number
     var protocolType: String? // Protocol type (e.g., 'r4', 'a3')
@@ -70,7 +70,7 @@ final class Device {
          isDeleted: Bool? = nil,
          deviceName: String? = nil,
          deviceType: String? = nil,
-         broadcastId: String? = nil,
+         broadcastId: Int64? = nil,
          broadcastIdString: String? = nil,
          userNumber: String? = nil,
          protocolType: String? = nil,
@@ -112,15 +112,11 @@ final class Device {
         self.metaData = metaData
 
         if let broadcastId = broadcastId {
-          let bidStr = broadcastId
-          if let bidInt = Int(bidStr) {
-            // Determine protocol based on scale source type & sku when available
             let scaleSource = ScaleSourceType(rawValue: bathScale?.scaleType ?? "") ?? .bluetoothScale
-
             let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
-            self.broadcastIdString = ProtocolConversionTools.convertIntToHex(bidInt, protocolType: protocolType)
-          }
+            self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
         }
+
     }
     convenience init(from dto: ScaleDTO,
                      protocolType: String? = nil,
@@ -141,7 +137,7 @@ final class Device {
             isDeleted: dto.isDeleted,
             deviceName: dto.name,
             deviceType: "scale",
-            broadcastId: dto.broadcastId.map { String($0)},
+            broadcastId: dto.broadcastId.map { Int64($0) },
             broadcastIdString: dto.broadcastIdString,
             userNumber: dto.userNumber.map { String($0) },
             protocolType: protocolType,
@@ -189,3 +185,5 @@ final class Device {
 
 /// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.
 extension Device: @unchecked Sendable {}
+// Extend `Device` to conform to `Identifiable` so it can be used with SwiftUI's `.sheet(item:)` API.
+extension Device: Identifiable {}

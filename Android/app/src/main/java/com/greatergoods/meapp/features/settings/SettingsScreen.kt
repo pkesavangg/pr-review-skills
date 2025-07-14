@@ -79,7 +79,11 @@ fun SettingsScreenContent(
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.Integrations,
-                            onClick = { },
+                            onClick = {
+                              coroutineScope.launch {
+                                backStack.addRoute(AppRoute.Integration.IntegrationList)
+                              }
+                            },
                         ),
                         SettingsItem(
                             title = SettingsScreenStrings.ExportData,
@@ -204,7 +208,7 @@ fun SettingsScreenContent(
                             type = SettingsItemType.Action(),
                             onClick = {
                                 coroutineScope.launch {
-                                    // backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
+                                    backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
                                 }
                             },
                         ),

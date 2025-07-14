@@ -19,6 +19,7 @@ data class HistoryDetailState(
 sealed interface HistoryDetailIntent : IReducer.Intent {
     data object Refresh : HistoryDetailIntent
     data class LoadHistoryDetail(val month: String) : HistoryDetailIntent
+    data class DeleteEntry(val entry: ScaleEntry) : HistoryDetailIntent
     object Retry : HistoryDetailIntent
     data class SetError(val message: String) : HistoryDetailIntent
     object ClearError : HistoryDetailIntent

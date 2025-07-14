@@ -158,14 +158,15 @@ private fun DashboardMetricsGrid(
                         isDragging = isDragging,
                         inEditMode = inEditMode,
                         isSelected = isSelected,
-                        modifier = if (inEditMode) Modifier.draggableHandle(
+                        modifier = Modifier.draggableHandle(
+                            enabled = inEditMode,
                             onDragStarted = {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                             },
                             onDragStopped = {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
                             },
-                        ) else Modifier,
+                        ),
 
                         onBadgeClick = {
                             onMetricMoved(true, false, metric)
