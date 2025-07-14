@@ -80,7 +80,7 @@ data class BtWifiScaleSetupState(
  */
 sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
 
-  data class SetWifiList(val wifiList : List<GGWifiInfo>) : BtWifiScaleSetupIntent
+  data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(
     val sku: String,
   ) : BtWifiScaleSetupIntent
