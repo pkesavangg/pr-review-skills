@@ -666,7 +666,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
         if metricType == .four {
             let fourLabels: Set<String> = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
             let filteredMetrics = metrics.filter { fourLabels.contains($0.label) }
-            logger.log(level: .debug, tag: "DashboardStore", message: "4-metric mode: filtered \(metrics.count) metrics to \(filteredMetrics.count) metrics")
             return filteredMetrics
         } else {
                 return metrics
@@ -677,10 +676,8 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
             if metricType == .four {
                 let fourLabels: Set<String> = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
                 let filteredMetrics = activeMetrics.filter { fourLabels.contains($0.label) }
-                logger.log(level: .debug, tag: "DashboardStore", message: "4-metric mode (normal): activeMetrics=\(activeMetrics.count), filtered=\(filteredMetrics.count), metricType=\(metricType)")
                 return filteredMetrics
             } else {
-                logger.log(level: .debug, tag: "DashboardStore", message: "12-metric mode: showing \(activeMetrics.count) active metrics")
                 return activeMetrics
             }
         }
@@ -1104,8 +1101,6 @@ class DashboardStoreOld: ObservableObject, EntryServiceDelegate {
         activeMetricsCount = activeMetrics.count
 
         logger.log(level: .info, tag: "DashboardStore", message: "Updated body metrics from API: \(apiBodyMetrics) -> \(displayMetrics), active count: \(activeMetricsCount), total metrics: \(metrics.count)")
-        logger.log(level: .debug, tag: "DashboardStore", message: "Active metrics in API order: \(activeMetrics.map { $0.label })")
-        logger.log(level: .debug, tag: "DashboardStore", message: "All metrics: \(metrics.map { $0.label })")
     }
 
 

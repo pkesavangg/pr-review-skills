@@ -15,7 +15,7 @@ struct GraphView: View {
 
     // Check if there are any entries to display
     private var hasEntries: Bool {
-      !dashboardStore.visibleOperations.isEmpty
+        return !dashboardStore.continuousOperations.isEmpty
     }
 
     // Get the appropriate empty state message

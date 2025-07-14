@@ -20,6 +20,14 @@ struct StreakCardView: View {
     
     @Environment(\.appTheme) private var theme
     
+    private var borderColor: Color {
+        isDropTarget ? theme.actionSecondary : Color.clear
+    }
+    
+    private var borderWidth: CGFloat {
+        isDropTarget ? 2 : 0
+    }
+    
     var body: some View {
         NoteBox(alignCenter: true) {
             content()

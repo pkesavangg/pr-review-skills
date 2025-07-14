@@ -10,9 +10,11 @@ protocol DashboardMetricsManaging {
     func resetMetricsToDefaults() async throws
     func toggleMetricVisibility(at index: Int) async throws
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws
-  func getMetricValue(for label: String, from summary: BathScaleWeightSummary) async -> Double?
-  func createEntryForMetricInfo(metricLabel: String?) async -> Entry
-  func getBodyMetric(for metricLabel: String) async -> BodyMetric
+    func getMetricValue(for label: String, from summary: BathScaleWeightSummary) async -> Double?
+    func createEntryForMetricInfo(metricLabel: String?) async -> Entry
+    func getBodyMetric(for metricLabel: String) async -> BodyMetric
+    func handleMetricLongPress(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>)
+    func handleSelectedMetricInfoChange(_ newValue: String?, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) async
 }
 
 /// Manages all metric-related operations for the dashboard
@@ -22,6 +24,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     // MARK: - Dependencies
     @Injector private var accountService: AccountService
     @Injector private var logger: LoggerService
+    @Injector private var entryService: EntryService
 
     // MARK: - Published Properties
     @Published var state: MetricsState
@@ -175,7 +178,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
       }
 
       if let bmr = selectedPoint.bmr {
-          let bmrValue = bmr / 10.0
+          let bmrValue = Double(bmr) / 10.0
           let formattedValue = BodyMetricsConvertor.convert(bmrValue, shouldCompose: false, wholeNumber: true)
           updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
       }
@@ -276,8 +279,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws {
-      state.metrics.move(fromOffsets: source, toOffset: destination)
-      logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics from \(source) to \(destination)")
+        state.metrics.move(fromOffsets: source, toOffset: destination)
+        
+        // Ensure activeMetricsCount is still valid after reordering
+        // The activeMetricsCount should represent the number of metrics that are currently visible
+        // We need to recalculate this based on the current state
+        let currentActiveCount = min(state.activeMetricsCount, state.metrics.count)
+        state.activeMetricsCount = currentActiveCount
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics from \(source) to \(destination), activeMetricsCount: \(state.activeMetricsCount)")
     }
 
     // MARK: - Utility Methods
@@ -316,16 +326,49 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         if isEditMode {
             if metricType == .four {
                 let fourLabels: Set<String> = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-                return state.metrics.filter { fourLabels.contains($0.label) }
+                let filteredMetrics = state.metrics.filter { fourLabels.contains($0.label) }
+                return filteredMetrics
             } else {
                 return state.metrics
             }
         } else {
-            return Array(state.metrics.prefix(state.activeMetricsCount))
+            if metricType == .four {
+                let fourLabels: Set<String> = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
+                let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
+                let filteredMetrics = activeMetrics.filter { fourLabels.contains($0.label) }
+                return filteredMetrics
+            } else {
+                // For 12-metric mode, show only active metrics (respect activeMetricsCount)
+                let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
+                return activeMetrics
+            }
         }
     }
 
-    func createEntryForMetricInfo(metricLabel: String?) -> Entry {
+    /// Returns grid columns configuration based on metric type
+    func getMetricGridColumns(for metricType: DashboardMetricType) -> [GridItem] {
+        let columnCount = metricType == .four ? 
+            DashboardConstants.UI.fourMetricGridColumns : 
+            DashboardConstants.UI.twelveMetricGridColumns
+        
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
+    }
+
+    func createEntryForMetricInfo(metricLabel: String? = nil) async -> Entry {
+        // Get the latest entry to use its actual values
+        let latestEntry = try? await entryService.getLatestEntry()
+        
+        if let latestEntry = latestEntry {
+            // Use the latest entry with current values
+            return latestEntry
+        } else {
+            // Fallback to creating a new entry with current metric values
+            return createEntryForMetricInfoSync(metricLabel: metricLabel)
+        }
+    }
+
+    // Synchronous version for UI operations
+    func createEntryForMetricInfoSync(metricLabel: String? = nil, weight: Int = 0) -> Entry {
         let entry = Entry(
             id: UUID(),
             entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
@@ -335,19 +378,59 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             isSynced: true
         )
 
-        // Create entry with current metric values
-        let bmiStr = state.metrics.first(where: { $0.label == DashboardStrings.bmi })?.value
-        let bodyFatStr = state.metrics.first(where: { $0.label == DashboardStrings.bodyFat })?.value
-        let muscleStr = state.metrics.first(where: { $0.label == DashboardStrings.muscle })?.value
-        let waterStr = state.metrics.first(where: { $0.label == DashboardStrings.water })?.value
+        // Create entry with current metric values from state
+        // Use the actual current values from the metrics state
+        let bmiMetric = state.metrics.first(where: { $0.label == DashboardStrings.bmi })
+        let bodyFatMetric = state.metrics.first(where: { $0.label == DashboardStrings.bodyFat })
+        let muscleMetric = state.metrics.first(where: { $0.label == DashboardStrings.muscle })
+        let waterMetric = state.metrics.first(where: { $0.label == DashboardStrings.water })
+        let heartBpmMetric = state.metrics.first(where: { $0.label == DashboardStrings.heartBpm })
+        let boneMetric = state.metrics.first(where: { $0.label == DashboardStrings.bone })
+        let visceralFatMetric = state.metrics.first(where: { $0.label == DashboardStrings.visceralFat })
+        let subFatMetric = state.metrics.first(where: { $0.label == DashboardStrings.subFat })
+        let proteinMetric = state.metrics.first(where: { $0.label == DashboardStrings.protein })
+        let skelMuscleMetric = state.metrics.first(where: { $0.label == DashboardStrings.skelMuscle })
+        let bmrMetric = state.metrics.first(where: { $0.label == DashboardStrings.bmrKcal })
+        let metAgeMetric = state.metrics.first(where: { $0.label == DashboardStrings.metAge })
 
+        // Convert string values to appropriate types
+        let bmiValue = Double(bmiMetric?.value ?? "").flatMap { Int($0) }
+        let bodyFatValue = Double(bodyFatMetric?.value ?? "").flatMap { Int($0) }
+        let muscleValue = Double(muscleMetric?.value ?? "").flatMap { Int($0) }
+        let waterValue = Double(waterMetric?.value ?? "").flatMap { Int($0) }
+        let heartBpmValue = Double(heartBpmMetric?.value ?? "").flatMap { Int($0) }
+        let boneValue = Double(boneMetric?.value ?? "").flatMap { Int($0) }
+        let visceralFatValue = Double(visceralFatMetric?.value ?? "").flatMap { Int($0) }
+        let subFatValue = Double(subFatMetric?.value ?? "").flatMap { Int($0) }
+        let proteinValue = Double(proteinMetric?.value ?? "").flatMap { Int($0) }
+        let skelMuscleValue = Double(skelMuscleMetric?.value ?? "").flatMap { Int($0) }
+        let bmrValue = Double(bmrMetric?.value ?? "").flatMap { Int($0) }
+        let metAgeValue = Double(metAgeMetric?.value ?? "").flatMap { Int($0) }
+
+        // Get the latest weight from data manager state
+        let latestWeight = weight
+        
         entry.scaleEntry = BathScaleEntry(
-            weight: 0, // This should be provided by the caller
-            bodyFat: bodyFatStr.flatMap { Double($0) }.flatMap { Int($0) },
-            muscleMass: muscleStr.flatMap { Double($0) }.flatMap { Int($0) },
-            water: waterStr.flatMap { Double($0) }.flatMap { Int($0) },
-            bmi: bmiStr.flatMap { Double($0) }.flatMap { Int($0) },
+            weight: latestWeight,
+            bodyFat: bodyFatValue,
+            muscleMass: muscleValue,
+            water: waterValue,
+            bmi: bmiValue,
             source: "dashboard"
+        )
+
+        // Add metric entry with all the values
+        entry.scaleEntryMetric = BathScaleMetric(
+            bmr: bmrValue,
+            metabolicAge: metAgeValue,
+            proteinPercent: proteinValue,
+            pulse: heartBpmValue,
+            skeletalMusclePercent: skelMuscleValue,
+            subcutaneousFatPercent: subFatValue,
+            visceralFatLevel: visceralFatValue,
+            boneMass: boneValue,
+            impedance: nil,
+            unit: nil
         )
 
         return entry
@@ -454,5 +537,37 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         state.activeMetricsCount = activeMetrics.count
 
         logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics order from API: \(displayMetrics)")
+    }
+
+    // MARK: - Metric Interaction Methods
+    
+    /// Handle metric long press interaction
+    /// Creates an entry for metric info display and updates selection state
+    func handleMetricLongPress(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) {
+        // Update selection state if needed
+        // Note: This would need to be called from the store since it manages UI state
+        
+        // Create entry with the latest data and open metric info sheet
+        let entry = createEntryForMetricInfoSync(metricLabel: metricLabel)
+        selectedEntry.wrappedValue = entry
+        selectedMetric.wrappedValue = getBodyMetric(for: metricLabel)
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Handled metric long press for: \(metricLabel)")
+    }
+    
+    /// Handle selected metric info change
+    /// Creates an entry for the selected metric and updates UI state
+    func handleSelectedMetricInfoChange(_ newValue: String?, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) async {
+        guard let label = newValue else { return }
+        
+        // Create entry with the latest data
+        let entry = await createEntryForMetricInfo(metricLabel: label)
+        
+        await MainActor.run {
+            selectedEntry.wrappedValue = entry
+            selectedMetric.wrappedValue = getBodyMetric(for: label)
+        }
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Handled selected metric info change for: \(label)")
     }
 }

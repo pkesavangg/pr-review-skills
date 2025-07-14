@@ -80,7 +80,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // Clear selection state for better UX
             state.clearSelection()
 
-            // Log scroll end for debugging
             os_log("ScrollPhase: idle - Scroll ended", log: perfLog, type: .info)
 
         case .tracking:
@@ -120,7 +119,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 // Update scrolling state
                 self.state.updateScrollState(isScrolling: false)
 
-                // Log scroll end for debugging
                 os_log("Scroll ended with enhanced page snapping", log: self.perfLog, type: .info)
 
                 // Apply snapping
@@ -228,14 +226,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return summary.date >= visibleStart && summary.date <= visibleEnd
         }
 
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Visible operations: \(visibleOps.count) out of \(operations.count)")
         return visibleOps
     }
 
     // MARK: - Entry Visibility
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) async {
         guard let latestDate = operations.map(\.date).max() else { return }
-        await updateScrollPosition(to: latestDate)
+        
+        // Immediately update scroll position for initialization
+        state.xScrollPosition = latestDate
+        
+        logger.log(level: .info, tag: "DashboardGraphManager", message: "Ensured latest entries visible at date: \(latestDate)")
     }
 
     // MARK: - X-Axis Generation

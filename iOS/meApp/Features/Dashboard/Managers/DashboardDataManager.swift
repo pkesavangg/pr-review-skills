@@ -226,6 +226,15 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         }
     }
 
+    // Synchronous version for UI operations
+    func getLatestEntrySync() -> Entry? {
+        // Return the latest entry from state if available
+        // This is a simplified version for UI operations
+        // For now, we'll return nil to use the fallback method
+        // In a real implementation, you might cache the latest entry in state
+        return nil
+    }
+
     // MARK: - Cache Management
     func clearCache() async throws {
         do {
@@ -290,8 +299,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         // Update published arrays from cache
         state.dailySummaries = Array(state.dailyCache.values).sorted { $0.period < $1.period }
         state.monthlySummaries = Array(state.monthlyCache.values).sorted { $0.period < $1.period }
-
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Published arrays updated - Daily: \(state.dailySummaries.count), Monthly: \(state.monthlySummaries.count)")
     }
 
     private func limitToYearlyData(_ monthlyData: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {

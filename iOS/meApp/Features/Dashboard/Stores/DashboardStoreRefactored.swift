@@ -99,16 +99,16 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     var metricGridColumns: [GridItem] {
-        state.metrics.metricType == .four ?
-        Array(repeating: GridItem(.flexible(), spacing: 16), count: 2) :
-        Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
+        return metricsManager.getMetricGridColumns(for: state.metrics.metricType)
     }
 
     var metricsToShow: [MetricItem] {
-        return metricsManager.getMetricsToShow(
+        let result = metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
             metricType: state.metrics.metricType
         )
+
+        return result
     }
 
     var streakColumns: [GridItem] {
@@ -116,7 +116,9 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     var streakItemsToShow: [MetricItem] {
-        return streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
+        let result = streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
+
+        return result
     }
 
     var isAnyItemBeingDragged: Bool {
@@ -278,7 +280,8 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
 
     /// Returns true if there are entries but none in the current time period
     var hasEntriesButNoneInCurrentPeriod: Bool {
-        hasAnyEntries && continuousOperations.isEmpty
+        let result = !continuousOperations.isEmpty && visibleOperations.isEmpty
+        return result
     }
 
     // Delegate time calculations to GraphManager
@@ -344,8 +347,13 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     // MARK: - Dashboard Initialization
 
     private func initializeDashboard() async {
+        // Determine dashboard metric type based on R4 scale presence
         await determineDashboardMetricType()
+        
+        // Load dashboard configuration from API first
         await loadDashboardConfigurationFromAPI()
+        
+        // Then load other data
         loadLatestEntryData()
         await loadInitialData()
     }
@@ -356,22 +364,32 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
       let hasR4Scale = await checkForR4ScaleInPairedDevices()
       let hasR4Entries = await checkForR4ScaleEntries()
 
+      logger.log(level: .info, tag: "DashboardStore", message: "R4 scale detection: hasR4Scale=\(hasR4Scale), hasR4Entries=\(hasR4Entries)")
+
       if hasR4Scale || hasR4Entries {
           state.metrics.metricType = .twelve
-          logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metric type set to 12 (R4 scale detected)")
+          // Also update the metrics manager state to ensure synchronization
+          metricsManager.state.metricType = .twelve
+          logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metric type set to 12 (R4 scale detected) - Centralized: \(state.metrics.metricType), Manager: \(metricsManager.state.metricType)")
       } else {
           state.metrics.metricType = .four
-          logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metric type set to 4 (no R4 scale)")
+          // Also update the metrics manager state to ensure synchronization
+          metricsManager.state.metricType = .four
+          logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metric type set to 4 (no R4 scale) - Centralized: \(state.metrics.metricType), Manager: \(metricsManager.state.metricType)")
       }
     }
 
     private func checkForR4ScaleInPairedDevices() async -> Bool {
         do {
             let devices = try await scaleService.getDevices()
+            
             let r4Scales = devices.filter { device in
                 let scaleType = ScaleTypeHelper.determineScaleType(for: device)
-                return scaleType == .bluetoothR4
+                let isR4 = scaleType == .bluetoothR4
+                return isR4
             }
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Found \(r4Scales.count) R4 scales")
             return !r4Scales.isEmpty
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to check for R4 scales: \(error)")
@@ -441,9 +459,13 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     // Delegate configuration loading to respective managers
     private func loadDashboardConfigurationFromAPI() async {
         do {
+            // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
+            
+            // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
-            logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API")
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration: \(error)")
         }
@@ -508,7 +530,7 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         let metricsToShow = self.metricsToShow
         guard reorderedIndex < metricsToShow.count else { return }
         let metric = metricsToShow[reorderedIndex]
-        guard let originalIndex = state.metrics.metrics.firstIndex(where: { $0.id == metric.id }) else { return }
+        guard let originalIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == metric.id }) else { return }
         Task {
             try? await metricsManager.toggleMetricVisibility(at: originalIndex)
         }
@@ -518,8 +540,8 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
         let metricsToShow = self.metricsToShow
         guard reorderedIndex < metricsToShow.count else { return false }
         let metric = metricsToShow[reorderedIndex]
-        guard let originalIndex = state.metrics.metrics.firstIndex(where: { $0.id == metric.id }) else { return false }
-        return originalIndex >= state.metrics.activeMetricsCount
+        guard let originalIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == metric.id }) else { return false }
+        return originalIndex >= metricsManager.state.activeMetricsCount
     }
 
     // Delegate streak management to StreakManager
@@ -548,7 +570,11 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     func resetDragState() {
-        state.ui.resetDragState()
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+
+        state.ui.gridLayoutId = UUID()
     }
 
     func selectMetric(_ label: String) {
@@ -581,7 +607,13 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
 
         Task {
             do {
+                // Save dashboard metrics configuration to API
+                // This sends the current dashboard metrics configuration to the server
+                // Sends body metrics in the order they appear on the dashboard (from top to bottom)
+                // Only includes body metrics as per API specification
                 try await metricsManager.saveMetricsToAPI()
+
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -622,6 +654,15 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
                 Task {
                     try? await self.metricsManager.resetMetricsToDefaults()
                     try? await self.streakManager.resetStreakData()
+                    
+                    // After resetting metrics to defaults, update them with latest data
+                    // This ensures the values are not placeholder but actual data
+                    if let latestEntry = try? await self.dataManager.getLatestEntry() {
+                        try? await self.metricsManager.updateMetrics(with: latestEntry)
+                    }
+                    
+                    // Save the reset configuration to API
+                    try? await self.metricsManager.saveMetricsToAPI()
                 }
 
                 self.state.ui.isGoalCardRemoved = false
@@ -746,7 +787,19 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
 
     // Delegate entry creation to MetricsManager
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
-        return metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
+        // Use the latest entry from data manager if available
+        if let latestEntry = dataManager.getLatestEntrySync() {
+            return latestEntry
+        } else {
+            // Fallback to creating a new entry with latest weight
+            let latestWeight = dataManager.state.latestWeightStored
+            return metricsManager.createEntryForMetricInfoSync(metricLabel: metricLabel, weight: latestWeight)
+        }
+    }
+
+    // Async version for when we need the latest data
+    func createEntryForMetricInfo(metricLabel: String? = nil) async -> Entry {
+        return await metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
     }
 
     func getBodyMetric(for metricLabel: String) -> BodyMetric {
@@ -830,6 +883,122 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
 
     // Remove graph helper methods - now in GraphManager
 
+    // MARK: - Drag and Drop Bindings
+
+    /// Binding for metrics array to enable live reordering during drag
+    var metricsBinding: Binding<[MetricItem]> {
+        Binding(
+            get: { 
+                return self.metricsManager.state.metrics 
+            },
+            set: { newValue in
+                self.metricsManager.state.metrics = newValue
+            }
+        )
+    }
+
+    /// Binding for streak items array to enable live reordering during drag
+    var streakItemsBinding: Binding<[MetricItem]> {
+        Binding(
+            get: { 
+                return self.streakManager.state.streakItems 
+            },
+            set: { newValue in
+                self.streakManager.state.streakItems = newValue
+            }
+        )
+    }
+
+    /// Binding for dragging metric state
+    var draggingMetricBinding: Binding<MetricItem?> {
+        Binding(
+            get: { 
+                return self.state.ui.draggingMetric 
+            },
+            set: { newValue in
+                self.state.ui.draggingMetric = newValue
+            }
+        )
+    }
+
+    /// Binding for dragging streak state
+    var draggingStreakBinding: Binding<MetricItem?> {
+        Binding(
+            get: { 
+                return self.state.ui.draggingStreak 
+            },
+            set: { newValue in
+                self.state.ui.draggingStreak = newValue
+            }
+        )
+    }
+
+    /// Binding for drop hover ID
+    var dropHoverIdBinding: Binding<String?> {
+        Binding(
+            get: { 
+                return self.state.ui.dropHoverId 
+            },
+            set: { newValue in
+                self.state.ui.dropHoverId = newValue
+            }
+        )
+    }
+
+    // MARK: - Drag State Management
+
+    /// Start dragging a metric item
+    func startDraggingMetric(_ metric: MetricItem) {
+        state.ui.draggingMetric = metric
+    }
+
+    /// Start dragging a streak item
+    func startDraggingStreak(_ streak: MetricItem) {
+        state.ui.draggingStreak = streak
+    }
+
+    /// Update drop target during drag
+    func updateDropTarget(_ targetId: String?) {
+        state.ui.dropHoverId = targetId
+    }
+
+    /// End dragging and clear drag state
+    func endDragging() {
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+    }
+
+    /// Handle drag end for metrics
+    func handleMetricDragEnd() {
+        endDragging()
+        // Force UI update to reflect any reordering
+        objectWillChange.send()
+    }
+
+    /// Handle drag end for streaks
+    func handleStreakDragEnd() {
+        endDragging()
+        // Force UI update to reflect any reordering
+        objectWillChange.send()
+    }
+
+    // MARK: - Reordering Methods
+
+    /// Reorder metrics during drag
+    func reorderMetrics(from source: IndexSet, to destination: Int) {
+        metricsManager.state.metrics.move(fromOffsets: source, toOffset: destination)
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Reordered metrics from \(source) to \(destination)")
+    }
+
+    /// Reorder streak items during drag
+    func reorderStreakItems(from source: IndexSet, to destination: Int) {
+        streakManager.state.streakItems.move(fromOffsets: source, toOffset: destination)
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Reordered streak items from \(source) to \(destination)")
+    }
+
     // MARK: - Graph State Management
 
     /// Clear all selection states
@@ -846,6 +1015,9 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     func initializeChart() {
         Task {
             await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
+            
+            // Force UI update after scroll position is set
+            objectWillChange.send()
         }
         updateWeightDisplayForCurrentView()
     }
@@ -942,6 +1114,74 @@ class DashboardStore: ObservableObject, EntryServiceDelegate {
     }
 
     // Remove duplicate helper methods - now handled by managers
+
+    // MARK: - UI State Management
+    
+    /// Handle metric long press interaction
+    /// Updates selection state and creates entry for metric info display
+    func handleMetricLongPress(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) {
+        // Update selection state if needed
+        if state.ui.selectedMetricLabel != metricLabel {
+            selectMetric(metricLabel)
+        }
+        
+        // Delegate to metrics manager for entry creation
+        Task {
+            await metricsManager.handleMetricLongPress(for: metricLabel, selectedEntry: selectedEntry, selectedMetric: selectedMetric)
+        }
+    }
+    
+    /// Handle selected metric info change
+    /// Updates UI state and creates entry for the selected metric
+    func handleSelectedMetricInfoChange(_ newValue: String?, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) async {
+        guard let label = newValue else { return }
+        state.ui.selectedMetricLabel = label
+        
+        // Delegate to metrics manager for entry creation
+        await metricsManager.handleSelectedMetricInfoChange(newValue, selectedEntry: selectedEntry, selectedMetric: selectedMetric)
+    }
+    
+    /// Handle selected metric label change
+    /// Clears selection state when metric label is cleared
+    func handleSelectedMetricLabelChange(_ newValue: String?) {
+        if newValue == nil {
+            // Clear selection state
+            // Note: This is handled by the UI layer since it manages the selectedEntry and selectedMetric state
+        }
+    }
+    
+    /// Handle selected entry change
+    /// Clears metric selection when entry is cleared
+    func handleSelectedEntryChange(_ newValue: Entry?) {
+        if newValue == nil {
+            state.ui.selectedMetricLabel = nil
+        }
+    }
+    
+    /// Handle metric info sheet dismiss
+    /// Clears metric selection when sheet is dismissed
+    func handleMetricInfoSheetDismiss(_ newValue: MetricInfoWrapper?) {
+        if newValue == nil {
+            state.ui.selectedMetricLabel = nil
+        }
+    }
+    
+    // MARK: - Lifecycle Methods
+    
+    /// Perform actions when dashboard appears
+    /// Loads latest data, goal card, and ensures proper initialization
+    func onAppearActions() {
+        loadLatestEntryData()
+        loadGoalCardData()
+        // Handle any settings changes
+        handleSettingsChange()
+        // Ensure chart shows the latest entries by default
+        Task {
+            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
+        }
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
+    }
 
     // MARK: - Memory Management
 
