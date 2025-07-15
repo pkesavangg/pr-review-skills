@@ -188,24 +188,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     // MARK: - Data Retrieval
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary] {
         switch period {
-        case .week:
+        case .week, .month:
             // For week view, use daily summaries
             return state.dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
-        case .month:
-            // For month view, use daily summaries
-            return state.dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
-        case .year:
+        case .year, .total:
             // For year view, use monthly summaries but limit to 12 values per year
-            let monthlyData = state.monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
-            return limitToYearlyData(monthlyData)
-        case .total:
-            // For total view, check if entries are in the same era
-            let monthlyData = state.monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
-            if areEntriesInSameEra(monthlyData) {
-                return limitToYearlyData(monthlyData)
-            } else {
-                return monthlyData
-            }
+            return state.monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
         }
     }
 
@@ -228,21 +216,15 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Cache Management
     func clearCache() async throws {
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Clearing dashboard cache")
+      logger.log(level: .info, tag: "DashboardDataManager", message: "Clearing dashboard cache")
 
-            state.dailyCache.removeAll()
-            state.monthlyCache.removeAll()
-            state.dailySummaries.removeAll()
-            state.monthlySummaries.removeAll()
-            state.latestWeightStored = 0
+      state.dailyCache.removeAll()
+      state.monthlyCache.removeAll()
+      state.dailySummaries.removeAll()
+      state.monthlySummaries.removeAll()
+      state.latestWeightStored = 0
 
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Cache cleared successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to clear cache: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to clear cache")
-        }
+      logger.log(level: .info, tag: "DashboardDataManager", message: "Cache cleared successfully")
     }
 
     // MARK: - Data Validation

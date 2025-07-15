@@ -12,6 +12,7 @@ struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     @State private var hasDetectedScrollInCurrentGesture = false
+    @State private var animationTrigger = 0
 
     // Check if there are any entries to display
     private var hasEntries: Bool {
@@ -35,17 +36,21 @@ struct GraphView: View {
                     .padding(.leading, .spacingSM)
                     .padding(.vertical, .spacingXS)
 
-            if hasEntries {
-                // Show chart when there are entries
-                chartView
-            } else {
-                // Show empty state message when there are no entries
-                emptyStateView
-            }
+            chartView
         }
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
+            // Trigger animation for period change
+            withAnimation(.easeInOut(duration: 0.6)) {
+                animationTrigger += 1
+            }
+        }
+        .onChange(of: dashboardStore.state.graph.dataChangeTrigger) { _, _ in
+            // Trigger animation for data changes
+            withAnimation(.easeInOut(duration: 0.4)) {
+                animationTrigger += 1
+            }
         }
     }
 
@@ -59,11 +64,7 @@ struct GraphView: View {
             }
             .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod))
             .chartScrollableAxes(.horizontal)
-            .chartScrollTargetBehavior(.paging)
-            .chartYScale(domain: {
-                let yAxisScale = dashboardStore.getYAxisScale()
-                return yAxisScale.domain
-            }())
+            .chartYScale(domain: dashboardStore.yAxisDomain)
             .chartScrollPosition(x: Binding(
                 get: { dashboardStore.state.graph.xScrollPosition },
                 set: { newPosition in
@@ -118,6 +119,10 @@ struct GraphView: View {
             .onAppear {
                 dashboardStore.initializeChart()
             }
+            // Add animation modifier for smooth chart transitions
+            .animation(.easeInOut(duration: 0.5), value: dashboardStore.yAxisDomain)
+            .animation(.easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationTrigger)
             // Simplified scroll detection - only detect when scrolling starts/ends
             .simultaneousGesture(
                 DragGesture(minimumDistance: 3)
@@ -169,9 +174,10 @@ struct GraphView: View {
     // MARK: - Chart Content Builders
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
-        let yAxisScale = dashboardStore.getYAxisScale()
+        // Use cached Y-axis ticks instead of calling getYAxisScale() to prevent publishing errors
+        let yAxisTicks = dashboardStore.yAxisTicks
 
-        ForEach(yAxisScale.ticks, id: \.self) { tick in
+        ForEach(yAxisTicks, id: \.self) { tick in
             if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
                 RuleMark(y: .value("YGrid", tick))
                     .lineStyle(StrokeStyle(lineWidth: 1))
@@ -219,9 +225,10 @@ struct GraphView: View {
 
     // MARK: - Axis Marks Builders
     private var yAxisMarks: some AxisContent {
-        let yAxisScale = dashboardStore.getYAxisScale()
+        // Use cached Y-axis ticks instead of calling getYAxisScale() to prevent publishing errors
+        let yAxisTicks = dashboardStore.yAxisTicks
 
-        return AxisMarks(values: yAxisScale.ticks) { value in
+        return AxisMarks(values: yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
                 if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
                     AxisValueLabel {
