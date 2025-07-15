@@ -146,12 +146,15 @@ extension Validator where Value == String {
         return regex?.firstMatch(in: value, options: [], range: range) != nil
     }
     
-    /// Validator that checks if the display name is 'guest' (case-insensitive)
-    /// Returns false (invalid) if the value is 'guest'
+    /// Validator that ensures the display name is not 'guest' (case-insensitive).
+    /// Returns false if the input is 'guest', which is a reserved username.
+    /// In version 0412, 'guest' is used as a fallback when weight data doesn't match any user,
+    /// so it must not be used as a regular display name.
     public static let userNameUnavailable = Validator(type: .userNameUnavailable) { value in
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedValue.lowercased() != "guest"
     }
+
 }
 
 // MARK: - Integer Validators

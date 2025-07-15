@@ -17,10 +17,8 @@ enum BtWifiScaleSetupStep: Int, CaseIterable {
     case wakeup
     /// Connecting to the scale via Bluetooth.
     case connectingBluetooth
-    /// Gathering available Wi-Fi networks.
+    /// Gathering available Wi-Fi networks with error handling.
     case gatheringNetwork
-    /// Handle duplicate scales found.
-    case duplicatesFound
     /// Show available Wi-Fi networks list.
     case availableWifiList
     /// Enter Wi-Fi password.
@@ -42,4 +40,4 @@ enum BtWifiScaleSetupStep: Int, CaseIterable {
 
     /// Convenience property for page-based controls.
     var index: Int { rawValue }
-} 
+}
