@@ -41,6 +41,16 @@ public struct WifiDetails: Sendable, Equatable {
     }
 }
 
+public struct WifiSetupResponse: Sendable, Equatable {
+    public var wifiState: String
+    public var errorCode: String?
+
+    public init(wifiState: String, errorCode: String? = nil) {
+        self.wifiState = wifiState
+        self.errorCode = errorCode
+    }
+}
+
 /// Represents a key/value device-setting update request.
 public struct DeviceSetting: Sendable, Equatable {
     public let key: String

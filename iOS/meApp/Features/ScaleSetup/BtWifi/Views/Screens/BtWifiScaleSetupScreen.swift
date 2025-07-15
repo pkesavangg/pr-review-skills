@@ -89,7 +89,7 @@ struct BtWifiScaleSetupScreen: View {
                            action: {
                     withAnimation {
                         hideKeyboard()
-                        setupStore.moveToPreviousStep()
+                        setupStore.handleBackButtonClick()
                     }
                 })
                 Spacer()

@@ -16,10 +16,12 @@ struct WifiNetworksListView: View {
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             ForEach(networks, id: \.ssid) { network in
-                Button {
+                Button(action: {
                     onNetworkSelected(network)
-                } label: {
-                    networkListItem(network: network)
+                }) {
+                    networkListItem(network: network) {
+                        onNetworkSelected(network)
+                    }
                 }
                 if network.ssid != networks.last?.ssid {
                     Divider()
@@ -35,14 +37,14 @@ struct WifiNetworksListView: View {
     }
     
     @ViewBuilder
-    private func networkListItem(network: WifiDetails) -> some View {
+    private func networkListItem(network: WifiDetails, onNetworkSelected: @escaping () -> Void) -> some View {
         ListItemView(
             leadingImage: AppAssets.wifi,
             title: network.ssid ?? "Unknown Network",
             trailing: Image(AppAssets.chevronRight)
                 .foregroundColor(theme.actionPrimary),
             rowHeight: 48,
-            onTap: {},
+            onTap: onNetworkSelected,
             verticalPadding: .zero
         )
     }
