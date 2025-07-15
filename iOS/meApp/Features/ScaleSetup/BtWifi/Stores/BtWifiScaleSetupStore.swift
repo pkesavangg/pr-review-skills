@@ -139,8 +139,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         state: connectionState,
                         setupType: .btWifiR4,
                         onTryAgain: { [weak self] in
-                            self?.scaleSetupError = .none
-                            self?.navigateToStep(.gatheringNetwork)
+                            self?.tryAgainButtonHandler(isFromBtConnection: true)
                         },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
@@ -172,7 +171,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 case .noNetworkFound:
                     return AnyView(WifiConnectionView(
                         state: .noNetworks,
-                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
                         }
@@ -183,8 +182,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             connectedWifiNetwork: connectedWifiNetwork,
                             wifiNetworks: wifiNetworks,
                             onRefresh: { [weak self] in
-                                self?.scaleSetupError = .none
-                                self?.navigateToStep(.gatheringNetwork)
+                                self?.tryAgainButtonHandler()
                             },
                             onNetworkSelected: { [weak self] network in
                                 self?.selectedWifiNetwork = network
@@ -200,7 +198,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 } else {
                     return AnyView(WifiConnectionView(
                         state: .noNetworks,
-                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
                         }
@@ -211,7 +209,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     state: connectionState,
                     errorCode: errorCode,
                     onTryAgain: { [weak self] in
-                        self?.navigateToStep(.wifiPassword)
+                        self?.tryAgainButtonHandler()
                     },
                     onSupport: {
                         [weak self] in self?.showHelpModal()
@@ -484,17 +482,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
-    /// Invoked from the *Try Again* button of `BluetoothConnectionView`.
-    private func retryPairing() {
-        // Handle different error cases
-        if scaleSetupError == .noNetworkFound {
-            // For no network found, refresh the WiFi networks
-            refreshWifiNetworks()
-        } else {
-            // For other errors, reset error state and navigate back to wake-up step
-            scaleSetupError = .none
-            navigateToStep(.wakeup)
-        }
+    /// Invoked from the *Try Again* button of `BluetoothConnectionView` and `WifiConnectionView` failure state.
+    private func tryAgainButtonHandler(isFromBtConnection: Bool = false) {
+        scaleSetupError = .none
+        navigateToStep(isFromBtConnection ? .wakeup : .gatheringNetwork)
     }
     
     // MARK: - Step Change Handling
@@ -779,19 +770,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
         }
     }
-    
-    /// Refreshes the WiFi networks list
-    private func refreshWifiNetworks() {
-        guard let savedScale = self.savedScale else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "refreshWifiNetworks - no saved scale available")
-            return
-        }
-        
-        Task {
-            await fetchWifiNetworks(for: savedScale)
-        }
-    }
-    
+
     // MARK: - Device Discovery Handling
     private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
         // Only handle discovery during wake-up step
