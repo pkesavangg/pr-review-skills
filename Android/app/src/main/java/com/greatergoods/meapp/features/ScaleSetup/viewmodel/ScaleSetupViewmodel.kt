@@ -23,7 +23,7 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    */
   protected abstract fun onScanResponse(device: GGScanResponse.DeviceDetail)
 
-  protected abstract fun onEntryResponse(device: GGScanResponse.Entry)
+  protected fun onEntryResponse(device: GGScanResponse.Entry) {}
 
   protected var discoveredScale: Device? = null
 

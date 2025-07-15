@@ -5,6 +5,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGLiveDataResponse
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
@@ -21,6 +22,7 @@ import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
@@ -39,6 +41,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -418,7 +421,6 @@ constructor(
    * Handles waking up the scale. Sets loading state and controls when to proceed.
    */
   private fun wakeUpScale() {
-    startObservingDevices()
 
     // Start collecting device scan responses only now
     AppLog.d(TAG, "Starting wake up scale process")
@@ -430,6 +432,7 @@ constructor(
     viewModelScope.launch {
       try {
         ggDeviceService.scanForPairing()
+        startObservingDevices()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during wake up process", e.toString())
         handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.WAKEUP, ConnectionState.Error))
@@ -450,65 +453,61 @@ constructor(
         ConnectionState.Loading,
       ),
     )
+    viewModelScope.launch {
+      try {
+        val ggBtDevice = discoveredScale!!.toGGBTDevice()
+        ggDeviceService.pairDevice(
+          device = ggBtDevice,
+        ) {
+          when (it) {
 
-    try {
-      val ggBtDevice = discoveredScale!!.toGGBTDevice()
+            GGUserActionResponseType.CREATION_COMPLETED -> {
+              viewModelScope.launch {
+                handleIntent(
+                  BtWifiScaleSetupIntent.SetStepConnectionState(
+                    BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                    ConnectionState.Success,
+                  ),
+                )
+                deviceService.saveScale(discoveredScale!!)
+                delay(1000)
+                handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+                handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
+              }
+            }
 
-      ggDeviceService.pairDevice(
-        device = ggBtDevice,
-      ) {
-        when (it) {
-          GGUserActionResponseType.CREATION_COMPLETED -> {
-            viewModelScope.launch {
+            GGUserActionResponseType.CREATION_FAILED -> {
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
                   BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                  ConnectionState.Success,
+                  ConnectionState.Error,
                 ),
               )
-              delay(1000)
+              handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
             }
-          }
 
-          GGUserActionResponseType.CREATION_FAILED -> {
-            handleIntent(
-              BtWifiScaleSetupIntent.SetStepConnectionState(
-                BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                ConnectionState.Error,
-              ),
-            )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-          }
-
-          GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
-            ggDeviceService.deleteAccount(device = ggBtDevice) { deleteResponse ->
-              when (deleteResponse) {
-                GGUserActionResponseType.DELETE_COMPLETED -> {
-                  connectToBluetooth()
-                }
-
-                else -> null
-              }
+            GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
+              handleIntent(
+                SetCurrentStep(BtWifiSetupStep.DUPLICATES_FOUND),
+              )
             }
+
+            else -> null
+
           }
-
-          else -> null
-
         }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during bluetooth connection", e.toString())
+        handleIntent(
+          BtWifiScaleSetupIntent.SetStepConnectionState(
+            BtWifiSetupStep.CONNECTING_BLUETOOTH,
+            ConnectionState.Error,
+          ),
+        )
+        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
+        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error during bluetooth connection", e.toString())
-      handleIntent(
-        BtWifiScaleSetupIntent.SetStepConnectionState(
-          BtWifiSetupStep.CONNECTING_BLUETOOTH,
-          ConnectionState.Error,
-        ),
-      )
-      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
-      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
   }
 
@@ -671,7 +670,6 @@ constructor(
   }
 
   private fun updateDevicePreferences(dashboardKeys: List<DashboardKey>? = null, preferences: Preferences? = null) {
-
     viewModelScope.launch {
       try {
         if (dashboardKeys != null) {
@@ -683,7 +681,7 @@ constructor(
             discoveredScale!!.toGGBTDevice(),
           ) {
             when (it) {
-              GGUserActionResponseType.UPDATE_COMPLETED -> {
+              GGUserActionResponseType.CREATION_COMPLETED -> {
                 handleIntent(
                   BtWifiScaleSetupIntent.SetStepConnectionState(
                     BtWifiSetupStep.UPDATE_SETTINGS,
@@ -734,22 +732,34 @@ constructor(
    */
   override fun onScanResponse(response: GGScanResponse.DeviceDetail) {
     val ggDeviceDetail = response.data
-    val device = Device(
-      device = ggDeviceDetail,
-    )
     when (response.type) {
       GGScanResponseType.NEW_DEVICE -> {
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
-          discoveredScale = device
-          AppLog.d(TAG, "Wake up successful, proceeding to next step")
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-          handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-          stopObservingDevices()
+          viewModelScope.launch {
+            stopObservingDevices()
+            customizeDevice(ggDeviceDetail)
+            AppLog.d(TAG, "Wake up successful, proceeding to next step")
+            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+            handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
+          }
         }
       }
 
       else -> null
     }
+  }
+
+  private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
+    val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
+    _state.value.usernameForm.username.onValueChange(username)
+    val token = deviceService.getScaleToken()
+    val updatePreference = ScaleMetricsHelper.getDefaultPreference("kumaresan")
+    val device = Device(
+      device = ggDeviceDetail,
+      preferences = updatePreference,
+      token = token,
+    )
+    discoveredScale = device
   }
 
   private fun subscribeToLiveData() {
@@ -778,21 +788,6 @@ constructor(
 
         else -> null
       }
-    }
-  }
-
-  override fun onEntryResponse(response: GGScanResponse.Entry) {
-    response.data
-    when (response.type) {
-      GGScanResponseType.SINGLE_ENTRY -> {
-        collectMeasurement()
-      }
-
-      GGScanResponseType.MULTI_ENTRIES -> {
-        collectMeasurement()
-      }
-
-      else -> null
     }
   }
 

@@ -15,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.greatergoods.meapp.domain.model.storage.Preferences
 import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationLayout
 import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationSettingsItem
 import com.greatergoods.meapp.features.ScaleCustomization.strings.CustomizeSettingsStrings
@@ -59,7 +58,7 @@ fun CustomizeScaleSettings(
 
   var dashboardKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
 
-  var updatedPreference by remember { mutableStateOf(Preferences()) }
+  var updatedPreference by remember { mutableStateOf(ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)) }
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
