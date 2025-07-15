@@ -67,7 +67,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // Update position for programmatic changes only
         state.xScrollPosition = date
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Programmatic scroll position updated to: \(date)")
     }
 
     /// Handle scroll position changes - only store during scroll, update at end
@@ -77,7 +76,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         if state.isScrolling {
             // During scroll: only store the position, don't update the state
             latestScrollPosition = newPosition
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Storing scroll position during scroll: \(newPosition)")
         } else {
             // Not scrolling: update the position immediately
             state.xScrollPosition = newPosition
