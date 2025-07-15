@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
-import com.greatergoods.meapp.features.common.components.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -32,7 +31,7 @@ interface DraggableListItemScope {
   @Composable
   fun DraggableItem(
     isDraggable: Boolean = true,
-    content: @Composable (isDragging: Boolean) -> Unit
+    content: @Composable (isDragging: Boolean, modifier: Modifier) -> Unit
   )
 
   @Composable
@@ -43,13 +42,13 @@ private class DraggableListItemScopeImpl<T>(
   val item: T,
   val index: Int,
 ) : DraggableListItemScope {
-  private var draggableBuilder: (@Composable (Boolean) -> Unit)? = null
+  private var draggableBuilder: (@Composable (Boolean, Modifier) -> Unit)? = null
   private var staticBuilder: (@Composable () -> Unit)? = null
   private var isDraggableItem: Boolean = true
   var initialized: Boolean by mutableStateOf(false)
 
-  fun buildDraggable(isDragging: Boolean): @Composable () -> Unit =
-    draggableBuilder?.let { { it(isDragging) } } ?: {
+  fun buildDraggable(isDragging: Boolean, modifier: Modifier): @Composable () -> Unit =
+    draggableBuilder?.let { { it(isDragging, modifier) } } ?: {
       // Default fallback
       Text("⚠️ No DraggableItem content defined for item at index $index")
     }
@@ -61,7 +60,7 @@ private class DraggableListItemScopeImpl<T>(
   @Composable
   override fun DraggableItem(
     isDraggable: Boolean,
-    content: @Composable (isDragging: Boolean) -> Unit
+    content: @Composable (isDragging: Boolean, modifier: Modifier) -> Unit
   ) {
     draggableBuilder = content
     isDraggableItem = isDraggable
@@ -128,25 +127,24 @@ fun <T> AppDraggableList(
         key = keySelector(item),
       ) { isDragging ->
         Column {
+          val draggingModifier = if (scope.isDraggable()) {
+            Modifier.draggableHandle(
+              onDragStarted = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                onDragStarted()
+              },
+              onDragStopped = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                onDragStopped()
+              },
+            )
+          } else {
+            Modifier
+          }
           // Draggable content
-          val draggableContent = scope.buildDraggable(isDragging)
+          val draggableContent = scope.buildDraggable(isDragging, draggingModifier)
 
-          Box(
-            modifier = if (scope.isDraggable()) {
-              Modifier.draggableHandle(
-                onDragStarted = {
-                  hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                  onDragStarted()
-                },
-                onDragStopped = {
-                  hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                  onDragStopped()
-                },
-              )
-            } else {
-              Modifier
-            },
-          ) {
+          Box {
             draggableContent()
           }
 
@@ -184,7 +182,7 @@ private fun PreviewAppDraggableList() {
         itemContent = { item ->
           DraggableItem(
             isDraggable = item != "Body Fat", // Example: Body Fat is not draggable
-          ) { isDragging ->
+          ) { isDragging, modifier ->
             Text(
               text = "📊 $item ${if (isDragging) "(Dragging)" else if (item == "Body Fat") "(Disabled)" else ""}",
               modifier = Modifier.padding(16.dp),
@@ -207,7 +205,7 @@ private fun PreviewAppDraggableList() {
         },
         keySelector = { "other_$it" },
         itemContent = { item ->
-          DraggableItem { isDragging ->
+          DraggableItem { isDragging, modifier ->
             Text(
               text = "📈 $item ${if (isDragging) "(Dragging)" else ""}",
               modifier = Modifier.padding(16.dp),

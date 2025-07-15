@@ -108,7 +108,7 @@ constructor(
           // Call appropriate function based on the new step
           when (currentStep) {
             BtWifiSetupStep.WAKEUP -> {
-              handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+              handleIntent(SetCurrentStep(BtWifiSetupStep.WAKEUP))
             }
 
             BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
@@ -486,7 +486,7 @@ constructor(
     val currentState = state.value
     val nextIndex = currentState.currentStepIndex + 1
     if (nextIndex < currentState.steps.size) {
-      handleIntent(SetCurrentStep(currentState.steps[nextIndex] as BtWifiSetupStep))
+      handleIntent(SetCurrentStep(currentState.steps[nextIndex]))
     }
   }
 

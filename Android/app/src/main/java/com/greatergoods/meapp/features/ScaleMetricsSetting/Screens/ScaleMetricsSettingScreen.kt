@@ -76,10 +76,11 @@ fun ScaleMetricsSettingScreen(
       itemContent = { metric ->
         DraggableItem(
           isDraggable = metric.isEnabled,
-        ) { isDragging ->
+        ) { isDragging, modifier ->
           ScaleMetricItem(
             metric = metric,
             isDragging = isDragging,
+            dragHandleModifier = modifier,
             onToggle = { isEnabled ->
               bodyMetricsState =
                 bodyMetricsState.map {
@@ -110,10 +111,11 @@ fun ScaleMetricsSettingScreen(
       itemContent = { metric ->
         DraggableItem(
           isDraggable = metric.isEnabled,
-        ) { isDragging ->
+        ) { isDragging, modifier ->
           ScaleMetricItem(
             metric = metric,
             isDragging = isDragging,
+            dragHandleModifier = modifier,
             onToggle = { isEnabled ->
               otherMetricsState =
                 otherMetricsState.map {

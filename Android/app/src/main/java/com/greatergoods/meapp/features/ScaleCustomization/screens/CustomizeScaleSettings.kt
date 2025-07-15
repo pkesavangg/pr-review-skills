@@ -132,11 +132,7 @@ fun CustomizeScaleSettings(
           subtitle = ScaleFormStrings.UserNameSubtitle,
           label = ScaleFormStrings.UserNameLabel,
           inputType = AppInputType.TEXT,
-          hasToggle = false,
           supportingImage = AppIcons.Setup.UserNameScale, // Placeholder
-          supportingButtonLabel = "Restore Account",
-          onSupportingButtonClick = {},
-          supportText = "Last active June 10, 2019",
         )
       }
     }

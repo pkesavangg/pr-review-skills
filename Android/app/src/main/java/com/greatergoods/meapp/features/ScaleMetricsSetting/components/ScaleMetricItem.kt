@@ -42,6 +42,7 @@ fun ScaleMetricItem(
   metric: ScaleMetric,
   isDragging: Boolean,
   onToggle: (Boolean) -> Unit,
+  dragHandleModifier: Modifier = Modifier,
   modifier: Modifier = Modifier,
 ) {
   Card(
@@ -92,7 +93,7 @@ fun ScaleMetricItem(
         AppIcon(
           id = AppIcons.Default.DragHandler,
           contentDescription = "Drag handle",
-          modifier = Modifier.size(24.dp),
+          modifier = dragHandleModifier.size(24.dp),
           type = AppIconType.Tertiary,
         )
 
