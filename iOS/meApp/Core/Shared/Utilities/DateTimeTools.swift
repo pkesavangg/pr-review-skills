@@ -312,5 +312,23 @@ final class DateTimeTools {
         let minutes = TimeZone.current.secondsFromGMT() / 60
         return "\(minutes) min \(TimeZone.current.identifier)"
     }
+
+    // MARK: - Timestamp Conversion
+    
+    /// Converts a timestamp (in seconds since 1970) to a formatted date string like "June 10, 2019".
+    /// - Parameter timestamp: The timestamp in seconds since 1970.
+    /// - Returns: Formatted date string in "MMMM d, yyyy" format, or invalidString if conversion fails.
+    static func getFormattedDateFromTimestamp(_ timestamp: Int64) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
+        return formatter("MMMM d, yyyy").string(from: date)
+    }
+    
+    /// Converts a timestamp (in seconds since 1970) to a formatted date string like "May 29, 2025".
+    /// - Parameter timestamp: The timestamp in seconds since 1970.
+    /// - Returns: Formatted date string in "LLL d, yyyy" format, or invalidString if conversion fails.
+    static func getShortFormattedDateFromTimestamp(_ timestamp: Int64) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
+        return formatter("LLL d, yyyy").string(from: date)
+    }
 }
 

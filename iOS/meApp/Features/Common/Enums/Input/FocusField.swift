@@ -9,6 +9,7 @@
 enum FocusField: Hashable {
     case firstName
     case lastName
+    case userName
     case email
     case password
     case currentPassword
