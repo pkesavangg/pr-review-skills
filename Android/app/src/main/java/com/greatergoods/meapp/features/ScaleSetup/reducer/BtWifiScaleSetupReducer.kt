@@ -4,6 +4,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.greatergoods.meapp.domain.interfaces.IReducer
+import com.greatergoods.meapp.domain.model.storage.Preferences
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.ConnectionState
@@ -104,7 +105,10 @@ data class BtWifiScaleSetupState(
  * Intents for BtWifiScaleSetupScreen actions.
  */
 sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
-
+  data class UpdateSettings(
+    val dashboardKeys: List<DashboardKey> ? = null,
+    val preferences: Preferences? = null
+  ) : BtWifiScaleSetupIntent
   data class SetDashboardKeys(val dashboardKeys: List<DashboardKey>) : BtWifiScaleSetupIntent
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(

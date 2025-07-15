@@ -315,6 +315,7 @@ fun BtWifiScaleSetupScreenContent(
               title = BtWifiScaleSetupStrings.CustomizeSettings.Title,
               subtitle = BtWifiScaleSetupStrings.CustomizeSettings.Subtitle,
               state = state,
+              onIntent = onIntent,
             )
           }
 

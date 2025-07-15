@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.domain.model.storage.Preferences
 import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationLayout
 import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationSettingsItem
 import com.greatergoods.meapp.features.ScaleCustomization.strings.CustomizeSettingsStrings
@@ -25,6 +26,7 @@ import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
 import com.greatergoods.meapp.features.ScaleSetup.components.strings.ScaleFormStrings
 import com.greatergoods.meapp.features.ScaleSetup.enums.CustomizeSettings
 import com.greatergoods.meapp.features.ScaleSetup.model.CustomizeSettingsList
+import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.AppButton
@@ -35,6 +37,7 @@ import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.dashboard.components.DashboardMetrics
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
@@ -47,11 +50,16 @@ fun CustomizeScaleSettings(
   modifier: Modifier = Modifier,
   title: String,
   subtitle: String,
-  state: BtWifiScaleSetupState
+  state: BtWifiScaleSetupState,
+  onIntent: (BtWifiScaleSetupIntent) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
   val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size.toInt() })
   var scaleMetrics by remember { mutableStateOf(ScaleMetricsHelper.getAllMetrics()) }
+
+  var dashboardKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
+
+  var updatedPreference by remember { mutableStateOf(Preferences()) }
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
@@ -76,14 +84,35 @@ fun CustomizeScaleSettings(
       },
     trailingContent =
       {
-        AppButton(
-          type = ButtonType.PrimaryFilled,
-          label = "Save",
-          size = ButtonSize.Small,
-          onClick = {
+        if (pagerState.currentPage == CustomizeSettings.NONE.ordinal) {
+          AppButton(
+            type = ButtonType.TextPrimary,
+            label = ScaleSetupStrings.nextButton,
+            size = ButtonSize.Small,
+            onClick = {
+              onIntent(
+                BtWifiScaleSetupIntent.UpdateSettings(
+                  dashboardKeys = dashboardKeys,
+                  preferences = updatedPreference.copy(
+                    displayName = state.usernameForm.username.value,
+                  ),
+                ),
+              )
+              onIntent(
+                BtWifiScaleSetupIntent.Next,
+              )
+            },
+          )
+        } else {
+          AppButton(
+            type = ButtonType.PrimaryFilled,
+            label = ScaleSetupStrings.saveButton,
+            size = ButtonSize.Small,
+            onClick = {
 
-          },
-        )
+            },
+          )
+        }
       },
   ) { item ->
     when (item) {
@@ -109,6 +138,9 @@ fun CustomizeScaleSettings(
             metricData = emptyList(),
             visibleKeys = state.dashboardKeys,
             inEditMode = false,
+            onMetricsChanged = {
+              dashboardKeys = it
+            },
           )
         }
       }
@@ -117,10 +149,11 @@ fun CustomizeScaleSettings(
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
-          ) {
+        ) {
           ScaleMetricsSettingScreen(
             currentMetrics = scaleMetrics,
             onMetricsChanged = { metrics ->
+              updatedPreference = updatedPreference.copy(displayMetrics = metrics)
               scaleMetrics = metrics
             },
           )
@@ -134,9 +167,14 @@ fun CustomizeScaleSettings(
           ScaleModeSettingsScreen(
             isAllBodyMetrics = true,
             isHeartRateOn = true,
-            onModeSelected = {},
-            onHeartRateToggle = {},
-            onBioimpedanceClick = {},
+            onModeSelected = {
+              updatedPreference = updatedPreference.copy(shouldMeasureImpedance = it)
+            },
+            onHeartRateToggle = {
+              updatedPreference = updatedPreference.copy(shouldMeasurePulse = it)
+            },
+            onBioimpedanceClick = {
+            },
           )
         }
       }
@@ -205,7 +243,7 @@ fun CustomizeScaleSettingsPreview() {
         title = "Customize your Settings",
         subtitle = "You can update settings at any time.",
         state = BtWifiScaleSetupState(),
-      )
+      ) {}
     }
   }
 }
