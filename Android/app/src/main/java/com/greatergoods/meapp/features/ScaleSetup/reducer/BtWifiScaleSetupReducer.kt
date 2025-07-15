@@ -66,6 +66,7 @@ data class BtWifiScaleSetupState(
   val sku: String = "0412",
   val steps: List<BtWifiSetupStep> = listOf(
     BtWifiSetupStep.SCALE_INFO,
+    BtWifiSetupStep.PERMISSIONS,
     BtWifiSetupStep.WAKEUP,
     BtWifiSetupStep.CONNECTING_BLUETOOTH,
     BtWifiSetupStep.DUPLICATES_FOUND,
@@ -84,12 +85,12 @@ data class BtWifiScaleSetupState(
   val isLoading: Boolean = false,
   val errorCode: String? = null,
   val isSetupFinished: Boolean = false,
-  val isConnected: Boolean = false,
   val stepConnectionStates: Map<BtWifiSetupStep, ConnectionState> = mapOf(),
   val canProceedToNext: Boolean = true,
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
   val dashboardKeys: List<DashboardKey> = listOf(),
+  val permissions: GGPermissionStatusMap = mutableMapOf(),
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -142,10 +143,10 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
 
   data class ExitSetup(
     val isSetupFinished: Boolean,
-    val isConnected: Boolean = false,
   ) : BtWifiScaleSetupIntent
 
-  data class SetPermissions(val permissionMap: GGPermissionStatusMap) : BtWifiScaleSetupIntent
+  data class SetPermissions(val permissions: GGPermissionStatusMap) : BtWifiScaleSetupIntent
+  data class RequestPermission(val permissionType: String) : BtWifiScaleSetupIntent
 
   object OpenHelp : BtWifiScaleSetupIntent
 
@@ -176,6 +177,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
         },
       )
 
+      is BtWifiScaleSetupIntent.SetPermissions -> state.copy(permissions = intent.permissions)
       is BtWifiScaleSetupIntent.SetCanProceedToNext -> state.copy(canProceedToNext = intent.canProceed)
       is BtWifiScaleSetupIntent.Next -> {
         val nextIndex = state.currentStepIndex + 1
@@ -195,7 +197,6 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.ExitSetup ->
         state.copy(
           isSetupFinished = intent.isSetupFinished,
-          isConnected = intent.isConnected,
         )
 
       is BtWifiScaleSetupIntent.TryAgain -> state.copy(
@@ -204,7 +205,6 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       )
 
       is BtWifiScaleSetupIntent.UpdateNextButtonText -> state.copy(nextButtonText = intent.text)
-      is BtWifiScaleSetupIntent.SetPermissions -> state.copy()
       is BtWifiScaleSetupIntent.RefreshNetworks -> state.copy(currentStep = BtWifiSetupStep.GATHERING_NETWORK)
       BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> state.copy() // Logic handled in ViewModel
 

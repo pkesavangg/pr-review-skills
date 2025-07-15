@@ -239,38 +239,37 @@ fun ScaleSetupLoader(
   }
 }
 
-@PreviewTheme
-@Composable
-private fun PreviewScaleSetupLoaderConnecting() {
-  MeAppTheme {
-    ScaleSetupLoader(
-      title = "Connecting to Bluetooth",
-      subtitle = "Please wait while we connect your scale",
-      setupImage = AppIcons.Setup.StepOnGif,
-      isGifImage = true,
-    )
-  }
-}
-
 // @PreviewTheme
 // @Composable
-// private fun PreviewScaleSetupLoaderConnectionError() {
+// private fun PreviewScaleSetupLoaderConnecting() {
 //   MeAppTheme {
 //     ScaleSetupLoader(
-//       scaleImageSku = "0412",
-//       title = "Connection Error",
-//       subtitle = "Something went wrong during setup",
-//       errorCode = "ERR_001",
-//       connectionState = ConnectionState.Error,
-//       showIndicationOnly = true,
-//       indicatorIcon = LoaderIconType.Error,
-//       primaryButtonText = SetupLoaderStrings.TryAgainButton,
-//       secondaryButtonText = SetupLoaderStrings.SupportButton,
-//       primaryButtonClick = { },
-//       secondaryButtonClick = { },
+//       title = "Connecting to Bluetooth",
+//       subtitle = "Please wait while we connect your scale",
+//       setupImage = AppIcons.Setup.StepOnGif,
+//       isGifImage = true,
 //     )
 //   }
 // }
+
+@PreviewTheme
+@Composable
+private fun PreviewScaleSetupLoaderConnectionError() {
+  MeAppTheme {
+    ScaleSetupLoader(
+      scaleImageSku = "0412",
+      title = "Connection Error",
+      subtitle = "Something went wrong during setup",
+      errorCode = "ERR_001",
+      connectionState = ConnectionState.Error,
+      indicatorIcon = LoaderIconType.Error,
+      primaryButtonText = SetupLoaderStrings.TryAgainButton,
+      secondaryButtonText = SetupLoaderStrings.SupportButton,
+      primaryButtonClick = { },
+      secondaryButtonClick = { },
+    )
+  }
+}
 //
 // @PreviewTheme
 // @Composable

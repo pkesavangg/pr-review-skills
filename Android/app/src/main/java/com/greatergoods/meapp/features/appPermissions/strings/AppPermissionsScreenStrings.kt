@@ -12,6 +12,7 @@ object AppPermissionsScreenStrings {
   const val LocationHeader = "Location"
   const val CameraHeader = "Camera (AppSync)"
   const val NotificationsHeader = "Notifications"
+  const val NetworkHeader = "Network"
 
   // Bluetooth
   const val BluetoothEnabledDescription = "Bluetooth authorized"
@@ -24,6 +25,10 @@ object AppPermissionsScreenStrings {
   // Location
   const val LocationEnabledDescription = "Location authorized"
   const val LocationDisabledDescription = "Allow location access"
+
+  // Network
+  const val NetworkEnabledDescription = "Network Connected"
+  const val NetworkDisabledDescription = "Network Disconnected"
 
   const val LocationSwitchEnabledDescription = "Location services authorized"
   const val LocationSwitchDisabledDescription = "Allow location services access"

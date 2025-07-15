@@ -12,6 +12,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.appPermissions.helper.PermissionGroup
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PermissionItem
@@ -36,8 +37,7 @@ fun PermissionSettings(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .verticalScroll(rememberScrollState())
-      .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
+      .verticalScroll(rememberScrollState()),
   ) {
     permissionGroups.forEach { group ->
       // Group header (section title)
@@ -57,7 +57,7 @@ fun PermissionSettings(
             onClick = { onRequestPermission(item.key) },
           )
           if (index < group.items.size - 1) {
-            HorizontalDivider(color = MeTheme.colorScheme.utility)
+            HorizontalDivider(color = MeTheme.colorScheme.utility, thickness = 0.5.dp)
           }
         }
       }
