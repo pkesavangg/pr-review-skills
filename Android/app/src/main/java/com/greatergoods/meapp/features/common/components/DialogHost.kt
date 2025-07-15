@@ -2,12 +2,12 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.features.ScaleModeSettings.screens.BiaModal
 import com.greatergoods.meapp.features.ScaleSetup.components.AccucheckModal
 import com.greatergoods.meapp.features.addScale.screens.ModelNumberHelpDialog
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
-import com.greatergoods.meapp.features.ScaleModeSettings.screens.BiaModal
 import com.greatergoods.meapp.features.settings.components.AccountSwitchInfoModal
 
 enum class DialogType {
@@ -46,10 +46,20 @@ fun DialogHost() {
 
       HelpPopup -> {
         // Custom dialog for help popup
+        val showGuide = dialog.params["showGuide"] as? Boolean ?: false
+        val onGuideClick = dialog.params["onGuideClick"] as? (() -> Unit)
         AppHelpModal(
           onClose = {
             dialog.onDismiss?.let { it() }
             dialogQueueViewModel.dismissCurrent()
+          },
+          showGuide = showGuide,
+          onGuideClick = if (showGuide && onGuideClick != null) {
+            {
+              onGuideClick.invoke()
+            }
+          } else {
+            null
           },
         )
       }
