@@ -69,7 +69,7 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.PERMISSIONS,
     BtWifiSetupStep.WAKEUP,
     BtWifiSetupStep.CONNECTING_BLUETOOTH,
-    BtWifiSetupStep.DUPLICATES_FOUND,
+    BtWifiSetupStep.USER_LIMIT_REACHED,
     BtWifiSetupStep.GATHERING_NETWORK,
     BtWifiSetupStep.AVAILABLE_WIFI_LIST,
     BtWifiSetupStep.WIFI_PASSWORD,

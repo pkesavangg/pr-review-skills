@@ -98,8 +98,8 @@ fun WifiSelection(
             item {
 
               AppText(
-                text = "Connected Network",
-                textType = TextType.ListTitle2,
+                text = ScaleSetupStrings.WifiList.ConnectedNetwork,
+                textType = TextType.ListTitle1,
                 modifier = Modifier.padding(bottom = spacing.xs),
               )
               Column(
@@ -120,8 +120,8 @@ fun WifiSelection(
         if (availableNetworks.isNotEmpty()) {
           item {
             AppText(
-              text = "Available Networks",
-              textType = TextType.ListTitle2,
+              text = ScaleSetupStrings.WifiList.AvailableNetworks,
+              textType = TextType.ListTitle1,
               modifier = Modifier.padding(bottom = spacing.xs),
             )
           }
