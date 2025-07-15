@@ -78,7 +78,6 @@ class DashboardStore: ObservableObject {
         // Sync graph manager state to centralized state
         graphManager.$state
             .sink { [weak self] graphState in
-                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Graph state updated - isScrolling: \(graphState.isScrolling), position: \(graphState.xScrollPosition)")
                 self?.state.graph = graphState
             }
             .store(in: &cancellables)
@@ -198,7 +197,7 @@ class DashboardStore: ObservableObject {
     }
 
     var visibleOperations: [BathScaleWeightSummary] {
-        // Use cached operations during scroll for performance - lightweight computed property
+        // Use cached operations with improved caching logic in graph manager
         return graphManager.getVisibleOperations(from: continuousOperations)
     }
 
@@ -371,8 +370,7 @@ class DashboardStore: ObservableObject {
 
     // Delegate X-axis operations to GraphManager
     func xAxisValuesWithBuffer(for period: TimePeriod) -> [Date] {
-        let values = graphManager.generateXAxisValues(for: period, from: continuousOperations)
-        return values
+        graphManager.generateVisibleXAxisValues(for: period, from: continuousOperations, scrollPosition: state.graph.xScrollPosition)
     }
 
     func xLabelString(for date: Date, period: TimePeriod) -> String? {
@@ -417,7 +415,7 @@ class DashboardStore: ObservableObject {
         await initializeChart()
     }
 
-   
+
 
     // MARK: - Dashboard Metric Type Logic
 
@@ -730,6 +728,12 @@ class DashboardStore: ObservableObject {
         // Reset chart initialization for new period
         hasInitializedChart = false
 
+        // Explicitly set scroll position to latest entry date for segment change
+        if let latestEntryDate = continuousOperations.map(\.date).max() {
+            state.graph.xScrollPosition = latestEntryDate
+            logger.log(level: .debug, tag: "DashboardStore", message: "Set scroll position to latest entry for period change: \(latestEntryDate)")
+        }
+
         // Delegate period update to graph manager
         Task {
             await graphManager.updateSelectedPeriod(period)
@@ -737,7 +741,7 @@ class DashboardStore: ObservableObject {
             // Clear all selection states
             clearSelection()
 
-            // Ensure chart shows the latest entries when switching periods
+            // Always ensure chart shows the latest entries when switching periods (not previous position)
             ensureLatestEntriesVisible()
 
             // Update weight display for new period
@@ -953,11 +957,9 @@ class DashboardStore: ObservableObject {
             // Delegate chart initialization to GraphManager
     @MainActor
     func initializeChart() {
-        // Don't initialize if already done, currently scrolling, or recently scrolled
-        let recentlyScrolled = lastUserScrollTime.map { Date().timeIntervalSince($0) < 2.0 } ?? false
-
-        guard !hasInitializedChart && !state.graph.isScrolling && !recentlyScrolled else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Skipping chart initialization - already initialized, scrolling, or recently scrolled")
+        // Don't initialize if already done or currently scrolling
+        guard !hasInitializedChart && !state.graph.isScrolling else {
+            logger.log(level: .debug, tag: "DashboardStore", message: "Skipping chart initialization - already initialized or scrolling")
             updateWeightDisplayForCurrentView()
             return
         }
@@ -965,9 +967,16 @@ class DashboardStore: ObservableObject {
         hasInitializedChart = true
         logger.log(level: .debug, tag: "DashboardStore", message: "Initializing chart with latest entries")
 
+        // Explicitly set scroll position to latest entry date for initial load
+        if let latestEntryDate = continuousOperations.map(\.date).max() {
+            state.graph.xScrollPosition = latestEntryDate
+            logger.log(level: .debug, tag: "DashboardStore", message: "Set initial scroll position to latest entry: \(latestEntryDate)")
+        }
+
         // Initialize Y-axis cache
         updateYAxisCache()
 
+        // Ensure positioning (this will apply boundary enforcement)
         Task {
             await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
         }
@@ -1010,6 +1019,21 @@ class DashboardStore: ObservableObject {
             // Only update UI elements that don't trigger domain recalculation
             self.updateWeightDisplayForCurrentView()
             self.updateMetricsForCurrentView()
+        }
+    }
+
+    @available(iOS 18.0, *)
+    func handleScrollPhaseChange(to phase: ScrollPhase) async {
+        await graphManager.handleScrollPhaseChange(phase)
+
+        // When scroll ends (phase becomes .idle), perform the 3 operations
+        if phase == .idle {
+            // Update Y-axis cache after domain recalculation
+            updateYAxisCache()
+
+            // Only update UI elements that don't trigger domain recalculation
+            updateWeightDisplayForCurrentView()
+            updateMetricsForCurrentView()
         }
     }
 

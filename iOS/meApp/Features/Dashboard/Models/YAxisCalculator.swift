@@ -33,12 +33,11 @@ struct YAxisCalculator {
         anchorWeight: Double?,
         convertStoredWeightToDisplay: (Int) -> Double,
         chartHeight: CGFloat = 265,
-        minTickSpacing: CGFloat = 40,
         lastScale: YAxisScale? = nil
     ) -> YAxisScale {
 
         // Calculate optimal number of ticks based on chart height
-        let optimalTickCount = max(3, min(8, Int(chartHeight / minTickSpacing)))
+        let optimalTickCount = 5
         guard !operations.isEmpty else {
             // No data — use last scale if available, otherwise show goal weight as center
             if let lastScale = lastScale {
@@ -72,8 +71,14 @@ struct YAxisCalculator {
             minValue: minValue,
             maxValue: maxValue,
             goalWeight: goalWeight,
-            desiredLabelCount: optimalTickCount
+            desiredLabelCount: 10
         )
+        print("domain ticks: \(scale.ticks)")
+        print("domain min: \(scale.min)")
+        print("domain max: \(scale.max)")
+        print("domain step: \(scale.step)")
+        print("domain domain: \(scale.domain)")
+        print("domain average: \(average)")
 
         return YAxisScale(
             min: scale.min,
@@ -147,7 +152,7 @@ fileprivate struct YAxisHelper {
         minValue: Double,
         maxValue: Double,
         goalWeight: Double,
-        desiredLabelCount: Int = 5
+        desiredLabelCount: Int = 10
     ) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
 
         // Include goalWeight in data range
@@ -165,12 +170,12 @@ fileprivate struct YAxisHelper {
         dataMax += padding
 
         // Snap min/max to rounded 5s
-        var niceMin = floor(dataMin / 5) * 5
-        var niceMax = ceil(dataMax / 5) * 5
+        var niceMin = floor(dataMin / 2) * 2
+        var niceMax = ceil(dataMax / 2) * 2
 
         // Ensure goal is inside
-        niceMin = min(niceMin, floor(goalWeight / 5) * 5)
-        niceMax = max(niceMax, ceil(goalWeight / 5) * 5)
+        niceMin = min(niceMin, floor(goalWeight / 2) * 2)
+        niceMax = max(niceMax, ceil(goalWeight / 2) * 2)
 
         // Calculate desired step
         let totalRange = niceMax - niceMin
