@@ -51,6 +51,9 @@ struct DashboardScreen: View {
             store.handleMetricInfoSheetDismiss(newValue)
         }
         .onChange(of: store.state.ui.isEditMode) { _, _ in store.resetDragState() }
+        .onChange(of: store.currentUnit) { _, _ in 
+            store.handleUnitChange()
+        }
         .presentAlert(alertData: $store.state.ui.alertData)
         .presentLoader(loaderData: store.loaderData)
     }
@@ -165,10 +168,10 @@ struct DashboardScreen: View {
                 streakCardView(for: item)
             }
         }
+        .id("\(store.state.ui.gridLayoutId)-\(store.currentUnitText)") // Force refresh when unit changes
         .padding(.bottom, .spacingSM)
         .padding(.top, (!store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved) ? 0 : .spacingSM)
         .padding(.horizontal, .spacingSM)
-        .id(store.state.ui.gridLayoutId)
         .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
     }
 
@@ -235,12 +238,13 @@ struct DashboardScreen: View {
             delta: store.state.goal.goalDelta,
             startWeight: store.state.goal.goalStartWeight,
             goalWeight: store.state.goal.goalWeight,
-            unit: store.state.goal.goalUnit.rawValue,
+            unit: store.currentUnitText,
             isRemoved: store.state.ui.isGoalCardRemoved,
             progress: store.state.goal.goalProgress,
             goalType: store.state.goal.goalType,
             isWeightlessMode: store.isWeightlessModeEnabled
         )
+        .id(store.currentUnitText) // Force refresh when unit changes
         .editModeOverlay(
             isEditMode: store.state.ui.isEditMode,
             isRemoved: store.state.ui.isGoalCardRemoved,
