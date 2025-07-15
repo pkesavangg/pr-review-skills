@@ -408,7 +408,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Handles the restore account action from the duplicate user screen
     func handleRestoreAccount() {
-        // Show confirmation alert similar to TypeScript version
+        // Show confirmation alert
         let alertStrings = alertLang.ConfirmRestoreAlert.self
         let alert = AlertModel(
             title: alertStrings.title,
@@ -679,7 +679,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
-    /// Saves the discovered scale to persistent storage, similar to the TypeScript saveScale method.
+    /// Saves the discovered scale to persistent storage.
     private func saveScale() async {
         guard let discoveryEvent = discoveryEvent,
               let scale = discoveredScale,
@@ -689,11 +689,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         do {
-            // Create unique scale ID using timestamp (similar to Date.now().toString() in TypeScript)
+            // Create unique scale ID using timestamp
             let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
             let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
             
-            // Set up the scale object similar to TypeScript version
+            // Set up the scale object
             scale.id = scaleID
             scale.accountId = accountService.activeAccount?.accountId ?? ""
             scale.deviceName = discoveryEvent.deviceInfo.productName
@@ -994,7 +994,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
-    /// Checks for duplicate users in the user list, similar to TypeScript checkDuplicateUserList()
+    /// Checks for duplicate users in the user list
     private func checkDuplicateUserList() {
         self.currentUser = userList.first { user in
             user.name.lowercased() == (self.firstName?.lowercased() ?? "")

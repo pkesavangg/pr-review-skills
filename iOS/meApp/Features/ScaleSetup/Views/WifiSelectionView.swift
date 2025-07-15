@@ -27,7 +27,7 @@ struct WifiSelectionView: View {
     }
     
     var availableNetworksHeight: CGFloat {
-        CGFloat(min(itemHeight * availableNetworks.count, itemHeight * 5))
+        CGFloat(min(itemHeight * availableNetworks.count, itemHeight * (connectedWifiNetwork != nil ? 5 : 7)))
     }
     
     var body: some View {
@@ -60,6 +60,7 @@ struct WifiSelectionView: View {
                             .scrollDisabled(availableNetworks.count <= 5)
                             .frame(height: availableNetworksHeight)
                             .frame(maxWidth: .infinity)
+                            .cornerRadius(.radiusSM)
                         }
                         
                         // Fixed refresh button
