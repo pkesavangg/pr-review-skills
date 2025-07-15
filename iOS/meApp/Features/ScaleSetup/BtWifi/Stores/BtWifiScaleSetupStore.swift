@@ -451,6 +451,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Handles the skip WiFi step action
+    func handleSkipWifiStep() {
+        let alertStrings = alertLang.SkipWifiStepAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message,
+            buttons: [
+                AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
+                AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
+                    self?.navigateToStep(.customizeSettings)
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
     /// Handles the save action from the duplicate user screen
     private func handleSaveDuplicateUser() {
         // Validate the form first

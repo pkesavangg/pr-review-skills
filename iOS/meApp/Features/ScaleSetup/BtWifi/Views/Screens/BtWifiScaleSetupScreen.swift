@@ -80,7 +80,9 @@ struct BtWifiScaleSetupScreen: View {
             if setupStore.currentStep == .availableWifiList {
                 if setupStore.scaleSetupError == .none  {
                     Spacer()
-                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {})
+                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {
+                        setupStore.handleSkipWifiStep()
+                    })
                     Spacer()
                 }
             } else {
