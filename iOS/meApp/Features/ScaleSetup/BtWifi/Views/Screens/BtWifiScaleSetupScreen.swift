@@ -59,11 +59,12 @@ struct BtWifiScaleSetupScreen: View {
             )
             
             // Footer Buttons - hide for specific steps if needed
-            if shouldShowFooter {
+            if setupStore.shouldShowFooter() {
                 footerButtons
                     .padding(.spacingSM)
             }
         }
+        .environmentObject(setupStore)
         .onAppear {
             setupStore.dismissAction = dismiss
             setupStore.configure(with: sku,
@@ -74,37 +75,39 @@ struct BtWifiScaleSetupScreen: View {
         .background(theme.backgroundSecondary)
     }
     
-    private var shouldShowFooter: Bool {
-        // Hide footer for specific steps if needed
-        // For now, show footer for all steps
-        return true
-    }
-    
     private var footerButtons: some View {
         HStack {
-            ButtonView(text: commonLang.back,
-                       type: .inlineTextPrimary,
-                       size: .small,
-                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .scaleConnected,
-                       action: {
-                withAnimation {
-                    hideKeyboard()
-                    setupStore.moveToPreviousStep()
+            if setupStore.currentStep == .availableWifiList {
+                if setupStore.scaleSetupError == .none  {
+                    Spacer()
+                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {
+                        setupStore.handleSkipWifiStep()
+                    })
+                    Spacer()
                 }
-            })
-            
-            Spacer()
-            
-            ButtonView(text: setupStore.currentStep == .scaleConnected ? commonLang.finish : commonLang.next,
-                       type: .filledPrimary,
-                       size: .small,
-                       isDisabled: !setupStore.isNextEnabled,
-                       action: {
-                withAnimation {
-                    hideKeyboard()
-                    setupStore.moveToNextStep()
-                }
-            })
+            } else {
+                ButtonView(text: commonLang.back,
+                           type: .inlineTextPrimary,
+                           size: .small,
+                           isDisabled: setupStore.shouldDisableBackButton(),
+                           action: {
+                    withAnimation {
+                        hideKeyboard()
+                        setupStore.handleBackButtonClick()
+                    }
+                })
+                Spacer()
+                ButtonView(text: setupStore.nextButtonText,
+                           type: .filledPrimary,
+                           size: .small,
+                           isDisabled: !setupStore.isNextEnabled,
+                           action: {
+                    withAnimation {
+                        hideKeyboard()
+                        setupStore.handleNextButtonClick()
+                    }
+                })
+            }
         }
     }
 }
@@ -112,4 +115,4 @@ struct BtWifiScaleSetupScreen: View {
 #Preview {
     BtWifiScaleSetupScreen(sku: "0412", discoveredScale: nil, discoveryEvent: nil)
         .environmentObject(Theme.shared)
-} 
+}

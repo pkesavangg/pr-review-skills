@@ -39,6 +39,13 @@ final class ScaleDiscoveredSheetViewModel: ObservableObject {
         onTimeout() // reuse same close handler
     }
     
+    /// Invoked when the user taps the "Connect" button.
+    func clearTimer() {
+        // Cancel the timer task if it exists
+        timerTask?.cancel()
+        timerTask = nil
+    }
+    
     // MARK: – Private Helpers
     private func startAutoDismissTimer() {
         timerTask = Task {

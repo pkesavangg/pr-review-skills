@@ -18,6 +18,7 @@ struct SetupLoaderView: View {
         case .loading: return theme.brandWgPrimary
         case .success: return theme.statusSuccess
         case .failure: return theme.statusError
+        case .noNetworks: return theme.statusError
         }
     }
 
