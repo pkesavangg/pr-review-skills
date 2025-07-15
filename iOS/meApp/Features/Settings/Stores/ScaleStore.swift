@@ -48,12 +48,8 @@ class ScaleStore: ObservableObject {
     @Published var datePairedValue: String = "12/25/2024" // TODO: Replace with actual date paired
     
     // Display Metrics State
-    @Published var progressMetrics: [ProgressMetricItem] = [
-        ProgressMetricItem(id: "goalProgress", label: ScaleModesStrings.goalProgress, isOn: true),
-        ProgressMetricItem(id: "dailyAverage", label: ScaleModesStrings.dailyAverage, isOn: true),
-        ProgressMetricItem(id: "weeklyAverage", label: ScaleModesStrings.weeklyAverage, isOn: true),
-        ProgressMetricItem(id: "monthlyAverage", label: ScaleModesStrings.monthlyAverage, isOn: true),
-    ]
+    @Published var progressMetrics: [ScaleMetricSetting] = ScaleMetrics.progressMetrics
+    
     
     // Banner States
     @Published var showWeightOnlyBanner: Bool = false
@@ -61,13 +57,40 @@ class ScaleStore: ObservableObject {
     @Published var showHeartRateBanner: Bool = false
     
     // Metrics State
-    @Published var metrics: [BodyMetricItem] = BodyMetrics.config.keys
-        .filter { $0 != .weight }
-        .map { BodyMetricItem(id: $0, isOn: true) }
+    @Published var metrics: [ScaleMetricSetting] = ScaleMetrics.bodyMetrics
+    
     
     // User Management State
     @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
     @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
+    
+    // MARK: - User Management Computed Properties
+    /// Converts the current user to a DeviceUser object
+    var currentDeviceUser: DeviceUser {
+        DeviceUser(
+            name: currentUser,
+            token: "current-user-token", // TODO: Replace with actual token
+            lastActive: Int(Date().timeIntervalSince1970), // Current time for active user
+            isBodyMetricsEnabled: true // TODO: Replace with actual setting
+        )
+    }
+    
+    /// Converts other users to DeviceUser objects
+    var otherDeviceUsers: [DeviceUser] {
+        otherUsers.enumerated().map { index, userName in
+            DeviceUser(
+                name: userName,
+                token: "user-token-\(index)", // TODO: Replace with actual token
+                lastActive: Int(Date().timeIntervalSince1970) - (index + 1) * 86400, // Simulate different last active times
+                isBodyMetricsEnabled: true // TODO: Replace with actual setting
+            )
+        }
+    }
+    
+    /// All users combined as DeviceUser objects
+    var allDeviceUsers: [DeviceUser] {
+        [currentDeviceUser] + otherDeviceUsers
+    }
     @Published var isWifiLoading = false
     @Published var showPassword: Bool = false
     @Published var wifiPasswordValidationForm = WifiPasswordValidationForm()
@@ -348,11 +371,30 @@ class ScaleStore: ObservableObject {
     func saveUsers() {
         // TODO: Implement save users logic
     }
+    
     func deleteCurrentUser() {
         // TODO: Implement delete current user logic
+        // For now, just clear the current user
+        currentUser = ""
     }
+    
     func deleteOtherUser(at index: Int) {
         // TODO: Implement delete other user logic
+        guard index < otherUsers.count else { return }
+        otherUsers.remove(at: index)
+    }
+    
+    /// Deletes a user from the combined users array
+    /// - Parameter index: The index in the combined users array (0 = current user, 1+ = other users)
+    func deleteUser(at index: Int) {
+        if index == 0 {
+            // Delete current user
+            deleteCurrentUser()
+        } else {
+            // Delete other user (adjust index by -1 since index 0 is current user)
+            let otherUserIndex = index - 1
+            deleteOtherUser(at: otherUserIndex)
+        }
     }
     
     // MARK: - Product Guide URL helper & Browser Presentation
