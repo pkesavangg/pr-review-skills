@@ -5,11 +5,12 @@ enum DashboardConstants {
 
     // MARK: - Time Intervals
     enum TimeInterval {
+        static let day: Foundation.TimeInterval = 24 * 60 * 60
         static let week: Foundation.TimeInterval = 7 * 24 * 60 * 60
         static let month: Foundation.TimeInterval = 30 * 24 * 60 * 60
         static let year: Foundation.TimeInterval = 365 * 24 * 60 * 60
         static let quarter: Foundation.TimeInterval = 90 * 24 * 60 * 60
-        static let sixMonths: Foundation.TimeInterval = 180 * 24 * 60 * 60
+        static let total: Foundation.TimeInterval = 5 * 365 * 24 * 60 * 60
     }
 
     // MARK: - Metric Configurations
