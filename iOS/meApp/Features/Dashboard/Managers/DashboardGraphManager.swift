@@ -3,24 +3,6 @@ import Charts
 import os
 import Foundation
 
-/// Protocol defining graph management operations
-protocol DashboardGraphManaging {
-    func updateScrollPosition(to date: Date) async
-    func handleScrollPositionChange(_ newPosition: Date?) async
-    func handleChartSelection(at selectedDate: Date?) async
-    @available(iOS 18.0, *)
-    func handleScrollPhaseChange(_ phase: ScrollPhase) async
-  func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) async -> [GraphSeries]
-    func updateSelectedPeriod(_ period: TimePeriod) async
-    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async -> YAxisScale
-  func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async
-  func getVisibleOperations(from operations: [BathScaleWeightSummary]) async -> [BathScaleWeightSummary]
-    func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) async
-    func triggerDomainRecalculation(reason: String) async
-    func handleScrollStart() async
-    func handleScrollEnd() async
-}
-
 /// Manages all graph and chart operations for the dashboard
 @MainActor
 class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
@@ -33,7 +15,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     @Published var state: GraphState
 
     // MARK: - Private Properties
-    private let perfLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "DashboardGraphManager", category: "Scrolling")
     private let calendar = Calendar.current
 
     // MARK: - Performance Optimization - Simple Scroll State Check
@@ -131,9 +112,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
             // Clear selection state for better UX
             state.clearSelection()
-
-            // Log scroll end for debugging
-            os_log("ScrollPhase: idle - Computing visible operations and Y-axis domain", log: perfLog, type: .info)
 
         case .tracking:
             // User is touching but hasn't started scrolling yet
@@ -449,39 +427,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // MARK: - X-Axis Generation
     func generateXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> [Date] {
-        let allDates = operations.map(\.date)
-        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
-
         let entryCount = operations.count
-        let shouldRepeat = shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
-
-        switch period {
-        case .week:
-            return generateWeeklyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
-        case .month:
-            return generateMonthlyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
-        case .year:
-            return generateYearlyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
-        case .total:
-            return generateTotalXAxis(minDate: minDate, maxDate: maxDate, operations: operations, shouldRepeat: shouldRepeat, entryCount: entryCount)
-        }
+        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+        return DateTimeTools.generateXAxisValues(for: period, from: operations, shouldRepeat: shouldRepeat, entryCount: entryCount)
     }
 
     func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
-        switch period {
-        case .week:
-            return WeekDay.abbreviation(for: calendar.component(.weekday, from: date))
-        case .month:
-            return "\(calendar.component(.day, from: date))"
-        case .year:
-            return Month.initial(for: calendar.component(.month, from: date))
-        case .total:
-            if areEntriesInSameEra(operations) {
-                return Month.initial(for: calendar.component(.month, from: date))
-            } else {
-                return "\(calendar.component(.year, from: date))"
-            }
-        }
+        return DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
     }
 
     // MARK: - Private Methods
@@ -554,28 +506,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
-        switch period {
-        case .week:
-            return DashboardConstants.TimeInterval.week
-        case .month:
-            return DashboardConstants.TimeInterval.month
-        case .year:
-            return DashboardConstants.TimeInterval.year
-        case .total:
-            return DashboardConstants.TimeInterval.year
-        }
+        return DateTimeTools.visibleDomainLength(for: period)
     }
 
-    private func shouldRepeatXAxisLabels(for period: TimePeriod, entryCount: Int) -> Bool {
-        switch period {
-        case .week:
-            return entryCount >= DashboardConstants.Thresholds.weekRepeatThreshold
-        case .month:
-            return entryCount >= DashboardConstants.Thresholds.monthRepeatThreshold
-        case .year, .total:
-            return entryCount >= DashboardConstants.Thresholds.yearRepeatThreshold
-        }
-    }
 
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
@@ -723,5 +656,169 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // This method would calculate optimal snap positions based on the current period
         // For now, we'll just log the action
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Snapping to nearest position")
+    }
+
+    // MARK: - Date Formatting Methods (moved from DashboardStore)
+    
+    func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
+        let formatter = DateFormatter()
+        switch period {
+        case .week, .month:
+            formatter.dateFormat = "MMM d, yyyy"
+        case .year, .total:
+            formatter.dateFormat = "MMM yyyy"
+        }
+        return formatter.string(from: date)
+    }
+
+    func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
+        let calendar = Calendar.current
+
+        switch period {
+        case .week:
+            let month = DateTimeTools.formatter("LLL").string(from: minDate)
+            let startDay = calendar.component(.day, from: minDate)
+            let endDay = calendar.component(.day, from: maxDate)
+            let year = calendar.component(.year, from: maxDate)
+            return "\(month) \(startDay)-\(endDay), \(year)"
+        case .month:
+            return DateTimeTools.formatter("LLL yyyy").string(from: minDate)
+        case .year:
+            return DateTimeTools.formatter("yyyy").string(from: minDate)
+        case .total:
+            let minYear = calendar.component(.year, from: minDate)
+            let maxYear = calendar.component(.year, from: maxDate)
+            return minYear == maxYear ? "\(minYear)" : "\(minYear)-\(maxYear)"
+        }
+    }
+
+    func fallbackTimeLabel(for period: TimePeriod) -> String {
+        let now = Date()
+        let calendar = Calendar.current
+
+        switch period {
+        case .week:
+            let formatter = DateTimeTools.formatter("MMM d")
+            if let week = calendar.dateInterval(of: .weekOfYear, for: now) {
+                let start = formatter.string(from: week.start)
+                let end = DateTimeTools.formatter("d").string(from: week.end.addingTimeInterval(-1))
+                let year = calendar.component(.year, from: now)
+                return "\(start)-\(end), \(year)"
+            }
+            return DateTimeTools.formatter("MMM d, yyyy").string(from: now)
+        case .month:
+            return DateTimeTools.formatter("LLLL yyyy").string(from: now)
+        case .year, .total:
+            return DateTimeTools.formatter("yyyy").string(from: now)
+        }
+    }
+
+    // MARK: - Weight Calculation Methods (moved from DashboardStore)
+    
+    func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary], anchorWeight: Double?, period: TimePeriod, convertWeight: @escaping (Int) -> Double) -> Double? {
+        guard let anchorWeight = anchorWeight else { return nil }
+        let allOps = operations
+
+        switch period {
+        case .week, .month:
+            guard let latestWeight = allOps.last.map({ convertWeight(Int($0.weight)) }) else {
+                return nil
+            }
+            return latestWeight - anchorWeight
+        case .year, .total:
+            let weights = allOps.map { convertWeight(Int($0.weight)) }
+            guard !weights.isEmpty else { return nil }
+            let averageWeight = weights.reduce(0, +) / Double(weights.count)
+            return averageWeight - anchorWeight
+        }
+    }
+
+    func getCurrentAverageWeight(from operations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> Double {
+        let weightValues = operations.map { summary -> Double in
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { return 0 }
+                let currentWeight = convertWeight(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertWeight(Int(summary.weight))
+            }
+        }
+
+        guard !weightValues.isEmpty else { return 0 }
+        let average = weightValues.reduce(0, +) / Double(weightValues.count)
+        return average
+    }
+
+    // MARK: - Scroll Handling Methods (moved from DashboardStore)
+    
+    func handleScrollPositionChange(_ newPosition: Date?, isScrolling: Bool, updateWeightDisplay: @escaping () -> Void) {
+        guard let newPosition = newPosition else { return }
+
+        // Update position immediately for smooth scrolling
+        state.xScrollPosition = newPosition
+
+        // If not currently in a scroll gesture, this might be a programmatic change
+        if !isScrolling {
+            updateWeightDisplay()
+        }
+    }
+
+    func handleScrollStart() {
+        guard !state.isScrolling else { return }
+        state.isScrolling = true
+    }
+
+    func handleScrollEndOptimized(updateWeightDisplay: @escaping () -> Void, recalculateYAxis: @escaping () -> Void, updateMetrics: @escaping () -> Void) {
+        // Cancel any existing timer
+        state.scrollEndTimer?.invalidate()
+
+        // Set a timer to detect when scrolling has truly ended
+        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+
+                // Update scrolling state
+                self.state.isScrolling = false
+                self.state.hasDetectedScrollInCurrentGesture = false
+
+                // Update weight display to show average of visible region
+                updateWeightDisplay()
+
+                // Force Y-axis recalculation based on visible operations
+                recalculateYAxis()
+
+                // Reset metrics to show visible region average or latest entry
+                updateMetrics()
+            }
+        }
+    }
+
+    func updateWeightDisplayForCurrentView(triggerUpdate: @escaping () -> Void) {
+        triggerUpdate()
+    }
+
+    func recalculateYAxisForVisibleData(triggerUpdate: @escaping () -> Void) {
+        // Force chart to recalculate Y-axis by triggering data change
+        state.dataChangeTrigger += 1
+        triggerUpdate()
+    }
+
+    func updateMetricsForCurrentView(selectedPoint: BathScaleWeightSummary?, visibleOperations: [BathScaleWeightSummary], updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void, resetMetrics: @escaping () -> Void) {
+        if let selectedPoint = selectedPoint {
+            // If a point is selected, show its values
+            Task {
+                try? await updateMetrics(selectedPoint)
+            }
+        } else {
+            // If no selection, show average of visible region or latest entry
+            if !visibleOperations.isEmpty && visibleOperations.count > 1 {
+                // Show average metrics for visible region
+                // For now, just reset to latest - could implement average later
+                resetMetrics()
+            } else {
+                // Fallback to latest entry
+                resetMetrics()
+            }
+        }
     }
 }

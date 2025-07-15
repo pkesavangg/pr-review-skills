@@ -22,7 +22,7 @@ struct DashboardScreen: View {
             navbarHeaderSection()
             dashboardScrollView()
         }
-        .onAppear(perform: onAppearActions)
+        .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
@@ -35,18 +35,25 @@ struct DashboardScreen: View {
             )
         }
         .onChange(of: selectedMetricInfo) { _, newValue in
-            handleSelectedMetricInfoChange(newValue)
+            Task {
+                await store.handleSelectedMetricInfoChange(newValue, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
+                // Clear the selectedMetricInfo after handling
+                selectedMetricInfo = nil
+            }
         }
         .onChange(of: store.state.ui.selectedMetricLabel) { _, newValue in
-            handleSelectedMetricLabelChange(newValue)
+            store.handleSelectedMetricLabelChange(newValue)
         }
         .onChange(of: selectedEntry) { _, newValue in
-            handleSelectedEntryChange(newValue)
+            store.handleSelectedEntryChange(newValue)
         }
         .onChange(of: openMetricInfoWithoutSelection) { _, newValue in
-            handleMetricInfoSheetDismiss(newValue)
+            store.handleMetricInfoSheetDismiss(newValue)
         }
         .onChange(of: store.state.ui.isEditMode) { _, _ in store.resetDragState() }
+        .onChange(of: store.currentUnit) { _, _ in 
+            store.handleUnitChange()
+        }
         .presentAlert(alertData: $store.state.ui.alertData)
         .presentLoader(loaderData: store.loaderData)
     }
@@ -116,12 +123,12 @@ struct DashboardScreen: View {
             },
             onTap: {
                 store.selectMetric(item.label)
-                // Only select the metric and show the line chart on tap
-                // Metric info sheet should only open on long press
             },
             isDropTarget: store.state.ui.dropHoverId == item.label,
             onDrop: { _, _ in true },
-            onDropTargetChanged: { _ in },
+            onDropTargetChanged: { isTargeted in
+                store.updateDropTarget(isTargeted ? item.label : nil)
+            },
             verticalPadding: verticalPadding
         )
 
@@ -139,15 +146,18 @@ struct DashboardScreen: View {
             )
             .draggableReorder(
                 item: item,
-                draggingItem: $store.state.ui.draggingMetric,
-                items: $store.state.metrics.metrics,
+                draggingItem: store.draggingMetricBinding,
+                items: store.metricsBinding,
                 isDraggable: store.state.ui.isEditMode && !isRemoved,
                 onDropTargetChanged: { isTargeted in
-                    store.state.ui.dropHoverId = isTargeted ? item.label : nil
+                    store.updateDropTarget(isTargeted ? item.label : nil)
+                },
+                onDragEnd: {
+                    store.handleMetricDragEnd()
                 }
             )
             .longPressGesture(isEditMode: store.state.ui.isEditMode) {
-                handleMetricLongPress(for: item.label)
+                store.handleMetricLongPress(for: item.label, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
             }
     }
 
@@ -158,10 +168,10 @@ struct DashboardScreen: View {
                 streakCardView(for: item)
             }
         }
+        .id("\(store.state.ui.gridLayoutId)-\(store.currentUnitText)") // Force refresh when unit changes
         .padding(.bottom, .spacingSM)
         .padding(.top, (!store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved) ? 0 : .spacingSM)
         .padding(.horizontal, .spacingSM)
-        .id(store.state.ui.gridLayoutId)
         .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
     }
 
@@ -183,7 +193,9 @@ struct DashboardScreen: View {
                 }
             },
             onDrop: { _, _ in true },
-            onDropTargetChanged: { _ in }
+            onDropTargetChanged: { isTargeted in
+                store.updateDropTarget(isTargeted ? item.label : nil)
+            }
         )
 
         return card
@@ -200,11 +212,14 @@ struct DashboardScreen: View {
             )
             .draggableReorder(
                 item: item,
-                draggingItem: $store.state.ui.draggingStreak,
-                items: $store.state.streak.streakItems,
+                draggingItem: store.draggingStreakBinding,
+                items: store.streakItemsBinding,
                 isDraggable: store.state.ui.isEditMode && !isRemoved,
                 onDropTargetChanged: { isTargeted in
-                    store.state.ui.dropHoverId = isTargeted ? item.label : nil
+                    store.updateDropTarget(isTargeted ? item.label : nil)
+                },
+                onDragEnd: {
+                    store.handleStreakDragEnd()
                 }
             )
     }
@@ -223,12 +238,13 @@ struct DashboardScreen: View {
             delta: store.state.goal.goalDelta,
             startWeight: store.state.goal.goalStartWeight,
             goalWeight: store.state.goal.goalWeight,
-            unit: store.state.goal.goalUnit.rawValue,
+            unit: store.currentUnitText,
             isRemoved: store.state.ui.isGoalCardRemoved,
             progress: store.state.goal.goalProgress,
             goalType: store.state.goal.goalType,
             isWeightlessMode: store.isWeightlessModeEnabled
         )
+        .id(store.currentUnitText) // Force refresh when unit changes
         .editModeOverlay(
             isEditMode: store.state.ui.isEditMode,
             isRemoved: store.state.ui.isGoalCardRemoved,
@@ -261,62 +277,11 @@ struct DashboardScreen: View {
                     tabViewModel.navigateToGoalSetting()
                 })
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: false, action: {
-                    // If a metric is selected, open its metric info
-                    if let selectedLabel = store.state.ui.selectedMetricLabel {
-                        selectedMetricInfo = selectedLabel
-                    } else {
-                        // If no metric is selected, open with default .weight metric
-                        openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: DashboardStrings.weight)
-                    }
+                    selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                 })
             }
         }
         .padding(.bottom, .spacingLG)
     }
 
-    // MARK: - Helper Methods
-    private func handleMetricLongPress(for metricLabel: String) {
-        // Update selection state if needed
-        if store.state.ui.selectedMetricLabel != metricLabel {
-            store.selectMetric(metricLabel)
-        }
-        // Open metric info sheet
-        selectedMetricInfo = metricLabel
-    }
-
-    private func onAppearActions() {
-        store.loadLatestEntryData()
-        store.loadGoalCardData()
-        // Handle any settings changes
-        store.handleSettingsChange()
-        // Ensure chart shows the latest entries by default
-        store.ensureLatestEntriesVisible()
-    }
-
-    private func handleSelectedMetricInfoChange(_ newValue: String?) {
-        guard let label = newValue else { return }
-        store.state.ui.selectedMetricLabel = label
-        selectedEntry = store.createEntryForMetricInfo()
-        selectedMetric = store.selectedBodyMetric
-        selectedMetricInfo = nil
-    }
-
-    private func handleSelectedMetricLabelChange(_ newValue: String?) {
-        if newValue == nil {
-            selectedEntry = nil
-            selectedMetric = nil
-        }
-    }
-
-    private func handleSelectedEntryChange(_ newValue: Entry?) {
-        if newValue == nil {
-            store.state.ui.selectedMetricLabel = nil
-        }
-    }
-
-    private func handleMetricInfoSheetDismiss(_ newValue: MetricInfoWrapper?) {
-        if newValue == nil {
-            store.state.ui.selectedMetricLabel = nil
-        }
-    }
 }

@@ -58,8 +58,18 @@ struct MetricsState {
             })
             return Array(metrics.prefix(activeMetricsCount)).filter { fourLabels.contains($0.label) }
         } else {
-            return Array(metrics.prefix(activeMetricsCount))
+            // For 12-metric mode, show all metrics regardless of activeMetricsCount
+            return metrics
         }
+    }
+    
+    /// Returns grid columns configuration based on metric type
+    var gridColumns: [GridItem] {
+        let columnCount = metricType == .four ? 
+            DashboardConstants.UI.fourMetricGridColumns : 
+            DashboardConstants.UI.twelveMetricGridColumns
+        
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 }
 

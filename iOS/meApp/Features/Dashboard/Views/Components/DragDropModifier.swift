@@ -13,11 +13,14 @@ struct ReorderDropDelegate<T: Identifiable & Equatable>: DropDelegate {
     @Binding var items: [T]
     @Binding var draggingItem: T?
     let onDropTargetChanged: (Bool) -> Void
+    let onDragEnd: (() -> Void)?
 
     func performDrop(info: DropInfo) -> Bool {
-        // Immediately reset drag state to prevent time delay
+        // Reset drag state immediately for better responsiveness
         draggingItem = nil
         onDropTargetChanged(false)
+        onDragEnd?()
+        
         return true
     }
 
@@ -28,11 +31,22 @@ struct ReorderDropDelegate<T: Identifiable & Equatable>: DropDelegate {
             onDropTargetChanged(true)
             return 
         }
-
+        
+        // Set drop target for visual feedback
         onDropTargetChanged(true)
-        withAnimation(.easeInOut(duration: 0.2)) {
-            items.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+        
+        // Perform reordering immediately without animation delay
+        // Calculate the correct destination index
+        let newToIndex: Int
+        if from < to {
+            // Moving forward: insert after the target
+            newToIndex = to + 1
+        } else {
+            // Moving backward: insert at the target position
+            newToIndex = to
         }
+        
+        items.move(fromOffsets: IndexSet(integer: from), toOffset: newToIndex)
     }
     
     func dropExited(info: DropInfo) {

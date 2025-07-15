@@ -30,6 +30,14 @@ struct MetricCardView: View {
     private var subheadingColor: Color {
         (isSelected && !isEditMode) ? theme.textInverse : theme.textSubheading
     }
+    
+    private var borderColor: Color {
+        isDropTarget ? theme.actionSecondary : Color.clear
+    }
+    
+    private var borderWidth: CGFloat {
+        isDropTarget ? 2 : 0
+    }
 
     var body: some View {
         content()
