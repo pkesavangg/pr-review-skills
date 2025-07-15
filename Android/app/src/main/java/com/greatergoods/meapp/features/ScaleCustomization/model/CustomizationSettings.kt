@@ -28,7 +28,7 @@ val CustomizeSettingsList = listOf(
   ),
   CustomizeSettingsCard(
     iconId = AppIcons.Setup.Graph,
-    title = "Scale Modes",
+    title = "Scale Metrics",
     subtitle = "Customize the metrics you’ll see when weighing-in.",
     step = CustomizeSettings.SCALE_METRICS,
     isVisited = false,

@@ -15,7 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationLayout
 import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationSettingsItem
+import com.greatergoods.meapp.features.ScaleCustomization.strings.CustomizeSettingsStrings
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Screens.ScaleMetricsSettingScreen
 import com.greatergoods.meapp.features.ScaleModeSettings.screens.ScaleModeSettingsScreen
@@ -99,30 +101,44 @@ fun CustomizeScaleSettings(
       }
 
       CustomizeSettings.DASHBOARD_METRICS -> {
-        DashboardMetrics(
-          metricData = emptyList(),
-          visibleKeys = state.dashboardKeys,
-          inEditMode = true,
-        )
+        CustomizationLayout(
+          title = CustomizeSettingsStrings.DashboardMetrics.Title,
+          subtitle = CustomizeSettingsStrings.DashboardMetrics.Subtitle,
+        ) {
+          DashboardMetrics(
+            metricData = emptyList(),
+            visibleKeys = state.dashboardKeys,
+            inEditMode = false,
+          )
+        }
       }
 
       CustomizeSettings.SCALE_METRICS -> {
-        ScaleMetricsSettingScreen(
-          currentMetrics = scaleMetrics,
-          onMetricsChanged = { metrics ->
-            scaleMetrics = metrics
-          },
-        )
+        CustomizationLayout(
+          title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
+          subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
+          ) {
+          ScaleMetricsSettingScreen(
+            currentMetrics = scaleMetrics,
+            onMetricsChanged = { metrics ->
+              scaleMetrics = metrics
+            },
+          )
+        }
       }
 
       CustomizeSettings.SCALE_MODE -> {
-        ScaleModeSettingsScreen(
-          isAllBodyMetrics = true,
-          isHeartRateOn = true,
-          onModeSelected = {},
-          onHeartRateToggle = {},
-          onBioimpedanceClick = {},
-        )
+        CustomizationLayout(
+          title = CustomizeSettingsStrings.ScaleMode.Title,
+        ) {
+          ScaleModeSettingsScreen(
+            isAllBodyMetrics = true,
+            isHeartRateOn = true,
+            onModeSelected = {},
+            onHeartRateToggle = {},
+            onBioimpedanceClick = {},
+          )
+        }
       }
 
       CustomizeSettings.SCALE_USERNAME -> {
