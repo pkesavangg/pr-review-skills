@@ -78,9 +78,11 @@ struct BtWifiScaleSetupScreen: View {
     private var footerButtons: some View {
         HStack {
             if setupStore.currentStep == .availableWifiList {
-                Spacer()
-                ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {})
-                Spacer()
+                if setupStore.scaleSetupError == .none  {
+                    Spacer()
+                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {})
+                    Spacer()
+                }
             } else {
                 ButtonView(text: commonLang.back,
                            type: .inlineTextPrimary,

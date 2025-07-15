@@ -474,6 +474,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         // Move to connecting WiFi step
+        connectionState = .loading
         navigateToStep(.connectingWifi)
     }
     

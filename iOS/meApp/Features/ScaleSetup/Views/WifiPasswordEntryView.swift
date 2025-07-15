@@ -26,7 +26,6 @@ struct WifiPasswordEntryView: View {
                             .fontOpenSans(.heading4)
                             .fontWeight(.bold)
                             .foregroundColor(theme.textBody)
-                        
                         (
                             Text(lang.enterPasswordSubtitlePrefix)
                             + Text(store.networkForm.ssid.value).fontWeight(.bold)

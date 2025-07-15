@@ -17,26 +17,59 @@ struct WifiSelectionView: View {
     let onNetworkSelected: (WifiDetails) -> Void
     
     private let lang = BtWifiScaleSetupStrings.WifiScreenStrings.self
+    private let itemHeight = 48
     
-    var body: some View {
-        let availableNetworks = wifiNetworks.filter { network in
+    var availableNetworks: [WifiDetails] {
+        wifiNetworks.filter { network in
             guard let connectedSSID = connectedWifiNetwork?.ssid else { return true }
             return network.ssid != connectedSSID
         }
-        
+    }
+    
+    var availableNetworksHeight: CGFloat {
+        CGFloat(min(itemHeight * availableNetworks.count, itemHeight * 5))
+    }
+    
+    var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: .spacingMD) {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Fixed header
                     wifiHeaderView(isConnected: connectedWifiNetwork != nil)
+                        .padding(.top, .spacingMD)
                     
-                    if let connected = connectedWifiNetwork {
-                        connectedNetworkSection(network: connected)
+                    VStack(alignment: .leading, spacing: .spacingMD) {
+                        // Fixed connected network section
+                        if let connected = connectedWifiNetwork {
+                            connectedNetworkSection(network: connected)
+                        }
+                        
+                        // Available networks section with scrollable list
+                        VStack(alignment: .leading, spacing: .spacingSM) {
+                            if connectedWifiNetwork != nil {
+                                Text(lang.availableNetworks)
+                                    .fontOpenSans(.heading5)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(theme.textHeading)
+                            }
+                            
+                            // Scrollable available networks list
+                            ScrollView(.vertical, showsIndicators: true) {
+                                WifiNetworksListView(networks: availableNetworks, onNetworkSelected: onNetworkSelected)
+                            }
+                            .scrollDisabled(availableNetworks.count <= 5)
+                            .frame(height: availableNetworksHeight)
+                            .frame(maxWidth: .infinity)
+                        }
+                        
+                        // Fixed refresh button
+                        refreshButton()
                     }
-                    availableNetworksSection(networks: availableNetworks)
-                    refreshButton()
+                    .padding(.top, .spacingMD)
+                    
+                    Spacer()
                 }
             }
-            .padding(.top, .spacingMD)
         }
         .frame(maxHeight: .infinity)
         .background(theme.backgroundSecondary)
@@ -69,19 +102,7 @@ struct WifiSelectionView: View {
         }
     }
     
-    @ViewBuilder
-    private func availableNetworksSection(networks: [WifiDetails]) -> some View {
-        VStack(alignment: .leading, spacing: .spacingSM) {
-            if connectedWifiNetwork != nil {
-                Text(lang.availableNetworks)
-                    .fontOpenSans(.heading5)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.textHeading)
-            }
-            
-            WifiNetworksListView(networks: networks, onNetworkSelected: onNetworkSelected)
-        }
-    }
+
     
     @ViewBuilder
     private func refreshButton() -> some View {
