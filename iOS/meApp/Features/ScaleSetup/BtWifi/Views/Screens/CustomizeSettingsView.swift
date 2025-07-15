@@ -65,6 +65,20 @@ struct CustomizeSettingsView: View {
                 return AppAssets.scale
             }
         }
+        
+        /// Maps the settings item to the corresponding CustomizeSettings enum
+        var customizeSettingsType: CustomizeSettings {
+            switch self {
+            case .dashboardMetrics:
+                return .dashboardMetrics
+            case .scaleMetrics:
+                return .scaleMetrics
+            case .scaleModes:
+                return .scaleMode
+            case .userName:
+                return .scaleUsername
+            }
+        }
     }
     
     var body: some View {
@@ -137,6 +151,9 @@ struct CustomizeSettingsView: View {
     /// Toggles the selection state for a settings item.
     private func addSelection(for item: SettingsItem) {
         selectedItems.insert(item)
+        
+        // Call the store method to set the customization page and navigate
+        setupStore.setCustomizationPage(item.customizeSettingsType)
     }
 }
 

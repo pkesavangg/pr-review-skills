@@ -44,6 +44,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var deviceDiscoveryCancellable: AnyCancellable? = nil
     /// Active subscription to the network form changes
     private var networkFormCancellable: AnyCancellable? = nil
+    /// Active subscription to new entry events during measurement
+    private var newEntrySubscription: AnyCancellable? = nil
+    /// Task handling measurement timeout
+    private var measurementTimeoutTask: Task<Void, Never>? = nil
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -100,6 +104,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Error code for the WifiConnectionView/BluetoothConnectionView
     @Published var errorCode: String? = nil
     
+    /// Current customize setting being viewed
+    @Published var currentCustomizeSetting: CustomizeSettings = .none
+    
+    /// Tracks if any changes were made in customize settings
+    @Published var hasCustomizeChanges: Bool = false
+    
     // MARK: - Forms
     @Published var userNameForm = UserNameForm()
     @Published var networkForm = NetworkForm()
@@ -111,7 +121,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         .connectingWifi,
         .stepOn,
         .measurement,
-        .scaleConnected
+        .updateSettings
     ]
     
     /// Task handling time-based transitions during testing.
@@ -122,6 +132,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private let alertLang = AlertStrings.self
     private let commonLang = CommonStrings.self
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
+    private let customizeSettingsLang = BtWifiScaleSetupStrings.CustomizeSettingsStrings.self
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -187,7 +198,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             onRefresh: { [weak self] in
                                 self?.tryAgainButtonHandler()
                             },
-                            onNetworkSelected: { [weak self] network in
+                            onNetworkSelected: {
+                                [weak self] network in
                                 guard let self else { return }
                                 self.selectedWifiNetwork = network
                                 networkForm.setSSID(selectedWifiNetwork?.ssid ?? "")
@@ -223,15 +235,76 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 ))
             case .customizeSettings:
                 return AnyView(CustomizeSettingsView())
-            default:
-                // For now, other screens show the step name as text
+            case .viewSettings:
                 return AnyView(
-                    VStack {
-                        Text("Step: \(step.rawValue)")
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                    Group {
+                        switch currentCustomizeSetting {
+                        case .scaleUsername:
+                            DuplicateUserView(isFromCustomizeSettings: true)
+                        default:
+                            // For now, other settings show placeholder
+                            VStack {
+                                Text("Settings View: \(currentCustomizeSetting.rawValue)")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                )
+            case .updateSettings:
+                return AnyView(
+                    Group {
+                        switch scaleSetupError {
+                        case .updateSettingsFailed:
+                            BtWifiSetupErrorStateView(
+                                title: BtWifiScaleSetupStrings.BtWifiSetupErrorStateViewStrings.updateFailed,
+                                errorCode: errorCode,
+                                onTryAgain: { [weak self] in
+                                    self?.tryAgainButtonHandler()
+                                },
+                                onSupport: { [weak self] in
+                                    self?.showHelpModal()
+                                }
+                            )
+                        default:
+                            ConnectionPromptView(
+                                title: customizeSettingsLang.updatingSettings,
+                                image: AppAssets.wgLogo
+                            )
+                        }
+                    }
+                )
+            case .stepOn:
+                return AnyView(StepOnView())
+            case .measurement:
+                return AnyView(
+                    Group {
+                        switch scaleSetupError {
+                        case .collectMeasurementFailed:
+                            BtWifiSetupErrorStateView(
+                                title: BtWifiScaleSetupStrings.BtWifiSetupErrorStateViewStrings.errorCollectingMeasurement,
+                                errorCode: errorCode,
+                                onTryAgain: { [weak self] in
+                                    self?.tryAgainButtonHandler()
+                                },
+                                onSupport: { [weak self] in
+                                    self?.showHelpModal()
+                                }
+                            )
+                        default:
+                            ConnectionPromptView(
+                                title: customizeSettingsLang.collectingMeasurement,
+                                image: AppAssets.wgLogo
+                            )
+                        }
+                    }
+                )
+            case .scaleConnected:
+                return AnyView(
+                    FinishStepView() {
+                        self.showAccuCheckInfoModal()
+                    }
                 )
             }
         }
@@ -240,11 +313,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
     var nextButtonText: String {
         switch currentStep {
         case .scaleConnected:
-            return commonLang.finish
+            return scaleSetupError == .collectMeasurementFailed ? CommonStrings.tryAgain : commonLang.finish
         case .gatheringNetwork:
             return scaleSetupError == .duplicatesFound ? commonLang.save : commonLang.next
         case .wifiPassword:
             return commonLang.connect
+        case .viewSettings:
+            return commonLang.save
+        case .measurement:
+            return scaleSetupError == .collectMeasurementFailed ? CommonStrings.tryAgain : commonLang.next
         default:
             return commonLang.next
         }
@@ -320,6 +397,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Reset error state
         self.scaleSetupError = .none
         
+        // Reset customize settings state
+        self.hasCustomizeChanges = false
+        self.currentCustomizeSetting = .none
+        
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
             if discoveredScale != nil && discoveryEvent != nil {
@@ -383,6 +464,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if currentStep == .gatheringNetwork {
             return scaleSetupError == .duplicatesFound
         }
+        
+        // Show footer for viewSettings step
+        if currentStep == .viewSettings {
+            return true
+        }
+        
         return !stepsToHideFooter.contains(currentStep)
     }
     
@@ -397,6 +484,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             handleSaveDuplicateUser()
         } else if currentStep == .wifiPassword {
             handleWifiPasswordConnect()
+        } else if currentStep == .viewSettings {
+            handleViewSettingsAction()
+        } else if currentStep == .customizeSettings {
+            handleCustomizeSettingsNext()
+        } else if currentStep == .scaleConnected {
+            dismissAction?()
         } else {
             moveToNextStep()
         }
@@ -406,6 +499,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     func handleBackButtonClick() {
         if currentStep == .wifiPassword {
             resetNetworkForm()
+        } else if currentStep == .viewSettings {
+            handleViewSettingsBack()
         }
         moveToPreviousStep()
     }
@@ -473,11 +568,94 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     self?.scaleSetupError = .none
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         self?.navigateToStep(.customizeSettings)
-                    }                    
+                    }
                 }
             ]
         )
         notificationService.showAlert(alert)
+    }
+    
+    /// Sets the customization page and navigates to view settings
+    func setCustomizationPage(_ setting: CustomizeSettings) {
+        currentCustomizeSetting = setting
+        
+        // Pre-populate form data based on the setting
+        switch setting {
+        case .scaleUsername:
+            // Set the display name from saved scale or first name
+            let displayName = savedScale?.r4ScalePreference?.displayName ?? firstName ?? "User"
+            userNameForm.setDisplayName(displayName)
+            
+            // Convert DeviceUser list to ScaleUser list for form validation
+            let scaleUsers = userList.map { deviceUser in
+                ScaleUser(name: deviceUser.name, token: deviceUser.token)
+            }
+            userNameForm.updateUserList(scaleUsers)
+        default:
+            break
+        }
+        
+        navigateToStep(.viewSettings)
+    }
+    
+    /// Handles the save action from the view settings screen
+    private func handleViewSettingsAction() {
+        switch currentCustomizeSetting {
+        case .scaleUsername:
+            // Validate the form first
+            guard userNameForm.displayName.isValid else { return }
+            
+            // Update the scale preference with the new display name
+            if let savedScale = savedScale {
+                savedScale.r4ScalePreference?.displayName = userNameForm.displayName.value
+            }
+            
+            // Reset current customize setting and navigate back
+            currentCustomizeSetting = .none
+            navigateToStep(.customizeSettings)
+        default:
+            // For other settings, just navigate back for now
+            // In the future, you might want to check if actual changes were made
+            currentCustomizeSetting = .none
+            navigateToStep(.customizeSettings)
+        }
+    }
+    
+    /// Handles the back action from the view settings screen
+    private func handleViewSettingsBack() {
+        // Reset current customize setting
+        currentCustomizeSetting = .none
+        
+        // Don't mark changes as made when going back without saving
+        // The changes flag should only be set when actually saving changes
+        
+        // Navigation back to customize settings will be handled by moveToPreviousStep()
+    }
+    
+    /// Handles the next button click from the customize settings screen
+    ///
+    /// CUSTOMIZE SETTINGS FLOW:
+    /// 1. User is on customizeSettings step
+    /// 2. User clicks Next button
+    /// 3. If hasCustomizeChanges is true:
+    ///    - Navigate to updatingSettings step
+    ///    - Show ConnectionPromptView with "Updating Settings" and wgLogo
+    ///    - Call updateCustomizeSettings() to sync changes to scale
+    ///    - Auto-navigate to stepOn after 2 seconds
+    /// 4. If hasCustomizeChanges is false:
+    ///    - Navigate directly to stepOn step
+    ///
+    /// NOTE: hasCustomizeChanges is set to true when:
+    /// - User saves changes from viewSettings screen (via handleViewSettingsAction)
+    /// - CustomizeSettingsView calls markCustomizeSettingsChanged() when settings change
+    private func handleCustomizeSettingsNext() {
+        if hasCustomizeChanges {
+            // Show updating settings view
+            navigateToStep(.updateSettings)
+        } else {
+            // Move directly to stepOn
+            navigateToStep(.stepOn)
+        }
     }
     
     /// Handles the save action from the duplicate user screen
@@ -545,7 +723,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.scaleSetupError = .none
         }
-        navigateToStep(isFromBtConnection ? .wakeup : .gatheringNetwork)
+        
+        // Determine which step to navigate to based on the error type
+        let targetStep: BtWifiScaleSetupStep
+        if isFromBtConnection {
+            targetStep = .wakeup
+        } else if scaleSetupError == .collectMeasurementFailed {
+            targetStep = .stepOn
+        } else if scaleSetupError == .updateSettingsFailed {
+            targetStep = .customizeSettings
+        } else {
+            targetStep = .gatheringNetwork
+        }
+        navigateToStep(targetStep)
     }
     
     // MARK: - Step Change Handling
@@ -575,6 +765,62 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     await self.setupWifi()
                 }
             }
+        case .viewSettings:
+            // Handle view settings step change
+            // Make sure we have user list populated for username settings
+            if currentCustomizeSetting == .scaleUsername && userList.isEmpty {
+                Task {
+                    await self.getUserList()
+                }
+            }
+        case .updateSettings:
+            // Simulate updating settings and move to next step
+            Task {
+                await self.updateCustomizeSettings()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self.navigateToStep(.stepOn)
+                }
+            }
+            
+        case .stepOn:
+            Task {
+                if let scale = self.savedScale, let broadcastId = scale.broadcastIdString {
+                    // TODO: Uncomment when measurement live data is crash issue resolved
+                    //_ = await self.bluetoothService.getMeasurementLiveData(broadcastId: broadcastId)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        self.moveToNextStep()
+                    }
+                }
+            }
+        case .measurement:
+            // Cancel any existing measurement subscription and timeout
+            cancelMeasurementSubscription()
+            
+            // Set up timeout for measurement collection
+            measurementTimeoutTask = Task { [weak self] in
+                guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
+                try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
+                await MainActor.run {
+                    guard let self else { return }
+                    // If we're still on measurement step and have an active subscription, handle timeout
+                    if self.currentStep == .measurement && self.newEntrySubscription != nil {
+                        self.cancelMeasurementSubscription()
+                        self.scaleSetupError = .collectMeasurementFailed
+                        self.moveToNextStep()
+                    }
+                }
+            }
+            
+            // Subscribe to new entry events
+            newEntrySubscription = bluetoothService.newEntryReceivedPublisher
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] entry in
+                    guard let self else { return }
+                    // Entry received - clear timeout and move to next step
+                    self.cancelMeasurementSubscription()
+                    self.scaleSetupError = .none
+                    self.moveToNextStep()
+                }
         default:
             break
         }
@@ -1020,17 +1266,50 @@ final class BtWifiScaleSetupStore: ObservableObject {
         LoggerService.shared.log(level: .info, tag: tag, message: "checkDuplicateUserList - found \(self.duplicateList.count) duplicate users")
     }
     
+    /// Updates the customize settings on the scale
+    private func updateCustomizeSettings() async {
+        guard let savedScale = savedScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - no saved scale")
+            return
+        }
+        
+        // Here you would implement the actual API calls to update settings on the scale
+        // For now, just simulate the update
+        do {
+            // Simulate API call delay
+            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
+            // Reset the changes flag after successful update
+            hasCustomizeChanges = false
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully")
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update settings: \(error.localizedDescription)")
+        }
+    }
+    
     // MARK: - Helper Methods
     
+    /// Cancels measurement subscription and timeout task
+    private func cancelMeasurementSubscription() {
+        newEntrySubscription?.cancel()
+        newEntrySubscription = nil
+        measurementTimeoutTask?.cancel()
+        measurementTimeoutTask = nil
+    }
+    
+    /// NOTE: To integrate with CustomizeSettingsView:
+    /// When any setting is changed in the CustomizeSettingsView,
+    /// call setupStore.markCustomizeSettingsChanged() to track the change.
+    /// This ensures that the next button will show the updating settings view
+    /// when changes have been made, or skip directly to stepOn when no changes exist.
     /// Navigates to the specified step with an optional delay
     /// - Parameters:
     ///   - step: The step to navigate to
     ///   - delay: Optional delay in seconds before navigation (default: 0)
     private func navigateToStep(_ step: BtWifiScaleSetupStep, delay: TimeInterval = 0) {
         if let stepIndex = steps.firstIndex(of: step) {
-            withAnimation {
-                self.currentStepIndex = stepIndex
-            }
+            self.currentStepIndex = stepIndex
         }
     }
     
@@ -1078,6 +1357,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
             } else {
                 isNextEnabled = networkForm.ssid.isValid && networkForm.password.isValid
             }
+        case .viewSettings:
+            // Enable save button based on current customize setting
+            switch currentCustomizeSetting {
+            case .scaleUsername:
+                isNextEnabled = userNameForm.displayName.isValid
+            default:
+                isNextEnabled = true
+            }
         default:
             isNextEnabled = true
         }
@@ -1097,6 +1384,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
             idx += direction
         }
         return idx
+    }
+    
+    /// Shows the showAccuCheckInfoModal.
+    func showAccuCheckInfoModal() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(AccuCheckInfoModalView() {
+                self.notificationService.dismissModal()
+            })
+        ))
     }
     
     // MARK: - Cleanup Methods
@@ -1133,6 +1429,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Cancel network form subscription
         networkFormCancellable?.cancel()
         networkFormCancellable = nil
+        
+        // Cancel measurement subscription and timeout
+        newEntrySubscription?.cancel()
+        newEntrySubscription = nil
+        measurementTimeoutTask?.cancel()
+        measurementTimeoutTask = nil
         
         // Nil out discovery data so subsequent runs start fresh.
         discoveredScale = nil

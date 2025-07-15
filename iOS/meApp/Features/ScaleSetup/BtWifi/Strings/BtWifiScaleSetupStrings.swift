@@ -47,5 +47,29 @@ struct BtWifiScaleSetupStrings {
         static let scaleModesSubtitle = "Those with specific medical conditions may want to change modes."
         static let userNameTitle = "User Name"
         static let userNameSubtitle = "Change how your name appears on the scale."
+        static let updatingSettings = "Updating Settings"
+        static let collectingMeasurement = "Collecting Measurement"
+    }
+    
+    struct StepOnStrings {
+        static let title = "One Last Step"
+        static let subtitle = "Step on the scale and take a measurement."
+    }
+    
+    struct ScaleSetupFinishStrings {
+        static let title = "Measurement Recorded"
+        static let subtitle = "Your measurement was verified and added to your account."
+        static let whatThis = "What’s this?"
+    }
+    
+    struct BtWifiSetupErrorStateViewStrings {
+        static let updateFailed = "Update Failed"
+        static let errorCollectingMeasurement = "Error Collecting Measurement"
+    }
+    
+    struct AccuCheckInfoModalViewStrings {
+        static let title = "What is AccuCheck?"
+        static let description1 = "AccuCheck is Greater Goods’ proprietary algorithm, designed to provide the most accurate results possible every time you weigh in—down to .01 lb."
+        static let description2 = "Shortly after getting on the scale, you’ll see an orange light. This means that you’ve been weighed. When you get off the scale, you’ll see a green light. This means that AccuCheck has double checked its work, and your weight has been verified. Essentially, AccuCheck is a second set of eyes, every time."
     }
 }

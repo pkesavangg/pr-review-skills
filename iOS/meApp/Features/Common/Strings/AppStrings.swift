@@ -697,7 +697,13 @@ struct AppAssets {
     static let plusCircleDark = "plusCircleDark"
     static let minusCircleDark = "minusCircleDark"
     static let minusCircleClear = "minusCircleClear"
+    
+    // MARK: - BtWifi Setup
     static let userInfoScreen = "0412UserInfoScreen"
+    static let wgLogo = "wgLogo"
+    static let stepOn = "stepOn"
+    static let accuCheck = "accuCheck"
+    static let accuCheckTickLarge = "accuCheckTickLarge"
 }
 
 /// Constants used in the AppSync entry result confirmation card

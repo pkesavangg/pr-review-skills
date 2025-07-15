@@ -49,6 +49,7 @@ struct DuplicateUserView: View {
                         VStack {
                             if !isFromCustomizeSettings {
                                 ButtonView(text: lang.restoreAccountButton, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                                    hideKeyboard()
                                     store.handleRestoreAccount()
                                 }
                                 if let lastActive = store.duplicateUserLastActiveAt {
