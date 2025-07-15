@@ -68,34 +68,34 @@ struct CustomizeSettingsView: View {
     }
     
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: .spacingXL) {
-                    // Header
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(strings.title)
-                            .fontOpenSans(.heading4)
-                            .foregroundColor(theme.textHeading)
-                            .multilineTextAlignment(.center)
-                        
-                        Text(strings.subtitle)
-                            .fontOpenSans(.body2)
-                            .foregroundColor(theme.textBody)
-                            .multilineTextAlignment(.center)
-                    }
+            VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(strings.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                        .multilineTextAlignment(.center)
                     
-                    // Settings Items
-                    VStack(spacing: .spacingSM) {
-                        ForEach(SettingsItem.allCases, id: \.rawValue) { item in
-                            settingsItemView(item: item)
+                    Text(strings.subtitle)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                        .multilineTextAlignment(.center)
+                }
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: .spacingLG) {
+                            // Settings Items
+                            VStack(spacing: .spacingSM) {
+                                ForEach(SettingsItem.allCases, id: \.rawValue) { item in
+                                    settingsItemView(item: item)
+                                }
+                            }
+                            Spacer()
                         }
                     }
-                    Spacer()
                 }
             }
-            .padding(.top, .spacingXL)
-        }
-        .background(theme.backgroundSecondary)
+            .padding(.top, .spacingLG)
+            .background(theme.backgroundSecondary)
     }
     
     /// Creates a settings item view with icon, text, and checkmark.

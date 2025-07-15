@@ -9,8 +9,12 @@ import Foundation
 
 struct BtWifiScaleSetupStrings {
     struct DuplicateUserViewStrings {
-        static let title = "A user with this name already exists on the scale."
-        static let subtitle = "Choose a new user name to proceed. Or, if this is you, restore the existing account."
+        static let title: (Bool) -> String = { isCustomizationSettings in
+            isCustomizationSettings ? "Confirm User Name" : "A user with this name already exists on the scale."
+        }
+        static let subtitle: (Bool) -> String = { isCustomizationSettings in
+            isCustomizationSettings ? "Change how your name appears on the scale." : "Choose a new user name to proceed. Or, if this is you, restore the existing account."
+        }
         static let restoreAccountButton = "Restore account"
         static let lastActive = "last active"
     }
