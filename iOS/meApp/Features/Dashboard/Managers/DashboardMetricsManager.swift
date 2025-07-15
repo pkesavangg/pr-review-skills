@@ -1,22 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// Protocol defining metrics management operations
-protocol DashboardMetricsManaging {
-    func updateMetrics(with entry: Entry) async throws
-    func updateMetrics(with selectedPoint: BathScaleWeightSummary) async throws
-    func saveMetricsToAPI() async throws
-    func loadMetricsFromAPI() async throws
-    func resetMetricsToDefaults() async throws
-    func toggleMetricVisibility(at index: Int) async throws
-    func reorderMetrics(from source: IndexSet, to destination: Int) async throws
-    func getMetricValue(for label: String, from summary: BathScaleWeightSummary) async -> Double?
-    func createEntryForMetricInfo(metricLabel: String?) async -> Entry
-    func getBodyMetric(for metricLabel: String) async -> BodyMetric
-    func handleMetricLongPress(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>)
-    func handleSelectedMetricInfoChange(_ newValue: String?, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) async
-}
-
 /// Manages all metric-related operations for the dashboard
 @MainActor
 class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
@@ -250,11 +234,34 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
     }
 
+    // MARK: - Metric Type Management
+    
+    /// Updates the metric type and adjusts activeMetricsCount accordingly
+    func updateMetricType(_ metricType: DashboardMetricType) {
+        state.metricType = metricType
+        
+        // Set activeMetricsCount based on metric type
+        if metricType == .four {
+            state.activeMetricsCount = 4
+        } else {
+            state.activeMetricsCount = 12
+        }
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metric type to \(metricType), activeMetricsCount: \(state.activeMetricsCount)")
+    }
+
     // MARK: - Metric Management
     func resetMetricsToDefaults() async throws {
         setupInitialMetrics()
-        state.activeMetricsCount = originalMetrics.count
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults")
+        
+        // Set activeMetricsCount based on current metric type
+        if state.metricType == .four {
+            state.activeMetricsCount = 4
+        } else {
+            state.activeMetricsCount = originalMetrics.count
+        }
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults, activeMetricsCount: \(state.activeMetricsCount)")
     }
 
     func toggleMetricVisibility(at index: Int) async throws {
@@ -268,14 +275,21 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         state.metrics.remove(at: index)
 
         if isCurrentlyRemoved {
-            state.metrics.insert(metric, at: state.activeMetricsCount)
-            state.activeMetricsCount += 1
+            // Check if we can add more metrics based on metric type
+            let maxAllowedMetrics = state.metricType == .four ? 4 : 12
+            if state.activeMetricsCount < maxAllowedMetrics {
+                state.metrics.insert(metric, at: state.activeMetricsCount)
+                state.activeMetricsCount += 1
+            } else {
+                // If we can't add more, just append to the end
+                state.metrics.append(metric)
+            }
         } else {
             state.metrics.append(metric)
             state.activeMetricsCount -= 1
         }
 
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Toggled metric visibility at index: \(index)")
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Toggled metric visibility at index: \(index), activeMetricsCount: \(state.activeMetricsCount)")
     }
 
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws {
@@ -283,8 +297,9 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         
         // Ensure activeMetricsCount is still valid after reordering
         // The activeMetricsCount should represent the number of metrics that are currently visible
-        // We need to recalculate this based on the current state
-        let currentActiveCount = min(state.activeMetricsCount, state.metrics.count)
+        // We need to recalculate this based on the current state and metric type limits
+        let maxAllowedMetrics = state.metricType == .four ? 4 : 12
+        let currentActiveCount = min(state.activeMetricsCount, state.metrics.count, maxAllowedMetrics)
         state.activeMetricsCount = currentActiveCount
         
         logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics from \(source) to \(destination), activeMetricsCount: \(state.activeMetricsCount)")
@@ -325,20 +340,39 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     func getMetricsToShow(isEditMode: Bool, metricType: DashboardMetricType) -> [MetricItem] {
         if isEditMode {
             if metricType == .four {
-                let fourLabels: Set<String> = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-                let filteredMetrics = state.metrics.filter { fourLabels.contains($0.label) }
-                return filteredMetrics
+                // For 4-metric mode in edit mode, show only the 4 basic metrics in correct order
+                let fourLabels: [String] = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
+                var orderedMetrics: [MetricItem] = []
+                
+                // Get metrics in the correct order
+                for label in fourLabels {
+                    if let metric = state.metrics.first(where: { $0.label == label }) {
+                        orderedMetrics.append(metric)
+                    }
+                }
+                
+                return orderedMetrics
             } else {
+                // For 12-metric mode in edit mode, show all metrics
                 return state.metrics
             }
         } else {
             if metricType == .four {
-                let fourLabels: Set<String> = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
+                // For 4-metric mode in normal mode, show only the 4 basic metrics in correct order
+                let fourLabels: [String] = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
+                var orderedMetrics: [MetricItem] = []
+                
+                // Get metrics in the correct order from active metrics
                 let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
-                let filteredMetrics = activeMetrics.filter { fourLabels.contains($0.label) }
-                return filteredMetrics
+                for label in fourLabels {
+                    if let metric = activeMetrics.first(where: { $0.label == label }) {
+                        orderedMetrics.append(metric)
+                    }
+                }
+                
+                return orderedMetrics
             } else {
-                // For 12-metric mode, show only active metrics (respect activeMetricsCount)
+                // For 12-metric mode in normal mode, show only active metrics (respect activeMetricsCount)
                 let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
                 return activeMetrics
             }
@@ -534,9 +568,17 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
         // Update state
         state.metrics = activeMetrics + inactiveMetrics
-        state.activeMetricsCount = activeMetrics.count
+        
+        // Set activeMetricsCount based on metric type and API data
+        if state.metricType == .four {
+            // For 4-metric mode, cap at 4 regardless of API data
+            state.activeMetricsCount = min(4, activeMetrics.count)
+        } else {
+            // For 12-metric mode, use the actual count from API
+            state.activeMetricsCount = activeMetrics.count
+        }
 
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics order from API: \(displayMetrics)")
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics order from API: \(displayMetrics), activeMetricsCount: \(state.activeMetricsCount)")
     }
 
     // MARK: - Metric Interaction Methods
@@ -569,5 +611,44 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
         
         logger.log(level: .info, tag: "DashboardMetricsManager", message: "Handled selected metric info change for: \(label)")
+    }
+
+    // MARK: - Entry Selection Methods (moved from DashboardStore)
+    
+    /// Selects an entry for the chart
+    func selectEntry(_ entry: BathScaleWeightSummary?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void) {
+        if let entry = entry {
+            // Note: This would need to update the graph state
+            // For now, we'll just trigger an update
+            triggerUpdate()
+        } else {
+            // Clear selection
+            triggerUpdate()
+        }
+    }
+
+    /// Reset metrics to latest entry values
+    func resetMetricsToLatestEntry(getLatestEntry: @escaping () async throws -> Entry?) async {
+        do {
+            guard let latestEntry = try await getLatestEntry() else {
+                return
+            }
+            try await updateMetrics(with: latestEntry)
+        } catch {
+            logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to reset metrics to latest entry: \(error)")
+        }
+    }
+
+    /// Handle metric long press interaction with UI state management
+    func handleMetricLongPressWithUIState(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>, updateSelectedMetric: @escaping (String?) -> Void) {
+        // Update selection state if needed
+        updateSelectedMetric(metricLabel)
+        
+        // Create entry with the latest data and open metric info sheet
+        let entry = createEntryForMetricInfoSync(metricLabel: metricLabel)
+        selectedEntry.wrappedValue = entry
+        selectedMetric.wrappedValue = getBodyMetric(for: metricLabel)
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Handled metric long press with UI state for: \(metricLabel)")
     }
 }

@@ -32,8 +32,8 @@ struct GoalProgressCardView: View {
             DeltaHeader
             ProgressBarView(
                 progress: progress,
-                leftLabel: formatWeightLabel(startWeight),
-                rightLabel: formatWeightLabel(goalWeight),
+                leftLabel: formatWeightLabel(startWeight, unit: unit),
+                rightLabel: formatWeightLabel(goalWeight, unit: unit),
                 progressBarColor: isRemoved ? theme.actionTertiary : theme.statusSuccess,
                 labelForegroundColor: theme.textSubheading
             )
@@ -45,7 +45,7 @@ struct GoalProgressCardView: View {
     private var maintainGoalView: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             DeltaText
-            Text(lang.gainGoalWeightLabel(formatWeightLabel(goalWeight), unit))
+            Text("to \(formatWeightLabel(goalWeight, unit: unit)) goal weight")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .padding(.top, 6)
@@ -81,14 +81,14 @@ struct GoalProgressCardView: View {
         }
     }
     
-    private func formatWeightLabel(_ weight: Double) -> String {
+    private func formatWeightLabel(_ weight: Double, unit: String) -> String {
         if isWeightlessMode {
             // In weightless mode, show +/- prefix for differences from anchor
             let prefix = weight >= 0 ? lang.plus : lang.minus
-            return String(format: "%@%.1f", prefix, abs(weight))
+            return String(format: "%@%.1f %@", prefix, abs(weight), unit)
         } else {
-            // Normal mode - show actual weight values
-            return String(format: "%.1f", weight)
+            // Normal mode - show actual weight values with unit
+            return String(format: "%.1f %@", weight, unit)
         }
     }
     

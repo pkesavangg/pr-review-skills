@@ -312,5 +312,198 @@ final class DateTimeTools {
         let minutes = TimeZone.current.secondsFromGMT() / 60
         return "\(minutes) min \(TimeZone.current.identifier)"
     }
-}
 
+    // MARK: - X-Axis Label and Domain Calculation Methods (moved from DashboardGraphManager)
+    
+    /// Generates X-axis values for different time periods
+    static func generateXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], shouldRepeat: Bool, entryCount: Int) -> [Date] {
+        let allDates = operations.map(\.date)
+        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
+
+        switch period {
+        case .week:
+            return generateWeeklyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
+        case .month:
+            return generateMonthlyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
+        case .year:
+            return generateYearlyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
+        case .total:
+            return generateTotalXAxis(minDate: minDate, maxDate: maxDate, operations: operations, shouldRepeat: shouldRepeat, entryCount: entryCount)
+        }
+    }
+
+    /// Formats X-axis labels for different time periods
+    static func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
+        let calendar = Calendar.current
+        
+        switch period {
+        case .week:
+            return WeekDay.abbreviation(for: calendar.component(.weekday, from: date))
+        case .month:
+            return "\(calendar.component(.day, from: date))"
+        case .year:
+            return Month.initial(for: calendar.component(.month, from: date))
+        case .total:
+            if areEntriesInSameEra(operations) {
+                return Month.initial(for: calendar.component(.month, from: date))
+            } else {
+                return "\(calendar.component(.year, from: date))"
+            }
+        }
+    }
+
+    /// Determines if X-axis labels should repeat based on period and entry count
+    static func shouldRepeatXAxisLabels(for period: TimePeriod, entryCount: Int) -> Bool {
+        switch period {
+        case .week:
+            return entryCount >= DashboardConstants.Thresholds.weekRepeatThreshold
+        case .month:
+            return entryCount >= DashboardConstants.Thresholds.monthRepeatThreshold
+        case .year, .total:
+            return entryCount >= DashboardConstants.Thresholds.yearRepeatThreshold
+        }
+    }
+
+    /// Checks if entries are in the same era (same year)
+    static func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
+        guard !summaries.isEmpty else { return true }
+        let calendar = Calendar.current
+        let years = Set(summaries.map { calendar.component(.year, from: $0.date) })
+        return years.count == 1
+    }
+
+    /// Calculates visible domain length for different time periods
+    static func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
+        switch period {
+        case .week:
+            return DashboardConstants.TimeInterval.week
+        case .month:
+            return DashboardConstants.TimeInterval.month
+        case .year:
+            return DashboardConstants.TimeInterval.year
+        case .total:
+            return DashboardConstants.TimeInterval.year
+        }
+    }
+
+    // MARK: - X-Axis Generation Methods
+    
+    private static func generateWeeklyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
+        let calendar = Calendar.current
+        var dates: [Date] = []
+
+        if !shouldRepeat {
+            // Few entries: show labels once
+            let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
+            for dayOffset in 0..<7 {
+                if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) {
+                    dates.append(dayDate)
+                }
+            }
+        } else {
+            // Many entries: repeat labels throughout scroll view
+            let totalWeeks = max(8, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.week)))
+            let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
+            let bufferWeeks = 2
+
+            for weekOffset in -bufferWeeks..<(totalWeeks + bufferWeeks) {
+                if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
+                    for dayOffset in 0..<7 {
+                        if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekDate) {
+                            dates.append(dayDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private static func generateMonthlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
+        let calendar = Calendar.current
+        var dates: [Date] = []
+
+        if !shouldRepeat {
+            // Few entries: show labels once
+            let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
+            for weekOffset in 0..<5 {
+                if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthStart) {
+                    dates.append(weekDate)
+                }
+            }
+        } else {
+            // Many entries: repeat labels throughout scroll view
+            let totalMonths = max(6, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.month)))
+            let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
+            let bufferMonths = 2
+
+            for monthOffset in -bufferMonths..<(totalMonths + bufferMonths) {
+                if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
+                    for weekOffset in 0..<5 {
+                        if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthDate) {
+                            dates.append(weekDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private static func generateYearlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
+        let calendar = Calendar.current
+        var dates: [Date] = []
+
+        if !shouldRepeat {
+            // Few entries: show labels once
+            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
+            for monthOffset in 0..<12 {
+                if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearStart) {
+                    dates.append(monthDate)
+                }
+            }
+        } else {
+            // Many entries: repeat labels throughout scroll view
+            let totalYears = max(3, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.year)))
+            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
+            let bufferYears = 1
+
+            for yearOffset in -bufferYears..<(totalYears + bufferYears) {
+                if let yearDate = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
+                    for monthOffset in 0..<12 {
+                        if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearDate) {
+                            dates.append(monthDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private static func generateTotalXAxis(minDate: Date, maxDate: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool, entryCount: Int) -> [Date] {
+        let calendar = Calendar.current
+        
+        if areEntriesInSameEra(operations) {
+            // For same era, treat like year view
+            return generateYearlyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
+        } else {
+            // For multiple years, use quarterly intervals
+            let totalQuarters = max(8, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.quarter)))
+            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
+            let bufferQuarters = 2
+            var dates: [Date] = []
+
+            for quarterOffset in -bufferQuarters..<(totalQuarters + bufferQuarters) {
+                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
+                    dates.append(quarterDate)
+                }
+            }
+
+            return dates
+        }
+    }
+}

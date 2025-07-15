@@ -1,15 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// Protocol defining goal management operations
-protocol DashboardGoalManaging {
-    func loadGoalData() async throws
-    func updateGoalProgress(currentWeight: Int) async throws
-    func calculateWeightlessGoal(anchorWeight: Double) async throws
-    func getGoalWeightForDisplay(isWeightlessMode: Bool, anchorWeight: Double?) -> Double
-    func formatGoalProgress() -> String
-}
-
 /// Manages all goal tracking and calculation operations for the dashboard
 @MainActor
 class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
@@ -126,6 +117,13 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             logger.log(level: .error, tag: "DashboardGoalManager", message: "Failed to update goal progress: \(error)")
             throw DashboardError.goalCalculationFailed("Failed to update goal progress: \(error.localizedDescription)")
         }
+    }
+    
+    /// Refreshes goal data when unit changes
+    func refreshGoalDataForUnitChange() async throws {
+        // Re-load goal data with new unit
+        try await loadGoalData()
+        logger.log(level: .info, tag: "DashboardGoalManager", message: "Refreshed goal data for unit change")
     }
 
     // MARK: - Weightless Mode Support
@@ -300,26 +298,40 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             return ConversionTools.convertStoredToLbs(storedWeight)
         }
     }
-}
 
-// MARK: - Supporting Types
-struct GoalAnalytics {
-    let daysToGoal: Int?
-    let weeklyTarget: Double?
-    let currentTrend: GoalTrend
-    let progressPercentage: Double
-}
+    // MARK: - Weight Formatting Methods (moved from DashboardStore)
+    
+    /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
+    func getUnitText() -> String {
+        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+    }
 
-enum GoalTrend {
-    case improving
-    case neutral
-    case declining
+    /// Returns the weight display label for the current period
+    func getWeightDisplayLabel(for period: TimePeriod) -> String {
+        return "\(period.rawValue) average"
+    }
 
-    var description: String {
-        switch self {
-        case .improving: return "On track"
-        case .neutral: return "Stable"
-        case .declining: return "Needs attention"
+    /// Returns true if there are entries but none in the current time period
+    func hasEntriesButNoneInCurrentPeriod(continuousOperations: [BathScaleWeightSummary], visibleOperations: [BathScaleWeightSummary]) -> Bool {
+        return !continuousOperations.isEmpty && visibleOperations.isEmpty
+    }
+
+    /// Updates visible data after scroll ends (forces UI update and logs average weight)
+    func updateVisibleDataAfterScroll(visibleOperations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void, logAverage: @escaping (Double) -> Void) {
+        triggerUpdate()
+        let opsToUse = visibleOperations.isEmpty ? visibleOperations : visibleOperations
+        let weightValues = opsToUse.map { summary -> Double in
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { return 0 }
+                let currentWeight = convertWeight(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertWeight(Int(summary.weight))
+            }
+        }
+        if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
+            logAverage(averageWeight)
         }
     }
 }
+
