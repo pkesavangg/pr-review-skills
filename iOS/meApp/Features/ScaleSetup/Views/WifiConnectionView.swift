@@ -39,7 +39,7 @@ struct WifiConnectionView: View {
     private var heading: String {
         switch state {
         case .loading: return scaleSetupStrings.connectingToWifi
-        case .success: return scaleSetupStrings.connectingToWifi
+        case .success: return scaleSetupStrings.connectedToWifi
         case .failure: return scaleSetupStrings.connectionError
         case .noNetworks: return scaleSetupStrings.noNetworksFound
         }

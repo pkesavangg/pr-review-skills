@@ -42,6 +42,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
     private var deviceDiscoveryCancellable: AnyCancellable? = nil
+    /// Active subscription to the network form changes
+    private var networkFormCancellable: AnyCancellable? = nil
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -155,15 +157,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             MaxUserListView(userList: userList)
                         case .duplicatesFound:
                             DuplicateUserView()
-                        case .none:
+                        default:
                             if self.savedScale != nil {
                                 ConnectionPromptView(
                                     title: ScaleSetupStrings.gatheringNetworksTitle,
                                     image: AppAssets.wifi
                                 )
+                            } else {
+                                EmptyView()
                             }
-                        default:
-                            EmptyView()
                         }
                     }
                 )
@@ -419,7 +421,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     Task {
                         await self?.deleteUsers()
                         // Reset to normal state and retry connection
-                        self?.scaleSetupError = .none
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            self?.scaleSetupError = .none
+                            Task {
+                                await self?.restartConnection()
+                            }
+                        }
                         self?.navigateToStep(.connectingBluetooth)
                     }
                 }
@@ -440,10 +447,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     Task {
                         await self?.deleteUserFromScale(user)
                         // Reset to normal state and retry connection
-                        self?.navigateToStep(.connectingBluetooth)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                             self?.scaleSetupError = .none
                         }
+                        self?.navigateToStep(.connectingBluetooth)
                     }
                 }
             ]
@@ -529,7 +536,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Invoked from the *Try Again* button of `BluetoothConnectionView` and `WifiConnectionView` failure state.
     private func tryAgainButtonHandler(isFromBtConnection: Bool = false) {
-        scaleSetupError = .none
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            self.scaleSetupError = .none
+        }
         navigateToStep(isFromBtConnection ? .wakeup : .gatheringNetwork)
     }
     
@@ -547,14 +556,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
         case .gatheringNetwork:
             // Only show gathering network if there's no error
-            if scaleSetupError == .none {
+            if let savedScale = self.savedScale, (scaleSetupError != .maxUserReached || scaleSetupError != .duplicatesFound) {
                 // If we have a saved scale and success state, show BluetoothConnectionView for 2 seconds first
-                if savedScale != nil {
-                    if let savedScale = self.savedScale {
-                        Task {
-                            await self.fetchWifiNetworks(for: savedScale)
-                        }
-                    }
+                Task {
+                    await self.fetchWifiNetworks(for: savedScale)
                 }
             }
         case .connectingWifi:
@@ -929,19 +934,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if let firstName = self.firstName {
             userNameForm.setDisplayName(firstName)
         }
-        
-        // Restart connection
-        await restartConnection()
     }
     
     /// Starts observing the network form changes to update the next button state.
     private func subscribeToNetworkForm() {
-        networkForm.formDidChange
+        // Cancel previous subscription to avoid redundant updates
+        networkFormCancellable?.cancel()
+        
+        networkFormCancellable = networkForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.updateNextEnabled()
             }
-            .store(in: &cancellables)
     }
     
     /// Deletes a specific user from the scale
@@ -1119,6 +1123,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Cancel active Combine subscription before releasing it.
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
+        
+        // Cancel network form subscription
+        networkFormCancellable?.cancel()
+        networkFormCancellable = nil
         
         // Nil out discovery data so subsequent runs start fresh.
         discoveredScale = nil

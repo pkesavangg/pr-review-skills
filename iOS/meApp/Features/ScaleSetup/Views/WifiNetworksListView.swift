@@ -15,7 +15,7 @@ struct WifiNetworksListView: View {
     
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
-            ForEach(networks, id: \.ssid) { network in
+            ForEach(networks, id: \.id) { network in
                 Button(action: {
                     onNetworkSelected(network)
                 }) {
@@ -23,7 +23,7 @@ struct WifiNetworksListView: View {
                         onNetworkSelected(network)
                     }
                 }
-                if network.ssid != networks.last?.ssid {
+                if network.id != networks.last?.id {
                     Divider()
                         .frame(height: 0.5)
                         .frame(maxWidth: .infinity)

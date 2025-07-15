@@ -28,8 +28,9 @@ public struct WifiConfig: Sendable, Equatable {
 }
 
 public struct WifiDetails: Sendable, Equatable {
-    public  var macAddress: String
-    public  var ssid: String?
+    public var id = UUID()
+    public var macAddress: String
+    public var ssid: String?
     public var rssi: Int?
     public var password: String?
 

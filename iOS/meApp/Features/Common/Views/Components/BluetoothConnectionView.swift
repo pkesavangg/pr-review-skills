@@ -37,7 +37,7 @@ struct BluetoothConnectionView: View {
     private var heading: String {
         switch state {
         case .loading: return scaleSetupStrings.connectingToBluetooth
-        case .success: return scaleSetupStrings.connectingToBluetooth
+        case .success: return scaleSetupStrings.connectedToBluetooth
         case .failure: return scaleSetupStrings.connectionError
         case .noNetworks: return scaleSetupStrings.noNetworksFound
         }
