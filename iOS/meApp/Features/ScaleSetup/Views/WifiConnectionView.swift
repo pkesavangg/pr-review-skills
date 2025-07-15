@@ -1,25 +1,27 @@
 //
-//  BluetoothConnectionView.swift
+//  WifiConnectionView.swift
 //  meApp
 //
-//  Created by Kesavan on 10/07/25.
+//  Created by Kesavan Panchabakesan on 14/07/25.
 //
+
 
 import SwiftUI
 
-/// A reusable view that visualizes the Bluetooth connection lifecycle (loading, success, failure).
+/// A reusable view that visualizes the WiFi connection lifecycle (loading, success, failure, noNetworks).
 ///
 /// Usage:
 /// ```swift
-/// BluetoothConnectionView(state: .loading, setupType: .btWifiR4)
-/// BluetoothConnectionView(state: .success, setupType: .btWifiR4)
-/// BluetoothConnectionView(state: .failure, setupType: .btWifiR4, errorCode: "E42")
+/// WifiConnectionView(state: .loading, setupType: .btWifiR4)
+/// WifiConnectionView(state: .success, setupType: .btWifiR4)
+/// WifiConnectionView(state: .noNetworks, setupType: .btWifiR4)
+/// WifiConnectionView(state: .failure, setupType: .btWifiR4, errorCode: "E42")
 /// ```
 /// Pass the current `ConnectionState`; you may optionally provide `errorCode` for the failure case.
-struct BluetoothConnectionView: View {
+struct WifiConnectionView: View {
     // MARK: - Props
     let state: ConnectionState
-    let setupType: ScaleSetupType
+    var setupType: ScaleSetupType = .btWifiR4
     /// Optional error code to display when `state == .failure`.
     var errorCode: String? = nil
     
@@ -36,8 +38,8 @@ struct BluetoothConnectionView: View {
     // MARK: - Computed Helpers
     private var heading: String {
         switch state {
-        case .loading: return scaleSetupStrings.connectingToBluetooth
-        case .success: return scaleSetupStrings.connectedToBluetooth
+        case .loading: return scaleSetupStrings.connectingToWifi
+        case .success: return scaleSetupStrings.connectedToWifi
         case .failure: return scaleSetupStrings.connectionError
         case .noNetworks: return scaleSetupStrings.noNetworksFound
         }
@@ -51,8 +53,6 @@ struct BluetoothConnectionView: View {
         switch setupType {
         case .btWifiR4:
             return AppAssets.scale0412
-        case .lcbt:
-            return AppAssets.scale0383
         default:
             return nil
         }
@@ -96,15 +96,15 @@ struct BluetoothConnectionView: View {
                                 .id(state)  // Force a fresh view when the enum value flips
                             
                             ConnectionIndicatorView(
-                                image: AppAssets.bluetooth,
-                                isFailure: state == .failure,
-                                showPulsingCircle: state == .loading
+                                image: AppAssets.wifi,
+                                isFailure: (state == .failure || state == .noNetworks),
+                                showPulsingCircle: (state == .failure || state == .noNetworks)
                             )
                         }
                     }
                     
                     // Action buttons (visible only on failure)
-                    if state == .failure {
+                    if (state == .failure || state == .noNetworks) {
                         VStack(spacing: .spacingMD) {
                             ButtonView(
                                 text: commonStrings.tryAgain,
@@ -132,17 +132,7 @@ struct BluetoothConnectionView: View {
 }
 
 // MARK: - Previews
-#Preview("Loading") {
-    BluetoothConnectionView(state: .loading, setupType: .btWifiR4)
-        .environmentObject(Theme.shared)
-}
-
-#Preview("Success") {
-    BluetoothConnectionView(state: .success, setupType: .btWifiR4)
-        .environmentObject(Theme.shared)
-}
-
-#Preview("Failure w/Code") {
-    BluetoothConnectionView(state: .failure, setupType: .btWifiR4, errorCode: "E42")
+#Preview("Loadinsg") {
+    WifiConnectionView(state: .loading, setupType: .btWifiR4)
         .environmentObject(Theme.shared)
 }

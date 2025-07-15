@@ -544,6 +544,13 @@ struct AlertStrings {
         static let deleteButton = "Delete"
         static let goBackButton = "Go Back"
     }
+    
+    struct SkipWifiStepAlert {
+        static let title = "Are you sure you want to skip Wi-Fi?"
+        static let message = "After setup, find additional WiFi settings or the MAC Address via scale settings."
+        static let skipButton = "Skip"
+        static let goBackButton = "GO BACK"
+    }
 }
 
 struct LoaderStrings {
