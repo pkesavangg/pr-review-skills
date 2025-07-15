@@ -5,8 +5,8 @@ import com.greatergoods.meapp.data.api.EntryApi
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
-import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.api.IDeviceInfoAPI
+import com.greatergoods.meapp.data.api.IGoalAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.ISupportAPI
@@ -85,7 +85,9 @@ object RepositoryModule {
     fun provideIntegrationRepository(
         integrationAPI: IIntegrationAPI,
         accountDao: AccountDao,
-    ): IIntegrationRepository = IntegrationRepository(integrationAPI, accountDao)
+        accountRepository: IAccountRepository,
+        userAPI: IAuthAPI
+    ): IIntegrationRepository = IntegrationRepository(accountRepository,userAPI,integrationAPI, accountDao)
 
     @Provides
     @Singleton
@@ -146,9 +148,9 @@ object RepositoryModule {
         dashboardKeysDatastore: DashboardKeysDatastore
     ): IDashboardRepository =
         DashboardRepository(dashboardKeysDatastore)
-    
+
     @Provides
-    @Singleton    
+    @Singleton
     fun provideDeviceRepository(
         deviceAPI: IDeviceAPI,
         deviceDao: DeviceDao,

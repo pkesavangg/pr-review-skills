@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.scaleMode.screens
+package com.greatergoods.meapp.features.ScaleModeSettings.screens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,24 +15,24 @@ import com.greatergoods.meapp.theme.MeAppTheme
  */
 @Composable
 fun BiaModal(
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
+  onClose: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    AppPopupModal {
-        AppPopup(
-            visible = true,
-            modifier = modifier,
-            heading = ScaleModeStrings.BiaModalStrings.Title,
-            supportingText = ScaleModeStrings.BiaModalStrings.Messsage,
-            onClose = onClose,
-        )
-    }
+  AppPopupModal {
+    AppPopup(
+      visible = true,
+      modifier = modifier,
+      heading = ScaleModeStrings.BiaModalStrings.Title,
+      supportingText = ScaleModeStrings.BiaModalStrings.Messsage,
+      onClose = onClose,
+    )
+  }
 }
 
 @PreviewTheme
 @Composable
 fun BiaModalPreview() {
-    MeAppTheme {
-        BiaModal(onClose = {})
-    }
+  MeAppTheme {
+    BiaModal(onClose = {})
+  }
 }

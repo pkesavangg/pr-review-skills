@@ -103,6 +103,12 @@ struct GraphState {
     var dataChangeTrigger: Int = 0
     var hasDetectedScrollInCurrentGesture: Bool = false
 
+    // Cached Y-axis domain to prevent recalculation during scroll
+    var cachedYAxisDomain: ClosedRange<Double>?
+
+    // Cached Y-axis ticks to prevent recalculation during scroll
+    var cachedYAxisTicks: [Double]?
+
     mutating func clearSelection() {
         selectedEntry = nil
         selectedPoint = nil

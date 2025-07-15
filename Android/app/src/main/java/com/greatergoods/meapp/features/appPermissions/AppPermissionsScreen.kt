@@ -28,6 +28,7 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PermissionItem
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.permissionSettings.PermissionSettings
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -67,37 +68,13 @@ fun AppPermissionsContent(
     },
     title = AppPermissionsScreenStrings.Title,
   ) {
-    Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .verticalScroll(rememberScrollState())
-        .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
-    ) {
-      permissionGroups.forEach { group ->
-        // Group header (section title)
-        AppText(
-          text = group.header,
-          textType = TextType.ListTitle1,
-          modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
-        )
-        Column(
-          modifier = Modifier
-            .clip(shape = RoundedCornerShape(MeTheme.borderRadius.md))
-            .background(color = MeTheme.colorScheme.primaryBackground),
-        ) {
-          group.items.forEachIndexed { index, item ->
-            PermissionItem(
-              item = item,
-              onClick = { handleIntent(AppPermissionsIntent.RequestPermission(item.key)) },
-            )
-            if (index < group.items.size - 1) {
-              HorizontalDivider(color = MeTheme.colorScheme.utility)
-            }
-          }
-        }
-        Spacer(modifier = Modifier.padding(MeTheme.spacing.sm))
-      }
-    }
+    PermissionSettings(
+      modifier = Modifier.padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
+      permissionGroups = permissionGroups,
+      onRequestPermission = { permissionType ->
+        handleIntent(AppPermissionsIntent.RequestPermission(permissionType))
+      },
+    )
   }
 }
 

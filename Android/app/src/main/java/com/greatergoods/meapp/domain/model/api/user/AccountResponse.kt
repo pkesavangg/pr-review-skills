@@ -34,5 +34,11 @@ data class AccountInfo(
     val metPreviousGoal: Boolean = false,      // whether previous goal was met
     val goalPercent: Int = 0,
     val shouldSendEntryNotifications: Boolean,
-    val shouldSendWeightInEntryNotifications: Boolean
+    val shouldSendWeightInEntryNotifications: Boolean,
+    val isFitbitOn: Boolean = false,
+    val isFitbitValid: Boolean = false,
+    val isHealthConnectOn: Boolean = false,
+    val isHealthKitOn: Boolean = false,
+    val isMFPOn: Boolean = false,
+    val isMFPValid: Boolean = false,
 )

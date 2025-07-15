@@ -86,17 +86,33 @@ struct BottomTabBarView: View {
         .sheet(item: $viewModel.setupPayload, onDismiss: {
             viewModel.bluetoothService.isSetupInProgress = false
         }) { payload in
-            A6ScaleSetupScreen(sku: payload.sku,
-                               discoveredScale: payload.scale,
-                               discoveryEvent: payload.event)
+            // Determine setup type from the scale item info
+            let setupType = payload.event?.deviceInfo.setupType ?? .lcbt
+            switch setupType {
+            case .lcbt:
+                A6ScaleSetupScreen(sku: payload.sku,
+                                   discoveredScale: payload.scale,
+                                   discoveryEvent: payload.event)
                 .interactiveDismissDisabled(true)
+            case .btWifiR4:
+                BtWifiScaleSetupScreen(sku: payload.sku,
+                                       discoveredScale: payload.scale,
+                                       discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            default:
+                // Fallback to A6 setup for other types
+                A6ScaleSetupScreen(sku: payload.sku,
+                                   discoveredScale: payload.scale,
+                                   discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            }
         }
     }
-
+    
     // MARK: - Helpers
     private func handleTabSelection(_ tab: BottomTab) {
         guard viewModel.selectedTab != tab else { return }
-
+        
         Task {
             // Check if there is a deactivation handler for the selected tab
             // If there is, call it and await the result

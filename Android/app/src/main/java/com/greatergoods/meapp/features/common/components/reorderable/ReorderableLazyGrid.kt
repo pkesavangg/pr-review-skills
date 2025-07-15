@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package sh.calvin.reorderable
+package com.greatergoods.meapp.features.common.components.reorderable
 
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.gestures.Orientation
@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.CoroutineScope
+import sh.calvin.reorderable.ReorderableCollectionItem
 
 /**
  * Creates a [ReorderableLazyGridState] that is remembered across compositions.
@@ -56,19 +57,19 @@ import kotlinx.coroutines.CoroutineScope
  * @param lazyGridState The return value of [rememberLazyGridState](androidx.compose.foundation.lazy.LazyGridStateKt.rememberLazyGridState)
  * @param scrollThresholdPadding The padding that will be added to the top and bottom, or start and end of the grid to determine the scrollThreshold. Useful for when the grid is displayed under the navigation bar or notification bar.
  * @param scrollThreshold The distance in dp from the top and bottom, or start and end of the grid that will trigger scrolling
- * @param scroller The [Scroller] that will be used to scroll the grid. Use [rememberScroller](sh.calvin.reorderable.ScrollerKt.rememberScroller) to create a [Scroller].
+ * @param scroller The [sh.calvin.reorderable.Scroller] that will be used to scroll the grid. Use [rememberScroller](sh.calvin.reorderable.ScrollerKt.rememberScroller) to create a [sh.calvin.reorderable.Scroller].
  * @param onMove The function that is called when an item is moved. Make sure this function returns only after the items are moved. This suspend function is invoked with the `rememberReorderableLazyGridState` scope, allowing for async processing, if desired. Note that the scope used here is the one provided by the composition where `rememberReorderableLazyGridState` is called, for long running work that needs to outlast `rememberReorderableLazyGridState` being in the composition you should use a scope that fits the lifecycle needed.
  */
 @Composable
 fun rememberReorderableLazyGridState(
-    lazyGridState: LazyGridState,
-    scrollThresholdPadding: PaddingValues = PaddingValues(0.dp),
-    scrollThreshold: Dp = ReorderableLazyCollectionDefaults.ScrollThreshold,
-    scroller: Scroller = rememberScroller(
-        scrollableState = lazyGridState,
-        pixelAmountProvider = { lazyGridState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
-    ),
-    onMove: suspend CoroutineScope.(from: LazyGridItemInfo, to: LazyGridItemInfo) -> Unit,
+  lazyGridState: LazyGridState,
+  scrollThresholdPadding: PaddingValues = PaddingValues(0.dp),
+  scrollThreshold: Dp = _root_ide_package_.sh.calvin.reorderable.ReorderableLazyCollectionDefaults.ScrollThreshold,
+  scroller: sh.calvin.reorderable.Scroller = _root_ide_package_.sh.calvin.reorderable.rememberScroller(
+    scrollableState = lazyGridState,
+    pixelAmountProvider = { lazyGridState.layoutInfo.mainAxisViewportSize * _root_ide_package_.sh.calvin.reorderable.ScrollAmountMultiplier },
+  ),
+  onMove: suspend CoroutineScope.(from: LazyGridItemInfo, to: LazyGridItemInfo) -> Unit,
 ): ReorderableLazyGridState {
     val density = LocalDensity.current
     val scrollThresholdPx = with(density) { scrollThreshold.toPx() }
@@ -76,15 +77,15 @@ fun rememberReorderableLazyGridState(
     val scope = rememberCoroutineScope()
     val onMoveState = rememberUpdatedState(onMove)
     val layoutDirection = LocalLayoutDirection.current
-    val absoluteScrollThresholdPadding = AbsolutePixelPadding(
-        start = with(density) {
-            scrollThresholdPadding.calculateStartPadding(layoutDirection).toPx()
-        },
-        end = with(density) {
-            scrollThresholdPadding.calculateEndPadding(layoutDirection).toPx()
-        },
-        top = with(density) { scrollThresholdPadding.calculateTopPadding().toPx() },
-        bottom = with(density) { scrollThresholdPadding.calculateBottomPadding().toPx() },
+    val absoluteScrollThresholdPadding = _root_ide_package_.sh.calvin.reorderable.AbsolutePixelPadding(
+      start = with(density) {
+        scrollThresholdPadding.calculateStartPadding(layoutDirection).toPx()
+      },
+      end = with(density) {
+        scrollThresholdPadding.calculateEndPadding(layoutDirection).toPx()
+      },
+      top = with(density) { scrollThresholdPadding.calculateTopPadding().toPx() },
+      bottom = with(density) { scrollThresholdPadding.calculateBottomPadding().toPx() },
     )
     val state = remember(
         scope, lazyGridState, scrollThreshold, scrollThresholdPadding, scroller,
@@ -109,7 +110,7 @@ private val LazyGridLayoutInfo.mainAxisViewportSize: Int
     }
 
 private fun LazyGridItemInfo.toLazyCollectionItemInfo() =
-    object : LazyCollectionItemInfo<LazyGridItemInfo> {
+    object : sh.calvin.reorderable.LazyCollectionItemInfo<LazyGridItemInfo> {
         override val index: Int
             get() = this@toLazyCollectionItemInfo.index
         override val key: Any
@@ -123,8 +124,8 @@ private fun LazyGridItemInfo.toLazyCollectionItemInfo() =
     }
 
 private fun LazyGridLayoutInfo.toLazyCollectionLayoutInfo() =
-    object : LazyCollectionLayoutInfo<LazyGridItemInfo> {
-        override val visibleItemsInfo: List<LazyCollectionItemInfo<LazyGridItemInfo>>
+    object : sh.calvin.reorderable.LazyCollectionLayoutInfo<LazyGridItemInfo> {
+        override val visibleItemsInfo: List<sh.calvin.reorderable.LazyCollectionItemInfo<LazyGridItemInfo>>
             get() = this@toLazyCollectionLayoutInfo.visibleItemsInfo.map {
                 it.toLazyCollectionItemInfo()
             }
@@ -139,12 +140,12 @@ private fun LazyGridLayoutInfo.toLazyCollectionLayoutInfo() =
     }
 
 private fun LazyGridState.toLazyCollectionState() =
-    object : LazyCollectionState<LazyGridItemInfo> {
+    object : sh.calvin.reorderable.LazyCollectionState<LazyGridItemInfo> {
         override val firstVisibleItemIndex: Int
             get() = this@toLazyCollectionState.firstVisibleItemIndex
         override val firstVisibleItemScrollOffset: Int
             get() = this@toLazyCollectionState.firstVisibleItemScrollOffset
-        override val layoutInfo: LazyCollectionLayoutInfo<LazyGridItemInfo>
+        override val layoutInfo: sh.calvin.reorderable.LazyCollectionLayoutInfo<LazyGridItemInfo>
             get() = this@toLazyCollectionState.layoutInfo.toLazyCollectionLayoutInfo()
 
         override suspend fun animateScrollBy(value: Float, animationSpec: AnimationSpec<Float>) =
@@ -156,20 +157,20 @@ private fun LazyGridState.toLazyCollectionState() =
 
 @Stable
 class ReorderableLazyGridState internal constructor(
-    state: LazyGridState,
-    scope: CoroutineScope,
-    onMoveState: State<suspend CoroutineScope.(from: LazyGridItemInfo, to: LazyGridItemInfo) -> Unit>,
+  state: LazyGridState,
+  scope: CoroutineScope,
+  onMoveState: State<suspend CoroutineScope.(from: LazyGridItemInfo, to: LazyGridItemInfo) -> Unit>,
 
-    /**
+  /**
      * The threshold in pixels for scrolling the grid when dragging an item.
      * If the dragged item is within this threshold of the top or bottom of the grid, the grid will scroll.
      * Must be greater than 0.
      */
     scrollThreshold: Float,
-    scrollThresholdPadding: AbsolutePixelPadding,
-    scroller: Scroller,
-    layoutDirection: LayoutDirection,
-) : ReorderableLazyCollectionState<LazyGridItemInfo>(
+  scrollThresholdPadding: sh.calvin.reorderable.AbsolutePixelPadding,
+  scroller: sh.calvin.reorderable.Scroller,
+  layoutDirection: LayoutDirection,
+) : sh.calvin.reorderable.ReorderableLazyCollectionState<LazyGridItemInfo>(
     state.toLazyCollectionState(),
     scope,
     onMoveState,
@@ -184,17 +185,18 @@ class ReorderableLazyGridState internal constructor(
  *
  * @param state The return value of [rememberReorderableLazyGridState]
  * @param key The key of the item, must be the same as the key passed to [LazyGridScope.item](androidx.compose.foundation.lazy.grid.item), [LazyGridScope.items](androidx.compose.foundation.lazy.grid.items) or similar functions in [LazyGridScope](androidx.compose.foundation.lazy.grid.LazyGridScope)
- * @param enabled Whether or this item is reorderable. If true, the item will not move for other items but may still be draggable. To make an item not draggable, set `enable = false` in [Modifier.draggable] or [Modifier.longPressDraggable] instead.
+ * @param enabled Whether or this item is reorderable. If true, the item will not move for other items but may still be draggable. To make an item not draggable, set `enable = false` in [sh.calvin.reorderable.draggable] or [Modifier.longPressDraggable] instead.
  * @param animateItemModifier The [Modifier] that will be applied to items that are not being dragged.
  */
+
 @Composable
 fun LazyGridItemScope.ReorderableItem(
-    state: ReorderableLazyGridState,
-    key: Any,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    animateItemModifier: Modifier = Modifier.animateItem(),
-    content: @Composable ReorderableCollectionItemScope.(isDragging: Boolean) -> Unit,
+  state: ReorderableLazyGridState,
+  key: Any,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  animateItemModifier: Modifier = Modifier.animateItem(),
+  content: @Composable sh.calvin.reorderable.ReorderableCollectionItemScope.(isDragging: Boolean) -> Unit,
 ) {
     val dragging by state.isItemDragging(key)
     var itemSize by remember { mutableStateOf(IntSize.Zero) }
@@ -238,12 +240,12 @@ fun LazyGridItemScope.ReorderableItem(
         Modifier.onGloballyPositioned { itemSize = it.size } then animateItemModifier
     }
 
-    ReorderableCollectionItem(
-        state = state,
-        key = key,
-        modifier = modifier.then(offsetModifier),
-        enabled = enabled,
-        dragging = dragging,
-        content = content,
-    )
+  ReorderableCollectionItem(
+    state = state,
+    key = key,
+    modifier = modifier.then(offsetModifier),
+    enabled = enabled,
+    dragging = dragging,
+    content = content,
+  )
 }

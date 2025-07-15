@@ -17,7 +17,7 @@ sealed class DialogModel(
 ) : Comparable<DialogModel> {
     /**
      * Simple alert dialog with a title, message, and a single dismiss button.
-     * @param title The dialog title.
+     * @param title The dialog title (optional).
      * @param message The dialog message.
      * @param dismissText The text for the dismiss button.
      * @param onDismiss Callback when the dialog is dismissed (must be called when closed).
@@ -25,7 +25,7 @@ sealed class DialogModel(
      * @param delayMillis Delay before next dialog (ms).
      */
     data class Alert(
-        val title: String,
+        val title: String? = null,
         val message: String,
         val dismissText: String = "OK",
         val onDismiss: (() -> Unit)?,

@@ -1,15 +1,6 @@
 import Foundation
 import Combine
 
-/// Protocol for handling incremental entry updates (used by dashboard stores)
-protocol EntryServiceDelegate: AnyObject {
-    func onEntryAdded(_ entry: Entry) async
-    func onEntryDeleted(_ entry: Entry) async
-    func onEntryUpdated(_ entry: Entry) async
-}
-
-
-
 @MainActor
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
@@ -31,9 +22,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     @Published var lastSyncTime: Date?
     @Published var progress: ProgressSummary = .empty
     @Published var streak: Int = 0
-
-    // MARK: - Incremental Dashboard Updates
-    private var delegates: [EntryServiceDelegate] = []
 
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
@@ -59,12 +47,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         try await localRepo.saveEntry(entry)
         // Broadcast change
         entrySaved.send(entry)
-
-        // Notify delegates for incremental updates
-        await notifyDelegates { delegate in
-            await delegate.onEntryAdded(entry)
-        }
-
         await syncUnsyncedEntries()
     }
 
@@ -73,11 +55,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             entry.isSynced = false
             try await localRepo.saveEntry(entry)
             entrySaved.send(entry)
-
-            // Notify delegates for incremental updates
-            await notifyDelegates { delegate in
-                await delegate.onEntryAdded(entry)
-            }
         }
         await syncUnsyncedEntries()
     }
@@ -87,13 +64,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         deletedEntry.operationType = OperationType.delete.rawValue
         deletedEntry.isSynced = false
         try await localRepo.saveEntry(deletedEntry)
-        entryDeleted.send(deletedEntry)
-
-        // Notify delegates for incremental updates
-        await notifyDelegates { delegate in
-            await delegate.onEntryDeleted(deletedEntry)
-        }
-
         await syncUnsyncedEntries()
     }
 
@@ -310,6 +280,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                       logger.log(level: .info, tag: tag, message: "Entry create/update synced: \(operation.id)")
                   } else {
                     try await localRepo.deleteEntry(byId: operation.id.uuidString)
+                    entryDeleted.send(operation)
                       // Log based on operation type
                       logger.log(level: .info, tag: tag, message: "Entry deleted: \(operation.id)")
                   }
@@ -403,6 +374,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     if finalOp.operationType == OperationType.delete.rawValue {
                         // Final state is deleted - remove from local storage
                         try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
+                        entryDeleted.send(localEntry)
                     } else {
                         // Final state is create - update local with remote
                         let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
@@ -503,7 +475,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
             guard !validEntries.isEmpty else { return nil }
 
-          let date = DateTimeTools.getDateFromDateString(month, format: "yyyy-MM")
+            // Create date from month string (YYYY-MM) by adding "-01" to get first day of month
+            let dateString = "\(month)-01"
+            let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
+
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
 
@@ -535,6 +510,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             )
         }.sorted { $0.period < $1.period }
     }
+
 
     // MARK: - Helpers ---------------------------------------------------
 
@@ -617,26 +593,4 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
     }
 
-    // MARK: - Delegate Management
-
-    /// Register a delegate to receive entry change notifications
-    func addDelegate(_ delegate: EntryServiceDelegate) {
-        delegates.append(delegate)
-    }
-
-    /// Unregister a delegate from receiving entry change notifications
-    func removeDelegate(_ delegate: EntryServiceDelegate) {
-        delegates.removeAll { $0 === delegate }
-    }
-
-    /// Notify all delegates about entry changes
-    private func notifyDelegates(action: @escaping (EntryServiceDelegate) async -> Void) async {
-        await withTaskGroup(of: Void.self) { group in
-            for delegate in delegates {
-                group.addTask {
-                    await action(delegate)
-                }
-            }
-        }
-    }
 }

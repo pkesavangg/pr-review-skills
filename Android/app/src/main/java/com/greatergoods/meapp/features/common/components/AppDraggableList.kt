@@ -28,27 +28,27 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 // --- Scope Interface and Implementation ---
 interface DraggableListItemScope {
-    @Composable
-    fun DraggableItem(
-        isDraggable: Boolean = true,
-        content: @Composable (isDragging: Boolean) -> Unit
-    )
+  @Composable
+  fun DraggableItem(
+    isDraggable: Boolean = true,
+    content: @Composable (isDragging: Boolean, modifier: Modifier) -> Unit
+  )
 
-    @Composable
-    fun StaticItem(content: @Composable () -> Unit)
+  @Composable
+  fun StaticItem(content: @Composable () -> Unit)
 }
 
 private class DraggableListItemScopeImpl<T>(
   val item: T,
   val index: Int,
 ) : DraggableListItemScope {
-  private var draggableBuilder: (@Composable (Boolean) -> Unit)? = null
+  private var draggableBuilder: (@Composable (Boolean, Modifier) -> Unit)? = null
   private var staticBuilder: (@Composable () -> Unit)? = null
   private var isDraggableItem: Boolean = true
   var initialized: Boolean by mutableStateOf(false)
 
-  fun buildDraggable(isDragging: Boolean): @Composable () -> Unit =
-    draggableBuilder?.let { { it(isDragging) } } ?: {
+  fun buildDraggable(isDragging: Boolean, modifier: Modifier): @Composable () -> Unit =
+    draggableBuilder?.let { { it(isDragging, modifier) } } ?: {
       // Default fallback
       Text("⚠️ No DraggableItem content defined for item at index $index")
     }
@@ -60,7 +60,7 @@ private class DraggableListItemScopeImpl<T>(
   @Composable
   override fun DraggableItem(
     isDraggable: Boolean,
-    content: @Composable (isDragging: Boolean) -> Unit
+    content: @Composable (isDragging: Boolean, modifier: Modifier) -> Unit
   ) {
     draggableBuilder = content
     isDraggableItem = isDraggable
@@ -103,6 +103,7 @@ fun <T> AppDraggableList(
     state = lazyListState,
     contentPadding = contentPadding,
     verticalArrangement = verticalArrangement,
+    userScrollEnabled = false,
     modifier = modifier,
   ) {
     items(
@@ -121,37 +122,36 @@ fun <T> AppDraggableList(
         }
       }
 
-              ReorderableItem(
-          state = reorderableState,
-          key = keySelector(item),
-        ) { isDragging ->
-          Column {
-            // Draggable content
-            val draggableContent = scope.buildDraggable(isDragging)
-
-            Box(
-              modifier = if (scope.isDraggable()) {
-                Modifier.draggableHandle(
-                  onDragStarted = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                    onDragStarted()
-                  },
-                  onDragStopped = {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                    onDragStopped()
-                  },
-                )
-              } else {
-                Modifier
-              }
-            ) {
-              draggableContent()
-            }
-
-            // Static content (if any)
-            scope.buildStatic()?.invoke()
+      ReorderableItem(
+        state = reorderableState,
+        key = keySelector(item),
+      ) { isDragging ->
+        Column {
+          val draggingModifier = if (scope.isDraggable()) {
+            Modifier.draggableHandle(
+              onDragStarted = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                onDragStarted()
+              },
+              onDragStopped = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                onDragStopped()
+              },
+            )
+          } else {
+            Modifier
           }
+          // Draggable content
+          val draggableContent = scope.buildDraggable(isDragging, draggingModifier)
+
+          Box {
+            draggableContent()
+          }
+
+          // Static content (if any)
+          scope.buildStatic()?.invoke()
         }
+      }
     }
   }
 }
@@ -181,8 +181,8 @@ private fun PreviewAppDraggableList() {
         keySelector = { "body_$it" },
         itemContent = { item ->
           DraggableItem(
-            isDraggable = item != "Body Fat" // Example: Body Fat is not draggable
-          ) { isDragging ->
+            isDraggable = item != "Body Fat", // Example: Body Fat is not draggable
+          ) { isDragging, modifier ->
             Text(
               text = "📊 $item ${if (isDragging) "(Dragging)" else if (item == "Body Fat") "(Disabled)" else ""}",
               modifier = Modifier.padding(16.dp),
@@ -205,7 +205,7 @@ private fun PreviewAppDraggableList() {
         },
         keySelector = { "other_$it" },
         itemContent = { item ->
-          DraggableItem { isDragging ->
+          DraggableItem { isDragging, modifier ->
             Text(
               text = "📈 $item ${if (isDragging) "(Dragging)" else ""}",
               modifier = Modifier.padding(16.dp),

@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.domain.model.api.device
 
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import java.util.UUID
 
@@ -8,54 +10,29 @@ import java.util.UUID
  */
 fun DeviceApiModel.toDomainModel(accountId: String): Device =
   Device(
-    // Device properties
     id = if (id.isNullOrEmpty()) UUID.randomUUID().toString() else id,
-    accountId = accountId,
-    peripheralIdentifier = peripheralIdentifier,
-    nickname = nickname,
-    sku = sku,
-    mac = mac,
-    password = password,
-    isDeleted = false,
-    deviceName = name,
-    deviceType = type,
-    broadcastId = broadcastId?.toString(),
-    broadcastIdString = broadcastId?.toString(),
-    userNumber = userNumber?.toString(),
-    protocolType = null, // Not in API response
-    createdAt = createdAt,
-    lastModified = System.currentTimeMillis(),
-    isSynced = true,
-    hasServerID = !id.isNullOrEmpty(), // True if API provided ID, false if generated
-    isConnected = false,
+    device = GGDeviceDetail(
+      deviceName = name ?: "",
+      macAddress = mac ?: "",
+      identifier = peripheralIdentifier ?: "",
+      protocolType = type,
+      broadcastId = broadcastId?.toString(),
+      broadcastIdString = broadcastId?.toString(),
+      password = password,
+      wifiMacAddress = null, // Not in API response
+      isWifiConfigured = false, // Not in API response
+      // Add other fields as needed
+    ),
+    connectionStatus = BLEStatus.DISCONNECTED,
+    nickname = nickname ?: name ?: "",
+    deviceType = type ?: "",
+    alreadyPaired = false,
+    userNumber = userNumber,
+    hasServerID = !id.isNullOrEmpty(),
     wifiMac = null, // Not in API response
     isWifiConfigured = false, // Not in API response
-    token = scaleToken,
-    // Body Scale properties
-    scaleType = type,
-    bodyComp = type?.contains("scale", ignoreCase = true) == true,
     isWeighOnlyModeEnabledByOthers = false,
-    // R4 Prefs
-    displayName = preference?.displayName,
-    displayMetrics = preference?.displayMetrics,
-    shouldFactoryReset = preference?.shouldFactoryReset ?: false,
-    shouldMeasureImpedance = preference?.shouldMeasureImpedance ?: false,
-    shouldMeasurePulse = preference?.shouldMeasurePulse ?: false,
-    timeFormat = preference?.timeFormat,
-    tzOffset = preference?.tzOffset,
-    wifiFotaScheduleTime = preference?.wifiFotaScheduleTime,
-    prefsUpdatedAt = null, // Not in API response
-    // Meta
-    modelNumber = null, // Not in API response
-    serialNumber = null, // Not in API response
-    firmwareRevision = null, // Not in API response
-    hardwareRevision = null, // Not in API response
-    softwareRevision = null, // Not in API response
-    manufacturerName = null, // Not in API response
-    systemId = null, // Not in API response
-    latestVersion = latestVersion,
-    // BPM
-    hasNumericUsers = null, // Not in API response
+    token = scaleToken,
   )
 
 /**
@@ -68,27 +45,17 @@ fun Device.toApiModel(): DeviceApiModel =
     id = id,
     nickname = nickname,
     type = deviceType,
-    createdAt = createdAt,
-    userNumber = userNumber?.toIntOrNull(),
-    mac = mac,
-    broadcastId = broadcastId?.toLongOrNull(),
-    password = password,
-    sku = sku,
-    name = deviceName,
+    createdAt = null, // Not present in GGDevice
+    userNumber = userNumber,
+    mac = device?.macAddress,
+    broadcastId = device?.broadcastId?.toLongOrNull(),
+    password = device?.password,
+    sku = null, // Not present in GGDevice
+    name = device?.deviceName,
     scaleToken = token,
-    peripheralIdentifier = peripheralIdentifier,
-    preference =
-      PreferenceApiModel(
-        tzOffset = tzOffset,
-        timeFormat = timeFormat,
-        displayName = displayName,
-        displayMetrics = displayMetrics,
-        shouldMeasurePulse = shouldMeasurePulse,
-        shouldMeasureImpedance = shouldMeasureImpedance,
-        shouldFactoryReset = shouldFactoryReset,
-        wifiFotaScheduleTime = wifiFotaScheduleTime,
-      ),
-    latestVersion = latestVersion,
+    peripheralIdentifier = device?.identifier,
+    preference = null, // Not present in GGDevice, add if needed
+    latestVersion = null, // Not present in GGDevice
   )
 
 /**
@@ -97,14 +64,14 @@ fun Device.toApiModel(): DeviceApiModel =
 fun Device.toR4ScalePreferenceApiModel(): R4ScalePreferenceApiModel =
   R4ScalePreferenceApiModel(
     scaleId = id,
-    displayName = displayName,
-    displayMetrics = displayMetrics,
-    shouldFactoryReset = shouldFactoryReset,
-    shouldMeasureImpedance = shouldMeasureImpedance,
-    shouldMeasurePulse = shouldMeasurePulse,
-    timeFormat = timeFormat,
-    tzOffset = tzOffset,
-    wifiFotaScheduleTime = wifiFotaScheduleTime,
+    displayName = preferences?.displayName,
+    displayMetrics = preferences?.displayMetrics,
+    shouldFactoryReset = preferences?.shouldFactoryReset ?: false,
+    shouldMeasureImpedance = preferences?.shouldMeasureImpedance ?: false,
+    shouldMeasurePulse = preferences?.shouldMeasurePulse ?: false,
+    timeFormat = preferences?.timeFormat,
+    tzOffset = preferences?.tzOffset,
+    wifiFotaScheduleTime = preferences?.wifiFotaScheduleTime?.toInt() ?: 0,
   )
 
 /**
@@ -112,14 +79,14 @@ fun Device.toR4ScalePreferenceApiModel(): R4ScalePreferenceApiModel =
  */
 fun Device.toScaleMetaDataApiModel(): ScaleMetaDataApiModel =
   ScaleMetaDataApiModel(
-    modelNumber = modelNumber,
-    serialNumber = serialNumber,
-    firmwareRevision = firmwareRevision,
-    hardwareRevision = hardwareRevision,
-    softwareRevision = softwareRevision,
-    manufacturerName = manufacturerName,
-    systemId = systemId,
-    latestVersion = latestVersion,
+    modelNumber = device?.modelNumber,
+    serialNumber = device?.serialNumber,
+    firmwareRevision = device?.firmwareRevision,
+    hardwareRevision = device?.hardwareRevision,
+    softwareRevision = device?.softwareRevision,
+    manufacturerName = device?.manufacturerName,
+    systemId = device?.systemID,
+    latestVersion = "",
   )
 
 /**

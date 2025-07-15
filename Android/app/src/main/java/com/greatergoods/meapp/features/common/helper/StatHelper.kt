@@ -85,7 +85,7 @@ object StatHelper {
    * Returns a list of Stat objects for all metric keys in DashboardMetric.
    */
   fun getMetrics(
-    item: DashboardMetric,
+    item: DashboardMetric? = null,
     visibleKeys: List<MetricKey>? = null,
     filterWeight: Boolean = true,
     useShort: Boolean = false,
@@ -94,7 +94,11 @@ object StatHelper {
     val keysToUse = (visibleKeys
       ?: MetricKey.entries).filter { it != MetricKey.UNRECOGNIZED && if (filterWeight) it != MetricKey.WEIGHT else true }
     return keysToUse.map { key ->
-      getMetricValue(item, key, useShort)
+      if (item != null) {
+        getMetricValue(item, key, useShort)
+      } else {
+        DashboardKey.Metric(key).toStat(null, useShort)
+      }
     }.let { metrics ->
       if (filterNulls) metrics.filter { it.value != null } else metrics
     }

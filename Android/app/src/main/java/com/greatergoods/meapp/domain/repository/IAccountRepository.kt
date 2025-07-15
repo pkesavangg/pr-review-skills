@@ -40,7 +40,7 @@ interface IAccountRepository {
      * @param accountId The account ID to get info for
      * @return AccountInfo for the specified account
      */
-    suspend fun getAccount(accountId: String): AccountInfo
+    suspend fun getAccountFromAPI(accountId: String): AccountInfo
 
     /**
      * Changes the password for the specified account.

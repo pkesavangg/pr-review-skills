@@ -1,56 +1,72 @@
 package com.greatergoods.meapp.domain.model.storage
 
-/**
- * Domain model representing a device in the application.
- * This is a clean model without any database dependencies.
- */
+import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import java.util.UUID
+import kotlin.random.Random
+
+enum class BLEStatus {
+  CONNECTED, DISCONNECTED, CONNECTING, DISCONNECTING
+}
+
 data class Device(
-  // Device properties
-  val id: String,
-  val accountId: String,
-  val peripheralIdentifier: String?,
-  val nickname: String?,
-  val sku: String?,
-  val mac: String?,
-  val password: String?,
-  val isDeleted: Boolean,
-  val deviceName: String?,
-  val deviceType: String?,
-  val broadcastId: String?,
-  val broadcastIdString: String?,
-  val userNumber: String?,
-  val protocolType: String?,
-  val createdAt: String?,
-  val lastModified: Long?,
-  val isSynced: Boolean,
-  val hasServerID: Boolean,
-  val isConnected: Boolean,
-  val wifiMac: String?,
-  val isWifiConfigured: Boolean,
-  val token: String?,
-  // Body Scale properties
-  val scaleType: String?,
-  val bodyComp: Boolean,
-  val isWeighOnlyModeEnabledByOthers: Boolean,
-  // R4 Prefs
-  val displayName: String?,
-  val displayMetrics: List<String>?,
-  val shouldFactoryReset: Boolean,
-  val shouldMeasureImpedance: Boolean,
-  val shouldMeasurePulse: Boolean,
-  val timeFormat: String?,
-  val tzOffset: Int?,
-  val wifiFotaScheduleTime: Int?,
-  val prefsUpdatedAt: String?,
-  // Meta
-  val modelNumber: String?,
-  val serialNumber: String?,
-  val firmwareRevision: String?,
-  val hardwareRevision: String?,
-  val softwareRevision: String?,
-  val manufacturerName: String?,
-  val systemId: String?,
-  val latestVersion: String?,
-  // BPM
-  val hasNumericUsers: Boolean?,
+  val id: String = UUID.randomUUID().toString(),
+  val device: GGDeviceDetail? = null,
+  val connectionStatus: BLEStatus = BLEStatus.DISCONNECTED,
+  val nickname: String = device?.deviceName ?: "",
+  val deviceType: String? = null,
+  val alreadyPaired: Boolean = false,
+  val userNumber: Int? = 0,
+  val hasServerID: Boolean = false,
+  val wifiMac: String? = null,
+  val isWifiConfigured: Boolean = false,
+  val isWeighOnlyModeEnabledByOthers: Boolean = false,
+  val token: String? = null,
+  val preferences: Preferences? = null
+) {
+
+  fun getAppType(): String {
+    return GGAppType.WEIGHT_GURUS
+  }
+
+  fun hasNumericUsers(): Boolean {
+    return getAppType() == GGAppType.BALANCE_HEALTH
+  }
+
+  fun getSKU(): String {
+    return device?.getSKU() ?: "0375"
+  }
+
+  companion object {
+    fun fromDevice(device: GGDeviceDetail, deviceType: String): Device {
+      val preferences = if (device.getSKU() == "0412") {
+        Preferences(shouldMeasureImpedance = device.impedanceSwitchState)
+      } else null
+      return Device(
+        device = device,
+        hasServerID = false,
+        wifiMac = null,
+        isWifiConfigured = false,
+        isWeighOnlyModeEnabledByOthers = false,
+        preferences = preferences,
+        deviceType = deviceType,
+      )
+    }
+  }
+}
+
+@Serializable
+data class Preferences(
+  val id: Long = Random.nextLong(),
+  @SerialName("tzOffset") val tzOffset: Int? = null,
+  @SerialName("timeFormat") val timeFormat: String? = null,
+  @SerialName("displayName") val displayName: String? = null,
+  @SerialName("displayMetrics") val displayMetrics: List<String>? = null,
+  @SerialName("shouldMeasurePulse") val shouldMeasurePulse: Boolean? = null,
+  @SerialName("shouldMeasureImpedance") val shouldMeasureImpedance: Boolean? = null,
+  @SerialName("shouldFactoryReset") val shouldFactoryReset: Boolean? = null,
+  @SerialName("wifiFotaScheduleTime") val wifiFotaScheduleTime: Long? = null
 )

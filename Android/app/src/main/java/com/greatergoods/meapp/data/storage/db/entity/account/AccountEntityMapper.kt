@@ -80,8 +80,8 @@ object AccountEntityMapper {
             isFitbitValid = accountWithRelations.integrationsSettings?.isFitbitValid ?: false,
             isHealthConnectOn = accountWithRelations.integrationsSettings?.isHealthConnectOn ?: false,
             isHealthKitOn = accountWithRelations.integrationsSettings?.isHealthKitOn ?: false,
-            isMfpOn = accountWithRelations.integrationsSettings?.isMfpOn ?: false,
-            isMfpValid = accountWithRelations.integrationsSettings?.isMfpValid ?: false,
+            isMFPOn = accountWithRelations.integrationsSettings?.isMFPOn ?: false,
+            isMFPValid = accountWithRelations.integrationsSettings?.isMFPValid ?: false,
         )
     }
 }

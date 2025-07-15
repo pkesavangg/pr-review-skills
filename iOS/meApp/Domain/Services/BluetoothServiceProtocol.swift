@@ -85,7 +85,7 @@ protocol BluetoothServiceProtocol {
     func getWifiList(for device: Device) async -> Result<[WifiDetails], BluetoothServiceError>
     /// Configures Wi-Fi on the given device.
     /// - Returns: Result<Void, BluetoothServiceError>
-    func setupWifi(on device: Device, config: WifiConfig) async -> Result<Void, BluetoothServiceError>
+    func setupWifi(on device: Device, config: WifiConfig) async -> Result<WifiSetupResponse, BluetoothServiceError>
     /// Cancels a pending Wi-Fi configuration.
     /// - Returns: Result<Void, BluetoothServiceError>
     func cancelWifi(on device: Device) async -> Result<Void, BluetoothServiceError>

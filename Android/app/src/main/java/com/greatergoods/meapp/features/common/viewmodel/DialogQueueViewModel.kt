@@ -30,12 +30,12 @@ class DialogQueueViewModel
          * Enqueue an alert dialog
          */
         fun enqueueAlert(
-            title: String,
-            message: String,
-            dismissText: String,
-            onDismiss: (() -> Unit)?,
-            priority: Int,
-            delayMillis: Long,
+          title: String?,
+          message: String,
+          dismissText: String,
+          onDismiss: (() -> Unit)?,
+          priority: Int,
+          delayMillis: Long,
         ) {
             dialogQueueService.enqueue(
                 DialogModel.Alert(
@@ -178,12 +178,12 @@ class DialogQueueViewModel
                 when (current) {
                     is DialogModel.Alert ->
                         enqueueAlert(
-                            title = current.title,
-                            message = current.message,
-                            dismissText = current.dismissText,
-                            onDismiss = current.onDismiss,
-                            priority = current.alertPriority,
-                            delayMillis = delayMillis,
+                          title = current.title,
+                          message = current.message,
+                          dismissText = current.dismissText,
+                          onDismiss = current.onDismiss,
+                          priority = current.alertPriority,
+                          delayMillis = delayMillis,
                         )
 
                     else -> {}
@@ -201,12 +201,12 @@ class DialogQueueViewModel
                 when (current) {
                     is DialogModel.Alert ->
                         enqueueAlert(
-                            title = current.title,
-                            message = current.message,
-                            dismissText = current.dismissText,
-                            onDismiss = current.onDismiss,
-                            priority = priority,
-                            delayMillis = current.alertDelayMillis,
+                          title = current.title,
+                          message = current.message,
+                          dismissText = current.dismissText,
+                          onDismiss = current.onDismiss,
+                          priority = priority,
+                          delayMillis = current.alertDelayMillis,
                         )
 
                     is DialogModel.Confirm ->

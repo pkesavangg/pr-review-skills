@@ -55,7 +55,7 @@ fun PermissionItem(
   }
 
   val isGranted = item.status == PermissionItemStatus.Granted
-  val disabled = isGranted || item.status == PermissionItemStatus.NotRequested
+  val disabled = isGranted
   val statusText = if (isGranted) item.enabledDescription else item.disabledDescription
 
 

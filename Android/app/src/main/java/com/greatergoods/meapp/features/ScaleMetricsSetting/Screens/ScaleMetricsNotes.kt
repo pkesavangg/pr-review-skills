@@ -25,7 +25,9 @@ fun ScaleMetricsNotes(
 
   if (notifyScaleMode != NotifyScaleMode.None) {
     Column(
-      modifier = modifier.fillMaxSize().padding(bottom = spacing.md),
+      modifier = modifier
+        .fillMaxSize()
+        .padding(bottom = spacing.md),
       verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
       // Notification Cards

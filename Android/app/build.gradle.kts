@@ -154,6 +154,10 @@ dependencies {
   implementation(libs.vico.compose)
   implementation(libs.vico.compose.m3)
 
+  // Gif Image
+  implementation(libs.coil.compose)       // For Jetpack Compose
+  implementation(libs.coil.gif)
+
   // foundation-pullrefresh
   // implementation(libs.androidx.foundation.pullrefresh)
 }

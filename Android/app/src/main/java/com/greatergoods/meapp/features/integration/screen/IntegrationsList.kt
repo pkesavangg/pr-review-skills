@@ -43,17 +43,12 @@ fun IntegrationList(
       IntegrationListItem(
         integration = integration,
         onToggle = {
-          if (integration.isConnected) {
-            // Disable integration
-            handleIntent(IntegrationIntent.ShowDisconnectDialog(integration))
+          // Handle Health Connect navigation separately
+          if (integration.provider == IntegrationProvider.HealthConnect) {
+            handleIntent.invoke(IntegrationIntent.NavigateToHealthConnect)
           } else {
-            // Enable integration - you'll need to pass accountId here
-            // For now, using a placeholder accountId
-            handleIntent(
-              IntegrationIntent.ConnectIntegration(
-                provider = integration.provider,
-              ),
-            )
+            // Use existing logic for other integrations
+            handleIntent.invoke(IntegrationIntent.OpenIntegration(integration))
           }
         },
       )
@@ -64,8 +59,6 @@ fun IntegrationList(
     }
   }
 }
-
-
 
 @PreviewTheme
 @Composable

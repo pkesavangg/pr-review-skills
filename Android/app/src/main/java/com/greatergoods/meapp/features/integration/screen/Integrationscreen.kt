@@ -27,60 +27,55 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
  */
 @Composable
 fun IntegrationScreen() {
-  val viewModel: IntegrationViewModel = hiltViewModel()
-  val state by viewModel.state.collectAsState()
+    val viewModel: IntegrationViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsState()
 
-  BackHandler {
-    viewModel.handleIntent(IntegrationIntent.OnBack)
-  }
+    BackHandler {
+        viewModel.handleIntent(IntegrationIntent.OnBack)
+    }
 
-  // Load integrations on first launch
-  LaunchedEffect(Unit) {
-    viewModel.handleIntent(IntegrationIntent.LoadIntegrations)
-  }
+    // Load integrations on first launch
+    LaunchedEffect(Unit) {
+        viewModel.handleIntent(IntegrationIntent.LoadIntegrations)
+    }
 
-  IntegrationContent(state, viewModel::handleIntent)
+    IntegrationContent(state, viewModel::handleIntent)
 }
 
 @Composable
 private fun IntegrationContent(
-  state: IntegrationState,
-  handleIntent: (IntegrationIntent) -> Unit,
+    state: IntegrationState,
+    handleIntent: (IntegrationIntent) -> Unit,
 ) {
-  AppScaffold(
-    title = IntegrationStrings.Title,
-    navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
-        handleIntent(IntegrationIntent.OnBack)
-      }
-    },
-  ) { scaffoldModifier ->
-    Column(
-      modifier =
-        scaffoldModifier
-          .fillMaxSize()
-          .padding(spacing.md),
-      verticalArrangement = Arrangement.spacedBy(spacing.md),
-    ) {
-      // Integration list
-      IntegrationList(state, handleIntent)
+    AppScaffold(
+        title = IntegrationStrings.Title,
+        navigationIcon = {
+            AppIconButton(AppIcons.Default.Close) {
+                handleIntent(IntegrationIntent.OnBack)
+            }
+        },
+    ) { scaffoldModifier ->
+        Column(
+            modifier = scaffoldModifier
+                .fillMaxSize()
+                .padding(spacing.md),
+            verticalArrangement = Arrangement.spacedBy(spacing.md),
+        ) {
+            IntegrationList(state, handleIntent)
+        }
     }
-  }
 }
 
 @PreviewTheme
 @Composable
 fun IntegrationScreenPreview() {
-  MeAppTheme {
-    val dummyState =
-      IntegrationState(
-        isLoading = false,
-        integrations = emptyList(),
-      )
-
-    IntegrationContent(
-      state = dummyState,
-      handleIntent = {},
-    )
-  }
+    MeAppTheme {
+        val dummyState = IntegrationState(
+            integrations = emptyList(),
+        )
+        IntegrationContent(
+            state = dummyState,
+            handleIntent = {},
+        )
+    }
 }

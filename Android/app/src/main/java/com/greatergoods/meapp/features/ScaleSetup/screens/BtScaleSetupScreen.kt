@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
+import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupIntent

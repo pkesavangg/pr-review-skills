@@ -395,19 +395,23 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return .failure(.updateProfileFailed(error))
         }
     }
-    
+
     /**
      Configures Wi-Fi on the given device.
-     - Returns: Result<Void, BluetoothServiceError>
+     - Returns: Result<WifiSetupResponse, BluetoothServiceError>
      */
-    func setupWifi(on device: Device, config: WifiConfig) async -> Result<Void, BluetoothServiceError> {
+    func setupWifi(on device: Device, config: WifiConfig) async -> Result<WifiSetupResponse, BluetoothServiceError> {
         do {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
+
             let ggConfig = GGBTWifiConfig(ssid: config.ssid, password: config.password ?? "")
-            _ = await ggBleSDK.setupWifi(ggDevice, ggConfig)
-            return .success(())
+            let ggResponse = await ggBleSDK.setupWifi(ggDevice, ggConfig)
+            
+            let response = WifiSetupResponse(wifiState: ggResponse.wifiState, errorCode: ggResponse.errorCode)
+            return .success(response)
+            
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {

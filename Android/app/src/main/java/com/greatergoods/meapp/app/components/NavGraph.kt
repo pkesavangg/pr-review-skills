@@ -21,6 +21,7 @@ import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
+import com.greatergoods.meapp.features.integration.components.HealthConnectIntegrationScreen
 import com.greatergoods.meapp.features.integration.screen.IntegrationScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
@@ -57,19 +58,19 @@ fun EntryProviderBuilder<NavKey>.topLevelEntries() {
 }
 
 fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
-    entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
-    entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
-    entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
-    entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
-    entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
-    entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
-    entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
-    entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
-    entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
-    entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
-        ScaleDetailsScreen(scaleInfo.scaleId)
-    }
-    entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
+  entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
+  entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
+  entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
+  entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
+  entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
+  entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
+  entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
+  entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
+  entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
+  entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
+    ScaleDetailsScreen(scaleInfo.scaleId)
+  }
+  entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
@@ -83,7 +84,7 @@ fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
 
 fun EntryProviderBuilder<NavKey>.integrationEntries() {
   entry<AppRoute.Integration.IntegrationList> { IntegrationScreen() }
-  entry<AppRoute.Integration.HealthConnect> { ChangePasswordScreen() }
+  entry<AppRoute.Integration.HealthConnect> { HealthConnectIntegrationScreen() }
 }
 
 fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
