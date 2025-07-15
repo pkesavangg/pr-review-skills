@@ -18,6 +18,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     @Injector private var permissionsService: PermissionsService
     /// Bluetooth service for device discovery
     @Injector private var bluetoothService: BluetoothService
+    /// Account service for account operations
+    @Injector private var accountService: AccountService
+    /// Scale service for scale-related operations
+    @Injector private var wifiScaleService: WifiScaleService
     
     let networkMonitor = NetworkMonitor.shared
     
@@ -29,11 +33,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var discoveredScale: Device?
     /// Discovery event from Bluetooth service
     private var discoveryEvent: DeviceDiscoveryEvent?
+    /// Cached scale token to avoid repeated API calls
+    private var scaleToken: String?
+    /// Cached first name from active account
+    private var firstName: String?
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
     private var deviceDiscoveryCancellable: AnyCancellable? = nil
+    /// Active subscription to the network form changes
+    private var networkFormCancellable: AnyCancellable? = nil
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -50,16 +60,54 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // Connection status shown on the BluetoothConnectionView.
     @Published var connectionState: ConnectionState = .loading
     
+    @Published var savedScale: Device?
+    
+    /// Current error state for the setup flow
+    @Published var scaleSetupError: BtWifiScaleSetupError = .none
+    
     /// All steps in the setup flow. Exposed as read-only so views can iterate.
     @Published private(set) var steps: [BtWifiScaleSetupStep] = BtWifiScaleSetupStep.allCases
     
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
     
+    /// Username for duplicate user handling
+    @Published var duplicateUserName: String = "" {
+        didSet {
+            updateNextEnabled()
+        }
+    }
+    @Published var duplicateUserLastActiveAt: Int64? = nil
+    
+    /// User list from the scale
+    @Published var userList: [DeviceUser] = []
+    
+    /// Current user found in the duplicate check
+    @Published var currentUser: DeviceUser?
+    
+    /// List of duplicate users with the same name
+    @Published var duplicateList: [DeviceUser] = []
+    
+    /// WiFi networks list fetched from the scale
+    @Published var wifiNetworks: [WifiDetails] = []
+    
+    /// Connected WiFi network details
+    @Published var connectedWifiNetwork: WifiDetails?
+    
+    /// Selected WiFi network for password entry
+    @Published var selectedWifiNetwork: WifiDetails?
+    
+    /// Error code for the WifiConnectionView/BluetoothConnectionView
+    @Published var errorCode: String? = nil
+    
+    // MARK: - Forms
+    @Published var userNameForm = UserNameForm()
+    @Published var networkForm = NetworkForm()
+    
+    
     let stepsToHideFooter: Set<BtWifiScaleSetupStep> = [
         .wakeup,
         .connectingBluetooth,
-        .gatheringNetwork,
         .connectingWifi,
         .stepOn,
         .measurement,
@@ -71,6 +119,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     private let tag = "BtWifiScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
+    private let alertLang = AlertStrings.self
+    private let commonLang = CommonStrings.self
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     
     /// Convenience accessor building the views for each step.
@@ -91,19 +141,90 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     BluetoothConnectionView(
                         state: connectionState,
                         setupType: .btWifiR4,
-                        onTryAgain: { [weak self] in self?.retryPairing() },
+                        onTryAgain: { [weak self] in
+                            self?.tryAgainButtonHandler(isFromBtConnection: true)
+                        },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
                         }
                     )
                 )
+            case .gatheringNetwork:
+                return AnyView(
+                    Group {
+                        switch scaleSetupError {
+                        case .maxUserReached:
+                            MaxUserListView(userList: userList)
+                        case .duplicatesFound:
+                            DuplicateUserView()
+                        default:
+                            if self.savedScale != nil {
+                                ConnectionPromptView(
+                                    title: ScaleSetupStrings.gatheringNetworksTitle,
+                                    image: AppAssets.wifi
+                                )
+                            } else {
+                                EmptyView()
+                            }
+                        }
+                    }
+                )
+            case .availableWifiList:
+                switch scaleSetupError {
+                case .noNetworkFound:
+                    return AnyView(WifiConnectionView(
+                        state: .noNetworks,
+                        onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
+                        onSupport: {
+                            [weak self] in self?.showHelpModal()
+                        }
+                    ))
+                default:
+                    return AnyView(
+                        WifiSelectionView(
+                            connectedWifiNetwork: connectedWifiNetwork,
+                            wifiNetworks: wifiNetworks,
+                            onRefresh: { [weak self] in
+                                self?.tryAgainButtonHandler()
+                            },
+                            onNetworkSelected: { [weak self] network in
+                                guard let self else { return }
+                                self.selectedWifiNetwork = network
+                                networkForm.setSSID(selectedWifiNetwork?.ssid ?? "")
+                                self.navigateToStep(.wifiPassword)
+                                self.updateNextEnabled()
+                            }
+                        )
+                    )
+                }
+                
+            case .wifiPassword:
+                if let selectedNetwork = selectedWifiNetwork {
+                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork))
+                } else {
+                    return AnyView(WifiConnectionView(
+                        state: .noNetworks,
+                        onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
+                        onSupport: {
+                            [weak self] in self?.showHelpModal()
+                        }
+                    ))
+                }
+            case .connectingWifi:
+                return AnyView(WifiConnectionView(
+                    state: connectionState,
+                    errorCode: errorCode,
+                    onTryAgain: { [weak self] in
+                        self?.tryAgainButtonHandler()
+                    },
+                    onSupport: {
+                        [weak self] in self?.showHelpModal()
+                    }
+                ))
             default:
                 // For now, other screens show the step name as text
                 return AnyView(
                     VStack {
-                        Text(stepName(for: step))
-                            .font(.largeTitle)
-                            .padding()
                         Text("Step: \(step.rawValue)")
                             .font(.body)
                             .foregroundColor(.secondary)
@@ -114,8 +235,24 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
+    var nextButtonText: String {
+        switch currentStep {
+        case .scaleConnected:
+            return commonLang.finish
+        case .gatheringNetwork:
+            return scaleSetupError == .duplicatesFound ? commonLang.save : commonLang.next
+        case .wifiPassword:
+            return commonLang.connect
+        default:
+            return commonLang.next
+        }
+    }
+    
     // MARK: - Lifecycle
     init() {
+        // Cache the first name from active account
+        self.firstName = accountService.activeAccount?.firstName ?? "User"
+        
         // Observe permission updates so the footer button reacts instantly.
         permissionsService.$permissions
             .receive(on: DispatchQueue.main)
@@ -131,6 +268,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self?.updateNextEnabled()
             }
             .store(in: &cancellables)
+        
+        // Observe form changes to update next button state
+        userNameForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.updateNextEnabled()
+            }
+            .store(in: &cancellables)
+        
+        subscribeToNetworkForm()
     }
     
     // MARK: - Navigation Helpers
@@ -168,6 +315,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
         
+        // Reset error state
+        self.scaleSetupError = .none
+        
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
             if discoveredScale != nil && discoveryEvent != nil {
@@ -188,6 +338,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         updateNextEnabled()
     }
     
+    
     // MARK: - Exit / Help
     
     /// Presents a confirmation alert before abandoning the setup flow.
@@ -198,15 +349,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        let alertLang = AlertStrings.ExitSetupAlert.self
+        let alertLang = AlertStrings.ExitBtWifiSetupAlert.self
         let alert = AlertModel(
             title: alertLang.title,
-            message: alertLang.message,
+            message: savedScale != nil ? alertLang.postConnectionExitMessage : alertLang.preConnectionExitMessage,
             buttons: [
                 AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
                     self?.dismissAction?()
+                    /// Calling DisconnectDevice and cancelWifi to ensure cleanup
+                    self?.disconnectDevice()
+                    self?.cancelWifi()
                 },
-                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
+                AlertButtonModel(title: alertLang.goBackButton, type: .secondary) { _ in }
             ]
         )
         notificationService.showAlert(alert)
@@ -223,7 +377,128 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Checks if the footer should be shown based on the current step.
     func shouldShowFooter() -> Bool {
+        // Show footer for gatheringNetwork step when there are errors that need user action
+        if currentStep == .gatheringNetwork {
+            return scaleSetupError == .duplicatesFound
+        }
         return !stepsToHideFooter.contains(currentStep)
+    }
+    
+    /// Checks if the back button should be disabled based on the current step.
+    func shouldDisableBackButton() -> Bool {
+        return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings
+    }
+    
+    /// Handles the next button click based on the current step.
+    func handleNextButtonClick() {
+        if currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound {
+            handleSaveDuplicateUser()
+        } else if currentStep == .wifiPassword {
+            handleWifiPasswordConnect()
+        } else {
+            moveToNextStep()
+        }
+    }
+    
+    /// Handles the next button click based on the current step.
+    func handleBackButtonClick() {
+        if currentStep == .wifiPassword {
+            resetNetworkForm()
+        }
+        moveToPreviousStep()
+    }
+    
+    /// Handles the restore account action from the duplicate user screen
+    func handleRestoreAccount() {
+        // Show confirmation alert
+        let alertStrings = alertLang.ConfirmRestoreAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message,
+            buttons: [
+                AlertButtonModel(title: alertStrings.backButton, type: .secondary) { _ in },
+                AlertButtonModel(title: alertStrings.restoreButton, type: .primary) { [weak self] _ in
+                    Task {
+                        await self?.deleteUsers()
+                        // Reset to normal state and retry connection
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            self?.scaleSetupError = .none
+                            Task {
+                                await self?.restartConnection()
+                            }
+                        }
+                        self?.navigateToStep(.connectingBluetooth)
+                    }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Handles the delete user action from the max user count exceeded screen
+    func handleDeleteUser(_ user: DeviceUser) {
+        let alertStrings = alertLang.ConfirmDeleteUserAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message(user.name),
+            buttons: [
+                AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
+                AlertButtonModel(title: alertStrings.deleteButton, type: .primary) { [weak self] _ in
+                    Task {
+                        await self?.deleteUserFromScale(user)
+                        // Reset to normal state and retry connection
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            self?.scaleSetupError = .none
+                        }
+                        self?.navigateToStep(.connectingBluetooth)
+                    }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Handles the skip WiFi step action
+    func handleSkipWifiStep() {
+        let alertStrings = alertLang.SkipWifiStepAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message,
+            buttons: [
+                AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
+                AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
+                    self?.navigateToStep(.customizeSettings)
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Handles the save action from the duplicate user screen
+    private func handleSaveDuplicateUser() {
+        // Validate the form first
+        guard userNameForm.displayName.isValid else { return }
+        
+        // Update duplicateUserName with the form value
+        duplicateUserName = removeWhiteSpace(userNameForm.displayName.value)
+        
+        // Reset to normal state and retry connection
+        scaleSetupError = .none
+        connectionState = .loading
+        navigateToStep(.connectingBluetooth)
+    }
+    
+    /// Handles the WiFi password connect action
+    private func handleWifiPasswordConnect() {
+        // Validate the form first
+        guard networkForm.ssid.isValid else { return }
+        if !networkForm.networkHasNoPassword {
+            guard networkForm.password.isValid else { return }
+        }
+        
+        // Move to connecting WiFi step
+        connectionState = .loading
+        navigateToStep(.connectingWifi)
     }
     
     /// Handles the pairing process when entering the *wake-up* step.
@@ -259,12 +534,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
-    /// Invoked from the *Try Again* button of `BluetoothConnectionView`.
-    private func retryPairing() {
-        // Jump back to wake-up step
-        if let wakeUpIndex = steps.firstIndex(of: .wakeup) {
-            currentStepIndex = wakeUpIndex
+    /// Invoked from the *Try Again* button of `BluetoothConnectionView` and `WifiConnectionView` failure state.
+    private func tryAgainButtonHandler(isFromBtConnection: Bool = false) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            self.scaleSetupError = .none
         }
+        navigateToStep(isFromBtConnection ? .wakeup : .gatheringNetwork)
     }
     
     // MARK: - Step Change Handling
@@ -277,10 +552,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
             Task {
                 if discoveredScale != nil && discoveryEvent != nil {
                     await self.confirmPair()
-                    self.connectionState = .success
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        self.moveToNextStep()
-                    }
+                }
+            }
+        case .gatheringNetwork:
+            // Only show gathering network if there's no error
+            if let savedScale = self.savedScale, (scaleSetupError != .maxUserReached || scaleSetupError != .duplicatesFound) {
+                // If we have a saved scale and success state, show BluetoothConnectionView for 2 seconds first
+                Task {
+                    await self.fetchWifiNetworks(for: savedScale)
+                }
+            }
+        case .connectingWifi:
+            self.connectionState = .loading
+            if scaleSetupError == .none {
+                Task {
+                    await self.setupWifi()
                 }
             }
         default:
@@ -295,17 +581,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             if currentStep == .wakeup {
                 // Reset discovery state and navigate back to permissions screen
                 resetDiscoveryState()
-                if let permissionStepIndex = steps.firstIndex(of: .permissions) {
-                    currentStepIndex = permissionStepIndex
-                }
+                navigateToStep(.permissions)
             }
-            // TODO: Handle wifi error screen and measurement error screen later
-            // if currentStep == .gatheringNetwork {
-            //     gotoWifiErrorScreen()
-            // }
-            // if currentStep == .stepOn && scaleSetupError != .updateSettingsFailed {
-            //     gotoMeasurementErrorScreen()
-            // }
         }
     }
     
@@ -323,15 +600,275 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Cancel any in-flight timeout task.
         stepTimerTask?.cancel()
+        
+        // Reset error state
+        scaleSetupError = .none
     }
     
     // MARK: - Scale Pairing
     /// Confirms the pairing with the discovered scale.
     /// TODO: Implement the actual pairing functionality later.
     private func confirmPair() async {
-        guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
-        // TODO: Implement pairing functionality
-        LoggerService.shared.log(level: .info, tag: tag, message: "Confirming pair with scale: \(scale.id)")
+        guard let scale = discoveredScale, discoveryEvent != nil else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing discovery event or scale")
+            connectionState = .failure
+            return
+        }
+        
+        // Fetch scale token if not already cached
+        await fetchWifiScaleToken()
+        
+        guard let scaleToken = self.scaleToken else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to obtain scale token")
+            connectionState = .failure
+            return
+        }
+        
+        // Use cached display name, or duplicateUserName if handling duplicate user
+        let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
+        // Call confirmSmartPair
+        let pairResult = await bluetoothService.confirmSmartPair(
+            device: scale,
+            token: scaleToken,
+            displayName: displayName,
+            userNumber: nil
+        )
+        switch pairResult {
+        case .success(let response):
+            switch response {
+            case .creationCompleted:
+                LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
+                await saveScale()
+                connectionState = .success
+                scaleSetupError = .none
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    self.navigateToStep(.gatheringNetwork)
+                }
+                break
+            case .duplicateUserError:
+                LoggerService.shared.log(level: .error, tag: tag, message: "Duplicate User Error \(response)")
+                // Get user list from scale and check for duplicates
+                await getUserList()
+                checkDuplicateUserList()
+                
+                // Populate userNameForm with current user name and user list for validation
+                if let firstName = self.firstName {
+                    userNameForm.setDisplayName(firstName)
+                }
+                
+                // Convert DeviceUser list to ScaleUser list for form validation
+                let scaleUsers = userList.map { deviceUser in
+                    ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                }
+                userNameForm.updateUserList(scaleUsers)
+                
+                // Set error state and navigate to gathering network
+                scaleSetupError = .duplicatesFound
+                navigateToStep(.gatheringNetwork)
+                break
+            case .memoryFull:
+                LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
+                await getUserList()
+                // Set error state and navigate to gathering network
+                scaleSetupError = .maxUserReached
+                navigateToStep(.gatheringNetwork)
+                break
+            default:
+                connectionState = .failure
+                LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
+                break
+            }
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to pair scale: \(error.localizedDescription)")
+            connectionState = .failure
+        }
+    }
+    
+    /// Saves the discovered scale to persistent storage.
+    private func saveScale() async {
+        guard let discoveryEvent = discoveryEvent,
+              let scale = discoveredScale,
+              let scaleToken = self.scaleToken else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveScale - missing required data")
+            return
+        }
+        
+        do {
+            // Create unique scale ID using timestamp
+            let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
+            let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
+            
+            // Set up the scale object
+            scale.id = scaleID
+            scale.accountId = accountService.activeAccount?.accountId ?? ""
+            scale.deviceName = discoveryEvent.deviceInfo.productName
+            scale.deviceType = DeviceType.scale.rawValue
+            scale.sku = scaleItem?.sku ?? discoveryEvent.device.sku
+            scale.mac = scale.mac ?? ""
+            scale.peripheralIdentifier = scale.mac?.replacingOccurrences(of: ":", with: "") ?? ""
+            scale.userNumber = "0"
+            scale.token = scaleToken
+            scale.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
+            scale.nickname = scale.nickname ?? "AccuCheck Verve Smart Scale"
+            
+            // Set up bath scale with proper scale type
+            scale.bathScale = BathScale(
+                scaleType: ScaleSourceType.btWifiR4.rawValue,
+                bodyComp: true
+            )
+            
+            // Create or update R4ScalePreference
+            if scale.r4ScalePreference == nil {
+                scale.r4ScalePreference = R4ScalePreference(from: R4ScalePreferenceDTO(
+                    scaleId: scaleID,
+                    displayName: displayName,
+                    displayMetrics: ScaleMetrics.defaultMetricsKeys,
+                    shouldFactoryReset: false,
+                    shouldMeasureImpedance: true,
+                    shouldMeasurePulse: false,
+                    timeFormat: "12",
+                    tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+                    wifiFotaScheduleTime: 0,
+                    updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
+                    isTemporary: false
+                ))
+            }
+            // Update preference properties
+            scale.r4ScalePreference?.id = scaleID
+            scale.r4ScalePreference?.isSynced = false
+            
+            // Save the scale using BluetoothService
+            try await accountService.updateDashboardType(type: .dashboard12)
+            
+            
+            let result = await bluetoothService.addNewDevice(scale, metaData: nil)
+            switch result {
+            case .success(let savedScale):
+                self.savedScale = savedScale
+                LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+                connectionState = .failure
+            }
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
+            connectionState = .failure
+        }
+    }
+    
+    /// Fetches the WiFi scale token for setup operations.
+    /// This demonstrates how to use the WiFi scale service from other services.
+    private func fetchWifiScaleToken() async {
+        if scaleToken != nil {
+            return
+        }
+        
+        do {
+            let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
+            self.scaleToken = scaleTokenResponse.token
+            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
+            connectionState = .failure
+        }
+    }
+    
+    /// Fetches WiFi networks from the scale and handles error cases
+    private func fetchWifiNetworks(for scale: Device) async {
+        do {
+            // Get connected WiFi SSID first
+            let connectedSSIDResult = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
+            var connectedSSID: String?
+            switch connectedSSIDResult {
+            case .success(let ssid):
+                connectedSSID = ssid.isEmpty ? nil : ssid
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get connected WiFi SSID: \(error.localizedDescription)")
+                connectedSSID = nil
+            }
+            
+            // Get WiFi networks list
+            let wifiListResult = await bluetoothService.getWifiList(for: scale)
+            var networks: [WifiDetails] = []
+            switch wifiListResult {
+            case .success(let wifiList):
+                networks = wifiList
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi networks: \(error.localizedDescription)")
+                throw error
+            }
+            
+            await MainActor.run {
+                self.wifiNetworks = networks
+                
+                // Find connected network in the list
+                if let connectedSSID = connectedSSID {
+                    self.connectedWifiNetwork = WifiDetails(macAddress: "", ssid: connectedSSID, rssi: 0)
+                }
+                
+                // Check if no networks were found
+                if networks.isEmpty {
+                    self.scaleSetupError = .noNetworkFound
+                } else {
+                    self.scaleSetupError = .none
+                }
+                
+                // Navigate to available WiFi list
+                self.navigateToStep(.availableWifiList)
+            }
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi networks: \(networks.count) networks found")
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi networks: \(error.localizedDescription)")
+            await MainActor.run {
+                self.scaleSetupError = .noNetworkFound
+                self.navigateToStep(.availableWifiList)
+            }
+        }
+    }
+    
+    /// Sets up WiFi on the scale
+    private func setupWifi() async {
+        guard let scale = savedScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "setupWifi - no saved scale")
+            connectionState = .failure
+            return
+        }
+        
+        let networkConfig = networkForm.getRawValue()
+        
+        LoggerService.shared.log(level: .info, tag: tag, message: "WiFi setup started for SSID: \(networkConfig.ssid)")
+        let wifiSetupResult = await bluetoothService.setupWifi(on: scale, config: networkConfig)
+        
+        switch wifiSetupResult {
+        case .success(let response):
+            switch response.wifiState {
+            case "GG_WIFI_STATE_CONNECTED":
+                LoggerService.shared.log(level: .info, tag: tag, message: "WiFi connected for: \(networkConfig.ssid)")
+                self.scaleSetupError = .none
+                self.connectionState = .success
+                self.errorCode = nil
+                
+                // Navigate to customize settings after success delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self.navigateToStep(.customizeSettings)
+                }
+                break
+            default:
+                LoggerService.shared.log(level: .error, tag: tag, message: "WiFi connection failed: \(response)")
+                self.connectionState = .failure
+                // Extract error code from the error if available
+                if let errorCode = response.errorCode {
+                    self.errorCode = errorCode
+                }
+                break
+            }
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "WiFi connection failed: \(error.localizedDescription)")
+            self.connectionState = .failure
+            self.errorCode = nil
+        }
+        self.resetNetworkForm()
     }
     
     // MARK: - Device Discovery Handling
@@ -370,40 +907,124 @@ final class BtWifiScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Deletes duplicate users from the scale
+    private func deleteUsers() async {
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUsers - no discovered scale")
+            return
+        }
+        
+        // Delete all users in the duplicate list
+        for user in duplicateList {
+            scale.token = user.token
+            let result = await bluetoothService.deleteDevice(scale, disconnect: false)
+            switch result {
+            case .success:
+                LoggerService.shared.log(level: .info, tag: tag, message: "deleteUsers - deleted user: \(user.name)")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "deleteUsers - error deleting user: \(error.localizedDescription)")
+            }
+        }
+        
+        // Reset display name to first name
+        duplicateUserName = firstName ?? "User"
+        
+        // Reset the form with the first name
+        userNameForm.reset()
+        if let firstName = self.firstName {
+            userNameForm.setDisplayName(firstName)
+        }
+    }
+    
+    /// Starts observing the network form changes to update the next button state.
+    private func subscribeToNetworkForm() {
+        // Cancel previous subscription to avoid redundant updates
+        networkFormCancellable?.cancel()
+        
+        networkFormCancellable = networkForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.updateNextEnabled()
+            }
+    }
+    
+    /// Deletes a specific user from the scale
+    private func deleteUserFromScale(_ user: DeviceUser) async {
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUserFromScale - no discovered scale")
+            return
+        }
+        
+        // Set the user's token to delete the correct user
+        scale.token = user.token
+        let result = await bluetoothService.deleteDevice(scale, disconnect: false)
+        
+        switch result {
+        case .success:
+            LoggerService.shared.log(level: .info, tag: tag, message: "deleteUserFromScale - deleted user: \(user.name)")
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUserFromScale - error deleting user: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Restarts the connection process after deleting users
+    private func restartConnection() async {
+        // Reset duplicate user flags
+        self.userList = []
+        self.currentUser = nil
+        self.duplicateList = []
+        self.duplicateUserLastActiveAt = nil
+        
+        // Reset the form
+        self.userNameForm.reset()
+    }
+    
+    private func getUserList() async {
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "getUserList - no discovered scale")
+            return
+        }
+        
+        let result = await bluetoothService.getScaleUserList(for: scale)
+        switch result {
+        case .success(let users):
+            // Filter out the current scale token
+            self.userList = users.filter { user in
+                user.token != scale.token
+            }
+            LoggerService.shared.log(level: .info, tag: tag, message: "getUserList - retrieved \(self.userList.count) users")
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "getUserList - error getting scale users: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Checks for duplicate users in the user list
+    private func checkDuplicateUserList() {
+        self.currentUser = userList.first { user in
+            user.name.lowercased() == (self.firstName?.lowercased() ?? "")
+        }
+        
+        // Find all users with the same name as current user
+        if let currentUser = self.currentUser {
+            self.duplicateList = userList.filter { user in
+                user.name == currentUser.name
+            }
+        }
+        duplicateUserLastActiveAt = Int64(duplicateList.first?.lastActive ?? 0)
+        LoggerService.shared.log(level: .info, tag: tag, message: "checkDuplicateUserList - found \(self.duplicateList.count) duplicate users")
+    }
+    
     // MARK: - Helper Methods
-    // TODO: Need to remove after all steps are implemented
-    private func stepName(for step: BtWifiScaleSetupStep) -> String {
-        switch step {
-        case .intro:
-            return "Intro"
-        case .permissions:
-            return "Permissions"
-        case .wakeup:
-            return "Wake Up"
-        case .connectingBluetooth:
-            return "Connecting Bluetooth"
-        case .gatheringNetwork:
-            return "Gathering Network"
-        case .duplicatesFound:
-            return "Duplicates Found"
-        case .availableWifiList:
-            return "Available Wi-Fi List"
-        case .wifiPassword:
-            return "Wi-Fi Password"
-        case .connectingWifi:
-            return "Connecting Wi-Fi"
-        case .customizeSettings:
-            return "Customize Settings"
-        case .viewSettings:
-            return "View Settings"
-        case .updateSettings:
-            return "Update Settings"
-        case .stepOn:
-            return "Step On"
-        case .measurement:
-            return "Measurement"
-        case .scaleConnected:
-            return "Scale Connected"
+    
+    /// Navigates to the specified step with an optional delay
+    /// - Parameters:
+    ///   - step: The step to navigate to
+    ///   - delay: Optional delay in seconds before navigation (default: 0)
+    private func navigateToStep(_ step: BtWifiScaleSetupStep, delay: TimeInterval = 0) {
+        if let stepIndex = steps.firstIndex(of: step) {
+            withAnimation {
+                self.currentStepIndex = stepIndex
+            }
         }
     }
     
@@ -422,24 +1043,38 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Updates `isNextEnabled` depending on the current step and permission state.
     private func updateNextEnabled() {
-        guard currentStep == .permissions else {
+        switch currentStep {
+        case .permissions:
+            // Evaluate individual permissions
+            let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
+            let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+            
+            // Automatically request missing permissions
+            if !bluetoothEnabled {
+                Task { await permissionsService.handlePermission(.bluetooth) }
+            } else if !bluetoothSwitchEnabled {
+                Task { await permissionsService.handlePermission(.bluetoothSwitch) }
+            }
+            
+            // Enable the Next button only when all permissions are granted
+            isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
+        case .gatheringNetwork:
+            // Enable save button only when there's a duplicate error and username is valid
+            if scaleSetupError == .duplicatesFound {
+                isNextEnabled = userNameForm.displayName.isValid
+            } else {
+                isNextEnabled = true
+            }
+        case .wifiPassword:
+            // Enable connect button only when password is valid (unless no password required)
+            if networkForm.networkHasNoPassword {
+                isNextEnabled = networkForm.ssid.isValid
+            } else {
+                isNextEnabled = networkForm.ssid.isValid && networkForm.password.isValid
+            }
+        default:
             isNextEnabled = true
-            return
         }
-        
-        // Evaluate individual permissions
-        let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
-        let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-        
-        // Automatically request missing permissions
-        if !bluetoothEnabled {
-            Task { await permissionsService.handlePermission(.bluetooth) }
-        } else if !bluetoothSwitchEnabled {
-            Task { await permissionsService.handlePermission(.bluetoothSwitch) }
-        }
-        
-        // Enable the Next button only when all permissions are granted
-        isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
     }
     
     /// Returns an adjusted step index by skipping the permissions page when the
@@ -458,10 +1093,40 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return idx
     }
     
+    // MARK: - Cleanup Methods
+    
+    // Disconnects scale if it's not saved to ensure it shouldn't appears again in discovery.
+    private func disconnectDevice() {
+        guard let broadcastId = discoveredScale?.broadcastIdString, !broadcastId.isEmpty, savedScale == nil else { return }
+        Task {
+            _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
+        }
+    }
+    
+    // Cancels Wi-Fi to hide connecting to wifi screen on 0412 scale.
+    private func cancelWifi() {
+        if let discoveredScale = discoveredScale {
+            Task {
+                await bluetoothService.cancelWifi(on: discoveredScale)
+            }
+        }
+    }
+    
+    // Resets the network form to its initial state.
+    private func resetNetworkForm() {
+        self.networkForm.reset()
+        self.networkForm = NetworkForm()
+        subscribeToNetworkForm()
+    }
+    
     deinit {
         // Cancel active Combine subscription before releasing it.
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
+        
+        // Cancel network form subscription
+        networkFormCancellable?.cancel()
+        networkFormCancellable = nil
         
         // Nil out discovery data so subsequent runs start fresh.
         discoveredScale = nil

@@ -42,12 +42,10 @@ struct ConnectionPromptView: View {
                         .multilineTextAlignment(.center)
                 }
             }
-            .padding(.horizontal, .spacingLG)
 
             ConnectionIndicatorView(image: image)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .padding(.horizontal, .spacingLG)
     }
 }
 
