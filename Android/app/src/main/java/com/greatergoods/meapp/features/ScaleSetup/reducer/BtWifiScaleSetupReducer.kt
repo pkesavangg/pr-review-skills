@@ -8,6 +8,7 @@ import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
+import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.login.strings.LoginStrings
 
 /**
@@ -79,7 +80,7 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.SCALE_CONNECTED,
   ),
   val nextButtonText: String = ScaleSetupStrings.SetupButtons.Next,
-  val wifiList : List<GGWifiInfo> = emptyList(),
+  val wifiList: List<GGWifiInfo> = emptyList(),
   val isLoading: Boolean = false,
   val errorCode: String? = null,
   val isSetupFinished: Boolean = false,
@@ -87,7 +88,8 @@ data class BtWifiScaleSetupState(
   val stepConnectionStates: Map<BtWifiSetupStep, ConnectionState> = mapOf(),
   val canProceedToNext: Boolean = true,
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
-  val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create()
+  val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
+  val dashboardKeys: List<DashboardKey> = listOf(),
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -101,6 +103,7 @@ data class BtWifiScaleSetupState(
  */
 sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
 
+  data class SetDashboardKeys(val dashboardKeys: List<DashboardKey>) : BtWifiScaleSetupIntent
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(
     val sku: String,
@@ -161,7 +164,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
     intent: BtWifiScaleSetupIntent,
   ): BtWifiScaleSetupState? =
     when (intent) {
-
+      is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys)
       is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList)
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
       is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)

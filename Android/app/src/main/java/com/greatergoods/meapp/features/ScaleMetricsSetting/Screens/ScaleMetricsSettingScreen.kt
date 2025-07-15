@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -12,7 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import com.greatergoods.meapp.domain.model.storage.Device
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleMetricsSetting.components.ScaleMetricItem
 import com.greatergoods.meapp.features.common.components.AppDraggableList
@@ -33,11 +34,10 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
  */
 @Composable
 fun ScaleMetricsSettingScreen(
-  scale: Device,
+  currentMetrics: List<String> = emptyList(),
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
-  val currentMetrics = scale.preferences?.displayMetrics ?: emptyList()
 
   // Separate state for each metric group
   var bodyMetricsState by remember(currentMetrics) {
@@ -57,87 +57,85 @@ fun ScaleMetricsSettingScreen(
   }
 
   Column(
-    modifier = modifier.fillMaxSize(),
+    modifier = modifier
+      .fillMaxSize(),
   ) {
     // Body Composition Metrics Section
-    Column(
-      modifier = Modifier.clip(shape = RoundedCornerShape(borderRadius.sm)),
-    ) {
-      AppDraggableList(
-        items = bodyMetricsState,
-        onMove = { from, to ->
-          val newList = bodyMetricsState.toMutableList()
-          newList.add(to, newList.removeAt(from))
-          bodyMetricsState = newList
-          emitCombinedMetrics()
-        },
-        keySelector = { "body_${it.key}" },
-        itemContent = { metric ->
-          DraggableItem(
-            isDraggable = metric.isEnabled,
-          ) { isDragging ->
-            ScaleMetricItem(
-              metric = metric,
-              isDragging = isDragging,
-              onToggle = { isEnabled ->
-                bodyMetricsState =
-                  bodyMetricsState.map {
-                    if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
-                  }
-                emitCombinedMetrics()
-              },
-            )
-          }
-        },
-      )
-    }
+    AppDraggableList(
+      modifier = Modifier
+        .clip(shape = RoundedCornerShape(borderRadius.sm))
+        .heightIn(max = 600.dp),
+      items = bodyMetricsState,
+      onMove = { from, to ->
+        val newList = bodyMetricsState.toMutableList()
+        newList.add(to, newList.removeAt(from))
+        bodyMetricsState = newList
+        emitCombinedMetrics()
+      },
+      keySelector = { "body_${it.key}" },
+      itemContent = { metric ->
+        DraggableItem(
+          isDraggable = metric.isEnabled,
+        ) { isDragging, modifier ->
+          ScaleMetricItem(
+            metric = metric,
+            isDragging = isDragging,
+            dragHandleModifier = modifier,
+            onToggle = { isEnabled ->
+              bodyMetricsState =
+                bodyMetricsState.map {
+                  if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
+                }
+              emitCombinedMetrics()
+            },
+          )
+        }
+      },
+    )
 
     Spacer(Modifier.height(spacing.md))
 
     // Other Metrics Section (Goals and Averages)
-    Column(
-      modifier = Modifier.clip(shape = RoundedCornerShape(borderRadius.sm)),
-    ) {
-      AppDraggableList(
-        items = otherMetricsState,
-        onMove = { from, to ->
-          val newList = otherMetricsState.toMutableList()
-          newList.add(to, newList.removeAt(from))
-          otherMetricsState = newList
-          emitCombinedMetrics()
-        },
-        keySelector = { "other_${it.key}" },
-        itemContent = { metric ->
-          DraggableItem(
-            isDraggable = metric.isEnabled,
-          ) { isDragging ->
-            ScaleMetricItem(
-              metric = metric,
-              isDragging = isDragging,
-              onToggle = { isEnabled ->
-                otherMetricsState =
-                  otherMetricsState.map {
-                    if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
-                  }
-                emitCombinedMetrics()
-              },
-            )
-          }
-        },
-      )
-    }
+    AppDraggableList(
+      modifier = Modifier
+        .clip(shape = RoundedCornerShape(borderRadius.sm))
+        .heightIn(max = 200.dp),
+      items = otherMetricsState,
+      onMove = { from, to ->
+        val newList = otherMetricsState.toMutableList()
+        newList.add(to, newList.removeAt(from))
+        otherMetricsState = newList
+        emitCombinedMetrics()
+      },
+      keySelector = { "other_${it.key}" },
+      itemContent = { metric ->
+        DraggableItem(
+          isDraggable = metric.isEnabled,
+        ) { isDragging, modifier ->
+          ScaleMetricItem(
+            metric = metric,
+            isDragging = isDragging,
+            dragHandleModifier = modifier,
+            onToggle = { isEnabled ->
+              otherMetricsState =
+                otherMetricsState.map {
+                  if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
+                }
+              emitCombinedMetrics()
+            },
+          )
+        }
+      },
+    )
   }
 }
 
 @PreviewTheme
 @Composable
 fun DisplayMetricsScreenPreview() {
-  val dummyDevice = Device(
-    id = "1",
-    nickname = "My Smart Scale",
-    device = null,
-    preferences = com.greatergoods.meapp.domain.model.storage.Preferences(
-      displayMetrics = listOf(
+  MeAppTheme {
+    ScaleMetricsSettingScreen(
+      currentMetrics = listOf(
         "bmi",
         "bodyFatPercent",
         "musclePercent",
@@ -155,18 +153,6 @@ fun DisplayMetricsScreenPreview() {
         "weeklyAverage",
         "monthlyAverage",
       ),
-      shouldMeasureImpedance = true,
-      shouldMeasurePulse = false,
-    ),
-    isWeighOnlyModeEnabledByOthers = false,
-    hasServerID = true,
-    isWifiConfigured = true,
-    wifiMac = "greatergoods1",
-  )
-
-  MeAppTheme {
-    ScaleMetricsSettingScreen(
-      scale = dummyDevice,
       onMetricsChanged = { enabledKeys ->
         println("Enabled metrics: $enabledKeys")
       },

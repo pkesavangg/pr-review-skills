@@ -46,6 +46,16 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
     }
   }
 
+  protected fun stopObservingDevices() {
+    deviceObservationJob?.cancel()
+    deviceObservationJob = null
+  }
+
+  protected fun stopObservingEntries() {
+    entryObservationJob?.cancel()
+    entryObservationJob = null
+  }
+
   protected fun startObservingEntries() {
     if (entryObservationJob == null) {
       entryObservationJob = viewModelScope.launch {

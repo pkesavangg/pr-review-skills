@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.theme.MeTheme
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyGridState
+import com.greatergoods.meapp.features.common.components.reorderable.ReorderableItem
+import com.greatergoods.meapp.features.common.components.reorderable.rememberReorderableLazyGridState
 
 /**
  * Grid layout for displaying dashboard milestones.

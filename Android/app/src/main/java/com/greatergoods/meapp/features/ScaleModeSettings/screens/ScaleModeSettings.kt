@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -63,9 +61,7 @@ fun ScaleModeSettingsScreen(
   Column(
     modifier =
       Modifier
-        .fillMaxWidth()
-        .verticalScroll(rememberScrollState())
-        .padding(vertical = spacing.md, horizontal = spacing.sm),
+        .fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
     // Description with link

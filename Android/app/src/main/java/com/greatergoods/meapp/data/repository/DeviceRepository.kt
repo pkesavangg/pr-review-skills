@@ -160,6 +160,16 @@ constructor(
     }
   }
 
+  override suspend fun getScaleTokenFromApi(): String {
+    val response = deviceApi.getScaleToken()
+    if (response.isSuccessful) {
+      val tokenResponse = response.body()
+      return tokenResponse?.token ?: throw Exception("Token response is null")
+    } else {
+      throw Exception("Failed to get scale token from API: ${response.code()}")
+    }
+  }
+
   // Extension functions for model conversions
   // Removed - now in DeviceMappers.kt
 }

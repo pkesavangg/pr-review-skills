@@ -12,6 +12,27 @@ import com.greatergoods.meapp.features.ScaleMetricsSetting.model.scaleMetrics
  */
 object ScaleMetricsHelper {
 
+  fun getAllMetrics(): List<String> {
+    return listOf(
+      "bmi",
+      "bodyFatPercent",
+      "musclePercent",
+      "bodyWaterPercent",
+      "heartRate",
+      "bonePercent",
+      "visceralFatLevel",
+      "subcutaneousFatPercent",
+      "proteinPercent",
+      "skeletalMusclePercent",
+      "bmr",
+      "metabolicAge",
+      "goalProgress",
+      "dailyAverage",
+      "weeklyAverage",
+      "monthlyAverage",
+    )
+  }
+
   /**
    * Creates ordered metric states based on current metrics from the scale.
    *

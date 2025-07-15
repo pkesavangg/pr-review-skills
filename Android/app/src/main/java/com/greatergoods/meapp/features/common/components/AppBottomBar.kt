@@ -50,6 +50,7 @@ fun PagerBottomAppBar(
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Transparent,
     shouldCenterMiddleContent: Boolean = false,
+    isBottomBarVisible: Boolean = true,
     hasMiddleContentOnly: Boolean = false,
     leadingContent: @Composable () -> Unit,
     middleContent: @Composable () -> Unit,
@@ -58,54 +59,59 @@ fun PagerBottomAppBar(
 ) {
     val insets = WindowInsets.ime.union(WindowInsets.navigationBars)
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         containerColor = containerColor,
         bottomBar = {
+          if (isBottomBarVisible) {
             BottomAppBar(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .consumeWindowInsets(insets),
-                containerColor = containerColor,
-                windowInsets = insets
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .consumeWindowInsets(insets),
+              containerColor = containerColor,
+              windowInsets = insets,
             ) {
               val buttonArrangement = when {
                 shouldCenterMiddleContent && hasMiddleContentOnly -> Arrangement.Center
                 shouldCenterMiddleContent -> Arrangement.SpaceBetween
                 else -> Arrangement.Start
               }
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(MeTheme.spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = buttonArrangement
-                ) {
-                    leadingContent()
-                  if(!shouldCenterMiddleContent) {
-                    Spacer(modifier = Modifier.weight(1f))
-                  }
-                    middleContent()
-                  if(!shouldCenterMiddleContent) {
-                    Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
-                  }
-                    trailingContent()
+              Row(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .padding(MeTheme.spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = buttonArrangement,
+              ) {
+                leadingContent()
+                if (!shouldCenterMiddleContent) {
+                  Spacer(modifier = Modifier.weight(1f))
                 }
+                middleContent()
+                if (!shouldCenterMiddleContent) {
+                  Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
+                }
+                trailingContent()
+              }
             }
+          }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
         Column(
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier
+              .padding(paddingValues)
+              .then(modifier),
         ) {
             content(
                 Modifier
-                    .padding(
-                        WindowInsets.safeDrawing
-                            .only(WindowInsetsSides.Horizontal)
-                            .asPaddingValues(),
-                    ).background(containerColor),
+                  .padding(
+                    WindowInsets.safeDrawing
+                      .only(WindowInsetsSides.Horizontal)
+                      .asPaddingValues(),
+                  )
+                  .background(containerColor),
             )
         }
     }
@@ -202,8 +208,8 @@ fun BottomAppBarPreview() {
                             text = "Swipe to navigate. Current Page: ${pagerState.currentPage + 1}",
                             modifier =
                                 Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
+                                  .fillMaxWidth()
+                                  .padding(16.dp),
                             style = MeTheme.typography.body3,
                             color = MeTheme.colorScheme.tertiaryAction,
                         )
