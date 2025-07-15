@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 import Combine
+import GGBluetoothSwiftPackage
 
 /// Service for managing paired scale devices with a clean "replace-all" sync policy.
 ///
@@ -178,22 +179,58 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     nonisolated func updateConnectedDevices(device: Any, isConnected: Bool) async {
         await MainActor.run {
-            guard let deviceDict = device as? [String: Any],
-                  let deviceId = deviceDict["id"] as? String else {
-                logger.log(level: .error, tag: tag, message: "Invalid device data format")
-                return
+            // Try to extract device ID from different possible data formats
+            var deviceId: String?
+            var broadcastId: String?
+            
+            if let deviceDict = device as? [String: Any] {
+                deviceId = deviceDict["id"] as? String
+                broadcastId = deviceDict["broadcastId"] as? String
+            } else if let deviceDetails = device as? GGDeviceDetails {
+                // GGDeviceDetails doesn't have an 'id' property, use broadcastId instead
+                broadcastId = deviceDetails.broadcastId ?? deviceDetails.broadcastIdString
             }
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
-            do {
-                if let device = try localRepository.context.fetch(descriptor).first {
-                    device.isConnected = isConnected
-                    try localRepository.context.save()
-                } else {
-                    logger.log(level: .error, tag: tag, message: "Device not found: \(deviceId)")
+            
+            // If we have a device ID, try to update by ID first
+            if let deviceId = deviceId {
+                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
+                do {
+                    if let device = try localRepository.context.fetch(descriptor).first {
+                        device.isConnected = isConnected
+                        try localRepository.context.save()
+                        logger.log(level: .info, tag: tag, message: "Updated device connection status by ID: \(deviceId), connected: \(isConnected)")
+                        // Refresh scales to update UI
+                        Task {
+                            await self.refreshScalesFromLocal()
+                        }
+                        return
+                    }
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to update device by ID: \(error.localizedDescription)")
                 }
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to update device connection status: \(error.localizedDescription)")
             }
+            
+            // Fallback: try to update by broadcast ID
+            if let broadcastId = broadcastId {
+                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
+                do {
+                    if let device = try localRepository.context.fetch(descriptor).first {
+                        device.isConnected = isConnected
+                        try localRepository.context.save()
+                        logger.log(level: .info, tag: tag, message: "Updated device connection status by broadcast ID: \(broadcastId), connected: \(isConnected)")
+                        // Refresh scales to update UI
+                        Task {
+                            await self.refreshScalesFromLocal()
+                        }
+                        return
+                    }
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to update device by broadcast ID: \(error.localizedDescription)")
+                }
+            }
+            
+            // If we couldn't find the device, log the error
+            logger.log(level: .error, tag: tag, message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), Broadcast ID: \(broadcastId ?? "nil")")
         }
     }
 

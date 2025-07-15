@@ -54,6 +54,8 @@ struct ScaleSettingsScreen: View {
         .onAppear {
             Task {
                 await scaleStore.loadScale(scale)
+                // Force refresh to ensure we have the latest data
+                await scaleStore.forceRefreshDeviceData()
             }
         }
     }
@@ -105,7 +107,7 @@ struct ScaleSettingsScreen: View {
                         title: lang.mode,
                         value: scaleStore.modeValue.rawValue,
                         onTap: {
-                            router.navigate(to: .scaleModes)
+                            router.navigate(to: .scaleModes(scale: scale))
                         }
                     )
                 )
@@ -150,6 +152,7 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.wifi,
                     value: scaleStore.wifiValue,
+                    isDisabled: !scaleStore.isDeviceConnected,
                     onTap: { router.navigate(to: .wifi) }
                 )
             )
@@ -157,7 +160,8 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.wifiMacAddress,
                     value: scaleStore.wifiMacAddressValue,
-                    onTap: { router.navigate(to: .wifiMacAddress) }
+                    isDisabled: !scaleStore.isDeviceConnected,
+                    onTap: { router.navigate(to: .wifiMacAddress(scale: scale)) }
                 )
             )
         }

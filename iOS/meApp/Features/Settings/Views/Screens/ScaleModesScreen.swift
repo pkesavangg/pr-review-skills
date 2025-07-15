@@ -11,6 +11,7 @@ struct ScaleModesScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @ObservedObject var scaleStore = ScaleStore()
+    let scale: Device
     var isR4ScaleSetup: Bool = false
     let lang = ScaleModesStrings.self
 
@@ -29,9 +30,9 @@ struct ScaleModesScreen: View {
                             text: CommonStrings.save.uppercased(),
                             type: .inlineTextPrimary,
                             size: .small,
-                            isDisabled: false,
+                            isDisabled: !scaleStore.hasModeChanges,
                             action: {
-                                scaleStore.handleSave()
+                                scaleStore.handleScaleModeSave()
                             }
                         ))
                     }
@@ -51,7 +52,7 @@ struct ScaleModesScreen: View {
 
                 Group {
                     if scaleStore.modeValue == .allBodyMetrics {
-                        AllBodyMetricsView()
+                        AllBodyMetricsView(scaleStore: scaleStore)
                     } else if scaleStore.modeValue == .weightOnly {
                         WeightOnlyView()
                     }
@@ -64,6 +65,12 @@ struct ScaleModesScreen: View {
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            scaleStore.onAppear(scale: scale)
+        }
+        .onChange(of: scaleStore.modeValue) {
+            scaleStore.updateModeChangeTracking()
+        }
     }
 
     // MARK: - Description with Inline Button
@@ -88,7 +95,13 @@ struct ScaleModesScreen: View {
 }
 
 #Preview {
-    ScaleModesScreen()
+    ScaleModesScreen(scale: Device(
+        id: "preview-scale-id",
+        accountId: "preview-account",
+        sku: "0412",
+        deviceName: "Preview Scale",
+        deviceType: "scale"       
+    ))
         .environmentObject(Theme.shared)
         .environmentObject(Router<SettingsRoute>())
 }

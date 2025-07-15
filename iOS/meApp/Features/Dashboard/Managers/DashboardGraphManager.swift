@@ -512,7 +512,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
-        let years = Set(summaries.map { calendar.component(.year, from: $0.date) })
+        
+        // Validate that all summaries have valid dates
+        let validSummaries = summaries.filter { summary in
+            // Ensure the date is not in the distant past or future (basic validation)
+            let year = calendar.component(.year, from: summary.date)
+            return year >= 1900 && year <= 2100
+        }
+        
+        guard !validSummaries.isEmpty else { return true }
+        
+        let years = Set(validSummaries.map { calendar.component(.year, from: $0.date) })
         return years.count == 1
     }
 

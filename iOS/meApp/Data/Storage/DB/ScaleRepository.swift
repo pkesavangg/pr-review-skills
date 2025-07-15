@@ -124,9 +124,19 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     func patchScalePreference(_ scaleId: String, _ preference: R4ScalePreference) async throws {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
+            // If there's an existing preference, delete it first
+            if let existingPreference = device.r4ScalePreference {
+                context.delete(existingPreference)
+            }
+            
+            // Insert the new preference into the context
+            context.insert(preference)
+            
+            // Set the relationship
             device.r4ScalePreference = preference
-            device.r4ScalePreference?.isSynced = false
+            preference.isSynced = false
             device.isSynced = false
+            
             try context.save()
         }
     }

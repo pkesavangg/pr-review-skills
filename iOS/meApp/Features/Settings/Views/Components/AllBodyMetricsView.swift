@@ -9,13 +9,13 @@ import SwiftUI
 
 struct AllBodyMetricsView: View {
     @Environment(\.appTheme) private var theme
-    @State private var isHeartRateOn: Bool = true
+    @ObservedObject var scaleStore: ScaleStore
     let lang = ScaleModesStrings.self
     let commonLang = CommonStrings.self
     
     var body: some View {
 
-        let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
+        let iconAndLabelColor = scaleStore.isHeartRateEnabled ? theme.statusIconPrimary : theme.statusIconSecondary
         
         VStack() {
             VStack(spacing:0){
@@ -24,14 +24,14 @@ struct AllBodyMetricsView: View {
                     StatusRowView(
                         iconName: AppAssets.heartIcon,
                         label: commonLang.heartRateLabel,
-                        statusText: isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
+                        statusText: scaleStore.isHeartRateEnabled ? commonLang.on.uppercased() : commonLang.off.uppercased(),
                         foregroundColor: iconAndLabelColor
                     )
                     .fontWeight(.bold)
                     
                     Spacer()
                     
-                    CustomToggleView(isOn: $isHeartRateOn)
+                    CustomToggleView(isOn: $scaleStore.isHeartRateEnabled)
                     
                 }
                 
@@ -48,6 +48,9 @@ struct AllBodyMetricsView: View {
             
         }
         .background(theme.backgroundSecondary)
+        .onChange(of: scaleStore.isHeartRateEnabled) {
+            scaleStore.updateModeChangeTracking()
+        }
         
     }
 }

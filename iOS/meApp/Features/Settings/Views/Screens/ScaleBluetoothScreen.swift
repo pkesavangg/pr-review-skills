@@ -10,6 +10,7 @@ import SwiftUI
 struct ScaleBluetoothScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
+    @ObservedObject var scaleStore = ScaleStore()
     let scale: Device
     let lang = ScaleBluetoothStrings.self
 
@@ -42,6 +43,11 @@ struct ScaleBluetoothScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            Task {
+                await scaleStore.loadScale(scale)
+            }
+        }
     }
 
     // MARK: - Subviews
@@ -60,12 +66,12 @@ struct ScaleBluetoothScreen: View {
             scaleIcon: Image(AppAssets.meLogoDark),
             modelNumber: scale.sku ?? "----",
             scaleName: scale.deviceName ?? lang.unknownScale,
-            status: .connected, // TODO: Replace with actual status if available
+            status: scaleStore.determineConnectionStatus(for: scale),
             onTap: {},
             hideChevron: true
         )
     }
-
+    
     private var permissionItems: some View {
         VStack(spacing: 0) {
             permissionRow(title: lang.bluetoothAuthorized)

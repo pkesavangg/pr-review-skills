@@ -31,7 +31,11 @@ final class R4ScalePreference {
     var isSynced: Bool = false // Flag to check if the preference is synced with the server
 
     init(from dto: R4ScalePreferenceDTO) {
-        self.id = dto.scaleId ?? UUID().uuidString
+        // Ensure we have a valid scale ID - this should never be nil in practice
+        guard let scaleId = dto.scaleId, !scaleId.isEmpty else {
+            fatalError("R4ScalePreference requires a valid scaleId")
+        }
+        self.id = scaleId
         self.displayName = dto.displayName
         self.displayMetrics = dto.displayMetrics
         self.shouldFactoryReset = dto.shouldFactoryReset
@@ -41,6 +45,20 @@ final class R4ScalePreference {
         self.tzOffset = dto.tzOffset
         self.wifiFotaScheduleTime = dto.wifiFotaScheduleTime ?? 0
         self.updatedAt = dto.updatedAt
+    }
+    
+    /// Convenience initializer for creating a preference with all required properties
+    init(scaleId: String, displayName: String, displayMetrics: [String], shouldFactoryReset: Bool, shouldMeasureImpedance: Bool, shouldMeasurePulse: Bool, timeFormat: String, tzOffset: Int, wifiFotaScheduleTime: Int, updatedAt: String?) {
+        self.id = scaleId
+        self.displayName = displayName
+        self.displayMetrics = displayMetrics
+        self.shouldFactoryReset = shouldFactoryReset
+        self.shouldMeasureImpedance = shouldMeasureImpedance
+        self.shouldMeasurePulse = shouldMeasurePulse
+        self.timeFormat = timeFormat
+        self.tzOffset = tzOffset
+        self.wifiFotaScheduleTime = wifiFotaScheduleTime
+        self.updatedAt = updatedAt
     }
 
     func toDTO() -> R4ScalePreferenceDTO {
