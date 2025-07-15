@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleCustomization.screens.CustomizeScaleSettings
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
+import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
@@ -81,6 +82,7 @@ fun BtWifiScaleSetupScreenContent(
       shouldCenterMiddleContent = true,
       leadingContent = when (state.currentStep) {
         BtWifiSetupStep.SCALE_INFO,
+        BtWifiSetupStep.PERMISSIONS,
         BtWifiSetupStep.DUPLICATES_FOUND,
         BtWifiSetupStep.WIFI_PASSWORD -> {
           {
@@ -128,6 +130,7 @@ fun BtWifiScaleSetupScreenContent(
       },
       trailingContent = when (state.currentStep) {
         BtWifiSetupStep.SCALE_INFO,
+        BtWifiSetupStep.PERMISSIONS,
         BtWifiSetupStep.DUPLICATES_FOUND,
         BtWifiSetupStep.WIFI_PASSWORD -> {
           {
@@ -150,6 +153,14 @@ fun BtWifiScaleSetupScreenContent(
         when (step) {
           BtWifiSetupStep.SCALE_INFO -> {
             ScaleInfo(sku = state.sku)
+          }
+
+          BtWifiSetupStep.PERMISSIONS -> {
+            ScalePermissions(
+              sku = state.sku,
+              permissions = state.permissions,
+              onRequestPermission = { onIntent(BtWifiScaleSetupIntent.RequestPermission(it)) },
+            )
           }
 
           BtWifiSetupStep.WAKEUP -> {
@@ -313,10 +324,6 @@ fun BtWifiScaleSetupScreenContent(
               contentButtonText = BtWifiScaleSetupStrings.ScaleConnected.WhatsThisButton,
               contentButtonClick = { onIntent(BtWifiScaleSetupIntent.OpenAccucheckModal) },
             )
-          }
-
-          else -> {
-            // Placeholder for other steps
           }
         }
       },

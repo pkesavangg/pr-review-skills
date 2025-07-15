@@ -50,7 +50,7 @@ object ScaleSetupStrings {
       ScaleSetupType.EspTouchWifi -> "Weight Gurus needs Location permissions to connect with your scale."
 
       ScaleSetupType.BtWifiR4,
-      ScaleSetupType.Bluetooth -> "Weight Gurus requires needs Bluetooth and Location permissions to connect with your scale."
+      ScaleSetupType.Bluetooth -> "Weight Gurus requires Bluetooth and Location permissions to connect with your scale."
 
       ScaleSetupType.Lcbt -> "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
     }

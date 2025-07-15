@@ -41,6 +41,7 @@ class AppPermissionsViewModel @Inject constructor(
     viewModelScope.launch {
       permissionService.permissionCallBackFlow.collect { permissions ->
         handleIntent(AppPermissionsIntent.SetPermissions(permissions))
+
       }
     }
   }

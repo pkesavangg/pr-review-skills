@@ -1,18 +1,21 @@
 package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
+import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Intent>(
   open val ggDeviceService: GGDeviceService,
+  open val permissionService: GGPermissionService,
   protected val reducer: IReducer<State, Intent>,
 ) : BaseIntentViewModel<State, Intent>(reducer) {
 
@@ -67,4 +70,7 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
     }
   }
 
+  protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
+    return permissionService.permissionCallBackFlow
+  }
 }
