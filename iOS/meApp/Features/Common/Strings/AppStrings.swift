@@ -656,7 +656,9 @@ struct AppAssets {
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
     static let close = "close"
-    
+    static let grid = "grid"
+    static let scale = "scale"
+    static let metric = "metric"
     
     // MARK: - Scale images
     // MARK: - AppSync series

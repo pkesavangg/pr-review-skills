@@ -221,6 +221,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         [weak self] in self?.showHelpModal()
                     }
                 ))
+            case .customizeSettings:
+                return AnyView(CustomizeSettingsView())
             default:
                 // For now, other screens show the step name as text
                 return AnyView(
@@ -467,7 +469,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             buttons: [
                 AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
                 AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
-                    self?.navigateToStep(.customizeSettings)
+                    self?.cancelWifi()
+                    self?.scaleSetupError = .none
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        self?.navigateToStep(.customizeSettings)
+                    }                    
                 }
             ]
         )

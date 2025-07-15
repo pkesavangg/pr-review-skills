@@ -31,4 +31,17 @@ struct BtWifiScaleSetupStrings {
         static let connectedNetwork = "Connected Network"
         static let availableNetworks = "Available Networks"
     }
+    
+    struct CustomizeSettingsStrings {
+        static let title = "Customize your Settings"
+        static let subtitle = "You can update settings at any time."
+        static let dashboardMetricsTitle = "Dashboard Metrics"
+        static let dashboardMetricsSubtitle = "Customize which metrics you'll see on your app's dashboard."
+        static let scaleMetricsTitle = "Scale Metrics"
+        static let scaleMetricsSubtitle = "Customize the metrics you'll see when weighing-in."
+        static let scaleModesTitle = "Scale Modes"
+        static let scaleModesSubtitle = "Those with specific medical conditions may want to change modes."
+        static let userNameTitle = "User Name"
+        static let userNameSubtitle = "Change how your name appears on the scale."
+    }
 }
