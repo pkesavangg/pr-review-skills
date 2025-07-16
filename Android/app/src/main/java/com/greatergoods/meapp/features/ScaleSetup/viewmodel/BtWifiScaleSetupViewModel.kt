@@ -42,6 +42,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -234,6 +235,8 @@ constructor(
       if (newUserName != _state.value.duplicateUser?.name) {
         handleIntent(BtWifiScaleSetupIntent.ReplaceAccount(newUserName))
       }
+    } else if (currentState.currentStep == BtWifiSetupStep.WIFI_PASSWORD) {
+      connectToWifi()
     } else {
       // For steps that need async operations, the functions will be called automatically
       // by observeStepChanges() when the step changes. Here we just handle the step transition.
@@ -318,20 +321,24 @@ constructor(
   private fun onExitSetup(
     isSetupFinished: Boolean,
   ) {
-    if (isSetupFinished) {
-      navigateBack()
-    } else {
-      dialogQueueService.enqueue(
-        DialogModel.Confirm(
-          title = ScaleSetupStrings.ExitSetupAlert.Title,
-          message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
-          confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
-          onConfirm = {
-            navigateBack()
-          },
-        ),
-      )
+    viewModelScope.launch {
+      if (discoveredScale != null)
+        deviceService.onDeviceUpdate(discoveredScale!!)
+      if (isSetupFinished) {
+        navigateBack()
+      } else {
+        dialogQueueService.enqueue(
+          DialogModel.Confirm(
+            title = ScaleSetupStrings.ExitSetupAlert.Title,
+            message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
+            confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
+            cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+            onConfirm = {
+              navigateBack()
+            },
+          ),
+        )
+      }
     }
   }
 
@@ -619,7 +626,7 @@ constructor(
   /**
    * Handles wifi connection process.
    */
-  private fun connectToWifi(ssid: String = "", password: String = "") {
+  private fun connectToWifi() {
     AppLog.d(TAG, "Starting wifi connection process")
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -628,30 +635,36 @@ constructor(
       ),
     )
     try {
+      val ssid = _state.value.wifiPasswordForm.ssid.value
+      val password = _state.value.wifiPasswordForm.password.value
       ggDeviceService.setupWifi(
         discoveredScale!!.toGGBTDevice(),
         GGBTWifiConfig(ssid, password),
       ) {
-        if (it.wifiState == GGWifiState.GG_WIFI_STATE_CONNECTED.name) {
-          AppLog.d(TAG, "Wifi connection successful")
-          handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.CONNECTING_WIFI,
-              ConnectionState.Success,
-            ),
-          )
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-          handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
-        } else {
-          AppLog.w(TAG, "Wifi connection failed")
-          handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.CONNECTING_WIFI,
-              ConnectionState.Error,
-            ),
-          )
-          handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+        viewModelScope.launch {
+
+          if (it.wifiState == GGWifiState.GG_WIFI_STATE_CONNECTED.name) {
+            AppLog.d(TAG, "Wifi connection successful")
+            handleIntent(
+              BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.CONNECTING_WIFI,
+                ConnectionState.Success,
+              ),
+            )
+            updateWifiDetails()
+            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+            handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+          } else {
+            AppLog.w(TAG, "Wifi connection failed")
+            handleIntent(
+              BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.CONNECTING_WIFI,
+                ConnectionState.Error,
+              ),
+            )
+            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
+            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          }
         }
       }
     } catch (e: Exception) {
@@ -665,6 +678,27 @@ constructor(
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
       handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     }
+  }
+
+  private suspend fun updateWifiDetails() {
+    val device = discoveredScale?.toGGBTDevice() ?: return
+
+    val wifiMac = suspendCancellableCoroutine<String?> { cont ->
+      ggDeviceService.getConnectedWifiMacAddress(device) { mac ->
+        cont.resume(mac)
+      }
+    }
+
+    suspendCancellableCoroutine<String?> { cont ->
+      ggDeviceService.getConnectedWifiSSID(device) { ssid ->
+        cont.resume(ssid)
+      }
+    }
+
+    discoveredScale = discoveredScale?.copy(
+      isWifiConfigured = wifiMac != null,
+      wifiMac = wifiMac,
+    )
   }
 
   private fun stepOn() {
@@ -801,7 +835,7 @@ constructor(
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
           viewModelScope.launch {
 
-            if (deviceService.savedScales.first().any { it.device?.broadcastId == ggDeviceDetail.broadcastId }) {
+            if (deviceService.savedScales.first().any { it.device?.macAddress == ggDeviceDetail.macAddress }) {
               dialogQueueService.showDialog(
                 DialogModel.Alert(
                   title = "Known Scale Discovered",
