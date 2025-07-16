@@ -83,12 +83,12 @@ constructor(
     return addAccountFromLoginResponse(loginResponse)
   }
 
-    /**
-     * Gets account info via API for a specific account and returns AccountResponse.
-     * @param accountId The account ID to get info for
-     * @return AccountInfo for the specified account
-     */
-    override suspend fun getAccountFromAPI(accountId: String): AccountInfo = authAPI.getAccountWithToken(accountId)
+  /**
+   * Gets account info via API for a specific account and returns AccountResponse.
+   * @param accountId The account ID to get info for
+   * @return AccountInfo for the specified account
+   */
+  override suspend fun getAccountFromAPI(accountId: String): AccountInfo = authAPI.getAccountWithToken(accountId)
 
   /**
    * Updates password via API and returns true if successful.
@@ -473,8 +473,7 @@ constructor(
         expiresAt = loginResponse.expiresAt,
       ),
     )
-    dashboardKeysDatastore.updateVisibleMetricKeys(account.id)
-    dashboardKeysDatastore.updateVisibleMilestoneKeys(account.id)
+    dashboardKeysDatastore.initializeDashboardKeys(account.id)
     return account
   }
 
@@ -675,15 +674,15 @@ constructor(
 
       // Update integration settings
       val integrationsSettings = IntegrationsSettingsEntity(
-            accountId = accountInfo.id,
-            isFitbitOn = accountInfo.isFitbitOn,
-            isFitbitValid = accountInfo.isFitbitValid,
-            isHealthConnectOn = accountInfo.isHealthConnectOn,
-            isHealthKitOn = accountInfo.isHealthKitOn,
-            isMFPOn = accountInfo.isMFPOn,
-            isMFPValid = accountInfo.isMFPValid,
-            isSynced = true,
-          )
+        accountId = accountInfo.id,
+        isFitbitOn = accountInfo.isFitbitOn,
+        isFitbitValid = accountInfo.isFitbitValid,
+        isHealthConnectOn = accountInfo.isHealthConnectOn,
+        isHealthKitOn = accountInfo.isHealthKitOn,
+        isMFPOn = accountInfo.isMFPOn,
+        isMFPValid = accountInfo.isMFPValid,
+        isSynced = true,
+      )
       accountDao.insertIntegrationsSettings(integrationsSettings)
       AppLog.d(TAG, "Successfully synced all settings for account: ${accountInfo.id}")
     } catch (e: Exception) {
