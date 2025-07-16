@@ -22,4 +22,13 @@ object ScaleUsersStrings {
     const val Error = "Failed to update users"
     const val LoadError = "Failed to load users"
   }
+
+  object DeleteUserAlert {
+    const val Title = "Are you sure you want to delete?"
+    fun Message(username: String) =
+      "Deleting $username will remove them as a user of the scale and they’ll need to reconnect."
+
+    const val Delete = "Delete"
+    const val Back = "Back"
+  }
 }

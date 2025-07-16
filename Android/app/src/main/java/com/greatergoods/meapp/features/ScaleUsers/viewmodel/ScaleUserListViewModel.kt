@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.ScaleUsers.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.meapp.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
@@ -43,6 +44,7 @@ constructor(
     when (intent) {
       ScaleUserListIntent.Back -> onBack()
       ScaleUserListIntent.Save -> updateScaleUsername()
+      is ScaleUserListIntent.DeleteUser -> deleteUser(intent.user)
       else -> {}
     }
   }
@@ -124,6 +126,21 @@ constructor(
     }
   }
 
+  private fun deleteUser(user: GGBTUser) {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = ScaleUsersStrings.DeleteUserAlert.Title,
+        message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
+        confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
+        cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
+        onConfirm = {
+          // Delete user and update the list
+          state.value.usernameForm.username.reset()
+        },
+      ),
+    )
+  }
+
   private fun onBack() {
     if (state.value.usernameForm.username.isValueValid()) {
       dialogQueueService.enqueue(
@@ -141,6 +158,9 @@ constructor(
     } else {
       navigateBack()
     }
+  }
+
+  private fun showDeleteUserAlert() {
   }
 
   private fun navigateBack() {

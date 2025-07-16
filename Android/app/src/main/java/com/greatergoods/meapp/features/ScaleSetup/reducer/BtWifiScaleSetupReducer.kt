@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.ScaleSetup.reducer
 
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.greatergoods.meapp.domain.interfaces.IReducer
@@ -154,6 +155,10 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   object OpenAccucheckModal : BtWifiScaleSetupIntent
   object RefreshNetworks : BtWifiScaleSetupIntent
   object HandlePasswordNetworkStatus : BtWifiScaleSetupIntent
+
+  data class DeleteUser(
+    val user: GGBTUser,
+  ) : BtWifiScaleSetupIntent
 }
 
 /**

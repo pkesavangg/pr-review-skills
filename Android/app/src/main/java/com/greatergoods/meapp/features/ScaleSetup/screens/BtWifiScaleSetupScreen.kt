@@ -234,7 +234,7 @@ fun BtWifiScaleSetupScreenContent(
                 ),
               ),
               onDeleteUser = {
-
+                onIntent(BtWifiScaleSetupIntent.DeleteUser(it))
               },
               modifier = Modifier.padding(
                 horizontal = spacing.sm, vertical = spacing.md,

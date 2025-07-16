@@ -80,13 +80,6 @@ class ScaleUserListReducer : IReducer<ScaleUserListState, ScaleUserListIntent> {
         )
       }
 
-      is ScaleUserListIntent.DeleteUser -> {
-        val updatedList = state.scaleUserList.filter { it.token != intent.user.token }
-        state.copy(
-          scaleUserList = updatedList,
-        )
-      }
-
       ScaleUserListIntent.Save -> {
         state.copy(
           isLoading = true,

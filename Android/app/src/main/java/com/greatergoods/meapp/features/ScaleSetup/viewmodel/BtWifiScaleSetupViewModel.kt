@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
@@ -23,6 +24,7 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupReducer
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleUsers.strings.ScaleUsersStrings
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.DialogType
@@ -81,6 +83,7 @@ constructor(
 
       BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
       BtWifiScaleSetupIntent.OpenAccucheckModal -> openAccucheckModel()
+      is BtWifiScaleSetupIntent.DeleteUser -> deleteUser(intent.user)
       else -> {}
     }
     super.handleIntent(intent)
@@ -765,5 +768,20 @@ constructor(
         AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
       }
     }
+  }
+
+  private fun deleteUser(user: GGBTUser) {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = ScaleUsersStrings.DeleteUserAlert.Title,
+        message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
+        confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
+        cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
+        onConfirm = {
+          // Delete user and update the list
+          state.value.usernameForm.username.reset()
+        },
+      ),
+    )
   }
 }
