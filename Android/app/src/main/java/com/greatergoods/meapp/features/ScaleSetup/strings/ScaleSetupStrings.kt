@@ -57,6 +57,8 @@ object ScaleSetupStrings {
   }
 
   object WifiList {
+    const val ConnectedNetwork = "Connected Network"
+    const val AvailableNetworks = "Available Networks"
     const val NoNetworks = "Unable to gather networks.."
   }
 }

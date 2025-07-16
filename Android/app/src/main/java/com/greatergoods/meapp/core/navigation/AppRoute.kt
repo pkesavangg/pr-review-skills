@@ -131,6 +131,11 @@ sealed class AppRoute : NavKey {
     data class ScaleDisplayMetrics(
       val scaleId: String,
     ) : ScaleDetails()
+
+    @Serializable
+    data class ScaleUsers(
+      val scaleId: String,
+    ) : ScaleDetails()
   }
 
   @Serializable

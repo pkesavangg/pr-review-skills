@@ -73,7 +73,7 @@ object BtWifiScaleSetupStrings {
   object DuplicateUser {
     const val Title = "A user with this name already exists on the scale. "
     const val Subtitle = "Choose a new user name to proceed. Or, if this is you, restore the existing account."
-    const val UsernameLabel = "Username"
+    const val UsernameLabel = "User name"
     const val RestoreAccountButton = "Restore Account"
     fun LastActive(date: String) = "last active $date"
   }
@@ -86,5 +86,12 @@ object BtWifiScaleSetupStrings {
   object StepOn {
     const val Title = "One Last Step"
     const val Subtitle = "Step on the scale and take a measurement."
+  }
+
+  object UserList {
+    const val Title = "User Limit Exceeded!"
+    const val Subtitle = "Delete an inactive user to add yourself to the scale."
+    const val UsernameLabel = "User name"
+
   }
 }

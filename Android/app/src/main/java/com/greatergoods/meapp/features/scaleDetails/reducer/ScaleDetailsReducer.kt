@@ -26,6 +26,7 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
 
   object OpenScaleMode : ScaleDetailsIntent
 
+  object OpenScaleUsers : ScaleDetailsIntent
   object OpenScaleDisplayMetrics : ScaleDetailsIntent
 
   object Back : ScaleDetailsIntent
