@@ -161,8 +161,7 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   object OpenAccucheckModal : BtWifiScaleSetupIntent
   object RefreshNetworks : BtWifiScaleSetupIntent
   object HandlePasswordNetworkStatus : BtWifiScaleSetupIntent
-  object ShowSetupWifiLaterAlert : BtWifiScaleSetupIntent
-  object RestoreAccount : BtWifiScaleSetupIntent
+
   data class DeleteUser(
     val user: GGBTUser,
   ) : BtWifiScaleSetupIntent
