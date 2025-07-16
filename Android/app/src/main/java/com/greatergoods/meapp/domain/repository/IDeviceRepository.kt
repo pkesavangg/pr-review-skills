@@ -19,7 +19,7 @@ interface IDeviceRepository {
    * @param device The device to save. Must have a valid accountId.
    * @throws IllegalArgumentException if accountId is blank
    */
-  suspend fun saveDeviceToDb(device: Device)
+  suspend fun saveDeviceToDb(device: Device, accountId: String)
 
   suspend fun deleteDeviceFromDb(deviceId: String)
 
