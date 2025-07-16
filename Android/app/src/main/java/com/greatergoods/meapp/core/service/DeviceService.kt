@@ -136,7 +136,7 @@ constructor(
           tag,
           "Saving device ${device.id} with hasServerID: ${device.hasServerID}",
         )
-        deviceRepository.saveDeviceToDb(device)
+        deviceRepository.saveDeviceToDb(device, accountId = currentAccountId!!)
       }
       AppLog.d(tag, "Saved API devices to DB")
 
@@ -174,7 +174,7 @@ constructor(
   override suspend fun saveScale(device: Device) {
     AppLog.d(tag, "Saving scale: ${device.id}")
     try {
-      deviceRepository.saveDeviceToDb(device)
+      deviceRepository.saveDeviceToDb(device, accountId = currentAccountId!!)
       AppLog.d(tag, "Scale saved to DB: ${device.id}")
       // Try to sync with API
       try {
