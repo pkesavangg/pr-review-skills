@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.ScaleSetup.screens
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,8 +9,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.greatergoods.meapp.features.ScaleCustomization.screens.CustomizeScaleSettings
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
@@ -22,16 +25,20 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.SetupLoaderStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtWifiScaleSetupViewModel
+import com.greatergoods.meapp.features.ScaleUsers.components.ScaleUserList
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.helper.StringUtil.formatTimestamp
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
 
 @Composable
 fun BtWifiScaleSetupScreen(
@@ -56,6 +63,12 @@ fun BtWifiScaleSetupScreenContent(
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
+  val dummyDuplicateUser = GGBTUser(
+    name = "Poongs 1",
+    token = "424443432323424324",
+    lastActive = 1656720000, // July 02, 2022
+    isBodyMetricsEnabled = true,
+  )
   BtWifiScaleSetupStrings
 
   // Sync ViewModel state to Pager state
@@ -203,8 +216,32 @@ fun BtWifiScaleSetupScreenContent(
               label = BtWifiScaleSetupStrings.DuplicateUser.UsernameLabel,
               supportingImage = AppIcons.Setup.UserNameScale,
               supportingButtonLabel = BtWifiScaleSetupStrings.DuplicateUser.RestoreAccountButton,
-              supportText = BtWifiScaleSetupStrings.DuplicateUser.LastActive(""),
-              onSupportingButtonClick = {},
+              supportText = BtWifiScaleSetupStrings.DuplicateUser
+                .LastActive(dummyDuplicateUser.lastActive.formatTimestamp()).lowercase(),
+              onSupportingButtonClick = {
+                onIntent(BtWifiScaleSetupIntent.RestoreAccount)
+              },
+            )
+          }
+
+          BtWifiSetupStep.USER_LIMIT_REACHED -> {
+            ScaleUserList(
+              title = BtWifiScaleSetupStrings.UserList.Title,
+              subtitle = BtWifiScaleSetupStrings.UserList.Subtitle,
+              userList = listOf(
+                GGBTUser(
+                  name = "Poongs",
+                  token = "424443432323424324",
+                  lastActive = 1656720000,
+                  isBodyMetricsEnabled = true,
+                ),
+              ),
+              onDeleteUser = {
+                onIntent(BtWifiScaleSetupIntent.DeleteUser(it))
+              },
+              modifier = Modifier.padding(
+                horizontal = spacing.sm, vertical = spacing.md,
+              ),
             )
           }
 
@@ -212,12 +249,14 @@ fun BtWifiScaleSetupScreenContent(
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
-              scaleImageSku = state.sku,
+              showIndicationOnly = state.currentStepConnectionState != ConnectionState.Error,
+              scaleImageSku = if (state.currentStepConnectionState == ConnectionState.Error) state.sku else null,
+              secondaryButtonText = SetupLoaderStrings.SetupWifiLaterButton,
               primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.ShowSetupWifiLaterAlert) }
               } else null,
             )
           }

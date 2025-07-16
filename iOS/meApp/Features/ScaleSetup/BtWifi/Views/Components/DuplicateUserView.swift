@@ -11,6 +11,7 @@ struct DuplicateUserView: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var store: BtWifiScaleSetupStore
     
+    var isFromCustomizeSettings: Bool = false
     let scaleSetupLang = ScaleSetupStrings.self
     
     @State var focusedField: FocusField?
@@ -23,11 +24,11 @@ struct DuplicateUserView: View {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(spacing: .spacingXS) {
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(lang.title)
+                        Text(lang.title(isFromCustomizeSettings))
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
                         
-                        Text(lang.subtitle)
+                        Text(lang.subtitle(isFromCustomizeSettings))
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textHeading)
                         
@@ -46,13 +47,16 @@ struct DuplicateUserView: View {
                         .padding(.top, .spacingSM)
                         
                         VStack {
-                            ButtonView(text: lang.restoreAccountButton, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                                store.handleRestoreAccount()
-                            }
-                            if let lastActive = store.duplicateUserLastActiveAt {
-                                Text("\(lang.lastActive) \(DateTimeTools.getFormattedDateFromTimestamp(lastActive).toLowerCase())")
-                                    .fontOpenSans(.subHeading2)
-                                    .foregroundColor(theme.textSubheading)
+                            if !isFromCustomizeSettings {
+                                ButtonView(text: lang.restoreAccountButton, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                                    hideKeyboard()
+                                    store.handleRestoreAccount()
+                                }
+                                if let lastActive = store.duplicateUserLastActiveAt {
+                                    Text("\(lang.lastActive) \(DateTimeTools.getFormattedDateFromTimestamp(lastActive).toLowerCase())")
+                                        .fontOpenSans(.subHeading2)
+                                        .foregroundColor(theme.textSubheading)
+                                }
                             }
                             Image(AppAssets.userInfoScreen)
                                 .resizable()
@@ -69,6 +73,7 @@ struct DuplicateUserView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(theme.backgroundSecondary)
+        .navigationBarBackButtonHidden(true)
     }
 }
 
