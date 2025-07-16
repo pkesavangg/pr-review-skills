@@ -85,6 +85,20 @@ struct BtWifiScaleSetupScreen: View {
                     })
                     Spacer()
                 }
+            } else if setupStore.currentStep == .scaleConnected {
+                // Show centered finish button for scaleConnected step
+                Spacer()
+                ButtonView(text: setupStore.nextButtonText,
+                           type: .filledPrimary,
+                           size: .small,
+                           isDisabled: !setupStore.isNextEnabled,
+                           action: {
+                    withAnimation {
+                        hideKeyboard()
+                        setupStore.handleNextButtonClick()
+                    }
+                })
+                Spacer()
             } else {
                 ButtonView(text: commonLang.back,
                            type: .inlineTextPrimary,
