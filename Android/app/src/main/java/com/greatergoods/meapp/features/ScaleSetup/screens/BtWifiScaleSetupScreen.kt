@@ -103,7 +103,7 @@ fun BtWifiScaleSetupScreenContent(
               type = ButtonType.TextPrimary,
               label = ScaleSetupStrings.backButton,
               size = ButtonSize.Small,
-              enabled = !state.isFirstStep,
+              enabled = !state.isFirstStep && state.currentStep != BtWifiSetupStep.DUPLICATES_FOUND,
               onClick = { onIntent(BtWifiScaleSetupIntent.Back) },
             )
           }

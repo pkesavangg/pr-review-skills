@@ -92,6 +92,7 @@ data class BtWifiScaleSetupState(
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
   val dashboardKeys: List<DashboardKey> = listOf(),
+  val duplicateUser: GGBTUser? = null,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
@@ -106,9 +107,10 @@ data class BtWifiScaleSetupState(
  */
 sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   data class UpdateSettings(
-    val dashboardKeys: List<DashboardKey> ? = null,
+    val dashboardKeys: List<DashboardKey>? = null,
     val preferences: Preferences? = null
   ) : BtWifiScaleSetupIntent
+
   data class SetDashboardKeys(val dashboardKeys: List<DashboardKey>) : BtWifiScaleSetupIntent
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(

@@ -489,6 +489,14 @@ constructor(
 
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
               handleIntent(
+                BtWifiScaleSetupIntent.SetStepConnectionState(
+                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                  ConnectionState.Error,
+                ),
+              )
+              handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_003"))
+              handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+              handleIntent(
                 SetCurrentStep(BtWifiSetupStep.DUPLICATES_FOUND),
               )
             }
@@ -737,8 +745,15 @@ constructor(
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
           viewModelScope.launch {
             stopObservingDevices()
+            handleIntent(
+              BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.WAKEUP,
+                ConnectionState.Success,
+              ),
+            )
             customizeDevice(ggDeviceDetail)
             AppLog.d(TAG, "Wake up successful, proceeding to next step")
+            delay(1000)
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
             handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
           }
