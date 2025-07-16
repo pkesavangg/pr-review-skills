@@ -257,7 +257,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             isHeartRateEnabled: isHeartRateEnabled,
                             isR4ScaleSetup: true,
                             onBIAButtonTap: { [weak self] in
-                                self?.showBIAModal()
+                                self?.openBIAModel()
                             },
                             onValueChanged: { [weak self] scaleMode, heartRateEnabled in
                                 self?.handleScaleModeChange(scaleMode, heartRateEnabled: heartRateEnabled)
@@ -703,14 +703,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Update the next button state
         updateNextEnabled()
-    }
-    
-    /// Shows the BIA (Bioelectrical Impedance Analysis) information modal
-    func showBIAModal() {
-        // Implementation for showing BIA modal
-        // This would typically show information about bioelectrical impedance analysis
-        // For now, we'll use a placeholder implementation
-        LoggerService.shared.log(level: .info, tag: tag, message: "BIA modal should be shown")
     }
     
     /// Handles the next button click from the customize settings screen
@@ -1586,6 +1578,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
             presentedView: AnyView(AccuCheckInfoModalView() {
                 self.notificationService.dismissModal()
             })
+        ))
+    }
+    
+    /// Opens the BIA model information modal.
+    func openBIAModel(){
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(BIAInfoModalView(){
+                self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
         ))
     }
     
