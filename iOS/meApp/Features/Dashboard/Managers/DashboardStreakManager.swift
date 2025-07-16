@@ -1,16 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// Protocol defining streak management operations
-protocol DashboardStreakManaging {
-    func refreshStreakData() async throws
-    func updateStreakItems(with progress: Progress) async throws
-    func resetStreakData() async throws
-    func getStreakItemsToShow(isEditMode: Bool) -> [MetricItem]
-    func toggleStreakVisibility(at index: Int) async throws
-    func calculateStreakAnalytics() -> StreakAnalytics
-}
-
 /// Manages all streak calculations and progress tracking for the dashboard
 @MainActor
 class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
@@ -18,19 +8,23 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Dependencies
     @Injector private var entryService: EntryService
     @Injector private var logger: LoggerService
+    @Injector private var accountService: AccountService
 
     // MARK: - Published Properties
     @Published var state: StreakState
 
     // MARK: - Private Properties
-    private let originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
-        (DashboardStrings.placeholder, DashboardStrings.currentStreak, nil, nil, AppAssets.streak),
-        (DashboardStrings.placeholder, DashboardStrings.longestStreak, nil, nil, AppAssets.longestStreak),
-        (DashboardStrings.placeholder, DashboardStrings.lbsWeek, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.lbsMonth, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.lbsYear, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.lbsTotal, nil, nil, nil)
-    ]
+    private var originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] {
+        let streakLabels = getStreakLabels()
+        return [
+            (DashboardStrings.placeholder, DashboardStrings.currentStreak, nil, nil, AppAssets.streak),
+            (DashboardStrings.placeholder, DashboardStrings.longestStreak, nil, nil, AppAssets.longestStreak),
+            (DashboardStrings.placeholder, streakLabels.week, nil, nil, nil),
+            (DashboardStrings.placeholder, streakLabels.month, nil, nil, nil),
+            (DashboardStrings.placeholder, streakLabels.year, nil, nil, nil),
+            (DashboardStrings.placeholder, streakLabels.total, nil, nil, nil)
+        ]
+    }
 
     // MARK: - Initialization
     init(initialState: StreakState = StreakState()) {
@@ -80,41 +74,41 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
                 icon: AppAssets.longestStreak
             ))
 
-            // Weekly change (divide by 10 for proper display)
-            let weeklyValue = (Double(progress.week) / 10.0)
+            // Weekly change
+            let weeklyValue = Double(progress.week)
             updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(weeklyValue),
-                label: DashboardStrings.lbsWeek,
+                value: formatWeightChange(weeklyValue, unit: getUnitText()),
+                label: getStreakLabels().week,
                 unit: nil,
                 preLabel: nil,
                 icon: nil
             ))
 
-            // Monthly change (divide by 10 for proper display)
-            let monthlyValue = (Double(progress.month) / 10.0)
+            // Monthly change
+            let monthlyValue = Double(progress.month)
             updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(monthlyValue),
-                label: DashboardStrings.lbsMonth,
+                value: formatWeightChange(monthlyValue, unit: getUnitText()),
+                label: getStreakLabels().month,
                 unit: nil,
                 preLabel: nil,
                 icon: nil
             ))
 
-            // Yearly change (divide by 10 for proper display)
-            let yearlyValue = (Double(progress.year) / 10.0)
+            // Yearly change
+            let yearlyValue = Double(progress.year)
             updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(yearlyValue),
-                label: DashboardStrings.lbsYear,
+                value: formatWeightChange(yearlyValue, unit: getUnitText()),
+                label: getStreakLabels().year,
                 unit: nil,
                 preLabel: nil,
                 icon: nil
             ))
 
-            // Total change (divide by 10 for proper display)
-            let totalValue = (Double(progress.total ?? 0) / 10.0)
+            // Total change
+            let totalValue = Double(progress.total ?? 0)
             updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(totalValue),
-                label: DashboardStrings.lbsTotal,
+                value: formatWeightChange(totalValue, unit: getUnitText()),
+                label: getStreakLabels().total,
                 unit: nil,
                 preLabel: nil,
                 icon: nil
@@ -133,8 +127,17 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     func resetStreakData() async throws {
-        setupInitialStreakItems()
+        // Refresh streak data to get current unit labels
+        try await refreshStreakData()
         logger.log(level: .info, tag: "DashboardStreakManager", message: "Streak data reset to defaults")
+    }
+    
+    /// Refreshes streak data when unit changes
+    func refreshStreakDataForUnitChange() async throws {
+        // Re-fetch progress data and update with new unit
+        let progress = try await entryService.getProgress()
+        try await updateStreakItems(with: progress)
+        logger.log(level: .info, tag: "DashboardStreakManager", message: "Refreshed streak data for unit change")
     }
 
     // MARK: - Streak Item Management
@@ -176,10 +179,10 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     func calculateStreakAnalytics() -> StreakAnalytics {
         let currentStreak = extractStreakValue(for: DashboardStrings.currentStreak)
         let longestStreak = extractStreakValue(for: DashboardStrings.longestStreak)
-        let weeklyChange = extractWeightChange(for: DashboardStrings.lbsWeek)
-        let monthlyChange = extractWeightChange(for: DashboardStrings.lbsMonth)
-        let yearlyChange = extractWeightChange(for: DashboardStrings.lbsYear)
-        let totalChange = extractWeightChange(for: DashboardStrings.lbsTotal)
+        let weeklyChange = extractWeightChange(for: getStreakLabels().week)
+        let monthlyChange = extractWeightChange(for: getStreakLabels().month)
+        let yearlyChange = extractWeightChange(for: getStreakLabels().year)
+        let totalChange = extractWeightChange(for: getStreakLabels().total)
 
         let trend = calculateStreakTrend(currentStreak: currentStreak, longestStreak: longestStreak)
         let momentum = calculateMomentum(weeklyChange: weeklyChange, monthlyChange: monthlyChange)
@@ -197,14 +200,39 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     // MARK: - Helper Methods
-    private func formatWeightChange(_ value: Double) -> String {
+    
+    /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
+    private func getUnitText() -> String {
+        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+    }
+    
+    /// Returns dynamic streak labels based on current unit
+    private func getStreakLabels() -> (week: String, month: String, year: String, total: String) {
+        let unit = getUnitText()
+        return (
+            week: "\(unit)/week",
+            month: "\(unit)/month", 
+            year: "\(unit)/year",
+            total: "\(unit)/total"
+        )
+    }
+    
+    private func formatWeightChange(_ value: Double, unit: String) -> String {
+        // Convert stored weight to display unit
+        let displayValue: Double
+        if unit == "kg" {
+            displayValue = ConversionTools.convertStoredToKg(Int(value))
+        } else {
+            displayValue = ConversionTools.convertStoredToLbs(Int(value))
+        }
+        
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 1
         formatter.maximumFractionDigits = 1
         formatter.positivePrefix = "+"
 
-        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.1f", value)
+        return formatter.string(from: NSNumber(value: displayValue)) ?? String(format: "%.1f", displayValue)
     }
 
     private func extractStreakValue(for label: String) -> Int {
@@ -256,12 +284,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     func formatWeightChangeDisplay(_ change: Double, withUnit unit: String? = nil) -> String {
-        let formattedChange = formatWeightChange(change)
-        if let unit = unit {
-            return "\(formattedChange) \(unit)"
-        } else {
-            return formattedChange
-        }
+        let formattedChange = formatWeightChange(change, unit: "")
+        return formattedChange
     }
 
     // MARK: - Streak State Management
@@ -270,7 +294,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     func getStreakGridColumns() -> [GridItem] {
-        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: 2)
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: DashboardConstants.UI.streakGridColumns)
     }
 
     // MARK: - Streak Reordering
@@ -297,70 +321,3 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 }
 
-// MARK: - Supporting Types
-struct StreakAnalytics {
-    let currentStreak: Int
-    let longestStreak: Int
-    let weeklyChange: Double
-    let monthlyChange: Double
-    let yearlyChange: Double
-    let totalChange: Double
-    let trend: StreakTrend
-    let momentum: StreakMomentum
-
-    var isOnTrack: Bool {
-        return trend != .broken && momentum != .slowing
-    }
-
-    var streakRatio: Double {
-        guard longestStreak > 0 else { return 0.0 }
-        return Double(currentStreak) / Double(longestStreak)
-    }
-}
-
-enum StreakTrend {
-    case broken
-    case starting
-    case building
-    case record
-
-    var description: String {
-        switch self {
-        case .broken: return "Streak broken"
-        case .starting: return "Getting started"
-        case .building: return "Building momentum"
-        case .record: return "Record streak!"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .broken: return .red
-        case .starting: return .orange
-        case .building: return .blue
-        case .record: return .green
-        }
-    }
-}
-
-enum StreakMomentum {
-    case accelerating
-    case steady
-    case slowing
-
-    var description: String {
-        switch self {
-        case .accelerating: return "Accelerating"
-        case .steady: return "Steady progress"
-        case .slowing: return "Slowing down"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .accelerating: return "arrow.up.circle.fill"
-        case .steady: return "arrow.right.circle.fill"
-        case .slowing: return "arrow.down.circle.fill"
-        }
-    }
-}

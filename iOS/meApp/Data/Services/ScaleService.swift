@@ -447,7 +447,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                             metaData.isSynced = true
                         }
                         if let preference = device.r4ScalePreference, preference.isSynced == false {
-                            try await remoteRepo.patchScalePreference(preference.toDTO())
+                            var r4Preference = preference.toDTO()
+                            r4Preference.scaleId = device.id // Ensure scaleId is set for R4 preference
+                            try await remoteRepo.patchScalePreference(r4Preference)
                             preference.isSynced = true
                         }
 

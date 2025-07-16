@@ -63,6 +63,8 @@ constructor(
         openScaleDisplayMetrics()
       }
 
+      ScaleDetailsIntent.OpenScaleUsers -> openScaleUsers()
+
       else -> {}
     }
   }
@@ -108,6 +110,17 @@ constructor(
           .isNullOrEmpty()
       ) {
         navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(state.value.scale!!.id))
+      }
+    }
+  }
+
+  private fun openScaleUsers() {
+    viewModelScope.launch {
+      if (!state.value.scale
+          ?.id
+          .isNullOrEmpty()
+      ) {
+        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleUsers(state.value.scale!!.id))
       }
     }
   }

@@ -32,6 +32,7 @@ struct HealthKitIntegrationListItemView: View {
                 onDismiss: { hkStore.activeState = nil },
                 primaryAction: { hkStore.handlePrimaryAction(for: state) }
             )
+            .interactiveDismissDisabled(true) // Disable interactive dismiss to ensure proper flow
         }
     }
 }

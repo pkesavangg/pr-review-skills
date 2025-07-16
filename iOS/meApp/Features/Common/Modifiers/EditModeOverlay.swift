@@ -19,7 +19,7 @@ struct EditModeOverlay: ViewModifier {
     @EnvironmentObject var themeManager: Theme
     
     var shouldWiggle: Bool {
-        isEditMode && !isRemoved
+        isEditMode && !isRemoved && !isBeingDragged
     }
     
     var shouldShowCircleIcon: Bool {
@@ -30,11 +30,22 @@ struct EditModeOverlay: ViewModifier {
         shouldShowCircleIcon ? 1 : 0
     }
     
+    var draggedOpacity: Double {
+        isBeingDragged ? 0.6 : 1.0
+    }
+    
+    var dropTargetScale: CGFloat {
+        isDropTarget ? 1.05 : 1.0
+    }
+    
     func body(content: Content) -> some View {
         ZStack(alignment: .topTrailing) {
             content
-                .opacity(isRemoved ? 0.75 : 1.0)
+                .opacity(isRemoved ? 0.75 : draggedOpacity)
+                .scaleEffect(dropTargetScale)
                 .wiggling(shouldWiggle)
+                .animation(.easeInOut(duration: 0.2), value: isBeingDragged)
+                .animation(.easeInOut(duration: 0.2), value: isDropTarget)
 
             if shouldShowCircleIcon {
                 let iconName = isRemoved ?

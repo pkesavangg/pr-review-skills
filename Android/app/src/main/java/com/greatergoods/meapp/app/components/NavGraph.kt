@@ -10,6 +10,7 @@ import com.greatergoods.meapp.features.ScaleSetup.screens.BtScaleSetupScreen
 import com.greatergoods.meapp.features.ScaleSetup.screens.BtWifiScaleSetupScreen
 import com.greatergoods.meapp.features.ScaleSetup.screens.LcbtScaleSetupScreen
 import com.greatergoods.meapp.features.ScaleSetup.screens.WifiScaleSetupScreen
+import com.greatergoods.meapp.features.ScaleUsers.screens.ScaleUserListScreen
 import com.greatergoods.meapp.features.addScale.screens.AddScaleScreen
 import com.greatergoods.meapp.features.addScale.screens.ChooseScaleScreen
 import com.greatergoods.meapp.features.appPermissions.AppPermissionsScreen
@@ -79,6 +80,9 @@ fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
   }
   entry<AppRoute.ScaleDetails.ScaleDisplayMetrics> { scaleInfo ->
     ScaleDisplayMetricsScreen(scaleInfo.scaleId)
+  }
+  entry<AppRoute.ScaleDetails.ScaleUsers> { scaleInfo ->
+    ScaleUserListScreen(scaleInfo.scaleId)
   }
 }
 

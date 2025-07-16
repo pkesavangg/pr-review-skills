@@ -44,12 +44,11 @@ struct DisplayMetricsScreen: View {
                 
                 Section {
                     ForEach($scaleStore.metrics) { $metric in
-                        let config = BodyMetrics.config[metric.id]!
                         ToggleListItem(
-                            isOn: $metric.isOn,
-                            text: config.expandedLabel ?? config.label,
-                            icon: config.icon,
-                            isDisabled: metric.isDisabled
+                            isOn: $metric.isEnabled,
+                            text: metric.name,
+                            icon: metric.imagePath,
+                            isDisabled: !metric.isEnabled
                         )
                         .listRowBackground(theme.backgroundPrimary)
                         .listRowInsets(EdgeInsets())
@@ -64,8 +63,8 @@ struct DisplayMetricsScreen: View {
                 Section {
                     ForEach($scaleStore.progressMetrics) { $toggle in
                         ToggleListItem(
-                            isOn: $toggle.isOn,
-                            text: toggle.label
+                            isOn: $toggle.isEnabled,
+                            text: toggle.name
                         )
                         .listRowBackground(theme.backgroundPrimary)
                         .listRowInsets(EdgeInsets())

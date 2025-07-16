@@ -1,27 +1,15 @@
 package com.greatergoods.meapp.features.common.components
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.greatergoods.meapp.features.common.strings.AppHelpModalStrings
-import com.greatergoods.meapp.proto.ThemeMode
 import com.greatergoods.meapp.resources.AppIcons
-import com.greatergoods.meapp.theme.LocalAppTheme
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import android.annotation.SuppressLint
@@ -36,94 +24,67 @@ import android.content.Intent
 @SuppressLint("UseKtx")
 @Composable
 fun AppHelpModal(
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
+  onClose: () -> Unit,
+  modifier: Modifier = Modifier,
+  showGuide: Boolean = false,
+  onGuideClick: (() -> Unit)? = null,
 ) {
-    val context = LocalContext.current
-    val stampImage = AppIcons.Default.Stamp
-    AppPopupModal {
-        AppPopup(
-            true,
-            modifier = Modifier,
-            AppHelpModalStrings.Title,
-            supportingText = AppHelpModalStrings.SupportingText,
-            onClose = {
-                onClose()
-            },
-            imageType = AppPopupImageType.DefaultImage(stampImage),
-        ) {
-            Spacer(Modifier.height(MeTheme.spacing.md))
-            // Phone row
-            val phoneNumber = AppHelpModalStrings.Phone
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier =
-                    Modifier
-                        .wrapContentSize()
-                        .clickable(
-                            true,
-                        ) {
-                            val intent =
-                                Intent(Intent.ACTION_DIAL).apply {
-                                    data = "tel:$phoneNumber".toUri()
-                                }
-                            context.startActivity(intent)
-                        },
-            ) {
-                // TODO: Replace with custom phone icon if available
-                Icon(
-                    painter = painterResource(id = android.R.drawable.sym_action_call),
-                    contentDescription = AppHelpModalStrings.PhoneContentDescription,
-                    tint = MeTheme.colorScheme.primaryAction,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(Modifier.width(MeTheme.spacing.x2s))
-                AppText(
-                    text = phoneNumber,
-                    textType = TextType.Link,
-                    textAlign = TextAlign.Start,
-                )
-            }
-            // Email row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier =
-                    Modifier
-                        .wrapContentSize()
-                        .clickable(
-                            true,
-                        ) {
-                            val intent =
-                                Intent(Intent.ACTION_SENDTO).apply {
-                                    data = "mailto:$AppHelpModalStrings.Email".toUri()
-                                }
-                            context.startActivity(intent)
-                        },
-            ) {
-                // TODO: Replace with custom email icon if available
-                Icon(
-                    painter = painterResource(id = android.R.drawable.sym_action_email),
-                    contentDescription = AppHelpModalStrings.EmailContentDescription,
-                    tint = MeTheme.colorScheme.primaryAction,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(Modifier.width(MeTheme.spacing.x2s))
-                AppText(
-                    text = AppHelpModalStrings.Email,
-                    textType = TextType.Link,
-                    textAlign = TextAlign.Start,
-                )
-            }
+  val context = LocalContext.current
+  AppPopupModal {
+    AppPopup(
+      true,
+      modifier = Modifier,
+      AppHelpModalStrings.Title,
+      supportingText = AppHelpModalStrings.SupportingText,
+      onClose = {
+        onClose()
+      },
+      imageType = AppPopupImageType.DefaultImage(AppIcons.Default.ggLogo),
+    ) {
+      Spacer(Modifier.height(MeTheme.spacing.md))
+      // Phone row
+      val phoneNumber = AppHelpModalStrings.Phone
+
+      Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (showGuide && onGuideClick != null) {
+          AppButton(
+            label = AppHelpModalStrings.GuideButton,
+            type = ButtonType.InlineTextPrimary,
+            onClick = onGuideClick,
+          )
         }
+        AppButton(
+          label = phoneNumber,
+          type = ButtonType.InlineTextPrimary,
+          onClick = {
+            val intent =
+              Intent(Intent.ACTION_DIAL).apply {
+                data = "tel:$phoneNumber".toUri()
+              }
+            context.startActivity(intent)
+          },
+        )
+
+        AppButton(
+          label = AppHelpModalStrings.Email,
+          type = ButtonType.InlineTextPrimary,
+          onClick = {
+            val intent =
+              Intent(Intent.ACTION_SENDTO).apply {
+                data = "mailto:$AppHelpModalStrings.Email".toUri()
+              }
+            context.startActivity(intent)
+          },
+        )
+      }
     }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun AppHelpModalPreview() {
-    MeAppTheme {
-        AppHelpModal(onClose = {})
-    }
+  MeAppTheme {
+    AppHelpModal(onClose = {}, showGuide = true, onGuideClick = {})
+  }
 }

@@ -4,7 +4,7 @@ import Combine
 import Charts
 import Foundation
 
-/// Unified DashboardStore with clean architecture and UI compatibility
+/// Simplified DashboardStore focused on coordination between managers
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
 class DashboardStore: ObservableObject {
@@ -159,9 +159,7 @@ class DashboardStore: ObservableObject {
     }
 
     var metricGridColumns: [GridItem] {
-        state.metrics.metricType == .four ?
-        Array(repeating: GridItem(.flexible(), spacing: 16), count: 2) :
-        Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
+        return metricsManager.getMetricGridColumns(for: state.metrics.metricType)
     }
 
     var metricsToShow: [MetricItem] {
@@ -254,7 +252,7 @@ class DashboardStore: ObservableObject {
 
         // Check if weightless mode is enabled
         if isWeightlessModeEnabled {
-            return calculateWeightlessDisplay(opsToUse, anchorWeight: weightlessAnchorWeight)
+            return graphManager.calculateWeightlessDisplay(opsToUse, anchorWeight: weightlessAnchorWeight, period: state.graph.selectedPeriod, convertWeight: goalManager.convertWeightToDisplay)
         }
 
         // Calculate average of operations in visible region (or all if no visible region)
@@ -267,20 +265,20 @@ class DashboardStore: ObservableObject {
 
     var weightLabel: String {
         guard !visibleOperations.isEmpty else {
-            return fallbackTimeLabel()
+            return graphManager.fallbackTimeLabel(for: state.graph.selectedPeriod)
         }
 
         // If a point is selected, show its date
         if let selectedPoint = state.graph.selectedPoint {
-            return formatSelectedDate(selectedPoint.date)
+            return graphManager.formatSelectedDate(selectedPoint.date, for: state.graph.selectedPeriod)
         }
 
         if let selectedEntry = state.graph.selectedEntry {
             if let date = selectedEntry.date {
-                return formatSelectedDate(date)
+                return graphManager.formatSelectedDate(date, for: state.graph.selectedPeriod)
             }
             if let originalSummary = continuousOperations.first(where: { $0.entryTimestamp == selectedEntry.entryTimestamp }) {
-                return formatSelectedDate(originalSummary.date)
+                return graphManager.formatSelectedDate(originalSummary.date, for: state.graph.selectedPeriod)
             }
         }
 
@@ -288,10 +286,10 @@ class DashboardStore: ObservableObject {
         let opsToUse = visibleOperations
         guard let minDate = opsToUse.map(\.date).min(),
               let maxDate = opsToUse.map(\.date).max() else {
-            return fallbackTimeLabel()
+            return graphManager.fallbackTimeLabel(for: state.graph.selectedPeriod)
         }
 
-        return formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
+        return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
     }
 
     // Delegate metric operations to MetricsManager
@@ -304,12 +302,21 @@ class DashboardStore: ObservableObject {
         accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
     }
 
+    var currentUnitString: String {
+        currentUnit.rawValue
+    }
+
+    /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
+    var currentUnitText: String {
+        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+    }
+
     var currentWeightlessMode: Bool {
         accountService.activeAccount?.weightlessSettings?.isWeightlessOn ?? false
     }
 
     var weightDisplayLabel: String {
-        return "\(state.graph.selectedPeriod.rawValue) average"
+        return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
     }
 
     /// Returns the average weight for the current visible or all operations
@@ -335,12 +342,12 @@ class DashboardStore: ObservableObject {
 
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     var unitText: String {
-        accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        return goalManager.getUnitText()
     }
 
     /// Returns true if there are entries but none in the current time period
     var hasEntriesButNoneInCurrentPeriod: Bool {
-        hasAnyEntries && continuousOperations.isEmpty
+        return goalManager.hasEntriesButNoneInCurrentPeriod(continuousOperations: continuousOperations, visibleOperations: visibleOperations)
     }
 
     // Delegate time calculations to GraphManager
@@ -379,26 +386,16 @@ class DashboardStore: ObservableObject {
 
     /// Selects an entry for the chart
     func selectEntry(_ entry: BathScaleWeightSummary?) {
-        if let entry = entry {
-            state.graph.selectedEntry = BathScaleOperationDTO(from: entry)
-            state.graph.selectedWeight = goalManager.convertWeightToDisplay(Int(entry.weight))
-        } else {
-            state.graph.selectedEntry = nil
-            state.graph.selectedWeight = nil
+        metricsManager.selectEntry(entry, convertWeight: goalManager.convertWeightToDisplay) {
+            self.objectWillChange.send()
         }
-        objectWillChange.send()
     }
 
     // Delegate metric operations to MetricsManager
     func resetMetricsToLatestEntry() {
         Task {
-            do {
-                guard let latestEntry = try await dataManager.getLatestEntry() else {
-                    return
-                }
-                try await metricsManager.updateMetrics(with: latestEntry)
-            } catch {
-                logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset metrics to latest entry: \(error)")
+            await metricsManager.resetMetricsToLatestEntry {
+                try await self.dataManager.getLatestEntry()
             }
         }
     }
@@ -406,8 +403,15 @@ class DashboardStore: ObservableObject {
     // MARK: - Dashboard Initialization
 
     private func initializeDashboard() async {
-        await determineDashboardMetricType()
+        // Determine dashboard metric type based on R4 scale presence
+        let metricType = await dataManager.determineDashboardMetricType()
+        state.metrics.metricType = metricType
+        metricsManager.updateMetricType(metricType)
+
+        // Load dashboard configuration from API first
         await loadDashboardConfigurationFromAPI()
+
+        // Then load other data
         loadLatestEntryData()
         await loadInitialData()
 
@@ -508,9 +512,13 @@ class DashboardStore: ObservableObject {
     // Delegate configuration loading to respective managers
     private func loadDashboardConfigurationFromAPI() async {
         do {
+            // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
+
+            // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
-            logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API")
+
+            logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration: \(error)")
         }
@@ -561,7 +569,7 @@ class DashboardStore: ObservableObject {
         let metricsToShow = self.metricsToShow
         guard reorderedIndex < metricsToShow.count else { return }
         let metric = metricsToShow[reorderedIndex]
-        guard let originalIndex = state.metrics.metrics.firstIndex(where: { $0.id == metric.id }) else { return }
+        guard let originalIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == metric.id }) else { return }
         Task {
             try? await metricsManager.toggleMetricVisibility(at: originalIndex)
         }
@@ -571,8 +579,8 @@ class DashboardStore: ObservableObject {
         let metricsToShow = self.metricsToShow
         guard reorderedIndex < metricsToShow.count else { return false }
         let metric = metricsToShow[reorderedIndex]
-        guard let originalIndex = state.metrics.metrics.firstIndex(where: { $0.id == metric.id }) else { return false }
-        return originalIndex >= state.metrics.activeMetricsCount
+        guard let originalIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == metric.id }) else { return false }
+        return originalIndex >= metricsManager.state.activeMetricsCount
     }
 
     // Delegate streak management to StreakManager
@@ -594,14 +602,15 @@ class DashboardStore: ObservableObject {
         return streakManager.isStreakRemoved(at: originalIndex)
     }
 
-    // Remove duplicate methods - now handled by managers
-
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
     }
 
     func resetDragState() {
-        state.ui.resetDragState()
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+        state.ui.gridLayoutId = UUID()
     }
 
     func selectMetric(_ label: String) {
@@ -635,6 +644,28 @@ class DashboardStore: ObservableObject {
         }
     }
 
+    /// Handles unit changes by refreshing streak data and goal data
+    func handleUnitChange() {
+        Task {
+            do {
+                // Refresh streak data with new unit
+                try await streakManager.refreshStreakDataForUnitChange()
+                logger.log(level: .info, tag: "DashboardStore", message: "Refreshed streak data for unit change")
+
+                // Refresh goal data with new unit
+                try await goalManager.refreshGoalDataForUnitChange()
+                logger.log(level: .info, tag: "DashboardStore", message: "Refreshed goal data for unit change")
+
+                // Trigger UI update to refresh views with new unit
+                await MainActor.run {
+                    self.objectWillChange.send()
+                }
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh data for unit change: \(error)")
+            }
+        }
+    }
+
     // Delegate save operations to MetricsManager
     func saveChanges() {
         state.ui.isLoading = true
@@ -646,6 +677,8 @@ class DashboardStore: ObservableObject {
         Task {
             do {
                 try await metricsManager.saveMetricsToAPI()
+
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -686,6 +719,14 @@ class DashboardStore: ObservableObject {
                 Task {
                     try? await self.metricsManager.resetMetricsToDefaults()
                     try? await self.streakManager.resetStreakData()
+
+                    // After resetting metrics to defaults, update them with latest data
+                    if let latestEntry = try? await self.dataManager.getLatestEntry() {
+                        try? await self.metricsManager.updateMetrics(with: latestEntry)
+                    }
+
+                    // Save the reset configuration to API
+                    try? await self.metricsManager.saveMetricsToAPI()
                 }
 
                 self.state.ui.isGoalCardRemoved = false
@@ -823,11 +864,6 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Helper Methods
 
-    // Remove duplicate - use GoalManager method
-    func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
-        return goalManager.convertWeightToDisplay(storedWeight)
-    }
-
     // Delegate weight formatting to GoalManager
     func formatWeightDisplayText(_ weight: Double?) -> String {
         guard let weight = weight else { return "0.0" }
@@ -855,89 +891,140 @@ class DashboardStore: ObservableObject {
 
     // Delegate entry creation to MetricsManager
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
-        return metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
+        // Use the latest entry from data manager if available
+        if let latestEntry = dataManager.getLatestEntrySync() {
+            return latestEntry
+        } else {
+            // Fallback to creating a new entry with latest weight
+            let latestWeight = dataManager.state.latestWeightStored
+            return metricsManager.createEntryForMetricInfoSync(metricLabel: metricLabel, weight: latestWeight)
+        }
+    }
+
+    // Async version for when we need the latest data
+    func createEntryForMetricInfo(metricLabel: String? = nil) async -> Entry {
+        return await metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
     }
 
     func getBodyMetric(for metricLabel: String) -> BodyMetric {
         return metricsManager.getBodyMetric(for: metricLabel)
     }
 
-    // MARK: - Private Helper Methods
+    // MARK: - Drag and Drop Bindings
 
-    // Remove - now handled by managers
-
-    private func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary], anchorWeight: Double?) -> Double? {
-        guard let anchorWeight = anchorWeight else { return nil }
-        let allOps = operations
-
-        switch state.graph.selectedPeriod {
-        case .week, .month:
-            guard let latestWeight = allOps.last.map({ goalManager.convertWeightToDisplay(Int($0.weight)) }) else {
-                return nil
+    /// Binding for metrics array to enable live reordering during drag
+    var metricsBinding: Binding<[MetricItem]> {
+        Binding(
+            get: {
+                return self.metricsManager.state.metrics
+            },
+            set: { newValue in
+                self.metricsManager.state.metrics = newValue
             }
-            return latestWeight - anchorWeight
-        case .year, .total:
-            let weights = allOps.map { goalManager.convertWeightToDisplay(Int($0.weight)) }
-            guard !weights.isEmpty else { return nil }
-            let averageWeight = weights.reduce(0, +) / Double(weights.count)
-            return averageWeight - anchorWeight
-        }
+        )
     }
 
-    private func formatSelectedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        switch state.graph.selectedPeriod {
-        case .week, .month:
-            formatter.dateFormat = "MMM d, yyyy"
-        case .year, .total:
-            formatter.dateFormat = "MMM yyyy"
-        }
-        return formatter.string(from: date)
-    }
-
-    private func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
-        let calendar = Calendar.current
-
-        switch period {
-        case .week:
-            let month = DateTimeTools.formatter("LLL").string(from: minDate)
-            let startDay = calendar.component(.day, from: minDate)
-            let endDay = calendar.component(.day, from: maxDate)
-            let year = calendar.component(.year, from: maxDate)
-            return "\(month) \(startDay)-\(endDay), \(year)"
-        case .month:
-            return DateTimeTools.formatter("LLL yyyy").string(from: minDate)
-        case .year:
-            return DateTimeTools.formatter("yyyy").string(from: minDate)
-        case .total:
-            let minYear = calendar.component(.year, from: minDate)
-            let maxYear = calendar.component(.year, from: maxDate)
-            return minYear == maxYear ? "\(minYear)" : "\(minYear)-\(maxYear)"
-        }
-    }
-
-    private func fallbackTimeLabel() -> String {
-        let now = Date()
-        let calendar = Calendar.current
-
-        switch state.graph.selectedPeriod {
-        case .week:
-            let formatter = DateTimeTools.formatter("MMM d")
-            if let week = calendar.dateInterval(of: .weekOfYear, for: now) {
-                let start = formatter.string(from: week.start)
-                let end = DateTimeTools.formatter("d").string(from: week.end.addingTimeInterval(-1))
-                let year = calendar.component(.year, from: now)
-                return "\(start)-\(end), \(year)"
+    /// Binding for streak items array to enable live reordering during drag
+    var streakItemsBinding: Binding<[MetricItem]> {
+        Binding(
+            get: {
+                return self.streakManager.state.streakItems
+            },
+            set: { newValue in
+                self.streakManager.state.streakItems = newValue
             }
-            return DateTimeTools.formatter("MMM d, yyyy").string(from: now)
-        case .month:
-            return DateTimeTools.formatter("LLLL yyyy").string(from: now)
-        case .year, .total:
-            return DateTimeTools.formatter("yyyy").string(from: now)
-        }
+        )
     }
 
-    // Remove graph helper methods - now in GraphManager
+    /// Binding for dragging metric state
+    var draggingMetricBinding: Binding<MetricItem?> {
+        Binding(
+            get: {
+                return self.state.ui.draggingMetric
+            },
+            set: { newValue in
+                self.state.ui.draggingMetric = newValue
+            }
+        )
+    }
+
+    /// Binding for dragging streak state
+    var draggingStreakBinding: Binding<MetricItem?> {
+        Binding(
+            get: {
+                return self.state.ui.draggingStreak
+            },
+            set: { newValue in
+                self.state.ui.draggingStreak = newValue
+            }
+        )
+    }
+
+    /// Binding for drop hover ID
+    var dropHoverIdBinding: Binding<String?> {
+        Binding(
+            get: {
+                return self.state.ui.dropHoverId
+            },
+            set: { newValue in
+                self.state.ui.dropHoverId = newValue
+            }
+        )
+    }
+
+    // MARK: - Drag State Management
+
+    /// Start dragging a metric item
+    func startDraggingMetric(_ metric: MetricItem) {
+        state.ui.draggingMetric = metric
+    }
+
+    /// Start dragging a streak item
+    func startDraggingStreak(_ streak: MetricItem) {
+        state.ui.draggingStreak = streak
+    }
+
+    /// Update drop target during drag
+    func updateDropTarget(_ targetId: String?) {
+        state.ui.dropHoverId = targetId
+    }
+
+    /// End dragging and clear drag state
+    func endDragging() {
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+    }
+
+    /// Handle drag end for metrics
+    func handleMetricDragEnd() {
+        endDragging()
+        // Force UI update to reflect any reordering
+        objectWillChange.send()
+    }
+
+    /// Handle drag end for streaks
+    func handleStreakDragEnd() {
+        endDragging()
+        // Force UI update to reflect any reordering
+        objectWillChange.send()
+    }
+
+    // MARK: - Reordering Methods
+
+    /// Reorder metrics during drag
+    func reorderMetrics(from source: IndexSet, to destination: Int) {
+        metricsManager.state.metrics.move(fromOffsets: source, toOffset: destination)
+
+        logger.log(level: .info, tag: "DashboardStore", message: "Reordered metrics from \(source) to \(destination)")
+    }
+
+    /// Reorder streak items during drag
+    func reorderStreakItems(from source: IndexSet, to destination: Int) {
+        streakManager.state.streakItems.move(fromOffsets: source, toOffset: destination)
+
+        logger.log(level: .info, tag: "DashboardStore", message: "Reordered streak items from \(source) to \(destination)")
+    }
 
     // MARK: - Graph State Management
 
@@ -979,6 +1066,9 @@ class DashboardStore: ObservableObject {
         // Ensure positioning (this will apply boundary enforcement)
         Task {
             await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
+
+            // Force UI update after scroll position is set
+            objectWillChange.send()
         }
         updateWeightDisplayForCurrentView()
     }
@@ -1056,29 +1146,82 @@ class DashboardStore: ObservableObject {
     /// Update metrics to show values for current view (visible region or selected point)
     @MainActor
     private func updateMetricsForCurrentView() {
-        if let selectedPoint = state.graph.selectedPoint {
-            // If a point is selected, show its values
-            Task {
-                try? await metricsManager.updateMetrics(with: selectedPoint)
+        graphManager.updateMetricsForCurrentView(
+            selectedPoint: state.graph.selectedPoint,
+            visibleOperations: visibleOperations,
+            updateMetrics: { selectedPoint in
+                try await self.metricsManager.updateMetrics(with: selectedPoint)
+            },
+            resetMetrics: {
+                self.resetMetricsToLatestEntry()
             }
-        } else {
-            // If no selection, show average of visible region or latest entry
-            let visibleOps = visibleOperations
-            if !visibleOps.isEmpty && visibleOps.count > 1 {
-                // Show average metrics for visible region
-                // For now, just reset to latest - could implement average later
-                resetMetricsToLatestEntry()
-            } else {
-                // Fallback to latest entry
-                resetMetricsToLatestEntry()
+        )
+    }
+
+    // MARK: - UI State Management
+
+    /// Handle metric long press interaction
+    /// Updates selection state and creates entry for metric info display
+    func handleMetricLongPress(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) {
+        metricsManager.handleMetricLongPressWithUIState(
+            for: metricLabel,
+            selectedEntry: selectedEntry,
+            selectedMetric: selectedMetric,
+            updateSelectedMetric: { newValue in
+                self.state.ui.selectedMetricLabel = newValue
             }
+        )
+    }
+
+    /// Handle selected metric info change
+    /// Updates UI state and creates entry for the selected metric
+    func handleSelectedMetricInfoChange(_ newValue: String?, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) async {
+        guard let label = newValue else { return }
+        state.ui.selectedMetricLabel = label
+
+        // Delegate to metrics manager for entry creation
+        await metricsManager.handleSelectedMetricInfoChange(newValue, selectedEntry: selectedEntry, selectedMetric: selectedMetric)
+    }
+
+    /// Handle selected metric label change
+    /// Clears selection state when metric label is cleared
+    func handleSelectedMetricLabelChange(_ newValue: String?) {
+        if newValue == nil {
+            // Clear selection state
+            // Note: This is handled by the UI layer since it manages the selectedEntry and selectedMetric state
         }
     }
-    // MARK: - Memory Management
 
-//    @MainActor
-//    deinit {
-//        cancellables.removeAll()
-//        state.graph.scrollEndTimer?.invalidate()
-//    }
+    /// Handle selected entry change
+    /// Clears metric selection when entry is cleared
+    func handleSelectedEntryChange(_ newValue: Entry?) {
+        if newValue == nil {
+            state.ui.selectedMetricLabel = nil
+        }
+    }
+
+    /// Handle metric info sheet dismiss
+    /// Clears metric selection when sheet is dismissed
+    func handleMetricInfoSheetDismiss(_ newValue: MetricInfoWrapper?) {
+        if newValue == nil {
+            state.ui.selectedMetricLabel = nil
+        }
+    }
+
+    // MARK: - Lifecycle Methods
+
+    /// Perform actions when dashboard appears
+    /// Loads latest data, goal card, and ensures proper initialization
+    func onAppearActions() {
+        loadLatestEntryData()
+        loadGoalCardData()
+        // Handle any settings changes
+        handleSettingsChange()
+        // Ensure chart shows the latest entries by default
+        Task {
+            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
+        }
+
+        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
+    }
 }

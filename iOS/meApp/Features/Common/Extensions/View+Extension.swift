@@ -188,7 +188,7 @@ extension View {
         itemID: UUID,
         openItemID: Binding<UUID?>? = nil
     ) -> some View {
-        self.modifier(
+        modifier(
             SwipeableModifier(
                 swipeButtons: buttons,
                 buttonWidth: buttonWidth,
@@ -228,14 +228,18 @@ extension View {
         draggingItem: Binding<T?>,
         items: Binding<[T]>,
         isDraggable: Bool = true,
-        onDropTargetChanged: @escaping (Bool) -> Void
+        onDropTargetChanged: @escaping (Bool) -> Void = { _ in },
+        onDragEnd: (() -> Void)? = nil
     ) -> some View {
         if isDraggable {
-            AnyView(
+            return AnyView(
                 self
                     .onDrag {
+                        // Set the dragging item immediately for visual feedback
                         draggingItem.wrappedValue = item
-                        return NSItemProvider(object: "\(item.id)" as NSString)
+                        
+                        // Create item provider with item ID for proper drag tracking
+                        return NSItemProvider(object: String(describing: item.id) as NSString)
                     }
                     .onDrop(
                         of: [.text],
@@ -243,12 +247,20 @@ extension View {
                             item: item,
                             items: items,
                             draggingItem: draggingItem,
-                            onDropTargetChanged: onDropTargetChanged
+                            onDropTargetChanged: { isTargeted in
+                                onDropTargetChanged(isTargeted)
+                            },
+                            onDragEnd: {
+                                // Ensure immediate state reset
+                                DispatchQueue.main.async {
+                                    onDragEnd?()
+                                }
+                            }
                         )
                     )
             )
         } else {
-            AnyView(self)
+            return AnyView(self)
         }
     }
     
@@ -261,5 +273,18 @@ extension View {
     /// - Returns: A view that observes keyboard events
     func keyboardObserver(keyboardHeight: Binding<CGFloat>) -> some View {
         self.modifier(KeyboardObserverModifier(keyboardHeight: keyboardHeight))
+    }
+    
+    /// Applies a long press gesture with conditional execution based on edit mode
+    /// - Parameters:
+    ///   - isEditMode: Whether the view is in edit mode
+    ///   - onLongPress: The action to perform on long press
+    /// - Returns: A view with long press gesture applied
+    func longPressGesture(isEditMode: Bool, onLongPress: @escaping () -> Void) -> some View {
+        self.onLongPressGesture(minimumDuration: 0.5, maximumDistance: 50) {
+            // Always execute long press action, not just in edit mode
+            // This allows metric info sheets to be opened by long pressing on metric items
+            onLongPress()
+        }
     }
 }

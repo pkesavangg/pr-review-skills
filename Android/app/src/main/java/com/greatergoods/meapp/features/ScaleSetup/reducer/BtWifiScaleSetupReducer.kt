@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.ScaleSetup.reducer
 
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.greatergoods.meapp.domain.interfaces.IReducer
@@ -69,7 +70,7 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.PERMISSIONS,
     BtWifiSetupStep.WAKEUP,
     BtWifiSetupStep.CONNECTING_BLUETOOTH,
-    BtWifiSetupStep.DUPLICATES_FOUND,
+    BtWifiSetupStep.USER_LIMIT_REACHED,
     BtWifiSetupStep.GATHERING_NETWORK,
     BtWifiSetupStep.AVAILABLE_WIFI_LIST,
     BtWifiSetupStep.WIFI_PASSWORD,
@@ -154,6 +155,11 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   object OpenAccucheckModal : BtWifiScaleSetupIntent
   object RefreshNetworks : BtWifiScaleSetupIntent
   object HandlePasswordNetworkStatus : BtWifiScaleSetupIntent
+  object ShowSetupWifiLaterAlert : BtWifiScaleSetupIntent
+  object RestoreAccount : BtWifiScaleSetupIntent
+  data class DeleteUser(
+    val user: GGBTUser,
+  ) : BtWifiScaleSetupIntent
 }
 
 /**

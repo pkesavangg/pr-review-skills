@@ -1,18 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// Protocol defining data management operations
-protocol DashboardDataManaging {
-    func loadInitialData() async throws
-    func refreshData() async throws
-    func handleEntryAdded(_ entry: Entry) async throws
-    func handleEntryUpdated(_ entry: Entry) async throws
-    func handleEntryDeleted(_ entry: Entry) async throws
-    func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary]
-    func getLatestEntry() async throws -> Entry?
-    func clearCache() async throws
-}
-
 /// Manages all data caching and API synchronization for the dashboard
 @MainActor
 class DashboardDataManager: ObservableObject, DashboardDataManaging {
@@ -21,6 +9,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     @Injector private var accountService: AccountService
     @Injector private var entryService: EntryService
     @Injector private var logger: LoggerService
+    @Injector private var scaleService: ScaleService
 
     // MARK: - Published Properties
     @Published var state: DataState
@@ -214,6 +203,15 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         }
     }
 
+    // Synchronous version for UI operations
+    func getLatestEntrySync() -> Entry? {
+        // Return the latest entry from state if available
+        // This is a simplified version for UI operations
+        // For now, we'll return nil to use the fallback method
+        // In a real implementation, you might cache the latest entry in state
+        return nil
+    }
+
     // MARK: - Cache Management
     func clearCache() async throws {
       logger.log(level: .info, tag: "DashboardDataManager", message: "Clearing dashboard cache")
@@ -272,8 +270,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         // Update published arrays from cache
         state.dailySummaries = Array(state.dailyCache.values).sorted { $0.period < $1.period }
         state.monthlySummaries = Array(state.monthlyCache.values).sorted { $0.period < $1.period }
-
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Published arrays updated - Daily: \(state.dailySummaries.count), Monthly: \(state.monthlySummaries.count)")
     }
 
     private func limitToYearlyData(_ monthlyData: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
@@ -381,47 +377,77 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             throw DashboardError.cacheUpdateFailed("Failed to optimize cache")
         }
     }
-}
 
-// MARK: - Supporting Types
-private enum PeriodType {
-    case day
-    case month
-}
+    // MARK: - R4 Scale Detection Methods (moved from DashboardStore)
+    
+    /// Determines dashboard metric type based on R4 scale presence
+    func determineDashboardMetricType() async -> DashboardMetricType {
+        let hasR4Scale = await checkForR4ScaleInPairedDevices()
+        let hasR4Entries = await checkForR4ScaleEntries()
 
-struct DataAnalytics {
-    let totalEntries: Int
-    let dailyEntries: Int
-    let monthlyEntries: Int
-    let dateRange: DateRange?
-    let dataCompleteness: Double
-    let cacheSize: Int
-    let lastUpdated: Date
+        logger.log(level: .info, tag: "DashboardDataManager", message: "R4 scale detection: hasR4Scale=\(hasR4Scale), hasR4Entries=\(hasR4Entries)")
 
-    var completenessPercentage: String {
-        return String(format: "%.1f%%", dataCompleteness * 100)
-    }
-
-    var cacheSizeFormatted: String {
-        let kb = Double(cacheSize) / 1024
-        if kb < 1024 {
-            return String(format: "%.1f KB", kb)
+        if hasR4Scale || hasR4Entries {
+            logger.log(level: .info, tag: "DashboardDataManager", message: "Dashboard metric type set to 12 (R4 scale detected)")
+            return .twelve
         } else {
-            let mb = kb / 1024
-            return String(format: "%.1f MB", mb)
+            logger.log(level: .info, tag: "DashboardDataManager", message: "Dashboard metric type set to 4 (no R4 scale)")
+            return .four
         }
     }
-}
 
-struct DateRange {
-    let start: Date
-    let end: Date
-
-    var duration: TimeInterval {
-        return end.timeIntervalSince(start)
+    private func checkForR4ScaleInPairedDevices() async -> Bool {
+        do {
+            let devices = try await scaleService.getDevices()
+            
+            // Only consider connected/active R4 scales, not just paired ones
+            let activeR4Scales = devices.filter { device in
+                let scaleType = ScaleTypeHelper.determineScaleType(for: device)
+                let isR4 = scaleType == .bluetoothR4
+                
+                // Check if the scale is actually connected/active
+                if isR4 {
+                    // First check if the device is marked as connected
+                    if let isConnected = device.isConnected, isConnected {
+                        return true
+                    }
+                    
+                    // If not marked as connected, check if it has recent entries (within last 30 days)
+                    if let lastSync = device.lastModified {
+                        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+                        let lastSyncDate = Date(timeIntervalSince1970: TimeInterval(lastSync))
+                        return lastSyncDate >= thirtyDaysAgo
+                    }
+                    
+                    // If no connection status or recent sync, consider it not active
+                    return false
+                }
+                return false
+            }
+            
+            logger.log(level: .info, tag: "DashboardDataManager", message: "Found \(activeR4Scales.count) active R4 scales")
+            return !activeR4Scales.isEmpty
+        } catch {
+            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to check for R4 scales: \(error)")
+            return false
+        }
     }
 
-    var durationInDays: Int {
-        return Calendar.current.dateComponents([.day], from: start, to: end).day ?? 0
+    private func checkForR4ScaleEntries() async -> Bool {
+        do {
+            let entries = try await entryService.getAllEntries()
+            let r4Entries = entries.filter { entry in
+                if let source = entry.scaleEntry?.source {
+                    return source.lowercased().contains("r4") ||
+                           source.lowercased().contains("btwifi") ||
+                           source.lowercased().contains("bluetooth/wifi")
+                }
+                return false
+            }
+            return !r4Entries.isEmpty
+        } catch {
+            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to check for R4 scale entries: \(error)")
+            return false
+        }
     }
 }

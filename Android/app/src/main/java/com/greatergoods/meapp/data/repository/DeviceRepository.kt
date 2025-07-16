@@ -40,8 +40,8 @@ constructor(
       emit(deviceDetails?.toDeviceDomainModel())
     }
 
-  override suspend fun saveDeviceToDb(device: Device) {
-    val deviceDetails = device.toDeviceDetails()
+  override suspend fun saveDeviceToDb(device: Device, accountId: String) {
+    val deviceDetails = device.toDeviceDetails(accountId)
     deviceDao.insertDevice(deviceDetails)
   }
 

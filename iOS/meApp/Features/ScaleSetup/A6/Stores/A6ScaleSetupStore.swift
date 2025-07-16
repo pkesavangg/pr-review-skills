@@ -76,6 +76,7 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(
                     BluetoothConnectionView(
                         state: connectionState,
+                        setupType: .lcbt,
                         onTryAgain: { [weak self] in self?.retryPairing() },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
@@ -99,6 +100,7 @@ final class A6ScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
+                self?.handlePermissionChange()
             }
             .store(in: &cancellables)
     }
@@ -247,6 +249,20 @@ final class A6ScaleSetupStore: ObservableObject {
         }
     }
     
+    /// Handles permission changes during the setup flow
+    private func handlePermissionChange() {
+        let showError = !isBluetoothPermissionEnabled()
+        if showError {
+            if currentStep == .wakeUp {
+                // Reset discovery state and navigate back to permissions screen
+                resetDiscoveryState()
+                if let permissionStepIndex = steps.firstIndex(of: .permissions) {
+                    currentStepIndex = permissionStepIndex
+                }
+            }
+        }
+    }
+    
     // MARK: - Discovery State Management
     
     /// Clears any active Bluetooth discovery subscriptions and timers and resets related state.
@@ -285,6 +301,8 @@ final class A6ScaleSetupStore: ObservableObject {
     private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
         // Only handle discovery during wake-up step
         guard currentStep == .wakeUp else { return }
+        // Only handle LCBT/A6 scales
+        guard event.deviceInfo.setupType == .lcbt else { return }
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
         stepTimerTask?.cancel()
