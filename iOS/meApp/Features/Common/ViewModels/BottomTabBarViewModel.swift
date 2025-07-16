@@ -37,6 +37,7 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService
     
+    private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
     
@@ -50,6 +51,16 @@ class BottomTabBarViewModel: ObservableObject {
                 if self.shouldShowDiscoveredScale(for: event) {
                     self.discoveredScale = event.device
                     self.discoveryEvent = event
+                }
+            }
+            .store(in: &cancellables)
+        
+        bluetoothService.newEntryReceivedPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                if !self.bluetoothService.isSetupInProgress {
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
                 }
             }
             .store(in: &cancellables)
