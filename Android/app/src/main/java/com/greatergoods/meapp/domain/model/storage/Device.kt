@@ -5,11 +5,12 @@ import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.util.Calendar
 import java.util.UUID
 import kotlin.random.Random
 
 enum class BLEStatus {
-  CONNECTED, DISCONNECTED, CONNECTING, DISCONNECTING
+  CONNECTED, DISCONNECTED
 }
 
 data class Device(
@@ -21,8 +22,7 @@ data class Device(
   val alreadyPaired: Boolean = false,
   val userNumber: Int? = 0,
   val hasServerID: Boolean = false,
-  val wifiMac: String? = null,
-  val isWifiConfigured: Boolean = false,
+  val createdAt: String? = Calendar.getInstance().timeInMillis.toString(),
   val isWeighOnlyModeEnabledByOthers: Boolean = false,
   val token: String? = null,
   val preferences: Preferences? = null
@@ -48,8 +48,6 @@ data class Device(
       return Device(
         device = device,
         hasServerID = false,
-        wifiMac = null,
-        isWifiConfigured = false,
         isWeighOnlyModeEnabledByOthers = false,
         preferences = preferences,
         deviceType = deviceType,

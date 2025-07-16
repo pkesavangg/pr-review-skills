@@ -29,8 +29,6 @@ fun DeviceApiModel.toDomainModel(accountId: String): Device =
     alreadyPaired = false,
     userNumber = userNumber,
     hasServerID = !id.isNullOrEmpty(),
-    wifiMac = null, // Not in API response
-    isWifiConfigured = false, // Not in API response
     isWeighOnlyModeEnabledByOthers = false,
     token = scaleToken,
   )

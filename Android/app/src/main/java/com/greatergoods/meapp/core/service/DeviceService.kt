@@ -68,6 +68,14 @@ constructor(
     // This will be called when setAccountId is called
   }
 
+  override suspend fun getScales(accountId: String?): Flow<List<Device>> {
+    val resolvedAccountId = accountId ?: this.currentAccountId
+    ?: throw IllegalArgumentException("No account ID provided")
+
+    val devices = deviceRepository.getDevices(resolvedAccountId)
+    return devices
+  }
+
   /**
    * Set the current account ID and initialize device data for that account.
    * This should be called when the user logs in or switches accounts.
@@ -80,12 +88,19 @@ constructor(
     // Cancel any existing collector job
     deviceCollectionJob?.cancel()
 
-    // Launch a new job to stay on the flow
     deviceCollectionJob = repositoryScope.launch {
+      // Capture previous connection status
+      val previousStatusMap = _savedScales.value.associateBy({ it.id }, { it.connectionStatus })
+
       deviceRepository.getDevices(accountId).collect { devices ->
-        _savedScales.value = devices
+        val updatedDevices = devices.map { device ->
+          val connectionStatus = previousStatusMap[device.id] ?: device.connectionStatus
+          device.copy(connectionStatus = connectionStatus)
+        }
+        _savedScales.value = updatedDevices
       }
     }
+
     // Sync devices from API and local DB
     syncDevices()
   }
@@ -120,18 +135,18 @@ constructor(
 
       // 2. Add new/updated and deleted devices to the unsynced list
       newOrUpdatedDevices.forEach { device ->
-        unsyncedDevices.removeAll { it.id == device.id }
+        unsyncedDevices.removeAll { it.device?.macAddress == device.device?.macAddress }
         unsyncedDevices.add(0, device.copy(hasServerID = false))
       }
       deletedDevices.forEach { device ->
-        unsyncedDevices.removeAll { it.id == device.id }
+        unsyncedDevices.removeAll { it.device?.macAddress == device.device?.macAddress }
         unsyncedDevices.add(0, device.copy(hasServerID = false))
       }
 
 
       for (device in unsyncedDevices) {
         try {
-          if (deletedDevices.any { it.id == device.id }) {
+          if (deletedDevices.any { it.device?.macAddress == device.device?.macAddress }) {
             deviceRepository.deleteDeviceFromApi(device.id)
             deviceRepository.deleteDeviceFromDb(device.id)
             AppLog.d(tag, "Device deleted from API and DB: ${device.id}")
@@ -150,17 +165,15 @@ constructor(
       // 4. Fetch latest devices from API and update local DB
       AppLog.d(tag, "Fetching latest devices from API for account: $currentAccountId")
       val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
-      AppLog.d(tag, "Fetched ${apiDevices.size} devices from API")
+      AppLog.d(tag, "Fetched "+apiDevices.size+" devices from API")
 
       val processedDevices = apiDevices.map { apiDevice ->
         val existingDevice = try {
           when {
             apiDevice.device?.macAddress?.isNotEmpty() == true -> deviceRepository.getDeviceByMac(apiDevice.device.macAddress)
               .first()
-
             !apiDevice.device?.broadcastId.isNullOrEmpty() -> deviceRepository.getDeviceByBroadcastId(apiDevice.device.broadcastId!!)
               .first()
-
             else -> null
           }
         } catch (e: Exception) {
@@ -172,10 +185,18 @@ constructor(
           apiDevice.copy(hasServerID = apiDevice.hasServerID)
         }
       }
+
+      // Build a set of MAC addresses that were just synced locally
+      val syncedMacs = unsyncedDevices.mapNotNull { it.device?.macAddress }.toSet()
+
+      // Only save API devices that are not already present in the just-synced local devices
       for (device in processedDevices) {
-        deviceRepository.saveDeviceToDb(device, accountId = currentAccountId!!)
+        val mac = device.device?.macAddress
+        if (mac == null || !syncedMacs.contains(mac)) {
+          deviceRepository.saveDeviceToDb(device, accountId = currentAccountId!!)
+        }
       }
-      AppLog.d(tag, "Saved API devices to DB")
+      AppLog.d(tag, "Saved API devices to DB (deduplicated)")
     } catch (e: Exception) {
       AppLog.e(tag, "Error in syncDevices", e.toString())
     }

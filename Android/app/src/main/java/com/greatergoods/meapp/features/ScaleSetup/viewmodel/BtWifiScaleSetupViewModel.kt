@@ -696,8 +696,10 @@ constructor(
     }
 
     discoveredScale = discoveredScale?.copy(
-      isWifiConfigured = wifiMac != null,
-      wifiMac = wifiMac,
+      device = discoveredScale?.device?.copy(
+        isWifiConfigured = wifiMac != null,
+        wifiMacAddress = wifiMac,
+      ),
     )
   }
 

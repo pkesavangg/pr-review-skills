@@ -15,6 +15,8 @@ interface IDeviceService {
    */
   val savedScales: Flow<List<Device>>
 
+  suspend fun getScales(accountId: String? = null): Flow<List<Device>>
+
   /**
    * Set the current account ID and initialize scale data for that account.
    * This should be called when the user logs in or switches accounts.
