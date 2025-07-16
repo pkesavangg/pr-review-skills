@@ -25,6 +25,7 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.SetupLoaderStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtWifiScaleSetupViewModel
 import com.greatergoods.meapp.features.ScaleUsers.components.ScaleUserList
 import com.greatergoods.meapp.features.common.components.AppButton
@@ -217,7 +218,9 @@ fun BtWifiScaleSetupScreenContent(
               supportingButtonLabel = BtWifiScaleSetupStrings.DuplicateUser.RestoreAccountButton,
               supportText = BtWifiScaleSetupStrings.DuplicateUser
                 .LastActive(dummyDuplicateUser.lastActive.formatTimestamp()).lowercase(),
-              onSupportingButtonClick = {},
+              onSupportingButtonClick = {
+                onIntent(BtWifiScaleSetupIntent.RestoreAccount)
+              },
             )
           }
 
@@ -246,12 +249,14 @@ fun BtWifiScaleSetupScreenContent(
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
-              scaleImageSku = state.sku,
+              showIndicationOnly = state.currentStepConnectionState != ConnectionState.Error,
+              scaleImageSku = if (state.currentStepConnectionState == ConnectionState.Error) state.sku else null,
+              secondaryButtonText = SetupLoaderStrings.SetupWifiLaterButton,
               primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.ShowSetupWifiLaterAlert) }
               } else null,
             )
           }

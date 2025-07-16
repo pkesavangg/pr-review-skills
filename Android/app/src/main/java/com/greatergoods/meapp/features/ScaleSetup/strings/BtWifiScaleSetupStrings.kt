@@ -92,6 +92,19 @@ object BtWifiScaleSetupStrings {
     const val Title = "User Limit Exceeded!"
     const val Subtitle = "Delete an inactive user to add yourself to the scale."
     const val UsernameLabel = "User name"
+  }
 
+  object SetupWifiLaterAlert {
+    const val Title = "Are you sure you want to skip Wi-Fi?"
+    const val Message = "After setup, find additional Wi-Fi settings or the MAC Address via scale settings."
+    const val Skip = "Skip"
+    const val GoBack = "Go Back"
+  }
+
+  object RestoreAccountAlert {
+    const val Title = "Confirm Account Restore"
+    const val Message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
+    const val Back = "Back"
+    const val Restore = "Restore"
   }
 }
