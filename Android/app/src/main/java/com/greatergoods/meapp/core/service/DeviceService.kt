@@ -36,6 +36,18 @@ constructor(
    */
   override val savedScales: Flow<List<Device>> = _savedScales.asStateFlow()
 
+  override suspend fun onDeviceUpdate(device: Device) {
+    val scale = _savedScales.value.find { it.device?.broadcastId == device.device?.broadcastId }
+    if (scale != null) {
+      _savedScales.value = _savedScales.value.map {
+        if (it.device?.broadcastId == device.device?.broadcastId) {
+          scale
+        } else
+          it
+      }
+    }
+  }
+
   /**
    * Current account ID for filtering devices.
    */

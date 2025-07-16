@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.common.helper
 
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.SCALES
@@ -36,7 +37,7 @@ object ScaleDataHelper {
       sku = sku,
       setupType = setupType,
       bodyComp = bodyComp,
-      isConnected = this.connectionStatus == com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED,
+      isConnected = this.connectionStatus == BLEStatus.CONNECTED,
       isWifiConfigured = this.isWifiConfigured,
       scaleId = this.id,
     )

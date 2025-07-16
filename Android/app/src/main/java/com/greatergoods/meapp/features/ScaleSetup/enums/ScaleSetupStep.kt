@@ -18,7 +18,7 @@ enum class BtWifiSetupStep {
   UPDATE_SETTINGS,
   STEP_ON,
   MEASUREMENT,
-  SCALE_CONNECTED,
+  SETUP_FINISHED,
 }
 
 enum class CUSTOMIZE_SETTINGS {

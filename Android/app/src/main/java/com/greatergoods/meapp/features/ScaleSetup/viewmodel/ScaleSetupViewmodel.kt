@@ -21,9 +21,9 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    * Called when a new device matching the protocol is found during setup.
    * @param device The GGDeviceDetail of the new device found.
    */
-  protected abstract fun onScanResponse(device: GGScanResponse.DeviceDetail)
+  protected abstract fun onScanResponse(response: GGScanResponse.DeviceDetail)
 
-  protected fun onEntryResponse(device: GGScanResponse.Entry) {}
+  protected abstract fun onEntryResponse(response: GGScanResponse.Entry)
 
   protected var discoveredScale: Device? = null
 

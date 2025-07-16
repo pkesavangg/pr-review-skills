@@ -23,6 +23,10 @@ interface IDeviceService {
    */
   suspend fun setAccountId(accountId: String)
 
+  suspend fun onDeviceUpdate(
+    device: Device,
+  )
+
   /**
    * Clear the current account data.
    * This should be called when the user logs out.

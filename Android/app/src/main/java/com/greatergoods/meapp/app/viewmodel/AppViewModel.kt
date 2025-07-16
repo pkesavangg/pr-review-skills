@@ -2,6 +2,9 @@ package com.greatergoods.meapp.app.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.ITokenManager
@@ -10,6 +13,9 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
+import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.AuthState
@@ -22,8 +28,12 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -45,7 +55,8 @@ constructor(
   private val accountService: IAccountService,
   private val dialogUtility: IDialogUtility,
   private val deviceService: IDeviceService,
-  private val ggPermissionService: GGPermissionService
+  private val ggPermissionService: GGPermissionService,
+  private val ggDeviceService: GGDeviceService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -56,6 +67,7 @@ constructor(
 
   override fun provideInitialState(): AppState = AppState()
   private var permissionSubscribeJob: Job? = null
+  private var deviceSubscribeJob: Job? = null
   private var initialized = false
 
   init {
@@ -78,7 +90,16 @@ constructor(
       val account = accountService.getCurrentAccount()
       initLoadingData(account)
       initEvents()
+      syncScales()
     }
+  }
+
+  private suspend fun syncScales() {
+    deviceService.savedScales.map { devices -> devices.map { device -> device.device?.broadcastId } }
+      .distinctUntilChanged().collect {
+        val ggBTDevices = deviceService.savedScales.first().map { it.toGGBTDevice() }
+        ggDeviceService.syncDevices(ggBTDevices)
+      }
   }
 
   private fun initEvents() {
@@ -190,12 +211,14 @@ constructor(
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
+        deviceSubscribeJob?.cancel()
         entryService.updateAccountId(account.id)
         deviceInfoService.updateDeviceInfo()
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
         navigationService.autoLogin()
         subscribePermissions()
+        subscribeDeviceCallback()
       } else {
         routeToLandingOrApp()
       }
@@ -221,6 +244,60 @@ constructor(
           }
         }
       }
+    }
+  }
+
+  private fun subscribeDeviceCallback() {
+    deviceSubscribeJob = viewModelScope.launch {
+      ggDeviceService.deviceCallbackFlow.collect { response ->
+        when (response) {
+          is GGScanResponse.DeviceDetail -> {
+            handleDeviceResponse(response)
+          }
+
+          is GGScanResponse.Entry -> {
+          }
+
+          else -> null
+        }
+      }
+    }
+  }
+
+  private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
+    entryResponse.data
+    Log.i("CHECKING", entryResponse.data.toString())
+  }
+
+  private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
+    val data = deviceResponse.data
+    val device = Device(device = data)
+    when (deviceResponse.type) {
+      GGScanResponseType.DEVICE_CONNECTED -> {
+        viewModelScope.launch {
+          deviceService.onDeviceUpdate(
+            device = device.copy(connectionStatus = BLEStatus.CONNECTED),
+          )
+        }
+      }
+
+      GGScanResponseType.DEVICE_DISCONNECTED -> {
+        viewModelScope.launch {
+          deviceService.onDeviceUpdate(
+            device = device.copy(connectionStatus = BLEStatus.DISCONNECTED),
+          )
+        }
+      }
+
+      GGScanResponseType.DEVICE_INFO_UPDATE -> {
+        viewModelScope.launch {
+          deviceService.onDeviceUpdate(
+            device = device,
+          )
+        }
+      }
+
+      else -> null
     }
   }
 

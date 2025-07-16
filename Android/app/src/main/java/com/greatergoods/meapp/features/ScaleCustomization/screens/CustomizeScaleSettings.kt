@@ -23,6 +23,7 @@ import com.greatergoods.meapp.features.ScaleMetricsSetting.Screens.ScaleMetricsS
 import com.greatergoods.meapp.features.ScaleModeSettings.screens.ScaleModeSettingsScreen
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
 import com.greatergoods.meapp.features.ScaleSetup.components.strings.ScaleFormStrings
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.enums.CustomizeSettings
 import com.greatergoods.meapp.features.ScaleSetup.model.CustomizeSettingsList
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
@@ -57,8 +58,8 @@ fun CustomizeScaleSettings(
   var scaleMetrics by remember { mutableStateOf(ScaleMetricsHelper.getAllMetrics()) }
 
   var dashboardKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
-
-  var updatedPreference by remember { mutableStateOf(ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)) }
+  val defaultPreference = ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
+  var updatedPreference by remember { mutableStateOf(defaultPreference) }
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
@@ -89,17 +90,23 @@ fun CustomizeScaleSettings(
             label = ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
             onClick = {
-              onIntent(
-                BtWifiScaleSetupIntent.UpdateSettings(
-                  dashboardKeys = dashboardKeys,
-                  preferences = updatedPreference.copy(
-                    displayName = state.usernameForm.username.value,
+              if (defaultPreference != updatedPreference) {
+                onIntent(
+                  BtWifiScaleSetupIntent.UpdateSettings(
+                    dashboardKeys = dashboardKeys,
+                    preferences = updatedPreference.copy(
+                      displayName = state.usernameForm.username.value,
+                    ),
                   ),
-                ),
-              )
-              onIntent(
-                BtWifiScaleSetupIntent.Next,
-              )
+                )
+                onIntent(
+                  BtWifiScaleSetupIntent.Next,
+                )
+              } else {
+                onIntent(
+                  BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.STEP_ON),
+                )
+              }
             },
           )
         } else {

@@ -80,7 +80,7 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.UPDATE_SETTINGS,
     BtWifiSetupStep.STEP_ON,
     BtWifiSetupStep.MEASUREMENT,
-    BtWifiSetupStep.SCALE_CONNECTED,
+    BtWifiSetupStep.SETUP_FINISHED,
   ),
   val nextButtonText: String = ScaleSetupStrings.SetupButtons.Next,
   val wifiList: List<GGWifiInfo> = emptyList(),
@@ -93,6 +93,7 @@ data class BtWifiScaleSetupState(
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
   val dashboardKeys: List<DashboardKey> = listOf(),
   val duplicateUser: GGBTUser? = null,
+  val userList: List<GGBTUser> = listOf(),
   val permissions: GGPermissionStatusMap = mutableMapOf(),
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
@@ -106,6 +107,8 @@ data class BtWifiScaleSetupState(
  * Intents for BtWifiScaleSetupScreen actions.
  */
 sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
+  data class SetUserList(val userList: List<GGBTUser>) : BtWifiScaleSetupIntent
+  data class SetDuplicateUser(val duplicateUser: GGBTUser?) : BtWifiScaleSetupIntent
   data class UpdateSettings(
     val dashboardKeys: List<DashboardKey>? = null,
     val preferences: Preferences? = null
@@ -152,6 +155,10 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
     val isSetupFinished: Boolean,
   ) : BtWifiScaleSetupIntent
 
+  data class ReplaceAccount(
+    val userName: String? = null
+  ) : BtWifiScaleSetupIntent
+
   data class SetPermissions(val permissions: GGPermissionStatusMap) : BtWifiScaleSetupIntent
   data class RequestPermission(val permissionType: String) : BtWifiScaleSetupIntent
 
@@ -176,6 +183,8 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
     intent: BtWifiScaleSetupIntent,
   ): BtWifiScaleSetupState? =
     when (intent) {
+      is BtWifiScaleSetupIntent.SetUserList -> state.copy(userList = intent.userList)
+      is BtWifiScaleSetupIntent.SetDuplicateUser -> state.copy(duplicateUser = intent.duplicateUser)
       is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys)
       is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList)
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)

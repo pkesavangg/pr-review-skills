@@ -38,6 +38,7 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
+import android.util.Log
 
 @Composable
 fun BtWifiScaleSetupScreen(
@@ -82,6 +83,17 @@ fun BtWifiScaleSetupScreenContent(
       }
     }
   }
+
+  val isNextButtonEnabledForStep: Boolean =
+    when (state.currentStep) {
+      BtWifiSetupStep.DUPLICATES_FOUND ->
+        state.duplicateUser?.name != state.usernameForm.username.value
+
+      else -> state.canProceedToNext
+
+    }
+
+  Log.e("TAG", "BtWifiScaleSetupScreenContent: $isNextButtonEnabledForStep")
   ScaleSetupHeader(
     sku = state.sku,
     onBack = { onIntent(BtWifiScaleSetupIntent.ExitSetup(false)) },
@@ -111,7 +123,7 @@ fun BtWifiScaleSetupScreenContent(
         else -> null
       },
       middleContent = when (state.currentStep) {
-        BtWifiSetupStep.SCALE_CONNECTED -> {
+        BtWifiSetupStep.SETUP_FINISHED -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
@@ -150,7 +162,7 @@ fun BtWifiScaleSetupScreenContent(
               type = ButtonType.PrimaryFilled,
               label = state.nextButtonText,
               size = ButtonSize.Small,
-              enabled = !state.isLoading && state.canProceedToNext,
+              enabled = !state.isLoading && isNextButtonEnabledForStep,
               onClick = {
                 focusManager.clearFocus()
                 onIntent(BtWifiScaleSetupIntent.Next)
@@ -162,7 +174,8 @@ fun BtWifiScaleSetupScreenContent(
         else -> null
       },
       pageContent = { step ->
-        when (step) {
+
+        when (state.currentStep) {
           BtWifiSetupStep.SCALE_INFO -> {
             ScaleInfo(sku = state.sku)
           }
@@ -217,7 +230,9 @@ fun BtWifiScaleSetupScreenContent(
               supportingButtonLabel = BtWifiScaleSetupStrings.DuplicateUser.RestoreAccountButton,
               supportText = BtWifiScaleSetupStrings.DuplicateUser
                 .LastActive(dummyDuplicateUser.lastActive.formatTimestamp()).lowercase(),
-              onSupportingButtonClick = {},
+              onSupportingButtonClick = {
+                onIntent(BtWifiScaleSetupIntent.ReplaceAccount())
+              },
             )
           }
 
@@ -225,14 +240,7 @@ fun BtWifiScaleSetupScreenContent(
             ScaleUserList(
               title = BtWifiScaleSetupStrings.UserList.Title,
               subtitle = BtWifiScaleSetupStrings.UserList.Subtitle,
-              userList = listOf(
-                GGBTUser(
-                  name = "Poongs",
-                  token = "424443432323424324",
-                  lastActive = 1656720000,
-                  isBodyMetricsEnabled = true,
-                ),
-              ),
+              userList = state.userList,
               onDeleteUser = {
                 onIntent(BtWifiScaleSetupIntent.DeleteUser(it))
               },
@@ -351,7 +359,7 @@ fun BtWifiScaleSetupScreenContent(
             )
           }
 
-          BtWifiSetupStep.SCALE_CONNECTED -> {
+          BtWifiSetupStep.SETUP_FINISHED -> {
             ScaleSetupLoader(
               title = BtWifiScaleSetupStrings.ScaleConnected.Title,
               subtitle = BtWifiScaleSetupStrings.ScaleConnected.Subtitle,
