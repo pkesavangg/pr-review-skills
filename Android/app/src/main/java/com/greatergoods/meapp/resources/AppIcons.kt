@@ -18,7 +18,7 @@ object AppIcons {
     val History = R.drawable.ic_history
     val Settings = R.drawable.ic_settings
     val Placeholder = R.drawable.me_placeholder
-    val Stamp = R.drawable.gg_stamp
+    val ggLogo = R.drawable.gg_logo
     val RightCaret = R.drawable.ic_right_caret
     val ChevronDown = R.drawable.ic_chevron_down
     val profile = R.drawable.ic_profile

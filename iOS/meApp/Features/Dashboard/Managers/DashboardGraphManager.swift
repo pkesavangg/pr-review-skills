@@ -3,6 +3,8 @@ import Charts
 import os
 import Foundation
 
+
+
 /// Manages all graph and chart operations for the dashboard
 @MainActor
 class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
@@ -19,18 +21,22 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // MARK: - Performance Optimization - Simple Scroll State Check
     private var lastCalculatedVisibleOps: [BathScaleWeightSummary] = []
+    private var lastVisibleOpsScrollPosition: Date?
+    private var lastVisibleOpsPeriod: TimePeriod?
 
     // Simple chart data optimization
     private var lastChartData: [GraphSeries] = []
-
-    // Flag to prevent multiple recalculations immediately after scroll
-    private var isRecalculating = false
 
     // Store scroll position during scroll, update state only at end
     private var latestScrollPosition: Date?
 
     // Store last Y-axis scale for fallback when no data
     private var lastYAxisScale: YAxisScale?
+
+    // Add caching for x-axis values during scroll
+    private var lastXAxisValues: [Date] = []
+    private var lastXAxisScrollPosition: Date?
+    private var lastXAxisPeriod: TimePeriod?
 
     // MARK: - Initialization
     init(initialState: GraphState = GraphState()) {
@@ -41,7 +47,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func updateScrollPosition(to date: Date) async {
         // Only update position if we're not actively scrolling or recalculating
         // This prevents overriding user scroll gestures
-        guard !state.isScrolling && !isRecalculating else {
+        guard !state.isScrolling else {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Ignoring position update during scroll/recalculation: \(date)")
             return
         }
@@ -58,8 +64,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // During scroll: only store the position, don't update the state
             latestScrollPosition = newPosition
         } else {
-            // Not scrolling: update the position immediately
-            state.xScrollPosition = newPosition
+
             latestScrollPosition = nil
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position immediately: \(newPosition)")
         }
@@ -112,6 +117,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
             // Clear selection state for better UX
             state.clearSelection()
+             if let finalPosition = self.latestScrollPosition {
+                    self.state.xScrollPosition = finalPosition
+                    self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position at end: \(finalPosition)")
+                    self.latestScrollPosition = nil
+            }
+            state.updateScrollState(isScrolling: false)
+
+
 
         case .tracking:
             // User is touching but hasn't started scrolling yet
@@ -126,11 +139,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         case .decelerating:
             // User stopped scrolling, chart is decelerating to final position - do NOT compute domain yet
-            state.isScrolling = true
+            state.updateScrollState(isScrolling: true)
 
         case .animating:
             // System is animating to a final target (programmatic scroll) - do NOT compute domain yet
-            state.isScrolling = true
+            state.updateScrollState(isScrolling: true)
 
         @unknown default:
             // Handle any future cases
@@ -139,8 +152,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func handleScrollEnd() async {
-
-
         // Cancel any existing timer
         state.scrollEndTimer?.invalidate()
 
@@ -157,8 +168,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 // Update scrolling state
                 self.state.updateScrollState(isScrolling: false)
 
-                // Trigger domain recalculation now that scrolling has ended
-                await self.triggerDomainRecalculation(reason: "scroll end")
+
             }
         }
     }
@@ -171,8 +181,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         // During scrolling or recalculation, return last calculated chart data to avoid expensive recalculation
-        if (state.isScrolling || isRecalculating) && !lastChartData.isEmpty {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached chart data: \(lastChartData.count) points")
+        if (state.isScrolling) && !lastChartData.isEmpty {
             return lastChartData
         }
 
@@ -243,34 +252,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.selectedPeriod = period
         state.clearSelection()
 
-        // Trigger domain recalculation for new segment load
-        await triggerDomainRecalculation(reason: "segment load - period: \(period.rawValue)")
-
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
 
-    // MARK: - Domain Recalculation
-    /// Triggers visible operations and Y-axis domain recalculation
-    /// Should only be called on scroll end or segment load for performance
-    func triggerDomainRecalculation(reason: String) async {
-        // Set recalculation flag to prevent multiple calculations
-        isRecalculating = true
 
-        // Clear last calculated results to force fresh calculation
-        lastCalculatedVisibleOps = []
-        lastChartData = []
-
-        // Increment data change trigger to force chart refresh
-        state.dataChangeTrigger += 1
-
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Domain recalculation triggered - \(reason)")
-
-        // Clear recalculation flag after a delay to allow one fresh calculation and prevent multiple calls
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.isRecalculating = false
-            self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Recalculation period ended")
-        }
-    }
 
     // MARK: - Y-Axis Calculations
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
@@ -282,7 +267,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             anchorWeight: anchorWeight,
             convertStoredWeightToDisplay: convertWeight,
             chartHeight: chartHeight,
-            minTickSpacing: DashboardConstants.UI.minimumTickSpacing,
             lastScale: lastYAxisScale
         )
 
@@ -309,7 +293,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.cachedYAxisDomain = yAxisScale.domain
         state.cachedYAxisTicks = yAxisScale.ticks
 
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cached Y-axis domain: \(yAxisScale.domain) and ticks: \(yAxisScale.ticks)")
     }
 
     // MARK: - Scroll Boundaries with Centering
@@ -370,21 +353,32 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // MARK: - Visible Operations with Simple Optimization
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
-        // During active scrolling or recalculation, return last calculated results to avoid expensive recalculation
-        if (state.isScrolling || isRecalculating) && !lastCalculatedVisibleOps.isEmpty {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached visible operations: \(lastCalculatedVisibleOps.count) out of \(operations.count)")
+        // During active scrolling, return cached results
+        if state.isScrolling && !lastCalculatedVisibleOps.isEmpty {
             return lastCalculatedVisibleOps
         }
 
-        print("domain state.xScrollPosition: \(state.xScrollPosition)")
-        print("domain state.selectedPeriod: \(state.selectedPeriod)")
+        // Check if we can use cached results (position and period haven't changed significantly)
+        if !lastCalculatedVisibleOps.isEmpty,
+           let lastPosition = lastVisibleOpsScrollPosition,
+           let lastPeriod = lastVisibleOpsPeriod,
+           lastPeriod == state.selectedPeriod {
+
+            let domainLength = visibleDomainLength(for: state.selectedPeriod)
+            let positionChange = abs(state.xScrollPosition.timeIntervalSince(lastPosition))
+
+            // Only recalculate if position changed significantly (more than 1/10 domain)
+            if positionChange < domainLength / 10 {
+                return lastCalculatedVisibleOps
+            }
+        }
 
         // Calculate visible operations based on bounded position
         let allDates = operations.map { $0.date }
         let minDate = allDates.min() ?? Date()
         let maxDate = allDates.max() ?? Date()
 
-        let calculatedStart = state.xScrollPosition.addingTimeInterval(-visibleDomainLength(for: state.selectedPeriod) / 2)
+        let calculatedStart = state.xScrollPosition.addingTimeInterval(-visibleDomainLength(for: state.selectedPeriod) / 4)
         let calculatedEnd = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
 
         let visibleStart = max(calculatedStart, minDate)
@@ -394,8 +388,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return summary.date >= visibleStart && summary.date <= visibleEnd
         }
 
-        // Store results for next call
+        // Store results and position for next call
         lastCalculatedVisibleOps = visibleOps
+        lastVisibleOpsScrollPosition = state.xScrollPosition
+        lastVisibleOpsPeriod = state.selectedPeriod
 
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Calculated visible operations with boundaries - \(visibleOps.count) out of \(operations.count) operations visible")
         return visibleOps
@@ -412,9 +408,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return
         }
 
-        // Prevent positioning during active scroll or recalculation
-        guard !state.isScrolling && !isRecalculating else {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Skipping latest entry positioning during scroll/recalculation")
+        // Prevent positioning during active scroll
+        guard !state.isScrolling else {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Skipping latest entry positioning during scroll")
             return
         }
 
@@ -661,6 +657,147 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
+    // MARK: - Visible X-Axis Generation
+    func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
+        let domainLength = visibleDomainLength(for: period)
+
+        // During active scrolling, use cached values if position hasn't changed significantly
+        if state.isScrolling {
+            if !lastXAxisValues.isEmpty,
+               let lastPosition = lastXAxisScrollPosition,
+               lastXAxisPeriod == period {
+
+                // Check if position changed significantly (more than quarter domain to refresh more frequently)
+                let positionChange = abs(scrollPosition.timeIntervalSince(lastPosition))
+
+                if positionChange < domainLength / 4 {
+                    return lastXAxisValues
+                }
+            }
+        }
+
+        let allDates = operations.map(\.date)
+        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
+
+        // Use moderate buffer to balance performance and label coverage
+        let buffer = domainLength * 2  // 2x domain buffer - enough for smooth scrolling without freezing
+
+        // Calculate visible range with moderate buffer
+        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
+        let visibleEnd = min(overallMaxDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+
+        let entryCount = operations.count
+        let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+
+        let xAxisValues: [Date]
+        switch period {
+        case .week:
+            xAxisValues = generateVisibleWeeklyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .month:
+            xAxisValues = generateVisibleMonthlyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .year:
+            xAxisValues = generateVisibleYearlyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .total:
+            xAxisValues = generateVisibleTotalXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
+        }
+
+        // Cache the results for use during scrolling
+        lastXAxisValues = xAxisValues
+        lastXAxisScrollPosition = scrollPosition
+        lastXAxisPeriod = period
+
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Generated visible x-axis values: \(xAxisValues.count) values for period \(period.rawValue)")
+        return xAxisValues
+    }
+
+    // Revert to the original visible range methods with reasonable buffer
+    private func generateVisibleWeeklyXAxis(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        var dates: [Date] = []
+
+        // Find the start of the week containing visibleStart
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: visibleStart)?.start ?? visibleStart
+
+        // Calculate weeks needed to cover the visible range with small buffer
+        let totalWeeks = Int(ceil(visibleEnd.timeIntervalSince(weekStart) / DashboardConstants.TimeInterval.week)) + 1
+
+        for weekOffset in 0..<totalWeeks {
+            if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
+                for dayOffset in 0..<7 {
+                    if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart) {
+                        if dayDate >= visibleStart && dayDate <= visibleEnd {
+                            dates.append(dayDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private func generateVisibleMonthlyXAxis(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        var dates: [Date] = []
+
+        let monthStart = calendar.dateInterval(of: .month, for: visibleStart)?.start ?? visibleStart
+        let totalMonths = Int(ceil(visibleEnd.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month)) + 1
+
+        for monthOffset in 0..<totalMonths {
+            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
+                for weekOffset in 0..<5 {
+                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
+                        if weekDate >= visibleStart && weekDate <= visibleEnd {
+                            dates.append(weekDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private func generateVisibleYearlyXAxis(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        var dates: [Date] = []
+
+        let yearStart = calendar.dateInterval(of: .year, for: visibleStart)?.start ?? visibleStart
+        let totalYears = Int(ceil(visibleEnd.timeIntervalSince(yearStart) / DashboardConstants.TimeInterval.year)) + 1
+
+        for yearOffset in 0..<totalYears {
+            if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
+                for monthOffset in 0..<12 {
+                    if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentYearStart) {
+                        if monthDate >= visibleStart && monthDate <= visibleEnd {
+                            dates.append(monthDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private func generateVisibleTotalXAxis(visibleStart: Date, visibleEnd: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool) -> [Date] {
+        if areEntriesInSameEra(operations) {
+            return generateVisibleYearlyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        } else {
+            var dates: [Date] = []
+
+            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: visibleStart)) ?? visibleStart
+            let totalQuarters = Int(ceil(visibleEnd.timeIntervalSince(quarterStart) / DashboardConstants.TimeInterval.quarter)) + 1
+
+            for quarterOffset in 0..<totalQuarters {
+                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
+                    if quarterDate >= visibleStart && quarterDate <= visibleEnd {
+                        dates.append(quarterDate)
+                    }
+                }
+            }
+
+            return dates
+        }
+    }
+
     // MARK: - Snapping
     private func snapToNearestPosition() async {
         // This method would calculate optimal snap positions based on the current period
@@ -668,8 +805,36 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Snapping to nearest position")
     }
 
+    // Add these buffer calculation methods for stride-based x-axis
+
+    func pastBufferFor(period: TimePeriod) -> TimeInterval {
+        switch period {
+        case .week:
+            return DashboardConstants.TimeInterval.day * 1
+        case .month:
+            return DashboardConstants.TimeInterval.week * 1
+        case .year:
+            return DashboardConstants.TimeInterval.month * 1
+        case .total:
+            return DashboardConstants.TimeInterval.month * 2
+        }
+    }
+
+    func centeringBufferFor(period: TimePeriod) -> TimeInterval {
+        switch period {
+        case .week:
+            return DashboardConstants.TimeInterval.day * 3.5
+        case .month:
+            return DashboardConstants.TimeInterval.week * 2
+        case .year:
+            return DashboardConstants.TimeInterval.month * 2
+        case .total:
+            return DashboardConstants.TimeInterval.month * 3
+        }
+    }
+
     // MARK: - Date Formatting Methods (moved from DashboardStore)
-    
+
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
         let formatter = DateFormatter()
         switch period {
@@ -724,7 +889,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     // MARK: - Weight Calculation Methods (moved from DashboardStore)
-    
+
     func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary], anchorWeight: Double?, period: TimePeriod, convertWeight: @escaping (Int) -> Double) -> Double? {
         guard let anchorWeight = anchorWeight else { return nil }
         let allOps = operations
@@ -760,7 +925,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     // MARK: - Scroll Handling Methods (moved from DashboardStore)
-    
+
     func handleScrollPositionChange(_ newPosition: Date?, isScrolling: Bool, updateWeightDisplay: @escaping () -> Void) {
         guard let newPosition = newPosition else { return }
 
@@ -832,3 +997,4 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 }
+

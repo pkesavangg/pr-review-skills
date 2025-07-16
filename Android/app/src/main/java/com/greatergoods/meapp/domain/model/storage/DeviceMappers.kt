@@ -60,12 +60,12 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
     preferences = null, // Add mapping if needed
   )
 
-fun Device.toDeviceDetails(): DeviceDetails =
+fun Device.toDeviceDetails(accountId: String): DeviceDetails =
   DeviceDetails(
     device =
       DeviceEntity(
         id = id,
-        accountId = "", // Not present in GGDevice, set as needed
+        accountId = accountId, // Not present in GGDevice, set as needed
         peripheralIdentifier = device?.identifier,
         nickname = device?.deviceName, // No nickname in GGDevice, use deviceName
         sku = null, // Not present in GGDevice

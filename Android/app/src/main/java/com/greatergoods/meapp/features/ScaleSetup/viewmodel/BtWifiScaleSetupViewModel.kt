@@ -3,13 +3,16 @@ package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.ggbluetoothsdk.external.enums.GGWifiState
+import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
@@ -22,7 +25,9 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupReducer
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
+import com.greatergoods.meapp.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleUsers.strings.ScaleUsersStrings
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.DialogType
@@ -50,9 +55,10 @@ constructor(
   private val deviceService: IDeviceService,
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
+  override val connectivityObserver: IConnectivityObserver,
   private val accountService: IAccountService
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
-  ggDeviceService, permissionService,
+  ggDeviceService, connectivityObserver, permissionService,
   reducer = BtWifiScaleSetupReducer(),
 ) {
   @AssistedFactory
@@ -81,6 +87,9 @@ constructor(
 
       BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
       BtWifiScaleSetupIntent.OpenAccucheckModal -> openAccucheckModel()
+      is BtWifiScaleSetupIntent.DeleteUser -> deleteUser(intent.user)
+      BtWifiScaleSetupIntent.ShowSetupWifiLaterAlert -> showSetupWifiLaterAlert()
+      BtWifiScaleSetupIntent.RestoreAccount -> restoreAccount()
       else -> {}
     }
     super.handleIntent(intent)
@@ -260,9 +269,7 @@ constructor(
     when (currentState.currentStep) {
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         // Skip to CUSTOMIZE_SETTINGS
-        ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {
-        }
-        handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+        showSetupWifiLaterAlert()
       }
 
       else -> {
@@ -326,6 +333,14 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HelpPopup,
+        params =
+          mapOf(
+            "showGuide" to true,
+            "onGuideClick" to {
+              openProductGuide()
+              dialogQueueService.dismissCurrent()
+            },
+          ),
       ),
     )
   }
@@ -765,5 +780,64 @@ constructor(
         AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
       }
     }
+  }
+
+  private fun deleteUser(user: GGBTUser) {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = ScaleUsersStrings.DeleteUserAlert.Title,
+        message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
+        confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
+        cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
+        onConfirm = {
+          // Delete user and update the list
+          state.value.usernameForm.username.reset()
+        },
+      ),
+    )
+  }
+
+  private fun showSetupWifiLaterAlert() {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = BtWifiScaleSetupStrings.SetupWifiLaterAlert.Title,
+        message = BtWifiScaleSetupStrings.SetupWifiLaterAlert.Message,
+        confirmText = BtWifiScaleSetupStrings.SetupWifiLaterAlert.Skip,
+        cancelText = BtWifiScaleSetupStrings.SetupWifiLaterAlert.GoBack,
+        onConfirm = {
+          // Skip wifi setup
+          if (state.value.currentStep == BtWifiSetupStep.GATHERING_NETWORK) {
+            BtWifiScaleSetupIntent.SetStepConnectionState(
+              BtWifiSetupStep.GATHERING_NETWORK,
+              ConnectionState.Loading,
+            )
+          }
+          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {
+          }
+          handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+        },
+      ),
+    )
+  }
+
+  private fun restoreAccount() {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = BtWifiScaleSetupStrings.RestoreAccountAlert.Title,
+        message = BtWifiScaleSetupStrings.RestoreAccountAlert.Message,
+        confirmText = BtWifiScaleSetupStrings.RestoreAccountAlert.Restore,
+        cancelText = BtWifiScaleSetupStrings.RestoreAccountAlert.Back,
+        onConfirm = {
+          // Restore and replace account
+
+        },
+      ),
+    )
+  }
+
+  private fun openProductGuide() {
+    val sku = state.value.sku
+    val url = "${AppConfig.PRODUCT_URL}/$sku"
+    openInAppBrowser(url)
   }
 }
