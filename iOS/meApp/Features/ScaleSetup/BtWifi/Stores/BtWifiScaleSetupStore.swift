@@ -110,6 +110,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Tracks if any changes were made in customize settings
     @Published var hasCustomizeChanges: Bool = false
     
+    /// Scale mode selection (All Body Metrics or Weight Only)
+    @Published var selectedScaleMode: ScaleModes = .allBodyMetrics
+    
+    /// Heart rate measurement setting
+    @Published var isHeartRateEnabled: Bool = true
+    
     // MARK: - Forms
     @Published var userNameForm = UserNameForm()
     @Published var networkForm = NetworkForm()
@@ -236,22 +242,34 @@ final class BtWifiScaleSetupStore: ObservableObject {
             case .customizeSettings:
                 return AnyView(CustomizeSettingsView())
             case .viewSettings:
-                return AnyView(
-                    Group {
-                        switch currentCustomizeSetting {
-                        case .scaleUsername:
-                            DuplicateUserView(isFromCustomizeSettings: true)
-                        default:
-                            // For now, other settings show placeholder
-                            VStack {
-                                Text("Settings View: \(currentCustomizeSetting.rawValue)")
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
+                switch currentCustomizeSetting {
+                case .scaleUsername:
+                    return AnyView(DuplicateUserView(isFromCustomizeSettings: true))
+                case .scaleMode:
+                    return AnyView(
+                        ScaleModesSelectionView(
+                            selectedMode: selectedScaleMode,
+                            isHeartRateEnabled: isHeartRateEnabled,
+                            isR4ScaleSetup: true,
+                            onBIAButtonTap: { [weak self] in
+                                self?.showBIAModal()
+                            },
+                            onValueChanged: { [weak self] scaleMode, heartRateEnabled in
+                                self?.handleScaleModeChange(scaleMode, heartRateEnabled: heartRateEnabled)
                             }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        )
+                    )
+                default:
+                    // For now, other settings show placeholder
+                    return AnyView(
+                        VStack {
+                            Text("Settings View: \(currentCustomizeSetting.rawValue)")
+                                .font(.body)
+                                .foregroundColor(.secondary)
                         }
-                    }
-                )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    )
+                }
             case .updateSettings:
                 return AnyView(
                     Group {
@@ -591,6 +609,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 ScaleUser(name: deviceUser.name, token: deviceUser.token)
             }
             userNameForm.updateUserList(scaleUsers)
+        case .scaleMode:
+            // Pre-populate scale mode settings from saved scale preferences
+            if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
+                selectedScaleMode = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
+                isHeartRateEnabled = preference.shouldMeasurePulse
+            }
         default:
             break
         }
@@ -609,6 +633,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
             if let savedScale = savedScale {
                 savedScale.r4ScalePreference?.displayName = userNameForm.displayName.value
             }
+            
+            // Mark that changes were made
+            hasCustomizeChanges = true
+            
+            // Reset current customize setting and navigate back
+            currentCustomizeSetting = .none
+            navigateToStep(.customizeSettings)
+        case .scaleMode:
+            // Update the scale preference with the new scale mode settings
+            if let savedScale = savedScale {
+                savedScale.r4ScalePreference?.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
+                savedScale.r4ScalePreference?.shouldMeasurePulse = isHeartRateEnabled
+            }
+            
+            // Mark that changes were made
+            hasCustomizeChanges = true
             
             // Reset current customize setting and navigate back
             currentCustomizeSetting = .none
@@ -630,6 +670,23 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // The changes flag should only be set when actually saving changes
         
         // Navigation back to customize settings will be handled by moveToPreviousStep()
+    }
+    
+    /// Handles scale mode and heart rate changes
+    func handleScaleModeChange(_ scaleMode: ScaleModes, heartRateEnabled: Bool) {
+        selectedScaleMode = scaleMode
+        isHeartRateEnabled = heartRateEnabled
+        
+        // Update the next button state
+        updateNextEnabled()
+    }
+    
+    /// Shows the BIA (Bioelectrical Impedance Analysis) information modal
+    func showBIAModal() {
+        // Implementation for showing BIA modal
+        // This would typically show information about bioelectrical impedance analysis
+        // For now, we'll use a placeholder implementation
+        LoggerService.shared.log(level: .info, tag: tag, message: "BIA modal should be shown")
     }
     
     /// Handles the next button click from the customize settings screen

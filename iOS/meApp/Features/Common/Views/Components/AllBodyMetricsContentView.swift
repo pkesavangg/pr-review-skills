@@ -1,26 +1,26 @@
 //
-//  AllBodyMetricsView.swift
+//  AllBodyMetricsContentView.swift
 //  meApp
 //
-//  Created by Lakshmi Priya on 26/06/25.
+//  Created by Kesavan Panchabakesan on 16/07/25.
 //
-
 import SwiftUI
 
-struct AllBodyMetricsView: View {
+/// Extracted content view for All Body Metrics
+struct AllBodyMetricsContentView: View {
     @Environment(\.appTheme) private var theme
-    @State private var isHeartRateOn: Bool = true
-    let lang = ScaleModesStrings.self
-    let commonLang = CommonStrings.self
+    @Binding var isHeartRateOn: Bool
+    let onHeartRateChanged: (Bool) -> Void
+    
+    private let lang = ScaleModesStrings.self
+    private let commonLang = CommonStrings.self
     
     var body: some View {
-
         let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
         
-        VStack() {
-            VStack(spacing:0){
+        VStack {
+            VStack(spacing: 0) {
                 HStack(alignment: .center, spacing: .spacingXS) {
-                    
                     StatusRowView(
                         iconName: AppAssets.heartIcon,
                         label: commonLang.heartRateLabel,
@@ -32,7 +32,9 @@ struct AllBodyMetricsView: View {
                     Spacer()
                     
                     CustomToggleView(isOn: $isHeartRateOn)
-                    
+                        .onChange(of: isHeartRateOn) { oldValue, newValue in
+                            onHeartRateChanged(newValue)
+                        }
                 }
                 
                 Text(lang.heartRateInfoDescription)
@@ -45,9 +47,7 @@ struct AllBodyMetricsView: View {
             NoteBox {
                 AttributedTextView(title: lang.noteTitle.uppercased(), content: lang.medicalNoteDescription)
             }
-            
         }
         .background(theme.backgroundSecondary)
-        
     }
 }
