@@ -8,6 +8,9 @@ import com.greatergoods.meapp.features.addScale.screens.ModelNumberHelpDialog
 import com.greatergoods.meapp.features.common.components.DialogType.HelpPopup
 import com.greatergoods.meapp.features.common.viewmodel.DialogQueueViewModel
 import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordResetModal
+import com.greatergoods.meapp.features.integration.components.AddHealthConnect
+import com.greatergoods.meapp.features.integration.components.MultipleDeviceConnectionScreen
+import com.greatergoods.meapp.features.integration.components.OutOfSyncScreen
 import com.greatergoods.meapp.features.settings.components.AccountSwitchInfoModal
 
 enum class DialogType {
@@ -18,7 +21,10 @@ enum class DialogType {
   AccountSwitchInfoPopup,
   ModelNumberHelp,
   BiaModal,
-  AccucheckModal
+  AccucheckModal,
+  OutOfSyncModal,
+  MultipleDeviceConnection,
+  FinishConnect
 }
 
 @Composable
@@ -137,6 +143,40 @@ fun DialogHost() {
             dialog.onDismiss?.let { it() }
             dialogQueueViewModel.dismissCurrent()
           },
+        )
+      }
+
+      DialogType.OutOfSyncModal -> {
+        OutOfSyncScreen(
+          onPrimaryAction = {
+            dialog.onConfirm?.invoke(Unit)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onSecondaryAction = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onClose = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          }
+        )
+      }
+      DialogType.MultipleDeviceConnection -> {
+        MultipleDeviceConnectionScreen(
+          onPrimaryAction = {
+            dialog.onConfirm?.invoke(Unit)
+            dialogQueueViewModel.dismissCurrent()
+          }
+        )
+      }
+      DialogType.FinishConnect -> {
+        AddHealthConnect (
+          onClose = { dialogQueueViewModel.dismissCurrent() },
+          onPrimaryAction = {
+            dialog.onConfirm?.invoke(Unit)
+            dialogQueueViewModel.dismissCurrent()
+          }
         )
       }
     }

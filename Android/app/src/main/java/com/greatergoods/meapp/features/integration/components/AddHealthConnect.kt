@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppIcon
@@ -22,6 +21,7 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.BaseModal
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
+import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.integration.strings.HealthConnectStrings
 import com.greatergoods.meapp.resources.AppIcons
@@ -30,18 +30,18 @@ import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 
 /**
- * A composable that displays the out of sync screen for Health Connect integration.
- *
- * @param onPrimaryAction Callback when the primary button is clicked
- * @param onSecondaryAction Callback when the secondary button is clicked
- * @param modifier The modifier to be applied to the composable
- */
+* A composable that displays the add health connect popup for Health Connect integration.
+*
+* @param onPrimaryAction Callback when the finish button is clicked
+* @param modifier The modifier to be applied to the composable
+*/
 @Composable
-fun OutOfSyncScreen(
+fun AddHealthConnect(
+  modifier: Modifier = Modifier,
+  secondaryActionLabel: String? = null,
   onClose: () -> Unit,
-    onPrimaryAction: () -> Unit,
-    onSecondaryAction: () -> Unit,
-    modifier: Modifier = Modifier
+  onPrimaryAction: () -> Unit,
+  onSecondaryAction: (() -> Unit)? = null
 ) {
   BaseModal {
     Box {
@@ -59,7 +59,7 @@ fun OutOfSyncScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
         Image(
-          painter = painterResource(id = AppIcons.Integrations.Health_Connect_Off),
+          painter = painterResource(id = AppIcons.Integrations.Health_Connect_Logo),
           contentDescription = null,
           modifier = Modifier
             .width(190.dp)
@@ -68,13 +68,13 @@ fun OutOfSyncScreen(
         )
         Spacer(Modifier.padding(top = MeTheme.spacing.lg))
         AppText(
-          text = HealthConnectStrings.PopupStrings.outOfSyncTitle,
+          text = HealthConnectStrings.AddHealthConnectStrings.Title,
           textType = TextType.Title,
           textAlign = TextAlign.Center,
         )
         Spacer(Modifier.padding(top = MeTheme.spacing.sm))
         AppText(
-          text = HealthConnectStrings.PopupStrings.outOfSyncDescription,
+          text = HealthConnectStrings.AddHealthConnectStrings.Description,
           textType = TextType.Subtitle,
           textAlign = TextAlign.Center,
         )
@@ -85,32 +85,35 @@ fun OutOfSyncScreen(
         )
         AppButton(
           type = ButtonType.PrimaryFilled,
-          label = HealthConnectStrings.ActionButtons.openHealthConnect,
+          label = HealthConnectStrings.ActionButtons.connect,
           size = ButtonSize.Large,
           onClick = onPrimaryAction,
         )
+        if(onSecondaryAction !== null && secondaryActionLabel !== null){
           AppButton(
             type = ButtonType.TextPrimary,
-            label = HealthConnectStrings.ActionButtons.removeIntegration,
+            label = secondaryActionLabel,
             size = ButtonSize.Large,
             onClick = { onSecondaryAction.invoke() },
             modifier = Modifier.padding(top = MeTheme.spacing.sm),
           )
+        }
       }
     }
   }
 }
 
-@Preview(showBackground = true)
+@PreviewTheme
 @Composable
-private fun OutOfSyncScreenPreview() {
-    MeAppTheme {
-        Surface {
-            OutOfSyncScreen(
-                onPrimaryAction = {},
-                onSecondaryAction = {},
-                onClose = {}
-            )
-        }
+private fun AddHealthConnectPreview() {
+  MeAppTheme {
+    Surface {
+      AddHealthConnect(
+        onClose = {},
+        onPrimaryAction = {},
+        secondaryActionLabel = "hello",
+        onSecondaryAction = {}
+      )
     }
+  }
 }
