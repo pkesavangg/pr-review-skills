@@ -2,6 +2,8 @@ package com.greatergoods.meapp.features.scaleMode.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -13,6 +15,7 @@ import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.ScaleModeSettings.screens.ScaleModeSettingsScreen
 import com.greatergoods.meapp.features.common.components.AppIconButton
+import com.greatergoods.meapp.features.common.components.AppNote
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -74,15 +77,30 @@ fun ScaleModeScreenContent(
       }
     },
   ) {
-    ScaleModeSettingsScreen(
-      isAllBodyMetrics = isAllBodyMetrics,
-      isHeartRateOn = state.isHeartRateOn,
-      onModeSelected = { isAllBodyMetrics ->
-        handleIntent(ScaleModeIntent.SetMode(isAllBodyMetrics, true))
-      },
-      onHeartRateToggle = { isHeartRateOn -> handleIntent(ScaleModeIntent.SetHeartRate(isHeartRateOn, true)) },
-      onBioimpedanceClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
-    )
+    Column(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .padding(vertical = spacing.md, horizontal = spacing.sm),
+    ) {
+      if (state.scale?.isWeighOnlyModeEnabledByOthers == true && isAllBodyMetrics) {
+        AppNote(
+          title = ScaleModeStrings.WeightOnlyModeNotes.Title,
+          message = ScaleModeStrings.WeightOnlyModeNotes.Message,
+          icon = AppIcons.Default.WeightOnlyMode
+        )
+      }
+      ScaleModeSettingsScreen(
+        isAllBodyMetrics = isAllBodyMetrics,
+        isHeartRateOn = state.isHeartRateOn,
+        onModeSelected = { isAllBodyMetrics ->
+          handleIntent(ScaleModeIntent.SetMode(isAllBodyMetrics, true))
+        },
+        onHeartRateToggle = { isHeartRateOn -> handleIntent(ScaleModeIntent.SetHeartRate(isHeartRateOn, true)) },
+        onBioimpedanceClick = { handleIntent(ScaleModeIntent.OpenBiaModal) },
+      )
+    }
+
   }
 }
 

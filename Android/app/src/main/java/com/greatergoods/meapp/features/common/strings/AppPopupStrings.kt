@@ -59,4 +59,8 @@ object AppPopupStrings {
     const val Leave = "Leave"
     const val Cancel = "Cancel"
   }
+
+  object ScaleDiscoveredPopup {
+    const val Title = "New Scale Discovered"
+  }
 }
