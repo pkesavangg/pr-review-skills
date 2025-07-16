@@ -123,29 +123,8 @@ struct GraphView: View {
             .animation(.easeInOut(duration: 0.5), value: dashboardStore.yAxisDomain)
             .animation(.easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
             .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationTrigger)
-            // Simplified scroll detection - only detect when scrolling starts/ends
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 3)
-                    .onChanged { value in
-                        let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                        let isSignificantMovement = abs(value.translation.width) > 8
-
-                        if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
-                            hasDetectedScrollInCurrentGesture = true
-                            dashboardStore.handleScrollStart()
-                        }
-                    }
-                    .onEnded { value in
-                        hasDetectedScrollInCurrentGesture = false
-
-                        let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                        let isSignificantMovement = abs(value.translation.width) > 8
-
-                        if isHorizontalScroll && isSignificantMovement {
-                            dashboardStore.handleScrollEndOptimized()
-                        }
-                    }
-            )
+            // Use iOS 18+ scroll phase change when available, fallback to drag gesture for older iOS
+            .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture))
         }
         // Single chart refresh trigger for better performance
         .id("\(dashboardStore.state.graph.selectedPeriod.rawValue)-\(dashboardStore.currentUnit.rawValue)-\(dashboardStore.state.graph.dataChangeTrigger)")
@@ -278,6 +257,50 @@ struct GraphView: View {
                 }
             )
             .zIndex(100)
+    }
+}
+
+// MARK: - Scroll Detection Modifier
+
+/// ViewModifier that handles scroll detection using iOS 18+ onScrollPhaseChange when available,
+/// with fallback to simultaneousGesture for older iOS versions
+struct ScrollDetectionModifier: ViewModifier {
+    let dashboardStore: DashboardStore
+    @Binding var hasDetectedScrollInCurrentGesture: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content
+                .onScrollPhaseChange { oldPhase, newPhase in
+                    Task { @MainActor in
+                        await dashboardStore.handleScrollPhaseChange(to: newPhase)
+                    }
+                }
+        } else {
+            content
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 3)
+                        .onChanged { value in
+                            let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                            let isSignificantMovement = abs(value.translation.width) > 8
+
+                            if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
+                                hasDetectedScrollInCurrentGesture = true
+                                dashboardStore.handleScrollStart()
+                            }
+                        }
+                        .onEnded { value in
+                            hasDetectedScrollInCurrentGesture = false
+
+                            let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                            let isSignificantMovement = abs(value.translation.width) > 8
+
+                            if isHorizontalScroll && isSignificantMovement {
+                                dashboardStore.handleScrollEndOptimized()
+                            }
+                        }
+                )
+        }
     }
 }
 
