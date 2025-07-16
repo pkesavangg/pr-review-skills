@@ -96,7 +96,7 @@ constructor(
     private fun syncScales() {
         viewModelScope.launch {
             deviceService.getScales()
-                .map { devices -> devices.map { device -> device.device?.broadcastId } }
+                .map { devices -> devices.map { device -> device.device?.macAddress } }
                 .distinctUntilChanged().collect {
                     val ggBTDevices = deviceService.savedScales.first().map { it.toGGBTDevice() }
                     ggDeviceService.syncDevices(ggBTDevices)

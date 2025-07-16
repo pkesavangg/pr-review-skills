@@ -6,6 +6,8 @@ import com.dmdbrands.library.ggbluetooth.model.GGDevicePreference
 import com.greatergoods.meapp.data.storage.db.entity.device.DeviceDetails
 import com.greatergoods.meapp.data.storage.db.entity.device.DeviceEntity
 import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
+import com.greatergoods.meapp.domain.model.api.device.convertHexToInt
+import com.greatergoods.meapp.domain.model.api.device.convertIntToHex
 import kotlin.random.Random
 
 /**
@@ -19,8 +21,8 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       macAddress = device.mac ?: "",
       identifier = device.peripheralIdentifier ?: "",
       protocolType = device.protocolType,
-      broadcastId = device.broadcastId,
-      password = device.password,
+      broadcastId = convertIntToHex(device.broadcastId, device.deviceType),
+      password = convertIntToHex(device.password, device.deviceType),
       wifiMacAddress = device.wifiMac,
       isWifiConfigured = device.wifiMac != null,
       // Add other fields as needed
@@ -71,8 +73,8 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       macAddress = mac ?: "",
       identifier = peripheralIdentifier ?: "",
       protocolType = protocolType,
-      broadcastId = broadcastId,
-      password = password,
+      broadcastId = convertIntToHex(broadcastId, deviceType),
+      password = convertIntToHex(password, deviceType),
       wifiMacAddress = wifiMac,
       isWifiConfigured = wifiMac != null,
     ),
@@ -95,11 +97,11 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         nickname = device?.deviceName, // No nickname in GGDevice, use deviceName
         sku = null, // Not present in GGDevice
         mac = device?.macAddress,
-        password = device?.password,
+        password = convertHexToInt(device?.password),
         isDeleted = false, // Not present in GGDevice
         deviceName = device?.deviceName,
-        deviceType = device?.protocolType, // No deviceType in GGDevice, use protocolType
-        broadcastId = device?.broadcastId,
+        deviceType = deviceType, // No deviceType in GGDevice, use protocolType
+        broadcastId = convertHexToInt(device?.broadcastId),
         userNumber = userNumber?.toString(),
         protocolType = device?.protocolType,
         createdAt = createdAt, // Not present in GGDevice

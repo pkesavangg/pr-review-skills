@@ -109,7 +109,7 @@ constructor(
     val response = deviceApi.getPairedScales()
     if (response.isSuccessful) {
       val apiModels = response.body() ?: emptyList<DeviceApiModel>()
-      return apiModels.toDomainModels(accountId)
+      return apiModels.toDomainModels()
     } else {
       throw Exception("API call failed with code: ${response.code()}")
     }
@@ -122,7 +122,7 @@ constructor(
     val response = deviceApi.saveScale(device.toApiModel())
     if (response.isSuccessful) {
       val apiModel = response.body()
-      return apiModel?.toDomainModel(accountId) ?: device
+      return apiModel?.toDomainModel() ?: device
     } else {
       throw Exception("Failed to save device to API: ${response.code()}")
     }
