@@ -193,9 +193,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 )
             case .availableWifiList:
                 switch scaleSetupError {
-                case .noNetworkFound:
+                case .noNetworkFound, .wifiConnectionFailed:
                     return AnyView(WifiConnectionView(
-                        state: .noNetworks,
+                        state: scaleSetupError == .noNetworkFound ? .noNetworks : .failure,
                         onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
@@ -916,13 +916,32 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Handles permission changes during the setup flow
     private func handlePermissionChange() {
-        let showError = !hasAllBtPermissions()
-        if showError {
-            if currentStep == .wakeup {
-                // Reset discovery state and navigate back to permissions screen
-                resetDiscoveryState()
-                navigateToStep(.permissions)
-            }
+        let missingPermissions = !hasAllBtPermissions()
+        let noNetwork = !networkMonitor.isConnected
+
+        if noNetwork && currentStep == .wakeup {
+            resetDiscoveryState()
+            navigateToStep(.permissions)
+            return
+        }
+
+        guard missingPermissions else { return }
+
+        switch currentStep {
+        case .wakeup:
+            resetDiscoveryState()
+            navigateToStep(.permissions)
+
+        case .gatheringNetwork:
+            scaleSetupError = .wifiConnectionFailed
+            navigateToStep(.availableWifiList)
+
+        case .stepOn where scaleSetupError != .updateSettingsFailed:
+            scaleSetupError = .collectMeasurementFailed
+            moveToNextStep()
+
+        default:
+            break
         }
     }
     
