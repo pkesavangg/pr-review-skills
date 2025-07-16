@@ -701,7 +701,7 @@ struct AppAssets {
     // MARK: - BtWifi Setup
     static let userInfoScreen = "0412UserInfoScreen"
     static let wgLogo = "wgLogo"
-    static let stepOn = "stepOn"
+    static let stepOnGif = "stepOnGif"
     static let accuCheck = "accuCheck"
     static let accuCheckTickLarge = "accuCheckTickLarge"
 }

@@ -1,5 +1,5 @@
 //
-//  FinishStepView.swift
+//  BtWiFiFinishStepView.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 15/07/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct FinishStepView: View {
+struct BtWiFiFinishStepView: View {
     @Environment(\.appTheme) private var theme
     private let lang = BtWifiScaleSetupStrings.ScaleSetupFinishStrings.self
     let onWhatThisTapped: () -> Void
@@ -40,5 +40,5 @@ struct FinishStepView: View {
 }
 
 #Preview {
-    FinishStepView() {}
+    BtWiFiFinishStepView() {}
 }

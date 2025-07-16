@@ -302,7 +302,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 )
             case .scaleConnected:
                 return AnyView(
-                    FinishStepView() {
+                    BtWiFiFinishStepView() {
                         self.showAccuCheckInfoModal()
                     }
                 )
