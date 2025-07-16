@@ -10,6 +10,7 @@ import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.ggbluetoothsdk.external.enums.GGWifiState
+import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
@@ -329,6 +330,14 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HelpPopup,
+        params =
+          mapOf(
+            "showGuide" to true,
+            "onGuideClick" to {
+              openProductGuide()
+              dialogQueueService.dismissCurrent()
+            },
+          ),
       ),
     )
   }
@@ -783,5 +792,11 @@ constructor(
         },
       ),
     )
+  }
+
+  private fun openProductGuide() {
+    val sku = state.value.sku
+    val url = "${AppConfig.PRODUCT_URL}/$sku"
+    openInAppBrowser(url)
   }
 }
