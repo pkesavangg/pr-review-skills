@@ -132,7 +132,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         .connectingWifi,
         .stepOn,
         .measurement,
-       .updateSettings
+        .updateSettings
     ]
     
     /// Task handling time-based transitions during testing.
@@ -272,7 +272,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                 .font(.body)
                                 .foregroundColor(.secondary)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     )
                 }
             case .updateSettings:
@@ -864,7 +864,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .stepOn:
             Task {
                 if let scale = self.savedScale, let broadcastId = scale.broadcastIdString {
-                    // TODO: Uncomment when measurement live data is crash issue resolved
+                    self.scaleSetupError = .none
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self.moveToNextStep()
+                    }
+                    // TODO: Uncomment when measurement live data issue resolved
+                    /*
                     let response = await self.bluetoothService.getMeasurementLiveData(broadcastId: broadcastId)
                     switch response {
                     case .success(let measurement):
@@ -879,6 +884,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         // Handle failure to get measurement data
                         LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get measurement data: \(error.localizedDescription)")
                     }
+                    */
                 }
             }
         case .measurement:
@@ -1413,11 +1419,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 guard let timeout = self?.timeoutConstants.updateSettingsTimeout else { return }
                 
                 let timeoutNs = UInt64(timeout)
-
+                
                 try? await Task.sleep(nanoseconds: timeoutNs)
-
+                
                 guard !Task.isCancelled else { return } // ← check cancellation
-
+                
                 await MainActor.run {
                     guard let self = self else { return }
                     if self.currentStep == .updateSettings {
@@ -1433,7 +1439,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 savedScale.id,
                 updatedPreference
             )
-            await scaleService.syncAllScalesWithRemote()
             timeoutTask.cancel()
             
             switch result {
@@ -1445,7 +1450,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 hasCustomizeChanges = false
                 
                 LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
-                
+                bluetoothService.syncDevices([])
                 // Clear the selected items since they're now saved
                 selectedCustomizeItems.removeAll()
                 scaleSetupError = .none
