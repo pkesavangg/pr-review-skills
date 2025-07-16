@@ -124,16 +124,33 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
         // Update locally and mark as unsynced - sync will handle server update
         try await localRepository.patchScaleMeta(deviceId, metaData: metaData)
-        logger.log(level: .info, tag: tag, message: "Updated scale meta for device \(deviceId) locally, will sync to server")
+        
+        // Update on server immediately
+        do {
+            try await remoteRepo.patchScaleMeta(deviceId, metaData: metaData.toDTO())
+            logger.log(level: .info, tag: tag, message: "Updated scale meta for device \(deviceId) locally and on server")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update scale meta on server: \(error.localizedDescription)")
+            throw error
+        }
     }
 
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
         guard let _ = try await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)
         }
+        
         // Update locally and mark as unsynced - sync will handle server update
         try await localRepository.patchScalePreference(deviceId, preference)
-        logger.log(level: .info, tag: tag, message: "Updated scale preference for device \(deviceId) locally, will sync to server")
+        
+        // Update on server immediately
+        do {
+            try await remoteRepo.patchScalePreference(preference.toDTO())
+            logger.log(level: .info, tag: tag, message: "Updated scale preference for device \(deviceId) locally and on server")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update scale preference on server: \(error.localizedDescription)")
+            throw error
+        }
     }
 
     // MARK: - DeviceServiceProtocol Implementation
