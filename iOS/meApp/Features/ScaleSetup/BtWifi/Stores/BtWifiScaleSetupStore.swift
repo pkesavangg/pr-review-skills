@@ -23,6 +23,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Scale service for scale-related operations
     @Injector private var wifiScaleService: WifiScaleService
     
+    @Injector private var scaleService: ScaleService
+    
     let networkMonitor = NetworkMonitor.shared
     
     /// Resolved scale metadata used across the setup flow.
@@ -116,6 +118,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Heart rate measurement setting
     @Published var isHeartRateEnabled: Bool = true
     
+    /// Selected customize settings items that have been configured
+    @Published var selectedCustomizeItems: Set<String> = []
+    
     // MARK: - Forms
     @Published var userNameForm = UserNameForm()
     @Published var networkForm = NetworkForm()
@@ -127,7 +132,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         .connectingWifi,
         .stepOn,
         .measurement,
-        .updateSettings
+       .updateSettings
     ]
     
     /// Task handling time-based transitions during testing.
@@ -418,6 +423,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Reset customize settings state
         self.hasCustomizeChanges = false
         self.currentCustomizeSetting = .none
+        self.selectedCustomizeItems = []
         
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
@@ -636,6 +642,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             // Mark that changes were made
             hasCustomizeChanges = true
+            selectedCustomizeItems.insert("userName")
             
             // Reset current customize setting and navigate back
             currentCustomizeSetting = .none
@@ -649,6 +656,23 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             // Mark that changes were made
             hasCustomizeChanges = true
+            selectedCustomizeItems.insert("scaleModes")
+            
+            // Reset current customize setting and navigate back
+            currentCustomizeSetting = .none
+            navigateToStep(.customizeSettings)
+        case .scaleMetrics:
+            // Mark that scale metrics changes were made
+            hasCustomizeChanges = true
+            selectedCustomizeItems.insert("scaleMetrics")
+            
+            // Reset current customize setting and navigate back
+            currentCustomizeSetting = .none
+            navigateToStep(.customizeSettings)
+        case .dashboardMetrics:
+            // Mark that dashboard metrics changes were made
+            hasCustomizeChanges = true
+            selectedCustomizeItems.insert("dashboardMetrics")
             
             // Reset current customize setting and navigate back
             currentCustomizeSetting = .none
@@ -722,6 +746,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Update duplicateUserName with the form value
         duplicateUserName = removeWhiteSpace(userNameForm.displayName.value)
+        selectedCustomizeItems.insert("userName")
         
         // Reset to normal state and retry connection
         scaleSetupError = .none
@@ -834,18 +859,25 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Simulate updating settings and move to next step
             Task {
                 await self.updateCustomizeSettings()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    self.navigateToStep(.stepOn)
-                }
             }
             
         case .stepOn:
             Task {
                 if let scale = self.savedScale, let broadcastId = scale.broadcastIdString {
                     // TODO: Uncomment when measurement live data is crash issue resolved
-                    //_ = await self.bluetoothService.getMeasurementLiveData(broadcastId: broadcastId)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        self.moveToNextStep()
+                    let response = await self.bluetoothService.getMeasurementLiveData(broadcastId: broadcastId)
+                    switch response {
+                    case .success(let measurement):
+                        // Successfully received measurement data
+                        LoggerService.shared.log(level: .info, tag: tag, message: "Live Measurement data received: \(measurement)")
+
+                        if (measurement.weight ?? 0) > 0 {
+                            self.scaleSetupError = .none
+                            self.moveToNextStep()
+                        }
+                    case .failure(let error):
+                        // Handle failure to get measurement data
+                        LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get measurement data: \(error.localizedDescription)")
                     }
                 }
             }
@@ -857,6 +889,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             measurementTimeoutTask = Task { [weak self] in
                 guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
                 try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
                     guard let self else { return }
                     // If we're still on measurement step and have an active subscription, handle timeout
@@ -1327,21 +1360,110 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func updateCustomizeSettings() async {
         guard let savedScale = savedScale else {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - no saved scale")
+            await MainActor.run {
+                self.scaleSetupError = .updateSettingsFailed
+            }
             return
         }
         
-        // Here you would implement the actual API calls to update settings on the scale
-        // For now, just simulate the update
         do {
-            // Simulate API call delay
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            // Check which customize settings pages need to be saved
+            let saveScaleMetrics = selectedCustomizeItems.contains("scaleMetrics")
+            let saveScaleMode = selectedCustomizeItems.contains("scaleModes")
+            let saveScaleUsername = selectedCustomizeItems.contains("userName")
+            let saveDashboardMetrics = selectedCustomizeItems.contains("dashboardMetrics")
             
-            // Reset the changes flag after successful update
-            hasCustomizeChanges = false
+            // Get current preference or create default
+            let currentPreference = savedScale.r4ScalePreference ?? {
+                let defaultDTO = R4ScalePreferenceDTO(
+                    scaleId: savedScale.id,
+                    displayName: firstName ?? "User",
+                    displayMetrics: ScaleMetrics.defaultMetricsKeys,
+                    shouldFactoryReset: false,
+                    shouldMeasureImpedance: true,
+                    shouldMeasurePulse: false,
+                    timeFormat: "12",
+                    tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+                    wifiFotaScheduleTime: 0,
+                    updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
+                    isTemporary: true
+                )
+                return R4ScalePreference(from: defaultDTO)
+            }()
             
-            LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully")
+            // Build updated preference object
+            let updatedPreferenceDTO = R4ScalePreferenceDTO(
+                scaleId: savedScale.id,
+                displayName: saveScaleUsername ? (savedScale.r4ScalePreference?.displayName ?? firstName ?? "User") : currentPreference.displayName,
+                displayMetrics: saveScaleMetrics ? (savedScale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys) : currentPreference.displayMetrics,
+                shouldFactoryReset: false,
+                shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
+                shouldMeasurePulse: saveScaleMode ? isHeartRateEnabled : currentPreference.shouldMeasurePulse,
+                timeFormat: "12", // Default to 12-hour format
+                tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+                wifiFotaScheduleTime: 0,
+                updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
+                isTemporary: true
+            )
+            
+            let updatedPreference = R4ScalePreference(from: updatedPreferenceDTO)
+            
+            // Set up timeout task
+            let timeoutTask = Task { [weak self] in
+                guard let timeout = self?.timeoutConstants.updateSettingsTimeout else { return }
+                
+                let timeoutNs = UInt64(timeout)
+
+                try? await Task.sleep(nanoseconds: timeoutNs)
+
+                guard !Task.isCancelled else { return } // ← check cancellation
+
+                await MainActor.run {
+                    guard let self = self else { return }
+                    if self.currentStep == .updateSettings {
+                        self.scaleSetupError = .updateSettingsFailed
+                        LoggerService.shared.log(level: .error, tag: self.tag, message: "updateCustomizeSettings - timeout occurred")
+                    }
+                }
+            }
+
+            // Call bluetooth service to update account
+            let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
+            try await scaleService.updateScalePreference(
+                savedScale.id,
+                updatedPreference
+            )
+            await scaleService.syncAllScalesWithRemote()
+            timeoutTask.cancel()
+            
+            switch result {
+            case .success(_):
+                // Update the saved scale preference
+                savedScale.r4ScalePreference = updatedPreference
+                
+                // Reset the changes flag after successful update
+                hasCustomizeChanges = false
+                
+                LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
+                
+                // Clear the selected items since they're now saved
+                selectedCustomizeItems.removeAll()
+                scaleSetupError = .none
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    self.navigateToStep(.stepOn)
+                }
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update account: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.scaleSetupError = .updateSettingsFailed
+                }
+            }
+            
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update settings: \(error.localizedDescription)")
+            await MainActor.run {
+                self.scaleSetupError = .updateSettingsFailed
+            }
         }
     }
     
@@ -1353,6 +1475,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
         newEntrySubscription = nil
         measurementTimeoutTask?.cancel()
         measurementTimeoutTask = nil
+    }
+    
+    /// Adds a customize settings item to the selected items set
+    func addSelectedCustomizeItem(_ item: String) {
+        selectedCustomizeItems.insert(item)
+    }
+    
+    /// Checks if a customize settings item is selected
+    func isCustomizeItemSelected(_ item: String) -> Bool {
+        return selectedCustomizeItems.contains(item)
     }
     
     /// NOTE: To integrate with CustomizeSettingsView:
