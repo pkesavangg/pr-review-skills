@@ -9,7 +9,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import android.content.Context
 
-/**
+/*
  * Extension property to provide HealthConnectDataMap DataStore instance from Context.
  */
 val Context.healthConnectDataStore: DataStore<HealthConnectDataMap> by dataStore(
@@ -85,7 +85,7 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
     /**
      * Updates the integration status for an account.
      */
-    suspend fun updateIntegrationStatus(accountId: String, integrated: Boolean) {
+    suspend fun setHcIntegrationStatus(accountId: String, integrated: Boolean) {
         updateData { current ->
             current.toBuilder().putData(
                 accountId,
@@ -187,7 +187,7 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
     /**
      * Updates the granted permissions for an account.
      */
-    suspend fun updatePermissions(accountId: String, permissions: List<String>) {
+    suspend fun setPermissions(accountId: String, permissions: List<String>) {
         updateData { current ->
             current.toBuilder().putData(
                 accountId,
@@ -200,6 +200,45 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
                         .build(),
             ).build()
         }
+    }
+
+    /**
+     * Updates the integration info for an account.
+     * Converts domain IntegratedDeviceInfo to proto ProtoIntegratedDeviceInfo.
+     */
+    suspend fun setIntegrationInfo(accountId: String, integrationInfo: com.greatergoods.meapp.domain.model.integrations.IntegratedDeviceInfo?) {
+        updateData { current ->
+            val currentDataBuilder = current.dataMap[accountId]?.toBuilder()
+                ?: HealthConnectData.newBuilder()
+
+            if (integrationInfo != null) {
+                currentDataBuilder.setIntegrationInfo(integrationInfo.toProto(accountId))
+            } else {
+                currentDataBuilder.clearIntegrationInfo()
+            }
+            current.toBuilder().putData(accountId, currentDataBuilder.build()).build()
+        }
+    }
+
+    /**
+     * Extension function to convert domain IntegratedDeviceInfo to proto ProtoIntegratedDeviceInfo.
+     */
+    private fun com.greatergoods.meapp.domain.model.integrations.IntegratedDeviceInfo.toProto(accountId: String): ProtoIntegratedDeviceInfo {
+        return ProtoIntegratedDeviceInfo.newBuilder()
+            .setOperationType(
+                when (operationType) {
+                    com.greatergoods.meapp.domain.model.integrations.IntegrationOperationType.SAVE -> ProtoIntegrationOperationType.PROTO_SAVE
+                    com.greatergoods.meapp.domain.model.integrations.IntegrationOperationType.REMOVE -> ProtoIntegrationOperationType.PROTO_REMOVE
+                }
+            )
+            .setScopes(
+                ProtoIntegrationData.newBuilder()
+                    .setAccountId(accountId)
+                    .setDeviceId(scopes.deviceId)
+                    .addAllScopes(scopes.preferences?.scopes ?: emptyList())
+                    .build()
+            )
+            .build()
     }
 }
 
