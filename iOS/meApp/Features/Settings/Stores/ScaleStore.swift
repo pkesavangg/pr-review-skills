@@ -38,70 +38,169 @@ class ScaleStore: ObservableObject {
     
     // Settings/detail values for UI (replace with computed or fetched values later)
     @Published var modeValue: ScaleModes = .weightOnly
-    @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
-    @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
-    @Published var wifiValue: String = "greatergoods1" // TODO: Replace with actual Wi-Fi SSID
-    @Published var wifiMacAddressValue: String = "" // TODO: Replace with actual Wi-Fi MAC address
-    @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi" // TODO: Replace with actual scale type
+
+    // Computed property for WiFi value - shows connected WiFi SSID when available
+    var wifiValue: String {
+        guard let scale = scale else { return "" }
+        
+        // For R4 scales, try to get the connected WiFi SSID
+        if ScaleTypeHelper.determineScaleType(for: scale) == .bluetoothR4 && scale.isConnected == true {
+            // If we have a stored connected WiFi SSID, use it
+            if let connectedSSID = connectedWifiSSID, !connectedSSID.isEmpty {
+                return connectedSSID
+            }
+            
+            // For now, return empty string - this will be populated when WiFi SSID is fetched
+            return ""
+        }
+        
+        // For non-R4 scales or disconnected scales, return empty string
+        return ""
+    } 
+ 
+    @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi"
     @Published var skuValue: String = "0412" // TODO: Replace with actual SKU
-    @Published var datePairedValue: String = "12/25/2024" // TODO: Replace with actual date paired
+    
+    // Computed property for date paired - uses the scale's createdAt value
+    var datePairedValue: String {
+        guard let scale = scale, let createdAt = scale.createdAt else { return "" }
+        
+        // Use DateTimeTools to parse and format the date
+        return DateTimeTools.getFormattedDate(createdAt)
+    }
     
     // Scale Mode State Management
     @Published var originalModeValue: ScaleModes = .weightOnly
     @Published var isHeartRateEnabled: Bool = false
     @Published var originalHeartRateEnabled: Bool = false
     @Published var hasModeChanges: Bool = false
+    // Display Metrics State
+    @Published var metrics: [ScaleMetricSetting] = ScaleMetrics.bodyMetrics
+    @Published var progressMetrics: [ScaleMetricSetting] = ScaleMetrics.progressMetrics
+
+    // Banner States
+    @Published var showWeightOnlyBanner: Bool = false
+    @Published var showWeightOnlyInfo: Bool = false
+    @Published var showHeartRateBanner: Bool = false
     
     // Computed property for bluetooth connection status
     var bluetoothValue: String {
         guard let scale = scale else { return ScaleBluetoothStrings.notConnected }
         return scale.isConnected == true ? ScaleBluetoothStrings.connected : ScaleBluetoothStrings.notConnected
     }
-    
-    // Display Metrics State
-    @Published var progressMetrics: [ScaleMetricSetting] = ScaleMetrics.progressMetrics
-    
-    
-    // Banner States
-    @Published var showWeightOnlyBanner: Bool = false
-    @Published var showWeightOnlyInfo: Bool = false
-    @Published var showHeartRateBanner: Bool = false
-    
-    // Metrics State
-    @Published var metrics: [ScaleMetricSetting] = ScaleMetrics.bodyMetrics
-    
-    
-    // User Management State
-    @Published var currentUser: String = "Kristin" // TODO: Replace with actual user
-    @Published var otherUsers: [String] = Array(repeating: "User Name", count: 8) // TODO: Replace with actual user
-    
-    // MARK: - User Management Computed Properties
-    /// Converts the current user to a DeviceUser object
-    var currentDeviceUser: DeviceUser {
-        DeviceUser(
-            name: currentUser,
-            token: "current-user-token", // TODO: Replace with actual token
-            lastActive: Int(Date().timeIntervalSince1970), // Current time for active user
-            isBodyMetricsEnabled: true // TODO: Replace with actual setting
-        )
+    // Computed property for users value - shows current user's name only when connected
+    var usersValue: String {
+        guard let scale = scale, scale.isConnected == true else { return "" }
+        return currentDeviceUser?.name ?? ""
+    }
+
+    var wifiMacAddressValue: String {
+        guard let scale = scale, scale.isConnected == true else { return "" }
+        return getWifiMacAddressString()
     }
     
-    /// Converts other users to DeviceUser objects
-    var otherDeviceUsers: [DeviceUser] {
-        otherUsers.enumerated().map { index, userName in
-            DeviceUser(
-                name: userName,
-                token: "user-token-\(index)", // TODO: Replace with actual token
-                lastActive: Int(Date().timeIntervalSince1970) - (index + 1) * 86400, // Simulate different last active times
-                isBodyMetricsEnabled: true // TODO: Replace with actual setting
-            )
+    @Published var displayMetricsValue: String = ""
+    
+    // MARK: - Banner Logic Computed Properties
+    
+    /// Determines if the weight-only banner should be shown
+    /// This checks if the scale has weight-only mode enabled by another user
+    var shouldShowWeightOnlyBanner: Bool {
+        guard let scale = scale else { return false }
+        
+        // Check if scale is connected and has weight-only mode enabled by others
+        let isConnected = scale.isConnected == true
+        let hasWeightOnlyModeEnabled = isWeightOnlyModeEnabledByOthers(for: scale)
+        
+        return isConnected && hasWeightOnlyModeEnabled
+    }
+    
+    /// Determines if the setup incomplete banner should be shown
+    /// This checks if the scale is an R4 scale that's not WiFi configured
+    /// Note: This banner should not show if the scale is in weight-only mode
+    var shouldShowSetupIncompleteBanner: Bool {
+        guard let scale = scale else { return false }
+        
+        // Only show for R4 scales that are connected but not WiFi configured
+        let isR4Scale = ScaleTypeHelper.determineScaleType(for: scale) == .bluetoothR4
+        let isConnected = scale.isConnected == true
+        let isWifiConfigured = scale.isWifiConfigured == true
+        let isInWeightOnlyMode = isWeightOnlyModeEnabledByOthers(for: scale)
+        
+        // Don't show setup incomplete banner if scale is in weight-only mode
+        // because WiFi functionality isn't needed for weight-only mode
+        return isR4Scale && isConnected && !isWifiConfigured && !isInWeightOnlyMode
+    }
+    
+
+    
+    // MARK: - Banner Action Handlers
+    
+    /// Handles the weight-only banner action to enable body metrics
+    func handleWeightOnlyBannerAction() {
+        guard let scale = scale else { return }
+        
+        guard scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping weight-only mode update")
+            return
+        }
+        
+        Task {
+            do {
+                // Show loader
+                await MainActor.run {
+                    notificationService.showLoader(LoaderModel(text: "Updating mode..."))
+                }
+                
+                // Update the scale to enable body metrics via Bluetooth service
+                let result = await bluetoothService.updateWeightOnlyMode(on: scale)
+                
+                await MainActor.run {
+                    notificationService.dismissLoader()
+                    
+                    switch result {
+                    case .success:
+                        notificationService.showToast(ToastModel(
+                            title: ToastStrings.success,
+                            message: ScaleModesStrings.bodyMetricsEnabled
+                        ))
+                        // Refresh the scale data to update UI
+                        Task {
+                            await self.forceRefreshDeviceData()
+                        }
+                    case .failure(let error):
+                        logger.log(level: .error, tag: "ScaleStore", message: "Failed to update weight-only mode: \(error.localizedDescription)")
+                        notificationService.showToast(ToastModel(
+                            title: "Error",
+                            message: ScaleModesStrings.preferencesFailed
+                        ))
+                    }
+                }
+            }
         }
     }
     
-    /// All users combined as DeviceUser objects
-    var allDeviceUsers: [DeviceUser] {
-        [currentDeviceUser] + otherDeviceUsers
+    /// Callback for WiFi setup navigation - set by the view that uses this store
+    var onNavigateToWifi: (() -> Void)?
+    
+    /// Handles the setup incomplete banner action to navigate to WiFi setup
+    func handleSetupIncompleteBannerAction() {
+        logger.log(level: .info, tag: "ScaleStore", message: "Setup incomplete banner tapped - navigating to WiFi setup")
+        onNavigateToWifi?()
     }
+
+    // User Management State
+    @Published var deviceUsers: [DeviceUser] = []
+    @Published var currentDeviceUser: DeviceUser?
+    @Published var isLoadingUsers: Bool = false
+    
+    // MARK: - User Management Computed Properties
+    /// Gets the other users (excluding the current user)
+    var otherDeviceUsersList: [DeviceUser] {
+        guard let currentUser = currentDeviceUser else { return deviceUsers }
+        return deviceUsers.filter { $0.token != currentUser.token }
+    }
+    
     @Published var isWifiLoading = false
     @Published var showPassword: Bool = false
     @Published var wifiPasswordValidationForm = WifiPasswordValidationForm()
@@ -206,7 +305,16 @@ class ScaleStore: ObservableObject {
         await getDeviceInfo()
         await getConnectedWifiSSID()
         await refreshConnectionStatus()
-        await fetchWifiMacAddress()
+        
+        // Only fetch WiFi MAC address for connected R4 scales
+        if shouldFetchWifiMacAddress(for: scale) {
+            await fetchWifiMacAddress()
+        }
+        
+        // Fetch user list for R4 scales only if connected
+        if ScaleTypeHelper.determineScaleType(for: scale) == .bluetoothR4 && scale.isConnected == true {
+            await fetchUserList()
+        }
     }
     
     /// Refreshes the connection status for the current scale
@@ -243,8 +351,34 @@ class ScaleStore: ObservableObject {
             return .noStatus
         }
         
+        // For R4 scales, check if setup is incomplete
+        if scaleType == .bluetoothR4 && scale.isConnected == true {
+            let isWifiConfigured = scale.isWifiConfigured == true
+            let isInWeightOnlyMode = isWeightOnlyModeEnabledByOthers(for: scale)
+            
+            // If R4 scale is connected but not WiFi configured and not in weight-only mode,
+            // show setup incomplete status
+            if !isWifiConfigured && !isInWeightOnlyMode {
+                return .setupIncomplete
+            }
+        }
+        
         // For other scale types, show connection status based on isConnected
         return scale.isConnected == true ? .connected : .notConnected
+    }
+    
+    /// Determines if weight-only mode is enabled by another user for a specific scale
+    /// This checks the R4ScalePreference to determine if impedance is disabled
+    private func isWeightOnlyModeEnabledByOthers(for scale: Device) -> Bool {
+        // For now, we'll check the R4ScalePreference to determine if impedance is disabled
+        // In a real implementation, this would come from the Bluetooth service
+        if let r4Preference = scale.r4ScalePreference {
+            // If shouldMeasureImpedance is false, it means weight-only mode is enabled
+            return !r4Preference.shouldMeasureImpedance
+        }
+        
+        // Fallback: check if the scale is in weight-only mode based on preferences
+        return false
     }
     
     func getDeviceInfo() async {
@@ -267,7 +401,32 @@ class ScaleStore: ObservableObject {
     }
     
     func getConnectedWifiSSID() async {
-        connectedWifiSSID = scale?.wifiMac
+        guard let scale = scale else { return }
+        
+        // Only fetch WiFi SSID for connected R4 scales
+        if ScaleTypeHelper.determineScaleType(for: scale) == .bluetoothR4 && scale.isConnected == true {
+            do {
+                let result = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
+                switch result {
+                case .success(let ssid):
+                    await MainActor.run {
+                        self.connectedWifiSSID = ssid.isEmpty ? nil : ssid
+                        // Trigger UI update for computed properties
+                        self.objectWillChange.send()
+                    }
+                case .failure(let error):
+                    logger.log(level: .error, tag: "ScaleStore", message: "Failed to get connected WiFi SSID: \(error.localizedDescription)")
+                    await MainActor.run {
+                        self.connectedWifiSSID = nil
+                    }
+                }
+            }
+        } else {
+            // For non-R4 scales or disconnected scales, clear the SSID
+            await MainActor.run {
+                self.connectedWifiSSID = nil
+            }
+        }
     }
     
     func changeNickname() {
@@ -543,20 +702,459 @@ class ScaleStore: ObservableObject {
     func handleHelp() {
         // TODO: Implement help button action
     }
-    func saveUsers() {
-        // TODO: Implement save users logic
+    
+    // MARK: - User Management Functions
+    
+    /// Fetches the user list from the Bluetooth service for the current scale
+    func fetchUserList() async {
+        guard let scale = scale else {
+            logger.log(level: .error, tag: "ScaleStore", message: "No scale available for fetching users")
+            return
+        }
+        
+        guard scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping user list fetch")
+            return
+        }
+        
+        await MainActor.run {
+            isLoadingUsers = true
+        }
+        
+        do {
+            let result = await bluetoothService.getScaleUserList(for: scale)
+            switch result {
+            case .success(let users):
+                await MainActor.run {
+                    self.deviceUsers = users
+                    self.updateCurrentUserFromDeviceUsers(users)
+                    self.isLoadingUsers = false
+                }
+                logger.log(level: .debug, tag: "ScaleStore", message: "Successfully fetched \(users.count) users from scale")
+            case .failure(let error):
+                await MainActor.run {
+                    self.deviceUsers = []
+                    self.currentDeviceUser = nil
+                    self.isLoadingUsers = false
+                }
+                logger.log(level: .error, tag: "ScaleStore", message: "Failed to fetch users: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Updates the current user based on the device token and fetched users
+    private func updateCurrentUserFromDeviceUsers(_ users: [DeviceUser]) {
+        guard let scale = scale, let deviceToken = scale.token else {
+            currentDeviceUser = nil
+            return
+        }
+        
+        // Find the user that matches the device token
+        if let matchingUser = users.first(where: { $0.token == deviceToken }) {
+            currentDeviceUser = matchingUser
+        } else if let displayName = scale.r4ScalePreference?.displayName {
+            // Fallback to display name from scale preferences
+            currentDeviceUser = DeviceUser(
+                name: displayName,
+                token: deviceToken,
+                lastActive: Int(Date().timeIntervalSince1970),
+                isBodyMetricsEnabled: scale.r4ScalePreference?.shouldMeasureImpedance ?? true
+            )
+        }
+    }
+    
+    /// Refreshes the user list from the Bluetooth service
+    func refreshUserList() async {
+        guard let scale = scale, scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping user list refresh")
+            return
+        }
+        await fetchUserList()
+    }
+    
+    /// Deletes a user from the scale
+    func deleteUser(_ user: DeviceUser) async {
+        guard let scale = scale else {
+            logger.log(level: .error, tag: "ScaleStore", message: "No scale available for deleting user")
+            return
+        }
+        
+        guard scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping user deletion")
+            return
+        }
+        
+        // Show loader using the notification service
+        await MainActor.run {
+            notificationService.showLoader(LoaderModel(text: UsersViewStrings.deletingUser))
+        }
+        
+        do {
+            // Create a device with the user's token for deletion
+            let deviceForDeletion = Device(
+                id: scale.id,
+                accountId: scale.accountId,
+                peripheralIdentifier: nil,
+                nickname: scale.nickname,
+                sku: scale.sku,
+                mac: scale.mac,
+                password: scale.password,
+                isDeleted: nil,
+                deviceName: user.name,
+                deviceType: scale.deviceType,
+                broadcastId: scale.broadcastId,
+                broadcastIdString: scale.broadcastIdString,
+                userNumber: scale.userNumber,
+                protocolType: scale.protocolType,
+                createdAt: scale.createdAt,
+                lastModified: nil,
+                isSynced: nil,
+                hasServerID: false,
+                isConnected: scale.isConnected,
+                wifiMac: scale.wifiMac,
+                isWifiConfigured: nil,
+                token: user.token,
+                bathScale: scale.bathScale,
+                r4ScalePreference: scale.r4ScalePreference,
+                metaData: scale.metaData
+            )
+            
+            let result = await bluetoothService.deleteDevice(deviceForDeletion, disconnect: false)
+            
+            await MainActor.run {
+                notificationService.dismissLoader()
+                
+                switch result {
+                case .success(let response):
+                    if response == .success {
+                        // Remove the user from the local list
+                        self.deviceUsers.removeAll { $0.token == user.token }
+                        logger.log(level: .info, tag: "ScaleStore", message: "Successfully deleted user: \(user.name)")
+                        
+                        // Show success toast
+                        notificationService.showToast(ToastModel(
+                            title: "Success",
+                            message: "User deleted successfully"
+                        ))
+                    } else {
+                        logger.log(level: .error, tag: "ScaleStore", message: "Failed to delete user: \(response)")
+                        
+                        // Show error toast
+                        notificationService.showToast(ToastModel(
+                            title: "Error",
+                            message: "Failed to delete user"
+                        ))
+                    }
+                case .failure(let error):
+                    logger.log(level: .error, tag: "ScaleStore", message: "Failed to delete user: \(error.localizedDescription)")
+                    
+                    // Show error toast
+                    notificationService.showToast(ToastModel(
+                        title: "Error",
+                        message: "Failed to delete user: \(error.localizedDescription)"
+                    ))
+                }
+            }
+        }
+    }
+    
+    /// Updates the current user's name inline
+    func updateCurrentUserNameInline(_ newName: String) async {
+        guard let scale = scale else {
+            logger.log(level: .error, tag: "ScaleStore", message: "No scale available for updating user name")
+            return
+        }
+        
+        guard scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping user name update")
+            return
+        }
+        
+        await MainActor.run {
+            isLoadingUsers = true
+        }
+        
+        do {
+            // Create updated R4ScalePreference with new display name
+            let updatedPreference = R4ScalePreference(
+                scaleId: scale.id,
+                displayName: newName,
+                displayMetrics: scale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys,
+                shouldFactoryReset: false,
+                shouldMeasureImpedance: scale.r4ScalePreference?.shouldMeasureImpedance ?? true,
+                shouldMeasurePulse: scale.r4ScalePreference?.shouldMeasurePulse ?? false,
+                timeFormat: scale.r4ScalePreference?.timeFormat ?? "12",
+                tzOffset: scale.r4ScalePreference?.tzOffset ?? DateTimeTools.getTimeZoneInMinutes(),
+                wifiFotaScheduleTime: scale.r4ScalePreference?.wifiFotaScheduleTime ?? Int(Date().timeIntervalSince1970),
+                updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
+            )
+            
+            let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
+            switch result {
+            case .success(let response):
+                if response == .creationCompleted {
+                    await MainActor.run {
+                        self.currentDeviceUser = DeviceUser(
+                            name: newName,
+                            token: self.currentDeviceUser?.token,
+                            lastActive: self.currentDeviceUser?.lastActive ?? Int(Date().timeIntervalSince1970),
+                            isBodyMetricsEnabled: self.currentDeviceUser?.isBodyMetricsEnabled ?? true
+                        )
+                        self.isLoadingUsers = false
+                    }
+                    
+                    // Update the scale's R4ScalePreference
+                    await MainActor.run {
+                        self.scale?.r4ScalePreference = updatedPreference
+                    }
+                    
+                    logger.log(level: .info, tag: "ScaleStore", message: "Successfully updated user name to: \(newName)")
+                    
+                    // Show success toast
+                    await MainActor.run {
+                        notificationService.showToast(ToastModel(
+                            title: "Success",
+                            message: "User name updated successfully"
+                        ))
+                    }
+                    
+                    // Refresh the user list
+                    await refreshUserList()
+                } else {
+                    await MainActor.run {
+                        self.isLoadingUsers = false
+                    }
+                    logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(response)")
+                    
+                    // Show error toast
+                    await MainActor.run {
+                        notificationService.showToast(ToastModel(
+                            title: "Error",
+                            message: "Failed to update user name"
+                        ))
+                    }
+                }
+            case .failure(let error):
+                await MainActor.run {
+                    self.isLoadingUsers = false
+                }
+                logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(error.localizedDescription)")
+                
+                // Show error toast
+                await MainActor.run {
+                    notificationService.showToast(ToastModel(
+                        title: "Error",
+                        message: "Failed to update user name: \(error.localizedDescription)"
+                    ))
+                }
+            }
+        }
+    }
+    
+    /// Shows a confirmation alert before deleting a user
+    func showDeleteUserAlert(for user: DeviceUser, onDelete: @escaping () -> Void) {
+        let alert = AlertModel(
+            title: "Delete User",
+            message: "Are you sure you want to delete \(user.name)?",
+            buttons: [
+                AlertButtonModel(title: "Cancel", type: .secondary) { _ in },
+                AlertButtonModel(title: "Delete", type: .primary) { _ in
+                    Task {
+                        await self.deleteUser(user)
+                        onDelete()
+                    }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    /// Updates the current user's name
+    func updateCurrentUserName(_ newName: String) async {
+        guard let scale = scale else {
+            logger.log(level: .error, tag: "ScaleStore", message: "No scale available for updating user name")
+            return
+        }
+        
+        guard scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping user name update")
+            return
+        }
+        
+        await MainActor.run {
+            isLoadingUsers = true
+        }
+        
+        do {
+            // Create updated R4ScalePreference with new display name
+            let updatedPreference = R4ScalePreference(
+                scaleId: scale.id,
+                displayName: newName,
+                displayMetrics: scale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys,
+                shouldFactoryReset: false,
+                shouldMeasureImpedance: scale.r4ScalePreference?.shouldMeasureImpedance ?? true,
+                shouldMeasurePulse: scale.r4ScalePreference?.shouldMeasurePulse ?? false,
+                timeFormat: scale.r4ScalePreference?.timeFormat ?? "12",
+                tzOffset: scale.r4ScalePreference?.tzOffset ?? DateTimeTools.getTimeZoneInMinutes(),
+                wifiFotaScheduleTime: scale.r4ScalePreference?.wifiFotaScheduleTime ?? Int(Date().timeIntervalSince1970),
+                updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
+            )
+            
+            let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
+            switch result {
+            case .success(let response):
+                if response == .creationCompleted {
+                    await MainActor.run {
+                        self.currentDeviceUser = DeviceUser(
+                            name: newName,
+                            token: self.currentDeviceUser?.token,
+                            lastActive: self.currentDeviceUser?.lastActive ?? Int(Date().timeIntervalSince1970),
+                            isBodyMetricsEnabled: self.currentDeviceUser?.isBodyMetricsEnabled ?? true
+                        )
+                        self.isLoadingUsers = false
+                    }
+                    
+                    // Update the scale's R4ScalePreference
+                    await MainActor.run {
+                        self.scale?.r4ScalePreference = updatedPreference
+                    }
+                    
+                    logger.log(level: .info, tag: "ScaleStore", message: "Successfully updated user name to: \(newName)")
+                    
+                    // Show success toast
+                    await MainActor.run {
+                        notificationService.showToast(ToastModel(
+                            title: "Success",
+                            message: "User name updated successfully"
+                        ))
+                    }
+                } else {
+                    await MainActor.run {
+                        self.isLoadingUsers = false
+                    }
+                    logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(response)")
+                    
+                    // Show error toast
+                    await MainActor.run {
+                        notificationService.showToast(ToastModel(
+                            title: "Error",
+                            message: "Failed to update user name"
+                        ))
+                    }
+                }
+            case .failure(let error):
+                await MainActor.run {
+                    self.isLoadingUsers = false
+                }
+                logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(error.localizedDescription)")
+                
+                // Show error toast
+                await MainActor.run {
+                    notificationService.showToast(ToastModel(
+                        title: "Error",
+                        message: "Failed to update user name: \(error.localizedDescription)"
+                    ))
+                }
+            }
+        }
+    }
+        
+    /// Saves the current user's name with proper loading states and notifications
+    /// - Parameter newName: The new name to save for the current user
+    func saveUsers(newName: String) async {
+        guard let scale = scale else {
+            logger.log(level: .error, tag: "ScaleStore", message: "No scale available for saving user name")
+            return
+        }
+        
+        guard scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping user name save")
+            return
+        }
+        
+        // Show loader
+        await MainActor.run {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
+        }
+        
+        do {
+            // Create updated R4ScalePreference with new display name
+            let updatedPreference = R4ScalePreference(
+                scaleId: scale.id,
+                displayName: newName,
+                displayMetrics: scale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys,
+                shouldFactoryReset: false,
+                shouldMeasureImpedance: scale.r4ScalePreference?.shouldMeasureImpedance ?? true,
+                shouldMeasurePulse: scale.r4ScalePreference?.shouldMeasurePulse ?? false,
+                timeFormat: scale.r4ScalePreference?.timeFormat ?? "12",
+                tzOffset: scale.r4ScalePreference?.tzOffset ?? DateTimeTools.getTimeZoneInMinutes(),
+                wifiFotaScheduleTime: scale.r4ScalePreference?.wifiFotaScheduleTime ?? Int(Date().timeIntervalSince1970),
+                updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
+            )
+            
+            let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
+            switch result {
+            case .success(let response):
+                if response == .creationCompleted {
+                    await MainActor.run {
+                        // Update the current user
+                        self.currentDeviceUser = DeviceUser(
+                            name: newName,
+                            token: self.currentDeviceUser?.token,
+                            lastActive: self.currentDeviceUser?.lastActive ?? Int(Date().timeIntervalSince1970),
+                            isBodyMetricsEnabled: self.currentDeviceUser?.isBodyMetricsEnabled ?? true
+                        )
+                        
+                        // Update the scale's R4ScalePreference
+                        self.scale?.r4ScalePreference = updatedPreference
+                        
+                        // Dismiss loader
+                        notificationService.dismissLoader()
+                        
+                        // Show success toast
+                        notificationService.showToast(ToastModel(
+                            title: ToastStrings.success,
+                            message: "User name updated successfully"
+                        ))
+                    }
+                    
+                    logger.log(level: .info, tag: "ScaleStore", message: "Successfully updated user name to: \(newName)")
+                    
+                    // Refresh the user list to update UI
+                    await refreshUserList()
+                } else {
+                    await MainActor.run {
+                        notificationService.dismissLoader()
+                                            notificationService.showToast(ToastModel(
+                        title: "Error",
+                        message: "Failed to update user name"
+                    ))
+                    }
+                    logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(response)")
+                }
+            case .failure(let error):
+                await MainActor.run {
+                    notificationService.dismissLoader()
+                    notificationService.showToast(ToastModel(
+                        title: "Error",
+                        message: "Failed to update user name: \(error.localizedDescription)"
+                    ))
+                }
+                logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(error.localizedDescription)")
+            }
+        }
     }
     
     func deleteCurrentUser() {
         // TODO: Implement delete current user logic
         // For now, just clear the current user
-        currentUser = ""
+        currentDeviceUser = nil
     }
     
     func deleteOtherUser(at index: Int) {
         // TODO: Implement delete other user logic
-        guard index < otherUsers.count else { return }
-        otherUsers.remove(at: index)
+        guard index < deviceUsers.count else { return }
+        deviceUsers.remove(at: index)
     }
     
     /// Deletes a user from the combined users array
@@ -604,8 +1202,255 @@ class ScaleStore: ObservableObject {
     
     /// Saves the display metrics configuration
     func saveDisplayMetrics() {
-        // TODO: Implement saveDisplayMetrics functionality
-        // - Save the current state of metrics and extraToggles
+        guard let scale = scale else {
+            logger.log(level: .error, tag: "ScaleStore", message: "No scale available for saving display metrics")
+            return
+        }
+        
+        Task {
+            do {
+                // Show loader
+                await MainActor.run {
+                    notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
+                }
+                
+                // Extract display metrics from current state (body metrics first, then progress metrics)
+                let bodyMetrics = extractDisplayMetrics(from: metrics)
+                let progressMetricsKeys = extractDisplayMetrics(from: progressMetrics)
+                let displayMetrics = bodyMetrics + progressMetricsKeys
+                
+                logger.log(level: .debug, tag: "ScaleStore", message: "Saving display metrics: \(displayMetrics)")
+                
+                // Create updated R4ScalePreference with new display metrics
+                // Ensure all required fields have proper default values
+                let updatedPreference = R4ScalePreference(
+                    scaleId: scale.id,
+                    displayName: scale.r4ScalePreference?.displayName ?? scale.nickname ?? scale.deviceName ?? "Unknown Device",
+                    displayMetrics: displayMetrics.isEmpty ? ScaleMetrics.defaultMetricsKeys : displayMetrics,
+                    shouldFactoryReset: scale.r4ScalePreference?.shouldFactoryReset ?? false,
+                    shouldMeasureImpedance: scale.r4ScalePreference?.shouldMeasureImpedance ?? true,
+                    shouldMeasurePulse: scale.r4ScalePreference?.shouldMeasurePulse ?? true,
+                    timeFormat: scale.r4ScalePreference?.timeFormat ?? "12",
+                    tzOffset: scale.r4ScalePreference?.tzOffset ?? DateTimeTools.getTimeZoneInMinutes(),
+                    wifiFotaScheduleTime: scale.r4ScalePreference?.wifiFotaScheduleTime ?? Int(Date().timeIntervalSince1970),
+                    updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
+                )
+                
+                // Update scale preferences via ScaleService
+                try await scaleService.updateScalePreference(scale.id, updatedPreference)
+                
+                // If device is connected, also update via Bluetooth
+                if scale.isConnected == true {
+                    let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
+                    switch result {
+                    case .success(let response):
+                        if response == .creationCompleted {
+                            logger.log(level: .info, tag: "ScaleStore", message: "Display metrics updated on scale successfully")
+                        } else {
+                            logger.log(level: .error, tag: "ScaleStore", message: "Display metrics saved locally but scale update returned: \(response)")
+                        }
+                    case .failure(let error):
+                        logger.log(level: .error, tag: "ScaleStore", message: "Failed to update display metrics on scale: \(error.localizedDescription)")
+                    }
+                }
+                
+                // Update the scale's R4ScalePreference with the new values
+                await MainActor.run {
+                    // Update the existing preference instead of creating a new one
+                    if let existingPreference = self.scale?.r4ScalePreference {
+                        existingPreference.displayMetrics = updatedPreference.displayMetrics
+                        existingPreference.displayName = updatedPreference.displayName
+                        existingPreference.shouldFactoryReset = updatedPreference.shouldFactoryReset
+                        existingPreference.shouldMeasureImpedance = updatedPreference.shouldMeasureImpedance
+                        existingPreference.shouldMeasurePulse = updatedPreference.shouldMeasurePulse
+                        existingPreference.timeFormat = updatedPreference.timeFormat
+                        existingPreference.tzOffset = updatedPreference.tzOffset
+                        existingPreference.wifiFotaScheduleTime = updatedPreference.wifiFotaScheduleTime
+                        existingPreference.updatedAt = updatedPreference.updatedAt
+                    } else {
+                        // If no existing preference, create a new one
+                        self.scale?.r4ScalePreference = updatedPreference
+                    }
+                    
+                    // Update display metrics value
+                    self.updateDisplayMetricsValue()
+                    
+                    // Trigger UI update for computed properties
+                    self.objectWillChange.send()
+                    
+                    // Dismiss loader
+                    notificationService.dismissLoader()
+                    
+                    // Show success toast
+                    notificationService.showToast(ToastModel(
+                        title: ToastStrings.success,
+                        message: "Display metrics saved successfully"
+                    ))
+                }
+                
+                logger.log(level: .info, tag: "ScaleStore", message: "Display metrics saved successfully")
+                
+            } catch {
+                await MainActor.run {
+                    notificationService.dismissLoader()
+                    notificationService.showToast(ToastModel(
+                        title: "Error",
+                        message: "Failed to save display metrics"
+                    ))
+                }
+                logger.log(level: .error, tag: "ScaleStore", message: "Failed to save display metrics: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Extracts display metrics from the current metrics state
+    /// - Parameter metrics: Array of all metrics (body + progress)
+    /// - Returns: Array of metric keys that are enabled, preserving the current order
+    private func extractDisplayMetrics(from metrics: [ScaleMetricSetting]) -> [String] {
+        // Get enabled metrics in their current order (enabled items first, then disabled)
+        return metrics.filter { $0.isEnabled }.map { $0.key }
+    }
+    
+    /// Loads display metrics from the scale's preferences and applies them to the UI
+    /// Disabled items are moved to the end of the array
+    func loadDisplayMetrics() {
+        guard let scale = scale else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "No scale available for loading display metrics")
+            return
+        }
+        
+        // Get display metrics from scale preferences
+        let displayMetrics = scale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys
+        
+        logger.log(level: .debug, tag: "ScaleStore", message: "Loading display metrics: \(displayMetrics)")
+        
+        // Update body metrics with correct order and enabled state
+        let bodyMetricsConfig = ScaleMetrics.bodyMetrics
+        let bodyMetricsWithState = bodyMetricsConfig.map { config in
+            ScaleMetricSetting(
+                name: config.name,
+                key: config.key,
+                imagePath: config.imagePath,
+                isEnabled: displayMetrics.contains(config.key),
+                isProgressMetrics: false
+            )
+        }
+        
+        // Sort body metrics: enabled first (in API order), then disabled (in original order)
+        metrics = bodyMetricsWithState.sorted { first, second in
+            if first.isEnabled == second.isEnabled {
+                if first.isEnabled {
+                    // Both enabled - maintain API order
+                    let firstApiIndex = displayMetrics.firstIndex(of: first.key) ?? Int.max
+                    let secondApiIndex = displayMetrics.firstIndex(of: second.key) ?? Int.max
+                    return firstApiIndex < secondApiIndex
+                } else {
+                    // Both disabled - maintain original order
+                    let firstIndex = bodyMetricsConfig.firstIndex { $0.key == first.key } ?? 0
+                    let secondIndex = bodyMetricsConfig.firstIndex { $0.key == second.key } ?? 0
+                    return firstIndex < secondIndex
+                }
+            }
+            return first.isEnabled && !second.isEnabled
+        }
+        
+        // Update progress metrics with correct order and enabled state
+        let progressMetricsConfig = ScaleMetrics.progressMetrics
+        let progressMetricsWithState = progressMetricsConfig.map { config in
+            ScaleMetricSetting(
+                name: config.name,
+                key: config.key,
+                imagePath: config.imagePath,
+                isEnabled: displayMetrics.contains(config.key),
+                isProgressMetrics: true
+            )
+        }
+        
+        // Sort progress metrics: enabled first (in API order), then disabled (in original order)
+        progressMetrics = progressMetricsWithState.sorted { first, second in
+            if first.isEnabled == second.isEnabled {
+                if first.isEnabled {
+                    // Both enabled - maintain API order
+                    let firstApiIndex = displayMetrics.firstIndex(of: first.key) ?? Int.max
+                    let secondApiIndex = displayMetrics.firstIndex(of: second.key) ?? Int.max
+                    return firstApiIndex < secondApiIndex
+                } else {
+                    // Both disabled - maintain original order
+                    let firstIndex = progressMetricsConfig.firstIndex { $0.key == first.key } ?? 0
+                    let secondIndex = progressMetricsConfig.firstIndex { $0.key == second.key } ?? 0
+                    return firstIndex < secondIndex
+                }
+            }
+            return first.isEnabled && !second.isEnabled
+        }
+        
+        // Update display metrics value
+        updateDisplayMetricsValue()
+        
+        // Trigger UI update for computed properties
+        objectWillChange.send()
+        
+        logger.log(level: .debug, tag: "ScaleStore", message: "Display metrics loaded successfully")
+    }
+    
+
+    
+    /// Updates the display metrics value based on current state
+    func updateDisplayMetricsValue() {
+        let enabledMetrics = metrics.filter { $0.isEnabled }
+        let enabledProgressMetrics = progressMetrics.filter { $0.isEnabled }
+        let totalEnabled = enabledMetrics.count + enabledProgressMetrics.count
+        
+        if totalEnabled == 0 {
+            displayMetricsValue = "None"
+        } else if totalEnabled == (metrics.count + progressMetrics.count) {
+            displayMetricsValue = "All"
+        } else {
+            displayMetricsValue = "\(totalEnabled) selected"
+        }
+    }
+    
+    /// Handles reordering of metrics and ensures disabled items stay at the end
+    func handleMetricsReorder(indices: IndexSet, newOffset: Int, isProgressMetrics: Bool) {
+        let targetArray = isProgressMetrics ? progressMetrics : metrics
+        
+        // Perform the move operation
+        if isProgressMetrics {
+            progressMetrics.move(fromOffsets: indices, toOffset: newOffset)
+        } else {
+            metrics.move(fromOffsets: indices, toOffset: newOffset)
+        }
+        
+        // Re-sort to ensure disabled items are at the end
+        reorderMetricsToKeepDisabledAtEnd(isProgressMetrics: isProgressMetrics)
+        
+        // Update display metrics value
+        updateDisplayMetricsValue()
+    }
+    
+    /// Reorders metrics to ensure disabled items are always at the end
+    private func reorderMetricsToKeepDisabledAtEnd(isProgressMetrics: Bool) {
+        if isProgressMetrics {
+            progressMetrics.sort { first, second in
+                if first.isEnabled == second.isEnabled {
+                    // If both have same enabled state, maintain current order
+                    let firstIndex = progressMetrics.firstIndex { $0.key == first.key } ?? 0
+                    let secondIndex = progressMetrics.firstIndex { $0.key == second.key } ?? 0
+                    return firstIndex < secondIndex
+                }
+                return first.isEnabled && !second.isEnabled
+            }
+        } else {
+            metrics.sort { first, second in
+                if first.isEnabled == second.isEnabled {
+                    // If both have same enabled state, maintain current order
+                    let firstIndex = metrics.firstIndex { $0.key == first.key } ?? 0
+                    let secondIndex = metrics.firstIndex { $0.key == second.key } ?? 0
+                    return firstIndex < secondIndex
+                }
+                return first.isEnabled && !second.isEnabled
+            }
+        }
     }
     
     /// Updates the weight-only mode setting
@@ -628,9 +1473,9 @@ class ScaleStore: ObservableObject {
     }
     
     func getWifiMacAddressString() -> String {
-        // Return the actual WiFi MAC address from the current scale
-        guard let scale = scale else {
-            return "##:##:##:##:##:##"
+        // Return empty string if device is not connected
+        guard let scale = scale, scale.isConnected == true else {
+            return ""
         }
         
         // If we have a stored WiFi MAC address, use it
@@ -638,13 +1483,28 @@ class ScaleStore: ObservableObject {
             return wifiMac
         }
         
-        // Otherwise, try to get it from Bluetooth service
-        return "##:##:##:##:##:##"
+        // Otherwise, return empty string
+        return ""
     }
+    
+    /// Determines if WiFi MAC address should be fetched for the given scale
+    /// - Parameter scale: The device to check
+    /// - Returns: True if the scale is a connected R4 scale that supports WiFi
+    func shouldFetchWifiMacAddress(for scale: Device) -> Bool {
+        guard scale.isConnected == true else { return false }       
+        let isR4Scale = ScaleTypeHelper.determineScaleType(for: scale) == .bluetoothR4
+        return isR4Scale
+    }
+
     
     /// Fetches the WiFi MAC address from the Bluetooth service for the current scale
     func fetchWifiMacAddress() async {
         guard let scale = scale else { return }
+        
+        guard scale.isConnected == true else {
+            logger.log(level: .debug, tag: "ScaleStore", message: "Scale not connected, skipping WiFi MAC address fetch")
+            return
+        }
         
         do {
             let result = await bluetoothService.getWifiMacAddress(for: scale)
@@ -707,9 +1567,10 @@ class ScaleStore: ObservableObject {
     func onAppear(scale: Device) {
         // Handle async operations internally without requiring Task from the view
         Task.detached { [weak self] in
-            await self?.loadScale(scale)
+            guard let self = self else { return }
+            await self.loadScale(scale)
             await MainActor.run {
-                self?.loadScaleModePreferences()
+                self.loadScaleModePreferences()
             }
         }
     }

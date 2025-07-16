@@ -14,6 +14,8 @@ struct DisplayMetricsScreen: View {
     @State private var isWeightOnlyModeOn: Bool = true
     @State private var isHeartRateOn: Bool = true
     let lang = ScaleModesStrings.self
+    
+    let scale: Device
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
@@ -42,40 +44,27 @@ struct DisplayMetricsScreen: View {
                 bannerSection()
                 descriptionSection()
                 
-                Section {
-                    ForEach($scaleStore.metrics) { $metric in
-                        ToggleListItem(
-                            isOn: $metric.isEnabled,
-                            text: metric.name,
-                            icon: metric.imagePath,
-                            isDisabled: !metric.isEnabled
-                        )
-                        .listRowBackground(theme.backgroundPrimary)
-                        .listRowInsets(EdgeInsets())
-                    }
-                    .onMove { indices, newOffset in
+                // Body Metrics Section
+                MetricsSectionView(
+                    metrics: $scaleStore.metrics,
+                    onValueChanged: { scaleStore.updateDisplayMetricsValue() },
+                    onMove: { indices, newOffset in
                         scaleStore.metrics.move(fromOffsets: indices, toOffset: newOffset)
-                    }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-
-                Section {
-                    ForEach($scaleStore.progressMetrics) { $toggle in
-                        ToggleListItem(
-                            isOn: $toggle.isEnabled,
-                            text: toggle.name
-                        )
-                        .listRowBackground(theme.backgroundPrimary)
-                        .listRowInsets(EdgeInsets())
-                    }
-                    .onMove { indices, newOffset in
+                        scaleStore.updateDisplayMetricsValue()
+                    },
+                    showIcon: true
+                )
+                
+                // Progress Metrics Section
+                MetricsSectionView(
+                    metrics: $scaleStore.progressMetrics,
+                    onValueChanged: { scaleStore.updateDisplayMetricsValue() },
+                    onMove: { indices, newOffset in
                         scaleStore.progressMetrics.move(fromOffsets: indices, toOffset: newOffset)
-                    }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-
+                        scaleStore.updateDisplayMetricsValue()
+                    },
+                    showIcon: false
+                )
             }
             .scrollContentBackground(.hidden)
             .listStyle(.insetGrouped)
@@ -85,6 +74,12 @@ struct DisplayMetricsScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            Task {
+                await scaleStore.loadScale(scale)
+                scaleStore.loadDisplayMetrics()
+            }
+        }
     }
     
     // MARK: - Sections as Functions
@@ -112,6 +107,8 @@ struct DisplayMetricsScreen: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
     }
+    
+    // MARK: - Banner Components
     
     private func weightOnlyBanner() -> some View {
         let commonLang = CommonStrings.self
@@ -166,4 +163,16 @@ struct DisplayMetricsScreen: View {
             }
         }
     }
+}
+
+#Preview {
+    DisplayMetricsScreen(scale: Device(
+        id: "preview-scale-id",
+        accountId: "preview-account",
+        sku: "0412",
+        deviceName: "Preview Scale",
+        deviceType: "scale"
+    ))
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
 }

@@ -13,9 +13,9 @@ enum SettingsRoute: Routable {
     case editProfile
     case changePassword
     case scaleModes(scale: Device)
-    case displayMetrics
+    case displayMetrics(scale: Device)
     case scaleNameScreen(scale: Device)
-    case users
+    case users(scale: Device)
     case wifi
     case wifiCredentials(wifiName: String)    
     case scaleBluetoothScreen(scale: Device)  
@@ -34,12 +34,12 @@ enum SettingsRoute: Routable {
             ScaleSettingsScreen(scale: scale, scaleType: scaleType)
         case .scaleModes(let scale):
             ScaleModesScreen(scale: scale)
-        case .displayMetrics:
-            DisplayMetricsScreen()
+        case .displayMetrics(let scale):
+            DisplayMetricsScreen(scale: scale)
         case .scaleNameScreen(let scale):
             ScaleNameScreen(scale: scale)
-        case .users:
-            UsersScreen()
+        case .users(let scale):
+            UsersScreen(scale: scale)
         case .scaleBluetoothScreen(let scale):
             ScaleBluetoothScreen(scale: scale)
         case .wifi:

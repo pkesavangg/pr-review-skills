@@ -61,6 +61,7 @@ struct ScaleItemView: View {
                 Text(scaleName)
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
+                    .lineLimit(1)
                     .padding(.bottom, status == .noStatus ? 0 : .spacingXS)
 
                 if status != .noStatus {

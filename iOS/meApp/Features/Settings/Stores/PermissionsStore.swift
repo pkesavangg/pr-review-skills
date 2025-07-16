@@ -14,15 +14,25 @@ final class PermissionsStore: ObservableObject {
     // MARK: - Published outputs
     /// `requiredCategories` that are *mandatory* – used for red status icons.
     @Published private(set) var requiredCategories: Set<PermissionListView.Category> = []
+    
+    /// Bluetooth authorization status
+    @Published private(set) var isBluetoothAuthorized: Bool = false
+    
+    /// Bluetooth switch status
+    @Published private(set) var isBluetoothOn: Bool = false
 
     // MARK: - Dependencies
     @Injector private var scaleService: ScaleService
+    @Injector private var permissionsService: PermissionsService
 
     private var cancellables: Set<AnyCancellable> = []
 
     init() {
         // Derive the initial value from the current scales array
         updatePermissionSets(with: scaleService.scales)
+        
+        // Update Bluetooth permissions
+        updateBluetoothPermissions()
 
         // Continue to observe for subsequent scale changes
         scaleService.$scales
@@ -31,6 +41,40 @@ final class PermissionsStore: ObservableObject {
                 self?.updatePermissionSets(with: scales)
             }
             .store(in: &cancellables)
+    }
+    
+    // MARK: - Public Methods
+    
+    /// Updates Bluetooth permission status
+    func updateBluetoothPermissions() {
+        isBluetoothAuthorized = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
+        isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+    }
+    
+    /// Handles Bluetooth authorization permission request
+    func handleBluetoothAuthorization() async {
+        await permissionsService.handlePermission(.bluetooth)
+        updateBluetoothPermissions()
+    }
+    
+    /// Handles Bluetooth switch permission request
+    func handleBluetoothSwitch() async {
+        await permissionsService.handlePermission(.bluetoothSwitch)
+        updateBluetoothPermissions()
+    }
+    
+    /// Handles Bluetooth authorization tap - called from view
+    func handleBluetoothAuthorizationTap() {
+        Task {
+            await handleBluetoothAuthorization()
+        }
+    }
+    
+    /// Handles Bluetooth switch tap - called from view
+    func handleBluetoothSwitchTap() {
+        Task {
+            await handleBluetoothSwitch()
+        }
     }
 
     // MARK: - Internal helpers
