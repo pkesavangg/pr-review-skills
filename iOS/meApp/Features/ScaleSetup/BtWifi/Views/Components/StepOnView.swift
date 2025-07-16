@@ -26,7 +26,6 @@ struct StepOnView: View {
                 .frame(height: 211)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
-                .padding(.horizontal, .spacingSM)
         }
         .padding(.bottom, .spacingLG)
     }

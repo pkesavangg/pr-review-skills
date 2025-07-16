@@ -25,15 +25,36 @@ struct ConnectionIndicatorView: View {
         self.showPulsingCircle = showPulsingCircle
     }
     
+    // MARK: - Computed Properties for State Management
     var shouldPulse: Bool {
         showPulsingCircle
+    }
+    
+    var showSmallCircle: Bool {
+        !(shouldPulse && isFailure)
+    }
+    
+    var smallCircleColor: Color {
+        isFailure ? theme.statusError : theme.brandWgPrimary
+    }
+    
+    var pulsingCircleColor: Color {
+        isFailure ? theme.statusError : theme.statusIconLoading
+    }
+    
+    var showImage: Bool {
+        shouldPulse && isFailure
+    }
+    
+    var containerSize: CGFloat {
+        shouldPulse ? pulsingCircleSize : 89
     }
     
     var body: some View {
         ZStack(alignment: .center) {
             if shouldPulse {
                 Circle()
-                    .fill(isFailure ? theme.statusError : theme.statusIconLoading)
+                    .fill(pulsingCircleColor)
                     .frame(width: pulsingCircleSize, height: pulsingCircleSize)
                     .scaleEffect(pulse ? 1.0 : minScale)
                     .opacity(pulse ? 0.7 : 1.0)
@@ -42,13 +63,14 @@ struct ConnectionIndicatorView: View {
                         value: pulse
                     )
             }
-            if !(shouldPulse && isFailure) {
-                 Circle()
-                    .fill(isFailure ? theme.statusError : theme.brandWgPrimary)
+            
+            if showSmallCircle {
+                Circle()
+                    .fill(smallCircleColor)
                     .frame(width: 89, height: 89)
             }
             
-            if shouldPulse && isFailure {
+            if showImage {
                 Image(image)
                     .resizable()
                     .scaledToFit()
@@ -58,8 +80,7 @@ struct ConnectionIndicatorView: View {
                     .foregroundColor(theme.backgroundPrimary)
             }
         }
-        .frame(width: shouldPulse ? pulsingCircleSize : 89,
-               height: shouldPulse ? pulsingCircleSize : 89)
+        .frame(width: containerSize, height: containerSize)
         .onAppear {
             if shouldPulse {
                 pulse = true
