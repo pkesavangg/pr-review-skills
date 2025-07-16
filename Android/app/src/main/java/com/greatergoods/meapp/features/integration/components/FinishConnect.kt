@@ -20,17 +20,18 @@ import com.greatergoods.meapp.theme.MeAppTheme
 fun FinishConnect(
     modifier: Modifier = Modifier,
     title: String = HealthConnectStrings.FinishConnectStrings.Title,
+    image:Int = AppIcons.Integrations.Full_Permission,
     onPrimaryAction: () -> Unit,
 ) {
     HealthConnectScreen(
-        content = HealthConnectScreenContent(
-            image = AppIcons.Integrations.Full_Permission,
-            title = title,
-            description = HealthConnectStrings.FinishConnectStrings.Description,
-            primaryButtonLabel = HealthConnectStrings.ActionButtons.finish,
-        ),
-        onPrimaryAction = onPrimaryAction,
-        modifier = modifier
+      content = HealthConnectScreenContent(
+        image = image,
+        title = title,
+        description = HealthConnectStrings.FinishConnectStrings.Description,
+        primaryButtonLabel = HealthConnectStrings.ActionButtons.finish,
+      ),
+      onPrimaryAction = onPrimaryAction,
+      modifier = modifier
     )
 }
 

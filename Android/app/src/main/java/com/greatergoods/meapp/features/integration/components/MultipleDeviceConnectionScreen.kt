@@ -4,6 +4,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.greatergoods.meapp.features.common.components.AppPopupModal
 import com.greatergoods.meapp.features.integration.baseComponent.HealthConnectScreen
 import com.greatergoods.meapp.features.integration.baseComponent.HealthConnectScreenContent
 import com.greatergoods.meapp.features.integration.strings.HealthConnectStrings
@@ -21,16 +22,18 @@ fun MultipleDeviceConnectionScreen(
     onPrimaryAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-  HealthConnectScreen(
-    content = HealthConnectScreenContent(
-      image = AppIcons.Integrations.Health_Connect_Logo,
-      title = HealthConnectStrings.MultiDeviceConnectionStrings.Title,
-      description = HealthConnectStrings.MultiDeviceConnectionStrings.Description,
-      primaryButtonLabel = HealthConnectStrings.ActionButtons.connect,
-    ),
-    onPrimaryAction = onPrimaryAction,
-    modifier = modifier
-  )
+  AppPopupModal {
+    HealthConnectScreen(
+      content = HealthConnectScreenContent(
+        image = AppIcons.Integrations.Health_Connect_Logo,
+        title = HealthConnectStrings.MultiDeviceConnectionStrings.Title,
+        description = HealthConnectStrings.MultiDeviceConnectionStrings.Description,
+        primaryButtonLabel = HealthConnectStrings.ActionButtons.connect,
+      ),
+      onPrimaryAction = onPrimaryAction,
+      modifier = modifier
+    )
+  }
 }
 
 @Preview(showBackground = true)

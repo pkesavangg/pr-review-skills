@@ -4,9 +4,11 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ChromeTabState
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.data.repository.HealthConnectRepository
 import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -14,8 +16,12 @@ import com.greatergoods.meapp.features.integration.model.IntegrationIntent
 import com.greatergoods.meapp.features.integration.model.IntegrationItem
 import com.greatergoods.meapp.features.integration.model.IntegrationReducer
 import com.greatergoods.meapp.features.integration.model.IntegrationState
+import com.greatergoods.meapp.features.integration.strings.HealthConnectStrings
 import com.greatergoods.meapp.features.integration.strings.IntegrationStrings
+import com.greatergoods.meapp.resources.AppIcons
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -26,10 +32,12 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class IntegrationViewModel @Inject constructor(
-  private val accountService: IAccountService,
-  private val integrationService: IIntegrationService,
+    private val accountService: IAccountService,
+    private val integrationService: IIntegrationService,
+    private val healthConnectService: IHealthConnectService,
+    private val healthConnectRepository: HealthConnectRepository // Inject repository
 ) : BaseIntentViewModel<IntegrationState, IntegrationIntent>(
-  reducer = IntegrationReducer(),
+    reducer = IntegrationReducer(),
 ) {
 
     /**
@@ -57,6 +65,12 @@ class IntegrationViewModel @Inject constructor(
                 AppLog.d("IntegrationViewModel", "Active account updated: ${account?.id}")
             }
         }
+        // Observe integrationState from HealthConnectRepository
+        viewModelScope.launch {
+            healthConnectRepository.integrationState.collect { newState ->
+                handleIntent(IntegrationIntent.SetIntegrations(newState.integrations))
+            }
+        }
     }
 
     /**
@@ -76,12 +90,98 @@ class IntegrationViewModel @Inject constructor(
                 intent.provider,
                 intent.error
             )
-            is IntegrationIntent.NavigateToHealthConnect -> navigateToHealthConnect()
+            is IntegrationIntent.NavigateToHealthConnect -> handleHealthConnectNavigation()
+            is IntegrationIntent.RemoveHealthConnectIntegration -> removeHealthConnectIntegration()
             else -> {
                 // Handle other intents that don't need special processing
             }
         }
     }
+
+    private fun handleHealthConnectNavigation() {
+        val healthConnectIntegration = state.value.integrations.firstOrNull {
+            it.provider == IntegrationProvider.HealthConnect
+        }
+        if (healthConnectIntegration?.isConnected == true) {
+            // Show remove integration dialog for Health Connect
+            dialogQueueService.enqueue(
+                DialogModel.Confirm(
+                    title = IntegrationStrings.removeIntegration,
+                    message = IntegrationStrings.removeAuthIntegration,
+                    confirmText = IntegrationStrings.remove,
+                    cancelText = IntegrationStrings.cancel,
+                    onConfirm = {
+                        removeHealthConnectIntegration()
+                        dialogQueueService.dismissCurrent()
+                    },
+                    onCancel = {
+                        dialogQueueService.dismissCurrent()
+                    },
+                ),
+            )
+        } else {
+            // Proceed to Health Connect setup/navigation
+            AppLog.d("IntegrationViewModel", "Navigating to Health Connect setup")
+            navigateToHealthConnect()
+        }
+    }
+
+    private fun removeHealthConnectIntegration() {
+        viewModelScope.launch {
+            try {
+                AppLog.d("IntegrationViewModel", "Removing Health Connect integration")
+              confirmRemoveIntegration()
+                AppLog.d("IntegrationViewModel", "Successfully removed Health Connect integration")
+            } catch (e: Exception) {
+                AppLog.e(
+                    "IntegrationViewModel",
+                    "Failed to remove Health Connect integration",
+                    e.toString()
+                )
+                // Optionally revert UI state or show error
+                handleIntent(
+                    IntegrationIntent.UpdateIntegrationConnectionStatus(
+                        IntegrationProvider.HealthConnect,
+                        isConnected = true,
+                        isValid = false
+                    )
+                )
+            }
+        }
+    }
+
+  private fun confirmRemoveIntegration() {
+    dialogQueueService.showDialog(
+      DialogModel.Confirm(
+        title = HealthConnectStrings.PopupStrings.removeHCIntegrationTitle,
+        message = HealthConnectStrings.PopupStrings.removeHCIntegrationMessage,
+        confirmText = HealthConnectStrings.ActionButtons.remove,
+        cancelText = HealthConnectStrings.ActionButtons.cancel,
+        onConfirm = {
+          dialogQueueService.showLoader("Removing...")
+          CoroutineScope(Dispatchers.IO).launch {
+            healthConnectService.removeHealthConnectIntegration()
+            dialogQueueService.dismissCurrent()
+            dialogQueueService.dismissLoader()
+            // Update UI state
+            handleIntent(
+              IntegrationIntent.UpdateIntegrationConnectionStatus(
+                IntegrationProvider.HealthConnect,
+                isConnected = false,
+                isValid = false
+              )
+            )
+          }
+        },
+        onCancel = {
+          dialogQueueService.dismissCurrent()
+        },
+        onDismiss = {
+          dialogQueueService.dismissCurrent()
+        },
+      ),
+    )
+  }
 
     /**
      * Loads all integrations with their current connection status.
@@ -118,8 +218,20 @@ class IntegrationViewModel @Inject constructor(
                 handleIntent(IntegrationIntent.InitializeIntegrations)
                 integrationService.getIntegrationsWithStatus().collect { integrations ->
                     // Update integrations state to show proper checkmarks
-                    handleIntent(IntegrationIntent.SetIntegrations(integrations))
-                    AppLog.d("IntegrationViewModel", "Loaded ${integrations.size} integrations with status")
+                    val updatedIntegrations = integrations.map { integration ->
+                        if (integration.provider == IntegrationProvider.HealthConnect) {
+                            val currentAccount = currentAccount
+                            val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
+                            val isOutOfSync = healthConnectService.outOfSyncState.first()
+                            integration.copy(
+                                iconRes = if (isHealthConnectOn && isOutOfSync) AppIcons.Integrations.Health_Connect_Off else AppIcons.Integrations.Health_Connect_Logo
+                            )
+                        } else {
+                            integration
+                        }
+                    }
+                    handleIntent(IntegrationIntent.SetIntegrations(updatedIntegrations))
+                    AppLog.d("IntegrationViewModel", "Loaded ${updatedIntegrations.size} integrations with status")
                     if (!skipInvalidIntegrationsCheck) {
                         val inactiveProviders = checkForInactiveIntegrations()
                         if (inactiveProviders.isNotEmpty()) {
@@ -137,15 +249,51 @@ class IntegrationViewModel @Inject constructor(
     }
 
     private fun openIntegration(integration: IntegrationItem) {
-        if (integration.isConnected) {
-            handleIntent(IntegrationIntent.RemoveIntegration(integration))
+        if (integration.provider == IntegrationProvider.HealthConnect) {
+            viewModelScope.launch {
+                val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
+                val permissionList = healthConnectService.getApprovedPermissionList()
+                val isOutOfSync = isHealthConnectOn && permissionList.isEmpty()
+                if (isOutOfSync) {
+                    // Show out of sync alert (call HealthConnectViewModel's alert or show directly)
+                    showOutOfSyncAlert()
+                } else {
+                    if (integration.isConnected) {
+                        handleIntent(IntegrationIntent.RemoveIntegration(integration))
+                    } else {
+                        handleIntent(
+                            IntegrationIntent.AddIntegration(
+                                provider = integration.provider,
+                            ),
+                        )
+                    }
+                }
+            }
         } else {
-            handleIntent(
-                IntegrationIntent.AddIntegration(
-                    provider = integration.provider,
-                ),
-            )
+            if (integration.isConnected) {
+                handleIntent(IntegrationIntent.RemoveIntegration(integration))
+            } else {
+                handleIntent(
+                    IntegrationIntent.AddIntegration(
+                        provider = integration.provider,
+                    ),
+                )
+            }
         }
+    }
+
+    private fun showOutOfSyncAlert() {
+        dialogQueueService.enqueue(
+            DialogModel.Alert(
+                title = com.greatergoods.meapp.features.integration.strings.HealthConnectStrings.OutOfSyncAlert.title,
+                message = com.greatergoods.meapp.features.integration.strings.HealthConnectStrings.OutOfSyncAlert.description,
+                dismissText = com.greatergoods.meapp.features.integration.strings.HealthConnectStrings.ActionButtons.close,
+                onDismiss = {
+                    // Optionally navigate back or just dismiss
+                    dialogQueueService.dismissCurrent()
+                },
+            ),
+        )
     }
 
     /**
@@ -194,16 +342,6 @@ class IntegrationViewModel @Inject constructor(
             }
         }
     }
-
-    /**
-     * Sets whether to skip invalid integrations check.
-     * @param skip Whether to skip the check
-     */
-    fun setSkipInvalidIntegrationsCheck(skip: Boolean) {
-        skipInvalidIntegrationsCheck = skip
-        AppLog.d("IntegrationViewModel", "Skip invalid integrations check set to: $skip")
-    }
-
 
     /**
      * Handles back navigation.
@@ -325,9 +463,6 @@ class IntegrationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 AppLog.d("IntegrationViewModel", "Disconnecting from ${integration.provider}")
-
-
-                // Use the integration service to remove the integration
                 integrationService.disconnectIntegration(integration.provider)
                 // Immediately update UI to show disconnected state
                 handleIntent(
@@ -338,15 +473,12 @@ class IntegrationViewModel @Inject constructor(
                     )
                 )
                 AppLog.d("IntegrationViewModel", "Successfully disconnected from ${integration.provider}")
-                // Refresh integrations to sync with actual service state
-
             } catch (e: Exception) {
                 AppLog.e(
                     "IntegrationViewModel",
                     "Failed to disconnect from ${integration.provider}",
                     e.toString()
                 )
-                // On error, revert UI state back to original state
                 handleIntent(
                     IntegrationIntent.UpdateIntegrationConnectionStatus(
                         integration.provider,
@@ -367,28 +499,19 @@ class IntegrationViewModel @Inject constructor(
     private suspend fun checkForInactiveIntegrations(): List<IntegrationProvider> {
         return try {
             AppLog.d("IntegrationViewModel", "Checking for inactive integrations via API only")
-
             val inactiveIntegrations = mutableListOf<IntegrationProvider>()
-
-            // Get all available providers directly (don't rely on state)
             val allProviders = IntegrationProvider.getAllProviders()
-
             for (provider in allProviders) {
                 try {
-                    // Check integration status directly from service without affecting UI state
                     val (isConnected, isValid) = integrationService.getIntegrationStatus(provider)
-
-                    // An integration is inactive if it's connected but not valid
                     if (isConnected && !isValid) {
                         inactiveIntegrations.add(provider)
                         AppLog.d("IntegrationViewModel", "Found inactive integration: $provider (connected but invalid)")
                     }
                 } catch (e: Exception) {
                     AppLog.e("IntegrationViewModel", "Failed to check status for $provider", e.toString())
-                    // Don't add to inactive list if we can't determine status reliably
                 }
             }
-
             AppLog.d("IntegrationViewModel", "Found ${inactiveIntegrations.size} inactive integrations: $inactiveIntegrations")
             inactiveIntegrations
         } catch (e: Exception) {
@@ -561,6 +684,17 @@ class IntegrationViewModel @Inject constructor(
                 AppLog.d("IntegrationViewModel", "Navigating to Health Connect integration")
             } catch (e: Exception) {
                 AppLog.e("IntegrationViewModel", "Failed to navigate to Health Connect", e.toString())
+            }
+        }
+    }
+
+    fun onHealthConnectIconClicked() {
+        viewModelScope.launch {
+            val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
+            val permissionList = healthConnectService.getApprovedPermissionList()
+            val isOutOfSync = isHealthConnectOn && permissionList.isEmpty()
+            if (isOutOfSync) {
+                showOutOfSyncAlert()
             }
         }
     }

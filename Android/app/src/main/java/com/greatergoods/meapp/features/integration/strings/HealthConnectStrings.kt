@@ -37,6 +37,9 @@ object HealthConnectStrings  {
     const val hcNotInstalledDescription = "Download Health Connect before integrating with Weight Gurus."
     const val outOfSyncTitle = "Health Connect is Out of Sync"
     const val outOfSyncDescription = "Enable app permissions in Health Connect or remove the integration in Weight Gurus."
+    const val removeHCIntegrationTitle = "Are You Sure?"
+    const val removeHCIntegrationMessage = "The integration will be removed. To fully disconnect, ensure all  Weight Gurus permissions are turned off in Health Connect."
+
   }
 
   object ExitAlert {
@@ -44,10 +47,22 @@ object HealthConnectStrings  {
     const val description = " Health Connect will not sync with Weight Gurus."
   }
 
-  object toastStrings {
+  object dataNotSynced {
+    const val title = "We’re out of sync."
+    const val message =
+      "Sorry, we couldn’t sync data to Health Connect."
+  }
+
+  object ToastStrings {
     const val syncToast = "Weight history successfully synced!"
     const val removeHC = "Health Connect integration removed."
     const val syncHc = "Health Connect is synced!"
+  }
+
+  object AddHealthConnectStrings {
+    const val Title = "Add Health Connect Integration"
+    const val Description =
+      "It looks like you’re using Weight Gurus on a new device. To continue syncing with Health Connect, please reconnect."
   }
 
   object FinishConnectStrings {
@@ -90,13 +105,13 @@ object HealthConnectStrings  {
       "Another user has already connected to Health Connect on this device. Please ask them to log in to their account and disconnect the integration. "
   }
 
-  object syncAlert {
+  object SyncAlert {
     const val title = "Sync Weight History"
     const val description =
       "Do you want to sync all entries to Health Connect? You cannot do this later without reconnecting."
   }
 
-  object outOfSyncAlert {
+  object OutOfSyncAlert {
     const val title = "Health Connect is Out of Sync"
     const val description = "Enable app permissions in Health Connect or remove the integration in Weight Gurus."
   }

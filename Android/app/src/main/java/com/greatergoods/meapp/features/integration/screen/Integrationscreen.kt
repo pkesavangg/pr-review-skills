@@ -39,13 +39,14 @@ fun IntegrationScreen() {
         viewModel.handleIntent(IntegrationIntent.LoadIntegrations)
     }
 
-    IntegrationContent(state, viewModel::handleIntent)
+    IntegrationContent(state, viewModel::handleIntent, viewModel::onHealthConnectIconClicked)
 }
 
 @Composable
 private fun IntegrationContent(
     state: IntegrationState,
     handleIntent: (IntegrationIntent) -> Unit,
+    onHealthConnectIconClick: () -> Unit = {},
 ) {
     AppScaffold(
         title = IntegrationStrings.Title,
@@ -61,7 +62,7 @@ private fun IntegrationContent(
                 .padding(spacing.md),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            IntegrationList(state, handleIntent)
+            IntegrationList(state, handleIntent, onHealthConnectIconClick)
         }
     }
 }

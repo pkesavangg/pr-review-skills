@@ -32,6 +32,7 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 fun IntegrationList(
   state: IntegrationState,
   handleIntent: (IntegrationIntent) -> Unit,
+  onHealthConnectIconClick: (() -> Unit)? = null,
 ) {
   LazyColumn(
     modifier =
@@ -43,14 +44,15 @@ fun IntegrationList(
       IntegrationListItem(
         integration = integration,
         onToggle = {
-          // Handle Health Connect navigation separately
-          if (integration.provider == IntegrationProvider.HealthConnect) {
+          if (integration.provider == IntegrationProvider.HealthConnect && integration.isConnected) {
+            handleIntent.invoke(IntegrationIntent.RemoveHealthConnectIntegration)
+          } else if (integration.provider == IntegrationProvider.HealthConnect) {
             handleIntent.invoke(IntegrationIntent.NavigateToHealthConnect)
           } else {
-            // Use existing logic for other integrations
             handleIntent.invoke(IntegrationIntent.OpenIntegration(integration))
           }
         },
+        onIconClick = if (integration.provider == IntegrationProvider.HealthConnect) onHealthConnectIconClick else null,
       )
       // Only show divider if not the last item
       if (index < state.integrations.size - 1) {

@@ -11,11 +11,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
@@ -27,6 +30,7 @@ import com.greatergoods.meapp.features.integration.components.IncompleteReconnec
 import com.greatergoods.meapp.features.integration.components.PermissionLimitScreen
 import com.greatergoods.meapp.features.integration.components.StartConnect
 import com.greatergoods.meapp.features.integration.components.UserConflictScreen
+import com.greatergoods.meapp.features.integration.model.HealthConnectAction
 import com.greatergoods.meapp.features.integration.model.HealthConnectIntent
 import com.greatergoods.meapp.features.integration.model.HealthConnectSetup
 import com.greatergoods.meapp.features.integration.model.HealthConnectUiState
@@ -42,7 +46,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun HealthConnectIntegrationScreen(
-    viewModel: HealthConnectViewModel = hiltViewModel()
+    viewModel: HealthConnectViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     val backStack = LocalNavBackStack.current
@@ -52,6 +56,11 @@ fun HealthConnectIntegrationScreen(
         state = state,
         handleIntent = viewModel::handleIntent,
         onBack = {
+            coroutineScope.launch {
+                viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.EXIT))
+            }
+        },
+        onDismiss = {
             coroutineScope.launch {
                 backStack.removeLast()
             }
@@ -67,14 +76,27 @@ fun HealthConnectIntegrationScreen(
 fun HealthConnectIntegrationContent(
     state: HealthConnectUiState,
     handleIntent: (HealthConnectIntent) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    val pagerState = rememberPagerState { HealthConnectSetup.entries.size }
+    val pagerState = rememberPagerState(
+        initialPage = state.currentSlide,
+        pageCount = { HealthConnectSetup.entries.size }
+    )
     val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
 
-    BackHandler {
-        onBack()
+    // Update pager when state changes
+    LaunchedEffect(state.healthConnectSetupState) {
+        val targetPage = state.healthConnectSetupState.code
+        if (targetPage >= 0 && targetPage < HealthConnectSetup.entries.size) {
+            pagerState.animateScrollToPage(targetPage)
+            handleIntent(HealthConnectIntent.UpdateSlide(targetPage))
+        }
+    }
+
+    // Handle back button
+    BackHandler(enabled = !state.alertPresented) {
+        handleIntent.invoke(HealthConnectIntent.ConfirmExitSetup)
     }
 
     AppScaffold(
@@ -83,7 +105,7 @@ fun HealthConnectIntegrationContent(
         appBarColor = MeTheme.colorScheme.secondaryBackground,
         navigationIcon = {
             AppIconButton(AppIcons.Default.Close) {
-                onBack()
+              handleIntent.invoke(HealthConnectIntent.ConfirmExitSetup)
             }
         },
         borderColor = Color.Transparent
@@ -103,18 +125,15 @@ fun HealthConnectIntegrationContent(
                     HealthConnectSetup.START_CONNECT -> {
                         StartConnect(
                             onPrimaryAction = {
-                                scope.launch {
-                                    handleIntent(HealthConnectIntent.Connect)
-                                    pagerState.animateScrollToPage(HealthConnectSetup.FINISH_CONNECT.code)
-                                }
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
                             },
                         )
                     }
                     HealthConnectSetup.FINISH_CONNECT -> {
                         FinishConnect(
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Finish)
-                                onBack()
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                                onDismiss()
                             }
                         )
                     }
@@ -122,28 +141,28 @@ fun HealthConnectIntegrationContent(
                     HealthConnectSetup.CANCEL_CONNECT -> {
                         PermissionLimitScreen(
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Finish)
-                                onBack()
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
+                                onDismiss()
                             },
                             onSecondaryAction = {
-                                handleIntent(HealthConnectIntent.OpenHealthConnect)
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.FINISH))
                             }
                         )
                     }
                     HealthConnectSetup.PERMISSION_LIMIT -> {
                         PermissionLimitScreen(
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Connect)
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
                             },
                             onSecondaryAction = {
-                                handleIntent(HealthConnectIntent.OpenHealthConnect)
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.EXIT))
                             }
                         )
                     }
                     HealthConnectSetup.USER_CONFLICT -> {
                         UserConflictScreen(
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Connect)
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.EXIT))
                             },
                         )
                     }
@@ -151,7 +170,7 @@ fun HealthConnectIntegrationContent(
                     HealthConnectSetup.COMPLETE_RECONNECTION -> {
                         CompleteReconnectionScreen(
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Connect)
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
                             },
                         )
                     }
@@ -159,10 +178,10 @@ fun HealthConnectIntegrationContent(
                     HealthConnectSetup.INCOMPLETE_RECONNECTION -> {
                         IncompleteReconnectionScreen(
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Connect)
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.UPDATE_PERMISSIONS))
                             },
                             onSecondaryAction = {
-                                handleIntent(HealthConnectIntent.Skip)
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.SKIP))
                             }
                         )
                     }
@@ -171,7 +190,8 @@ fun HealthConnectIntegrationContent(
                         FinishConnect (
                             title = HealthConnectStrings.FinishPartialReconnectStrings.Title,
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Finish)
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                                onDismiss()
                             },
                         )
                     }
@@ -179,7 +199,7 @@ fun HealthConnectIntegrationContent(
                         // Default to start connect for any other state
                         StartConnect(
                             onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.Connect)
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
                             },
                         )
                     }
@@ -197,7 +217,8 @@ private fun HealthConnectIntegrationScreenPreview() {
             HealthConnectIntegrationContent(
                 state = HealthConnectUiState(),
                 handleIntent = {},
-                onBack = {}
+                onBack = {},
+                onDismiss = {}
             )
         }
     }

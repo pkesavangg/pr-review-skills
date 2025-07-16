@@ -78,6 +78,9 @@ sealed class IntegrationIntent : IReducer.Intent {
 
   data object NavigateToHealthConnect : IntegrationIntent()
 
+  /** Remove Health Connect integration (special case). */
+  object RemoveHealthConnectIntegration : IntegrationIntent()
+
 }
 
 /**
@@ -160,6 +163,10 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
       }
 
       is IntegrationIntent.NavigateToHealthConnect ->{
+        state
+      }
+
+      is IntegrationIntent.RemoveHealthConnectIntegration ->{
         state
       }
 

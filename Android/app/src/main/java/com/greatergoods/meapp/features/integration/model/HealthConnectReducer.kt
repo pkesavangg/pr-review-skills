@@ -13,12 +13,7 @@ object HealthConnectReducer {
      */
     fun reduce(state: HealthConnectUiState, intent: HealthConnectIntent): HealthConnectUiState {
         return when (intent) {
-            HealthConnectIntent.Connect -> {
-                state.copy(
-                    isLoading = true,
-                    errorMessage = null
-                )
-            }
+
             HealthConnectIntent.ConnectSuccess -> {
                 state.copy(
                     isLoading = false,
@@ -33,24 +28,104 @@ object HealthConnectReducer {
                     errorMessage = "Failed to connect to Health Connect"
                 )
             }
-            HealthConnectIntent.Skip -> {
+            HealthConnectIntent.AppResumed -> {
                 state.copy(
-                    healthConnectSetupState = HealthConnectSetup.CANCEL_CONNECT
+                    isHealthConnectOpened = false
                 )
             }
-            HealthConnectIntent.Finish -> {
+            HealthConnectIntent.SetAlertPresented -> {
+                state.copy(
+                    alertPresented = true
+                )
+            }
+            HealthConnectIntent.ClearAlertPresented -> {
+                state.copy(
+                    alertPresented = false
+                )
+            }
+            HealthConnectIntent.SetHealthConnectOpened -> {
+                state.copy(
+                    isHealthConnectOpened = true
+                )
+            }
+            HealthConnectIntent.ClearHealthConnectOpened -> {
+                state.copy(
+                    isHealthConnectOpened = false
+                )
+            }
+            is HealthConnectIntent.UpdateSlide -> {
+                state.copy(
+                    currentSlide = intent.slide
+                )
+            }
+            is HealthConnectIntent.PrimaryAction -> {
+                // Handle primary action based on label
+                handlePrimaryAction(state, intent.label)
+            }
+            is HealthConnectIntent.SecondaryAction -> {
+                // Handle secondary action based on label
+                handleSecondaryAction(state, intent.label)
+            }
+          is HealthConnectIntent.ConfirmExitSetup -> {
+              state.copy(
+                isLoading = false,
+                errorMessage = null
+              )
+          }
+        }
+    }
+
+    private fun handlePrimaryAction(state: HealthConnectUiState, action: HealthConnectAction): HealthConnectUiState {
+        return when (action) {
+            HealthConnectAction.CONNECT -> {
+                state.copy(
+                    isLoading = true,
+                    errorMessage = null
+                )
+            }
+            HealthConnectAction.FINISH -> {
                 state.copy(
                     healthConnectSetupState = HealthConnectSetup.COMPLETE_RECONNECTION
                 )
             }
-            HealthConnectIntent.ClearError -> {
+            HealthConnectAction.OPEN_HEALTH_CONNECT -> {
                 state.copy(
+                    isHealthConnectOpened = true
+                )
+            }
+            HealthConnectAction.UPDATE_PERMISSIONS -> {
+                state.copy(
+                    isLoading = true,
                     errorMessage = null
                 )
             }
-          else -> {
-            state
-          }
+            HealthConnectAction.EXIT -> {
+                state.copy(
+                    alertPresented = true
+                )
+            }
+            else -> state
+        }
+    }
+
+    private fun handleSecondaryAction(state: HealthConnectUiState, action: HealthConnectAction): HealthConnectUiState {
+        return when (action) {
+            HealthConnectAction.SKIP -> {
+                state.copy(
+                    healthConnectSetupState = HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION
+                )
+            }
+            HealthConnectAction.EXIT -> {
+                state.copy(
+                    alertPresented = true
+                )
+            }
+            HealthConnectAction.OPEN_HEALTH_CONNECT -> {
+                state.copy(
+                    isHealthConnectOpened = true
+                )
+            }
+            else -> state
         }
     }
 }

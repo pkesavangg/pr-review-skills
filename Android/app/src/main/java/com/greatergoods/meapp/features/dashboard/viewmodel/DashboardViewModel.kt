@@ -1,16 +1,20 @@
 package com.greatergoods.meapp.features.dashboard.viewmodel
 
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IGoalService
+import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.Stat
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -27,15 +31,28 @@ constructor(
   private val entryService: IEntryService,
   private val goalService: IGoalService,
   private val appNavigationService: IAppNavigationService,
-  private val dashboardService: IDashboardService
+  private val dashboardService: IDashboardService,
+  private val healthConnectService: IHealthConnectService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
-) {
+),DefaultLifecycleObserver {
   init {
     handleIntent(DashboardIntent.LoadEntries)
     loadEntries()
     subscribeMetrics()
     subscribeProgress()
+    viewModelScope.launch {
+      healthConnectService.checkHealthConnectPermissionDisabled()
+    }
+  }
+
+  override fun onResume(owner: LifecycleOwner) {
+    viewModelScope.launch {
+      val isOutOfSync = healthConnectService.outOfSyncState.first()
+      if (isOutOfSync) {
+        healthConnectService.healthConnectOutOfSync()
+      }
+    }
   }
 
   override fun provideInitialState(): DashboardState = DashboardState()
