@@ -37,7 +37,10 @@ interface IDeviceService {
    * Sync scales from the API and update the local database.
    * This method fetches scales from the server and merges them with local unsynced scales.
    */
-  suspend fun syncScales()
+  suspend fun syncDevices(
+    newOrUpdatedDevices: List<Device> = emptyList(),
+    deletedDevices: List<Device> = emptyList()
+  )
 
   /**
    * Save a new scale or update an existing one.

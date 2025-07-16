@@ -808,6 +808,7 @@ constructor(
                   message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
                   onDismiss = {
                     onExitSetup(true)
+                    dialogQueueService.dismissCurrent()
                   },
                 ),
               )

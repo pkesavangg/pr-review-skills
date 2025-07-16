@@ -106,7 +106,7 @@ constructor(
           dialogQueueService.dismissLoader()
           showToast(ScaleModeStrings.Toast.Success)
           // Refresh scale data to get updated preferences
-          deviceService.syncScales()
+          deviceService.syncDevices()
           navigateBack()
         } else {
           showToast(ScaleModeStrings.Toast.Error)

@@ -6,10 +6,15 @@ import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.repository.IDeviceRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,6 +41,9 @@ constructor(
    */
   override val savedScales: Flow<List<Device>> = _savedScales.asStateFlow()
 
+  // Internal scope for launching long-lived jobs
+  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
   override suspend fun onDeviceUpdate(device: Device) {
     val scale = _savedScales.value.find { it.device?.broadcastId == device.device?.broadcastId }
     if (scale != null) {
@@ -52,6 +60,7 @@ constructor(
    * Current account ID for filtering devices.
    */
   private var currentAccountId: String? = null
+  private var deviceCollectionJob: Job? = null
 
   init {
     AppLog.d(tag, "DeviceService initialized")
@@ -60,7 +69,7 @@ constructor(
   }
 
   /**
-   * Set the current account ID and initialize scale data for that account.
+   * Set the current account ID and initialize device data for that account.
    * This should be called when the user logs in or switches accounts.
    *
    * @param accountId The account ID to set
@@ -68,8 +77,17 @@ constructor(
   override suspend fun setAccountId(accountId: String) {
     AppLog.d(tag, "Setting account ID: $accountId")
     currentAccountId = accountId
-    // Sync scales from API
-    syncScales()
+    // Cancel any existing collector job
+    deviceCollectionJob?.cancel()
+
+    // Launch a new job to stay on the flow
+    deviceCollectionJob = repositoryScope.launch {
+      deviceRepository.getDevices(accountId).collect { devices ->
+        _savedScales.value = devices
+      }
+    }
+    // Sync devices from API and local DB
+    syncDevices()
   }
 
   /**
@@ -83,145 +101,109 @@ constructor(
   }
 
   /**
-   * Sync scales from the API and update the local database.
-   * This method fetches scales from the server and merges them with local unsynced scales.
-   * For scales without server IDs, it generates UUIDs once and stores them persistently.
+   * Unified sync method for device operations and initial sync.
+   * - If called with no arguments, performs initial sync: fetches from API, merges with local, updates StateFlow.
+   * - If called with device lists, processes add/update/delete operations and updates StateFlow.
+   *
+   * @param newOrUpdatedDevices Devices to add or update (optional)
+   * @param deletedDevices Devices to delete (optional)
    */
-  override suspend fun syncScales() {
-    if (currentAccountId == null) {
-      AppLog.w(tag, "Cannot sync scales: no account ID set")
-      return
-    }
-
-    AppLog.d(tag, "Starting scale synchronization for account: $currentAccountId")
+  override suspend fun syncDevices(
+    newOrUpdatedDevices: List<Device>,
+    deletedDevices: List<Device>
+  ) {
+    if (currentAccountId == null) return
+    val tag = "DeviceService-syncDevices"
     try {
-      // 1. Fetch from API
+      // 1. Get unsynced local devices
+      val unsyncedDevices = deviceRepository.getUnsyncedDevices().toMutableList()
+
+      // 2. Add new/updated and deleted devices to the unsynced list
+      newOrUpdatedDevices.forEach { device ->
+        unsyncedDevices.removeAll { it.id == device.id }
+        unsyncedDevices.add(0, device.copy(hasServerID = false))
+      }
+      deletedDevices.forEach { device ->
+        unsyncedDevices.removeAll { it.id == device.id }
+        unsyncedDevices.add(0, device.copy(hasServerID = false))
+      }
+
+
+      for (device in unsyncedDevices) {
+        try {
+          if (deletedDevices.any { it.id == device.id }) {
+            deviceRepository.deleteDeviceFromApi(device.id)
+            deviceRepository.deleteDeviceFromDb(device.id)
+            AppLog.d(tag, "Device deleted from API and DB: ${device.id}")
+          } else {
+            deviceRepository.saveDeviceToDb(device, accountId = currentAccountId!!)
+            val syncedDevice = deviceRepository.saveDeviceToApi(device, currentAccountId!!)
+            deviceRepository.markDeviceSynced(device.id, true)
+            AppLog.d(tag, "Device synced to API: ${syncedDevice.id}")
+          }
+        } catch (e: Exception) {
+          AppLog.e(tag, "Error syncing device ${device.id}", e.toString())
+          deviceRepository.markDeviceSynced(device.id, false)
+        }
+      }
+
+      // 4. Fetch latest devices from API and update local DB
+      AppLog.d(tag, "Fetching latest devices from API for account: $currentAccountId")
       val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
       AppLog.d(tag, "Fetched ${apiDevices.size} devices from API")
 
-      // 2. Process API devices to handle ID generation properly
-      val processedDevices =
-        apiDevices.map { apiDevice ->
-          // Check if this device already exists in the database
-          val existingDevice =
-            try {
-              when {
-                // First try to find by MAC address
-                apiDevice.device?.macAddress?.isNotEmpty() == true -> {
-                  AppLog.d(tag, "Checking for existing device by MAC: ${apiDevice.device.macAddress}")
-                  deviceRepository.getDeviceByMac(apiDevice.device.macAddress).first()
-                }
-                // Then try to find by broadcast ID
-                !apiDevice.device?.broadcastId.isNullOrEmpty() -> {
-                  AppLog.d(
-                    tag,
-                    "Checking for existing device by broadcast ID: ${apiDevice.device.broadcastId}",
-                  )
-                  deviceRepository.getDeviceByBroadcastId(apiDevice.device.broadcastId!!).first()
-                }
+      val processedDevices = apiDevices.map { apiDevice ->
+        val existingDevice = try {
+          when {
+            apiDevice.device?.macAddress?.isNotEmpty() == true -> deviceRepository.getDeviceByMac(apiDevice.device.macAddress)
+              .first()
 
-                else -> null
-              }
-            } catch (e: Exception) {
-              AppLog.d(tag, "No existing device found or error occurred: ${e.message}")
-              null
-            }
+            !apiDevice.device?.broadcastId.isNullOrEmpty() -> deviceRepository.getDeviceByBroadcastId(apiDevice.device.broadcastId!!)
+              .first()
 
-          // If device exists and API device doesn't have server ID, use existing ID
-          if (existingDevice != null && !apiDevice.hasServerID) {
-            AppLog.d(tag, "Using existing device ID ${existingDevice.id} for device without server ID")
-            // Update the existing device with new API data but keep the existing ID
-            apiDevice.copy(
-              id = existingDevice.id,
-              hasServerID = existingDevice.hasServerID,
-            )
-          } else {
-            apiDevice.copy(
-              hasServerID = apiDevice.hasServerID,
-            )
+            else -> null
           }
+        } catch (e: Exception) {
+          null
         }
-
-      // 3. Save processed devices to DB
+        if (existingDevice != null && !apiDevice.hasServerID) {
+          apiDevice.copy(id = existingDevice.id, hasServerID = existingDevice.hasServerID)
+        } else {
+          apiDevice.copy(hasServerID = apiDevice.hasServerID)
+        }
+      }
       for (device in processedDevices) {
-        AppLog.d(
-          tag,
-          "Saving device ${device.id} with hasServerID: ${device.hasServerID}",
-        )
         deviceRepository.saveDeviceToDb(device, accountId = currentAccountId!!)
       }
       AppLog.d(tag, "Saved API devices to DB")
-
-      // 4. Get unsynced local devices
-      val unsyncedDevices = deviceRepository.getUnsyncedDevices()
-      AppLog.d(tag, "Found ${unsyncedDevices.size} unsynced local devices")
-
-      // 5. Merge: API devices + unsynced local devices (not in API)
-      val apiDeviceIds = processedDevices.map { it.id }.toSet()
-      val mergedDevices = processedDevices.toMutableList()
-      mergedDevices.addAll(unsyncedDevices.filter { !apiDeviceIds.contains(it.id) })
-
-      // 6. Update StateFlow
-      _savedScales.value = mergedDevices
-      AppLog.d(tag, "Scale sync completed. Total devices: ${mergedDevices.size}")
     } catch (e: Exception) {
-      AppLog.e(tag, "Error syncing scales", e.toString())
-      // Return local devices if API fails
-      try {
-        val devices = deviceRepository.getDevices(currentAccountId!!).first()
-        _savedScales.value = devices
-        AppLog.d(tag, "Using local devices after sync failure. Total devices: ${devices.size}")
-      } catch (localError: Exception) {
-        AppLog.e(tag, "Error getting local devices after sync failure", localError.toString())
-      }
+      AppLog.e(tag, "Error in syncDevices", e.toString())
     }
   }
 
   /**
-   * Save a new scale or update an existing one.
+   * Save a new scale or update an existing one using syncDevices.
    * If the scale is not synced, it will be marked as temporary and synced later.
    *
    * @param device The device to save
    */
   override suspend fun saveScale(device: Device) {
-    AppLog.d(tag, "Saving scale: ${device.id}")
-    try {
-      deviceRepository.saveDeviceToDb(device, accountId = currentAccountId!!)
-      AppLog.d(tag, "Scale saved to DB: ${device.id}")
-      // Try to sync with API
-      try {
-        val syncedDevice = deviceRepository.saveDeviceToApi(device, currentAccountId!!)
-        deviceRepository.markDeviceSynced(device.id, true)
-        AppLog.d(tag, "Scale synced to API: ${syncedDevice.id}")
-      } catch (apiError: Exception) {
-        deviceRepository.markDeviceSynced(device.id, false)
-        AppLog.w(tag, "Failed to sync scale to API, marked as unsynced: ${device.id}")
-      }
-    } catch (e: Exception) {
-      AppLog.e(tag, "Error saving scale", e.toString())
-    }
+    AppLog.d(tag, "saveScale (via syncDevices): ${device.id}")
+    syncDevices(newOrUpdatedDevices = listOf(device))
   }
 
   /**
-   * Delete a scale from both local database and API.
+   * Delete a scale from both local database and API using syncDevices.
    *
    * @param deviceId The ID of the device to delete
    */
   override suspend fun deleteScale(deviceId: String) {
-    AppLog.d(tag, "Deleting scale: $deviceId")
-    try {
-      // First delete from API
-      try {
-        deviceRepository.deleteDeviceFromApi(deviceId)
-        AppLog.d(tag, "Scale deleted from API successfully")
-      } catch (apiError: Exception) {
-        AppLog.w(tag, "Failed to delete scale from API, will retry later: $deviceId")
-      }
-      // Then delete from local database
-      deviceRepository.deleteDeviceFromDb(deviceId)
-      AppLog.d(tag, "Scale deleted from local database successfully")
-    } catch (e: Exception) {
-      AppLog.e(tag, "Error deleting scale", e.toString())
+    AppLog.d(tag, "deleteScale (via syncDevices): $deviceId")
+    val device = deviceRepository.getDevice(deviceId).first()
+    if (device != null) {
+      syncDevices(deletedDevices = listOf(device))
+    } else {
+      AppLog.w(tag, "Device not found for delete: $deviceId")
     }
   }
 
