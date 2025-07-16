@@ -3,24 +3,7 @@ import Charts
 import os
 import Foundation
 
-/// Protocol defining graph management operations
-protocol DashboardGraphManaging {
-    func updateScrollPosition(to date: Date) async
-    func handleScrollPositionChange(_ newPosition: Date?) async
-    func handleChartSelection(at selectedDate: Date?) async
-    @available(iOS 18.0, *)
-    func handleScrollPhaseChange(_ phase: ScrollPhase) async
-  func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) async -> [GraphSeries]
-    func updateSelectedPeriod(_ period: TimePeriod) async
-    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async -> YAxisScale
-  func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async
-  func getVisibleOperations(from operations: [BathScaleWeightSummary]) async -> [BathScaleWeightSummary]
-    func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) async
 
-    func handleScrollStart() async
-    func handleScrollEnd() async
-    func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date]
-}
 
 /// Manages all graph and chart operations for the dashboard
 @MainActor
@@ -694,7 +677,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let visibleEnd = min(overallMaxDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
 
         let entryCount = operations.count
-        let shouldRepeat = shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+        let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
         let xAxisValues: [Date]
         switch period {
@@ -837,6 +820,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return DashboardConstants.TimeInterval.month * 2
         case .total:
             return DashboardConstants.TimeInterval.month * 3
+        }
+    }
+
     // MARK: - Date Formatting Methods (moved from DashboardStore)
 
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
