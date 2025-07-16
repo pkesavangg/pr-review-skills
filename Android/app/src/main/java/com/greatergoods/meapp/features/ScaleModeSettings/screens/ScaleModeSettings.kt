@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.common.components.AnnotationPosition
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppIconType
+import com.greatergoods.meapp.features.common.components.AppNote
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.AppToggle
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -151,6 +153,7 @@ fun ScaleModeSettingsScreen(
       }
       Column(
         modifier = Modifier.align(Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
       ) {
         Image(
           painter =
@@ -158,21 +161,12 @@ fun ScaleModeSettingsScreen(
               id = AppIcons.Default.WeightOnlyModeScale,
             ),
           contentDescription = null,
+          modifier = Modifier.height(240.dp).align(Alignment.CenterHorizontally),
         )
-      }
-      Surface(
-        color = colorScheme.inverseAction,
-        shape = RoundedCornerShape(borderRadius.sm),
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 0.dp,
-      ) {
-        AppText(
-          text = ScaleModeStrings.NoteOtherUsers,
-          annotatedText = ScaleModeStrings.Note,
-          annotationPosition = AnnotationPosition.Start,
-          spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
-          textType = TextType.SubHeading,
-          modifier = Modifier.padding(spacing.md),
+
+        AppNote(
+          message = ScaleModeStrings.NoteOtherUsers,
+          showNote = true,
         )
       }
     }

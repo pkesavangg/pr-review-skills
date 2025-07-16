@@ -12,6 +12,7 @@ import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.ggbluetoothsdk.external.enums.GGWifiState
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
@@ -54,9 +55,10 @@ constructor(
   private val deviceService: IDeviceService,
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
+  override val connectivityObserver: IConnectivityObserver,
   private val accountService: IAccountService
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
-  ggDeviceService, permissionService,
+  ggDeviceService, connectivityObserver, permissionService,
   reducer = BtWifiScaleSetupReducer(),
 ) {
   @AssistedFactory

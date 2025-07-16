@@ -23,6 +23,8 @@ data class Device(
   val hasServerID: Boolean = false,
   val wifiMac: String? = null,
   val isWifiConfigured: Boolean = false,
+  val sku: String? = null,
+  val createdAt: String? = null,
   val isWeighOnlyModeEnabledByOthers: Boolean = false,
   val token: String? = null,
   val preferences: Preferences? = null
@@ -37,7 +39,7 @@ data class Device(
   }
 
   fun getSKU(): String {
-    return device?.getSKU() ?: "0375"
+    return sku ?: device?.getSKU() ?: "0375"
   }
 
   companion object {
