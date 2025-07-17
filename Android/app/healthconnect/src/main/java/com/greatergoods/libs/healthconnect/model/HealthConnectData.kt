@@ -1,6 +1,6 @@
 package com.greatergoods.libs.healthconnect.model
 
-import com.greatergoods.libs.healthconnect.enum.DataType
+import com.greatergoods.libs.healthconnect.enums.DataType
 import java.time.Instant
 
 /**

@@ -8,6 +8,7 @@ import com.greatergoods.meapp.domain.model.common.DeviceInfo
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceInfoRepository
+import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IOfflineHandlerService
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +36,7 @@ class DeviceInfoService
     private val offlineHandlerService: IOfflineHandlerService,
     private val appRepository: IAppRepository,
     private val accountRepository: IAccountRepository,
+    private val healthConnectRepository: IHealthConnectRepository
   ) : IDeviceInfoService {
     companion object {
       private const val TAG = "DeviceInfoService"
@@ -62,6 +64,7 @@ class DeviceInfoService
             if (networkState.available) {
               AppLog.d(TAG, "Network is available, checking for pending offline sync")
               offlineHandlerService.handleOfflineSync()
+              healthConnectRepository.syncIntegration()
             }
           }
       }

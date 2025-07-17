@@ -21,4 +21,14 @@ enum class HealthConnectSetup(val code: Int) {
   }
 }
 
+data class ActionButtons(
+  val primary: HealthConnectAction? = null,
+  val secondary: HealthConnectAction? = null
+)
+
+data class PageLoadFrom(
+  val dashBoard: Boolean = false,
+  val integrationFailed: Boolean = false
+)
+
 

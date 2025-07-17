@@ -87,13 +87,11 @@ object AppIcons {
     val My_Fitness_Pal = R.drawable.ic_my_fitnesspal_logo
     val Health_Connect_Logo = R.drawable.health_connect_logo
     val Health_Connect_Off = R.drawable.health_connect_off
-    val Health_Connect_Off_Dark = R.drawable.health_connect_off_dark
-    val No_Permission = R.drawable.no_permission
-    val Full_Permission = R.drawable.full_permission
-    val Partial_Permission = R.drawable.partial_permission
-    val HC_Homepage = R.drawable.hc_homepage
+    val No_Permission=R.drawable.no_permission
+    val Full_Permission=R.drawable.full_permission
+    val HC_Homepage=R.drawable.hc_homepage
     val User_Conflict = R.drawable.user_conflict
-    val Permission_Failed = R.drawable.permission_failed
+    val Permission_Failed = R.drawable.integration_failed
   }
 
   object Setup {

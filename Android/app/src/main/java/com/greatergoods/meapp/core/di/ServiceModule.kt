@@ -35,6 +35,7 @@ import com.greatergoods.meapp.domain.repository.IDeviceRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IGoalRepository
+import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
@@ -162,6 +163,7 @@ object ServiceModule {
         offlineHandlerService: IOfflineHandlerService,
         appRepository: IAppRepository,
         accountRepository: IAccountRepository,
+        healthConnectRepository: IHealthConnectRepository
     ): IDeviceInfoService =
         DeviceInfoService(
             context,
@@ -170,6 +172,7 @@ object ServiceModule {
             offlineHandlerService,
             appRepository,
             accountRepository,
+            healthConnectRepository
         )
 
    /**

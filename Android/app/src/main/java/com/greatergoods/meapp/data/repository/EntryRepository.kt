@@ -81,7 +81,7 @@ class EntryRepository @Inject constructor(
         entryDao.getEntriesByAccount(accountId).mapNotNull { it.toEntry() }
 
     /**
-     * Gets valid entries for an account within a time range.
+     * Gets valid entries for an account within a time range
      */
     override fun getEntriesByTimeRange(
         accountId: String,
