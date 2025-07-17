@@ -1100,12 +1100,12 @@ private extension BluetoothService {
     }
     
     func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
-        guard let preference = preference else {
+        guard let preference = preference,
+              // If the underlying row is gone (e.g., after cascade delete) the modelContext becomes nil
+              preference.modelContext != nil else {
             return nil
         }
-        
-        // With cascade deletion properly implemented, we can safely access properties
-        // The cascade deletion ensures cleanup when Device is deleted
+
         return GGDevicePreference(
             displayName: preference.displayName,
             displayMetrics: preference.displayMetrics,

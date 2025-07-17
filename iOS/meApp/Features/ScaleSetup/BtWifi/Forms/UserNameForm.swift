@@ -36,7 +36,6 @@ class UserNameForm: ObservableForm {
     /// Reset the form to initial state
     func reset() {
         displayName.value = ""
-        userList = []
         setupDuplicateValidation()
     }
     

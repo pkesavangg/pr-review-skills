@@ -100,6 +100,9 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     func deleteScale(_ scaleId: String) async throws {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
+            // Break the reference *before* we delete so any lingering copies of the
+            // `Device` model can no longer reach a cascade-deleted `R4ScalePreference`.
+            device.r4ScalePreference = nil
             context.delete(device)
             try context.save()
         }
