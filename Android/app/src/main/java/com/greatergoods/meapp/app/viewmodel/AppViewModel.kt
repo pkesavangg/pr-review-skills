@@ -2,6 +2,7 @@ package com.greatergoods.meapp.app.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.ITokenManager
@@ -17,6 +18,7 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.ToastStrings
@@ -206,15 +208,20 @@ constructor(
   }
 
   private fun subscribePermissions() {
+    startScan()
     permissionSubscribeJob = viewModelScope.launch {
-      startScan()
       ggPermissionService.permissionCallBackFlow.collect { permissions ->
         if (permissions.isNotEmpty()) {
-          if (ggPermissionService.checkScanPermissions(permissions)) {
+          if (AppPermissionsHelper.checkScanPermissions(permissions)) {
             startScan()
           } else {
             if (!initialized) {
-              ggPermissionService.requestScanPermissions(permissions)
+              val canRequestNotifPermission = AppPermissionsHelper
+                .canRequestNotificationPermission(ggPermissionService.permissionCallBackFlow.value)
+              if (canRequestNotifPermission) {
+                requestPermissions(GGPermissionType.NOTIFICATION)
+              }
+              requestPermissions(GGPermissionType.ALL)
               initialized = true
             }
             ggPermissionService.stopScan()
@@ -224,12 +231,34 @@ constructor(
     }
   }
 
+  private fun requestPermissions(permissionType: String) {
+    viewModelScope.launch {
+      dialogUtility.permissionAlert(
+        permissionType = permissionType,
+        onRequest = {
+          if (permissionType == GGPermissionType.ALL) {
+            navigateToAppPermissions()
+            dialogQueueService.dismissCurrent()
+          } else {
+            ggPermissionService.requestPermission(permissionType)
+          }
+        },
+      )
+    }
+  }
+
   private fun startScan() {
     viewModelScope.launch {
       val account = accountService.getCurrentAccount()
       if (account != null) {
         ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, account.toGGBTUserProfile())
       }
+    }
+  }
+
+  private fun navigateToAppPermissions() {
+    viewModelScope.launch {
+      navigationService.navigateTo(AppRoute.AccountSettings.AppPermissions)
     }
   }
 }

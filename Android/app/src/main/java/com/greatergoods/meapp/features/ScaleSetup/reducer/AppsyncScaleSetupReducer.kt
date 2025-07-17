@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.ScaleSetup.reducer
 
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.features.ScaleSetup.enums.AppsyncScaleSetupStep
 
@@ -14,7 +15,8 @@ data class AppsyncScaleSetupState(
   val error: String? = null,
   val isSetupFinished: Boolean = false,
   val isConnected: Boolean = false,
-) : IReducer.State {
+  val permissions: GGPermissionStatusMap = mutableMapOf(),
+  ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
   val isLastStep: Boolean = currentStepIndex == steps.lastIndex
@@ -53,6 +55,9 @@ sealed interface AppsyncScaleSetupIntent : IReducer.Intent {
   ) : AppsyncScaleSetupIntent
 
   object OpenHelp : AppsyncScaleSetupIntent
+
+  data class SetPermissions(val permissions: GGPermissionStatusMap) : AppsyncScaleSetupIntent
+  data class RequestPermission(val permissionType: String) : AppsyncScaleSetupIntent
 }
 
 /**
@@ -68,6 +73,7 @@ class AppsyncScaleSetupReducer : IReducer<AppsyncScaleSetupState, AppsyncScaleSe
       is AppsyncScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)
       is AppsyncScaleSetupIntent.SetLoading -> state.copy(isLoading = intent.isLoading)
       is AppsyncScaleSetupIntent.SetError -> state.copy(error = intent.error)
+      is AppsyncScaleSetupIntent.SetPermissions -> state.copy(permissions = intent.permissions)
       is AppsyncScaleSetupIntent.Next -> {
         val nextIndex = state.currentStepIndex + 1
         if (nextIndex < state.steps.size) {
