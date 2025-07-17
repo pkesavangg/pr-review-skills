@@ -49,6 +49,8 @@ interface IDashboardService {
    */
   suspend fun updateVisibleMilestoneKeys(accountId: String? = null, keys: List<MilestoneKey> = listOf())
 
+  suspend fun updateVisibleKeys(accountId: String? = null, keys: List<DashboardKey> = listOf())
+
   /**
    * Checks if the given accountId has a visible keys entry.
    * If accountId is null, uses the stored accountId.

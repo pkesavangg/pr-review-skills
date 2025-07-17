@@ -13,7 +13,9 @@ interface IDeviceService {
    * StateFlow containing the current list of saved scales.
    * This is the main source of truth for scale data in the app.
    */
-  val savedScales: Flow<List<Device>>
+  val pairedScales: Flow<List<Device>>
+
+  suspend fun getScales(accountId: String? = null): Flow<List<Device>>
 
   /**
    * Set the current account ID and initialize scale data for that account.
@@ -22,6 +24,10 @@ interface IDeviceService {
    * @param accountId The account ID to set
    */
   suspend fun setAccountId(accountId: String)
+
+  suspend fun onDeviceUpdate(
+    device: Device,
+  )
 
   /**
    * Clear the current account data.
@@ -33,7 +39,9 @@ interface IDeviceService {
    * Sync scales from the API and update the local database.
    * This method fetches scales from the server and merges them with local unsynced scales.
    */
-  suspend fun syncScales()
+  suspend fun syncDevices(
+    tempDevice: Device? = null,
+  )
 
   /**
    * Save a new scale or update an existing one.

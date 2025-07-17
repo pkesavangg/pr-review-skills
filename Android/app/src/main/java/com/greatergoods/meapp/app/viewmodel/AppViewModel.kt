@@ -2,6 +2,10 @@ package com.greatergoods.meapp.app.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.greatergoods.blewrapper.GGDeviceService
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.navigation.AppRoute
@@ -11,6 +15,8 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.AuthState
@@ -24,8 +30,10 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.ToastStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -47,7 +55,8 @@ constructor(
   private val accountService: IAccountService,
   private val dialogUtility: IDialogUtility,
   private val deviceService: IDeviceService,
-  private val ggPermissionService: GGPermissionService
+  private val ggPermissionService: GGPermissionService,
+  private val ggDeviceService: GGDeviceService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -58,6 +67,7 @@ constructor(
 
   override fun provideInitialState(): AppState = AppState()
   private var permissionSubscribeJob: Job? = null
+  private var deviceSubscribeJob: Job? = null
   private var initialized = false
 
   init {
@@ -80,6 +90,15 @@ constructor(
       val account = accountService.getCurrentAccount()
       initLoadingData(account)
       initEvents()
+    }
+  }
+
+  private fun syncScales() {
+    viewModelScope.launch {
+      deviceService.getScales().collect {
+        val ggBTDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+        ggDeviceService.syncDevices(ggBTDevices)
+      }
     }
   }
 
@@ -107,7 +126,8 @@ constructor(
           is AuthState.UnauthorizedLogout -> {
             // Show account logged out alert
             viewModelScope.launch {
-              val activeAccount = accountService.handleUnauthorizedLogout(authState.accountId)
+              val activeAccount =
+                accountService.handleUnauthorizedLogout(authState.accountId)
               if (activeAccount != null) {
                 navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
                 dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
@@ -125,7 +145,9 @@ constructor(
               dialogQueueService.showToast(
                 Toast(
                   title = null,
-                  message = ToastStrings.Success.AccountSwitchSuccess.Message(accountName),
+                  message = ToastStrings.Success.AccountSwitchSuccess.Message(
+                    accountName,
+                  ),
                   action = null,
                 ),
               )
@@ -192,12 +214,14 @@ constructor(
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
+        deviceSubscribeJob?.cancel()
         entryService.updateAccountId(account.id)
-        deviceInfoService.updateDeviceInfo()
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
-        navigationService.autoLogin()
         subscribePermissions()
+        subscribeDeviceCallback()
+        syncScales()
+        navigationService.autoLogin()
       } else {
         routeToLandingOrApp()
       }
@@ -231,6 +255,67 @@ constructor(
     }
   }
 
+  private fun subscribeDeviceCallback() {
+    deviceSubscribeJob = viewModelScope.launch {
+      ggDeviceService.deviceCallbackFlow.collect { response ->
+        when (response) {
+          is GGScanResponse.DeviceDetail -> {
+            handleDeviceResponse(response)
+          }
+
+          is GGScanResponse.Entry -> {
+          }
+
+          else -> null
+        }
+      }
+    }
+  }
+
+  private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
+    entryResponse.data
+    Log.i("CHECKING", entryResponse.data.toString())
+  }
+
+  private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
+    val data = deviceResponse.data
+    when (deviceResponse.type) {
+      GGScanResponseType.DEVICE_CONNECTED -> {
+        onDeviceUpdate(
+          deviceDetail = data,
+          connectionStatus = BLEStatus.CONNECTED,
+        )
+      }
+
+      GGScanResponseType.DEVICE_DISCONNECTED -> {
+        onDeviceUpdate(
+          deviceDetail = data,
+          connectionStatus = BLEStatus.DISCONNECTED,
+        )
+      }
+
+      GGScanResponseType.DEVICE_INFO_UPDATE -> {
+        onDeviceUpdate(
+          deviceDetail = data,
+        )
+      }
+
+      else -> null
+    }
+  }
+
+  private fun onDeviceUpdate(
+    deviceDetail: GGDeviceDetail,
+    connectionStatus: BLEStatus? = null,
+  ) {
+    viewModelScope.launch {
+      val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
+      if (device != null)
+        deviceService.onDeviceUpdate(
+          device = device.copy(device = deviceDetail, connectionStatus = connectionStatus ?: device.connectionStatus),
+        )
+          }
+  }
   private fun requestPermissions(permissionType: String) {
     viewModelScope.launch {
       dialogUtility.permissionAlert(

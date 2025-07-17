@@ -174,15 +174,15 @@ fun ScaleDetailsScreenContent(
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFi,
-                    type = SettingsItemType.Action(device?.wifiMac ?: ""),
-                    enabled = device?.isWifiConfigured ?: false,
+                    type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
+                    enabled = device?.device?.isWifiConfigured ?: false,
                   ),
                 )
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFiMacAddress,
-                    type = SettingsItemType.Action(device?.wifiMac ?: ""),
-                    enabled = device?.isWifiConfigured ?: false,
+                    type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
+                    enabled = device?.device?.isWifiConfigured ?: false,
                   ),
                 )
               }
