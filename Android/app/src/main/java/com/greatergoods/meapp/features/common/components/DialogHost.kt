@@ -167,6 +167,14 @@ fun DialogHost() {
           onPrimaryAction = {
             dialog.onConfirm?.invoke(Unit)
             dialogQueueViewModel.dismissCurrent()
+          },
+          onSecondaryAction = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onClose = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
           }
         )
       }
