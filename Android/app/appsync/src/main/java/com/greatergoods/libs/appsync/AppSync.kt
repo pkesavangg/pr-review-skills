@@ -1,5 +1,6 @@
 package com.greatergoods.libs.appsync
 
+import com.greatergoods.libs.appsync.AppSyncResultHolder.result
 import com.greatergoods.libs.appsync.activity.AppSyncScanActivity
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -18,12 +19,12 @@ import android.content.Intent
  * @property result The scan result, null until the scan completes
  */
 internal object AppSyncResultHolder {
-    /**
-     * The scan result that will be delivered to the calling function.
-     * Volatile to ensure thread safety when accessed from different threads.
-     */
-    @Volatile
-    var result: AppSyncResult? = null
+  /**
+   * The scan result that will be delivered to the calling function.
+   * Volatile to ensure thread safety when accessed from different threads.
+   */
+  @Volatile
+  var result: AppSyncResult? = null
 }
 
 /**
@@ -53,39 +54,39 @@ internal object AppSyncResultHolder {
  * @throws SecurityException if camera permissions are not granted
  */
 suspend fun startAppSyncScan(
-    context: Context,
-    zoom: Int = 1,
-    showManualEntryButton: Boolean = true,
+  context: Context,
+  zoom: Int = 1,
+  showManualEntryButton: Boolean = true,
 ): AppSyncResult =
-    suspendCancellableCoroutine { cont ->
-        // Clear any previous result to ensure we get a fresh result
-        AppSyncResultHolder.result = null
+  suspendCancellableCoroutine { cont ->
+    // Clear any previous result to ensure we get a fresh result
+    AppSyncResultHolder.result = null
 
-        // Launch the scan activity
-        val activity = context as? Activity ?: error("Context must be an Activity")
-        val intent = Intent(context, AppSyncScanActivity::class.java)
+    // Launch the scan activity
+    val activity = context as? Activity ?: error("Context must be an Activity")
+    val intent = Intent(context, AppSyncScanActivity::class.java)
 
-        // TODO: Pass zoom and showManualEntryButton via intent extras for better parameter handling
-        // intent.putExtra("zoom", zoom)
-        // intent.putExtra("showManualEntryButton", showManualEntryButton)
+    // TODO: Pass zoom and showManualEntryButton via intent extras for better parameter handling
+    intent.putExtra("zoom", zoom)
+    intent.putExtra("showManualEntryButton", showManualEntryButton)
 
-        activity.startActivity(intent)
+    activity.startActivity(intent)
 
-        // Poll for result using a simple polling mechanism
-        // This approach can be improved with a callback or LiveData/Flow for better performance
-        activity.window.decorView.postDelayed(
-            object : Runnable {
-                override fun run() {
-                    val result = AppSyncResultHolder.result
-                    if (result != null) {
-                        // Result is available, resume the coroutine with the result
-                        cont.resume(result)
-                    } else {
-                        // Result not yet available, continue polling
-                        activity.window.decorView.postDelayed(this, 100)
-                    }
-                }
-            },
-            100, // Poll every 100ms
-        )
-    }
+    // Poll for result using a simple polling mechanism
+    // This approach can be improved with a callback or LiveData/Flow for better performance
+    activity.window.decorView.postDelayed(
+      object : Runnable {
+        override fun run() {
+          val result = AppSyncResultHolder.result
+          if (result != null) {
+            // Result is available, resume the coroutine with the result
+            cont.resume(result)
+          } else {
+            // Result not yet available, continue polling
+            activity.window.decorView.postDelayed(this, 100)
+          }
+        }
+      },
+      100, // Poll every 100ms
+    )
+  }

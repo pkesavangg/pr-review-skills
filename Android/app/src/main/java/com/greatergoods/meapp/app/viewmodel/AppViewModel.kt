@@ -25,6 +25,8 @@ import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.ToastStrings
@@ -240,12 +242,19 @@ constructor(
             startScan()
           } else {
             if (!initialized) {
+              val pairedScales = deviceService.savedScales.first()
+              val hasBtWifiScales = pairedScales.any { savedScale ->
+                val scaleInfo = SCALES.find { it.sku == savedScale.sku }
+                scaleInfo?.setupType == ScaleSetupType.BtWifiR4
+              } && pairedScales.isNotEmpty()
               val canRequestNotifPermission = AppPermissionsHelper
                 .canRequestNotificationPermission(ggPermissionService.permissionCallBackFlow.value)
-              if (canRequestNotifPermission) {
+              if (canRequestNotifPermission && hasBtWifiScales) {
                 requestPermissions(GGPermissionType.NOTIFICATION)
               }
-              requestPermissions(GGPermissionType.ALL)
+              if (hasBtWifiScales) {
+                requestPermissions(GGPermissionType.ALL)
+              }
               initialized = true
             }
             ggPermissionService.stopScan()
