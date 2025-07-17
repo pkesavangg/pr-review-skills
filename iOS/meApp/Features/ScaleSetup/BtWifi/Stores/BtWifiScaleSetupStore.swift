@@ -121,6 +121,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Selected customize settings items that have been configured
     @Published var selectedCustomizeItems: Set<String> = []
+
+    /// Selected scale metric keys from the Scale Metrics customization screen.
+    /// Defaults to all available metrics so that, unless the user removes metrics, everything is sent to the scale.
+    var selectedScaleMetrics: [String] = ScaleMetrics.defaultMetricsKeys
     
     // MARK: - Forms
     @Published var userNameForm = UserNameForm()
@@ -260,6 +264,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.handleScaleModeChange(scaleMode, heartRateEnabled: heartRateEnabled)
                                 }
                             )
+                        case .scaleMetrics:
+                            // Scale metrics customization screen.
+                            ScaleMetricsCustomizationView(initialEnabledKeys: selectedScaleMetrics) { [weak self] metrics in
+                                self?.selectedScaleMetrics = metrics
+                                // Mark that changes were made so we trigger update later.
+                                self?.hasCustomizeChanges = true
+                                self?.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
+                            }
                         default:
                             // For now, other settings show placeholder
                             VStack {
@@ -623,6 +635,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 selectedScaleMode = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
                 isHeartRateEnabled = preference.shouldMeasurePulse
             }
+        case .scaleMetrics:
+            // Preload currently saved display metrics so the customization screen accurately reflects existing configuration.
+            if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
+                selectedScaleMetrics = preference.displayMetrics
+            } else {
+                selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
+            }
         default:
             break
         }
@@ -679,6 +698,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             break
         case .scaleMetrics:
+            // Persist the user's selected display metrics into the local preference so it can be synced later.
+            if let savedScale = savedScale {
+                savedScale.r4ScalePreference?.displayMetrics = selectedScaleMetrics
+            }
             break
         case .dashboardMetrics:
             break
@@ -1421,7 +1444,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             let updatedPreferenceDTO = R4ScalePreferenceDTO(
                 scaleId: savedScale.id,
                 displayName: saveScaleUsername ? (savedScale.r4ScalePreference?.displayName ?? firstName ?? "User") : currentPreference.displayName,
-                displayMetrics: saveScaleMetrics ? (savedScale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys) : currentPreference.displayMetrics,
+                displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics,
                 shouldFactoryReset: false,
                 shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
                 shouldMeasurePulse: saveScaleMode ? isHeartRateEnabled : currentPreference.shouldMeasurePulse,
