@@ -107,10 +107,16 @@ class AccountsStore: ObservableObject {
     }
     
     func switchActiveAccount(to accountId: String) {
-        guard let account = accounts.first(where: { $0.accountId == accountId }) else {
+        guard let account = accounts.first(where: { $0.accountId == accountId })  else {
             logger.log(level: .error, tag: tag, message: "Account with ID \(accountId) does not exist")
             return
         }
+        
+        guard account.accountId != self.activeAccount?.accountId  else {
+            logger.log(level: .error, tag: tag, message: "Attempted to switch to the same active account \(accountId)")
+            return
+        }
+        
         Task {
             notificationService.showLoader(LoaderModel(text: "Switching account..."))
             do {
