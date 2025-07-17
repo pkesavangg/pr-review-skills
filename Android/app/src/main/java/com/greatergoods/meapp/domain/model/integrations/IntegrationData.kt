@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.domain.model.integrations
 
-import com.greatergoods.libs.healthconnect.enums.DataType
-
 /**
  * Data class for HealthConnectData (define as needed)
  */
@@ -10,9 +8,9 @@ import com.greatergoods.libs.healthconnect.enums.DataType
  * Represents integration configuration data.
  */
 data class IntegrationData(
-    val deviceId: String,
-    val type: String,
-    val preferences: IntegrationPreferences? = null
+  val deviceId: String,
+  val type: String,
+  val preferences: IntegrationPreferences? = null
 )
 
 /**
@@ -26,7 +24,7 @@ data class IntegrationPreferences(
  * Represents integrated device information for server operations.
  */
 data class IntegratedDeviceInfo(
-    val operationType: IntegrationOperationType,
+    val operationType: String,
     val scopes: IntegrationData,
     val isCurrentDeviceDeleted: Boolean = false
 )
@@ -34,35 +32,15 @@ data class IntegratedDeviceInfo(
 /**
  * Types of integrations supported.
  */
-enum class IntegrationType {
-    HEALTH_CONNECT,
-    HEALTH_KIT;
-
-    companion object {
-        fun fromString(value: String): IntegrationType {
-            return when (value.lowercase()) {
-                "health_connect", "healthconnect" -> HEALTH_CONNECT
-                "health_kit", "healthkit" -> HEALTH_KIT
-                else -> throw IllegalArgumentException("Unknown integration type: $value")
-            }
-        }
-    }
+enum class IntegrationType(val value: String){
+    HEALTH_CONNECT("healthconnect"),
+    HEALTH_KIT("healthkit");
 }
 
 /**
  * Types of operations for integration management.
  */
-enum class IntegrationOperationType {
-    SAVE,
-    REMOVE;
-
-    companion object {
-        fun fromString(value: String): IntegrationOperationType {
-            return when (value.lowercase()) {
-                "save" -> SAVE
-                "remove" -> REMOVE
-                else -> throw IllegalArgumentException("Unknown operation type: $value")
-            }
-        }
-    }
+enum class IntegrationOperationType(val value: String) {
+    SAVE("save"),
+    REMOVE("remove")
 }

@@ -1,12 +1,15 @@
 package com.greatergoods.meapp.features.integration.viewmodel
 
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ChromeTabState
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.data.repository.HealthConnectRepository
 import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
 import com.greatergoods.meapp.domain.model.storage.Account.Account
+import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
+import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.domain.services.IIntegrationService
@@ -35,10 +38,16 @@ class IntegrationViewModel @Inject constructor(
     private val accountService: IAccountService,
     private val integrationService: IIntegrationService,
     private val healthConnectService: IHealthConnectService,
-    private val healthConnectRepository: HealthConnectRepository // Inject repository
+    private val healthConnectRepository: IHealthConnectRepository, // Inject repository
+    private val integrationRepository: IIntegrationRepository // Inject IntegrationRepository for integrations flow
 ) : BaseIntentViewModel<IntegrationState, IntegrationIntent>(
     reducer = IntegrationReducer(),
-) {
+), DefaultLifecycleObserver {
+
+  override fun onResume(owner: LifecycleOwner) {
+    super.onResume(owner)
+    loadIntegrations()
+  }
 
     /**
      * Current active account, updated automatically from accountService.
@@ -71,6 +80,15 @@ class IntegrationViewModel @Inject constructor(
                 handleIntent(IntegrationIntent.SetIntegrations(newState.integrations))
             }
         }
+        // Observe integrations from IntegrationRepository (like BehaviorSubject)
+        viewModelScope.launch {
+            integrationRepository.integrations.collectLatest { integrations ->
+                if (integrations != null) {
+                    loadIntegrations()
+                }
+            }
+        }
+      subscribeBrowserState()
     }
 
     /**
@@ -86,10 +104,6 @@ class IntegrationViewModel @Inject constructor(
             is IntegrationIntent.RemoveIntegration -> disconnectAuthIntegration()
             is IntegrationIntent.ConfirmDisconnect -> confirmDisconnect()
             is IntegrationIntent.OnBack -> onBack()
-            is IntegrationIntent.OAuthFlowFailed -> handleOAuthFlowFailed(
-                intent.provider,
-                intent.error
-            )
             is IntegrationIntent.NavigateToHealthConnect -> handleHealthConnectNavigation()
             is IntegrationIntent.RemoveHealthConnectIntegration -> removeHealthConnectIntegration()
             else -> {
@@ -99,52 +113,19 @@ class IntegrationViewModel @Inject constructor(
     }
 
     private fun handleHealthConnectNavigation() {
-        val healthConnectIntegration = state.value.integrations.firstOrNull {
-            it.provider == IntegrationProvider.HealthConnect
-        }
-        if (healthConnectIntegration?.isConnected == true) {
-            // Show remove integration dialog for Health Connect
-            dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    title = IntegrationStrings.removeIntegration,
-                    message = IntegrationStrings.removeAuthIntegration,
-                    confirmText = IntegrationStrings.remove,
-                    cancelText = IntegrationStrings.cancel,
-                    onConfirm = {
-                        removeHealthConnectIntegration()
-                        dialogQueueService.dismissCurrent()
-                    },
-                    onCancel = {
-                        dialogQueueService.dismissCurrent()
-                    },
-                ),
-            )
-        } else {
-            // Proceed to Health Connect setup/navigation
-            AppLog.d("IntegrationViewModel", "Navigating to Health Connect setup")
-            navigateToHealthConnect()
-        }
+      navigateToHealthConnect()
     }
 
     private fun removeHealthConnectIntegration() {
         viewModelScope.launch {
             try {
-                AppLog.d("IntegrationViewModel", "Removing Health Connect integration")
-              confirmRemoveIntegration()
+                confirmRemoveIntegration()
                 AppLog.d("IntegrationViewModel", "Successfully removed Health Connect integration")
             } catch (e: Exception) {
                 AppLog.e(
                     "IntegrationViewModel",
                     "Failed to remove Health Connect integration",
                     e.toString()
-                )
-                // Optionally revert UI state or show error
-                handleIntent(
-                    IntegrationIntent.UpdateIntegrationConnectionStatus(
-                        IntegrationProvider.HealthConnect,
-                        isConnected = true,
-                        isValid = false
-                    )
                 )
             }
         }
@@ -161,16 +142,16 @@ class IntegrationViewModel @Inject constructor(
           dialogQueueService.showLoader("Removing...")
           CoroutineScope(Dispatchers.IO).launch {
             healthConnectService.removeHealthConnectIntegration()
-            dialogQueueService.dismissCurrent()
-            dialogQueueService.dismissLoader()
             // Update UI state
             handleIntent(
               IntegrationIntent.UpdateIntegrationConnectionStatus(
                 IntegrationProvider.HealthConnect,
                 isConnected = false,
-                isValid = false
+                isValid = false,
               )
             )
+            dialogQueueService.dismissCurrent()
+            dialogQueueService.dismissLoader()
           }
         },
         onCancel = {
@@ -183,36 +164,37 @@ class IntegrationViewModel @Inject constructor(
     )
   }
 
+  private fun subscribeBrowserState(){
+    viewModelScope.launch { try {
+      customTabManager.subscribeChromeState().collect { state ->
+        when (state) {
+          ChromeTabState.TabHidden -> {
+            AppLog.d("IntegrationViewModel", "Custom tab hidden - OAuth flow may be completed")
+            checkOAuthFlowCompletion()
+          }
+          ChromeTabState.TabShown -> {
+            AppLog.d("IntegrationViewModel", "Custom tab shown")
+          }
+          null -> {
+            AppLog.d("IntegrationViewModel", "Custom tab state is null")
+          }
+          else -> {}
+        }
+      }
+    }
+    catch (e: Exception){
+      AppLog.e(
+        "IntegrationViewModel",
+        "Failed to setup custom tab monitoring",
+        e.toString()
+      )
+    }
+    }
+  }
     /**
      * Loads all integrations with their current connection status.
      */
     private fun loadIntegrations() {
-        viewModelScope.launch {
-            try {
-                customTabManager.subscribeChromeState().collect { state ->
-                    when (state) {
-                        ChromeTabState.TabHidden -> {
-                            AppLog.d("IntegrationViewModel", "Custom tab hidden - OAuth flow may be completed")
-                            checkOAuthFlowCompletion()
-                        }
-                        ChromeTabState.TabShown -> {
-                            AppLog.d("IntegrationViewModel", "Custom tab shown")
-                        }
-                        null -> {
-                            AppLog.d("IntegrationViewModel", "Custom tab state is null")
-                        }
-                        else -> {}
-                    }
-                }
-            } catch (e: Exception) {
-                AppLog.e(
-                    "IntegrationViewModel",
-                    "Failed to setup custom tab monitoring",
-                    e.toString()
-                )
-            }
-        }
-
         viewModelScope.launch {
             try {
                 handleIntent(IntegrationIntent.InitializeIntegrations)
@@ -224,7 +206,7 @@ class IntegrationViewModel @Inject constructor(
                             val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
                             val isOutOfSync = healthConnectService.outOfSyncState.first()
                             integration.copy(
-                                iconRes = if (isHealthConnectOn && isOutOfSync) AppIcons.Integrations.Health_Connect_Off else AppIcons.Integrations.Health_Connect_Logo
+                                iconRes = if (isHealthConnectOn && isOutOfSync) AppIcons.Integrations.Health_Connect_Off else AppIcons.Integrations.Health_Connect_Logo,
                             )
                         } else {
                             integration
@@ -285,9 +267,9 @@ class IntegrationViewModel @Inject constructor(
     private fun showOutOfSyncAlert() {
         dialogQueueService.enqueue(
             DialogModel.Alert(
-                title = com.greatergoods.meapp.features.integration.strings.HealthConnectStrings.OutOfSyncAlert.title,
-                message = com.greatergoods.meapp.features.integration.strings.HealthConnectStrings.OutOfSyncAlert.description,
-                dismissText = com.greatergoods.meapp.features.integration.strings.HealthConnectStrings.ActionButtons.close,
+                title = HealthConnectStrings.OutOfSyncAlert.title,
+                message = HealthConnectStrings.OutOfSyncAlert.description,
+                dismissText = HealthConnectStrings.ActionButtons.close,
                 onDismiss = {
                     // Optionally navigate back or just dismiss
                     dialogQueueService.dismissCurrent()
@@ -357,16 +339,6 @@ class IntegrationViewModel @Inject constructor(
     }
 
     /**
-     * Handles OAuth flow failure for a provider.
-     */
-    private fun handleOAuthFlowFailed(provider: IntegrationProvider, error: String) {
-        AppLog.e("IntegrationViewModel", "OAuth flow failed for $provider: $error")
-        // Clear the current OAuth provider
-        currentOAuthProvider = null
-        showErrorAlert()
-    }
-
-    /**
      * Starts OAuth flow for a provider using custom tabs.
      */
     private fun startOAuthFlow(provider: IntegrationProvider, accountId: String) {
@@ -423,7 +395,6 @@ class IntegrationViewModel @Inject constructor(
                 }
             }.onFailure { e ->
                 AppLog.e("IntegrationViewModel", "Failed to check OAuth flow completion for $currentProvider", e.toString())
-                showErrorAlert()
             }
         }
     }
@@ -656,6 +627,9 @@ class IntegrationViewModel @Inject constructor(
                 onCancel = {
                     dialogQueueService.dismissCurrent()
                 },
+                onDismiss = {
+                  dialogQueueService.dismissCurrent()
+                }
             ),
         )
     }

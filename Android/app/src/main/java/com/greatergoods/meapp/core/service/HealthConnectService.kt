@@ -1,5 +1,8 @@
 package com.greatergoods.meapp.core.service
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import com.greatergoods.libs.healthconnect.HealthConnect
 import com.greatergoods.libs.healthconnect.enums.DataType
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
@@ -15,6 +18,7 @@ import com.greatergoods.meapp.domain.model.integrations.IntegratedDeviceInfo
 import com.greatergoods.meapp.domain.model.integrations.IntegrationData
 import com.greatergoods.meapp.domain.model.integrations.IntegrationOperationType
 import com.greatergoods.meapp.domain.model.integrations.IntegrationPreferences
+import com.greatergoods.meapp.domain.model.integrations.IntegrationType
 import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.toPeriodBodyScaleSummary
@@ -37,9 +41,6 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
 
 /**
  * Implementation of Health Connect service for managing Health Connect integration.
@@ -50,10 +51,10 @@ class HealthConnectService @Inject constructor(
   private val context: Context,
   private val healthConnectRepository: IHealthConnectRepository,
   private val accountRepository: IAccountRepository,
-  private val integrationRepository: IIntegrationRepository,
   private val dialogQueueService: IDialogQueueService,
   private val appNavigationService: IAppNavigationService,
-  private val entryRepository: IEntryRepository // Add entry repository for fetching entries
+  private val entryRepository: IEntryRepository, // Add entry repository for fetching entries
+  private val integrationRepository: IIntegrationRepository // Inject IntegrationRepository for integrations flow
 ) : IHealthConnectService {
 
   // Core Health Connect components
@@ -73,14 +74,6 @@ class HealthConnectService @Inject constructor(
    * Defines what data types the app needs read/write access to.
    */
   override val requestingPermissions = HealthConnectOptions(
-    readTypes = setOf(
-      DataType.Weight,
-      DataType.BodyFat,
-      DataType.LeanBodyMass,
-      DataType.BasalMetabolicRate,
-      DataType.RestingHeartRate,
-      DataType.BoneMass,
-    ),
     writeTypes = setOf(
       DataType.Weight,
       DataType.BodyFat,
@@ -339,20 +332,6 @@ class HealthConnectService @Inject constructor(
     }
   }
 
-  // Helper to transform entry to display model (convert units, handle nulls/zeros)
-  private fun convertToDisplay(entry: PeriodBodyScaleSummary): PeriodBodyScaleSummary {
-      return entry.copy(
-          weight = entry.weight,
-          bodyFat = entry.bodyFat?.takeIf { it > 0 }?.let { convertStoredToLbs(it) },
-          muscleMass = entry.muscleMass?.takeIf { it > 0 }?.let { convertStoredToLbs(it) },
-          water = entry.water?.takeIf { it > 0 }?.let { convertStoredToLbs(it) },
-          bmi = entry.bmi?.takeIf { it > 0 }?.let { convertStoredToLbs(it) },
-          boneMass = entry.boneMass?.takeIf { it > 0 }?.let { convertStoredToLbs(it) },
-          pulse = entry.pulse?.takeIf { it > 0 },
-          bmr = entry.bmr?.takeIf { it > 0 }?.let { convertStoredToLbs(it) }
-      )
-  }
-
   // Conversion utility (replace with actual implementation if available)
   private fun convertStoredToLbs(value: Double): Double {
       // TODO: Replace with actual conversion logic if needed
@@ -407,12 +386,12 @@ class HealthConnectService @Inject constructor(
       val deviceId = getDeviceId()
       val integration = IntegrationData(
         deviceId = deviceId,
-        type = "healthconnect",
+        type = IntegrationType.HEALTH_CONNECT.value,
         preferences = IntegrationPreferences(scopes = permissionList),
       )
-      // Use repository's saveIntegration method which handles both local storage and server sync
+       healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
       healthConnectRepository.saveIntegration(integration)
-      AppLog.i(tag, "Successfully enabled Health Connect integration")
+      integrationRepository.updateLocalAccount()
       true
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to turn on integration", e.toString())
@@ -441,9 +420,14 @@ class HealthConnectService @Inject constructor(
       }
       // Get the device ID for the current integration
       val deviceId = getDeviceId()
-      // Use repository's removeIntegration method which handles both local storage and server sync
-      healthConnectRepository.removeIntegration(deviceId)
-      _outOfSyncState.value = false
+      val account = accountRepository.getActiveAccount().first()
+      if(account != null){
+        healthConnectRepository.removeServerHcIntegration(deviceId)
+        healthConnectRepository.setHcIntegrationStatus(account.id, false)
+        // Update integrations flow
+        integrationRepository.updateLocalAccount()
+      }
+      _outOfSyncState.emit(false)
       AppLog.i(tag, "Successfully removed Health Connect integration")
       true
     } catch (e: Exception) {
@@ -461,29 +445,20 @@ class HealthConnectService @Inject constructor(
         AppLog.w(tag, "No active account found")
         return false
       }
-
-      AppLog.i(tag, "Clearing Health Connect data and settings")
-
       // Check if currently integrated and handle server removal
       val healthConnectData = healthConnectRepository.getAccountByID(accountId)
       if (healthConnectData?.integrated == true) {
         val deviceId = getDeviceId()
         val removingIntegrationData = IntegratedDeviceInfo(
-          operationType = IntegrationOperationType.REMOVE,
+          operationType = IntegrationOperationType.REMOVE.value,
           scopes = IntegrationData(
             deviceId = deviceId,
-            type = "healthconnect",
+            type = IntegrationType.HEALTH_CONNECT.value,
           ),
           isCurrentDeviceDeleted = true,
         )
-
         // Store removal data and try to sync
         healthConnectRepository.setStoredIntegrationData(accountId, removingIntegrationData)
-        try {
-          syncIntegration(accountId, removingIntegrationData)
-        } catch (e: Exception) {
-          AppLog.w(tag, "Failed to sync removal with server: ${e.message}")
-        }
       }
 
       // Revoke Health Connect permissions
@@ -536,7 +511,6 @@ class HealthConnectService @Inject constructor(
           AppLog.i(tag, "Permission changes detected, updating integration")
           healthConnectRepository.setHcPermissions(accountId, currentGrantedPermissions)
         }
-        // Always turn on integration when checking permission changes
         turnOnIntegration(fromMultiDevice = true, isRequestNeed = true)
       }
     } catch (e: Exception) {
@@ -553,13 +527,9 @@ class HealthConnectService @Inject constructor(
         AppLog.w(tag, "No active account found")
         return false
       }
-
-      AppLog.i(tag, "Checking for multiple device connections")
-
       // Check if Health Connect is already integrated with another account/device
       val allHealthConnectData = healthConnectRepository.getAccountDataMap()
       val integratedAccounts = allHealthConnectData.values.filter { it.integrated }
-
       val isMultipleDeviceConnected = integratedAccounts.size > 1 ||
         (integratedAccounts.isNotEmpty() && integratedAccounts.none {
           allHealthConnectData.entries.firstOrNull { entry -> entry.value == it }?.key == accountId
@@ -567,26 +537,19 @@ class HealthConnectService @Inject constructor(
 
       if (isMultipleDeviceConnected) {
         AppLog.i(tag, "Multiple device connection detected")
-
         // Set integration status and handle multi-device connection
         healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
-
         // TODO: Show multi-device connection UI
         // This would typically trigger a UI state change that the ViewModel observes
         // The Angular equivalent shows HealthConnectSetup.multipleDeviceConnection modal
-
         if (!isPermissionEnabled) {
           _outOfSyncState.value = true
           healthConnectRepository.updateOutOfSync(accountId, true)
         }
-
         // Turn on integration for multi-device scenario
         turnOnIntegration(fromMultiDevice = true, isRequestNeed = true)
-
         return true
       }
-
-      AppLog.i(tag, "No multiple device connection found")
       return false
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to check multiple device connection", e.toString())
@@ -679,73 +642,6 @@ class HealthConnectService @Inject constructor(
     }
   }
 
-  /**
-   * Syncs integration data with the server.
-   * Similar to Angular's syncIntegration method.
-   */
-  suspend fun syncIntegration(accountId: String, integrationData: IntegratedDeviceInfo? = null) {
-    try {
-      if (accountId.isEmpty()) {
-        AppLog.w(tag, "No account ID provided for sync")
-        return
-      }
-
-      // Get stored integration data if not provided
-      val storedIntegration = integrationData ?: healthConnectRepository.getStoredIntegrationData(accountId)
-
-      if (storedIntegration != null) {
-        when (storedIntegration.operationType) {
-          IntegrationOperationType.SAVE -> {
-            if (!storedIntegration.isCurrentDeviceDeleted) {
-              AppLog.i(tag, "Syncing integration save operation with server")
-              try {
-                // Call server API to save integration
-                integrationRepository.updateLocalAccount()
-                AppLog.i(tag, "Successfully saved integration to server")
-              } catch (e: Exception) {
-                AppLog.e(tag, "Failed to save integration to server", e.toString())
-                throw e
-              }
-            }
-          }
-
-          IntegrationOperationType.REMOVE -> {
-            if (!storedIntegration.isCurrentDeviceDeleted) {
-              AppLog.i(tag, "Syncing integration remove operation with server")
-              try {
-                // Call server API to remove integration
-                integrationRepository.removeIntegration("health_connect")
-
-                // Mark as deleted locally
-                val updatedData = storedIntegration.copy(isCurrentDeviceDeleted = true)
-                healthConnectRepository.setStoredIntegrationData(accountId, updatedData)
-
-                AppLog.i(tag, "Successfully removed integration from server")
-              } catch (e: Exception) {
-                AppLog.e(tag, "Failed to remove integration from server", e.toString())
-                throw e
-              }
-            }
-          }
-        }
-        // Update the stored integration data after successful sync
-        healthConnectRepository.setStoredIntegrationData(accountId, storedIntegration)
-      }
-
-      // Refresh local account data from server
-      try {
-        integrationRepository.updateLocalAccount()
-        AppLog.i(tag, "Successfully refreshed account data from server")
-      } catch (e: Exception) {
-        AppLog.w(tag, "Failed to refresh account data from server: ${e.message}")
-        // Don't fail the sync operation for this
-      }
-    } catch (e: Exception) {
-      AppLog.e(tag, "Failed to sync integration", e.toString())
-      throw e
-    }
-  }
-
   override fun syncWeightHistory() {
     dialogQueueService.showDialog(
       DialogModel.Confirm(
@@ -756,7 +652,7 @@ class HealthConnectService @Inject constructor(
         onConfirm = {
           dialogQueueService.showLoader("Removing...")
           CoroutineScope(Dispatchers.IO).launch {
-            // TODO:Need to call sync functionality
+            syncAllData()
             dialogQueueService.dismissCurrent()
             dialogQueueService.dismissLoader()
             dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
@@ -855,7 +751,11 @@ class HealthConnectService @Inject constructor(
                 _outOfSyncState.value = false
               }
             },
-            onDismiss = { dialogQueueService.dismissCurrent() },
+            onDismiss = {
+              CoroutineScope(Dispatchers.Main).launch {
+                removeHealthConnectIntegration()
+                dialogQueueService.dismissCurrent()
+              } },
           ),
         )
       }

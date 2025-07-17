@@ -1,17 +1,46 @@
 package com.greatergoods.meapp.features.integration.model
 
+import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
+import com.greatergoods.meapp.domain.interfaces.IReducer
+
+
+data class HealthConnectUiState(
+  val healthConnectSetupState: HealthConnectSetup = HealthConnectSetup.NONE,
+  val currentSlide: Int = 0,
+  val isHealthConnectAvailable: Boolean = false,
+  val isLoading: Boolean = false,
+  val permissionStatus: HealthConnectPermissionStatus = HealthConnectPermissionStatus.NONE,
+  val isOutOfSync: Boolean = false,
+  val errorMessage: String? = null,
+  val actionButtons: ActionButtons = ActionButtons(),
+  val alertPresented: Boolean = false,
+  val isHealthConnectOpened: Boolean = false,
+  val pageLoadFrom: PageLoadFrom = PageLoadFrom()
+): IReducer.State
+
+
+/**
+ * Sealed class representing user intents for Health Connect integration.
+ */
+sealed class HealthConnectIntent: IReducer.Intent  {
+  data object ConfirmExitSetup : HealthConnectIntent()
+  data object ConnectSuccess : HealthConnectIntent()
+  data object ConnectError : HealthConnectIntent()
+  data object AppResumed : HealthConnectIntent()
+  data object SetAlertPresented : HealthConnectIntent()
+  data object ClearAlertPresented : HealthConnectIntent()
+  data object SetHealthConnectOpened : HealthConnectIntent()
+  data object ClearHealthConnectOpened : HealthConnectIntent()
+  data class UpdateSlide(val slide: Int) : HealthConnectIntent()
+  data class PrimaryAction(val label: HealthConnectAction) : HealthConnectIntent()
+  data class SecondaryAction(val label: HealthConnectAction) : HealthConnectIntent()
+}
+
 /**
  * Reducer for handling Health Connect state updates.
  */
-object HealthConnectReducer {
-    /**
-     * Reduces the current state based on the given intent.
-     *
-     * @param state Current UI state
-     * @param intent User intent to process
-     * @return Updated UI state
-     */
-    fun reduce(state: HealthConnectUiState, intent: HealthConnectIntent): HealthConnectUiState {
+class HealthConnectReducer : IReducer<HealthConnectUiState, HealthConnectIntent> {
+    override fun reduce(state: HealthConnectUiState, intent: HealthConnectIntent): HealthConnectUiState {
         return when (intent) {
 
             HealthConnectIntent.ConnectSuccess -> {
@@ -85,7 +114,7 @@ object HealthConnectReducer {
             }
             HealthConnectAction.FINISH -> {
                 state.copy(
-                    healthConnectSetupState = HealthConnectSetup.COMPLETE_RECONNECTION
+                    healthConnectSetupState = HealthConnectSetup.FINISH_CONNECT
                 )
             }
             HealthConnectAction.OPEN_HEALTH_CONNECT -> {

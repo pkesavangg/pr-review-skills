@@ -18,10 +18,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.integration.components.CompleteReconnectionScreen
@@ -49,8 +50,20 @@ fun HealthConnectIntegrationScreen(
     viewModel: HealthConnectViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
+  val lifecycleOwner = LocalLifecycleOwner.current
+
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_RESUME) {
+        viewModel.onResume(lifecycleOwner)
+      }
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose {
+      lifecycleOwner.lifecycle.removeObserver(observer)
+    }
+  }
 
     HealthConnectIntegrationContent(
         state = state,
@@ -60,11 +73,7 @@ fun HealthConnectIntegrationScreen(
                 viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.EXIT))
             }
         },
-        onDismiss = {
-            coroutineScope.launch {
-                backStack.removeLast()
-            }
-        }
+        onDismiss = {}
     )
 }
 
@@ -191,7 +200,6 @@ fun HealthConnectIntegrationContent(
                             title = HealthConnectStrings.FinishPartialReconnectStrings.Title,
                             onPrimaryAction = {
                                 handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
-                                onDismiss()
                             },
                         )
                     }

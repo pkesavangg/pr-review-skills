@@ -35,14 +35,14 @@ object HealthConnectModule {
       integrationRepository: IIntegrationRepository,
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
-      entryRepository: IEntryRepository
+      entryRepository: IEntryRepository,
     ): IHealthConnectService = HealthConnectService(
       context,
       healthConnectRepository,
       accountRepository,
-      integrationRepository,
       dialogQueueService,
       appNavigationService,
-      entryRepository
+      entryRepository,
+      integrationRepository
     )
 }

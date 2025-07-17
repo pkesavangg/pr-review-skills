@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.integration
+package com.greatergoods.meapp.features.integration.screen
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.integration.IntegrationListItem
 import com.greatergoods.meapp.features.integration.model.IntegrationIntent
 import com.greatergoods.meapp.features.integration.model.IntegrationItem
 import com.greatergoods.meapp.features.integration.model.IntegrationState

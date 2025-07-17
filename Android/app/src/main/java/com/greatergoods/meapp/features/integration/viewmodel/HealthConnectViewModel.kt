@@ -8,10 +8,8 @@ import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.services.IHealthConnectService
-import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.model.DialogModel
-import com.greatergoods.meapp.features.common.model.Toast
-import com.greatergoods.meapp.features.common.viewmodel.BaseViewModel
+import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.integration.model.HealthConnectAction
 import com.greatergoods.meapp.features.integration.model.HealthConnectIntent
 import com.greatergoods.meapp.features.integration.model.HealthConnectReducer
@@ -19,8 +17,6 @@ import com.greatergoods.meapp.features.integration.model.HealthConnectSetup
 import com.greatergoods.meapp.features.integration.model.HealthConnectUiState
 import com.greatergoods.meapp.features.integration.strings.HealthConnectStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,10 +31,9 @@ import android.content.Intent
 @HiltViewModel
 class HealthConnectViewModel @Inject constructor(
     private val healthConnectService: IHealthConnectService,
-) : BaseViewModel(), DefaultLifecycleObserver {
-
-    private val _state = MutableStateFlow(HealthConnectUiState())
-    val state: StateFlow<HealthConnectUiState> = _state.asStateFlow()
+) : BaseIntentViewModel<HealthConnectUiState, HealthConnectIntent>(
+  reducer = HealthConnectReducer(),
+), DefaultLifecycleObserver {
 
     private val _navigationEvent = MutableStateFlow<Intent?>(null)
     val navigationEvent: StateFlow<Intent?> = _navigationEvent.asStateFlow()
@@ -94,7 +89,6 @@ class HealthConnectViewModel @Inject constructor(
                     )}
                 }
             }
-            updateState(HealthConnectIntent.ClearHealthConnectOpened)
         } catch (e: Exception) {
             _state.update { currentState ->
                 currentState.copy(
@@ -105,10 +99,13 @@ class HealthConnectViewModel @Inject constructor(
         }
     }
 
-    /**
+  override fun provideInitialState(): HealthConnectUiState = HealthConnectUiState()
+
+  /**
      * Handles user intents and updates state using the reducer.
      */
-    fun handleIntent(intent: HealthConnectIntent) {
+  override fun handleIntent(intent: HealthConnectIntent) {
+    super.handleIntent(intent)
         viewModelScope.launch {
             when (intent) {
                 is HealthConnectIntent.PrimaryAction -> {
@@ -120,7 +117,7 @@ class HealthConnectViewModel @Inject constructor(
                 is HealthConnectIntent.ConfirmExitSetup -> {
                     exitSetup()
                 }
-                else -> updateState(intent)
+                else -> {}
             }
         }
     }
@@ -131,19 +128,15 @@ class HealthConnectViewModel @Inject constructor(
     private suspend fun handlePrimaryAction(label: HealthConnectAction) {
         when (label) {
             HealthConnectAction.CONNECT -> {
-                updateState(HealthConnectIntent.PrimaryAction(label))
                 handleConnect()
             }
             HealthConnectAction.FINISH -> {
-                updateState(HealthConnectIntent.PrimaryAction(label))
                 handleFinish()
             }
             HealthConnectAction.OPEN_HEALTH_CONNECT -> {
-                updateState(HealthConnectIntent.SetHealthConnectOpened)
                 openHealthConnect()
             }
             HealthConnectAction.UPDATE_PERMISSIONS -> {
-                updateState(HealthConnectIntent.PrimaryAction(label))
                 handleConnect(fromIncomplete = true)
             }
             HealthConnectAction.EXIT -> {
@@ -168,7 +161,6 @@ class HealthConnectViewModel @Inject constructor(
                 handleExitSetup()
             }
             HealthConnectAction.OPEN_HEALTH_CONNECT -> {
-                updateState(HealthConnectIntent.SetHealthConnectOpened)
                 openHealthConnect()
             }
             else -> {}
@@ -232,7 +224,6 @@ class HealthConnectViewModel @Inject constructor(
                 // Show unavailable alert/modal in UI as needed
                 return HealthConnectSetup.NONE // Or define a new setup if needed
             }
-            else -> HealthConnectSetup.NONE
         }
     }
 
@@ -273,8 +264,9 @@ class HealthConnectViewModel @Inject constructor(
                     when (requestStatus) {
                         HealthConnectRequestStatus.CONNECTED -> {
                             if (!fromIncomplete) {
-                                updateState(HealthConnectIntent.ConnectSuccess)
-                            } else {
+                                handleIntent(HealthConnectIntent.ConnectSuccess)
+                              _state.update { it.copy(healthConnectSetupState = HealthConnectSetup.FINISH_CONNECT) }
+                              } else {
                                 _state.update { it.copy(healthConnectSetupState = HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION) }
                             }
                         }
@@ -291,23 +283,23 @@ class HealthConnectViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            updateState(HealthConnectIntent.ConnectError)
         }
     }
 
     /**
      * Handles the finish action.
      */
-    private suspend fun handleFinish() {
+    private  fun handleFinish() {
+      viewModelScope.launch {
         try {
-           healthConnectService.turnOnIntegration()
-            navigateBack()
-            syncWeightHistory()
+          healthConnectService.turnOnIntegration()
+          navigationService.navigateBack()
         } catch (e: Exception) {
-            _state.update { currentState ->
-                currentState.copy(errorMessage = "Failed to finish integration: ${e.message}")
-            }
+          _state.update { currentState ->
+            currentState.copy(errorMessage = "Failed to finish integration: ${e.message}")
+          }
         }
+      }
     }
 
     /**
@@ -349,15 +341,6 @@ class HealthConnectViewModel @Inject constructor(
     }
 
     /**
-     * Updates state using the reducer.
-     */
-    private fun updateState(intent: HealthConnectIntent) {
-        _state.update { currentState ->
-            HealthConnectReducer.reduce(currentState, intent)
-        }
-    }
-
-    /**
      * Handles navigation back from change password screen.
      * Call this when user wants to exit the change password flow.
      */
@@ -370,32 +353,6 @@ class HealthConnectViewModel @Inject constructor(
                 AppLog.e("ChangePasswordViewModel", "Failed to navigate back from change password", e.toString())
             }
         }
-    }
-
-     fun syncWeightHistory(){
-        dialogQueueService.showDialog(
-            DialogModel.Confirm(
-                title = HealthConnectStrings.SyncAlert.title,
-                message = HealthConnectStrings.SyncAlert.description,
-                confirmText = HealthConnectStrings.ActionButtons.sync,
-                cancelText = HealthConnectStrings.ActionButtons.cancel,
-                onConfirm = {
-                    dialogQueueService.showLoader("Removing...")
-                    CoroutineScope(Dispatchers.IO).launch {
-                        //TODO:Need to call sync functionality
-                        dialogQueueService.dismissCurrent()
-                        dialogQueueService.dismissLoader()
-                        dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncHc))
-                    }
-                },
-                onCancel = {
-                    dialogQueueService.dismissCurrent()
-                },
-                onDismiss = {
-                    dialogQueueService.dismissCurrent()
-                },
-            ),
-        )
     }
 
     /**

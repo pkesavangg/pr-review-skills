@@ -227,8 +227,9 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
         return ProtoIntegratedDeviceInfo.newBuilder()
             .setOperationType(
                 when (operationType) {
-                    com.greatergoods.meapp.domain.model.integrations.IntegrationOperationType.SAVE -> ProtoIntegrationOperationType.PROTO_SAVE
-                    com.greatergoods.meapp.domain.model.integrations.IntegrationOperationType.REMOVE -> ProtoIntegrationOperationType.PROTO_REMOVE
+                    com.greatergoods.meapp.domain.model.integrations.IntegrationOperationType.SAVE.value -> ProtoIntegrationOperationType.PROTO_SAVE
+                    com.greatergoods.meapp.domain.model.integrations.IntegrationOperationType.REMOVE.value -> ProtoIntegrationOperationType.PROTO_REMOVE
+                  else -> null
                 }
             )
             .setScopes(
