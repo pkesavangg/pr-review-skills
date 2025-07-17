@@ -24,6 +24,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     @Injector private var wifiScaleService: WifiScaleService
     
     @Injector private var scaleService: ScaleService
+    @Injector private var pushNotificationService: PushNotificationService
     
     let networkMonitor = NetworkMonitor.shared
     
@@ -1109,6 +1110,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
             switch result {
             case .success(let savedScale):
                 self.savedScale = savedScale
+                Task {
+                    await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
+                }
                 LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
