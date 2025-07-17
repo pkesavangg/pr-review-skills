@@ -36,6 +36,12 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService
+    // New dependency to evaluate permission status
+    @Injector private var permissionsService: PermissionsService
+
+    // MARK: - Permission Disabled Alert Tracking
+    /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
+    private var hasShownPermissionAlert: Bool = false
     
     private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
@@ -78,6 +84,54 @@ class BottomTabBarViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.showAppSync, on: self)
             .store(in: &cancellables)
+
+        // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
+        permissionsService.$requiredCategories
+            .combineLatest(permissionsService.$permissions)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _, _ in
+                self?.evaluateAndShowPermissionAlert()
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Permission Disabled Alert Helpers
+    /// Evaluates whether the *Permission Disabled* alert should be shown and presents it if needed.
+    private func evaluateAndShowPermissionAlert() {
+        guard !hasShownPermissionAlert else { return }
+        // Show alert only if Bluetooth is a required permission
+        guard permissionsService.requiredCategories.contains(.bluetooth) else { return }
+        // Check the current Bluetooth permission states (switch & auth)
+        let btSwitchState = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) ?? .ENABLED
+        let btAuthState   = permissionsService.getPermissionState(.BLUETOOTH) ?? .ENABLED
+        // Alert only when either state is disabled
+        guard btSwitchState == .DISABLED || btAuthState == .DISABLED else { return }
+
+        showPermissionDisabledAlert()
+    }
+
+    /// Presents the *Permission Disabled* alert and handles navigation when the user taps **APP PERMISSION**.
+    private func showPermissionDisabledAlert() {
+        let lang = AlertStrings.PermissionDisabledAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.dismissButton, type: .secondary) { _ in },
+                AlertButtonModel(title: lang.appPermissionButton, type: .primary) { [weak self] _ in
+                    self?.navigateToAppPermissions()
+                }
+            ]
+        )
+
+        notificationService.showAlert(alert)
+        hasShownPermissionAlert = true
+    }
+
+    /// Selects the **Settings** tab and navigates to the App Permissions screen.
+    private func navigateToAppPermissions() {
+        selectTab(.settings)
+        pendingSettingsNavigation = .appPermissions
     }
     
     // MARK: - Tab Deactivation Handling
