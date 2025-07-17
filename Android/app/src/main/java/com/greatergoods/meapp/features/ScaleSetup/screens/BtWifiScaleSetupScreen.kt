@@ -27,6 +27,7 @@ import com.greatergoods.meapp.features.ScaleSetup.strings.BtWifiScaleSetupString
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtWifiScaleSetupViewModel
 import com.greatergoods.meapp.features.ScaleUsers.components.ScaleUserList
+import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
@@ -38,7 +39,6 @@ import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
-import android.util.Log
 
 @Composable
 fun BtWifiScaleSetupScreen(
@@ -86,11 +86,17 @@ fun BtWifiScaleSetupScreenContent(
 
   val isNextButtonEnabledForStep: Boolean =
     when (state.currentStep) {
+      BtWifiSetupStep.SCALE_INFO ->
+        true
+
       BtWifiSetupStep.DUPLICATES_FOUND ->
         state.duplicateUser?.name != state.usernameForm.username.value
 
       BtWifiSetupStep.CONNECTING_WIFI ->
         state.wifiPasswordForm.ssid.isValueValid() && state.wifiPasswordForm.password.isValueValid()
+
+      BtWifiSetupStep.PERMISSIONS ->
+        AppPermissionsHelper.areRequiredPermissionsEnabled(state.permissions, state.sku)
 
       else -> state.canProceedToNext
 

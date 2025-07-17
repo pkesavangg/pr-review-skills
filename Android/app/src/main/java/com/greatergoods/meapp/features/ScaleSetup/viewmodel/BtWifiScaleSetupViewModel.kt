@@ -157,9 +157,9 @@ constructor(
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
         val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku)
         if (!areRequiredPermissionsEnabled) {
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
-          if (state.value.currentStep != BtWifiSetupStep.PERMISSIONS)
+          if (state.value.currentStep != BtWifiSetupStep.PERMISSIONS && state.value.currentStep != BtWifiSetupStep.SCALE_INFO) {
             handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+          }
         } else {
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
