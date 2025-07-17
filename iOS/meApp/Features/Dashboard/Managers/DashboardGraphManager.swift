@@ -71,14 +71,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func handleScrollStart() async {
-        guard !state.isScrolling else { return }
-
-        state.isScrolling = true
-
-        // Clear selection when scrolling starts
-        state.clearSelection()
-
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll started")
+        // Cancel any existing timer
+        state.scrollEndTimer?.invalidate()
+        
+        if !state.isScrolling {
+            state.isScrolling = true
+            // Clear crosshair and selection when scrolling starts
+            state.clearSelection()
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll started")
+        }
     }
 
     func handleChartSelection(at selectedDate: Date?) async {
@@ -94,17 +95,40 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // Hide any existing crosshair first
         state.showCrosshair = false
-
-        // This method should be called with the continuous operations from the data manager
-        // For now, we'll just update the selected date
         state.selectedXValue = selectedDate
 
-        // Force UI update
-        DispatchQueue.main.async {
-            self.state.showCrosshair = true
-        }
-
+        // Find the closest point to the selected date
+        // Note: This should be called with the continuous operations from the data manager
+        // For now, we'll need to get the operations from the store
+        // The actual implementation will need to be updated in the store to pass operations
+        
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
+    }
+
+    /// Find the closest point to a given date from the provided operations
+    func findClosestPoint(to selectedDate: Date, in operations: [BathScaleWeightSummary]) -> BathScaleWeightSummary? {
+        guard !operations.isEmpty else { return nil }
+        
+        // Find the closest point by comparing dates
+        let closestPoint = operations.min { point1, point2 in
+            let distance1 = abs(point1.date.timeIntervalSince(selectedDate))
+            let distance2 = abs(point2.date.timeIntervalSince(selectedDate))
+            return distance1 < distance2
+        }
+        
+        return closestPoint
+    }
+
+    /// Update the selected point and show crosshair
+    func updateSelectedPoint(_ point: BathScaleWeightSummary?) {
+        state.selectedPoint = point
+        state.showCrosshair = point != nil
+        
+        if let point = point {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "Selected point updated: \(point.date) with weight: \(point.weight)")
+        } else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "Selected point cleared")
+        }
     }
 
     @available(iOS 18.0, *)
@@ -115,8 +139,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             state.isScrolling = false
             state.hasDetectedScrollInCurrentGesture = false
 
-            // Clear selection state for better UX
-            state.clearSelection()
+            // Don't clear selection here - let it persist
              if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
                     self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position at end: \(finalPosition)")
@@ -124,17 +147,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
             state.updateScrollState(isScrolling: false)
 
-
-
         case .tracking:
             // User is touching but hasn't started scrolling yet
             state.hasDetectedScrollInCurrentGesture = false
 
         case .interacting:
-            // User is actively scrolling - do NOT compute domain
+            // User is actively scrolling - clear crosshair and selection
             if !state.hasDetectedScrollInCurrentGesture {
                 state.hasDetectedScrollInCurrentGesture = true
                 state.updateScrollState(isScrolling: true)
+                // Clear crosshair and selection when scrolling starts
+                state.clearSelection()
             }
 
         case .decelerating:
@@ -167,8 +190,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 }
                 // Update scrolling state
                 self.state.updateScrollState(isScrolling: false)
-
-
             }
         }
     }
@@ -692,13 +713,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let xAxisValues: [Date]
         switch period {
         case .week:
-            xAxisValues = generateVisibleWeeklyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+            xAxisValues = generateVisibleWeeklyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
         case .month:
-            xAxisValues = generateVisibleMonthlyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+            xAxisValues = generateVisibleMonthlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
         case .year:
-            xAxisValues = generateVisibleYearlyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+            xAxisValues = generateVisibleYearlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
         case .total:
-            xAxisValues = generateVisibleTotalXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
+            xAxisValues = generateVisibleTotalXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
         }
 
         // Cache the results for use during scrolling
@@ -706,8 +727,116 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastXAxisScrollPosition = scrollPosition
         lastXAxisPeriod = period
 
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Generated visible x-axis values: \(xAxisValues.count) values for period \(period.rawValue)")
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Generated visible x-axis values with buffer: \(xAxisValues.count) values for period \(period.rawValue)")
         return xAxisValues
+    }
+
+    // MARK: - Buffer-Enhanced X-Axis Generation Methods
+    
+    private func generateVisibleWeeklyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        var dates: [Date] = []
+
+        // Find the start of the week containing visibleStart
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: visibleStart)?.start ?? visibleStart
+        
+        // Add one buffer day before the visible start
+        let bufferStart = calendar.date(byAdding: .day, value: -1, to: visibleStart) ?? visibleStart
+
+        // Calculate weeks needed to cover the visible range plus one buffer day
+        let totalWeeks = Int(ceil(visibleEnd.timeIntervalSince(weekStart) / DashboardConstants.TimeInterval.week)) + 1
+
+        for weekOffset in 0..<totalWeeks {
+            if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
+                for dayOffset in 0..<7 {
+                    if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart) {
+                        // Include buffer dates that extend one day before and after visible range
+                        if dayDate >= bufferStart && dayDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.day) {
+                            dates.append(dayDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private func generateVisibleMonthlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        var dates: [Date] = []
+
+        let monthStart = calendar.dateInterval(of: .month, for: visibleStart)?.start ?? visibleStart
+        
+        // Add one buffer week before the visible start
+        let bufferStart = calendar.date(byAdding: .weekOfYear, value: -1, to: visibleStart) ?? visibleStart
+
+        let totalMonths = Int(ceil(visibleEnd.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month)) + 1
+
+        for monthOffset in 0..<totalMonths {
+            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
+                for weekOffset in 0..<5 {
+                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
+                        // Include buffer dates that extend one week before and after visible range
+                        if weekDate >= bufferStart && weekDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.week) {
+                            dates.append(weekDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private func generateVisibleYearlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        var dates: [Date] = []
+
+        let yearStart = calendar.dateInterval(of: .year, for: visibleStart)?.start ?? visibleStart
+        
+        // Add one buffer month before the visible start
+        let bufferStart = calendar.date(byAdding: .month, value: -1, to: visibleStart) ?? visibleStart
+
+        let totalYears = Int(ceil(visibleEnd.timeIntervalSince(yearStart) / DashboardConstants.TimeInterval.year)) + 1
+
+        for yearOffset in 0..<totalYears {
+            if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
+                for monthOffset in 0..<12 {
+                    if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentYearStart) {
+                        // Include buffer dates that extend one month before and after visible range
+                        if monthDate >= bufferStart && monthDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.month) {
+                            dates.append(monthDate)
+                        }
+                    }
+                }
+            }
+        }
+
+        return dates
+    }
+
+    private func generateVisibleTotalXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool) -> [Date] {
+        if areEntriesInSameEra(operations) {
+            return generateVisibleYearlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        } else {
+            var dates: [Date] = []
+
+            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: visibleStart)) ?? visibleStart
+            
+            // Add one buffer month before the visible start (just 1 column, not 3 months)
+            let bufferStart = calendar.date(byAdding: .month, value: -1, to: visibleStart) ?? visibleStart
+
+            let totalQuarters = Int(ceil(visibleEnd.timeIntervalSince(quarterStart) / DashboardConstants.TimeInterval.quarter)) + 1
+
+            for quarterOffset in 0..<totalQuarters {
+                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
+                    // Include buffer dates that extend one month before and after visible range
+                    if quarterDate >= bufferStart && quarterDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.month) {
+                        dates.append(quarterDate)
+                    }
+                }
+            }
+
+            return dates
+        }
     }
 
     // Revert to the original visible range methods with reasonable buffer

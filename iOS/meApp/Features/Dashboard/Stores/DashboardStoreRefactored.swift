@@ -820,7 +820,7 @@ class DashboardStore: ObservableObject {
     }
 
     // Delegate chart selection to GraphManager
-    func handleChartSelection(at selectedDate: Date?) {
+    func handleChartSelection(at selectedDate: Date?) async {
         // Only handle selection if not currently scrolling
         guard !state.graph.isScrolling else { return }
 
@@ -830,8 +830,30 @@ class DashboardStore: ObservableObject {
             return
         }
 
-        Task {
-            await graphManager.handleChartSelection(at: selectedDate)
+        // Set the selected X value first
+        await MainActor.run {
+            self.state.graph.selectedXValue = selectedDate
+        }
+        
+        // First, find the closest point to the selected date
+        let closestPoint = graphManager.findClosestPoint(to: selectedDate, in: continuousOperations)
+        
+        // Update the selected point in the graph manager
+        graphManager.updateSelectedPoint(closestPoint)
+        
+        // Update metrics with the selected point's values
+        if let selectedPoint = closestPoint {
+            try? await metricsManager.updateMetrics(with: selectedPoint)
+            logger.log(level: .info, tag: "DashboardStore", message: "Updated metrics with selected point: \(selectedPoint.date)")
+        } else {
+            // If no point found, reset metrics to latest entry
+            resetMetricsToLatestEntry()
+            logger.log(level: .info, tag: "DashboardStore", message: "No point found for selection, reset metrics to latest entry")
+        }
+        
+        // Force UI update
+        await MainActor.run {
+            self.objectWillChange.send()
         }
     }
 

@@ -16,7 +16,7 @@ struct DisplayMetricsScreen: View {
     let lang = ScaleModesStrings.self
     
     let scale: Device
-
+    
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -41,7 +41,7 @@ struct DisplayMetricsScreen: View {
                 },
                 canShowBorder: true
             )
-
+            
             List {
                 bannerSection()
                 descriptionSection()
@@ -134,38 +134,37 @@ struct DisplayMetricsScreen: View {
                 .fontWeight(.regular)
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    Task {
-                        await scaleStore.handleWeightOnlyBannerAction()
-                    }
+                    scaleStore.handleWeightOnlyBannerAction()
+                    
                 })
             }
         }
     }
-
+    
     private func weightOnlyInfo() -> some View {
         NoteBox {
             VStack(alignment: .leading, spacing: .spacingXS) {
                 HStack() {
                     AppIconView(icon: AppAssets.weightOnlyMode, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
-
+                    
                     Text(lang.weightOnlyBannerTitle)
                         .fontWeight(.bold)
                         .fontOpenSans(.body3)
                         .foregroundColor(theme.textHeading)
                 }
-
+                
                 Text(lang.weightOnlyBannerDescription)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textBody)
             }
         }
     }
-
+    
     private func heartRateBanner() -> some View {
         let commonLang = CommonStrings.self
         let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
-
+        
         return NoteBox {
             HStack(spacing: .spacingSM) {
                 StatusRowView(
@@ -176,8 +175,6 @@ struct DisplayMetricsScreen: View {
                 )
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    // Toggle heart rate mode - this would need to be implemented in ScaleStore
-                    // For now, we'll use a placeholder action
                     scaleStore.updateHeartRateEnabled(!scaleStore.isHeartRateEnabled)
                 })
             }
