@@ -14,7 +14,7 @@ import com.greatergoods.meapp.data.storage.db.converter.JsonConverter
   tableName = "r4_scale_preference",
   foreignKeys = [
     ForeignKey(
-      entity = BodyScaleEntity::class,
+      entity = DeviceEntity::class,
       parentColumns = ["id"],
       childColumns = ["id"],
       onDelete = ForeignKey.CASCADE,
@@ -33,4 +33,5 @@ data class R4ScalePreferenceEntity(
   val timeFormat: String?,
   val tzOffset: Int?,
   val wifiFotaScheduleTime: Int?,
+  val isSynced: Boolean = false,
 )

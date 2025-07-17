@@ -25,7 +25,9 @@ data class Device(
   val createdAt: String? = Calendar.getInstance().timeInMillis.toString(),
   val isWeighOnlyModeEnabledByOthers: Boolean = false,
   val token: String? = null,
-  val preferences: Preferences? = null
+  val preferences: Preferences? = null,
+  val isDeleted: Boolean = false,
+  val isSynced: Boolean = false
 ) {
 
   fun getAppType(): String {
@@ -58,7 +60,7 @@ data class Device(
 
 @Serializable
 data class Preferences(
-  val id: Long = Random.nextLong(),
+  val id: String = Random.nextLong().toString(),
   @SerialName("tzOffset") val tzOffset: Int? = null,
   @SerialName("timeFormat") val timeFormat: String? = null,
   @SerialName("displayName") val displayName: String? = null,
@@ -66,5 +68,6 @@ data class Preferences(
   @SerialName("shouldMeasurePulse") val shouldMeasurePulse: Boolean? = null,
   @SerialName("shouldMeasureImpedance") val shouldMeasureImpedance: Boolean? = null,
   @SerialName("shouldFactoryReset") val shouldFactoryReset: Boolean? = null,
-  @SerialName("wifiFotaScheduleTime") val wifiFotaScheduleTime: Long? = null
+  @SerialName("wifiFotaScheduleTime") val wifiFotaScheduleTime: Long? = null,
+  val isSynced: Boolean = false
 )

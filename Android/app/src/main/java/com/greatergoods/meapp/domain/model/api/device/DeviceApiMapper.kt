@@ -3,15 +3,17 @@ package com.greatergoods.meapp.domain.model.api.device
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.domain.model.storage.Preferences
 import java.util.UUID
 import android.util.Log
 
 /**
  * Extension functions to map API models to domain models.
  */
-fun DeviceApiModel.toDomainModel(): Device =
-  Device(
-    id = if (id.isNullOrEmpty()) UUID.randomUUID().toString() else id,
+fun DeviceApiModel.toDomainModel(): Device {
+  val scaleId = if (id.isNullOrEmpty()) UUID.randomUUID().toString() else id
+  return Device(
+    id = scaleId,
     device = GGDeviceDetail(
       deviceName = name ?: "",
       macAddress = mac ?: "",
@@ -23,6 +25,7 @@ fun DeviceApiModel.toDomainModel(): Device =
       isWifiConfigured = false, // Not in API response
       // Add other fields as needed
     ),
+    preferences = preference?.toPreferences(scaleId),
     connectionStatus = BLEStatus.DISCONNECTED,
     nickname = nickname ?: name ?: "",
     deviceType = type,
@@ -32,6 +35,7 @@ fun DeviceApiModel.toDomainModel(): Device =
     isWeighOnlyModeEnabledByOthers = false,
     token = scaleToken,
   )
+}
 
 /**
  * Extension function to map a list of API models to domain models.
@@ -52,7 +56,7 @@ fun Device.toApiModel(): DeviceApiModel =
     name = device?.deviceName,
     scaleToken = token,
     peripheralIdentifier = device?.identifier,
-    preference = null, // Not present in GGDevice, add if needed
+    preference = preferences?.toPreferencesApiModel(), // Not present in GGDevice, add if needed
     latestVersion = null, // Not present in GGDevice
   )
 
@@ -96,17 +100,42 @@ fun convertIntToHex(value: Long?, protocolType: String?): String? {
 /**
  * Convert Device domain model to R4ScalePreferenceApiModel for API calls.
  */
-fun Device.toR4ScalePreferenceApiModel(): R4ScalePreferenceApiModel =
+fun Preferences.toR4ScalePreferenceApiModel(): R4ScalePreferenceApiModel =
   R4ScalePreferenceApiModel(
     scaleId = id,
-    displayName = preferences?.displayName,
-    displayMetrics = preferences?.displayMetrics,
-    shouldFactoryReset = preferences?.shouldFactoryReset ?: false,
-    shouldMeasureImpedance = preferences?.shouldMeasureImpedance ?: false,
-    shouldMeasurePulse = preferences?.shouldMeasurePulse ?: false,
-    timeFormat = preferences?.timeFormat,
-    tzOffset = preferences?.tzOffset,
-    wifiFotaScheduleTime = preferences?.wifiFotaScheduleTime?.toInt() ?: 0,
+    displayName = displayName,
+    displayMetrics = displayMetrics,
+    shouldFactoryReset = shouldFactoryReset ?: false,
+    shouldMeasureImpedance = shouldMeasureImpedance ?: false,
+    shouldMeasurePulse = shouldMeasurePulse ?: false,
+    timeFormat = timeFormat,
+    tzOffset = tzOffset,
+    wifiFotaScheduleTime = wifiFotaScheduleTime?.toInt() ?: 0,
+  )
+
+fun Preferences.toPreferencesApiModel(): PreferenceApiModel =
+  PreferenceApiModel(
+    displayName = displayName,
+    displayMetrics = displayMetrics,
+    shouldFactoryReset = shouldFactoryReset ?: false,
+    shouldMeasureImpedance = shouldMeasureImpedance ?: false,
+    shouldMeasurePulse = shouldMeasurePulse ?: false,
+    timeFormat = timeFormat,
+    tzOffset = tzOffset,
+    wifiFotaScheduleTime = wifiFotaScheduleTime?.toInt() ?: 0,
+  )
+
+fun PreferenceApiModel.toPreferences(scaleId: String): Preferences =
+  Preferences(
+    id = scaleId,
+    displayName = displayName,
+    displayMetrics = displayMetrics,
+    shouldFactoryReset = shouldFactoryReset,
+    shouldMeasureImpedance = shouldMeasureImpedance,
+    shouldMeasurePulse = shouldMeasurePulse,
+    timeFormat = timeFormat,
+    tzOffset = tzOffset,
+    wifiFotaScheduleTime = wifiFotaScheduleTime?.toLong(),
   )
 
 /**

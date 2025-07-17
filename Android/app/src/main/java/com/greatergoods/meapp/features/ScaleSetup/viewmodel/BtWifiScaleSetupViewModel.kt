@@ -321,24 +321,31 @@ constructor(
   private fun onExitSetup(
     isSetupFinished: Boolean,
   ) {
+    if (isSetupFinished) {
+      onExit()
+    } else {
+      dialogQueueService.enqueue(
+        DialogModel.Confirm(
+          title = ScaleSetupStrings.ExitSetupAlert.Title,
+          message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
+          confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          onConfirm = {
+            onExit()
+          },
+        ),
+      )
+    }
+  }
+
+  private fun onExit() {
     viewModelScope.launch {
+      ggDeviceService.resumeScan(clearOnlyPairing = false)
+      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+      ggDeviceService.syncDevices(pairedDevices)
       if (discoveredScale != null)
         deviceService.onDeviceUpdate(discoveredScale!!)
-      if (isSetupFinished) {
-        navigateBack()
-      } else {
-        dialogQueueService.enqueue(
-          DialogModel.Confirm(
-            title = ScaleSetupStrings.ExitSetupAlert.Title,
-            message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
-            confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-            cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
-            onConfirm = {
-              navigateBack()
-            },
-          ),
-        )
-      }
+      navigateBack()
     }
   }
 
@@ -837,7 +844,7 @@ constructor(
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
           viewModelScope.launch {
 
-            if (deviceService.savedScales.first().any { it.device?.macAddress == ggDeviceDetail.macAddress }) {
+            if (deviceService.pairedScales.first().any { it.device?.macAddress == ggDeviceDetail.macAddress }) {
               dialogQueueService.showDialog(
                 DialogModel.Alert(
                   title = "Known Scale Discovered",

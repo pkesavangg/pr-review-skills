@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -52,7 +53,7 @@ constructor(
 
   private fun initScaleDisplayMetrics() {
     viewModelScope.launch {
-      deviceService.savedScales.collect { devices ->
+      deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
           handleIntent(ScaleDisplayMetricsIntent.SetScale(scaleDevice))
@@ -74,12 +75,14 @@ constructor(
 
         // Create updated preferences with new display metrics
         val preferences =
-          scale.toR4ScalePreferenceApiModel().copy(
+          scale.preferences?.copy(
             displayMetrics = currentState.enabledMetrics,
+          ) ?: ScaleMetricsHelper.getDefaultPreference(
+            "",
           )
 
         // Update scale preferences via API
-        val success = deviceService.updateScalePreferences(scaleId, preferences)
+        val success = deviceService.updateScalePreferences(scaleId, preferences.toR4ScalePreferenceApiModel())
 
         if (success) {
           dialogQueueService.dismissLoader()

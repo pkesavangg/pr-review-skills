@@ -52,7 +52,7 @@ constructor(
 
   private fun initScaleMode() {
     viewModelScope.launch {
-      deviceService.savedScales.collect { devices ->
+      deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         Log.d("modee", device.toString())
         device?.let { scaleDevice ->
@@ -93,11 +93,11 @@ constructor(
 
         // Create R4ScalePreferenceApiModel with updated values
         val preferences =
-          scale.toR4ScalePreferenceApiModel().copy(
+          scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
             shouldMeasureImpedance = currentState.isAllBodyMetrics,
             shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
             displayMetrics = updatedDisplayMetrics,
-          )
+          )!!
 
         // Update scale preferences via API
         val success = deviceService.updateScalePreferences(scaleId, preferences)

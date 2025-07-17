@@ -8,7 +8,6 @@ import com.greatergoods.meapp.data.storage.db.entity.device.DeviceEntity
 import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
 import com.greatergoods.meapp.domain.model.api.device.convertHexToInt
 import com.greatergoods.meapp.domain.model.api.device.convertIntToHex
-import kotlin.random.Random
 
 /**
  * Extension functions for mapping between Device domain model and database entities.
@@ -27,6 +26,8 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       isWifiConfigured = device.wifiMac != null,
       // Add other fields as needed
     ),
+    isSynced = device.isSynced,
+    isDeleted = device.isDeleted,
     createdAt = device.createdAt,
     deviceType = device.deviceType,
     alreadyPaired = false,
@@ -39,7 +40,7 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
 
 fun R4ScalePreferenceEntity.toPreferences(): Preferences {
   return Preferences(
-    id = this.id.toLongOrNull() ?: Random.nextLong(),  // assuming `id` is a String in entity
+    id = this.id,  // assuming `id` is a String in entity
     tzOffset = this.tzOffset,
     timeFormat = this.timeFormat,
     displayName = this.displayName,
@@ -48,6 +49,7 @@ fun R4ScalePreferenceEntity.toPreferences(): Preferences {
     shouldMeasureImpedance = this.shouldMeasureImpedance,
     shouldFactoryReset = this.shouldFactoryReset,
     wifiFotaScheduleTime = this.wifiFotaScheduleTime?.toLong(),
+    isSynced = this.isSynced,
   )
 }
 
@@ -62,6 +64,7 @@ fun Preferences.toR4ScalePreferenceEntity(): R4ScalePreferenceEntity {
     timeFormat = this.timeFormat,
     tzOffset = this.tzOffset,
     wifiFotaScheduleTime = this.wifiFotaScheduleTime?.toInt(), // safely cast Long? to Int?
+    isSynced = this.isSynced,
   )
 }
 
@@ -78,8 +81,11 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       wifiMacAddress = wifiMac,
       isWifiConfigured = wifiMac != null,
     ),
+    isSynced = isSynced,
+    isDeleted = isDeleted,
     createdAt = createdAt,
     alreadyPaired = false,
+    deviceType = deviceType,
     userNumber = userNumber?.toIntOrNull(),
     hasServerID = hasServerID,
     isWeighOnlyModeEnabledByOthers = false,
@@ -98,18 +104,19 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         sku = null, // Not present in GGDevice
         mac = device?.macAddress,
         password = convertHexToInt(device?.password),
-        isDeleted = false, // Not present in GGDevice
         deviceName = device?.deviceName,
         deviceType = deviceType, // No deviceType in GGDevice, use protocolType
         broadcastId = convertHexToInt(device?.broadcastId),
         userNumber = userNumber?.toString(),
         protocolType = device?.protocolType,
         createdAt = createdAt, // Not present in GGDevice
-        isSynced = hasServerID,
+        isSynced = isSynced,
         hasServerID = hasServerID,
         wifiMac = device?.wifiMacAddress,
+        isDeleted = isDeleted,
         token = token,
       ),
+
     scale = null, // Add mapping if needed
     meta = null, // Add mapping if needed
     r4Preference = preferences?.toR4ScalePreferenceEntity(), // Add mapping if needed
