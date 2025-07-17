@@ -25,7 +25,6 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.AppsyncScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.AppsyncSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.AppsyncScaleSetupViewModel
-import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonSize
@@ -33,7 +32,6 @@ import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
-import com.greatergoods.meapp.features.home.reducer.HomeIntent
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -110,30 +108,40 @@ fun AppsyncScaleSetupScreenContent(
       steps = state.steps,
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
-      leadingContent = {
-        AppButton(
-          type = ButtonType.TextPrimary,
-          label = ScaleSetupStrings.backButton,
-          size = ButtonSize.Small,
-          enabled = !state.isFirstStep,
-          onClick = { onIntent(AppsyncScaleSetupIntent.Back) },
-        )
+      leadingContent = when (state.currentStep)  {
+        AppsyncScaleSetupStep.OPEN_CAMERA -> null
+        else -> {
+          {
+            AppButton(
+              type = ButtonType.TextPrimary,
+              label = ScaleSetupStrings.backButton,
+              size = ButtonSize.Small,
+              enabled = !state.isFirstStep,
+              onClick = { onIntent(AppsyncScaleSetupIntent.Back) },
+            )
+          }
+        }
       },
-      trailingContent = {
-        AppButton(
-          type = ButtonType.PrimaryFilled,
-          label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
-          size = ButtonSize.Small,
-          enabled = state.isNextEnabled || !isScanning,
-          onClick = {
-            focusManager.clearFocus()
-            if(state.isLastStep) {
-              onIntent(AppsyncScaleSetupIntent.ExitSetup(true))
-            } else {
-              onIntent(AppsyncScaleSetupIntent.Next)
-            }
-          },
-        )
+      trailingContent = when (state.currentStep)  {
+        AppsyncScaleSetupStep.OPEN_CAMERA -> null
+        else -> {
+          {
+            AppButton(
+              type = ButtonType.PrimaryFilled,
+              label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
+              size = ButtonSize.Small,
+              enabled = state.isNextEnabled || !isScanning,
+              onClick = {
+                focusManager.clearFocus()
+                if(state.isLastStep) {
+                  onIntent(AppsyncScaleSetupIntent.ExitSetup(true))
+                } else {
+                  onIntent(AppsyncScaleSetupIntent.Next)
+                }
+              },
+            )
+          }
+        }
       },
       pageContent = { step ->
         when (step) {

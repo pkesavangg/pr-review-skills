@@ -2,11 +2,11 @@ package com.greatergoods.meapp.app.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.ITokenManager
@@ -242,7 +242,7 @@ constructor(
             startScan()
           } else {
             if (!initialized) {
-              val pairedScales = deviceService.savedScales.first()
+              val pairedScales = deviceService.pairedScales.first()
               val hasBtWifiScales = pairedScales.any { savedScale ->
                 val scaleInfo = SCALES.find { it.sku == savedScale.sku }
                 scaleInfo?.setupType == ScaleSetupType.BtWifiR4
@@ -323,8 +323,9 @@ constructor(
         deviceService.onDeviceUpdate(
           device = device.copy(device = deviceDetail, connectionStatus = connectionStatus ?: device.connectionStatus),
         )
-          }
+    }
   }
+
   private fun requestPermissions(permissionType: String) {
     viewModelScope.launch {
       dialogUtility.permissionAlert(

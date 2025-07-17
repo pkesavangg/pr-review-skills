@@ -52,7 +52,7 @@ constructor(
 
   private fun observeAppSyncStatus() {
     viewModelScope.launch {
-      deviceService.savedScales.collect { savedScales ->
+      deviceService.pairedScales.collect { savedScales ->
         val hasAppSyncScales = savedScales.any { savedScale ->
           val scaleInfo = SCALES.find { it.sku == savedScale.sku }
           scaleInfo?.setupType == ScaleSetupType.AppSync
