@@ -36,6 +36,7 @@ import com.greatergoods.meapp.features.ScaleUsers.strings.ScaleUsersStrings
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
 import dagger.assisted.Assisted
@@ -150,8 +151,12 @@ constructor(
       permissionService.permissionCallBackFlow.collect {
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
         val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku)
-        if (!areRequiredPermissionsEnabled && state.value.currentStep == BtWifiSetupStep.PERMISSIONS) {
-          handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+        if (!areRequiredPermissionsEnabled) {
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
+          if (state.value.currentStep != BtWifiSetupStep.PERMISSIONS)
+            handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+        } else {
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
       }
     }
@@ -345,11 +350,12 @@ constructor(
 
   private fun onExit() {
     viewModelScope.launch {
-      ggDeviceService.resumeScan(clearOnlyPairing = false)
+      if (discoveredScale != null) {
+        deviceService.updateDevice(discoveredScale!!)
+      }
       val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
       ggDeviceService.syncDevices(pairedDevices)
-      if (discoveredScale != null)
-        deviceService.onDeviceUpdate(discoveredScale!!)
+      ggDeviceService.resumeScan(false)
       navigateBack()
     }
   }
@@ -520,7 +526,6 @@ constructor(
                   ),
                 )
                 deviceService.saveScale(discoveredScale!!)
-                delay(1000)
                 handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
                 handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
               }
@@ -910,13 +915,15 @@ constructor(
     val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
     _state.value.usernameForm.username.onValueChange(username)
     val token = deviceService.getScaleToken()
-    val updatePreference = ScaleMetricsHelper.getDefaultPreference(username)
     val device = Device(
       device = ggDeviceDetail,
-      preferences = updatePreference,
       token = token,
     )
-    discoveredScale = device
+    discoveredScale = device.copy(
+      deviceType = ScaleSetupType.BtWifiR4.value,
+      sku = sku,
+      preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
+    )
   }
 
   private fun subscribeToLiveData() {

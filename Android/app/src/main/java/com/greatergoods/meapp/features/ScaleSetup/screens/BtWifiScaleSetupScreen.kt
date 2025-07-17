@@ -89,11 +89,13 @@ fun BtWifiScaleSetupScreenContent(
       BtWifiSetupStep.DUPLICATES_FOUND ->
         state.duplicateUser?.name != state.usernameForm.username.value
 
+      BtWifiSetupStep.CONNECTING_WIFI ->
+        state.wifiPasswordForm.ssid.isValueValid() && state.wifiPasswordForm.password.isValueValid()
+
       else -> state.canProceedToNext
 
     }
 
-  Log.e("TAG", "BtWifiScaleSetupScreenContent: $isNextButtonEnabledForStep")
   ScaleSetupHeader(
     sku = state.sku,
     onBack = { onIntent(BtWifiScaleSetupIntent.ExitSetup(false)) },

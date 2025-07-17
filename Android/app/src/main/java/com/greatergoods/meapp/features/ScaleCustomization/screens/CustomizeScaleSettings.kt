@@ -25,6 +25,7 @@ import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
 import com.greatergoods.meapp.features.ScaleSetup.components.strings.ScaleFormStrings
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.enums.CustomizeSettings
+import com.greatergoods.meapp.features.ScaleSetup.model.CustomizeSettingsCard
 import com.greatergoods.meapp.features.ScaleSetup.model.CustomizeSettingsList
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
@@ -56,6 +57,12 @@ fun CustomizeScaleSettings(
   val scope = rememberCoroutineScope()
   val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size.toInt() })
   var scaleMetrics by remember { mutableStateOf(ScaleMetricsHelper.getAllMetrics()) }
+
+  var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
+
+  val customizeSettings = remember(visitedSteps) {
+    CustomizeSettingsList.map { it.copy(isVisited = visitedSteps.contains(it.step)) }
+  }
 
   var dashboardKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
   val defaultPreference = ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
@@ -124,6 +131,7 @@ fun CustomizeScaleSettings(
     when (item) {
       CustomizeSettings.NONE -> {
         InitializeCustomizeScaleSettings(
+          customizeSettings = customizeSettings,
           modifier = modifier,
           title = title,
           subtitle = subtitle,
@@ -136,6 +144,7 @@ fun CustomizeScaleSettings(
       }
 
       CustomizeSettings.DASHBOARD_METRICS -> {
+        visitedSteps = visitedSteps + (CustomizeSettings.DASHBOARD_METRICS)
         CustomizationLayout(
           title = CustomizeSettingsStrings.DashboardMetrics.Title,
           subtitle = CustomizeSettingsStrings.DashboardMetrics.Subtitle,
@@ -152,6 +161,7 @@ fun CustomizeScaleSettings(
       }
 
       CustomizeSettings.SCALE_METRICS -> {
+        visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
@@ -167,6 +177,7 @@ fun CustomizeScaleSettings(
       }
 
       CustomizeSettings.SCALE_MODE -> {
+        visitedSteps = visitedSteps + (CustomizeSettings.SCALE_MODE)
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleMode.Title,
         ) {
@@ -186,6 +197,7 @@ fun CustomizeScaleSettings(
       }
 
       CustomizeSettings.SCALE_USERNAME -> {
+        visitedSteps = visitedSteps + (CustomizeSettings.SCALE_USERNAME)
         SetupForm(
           formControl = state.usernameForm.username,
           title = ScaleFormStrings.UserNameTitle,
@@ -202,6 +214,7 @@ fun CustomizeScaleSettings(
 @Composable
 fun InitializeCustomizeScaleSettings(
   modifier: Modifier = Modifier,
+  customizeSettings: List<CustomizeSettingsCard> = CustomizeSettingsList,
   title: String,
   subtitle: String,
   onSelectSettings: (selectedSettings: CustomizeSettings) -> Unit,
@@ -229,7 +242,7 @@ fun InitializeCustomizeScaleSettings(
       modifier = Modifier.fillMaxWidth(),
       verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
-      CustomizeSettingsList.forEach {
+      customizeSettings.forEach {
         CustomizationSettingsItem(
           settings = it,
           onClick = onSelectSettings,

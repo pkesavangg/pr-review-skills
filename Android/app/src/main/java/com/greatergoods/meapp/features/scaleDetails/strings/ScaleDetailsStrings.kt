@@ -27,4 +27,6 @@ object ScaleDetailsStrings {
   const val DatePaired = "Date Paired"
   const val ProductGuide = "Product Guide"
   const val DeleteScale = "Delete Scale"
+  const val SetupIncomplete = "Setup Incomplete"
+  const val SetupWifi = "Setup Wi-Fi"
 }

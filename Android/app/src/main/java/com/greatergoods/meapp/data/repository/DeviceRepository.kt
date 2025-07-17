@@ -48,6 +48,10 @@ constructor(
       emit(deviceDetails?.toDeviceDomainModel())
     }
 
+  override suspend fun updateDevice(device: Device, accountId: String) {
+    deviceDao.updateDevice(device.toDeviceDetails(accountId))
+  }
+
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
     val existingDevice = deviceDao.getDeviceByMac(deviceDetails.device.mac ?: "") ?: deviceDao.getDeviceByBroadcastId(

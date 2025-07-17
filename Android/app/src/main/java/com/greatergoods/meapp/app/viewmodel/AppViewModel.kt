@@ -95,7 +95,7 @@ constructor(
 
   private fun syncScales() {
     viewModelScope.launch {
-      deviceService.getScales().collect {
+      deviceService.pairedScales.collect {
         val ggBTDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
         ggDeviceService.syncDevices(ggBTDevices)
       }

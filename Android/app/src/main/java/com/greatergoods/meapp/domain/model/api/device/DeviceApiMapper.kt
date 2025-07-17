@@ -24,7 +24,7 @@ fun DeviceApiModel.toDomainModel(): Device {
       wifiMacAddress = null, // Not in API response
       isWifiConfigured = false, // Not in API response
     ),
-    preferences = preference?.toPreferences(scaleId),
+    preferences = preference?.toPreferences(scaleId, isSynced = true),
     nickname = nickname ?: name ?: "",
     deviceType = type,
     alreadyPaired = false,
@@ -126,7 +126,7 @@ fun Preferences.toPreferencesApiModel(): PreferenceApiModel =
     wifiFotaScheduleTime = wifiFotaScheduleTime?.toInt() ?: 0,
   )
 
-fun PreferenceApiModel.toPreferences(scaleId: String): Preferences =
+fun PreferenceApiModel.toPreferences(scaleId: String, isSynced: Boolean = false): Preferences =
   Preferences(
     id = scaleId,
     displayName = displayName,
@@ -137,6 +137,7 @@ fun PreferenceApiModel.toPreferences(scaleId: String): Preferences =
     timeFormat = timeFormat,
     tzOffset = tzOffset,
     wifiFotaScheduleTime = wifiFotaScheduleTime?.toLong(),
+    isSynced = isSynced,
   )
 
 /**

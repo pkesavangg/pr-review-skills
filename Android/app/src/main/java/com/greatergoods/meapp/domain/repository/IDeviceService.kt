@@ -29,6 +29,8 @@ interface IDeviceService {
     device: Device,
   )
 
+  suspend fun updateDevice(device: Device)
+
   /**
    * Clear the current account data.
    * This should be called when the user logs out.

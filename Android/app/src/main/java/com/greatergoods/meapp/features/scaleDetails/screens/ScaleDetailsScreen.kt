@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.scaleDetails.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,9 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppIconType
+import com.greatergoods.meapp.features.common.components.AppNote
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppScaleImage
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -103,6 +106,29 @@ fun ScaleDetailsScreenContent(
         scaleImageSize = ScaleImageSize.Large,
       )
       Spacer(modifier = Modifier.height(spacing.xl))
+      Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        if (state.scale?.preferences?.shouldMeasureImpedance == false) {
+          AppNote(
+            message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
+            icon = AppIcons.Default.WeightOnlyMode,
+            buttonText = ScaleMetricsSettingStrings.WeightOnlyNotes.UpdateButton,
+            onButtonClick = {
+              handleIntent(ScaleDetailsIntent.OpenScaleMode)
+            },
+          )
+        }
+        if (state.scale?.device?.isWifiConfigured == false) {
+          AppNote(
+            message = ScaleDetailsStrings.SetupIncomplete,
+            icon = AppIcons.Default.Exclamation,
+            buttonText = ScaleDetailsStrings.SetupWifi,
+            iconType = AppIconType.Danger,
+            onButtonClick = {},
+          )
+        }
+        Spacer(modifier = Modifier.height(spacing.md))
+      }
+
       // Settings Section - Show different items based on setup type
       SettingsSection(
         title = ScaleDetailsStrings.Settings,

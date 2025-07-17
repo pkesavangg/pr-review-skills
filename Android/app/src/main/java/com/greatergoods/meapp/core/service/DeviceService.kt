@@ -7,6 +7,7 @@ import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.repository.IDeviceRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,12 +43,16 @@ constructor(
     val scale = _pairedScales.value.find { it.device?.macAddress == device.device?.macAddress }
     if (scale != null) {
       _pairedScales.value = _pairedScales.value.map {
-        if (it.device?.macAddress == device.device?.macAddress) {
+        if (it.device?.macAddress == scale.device?.macAddress) {
           device
         } else
           it
       }
     }
+  }
+
+  override suspend fun updateDevice(device: Device) {
+    deviceRepository.updateDevice(device, currentAccountId!!)
   }
 
   /**
@@ -137,7 +142,7 @@ constructor(
 
       // 3. Classify devices
       val devicesToSync = storedDevices.filter { device ->
-        !device.isSynced || (device.preferences != null && !device.preferences.isSynced)
+        (!device.isSynced || (device.preferences != null && !device.preferences.isSynced)) && !device.isDeleted
       }
       val deletedDevices = storedDevices.filter { it.isDeleted }
       storedDevices.filter {
@@ -151,7 +156,7 @@ constructor(
           savedDevice = savedDevice.copy(isSynced = true)
 
           // Sync preference if needed
-          if (savedDevice.deviceType == "btWifiR4" && savedDevice.preferences != null) {
+          if (savedDevice.deviceType == ScaleSetupType.BtWifiR4.value && savedDevice.preferences != null) {
             try {
               val updatedPref = savedDevice.preferences.copy(
                 isSynced = true,
@@ -171,7 +176,6 @@ constructor(
           AppLog.e(tag, "Error syncing device ${device.id}", e.toString())
           unsyncedDevices.add(
             device.copy(
-              id = UUID.randomUUID().toString(),
               isSynced = false,
             ),
           )
@@ -182,6 +186,7 @@ constructor(
       for (device in deletedDevices) {
         try {
           deviceRepository.deleteDeviceFromApi(device.id)
+          deviceRepository.deleteDeviceFromDb(device.id)
         } catch (e: Exception) {
           AppLog.e(tag, "Error deleting device ${device.id}", e.toString())
           unsyncedDevices.add(device)

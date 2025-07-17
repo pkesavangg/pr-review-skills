@@ -14,6 +14,8 @@ interface IDeviceRepository {
 
   fun getDevice(deviceId: String): Flow<Device?>
 
+  suspend fun updateDevice(device: Device, accountId: String)
+
   /**
    * Save a device to the local database.
    * @param device The device to save. Must have a valid accountId.
