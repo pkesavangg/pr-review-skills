@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface IDeviceRepository {
   // DB operations
-  fun getDevices(accountId: String): Flow<List<Device>>
+  fun getDevices(accountId: String, filterDeleted: Boolean = true): Flow<List<Device>>
 
   fun getDevice(deviceId: String): Flow<Device?>
 

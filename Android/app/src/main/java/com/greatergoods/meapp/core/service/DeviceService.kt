@@ -127,7 +127,7 @@ constructor(
 
     try {
       // 1. Get locally stored devices
-      val storedDevices = deviceRepository.getDevices(currentAccountId!!).first().toMutableList()
+      val storedDevices = deviceRepository.getDevices(currentAccountId!!, false).first().toMutableList()
 
       // 2. Inject a temporary new device if passed
       tempDevice?.let {

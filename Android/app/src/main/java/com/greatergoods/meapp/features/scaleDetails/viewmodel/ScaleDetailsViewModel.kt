@@ -4,10 +4,12 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsReducer
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsState
+import com.greatergoods.meapp.features.scaleDetails.strings.ScaleDetailsStrings
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -43,12 +45,11 @@ constructor(
       }
 
       ScaleDetailsIntent.DeleteScale -> {
-        // TODO: Handle delete scale
+        deleteScaleAlert()
       }
 
       ScaleDetailsIntent.OpenProductGuide -> {
         openProductGuide()
-        // TODO: Handle open product guide
       }
 
       ScaleDetailsIntent.Back -> {
@@ -111,6 +112,30 @@ constructor(
       ) {
         navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(state.value.scale!!.id))
       }
+    }
+  }
+
+  private fun deleteScaleAlert() {
+    viewModelScope.launch {
+      dialogQueueService.showDialog(
+        DialogModel.Confirm(
+          message = ScaleDetailsStrings.DeleteScaleConfirmation,
+          confirmText = ScaleDetailsStrings.Delete,
+          cancelText = ScaleDetailsStrings.Cancel,
+          onConfirm = {
+            viewModelScope.launch {
+              dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
+              deviceService.deleteScale(scaleId)
+              dialogQueueService.dismissLoader()
+              dialogQueueService.dismissCurrent()
+              navigateBack()
+            }
+          },
+          onDismiss = {
+            dialogQueueService.dismissCurrent()
+          },
+        ),
+      )
     }
   }
 
