@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.manualEntry.helper
 
+import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.data.services.OperationType
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
@@ -223,5 +224,52 @@ object EntryHelper {
         )
       }
     }
+  }
+
+  fun GGScaleEntry.toScaleEntry(accountId: String, deviceId: String): ScaleEntry {
+    val entryEntity = EntryEntity(
+      accountId = accountId,
+      entryTimestamp = date.toString(), // you may want to format it properly
+      serverTimestamp = null,
+      opTimestamp = null,
+      operationType = operationType ?: "add", // default fallback
+      deviceType = protocolType,
+      deviceId = deviceId,
+      unit = if (unit.lowercase() == "kg") WeightUnit.KG else WeightUnit.LB,
+      isSynced = false,
+    )
+
+    val bodyScaleEntryEntity = BodyScaleEntryEntity(
+      id = 0, // Will be auto-generated in DB
+      weight = weightInKg.toDouble(),
+      bodyFat = bodyFat.toDouble(),
+      muscleMass = muscleMass.toDouble(),
+      water = water.toDouble(),
+      bmi = bmi.toDouble(),
+      source = protocolType,
+    )
+
+    val metricEntity = BodyScaleEntryMetricEntity(
+      id = 0, // Will be same as scaleEntryEntity.id when inserted
+      bmr = bmr.toDouble(),
+      metabolicAge = metabolicAge,
+      proteinPercent = proteinPercent.toDouble(),
+      pulse = pulse,
+      skeletalMusclePercent = skeletalMusclePercent.toDouble(),
+      subcutaneousFatPercent = subcutaneousFatPercent.toDouble(),
+      visceralFatLevel = visceralFatLevel.toDouble(),
+      boneMass = boneMass.toDouble(),
+      impedance = impedance.toInt(),
+    )
+
+    val scaleEntryWithMetrics = ScaleEntryWithMetrics(
+      scaleEntry = bodyScaleEntryEntity,
+      scaleEntryMetric = metricEntity,
+    )
+
+    return ScaleEntry(
+      entry = entryEntity,
+      scale = scaleEntryWithMetrics,
+    )
   }
 }

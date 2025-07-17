@@ -97,7 +97,7 @@ fun CustomizeScaleSettings(
             label = ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
             onClick = {
-              if (defaultPreference != updatedPreference) {
+              if (visitedSteps.isEmpty()) {
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
                     dashboardKeys = dashboardKeys,
@@ -122,7 +122,9 @@ fun CustomizeScaleSettings(
             label = ScaleSetupStrings.saveButton,
             size = ButtonSize.Small,
             onClick = {
-
+              scope.launch {
+                pagerState.animateScrollToPage(0)
+              }
             },
           )
         }

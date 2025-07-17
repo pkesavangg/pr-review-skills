@@ -8,6 +8,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGLiveDataResponse
+import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -18,6 +19,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.model.storage.Preferences
@@ -25,6 +27,7 @@ import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
+import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
@@ -39,6 +42,7 @@ import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -66,6 +70,7 @@ constructor(
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
   override val connectivityObserver: IConnectivityObserver,
+  private val entryService: IEntryService,
   private val dialogUtility: IDialogUtility,
   private val accountService: IAccountService
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
@@ -344,12 +349,12 @@ constructor(
 
   private fun onExit() {
     viewModelScope.launch {
-      if (discoveredScale != null) {
-        deviceService.updateDevice(discoveredScale!!)
-      }
       val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
       ggDeviceService.syncDevices(pairedDevices)
       ggDeviceService.resumeScan(false)
+      if (discoveredScale != null) {
+        deviceService.updateDevice(discoveredScale!!)
+      }
       navigateBack()
     }
   }
@@ -510,6 +515,7 @@ constructor(
           device = ggBtDevice,
         ) {
           when (it) {
+
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
                 fetchUserList()
@@ -520,6 +526,8 @@ constructor(
                   ),
                 )
                 deviceService.saveScale(discoveredScale!!)
+                if (discoveredScale!!.device != null)
+                  onDeviceUpdate(discoveredScale!!.device!!, connectionStatus = BLEStatus.CONNECTED)
                 handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
                 handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
               }
@@ -769,7 +777,16 @@ constructor(
     }
   }
 
-  private fun saveEntry() {
+  private fun saveEntry(ggEntry: List<GGScaleEntry>) {
+    viewModelScope.launch {
+      val accountId = accountService.activeAccountFlow.first()?.id
+      val entry = ggEntry.map { it.toScaleEntry(accountId ?: "", discoveredScale!!.id) }
+      try {
+        entryService.addEntry(entry)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during saving entry", e.toString())
+      }
+    }
   }
 
   private fun updateSettings() {
@@ -810,6 +827,7 @@ constructor(
               else -> null
             }
           }
+          deviceService.updateScalePreferences(discoveredScale!!.id, preferences.toR4ScalePreferenceApiModel())
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during settings update", e.toString())
@@ -838,6 +856,19 @@ constructor(
       dashboardService.getVisibleKeys().collect { dashboardKeys ->
         handleIntent(BtWifiScaleSetupIntent.SetDashboardKeys(dashboardKeys))
       }
+    }
+  }
+
+  private fun onDeviceUpdate(
+    deviceDetail: GGDeviceDetail,
+    connectionStatus: BLEStatus? = null,
+  ) {
+    viewModelScope.launch {
+      val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
+      if (device != null)
+        deviceService.onDeviceUpdate(
+          device = device.copy(device = deviceDetail, connectionStatus = connectionStatus ?: device.connectionStatus),
+        )
     }
   }
 
@@ -895,6 +926,7 @@ constructor(
               ConnectionState.Success,
             ),
           )
+          saveEntry(response.data.map { it as GGScaleEntry })
           delay(1000)
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(SetCurrentStep(BtWifiSetupStep.SETUP_FINISHED))
