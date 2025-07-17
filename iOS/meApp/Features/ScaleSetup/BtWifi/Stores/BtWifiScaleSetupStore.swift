@@ -242,34 +242,34 @@ final class BtWifiScaleSetupStore: ObservableObject {
             case .customizeSettings:
                 return AnyView(CustomizeSettingsView())
             case .viewSettings:
-                switch currentCustomizeSetting {
-                case .scaleUsername:
-                    return AnyView(DuplicateUserView(isFromCustomizeSettings: true))
-                case .scaleMode:
-                    return AnyView(
-                        ScaleModesSelectionView(
-                            selectedMode: selectedScaleMode,
-                            isHeartRateEnabled: isHeartRateEnabled,
-                            isR4ScaleSetup: true,
-                            onBIAButtonTap: { [weak self] in
-                                self?.openBIAModel()
-                            },
-                            onValueChanged: { [weak self] scaleMode, heartRateEnabled in
-                                self?.handleScaleModeChange(scaleMode, heartRateEnabled: heartRateEnabled)
+                return AnyView(
+                    Group {
+                        switch currentCustomizeSetting {
+                        case .scaleUsername:
+                            DuplicateUserView(isFromCustomizeSettings: true)
+                        case .scaleMode:
+                            ScaleModesSelectionView(
+                                selectedMode: selectedScaleMode,
+                                isHeartRateEnabled: isHeartRateEnabled,
+                                isR4ScaleSetup: true,
+                                onBIAButtonTap: { [weak self] in
+                                    self?.openBIAModel()
+                                },
+                                onValueChanged: { [weak self] scaleMode, heartRateEnabled in
+                                    self?.handleScaleModeChange(scaleMode, heartRateEnabled: heartRateEnabled)
+                                }
+                            )
+                        default:
+                            // For now, other settings show placeholder
+                            VStack {
+                                Text("Settings View: \(currentCustomizeSetting.rawValue)")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
                             }
-                        )
-                    )
-                default:
-                    // For now, other settings show placeholder
-                    return AnyView(
-                        VStack {
-                            Text("Settings View: \(currentCustomizeSetting.rawValue)")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                        }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    )
-                }
+                        }
+                    }
+                )
             case .updateSettings:
                 return AnyView(
                     Group {
@@ -625,8 +625,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         default:
             break
         }
-        
-        navigateToStep(.viewSettings)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.navigateToStep(.viewSettings)
+        }
     }
     
     /// Handles scale mode and heart rate changes
@@ -668,52 +669,34 @@ final class BtWifiScaleSetupStore: ObservableObject {
             if let savedScale = savedScale {
                 savedScale.r4ScalePreference?.displayName = userNameForm.displayName.value
             }
-            
-            // Mark that changes were made
-            hasCustomizeChanges = true
-            
-            // Reset current customize setting and navigate back
-            currentCustomizeSetting = .none
-            navigateToStep(.customizeSettings)
+            break
         case .scaleMode:
             // Update the scale preference with the new scale mode settings
             if let savedScale = savedScale {
                 savedScale.r4ScalePreference?.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
                 savedScale.r4ScalePreference?.shouldMeasurePulse = isHeartRateEnabled
             }
-            
-            // Mark that changes were made
-            hasCustomizeChanges = true
-            
-            // Reset current customize setting and navigate back
-            currentCustomizeSetting = .none
-            navigateToStep(.customizeSettings)
+            break
         case .scaleMetrics:
-            // Mark that scale metrics changes were made
-            hasCustomizeChanges = true
-            
-            // Reset current customize setting and navigate back
-            currentCustomizeSetting = .none
-            navigateToStep(.customizeSettings)
+            break
         case .dashboardMetrics:
-            // Mark that dashboard metrics changes were made
-            hasCustomizeChanges = true
-            
-            // Reset current customize setting and navigate back
-            currentCustomizeSetting = .none
-            navigateToStep(.customizeSettings)
+            break
         default:
-            // For other settings, just navigate back for now
-            // In the future, you might want to check if actual changes were made
-            currentCustomizeSetting = .none
-            navigateToStep(.customizeSettings)
+            break
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.hasCustomizeChanges = true
+            self.currentCustomizeSetting = .none
+        }
+        self.moveToPreviousStep()
     }
     
     /// Handles the back action from the view settings screen
     private func handleViewSettingsBack() {
         // Reset current customize setting
-        currentCustomizeSetting = .none
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.currentCustomizeSetting = .none
+        }
         
         // Don't mark changes as made when going back without saving
         // The changes flag should only be set when actually saving changes
@@ -887,21 +870,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     }
                     // TODO: Uncomment when measurement live data issue resolved
                     /*
-                    let response = await self.bluetoothService.getMeasurementLiveData(broadcastId: broadcastId)
-                    switch response {
-                    case .success(let measurement):
-                        // Successfully received measurement data
-                        LoggerService.shared.log(level: .info, tag: tag, message: "Live Measurement data received: \(measurement)")
-
-                        if (measurement.weight ?? 0) > 0 {
-                            self.scaleSetupError = .none
-                            self.moveToNextStep()
-                        }
-                    case .failure(let error):
-                        // Handle failure to get measurement data
-                        LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get measurement data: \(error.localizedDescription)")
-                    }
-                    */
+                     let response = await self.bluetoothService.getMeasurementLiveData(broadcastId: broadcastId)
+                     switch response {
+                     case .success(let measurement):
+                     // Successfully received measurement data
+                     LoggerService.shared.log(level: .info, tag: tag, message: "Live Measurement data received: \(measurement)")
+                     
+                     if (measurement.weight ?? 0) > 0 {
+                     self.scaleSetupError = .none
+                     self.moveToNextStep()
+                     }
+                     case .failure(let error):
+                     // Handle failure to get measurement data
+                     LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get measurement data: \(error.localizedDescription)")
+                     }
+                     */
                 }
             }
         case .measurement:
@@ -942,28 +925,28 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func handlePermissionChange() {
         let missingPermissions = !hasAllBtPermissions()
         let noNetwork = !networkMonitor.isConnected
-
+        
         if noNetwork && currentStep == .wakeup {
             resetDiscoveryState()
             navigateToStep(.permissions)
             return
         }
-
+        
         guard missingPermissions else { return }
-
+        
         switch currentStep {
         case .wakeup:
             resetDiscoveryState()
             navigateToStep(.permissions)
-
+            
         case .gatheringNetwork:
             scaleSetupError = .wifiConnectionFailed
             navigateToStep(.availableWifiList)
-
+            
         case .stepOn where scaleSetupError != .updateSettingsFailed:
             scaleSetupError = .collectMeasurementFailed
             moveToNextStep()
-
+            
         default:
             break
         }
@@ -1465,7 +1448,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     }
                 }
             }
-
+            
             // Call bluetooth service to update account
             let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
             try await scaleService.updateScalePreference(

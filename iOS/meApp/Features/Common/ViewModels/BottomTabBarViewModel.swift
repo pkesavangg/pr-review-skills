@@ -100,12 +100,13 @@ class BottomTabBarViewModel: ObservableObject {
     private func evaluateAndShowPermissionAlert() {
         guard !hasShownPermissionAlert else { return }
         // Show alert only if Bluetooth is a required permission
-        guard permissionsService.requiredCategories.contains(.bluetooth) else { return }
+        guard permissionsService.requiredCategories.contains(.bluetooth) || permissionsService.requiredCategories.contains(.notifications)  else { return }
         // Check the current Bluetooth permission states (switch & auth)
         let btSwitchState = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) ?? .ENABLED
         let btAuthState   = permissionsService.getPermissionState(.BLUETOOTH) ?? .ENABLED
+        let notificationState = permissionsService.getPermissionState(.NOTIFICATION) ?? .ENABLED
         // Alert only when either state is disabled
-        guard btSwitchState == .DISABLED || btAuthState == .DISABLED else { return }
+        guard btSwitchState != .ENABLED || btAuthState != .ENABLED || notificationState != .ENABLED  else { return }
 
         showPermissionDisabledAlert()
     }
