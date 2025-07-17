@@ -16,10 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
+import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.enums.AppsyncScaleSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.AppsyncScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.AppsyncScaleSetupState
+import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.AppsyncScaleSetupViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
@@ -112,6 +115,16 @@ fun AppsyncScaleSetupScreenContent(
             AppsyncScaleSetupStep.SCALE_INFO -> {
               ScaleInfo(sku = state.sku)
             }
+
+            AppsyncScaleSetupStep.PERMISSIONS -> {
+              ScalePermissions(
+                sku = state.sku,
+                permissions = state.permissions,
+                onRequestPermission = {
+                  onIntent(AppsyncScaleSetupIntent.RequestPermission(it)) },
+              )
+            }
+
             // TODO: Add other steps as needed
             else -> {
               // Placeholder for other steps

@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.ScaleMetricsSetting.Screens
+package com.greatergoods.meapp.features.scaleDisplayMetrics.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

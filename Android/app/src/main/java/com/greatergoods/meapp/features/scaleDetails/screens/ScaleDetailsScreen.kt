@@ -215,7 +215,7 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,
-              type = SettingsItemType.TextDate(""), // Not available in GGDevice
+              type = SettingsItemType.TextDate(state.scale?.createdAt ?: ""), // Not available in GGDevice
             ),
             SettingsItem(
               title = ScaleDetailsStrings.ProductGuide,

@@ -23,6 +23,7 @@ data class Device(
   val userNumber: Int? = 0,
   val hasServerID: Boolean = false,
   val createdAt: String? = Calendar.getInstance().timeInMillis.toString(),
+    val sku: String? = null,
   val isWeighOnlyModeEnabledByOthers: Boolean = false,
   val token: String? = null,
   val preferences: Preferences? = null,
@@ -39,7 +40,7 @@ data class Device(
   }
 
   fun getSKU(): String {
-    return device?.getSKU() ?: "0375"
+    return sku ?: device?.getSKU() ?: "0375"
   }
 
   companion object {
