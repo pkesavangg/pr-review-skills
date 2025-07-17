@@ -29,7 +29,9 @@ struct DisplayMetricsScreen: View {
                         size: .small,
                         isDisabled: false,
                         action: {
-                            scaleStore.saveDisplayMetrics()
+                            Task {
+                                await scaleStore.saveDisplayMetrics()
+                            }
                         }
                     )
                 },
@@ -46,10 +48,15 @@ struct DisplayMetricsScreen: View {
                 
                 // Body Metrics Section
                 MetricsSectionView(
-                    metrics: $scaleStore.metrics,
+                    metrics: Binding(
+                        get: { scaleStore.metrics },
+                        set: { scaleStore.updateMetrics($0) }
+                    ),
                     onValueChanged: { scaleStore.updateDisplayMetricsValue() },
                     onMove: { indices, newOffset in
-                        scaleStore.metrics.move(fromOffsets: indices, toOffset: newOffset)
+                        var updatedMetrics = scaleStore.metrics
+                        updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
+                        scaleStore.updateMetrics(updatedMetrics)
                         scaleStore.updateDisplayMetricsValue()
                     },
                     showIcon: true
@@ -57,10 +64,15 @@ struct DisplayMetricsScreen: View {
                 
                 // Progress Metrics Section
                 MetricsSectionView(
-                    metrics: $scaleStore.progressMetrics,
+                    metrics: Binding(
+                        get: { scaleStore.progressMetrics },
+                        set: { scaleStore.updateProgressMetrics($0) }
+                    ),
                     onValueChanged: { scaleStore.updateDisplayMetricsValue() },
                     onMove: { indices, newOffset in
-                        scaleStore.progressMetrics.move(fromOffsets: indices, toOffset: newOffset)
+                        var updatedMetrics = scaleStore.progressMetrics
+                        updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
+                        scaleStore.updateProgressMetrics(updatedMetrics)
                         scaleStore.updateDisplayMetricsValue()
                     },
                     showIcon: false
@@ -121,7 +133,11 @@ struct DisplayMetricsScreen: View {
                 )
                 .fontWeight(.regular)
                 Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {scaleStore.updateWeightOnlyMode()})
+                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
+                    Task {
+                        await scaleStore.handleWeightOnlyBannerAction()
+                    }
+                })
             }
         }
     }
@@ -159,7 +175,11 @@ struct DisplayMetricsScreen: View {
                     foregroundColor: iconAndLabelColor
                 )
                 Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {scaleStore.updateHeartRate()})
+                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
+                    // Toggle heart rate mode - this would need to be implemented in ScaleStore
+                    // For now, we'll use a placeholder action
+                    scaleStore.updateHeartRateEnabled(!scaleStore.isHeartRateEnabled)
+                })
             }
         }
     }

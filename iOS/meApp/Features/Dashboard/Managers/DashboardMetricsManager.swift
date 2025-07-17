@@ -1,19 +1,19 @@
 import Foundation
 import SwiftUI
 
-/// Manages all metric-related operations for the dashboard
+/// Manages all metric operations and configurations for the dashboard
 @MainActor
 class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
     // MARK: - Dependencies
     @Injector private var accountService: AccountService
-    @Injector private var logger: LoggerService
     @Injector private var entryService: EntryService
+    @Injector private var logger: LoggerService
 
     // MARK: - Published Properties
     @Published var state: MetricsState
 
-    // MARK: - Original Metrics Configuration
+    // MARK: - Private Properties
     private let originalMetrics: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
         (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, nil),
         (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.bodyFatUnit, nil, nil),
@@ -29,8 +29,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, nil)
     ]
 
-
-
     // MARK: - Initialization
     init(initialState: MetricsState = MetricsState()) {
         self.state = initialState
@@ -42,137 +40,280 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         state.metrics = originalMetrics.map {
             MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
         }
+        
+        // Set activeMetricsCount based on dashboard type
+        switch state.dashboardType {
+        case .dashboard4:
+            state.activeMetricsCount = 4
+        case .dashboard12:
+            state.activeMetricsCount = 12
+        }
+    }
+
+    // MARK: - API Integration
+    func loadMetricsFromAPI() async throws {
+        do {
+            guard let account = accountService.activeAccount else {
+                throw DashboardError.noActiveAccount
+            }
+
+            // Load dashboard type from account
+            if let dashboardTypeString = account.dashboardSettings?.dashboardType,
+               let dashboardType = DashboardType(rawValue: dashboardTypeString) {
+                updateDashboardType(dashboardType)
+                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loaded dashboard type from API: \(dashboardType.rawValue)")
+            }
+
+            // Load dashboard metrics from account
+            if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
+                let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
+                updateMetricsOrder(from: metricArray)
+                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loaded metrics from API: \(metricArray)")
+            }
+
+        } catch {
+            logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to load metrics from API: \(error)")
+            throw DashboardError.configurationLoadFailed(error)
+        }
+    }
+
+    // MARK: - Dashboard Type Management
+    
+    /// Updates the dashboard type
+    func updateDashboardType(_ dashboardType: DashboardType) {
+        state.dashboardType = dashboardType
+        
+        // Set activeMetricsCount based on dashboard type
+        switch dashboardType {
+        case .dashboard4:
+            state.activeMetricsCount = 4
+        case .dashboard12:
+            state.activeMetricsCount = 12
+        }
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated dashboard type to \(dashboardType.rawValue) with activeMetricsCount: \(state.activeMetricsCount)")
+    }
+
+    // MARK: - Metric Management
+    func resetMetricsToDefaults() async throws {
+        setupInitialMetrics()
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults")
+    }
+
+    func toggleMetricVisibility(at index: Int) async throws {
+        guard index < state.metrics.count else {
+            throw DashboardError.invalidMetricData("Invalid metric index: \(index)")
+        }
+
+        let metric = state.metrics[index]
+        let isCurrentlyRemoved = index >= state.activeMetricsCount
+
+        state.metrics.remove(at: index)
+
+        if isCurrentlyRemoved {
+            // Add the metric back to active metrics
+            state.metrics.insert(metric, at: state.activeMetricsCount)
+            state.activeMetricsCount += 1
+        } else {
+            // Move the metric to inactive metrics
+            state.metrics.append(metric)
+            state.activeMetricsCount -= 1
+        }
+
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Toggled metric visibility at index: \(index), activeMetricsCount: \(state.activeMetricsCount)")
+    }
+
+    func reorderMetrics(from source: IndexSet, to destination: Int) async throws {
+        state.metrics.move(fromOffsets: source, toOffset: destination)
+        
+        // Ensure activeMetricsCount is still valid after reordering
+        let currentActiveCount = min(state.activeMetricsCount, state.metrics.count)
+        state.activeMetricsCount = currentActiveCount
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics from \(source) to \(destination), activeMetricsCount: \(state.activeMetricsCount)")
+    }
+
+    // MARK: - Utility Methods
+    func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
+        switch label {
+        case DashboardStrings.bmi:
+            return summary.bmi
+        case DashboardStrings.bodyFat:
+            return summary.bodyFat
+        case DashboardStrings.muscle:
+            return summary.muscleMass
+        case DashboardStrings.water:
+            return summary.water
+        case DashboardStrings.heartBpm:
+            return summary.pulse.map { Double($0) }
+        case DashboardStrings.bone:
+            return summary.boneMass
+        case DashboardStrings.visceralFat:
+            return summary.visceralFatLevel
+        case DashboardStrings.subFat:
+            return summary.subcutaneousFatPercent
+        case DashboardStrings.protein:
+            return summary.proteinPercent
+        case DashboardStrings.skelMuscle:
+            return summary.skeletalMusclePercent
+        case DashboardStrings.bmrKcal:
+            return summary.bmr.map { Double($0) / 10.0 }
+        case DashboardStrings.metAge:
+            return summary.metabolicAge.map { Double($0) }
+        default:
+            return nil
+        }
+    }
+
+    func getMetricsToShow(isEditMode: Bool, dashboardType: DashboardType) -> [MetricItem] {
+        if isEditMode {
+            // In edit mode, show all metrics regardless of type
+            return state.metrics
+        } else {
+            // In normal mode, show only active metrics based on activeMetricsCount
+            return Array(state.metrics.prefix(state.activeMetricsCount))
+        }
+    }
+
+    /// Returns grid columns configuration based on dashboard type
+    func getMetricGridColumns(for dashboardType: DashboardType) -> [GridItem] {
+        let columnCount = dashboardType == .dashboard4 ? 
+            DashboardConstants.UI.fourMetricGridColumns : 
+            DashboardConstants.UI.twelveMetricGridColumns
+        
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 
     // MARK: - Metric Updates
     func updateMetrics(with entry: Entry) async throws {
-      // Update individual metrics based on entry data
-      if let bmi = entry.scaleEntry?.bmi {
-          let formattedValue = BodyMetricsConvertor.convert(Double(bmi), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
-      }
+        // Update individual metrics based on entry data
+        if let bmi = entry.scaleEntry?.bmi {
+            let formattedValue = BodyMetricsConvertor.convert(Double(bmi), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
+        }
 
-      if let bodyFat = entry.scaleEntry?.bodyFat {
-          let formattedValue = BodyMetricsConvertor.convert(Double(bodyFat), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
-      }
+        if let bodyFat = entry.scaleEntry?.bodyFat {
+            let formattedValue = BodyMetricsConvertor.convert(Double(bodyFat), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
+        }
 
-      if let muscleMass = entry.scaleEntry?.muscleMass {
-          let formattedValue = BodyMetricsConvertor.convert(Double(muscleMass), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
-      }
+        if let muscleMass = entry.scaleEntry?.muscleMass {
+            let formattedValue = BodyMetricsConvertor.convert(Double(muscleMass), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
+        }
 
-      if let water = entry.scaleEntry?.water {
-          let formattedValue = BodyMetricsConvertor.convert(Double(water), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.water, value: formattedValue)
-      }
+        if let water = entry.scaleEntry?.water {
+            let formattedValue = BodyMetricsConvertor.convert(Double(water), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.water, value: formattedValue)
+        }
 
-      if let pulse = entry.scaleEntryMetric?.pulse {
-          let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
-      }
+        if let pulse = entry.scaleEntryMetric?.pulse {
+            let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
+        }
 
-      if let boneMass = entry.scaleEntryMetric?.boneMass {
-          let formattedValue = BodyMetricsConvertor.convert(Double(boneMass), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
-      }
+        if let boneMass = entry.scaleEntryMetric?.boneMass {
+            let formattedValue = BodyMetricsConvertor.convert(Double(boneMass), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
+        }
 
-      if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel {
-          let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat), shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
-      }
+        if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel {
+            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
+        }
 
-      if let subFat = entry.scaleEntryMetric?.subcutaneousFatPercent {
-          let formattedValue = BodyMetricsConvertor.convert(Double(subFat), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
-      }
+        if let subFat = entry.scaleEntryMetric?.subcutaneousFatPercent {
+            let formattedValue = BodyMetricsConvertor.convert(Double(subFat), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
+        }
 
-      if let protein = entry.scaleEntryMetric?.proteinPercent {
-          let formattedValue = BodyMetricsConvertor.convert(Double(protein), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
-      }
+        if let protein = entry.scaleEntryMetric?.proteinPercent {
+            let formattedValue = BodyMetricsConvertor.convert(Double(protein), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
+        }
 
-      if let skelMuscle = entry.scaleEntryMetric?.skeletalMusclePercent {
-          let formattedValue = BodyMetricsConvertor.convert(Double(skelMuscle), shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
-      }
+        if let skelMuscle = entry.scaleEntryMetric?.skeletalMusclePercent {
+            let formattedValue = BodyMetricsConvertor.convert(Double(skelMuscle), shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
+        }
 
-      if let bmr = entry.scaleEntryMetric?.bmr {
-          let bmrValue = Double(bmr) / 10.0
-          let formattedValue = BodyMetricsConvertor.convert(bmrValue, shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
-      }
+        if let bmr = entry.scaleEntryMetric?.bmr {
+            let bmrValue = Double(bmr) / 10.0
+            let formattedValue = BodyMetricsConvertor.convert(bmrValue, shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
+        }
 
-      if let metabolicAge = entry.scaleEntryMetric?.metabolicAge {
-          let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
-      }
+        if let metabolicAge = entry.scaleEntryMetric?.metabolicAge {
+            let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
+        }
     }
 
     func updateMetrics(with selectedPoint: BathScaleWeightSummary) async throws {
-      // Update metrics based on selected point data
-      if let bmi = selectedPoint.bmi {
-          let formattedValue = BodyMetricsConvertor.convert(bmi, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
-      }
+        // Update metrics based on selected point data
+        if let bmi = selectedPoint.bmi {
+            let formattedValue = BodyMetricsConvertor.convert(bmi, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
+        }
 
-      if let bodyFat = selectedPoint.bodyFat {
-          let formattedValue = BodyMetricsConvertor.convert(bodyFat, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
-      }
+        if let bodyFat = selectedPoint.bodyFat {
+            let formattedValue = BodyMetricsConvertor.convert(bodyFat, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
+        }
 
-      if let muscleMass = selectedPoint.muscleMass {
-          let formattedValue = BodyMetricsConvertor.convert(muscleMass, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
-      }
+        if let muscleMass = selectedPoint.muscleMass {
+            let formattedValue = BodyMetricsConvertor.convert(muscleMass, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
+        }
 
-      if let water = selectedPoint.water {
-          let formattedValue = BodyMetricsConvertor.convert(water, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.water, value: formattedValue)
-      }
+        if let water = selectedPoint.water {
+            let formattedValue = BodyMetricsConvertor.convert(water, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.water, value: formattedValue)
+        }
 
-      if let pulse = selectedPoint.pulse {
-          let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
-      }
+        if let pulse = selectedPoint.pulse {
+            let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
+        }
 
-      if let boneMass = selectedPoint.boneMass {
-          let formattedValue = BodyMetricsConvertor.convert(boneMass, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
-      }
+        if let boneMass = selectedPoint.boneMass {
+            let formattedValue = BodyMetricsConvertor.convert(boneMass, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
+        }
 
-      if let visceralFat = selectedPoint.visceralFatLevel {
-          let formattedValue = BodyMetricsConvertor.convert(visceralFat, shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
-      }
+        if let visceralFat = selectedPoint.visceralFatLevel {
+            let formattedValue = BodyMetricsConvertor.convert(visceralFat, shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
+        }
 
-      if let subFat = selectedPoint.subcutaneousFatPercent {
-          let formattedValue = BodyMetricsConvertor.convert(subFat, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
-      }
+        if let subFat = selectedPoint.subcutaneousFatPercent {
+            let formattedValue = BodyMetricsConvertor.convert(subFat, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
+        }
 
-      if let protein = selectedPoint.proteinPercent {
-          let formattedValue = BodyMetricsConvertor.convert(protein, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
-      }
+        if let protein = selectedPoint.proteinPercent {
+            let formattedValue = BodyMetricsConvertor.convert(protein, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
+        }
 
-      if let skelMuscle = selectedPoint.skeletalMusclePercent {
-          let formattedValue = BodyMetricsConvertor.convert(skelMuscle, shouldCompose: true, wholeNumber: false)
-          updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
-      }
+        if let skelMuscle = selectedPoint.skeletalMusclePercent {
+            let formattedValue = BodyMetricsConvertor.convert(skelMuscle, shouldCompose: true, wholeNumber: false)
+            updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
+        }
 
-      if let bmr = selectedPoint.bmr {
-          let bmrValue = Double(bmr) / 10.0
-          let formattedValue = BodyMetricsConvertor.convert(bmrValue, shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
-      }
+        if let bmr = selectedPoint.bmr {
+            let bmrValue = Double(bmr) / 10.0
+            let formattedValue = BodyMetricsConvertor.convert(bmrValue, shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
+        }
 
-      if let metabolicAge = selectedPoint.metabolicAge {
-          let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true)
-          updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
-      }
+        if let metabolicAge = selectedPoint.metabolicAge {
+            let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true)
+            updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
+        }
 
-      logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics with selected point data")
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics with selected point data")
     }
 
     // MARK: - API Operations
@@ -213,179 +354,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to save metrics to API: \(error)")
             throw DashboardError.metricsSaveFailed(error)
         }
-    }
-
-    func loadMetricsFromAPI() async throws {
-        do {
-            guard let account = accountService.activeAccount else {
-                throw DashboardError.noActiveAccount
-            }
-
-            // Load dashboard metrics from account
-            if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
-                let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
-                updateMetricsOrder(from: metricArray)
-                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loaded metrics from API: \(metricArray)")
-            }
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to load metrics from API: \(error)")
-            throw DashboardError.configurationLoadFailed(error)
-        }
-    }
-
-    // MARK: - Metric Type Management
-    
-    /// Updates the metric type and adjusts activeMetricsCount accordingly
-    func updateMetricType(_ metricType: DashboardMetricType) {
-        state.metricType = metricType
-        
-        // Set activeMetricsCount based on metric type
-        if metricType == .four {
-            state.activeMetricsCount = 4
-        } else {
-            state.activeMetricsCount = 12
-        }
-        
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metric type to \(metricType), activeMetricsCount: \(state.activeMetricsCount)")
-    }
-
-    // MARK: - Metric Management
-    func resetMetricsToDefaults() async throws {
-        setupInitialMetrics()
-        
-        // Set activeMetricsCount based on current metric type
-        if state.metricType == .four {
-            state.activeMetricsCount = 4
-        } else {
-            state.activeMetricsCount = originalMetrics.count
-        }
-        
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults, activeMetricsCount: \(state.activeMetricsCount)")
-    }
-
-    func toggleMetricVisibility(at index: Int) async throws {
-        guard index < state.metrics.count else {
-            throw DashboardError.invalidMetricData("Invalid metric index: \(index)")
-        }
-
-        let metric = state.metrics[index]
-        let isCurrentlyRemoved = index >= state.activeMetricsCount
-
-        state.metrics.remove(at: index)
-
-        if isCurrentlyRemoved {
-            // Check if we can add more metrics based on metric type
-            let maxAllowedMetrics = state.metricType == .four ? 4 : 12
-            if state.activeMetricsCount < maxAllowedMetrics {
-                state.metrics.insert(metric, at: state.activeMetricsCount)
-                state.activeMetricsCount += 1
-            } else {
-                // If we can't add more, just append to the end
-                state.metrics.append(metric)
-            }
-        } else {
-            state.metrics.append(metric)
-            state.activeMetricsCount -= 1
-        }
-
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Toggled metric visibility at index: \(index), activeMetricsCount: \(state.activeMetricsCount)")
-    }
-
-    func reorderMetrics(from source: IndexSet, to destination: Int) async throws {
-        state.metrics.move(fromOffsets: source, toOffset: destination)
-        
-        // Ensure activeMetricsCount is still valid after reordering
-        // The activeMetricsCount should represent the number of metrics that are currently visible
-        // We need to recalculate this based on the current state and metric type limits
-        let maxAllowedMetrics = state.metricType == .four ? 4 : 12
-        let currentActiveCount = min(state.activeMetricsCount, state.metrics.count, maxAllowedMetrics)
-        state.activeMetricsCount = currentActiveCount
-        
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics from \(source) to \(destination), activeMetricsCount: \(state.activeMetricsCount)")
-    }
-
-    // MARK: - Utility Methods
-    func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
-        switch label {
-        case DashboardStrings.bmi:
-            return summary.bmi
-        case DashboardStrings.bodyFat:
-            return summary.bodyFat
-        case DashboardStrings.muscle:
-            return summary.muscleMass
-        case DashboardStrings.water:
-            return summary.water
-        case DashboardStrings.heartBpm:
-            return summary.pulse.map { Double($0) }
-        case DashboardStrings.bone:
-            return summary.boneMass
-        case DashboardStrings.visceralFat:
-            return summary.visceralFatLevel
-        case DashboardStrings.subFat:
-            return summary.subcutaneousFatPercent
-        case DashboardStrings.protein:
-            return summary.proteinPercent
-        case DashboardStrings.skelMuscle:
-            return summary.skeletalMusclePercent
-        case DashboardStrings.bmrKcal:
-            return summary.bmr.map { Double($0) / 10.0 }
-        case DashboardStrings.metAge:
-            return summary.metabolicAge.map { Double($0) }
-        default:
-            return nil
-        }
-    }
-
-    func getMetricsToShow(isEditMode: Bool, metricType: DashboardMetricType) -> [MetricItem] {
-        if isEditMode {
-            if metricType == .four {
-                // For 4-metric mode in edit mode, show only the 4 basic metrics in correct order
-                let fourLabels: [String] = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-                var orderedMetrics: [MetricItem] = []
-                
-                // Get metrics in the correct order
-                for label in fourLabels {
-                    if let metric = state.metrics.first(where: { $0.label == label }) {
-                        orderedMetrics.append(metric)
-                    }
-                }
-                
-                return orderedMetrics
-            } else {
-                // For 12-metric mode in edit mode, show all metrics
-                return state.metrics
-            }
-        } else {
-            if metricType == .four {
-                // For 4-metric mode in normal mode, show only the 4 basic metrics in correct order
-                let fourLabels: [String] = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-                var orderedMetrics: [MetricItem] = []
-                
-                // Get metrics in the correct order from active metrics
-                let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
-                for label in fourLabels {
-                    if let metric = activeMetrics.first(where: { $0.label == label }) {
-                        orderedMetrics.append(metric)
-                    }
-                }
-                
-                return orderedMetrics
-            } else {
-                // For 12-metric mode in normal mode, show only active metrics (respect activeMetricsCount)
-                let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
-                return activeMetrics
-            }
-        }
-    }
-
-    /// Returns grid columns configuration based on metric type
-    func getMetricGridColumns(for metricType: DashboardMetricType) -> [GridItem] {
-        let columnCount = metricType == .four ? 
-            DashboardConstants.UI.fourMetricGridColumns : 
-            DashboardConstants.UI.twelveMetricGridColumns
-        
-        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 
     func createEntryForMetricInfo(metricLabel: String? = nil) async -> Entry {
@@ -569,14 +537,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         // Update state
         state.metrics = activeMetrics + inactiveMetrics
         
-        // Set activeMetricsCount based on metric type and API data
-        if state.metricType == .four {
-            // For 4-metric mode, cap at 4 regardless of API data
-            state.activeMetricsCount = min(4, activeMetrics.count)
-        } else {
-            // For 12-metric mode, use the actual count from API
-            state.activeMetricsCount = activeMetrics.count
-        }
+        // Set activeMetricsCount based on the actual API data
+        state.activeMetricsCount = activeMetrics.count
 
         logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics order from API: \(displayMetrics), activeMetricsCount: \(state.activeMetricsCount)")
     }

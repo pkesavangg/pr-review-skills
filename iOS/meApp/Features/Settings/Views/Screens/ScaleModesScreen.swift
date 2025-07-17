@@ -21,20 +21,24 @@ struct ScaleModesScreen: View {
                 title: isR4ScaleSetup ? lang.r4scaleSetupTitle : lang.modeTitle,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: {
-                    if isR4ScaleSetup {
-                        AnyView(Button(action: {
-                            scaleStore.handleHelp()
-                        },label: { Image(AppAssets.helpCircle) }))
-                    } else {
-                        AnyView(ButtonView(
-                            text: CommonStrings.save.uppercased(),
-                            type: .inlineTextPrimary,
-                            size: .small,
-                            isDisabled: !scaleStore.hasModeChanges,
-                            action: {
-                                scaleStore.handleScaleModeSave()
+                    Group {
+                        if isR4ScaleSetup {
+                            Button(action: {
+                                scaleStore.openHelp()
+                            }) {
+                                Image(AppAssets.helpCircle)
                             }
-                        ))
+                        } else {
+                            ButtonView(
+                                text: CommonStrings.save.uppercased(),
+                                type: .inlineTextPrimary,
+                                size: .small,
+                                isDisabled: !scaleStore.hasModeChanges,
+                                action: {
+                                    scaleStore.handleScaleModeSave()
+                                }
+                            )
+                        }
                     }
                 },
                 onLeadingTap: { router.navigateBack() },
@@ -47,7 +51,10 @@ struct ScaleModesScreen: View {
 
                 SegmentedButtonView(
                     segments: ScaleModes.allCases,
-                    selectedSegment: $scaleStore.modeValue
+                    selectedSegment: Binding(
+                        get: { scaleStore.modeValue },
+                        set: { scaleStore.updateModeValue($0) }
+                    )
                 )
 
                 Group {
@@ -66,11 +73,11 @@ struct ScaleModesScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .onAppear {
-            scaleStore.onAppear(scale: scale)
+            Task {
+                await scaleStore.loadScale(scale)
+            }
         }
-        .onChange(of: scaleStore.modeValue) {
-            scaleStore.updateModeChangeTracking()
-        }
+
     }
 
     // MARK: - Description with Inline Button

@@ -74,11 +74,19 @@ struct ScaleBluetoothScreen: View {
         ScaleItemView(
             scaleIcon: scaleIcon(for: scale.sku),
             modelNumber: scale.sku ?? "----",
-            scaleName: scale.deviceName ?? lang.unknownScale,
+            scaleName: getScaleDisplayName(),
             status: scaleStore.determineConnectionStatus(for: scale),
             onTap: {},
             hideChevron: true
         )
+    }
+    
+    private func getScaleDisplayName() -> String {
+         
+        if let deviceName = scale.deviceName, !deviceName.isEmpty {
+            return deviceName
+        }
+        return "unknown scale"
     }
     
     private var permissionItems: some View {

@@ -81,6 +81,7 @@ struct ScaleSettingsScreen: View {
             if scaleStore.shouldShowWeightOnlyBanner {
                 ScaleStatusBanner(type: .weightOnly {
                     scaleStore.handleWeightOnlyBannerAction()
+                    
                 })
             } else if scaleStore.shouldShowSetupIncompleteBanner {
                 ScaleStatusBanner(type: .setupIncomplete {
@@ -191,7 +192,7 @@ struct ScaleSettingsScreen: View {
                     title: lang.scaleType,
                     value: scaleStore.scaleTypeValue,
                     chevronType: .none,
-                    onTap: { scaleStore.scaleTypeTapped() }
+                    onTap: {}
                 )
             )
             ActionListItemView(

@@ -31,7 +31,10 @@ struct AllBodyMetricsView: View {
                     
                     Spacer()
                     
-                    CustomToggleView(isOn: $scaleStore.isHeartRateEnabled)
+                    CustomToggleView(isOn: Binding(
+                        get: { scaleStore.isHeartRateEnabled },
+                        set: { scaleStore.updateHeartRateEnabled($0) }
+                    ))
                     
                 }
                 
@@ -48,9 +51,7 @@ struct AllBodyMetricsView: View {
             
         }
         .background(theme.backgroundSecondary)
-        .onChange(of: scaleStore.isHeartRateEnabled) {
-            scaleStore.updateModeChangeTracking()
-        }
+
         
     }
 }
