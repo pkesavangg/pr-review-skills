@@ -20,7 +20,7 @@ import com.greatergoods.meapp.theme.MeAppTheme
 fun FinishConnect(
     modifier: Modifier = Modifier,
     title: String = HealthConnectStrings.FinishConnectStrings.Title,
-    image:Int = AppIcons.Integrations.Full_Permission,
+    image:Int = AppIcons.Integrations.HC_Homepage,
     onPrimaryAction: () -> Unit,
 ) {
     HealthConnectScreen(

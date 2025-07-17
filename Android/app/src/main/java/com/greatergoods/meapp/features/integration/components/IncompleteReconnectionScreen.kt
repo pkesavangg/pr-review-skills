@@ -25,7 +25,7 @@ fun IncompleteReconnectionScreen(
 ) {
   HealthConnectScreen(
     content = HealthConnectScreenContent(
-      image = AppIcons.Integrations.Partial_Permission,
+      image = AppIcons.Integrations.Full_Permission,
       title = HealthConnectStrings.PartialReconnectStrings.Title,
       description = HealthConnectStrings.PartialReconnectStrings.Description,
       primaryButtonLabel = HealthConnectStrings.ActionButtons.updatePermissions,

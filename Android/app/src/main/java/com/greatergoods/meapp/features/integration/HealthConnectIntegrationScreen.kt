@@ -197,8 +197,9 @@ fun HealthConnectIntegrationContent(
 
                     HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION -> {
                         FinishConnect (
-                            title = HealthConnectStrings.FinishPartialReconnectStrings.Title,
-                            onPrimaryAction = {
+                          title = HealthConnectStrings.FinishPartialReconnectStrings.Title,
+                          image = AppIcons.Integrations.HC_Homepage,
+                          onPrimaryAction = {
                                 handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
                             },
                         )
