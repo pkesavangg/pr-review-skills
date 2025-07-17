@@ -176,7 +176,7 @@ class HealthConnect(
             val now = Instant.now()
             val start = now.minusSeconds(365 * 100 * 24 * 60 * 60L) // 100 years
             val end = now
-            val allTypes = (options.writeTypes + options.readTypes).toSet()
+            val allTypes = options.writeTypes.toSet()
             allTypes.forEach { type ->
                 val recordType = getRecordKClass(type)
                 if (recordType != null) {
@@ -396,12 +396,7 @@ class HealthConnect(
                 HealthPermission.getWritePermission(recordClass.kotlin)
             }
         }
-        val readPermissions = options.readTypes.mapNotNull { dataType ->
-            getRecordKClass(dataType)?.let { recordClass ->
-                HealthPermission.getReadPermission(recordClass.kotlin)
-            }
-        }
-        return (writePermissions + readPermissions).toSet()
+        return writePermissions.toSet()
     }
 
     /**
@@ -410,18 +405,6 @@ class HealthConnect(
     override suspend fun hasAllPermissions(permissions: Set<String>): Boolean {
         val granted = healthConnectClient.permissionController.getGrantedPermissions()
         return granted.containsAll(permissions)
-    }
-
-    private fun DataType.writePermission(): String? {
-        return getRecordKClass(this)?.let { recordClass ->
-            HealthPermission.getWritePermission(recordClass.kotlin)
-        }
-    }
-
-    private fun DataType.readPermission(): String? {
-        return getRecordKClass(this)?.let { recordClass ->
-            HealthPermission.getReadPermission(recordClass.kotlin)
-        }
     }
 
     /**
