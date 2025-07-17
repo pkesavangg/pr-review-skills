@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
@@ -14,11 +15,11 @@ import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
-import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
@@ -38,7 +39,6 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -56,7 +56,7 @@ constructor(
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
   override val connectivityObserver: IConnectivityObserver,
-  private val accountService: IAccountService
+  private val dialogUtility: IDialogUtility
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
   ggDeviceService, connectivityObserver, permissionService,
   reducer = BtWifiScaleSetupReducer(),
@@ -113,8 +113,7 @@ constructor(
     viewModelScope.launch {
       subscribePermissions().collect {
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
-        Log.d("perm", it.toString())
-        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(sku, it)
+        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku = sku)
         if (areRequiredPermissionsEnabled) {
           handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
         }
@@ -534,6 +533,10 @@ constructor(
               ConnectionState.Success,
             ),
           )
+          val canRequestNotifPermission = AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
+          if (canRequestNotifPermission) {
+            requestPermission(GGPermissionType.NOTIFICATION)
+          }
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
           handleIntent(SetCurrentStep(BtWifiSetupStep.AVAILABLE_WIFI_LIST))
@@ -770,12 +773,21 @@ constructor(
   }
 
   /**
-   * Requests a specific permission using the permission service.
+   * Requests a specific permission with rationale alert using the permission service.
    */
   private fun requestPermission(permissionType: String) {
+    if (permissionType == GGPermissionType.WIFI_SWITCH) {
+      permissionService.requestPermission(permissionType)
+      return
+    }
     viewModelScope.launch {
       try {
-        permissionService.requestPermission(permissionType)
+        dialogUtility.permissionAlert(
+          permissionType = permissionType,
+          onRequest = {
+            permissionService.requestPermission(permissionType)
+          },
+        )
       } catch (e: Exception) {
         AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
       }

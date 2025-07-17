@@ -3,6 +3,7 @@ package com.greatergoods.meapp.features.appPermissions.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -15,6 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppPermissionsViewModel @Inject constructor(
   private val permissionService: GGPermissionService,
+  private val dialogUtility: IDialogUtility,
 ) : BaseIntentViewModel<AppPermissionsState, AppPermissionsIntent>(
   reducer = AppPermissionReducer(),
 ) {
@@ -52,7 +54,12 @@ class AppPermissionsViewModel @Inject constructor(
   private fun requestPermission(permissionType: String) {
     viewModelScope.launch {
       try {
-        permissionService.requestPermission(permissionType)
+        dialogUtility.permissionAlert(
+          permissionType = permissionType,
+          onRequest = {
+            permissionService.requestPermission(permissionType)
+          },
+        )
       } catch (e: Exception) {
         AppLog.e("AppPermissionsViewModel", "Error requesting permission ${permissionType}", e.toString())
       }

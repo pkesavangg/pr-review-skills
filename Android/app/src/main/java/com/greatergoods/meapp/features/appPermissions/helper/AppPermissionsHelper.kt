@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.appPermissions.helper
 
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.meapp.domain.model.permission.PermissionState
@@ -255,15 +256,45 @@ object AppPermissionsHelper {
    * @return true if all required permissions are enabled, false otherwise
    */
   fun areRequiredPermissionsEnabled(
-    sku: String,
-    permissionMap: GGPermissionStatusMap
+    permissionMap: GGPermissionStatusMap,
+    sku: String? = null,
+    setupType: ScaleSetupType? = null,
   ): Boolean {
-    val scaleSetupType = SCALES.find { it.sku == sku }!!.setupType
+    if(sku == null && setupType == null){
+      return false
+    }
+    val scaleSetupType = setupType ?: SCALES.find { it.sku == sku }!!.setupType
     val requiredPermissionTypes = getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.all { permissionType ->
       val permissionState = permissionMap[permissionType] ?: PermissionState.NOT_DETERMINED
       permissionState == PermissionState.ENABLED
     }
+  }
+
+  /**
+   * Checks if the scan permissions are enabled or not.
+   * @param permissions The map of permissions to check.
+   */
+  fun checkScanPermissions(permissions: GGPermissionStatusMap): Boolean {
+    val scanPermissions = getScanPermissions(permissions)
+    val isEnabled = scanPermissions.all { it.value == GGPermissionState.ENABLED }
+    return isEnabled
+  }
+
+  fun getScanPermissions(permissions: GGPermissionStatusMap): GGPermissionStatusMap {
+    return permissions.filter {
+      it.key == GGPermissionType.BLUETOOTH_SWITCH ||
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
+          it.key == GGPermissionType.NEARBY_DEVICE
+        } else {
+          it.key == GGPermissionType.LOCATION || it.key == GGPermissionType.LOCATION_SWITCH
+        }
+    } as GGPermissionStatusMap
+  }
+
+  fun canRequestNotificationPermission(permissions: GGPermissionStatusMap): Boolean {
+    return permissions[GGPermissionType.NOTIFICATION] != GGPermissionState.ENABLED &&
+      permissions[GGPermissionType.NOTIFICATION] != GGPermissionState.PERMANENTLY_DENIED
   }
 }
