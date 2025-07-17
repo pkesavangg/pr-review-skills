@@ -689,6 +689,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             if let savedScale = savedScale {
                 savedScale.r4ScalePreference?.displayName = userNameForm.displayName.value
             }
+            self.hasCustomizeChanges = true
             break
         case .scaleMode:
             // Update the scale preference with the new scale mode settings
@@ -696,20 +697,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 savedScale.r4ScalePreference?.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
                 savedScale.r4ScalePreference?.shouldMeasurePulse = isHeartRateEnabled
             }
+            self.hasCustomizeChanges = true
             break
         case .scaleMetrics:
             // Persist the user's selected display metrics into the local preference so it can be synced later.
             if let savedScale = savedScale {
                 savedScale.r4ScalePreference?.displayMetrics = selectedScaleMetrics
             }
+            self.hasCustomizeChanges = true
             break
         case .dashboardMetrics:
+            self.hasCustomizeChanges = true
             break
         default:
             break
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.hasCustomizeChanges = true
             self.currentCustomizeSetting = .none
         }
         self.moveToPreviousStep()
@@ -1476,12 +1479,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
             
-            // Call bluetooth service to update account
-            let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
-            try await scaleService.updateScalePreference(
+             try await scaleService.updateScalePreference(
                 savedScale.id,
                 updatedPreference
             )
+            // Call bluetooth service to update account
+            let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
+            switch result {
+            case .success:
+                LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - scale preference updated successfully")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update scale preference: \(error.localizedDescription)")
+            }
+            
             timeoutTask.cancel()
             
             switch result {
