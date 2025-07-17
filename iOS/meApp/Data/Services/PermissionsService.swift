@@ -18,13 +18,28 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     /// Latest permission status keyed by permission type. `nil` until first update from SDK.
     @Published private(set) var permissions: [GGPermissionType: GGPermissionState]? = nil
 
+    /// Permission categories that are required based on the user’s connected devices.
+    @Published private(set) var requiredCategories: Set<PermissionCategory> = []
+
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
+    @Injector private var scaleService: ScaleService
 
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Init
-    private init() {}
+    private init() {
+        // Compute the initial required permissions
+        self.updateRequiredCategories(with: scaleService.scales)
+
+        // Observe scale changes to keep required permissions up-to-date
+        scaleService.$scales
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] scales in
+                self?.updateRequiredCategories(with: scales)
+            }
+            .store(in: &cancellables)
+    }
     
     
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
@@ -69,6 +84,38 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     /// Checks the current permission state for a given type.
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState? {
         return permissions?[type]
+    }
+
+    // MARK: - Required Permission Helpers
+    /// Updates `requiredCategories` based on the provided devices.
+    private func updateRequiredCategories(with devices: [Device]) {
+        var newRequired: Set<PermissionCategory> = []
+
+        guard !devices.isEmpty else {
+            requiredCategories = []
+            return
+        }
+
+        for device in devices {
+            let rawType = (device.bathScale?.scaleType ?? device.deviceType ?? "")
+            guard let scaleType = ScaleSourceType(rawValue: rawType) else { continue }
+            switch scaleType {
+            case .wifi, .espTouchWifi:
+                newRequired.insert(.notifications)
+            case .bluetooth, .lcbt, .lcbtScale, .bluetoothScale:
+                newRequired.insert(.bluetooth)
+            case .appsync, .appsyncScale:
+                newRequired.insert(.camera)
+            case .btWifiR4:
+                newRequired.formUnion([.bluetooth, .notifications])
+            }
+        }
+        requiredCategories = newRequired
+    }
+
+    /// Public accessor for the current set of required permission categories.
+    func getRequiredPermissionList() -> Set<PermissionCategory> {
+        return requiredCategories
     }
 
     // MARK: - Alert Builders

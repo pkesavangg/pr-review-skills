@@ -98,7 +98,7 @@ struct WifiConnectionView: View {
                             ConnectionIndicatorView(
                                 image: AppAssets.wifi,
                                 isFailure: (state == .failure || state == .noNetworks),
-                                showPulsingCircle: (state == .failure || state == .noNetworks)
+                                showPulsingCircle: state == .loading
                             )
                         }
                     }

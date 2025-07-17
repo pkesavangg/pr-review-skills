@@ -19,7 +19,7 @@ class GGPermissionService @Inject constructor(
    * Requests a specific permission.
    * @param permissionType The type of permission to request.
    */
-  fun requestPermission(permissionType: String) {
-    ggBluetooth.requestPermission(permissionType)
+  fun requestPermission(permissionType: String, callback: (Any?) -> Unit = {}) {
+    ggBluetooth.requestPermission(permissionType, callback)
   }
 }

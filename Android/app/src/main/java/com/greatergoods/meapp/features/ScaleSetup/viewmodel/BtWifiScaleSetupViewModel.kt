@@ -284,27 +284,21 @@ constructor(
   private fun onBack() {
     val currentState = state.value
     AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
+    when (currentState.currentStep) {
+      BtWifiSetupStep.WIFI_PASSWORD,
+      BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
+        handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
+      }
 
-    if (currentState.isFirstStep) {
-      AppLog.d(TAG, "At first step, navigating back")
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
-    } else {
-      when (currentState.currentStep) {
-        BtWifiSetupStep.WIFI_PASSWORD,
-        BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
-          handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
-        }
-
-        else -> {
-          val nextIndex = currentState.currentStepIndex - 1
-          if (nextIndex < currentState.steps.size) {
-            handleIntent(SetCurrentStep(currentState.steps[nextIndex]))
-          }
+      else -> {
+        val nextIndex = currentState.currentStepIndex - 1
+        if (nextIndex < currentState.steps.size) {
+          handleIntent(SetCurrentStep(currentState.steps[nextIndex]))
         }
       }
-      // Let the base class handle the Back intent through the reducer
-      AppLog.d(TAG, "Moving to previous step - will be handled by reducer")
     }
+    // Let the base class handle the Back intent through the reducer
+    AppLog.d(TAG, "Moving to previous step - will be handled by reducer")
   }
 
   /**

@@ -551,6 +551,13 @@ struct AlertStrings {
         static let skipButton = "Skip"
         static let goBackButton = "GO BACK"
     }
+    
+    struct PermissionDisabledAlert {
+        static let title = "Unable to scan devices!"
+        static let message = "One or more required permissions or device services may be disabled. Visit the App Permissions screen in the Settings tab to check and enable the app’s permissions access."
+        static let dismissButton = "DISMISS"
+        static let appPermissionButton = "APP PERMISSION"
+    }
 }
 
 struct LoaderStrings {

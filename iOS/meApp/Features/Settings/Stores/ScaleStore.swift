@@ -38,6 +38,7 @@ class ScaleStore: ObservableObject {
     
     // Settings/detail values for UI (replace with computed or fetched values later)
     @Published var modeValue: ScaleModes = .weightOnly
+    @Published var isHeartRateEnabled: Bool = true
     @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
     @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
     @Published var bluetoothValue: String = "Connected" // TODO: Replace with actual BT status

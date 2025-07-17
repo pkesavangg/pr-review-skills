@@ -427,7 +427,7 @@ class HealthConnectService @Inject constructor(
         // Update integrations flow
         integrationRepository.updateLocalAccount()
       }
-      _outOfSyncState.emit(false)
+      _outOfSyncState.value = false
       AppLog.i(tag, "Successfully removed Health Connect integration")
       true
     } catch (e: Exception) {
@@ -539,9 +539,6 @@ class HealthConnectService @Inject constructor(
         AppLog.i(tag, "Multiple device connection detected")
         // Set integration status and handle multi-device connection
         healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
-        // TODO: Show multi-device connection UI
-        // This would typically trigger a UI state change that the ViewModel observes
-        // The Angular equivalent shows HealthConnectSetup.multipleDeviceConnection modal
         if (!isPermissionEnabled) {
           _outOfSyncState.value = true
           healthConnectRepository.updateOutOfSync(accountId, true)
@@ -570,7 +567,6 @@ class HealthConnectService @Inject constructor(
       val healthConnectData = healthConnectRepository.getAccountByID(accountId)
       val outOfSyncSession = healthConnectData?.outOfSync ?: false
       val isIntegrated = healthConnectData?.integrated ?: false
-
       when (healthConnectStatus) {
         HealthConnectStatus.INSTALLED,
         HealthConnectStatus.UPDATE_REQUIRED -> {
@@ -589,12 +585,23 @@ class HealthConnectService @Inject constructor(
 
               HealthConnectPermissionStatus.ALL,
               HealthConnectPermissionStatus.PARTIAL -> {
-                // Permissions are available - clear out of sync state
                 _outOfSyncState.value = false
                 healthConnectRepository.updateOutOfSync(accountId, false)
                 val isModalDismissed = healthConnectData.modalState
                 if (!isModalDismissed) {
-                  AppLog.i(tag, "Health Connect permissions re-enabled - showing finish connect flow")
+                  dialogQueueService.showDialog(
+                    DialogModel.Custom(
+                      contentKey = DialogType.FinishConnect,
+                      onConfirm = { CoroutineScope(Dispatchers.IO).launch {
+                        appNavigationService.navigateBack(AppRoute.Integration.IntegrationList)
+                        appNavigationService.navigateBack(AppRoute.Integration.HealthConnect)
+                        dialogQueueService.dismissCurrent()
+                      } },
+                      onDismiss = {
+                        dialogQueueService.dismissCurrent()
+                      },
+                    ),
+                  )
                 }
                 // Check for permission changes and update integration
                 checkPermissionChange()
@@ -715,18 +722,6 @@ class HealthConnectService @Inject constructor(
         permissionStatus == HealthConnectPermissionStatus.ALL
       val isMultiDeviceConnected = checkMultiDeviceConnection(isConnect)
       if (isMultiDeviceConnected) {
-        // Show multiple device connection modal
-        dialogQueueService.showDialog(
-          DialogModel.Custom(
-            contentKey = DialogType.MultipleDeviceConnection,
-            onConfirm = {  CoroutineScope(Dispatchers.Main).launch {
-              appNavigationService.navigateBack(AppRoute.Integration.IntegrationList)
-              appNavigationService.navigateBack(AppRoute.Integration.HealthConnect)
-              dialogQueueService.dismissCurrent()
-            } },
-            onDismiss = { dialogQueueService.dismissCurrent() },
-          ),
-        )
         return
       }
     }
@@ -734,8 +729,6 @@ class HealthConnectService @Inject constructor(
     if (permissionStatus == HealthConnectPermissionStatus.NONE && isIntegrated && !outOfSyncSession) {
       healthConnectRepository.updateOutOfSync(accountId, true)
       healthConnectRepository.updateModalState(accountId, true)
-      // If you have a session state for out of sync, update it here as well
-      // healthConnectRepository.updateOutOfSyncSession(accountId, true)
       _outOfSyncState.value = true // Set observable for out of sync
       if (shouldShowPopup) {
         dialogQueueService.showDialog(
@@ -746,7 +739,7 @@ class HealthConnectService @Inject constructor(
               CoroutineScope(Dispatchers.Main).launch {
                 openHealthConnect()          // ← now allowed
                 // On confirm, you may want to reset out-of-sync state if permissions are restored
-                healthConnectRepository.updateOutOfSync(accountId, false)
+                healthConnectRepository.updateOutOfSync(accountId, true)
                 healthConnectRepository.updateModalState(accountId, false)
                 _outOfSyncState.value = false
               }
@@ -754,6 +747,7 @@ class HealthConnectService @Inject constructor(
             onDismiss = {
               CoroutineScope(Dispatchers.Main).launch {
                 removeHealthConnectIntegration()
+                healthConnectRepository.updateOutOfSync(accountId, true)
                 dialogQueueService.dismissCurrent()
               } },
           ),

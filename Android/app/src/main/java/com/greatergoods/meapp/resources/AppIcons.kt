@@ -102,5 +102,7 @@ object AppIcons {
     val Graph = R.drawable.ic_graph_bar
     val Scale = R.drawable.ic_scale
     val UserNameScale = R.drawable.scale_0412_user_name
+    val AppSyncNavBar = R.drawable.app_bottom_bar
+    val SetupCompleteCheck = R.drawable.setup_complete_check
   }
 }

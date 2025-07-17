@@ -1,7 +1,5 @@
 package com.greatergoods.meapp.features.integration.viewmodel
 
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.browser.ChromeTabState
@@ -14,6 +12,7 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.domain.services.IIntegrationService
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.integration.model.IntegrationIntent
 import com.greatergoods.meapp.features.integration.model.IntegrationItem
@@ -42,12 +41,7 @@ class IntegrationViewModel @Inject constructor(
     private val integrationRepository: IIntegrationRepository // Inject IntegrationRepository for integrations flow
 ) : BaseIntentViewModel<IntegrationState, IntegrationIntent>(
     reducer = IntegrationReducer(),
-), DefaultLifecycleObserver {
-
-  override fun onResume(owner: LifecycleOwner) {
-    super.onResume(owner)
-    loadIntegrations()
-  }
+) {
 
     /**
      * Current active account, updated automatically from accountService.
@@ -88,7 +82,6 @@ class IntegrationViewModel @Inject constructor(
                 }
             }
         }
-      subscribeBrowserState()
     }
 
     /**
@@ -98,7 +91,7 @@ class IntegrationViewModel @Inject constructor(
     override fun handleIntent(intent: IntegrationIntent) {
         super.handleIntent(intent)
         when (intent) {
-            is IntegrationIntent.LoadIntegrations -> loadIntegrations()
+          is IntegrationIntent.LoadIntegrations -> loadIntegrations()
             is IntegrationIntent.OpenIntegration -> openIntegration(intent.integrations)
             is IntegrationIntent.AddIntegration -> addIntegrations(intent.provider)
             is IntegrationIntent.RemoveIntegration -> disconnectAuthIntegration()
@@ -150,6 +143,9 @@ class IntegrationViewModel @Inject constructor(
                 isValid = false,
               )
             )
+            dialogQueueService.showToast(
+              Toast(HealthConnectStrings.ToastStrings.removeHC)
+            )
             dialogQueueService.dismissCurrent()
             dialogQueueService.dismissLoader()
           }
@@ -195,6 +191,7 @@ class IntegrationViewModel @Inject constructor(
      * Loads all integrations with their current connection status.
      */
     private fun loadIntegrations() {
+      subscribeBrowserState()
         viewModelScope.launch {
             try {
                 handleIntent(IntegrationIntent.InitializeIntegrations)

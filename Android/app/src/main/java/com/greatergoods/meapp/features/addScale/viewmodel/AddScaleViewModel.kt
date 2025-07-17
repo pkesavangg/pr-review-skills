@@ -8,8 +8,10 @@ import com.greatergoods.meapp.features.addScale.reducer.AddScaleFormControls
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleIntent
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleReducer
 import com.greatergoods.meapp.features.addScale.reducer.AddScaleState
+import com.greatergoods.meapp.features.addScale.strings.PairedScaleExistsAlert
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,7 +50,7 @@ constructor(
       }
 
       is AddScaleIntent.OpenSelectedScaleSetup -> {
-        navigateToSelectedScaleSetup(intent.sku)
+        checkAndNavigateToScaleSetup(intent.sku)
       }
 
       else -> {}
@@ -69,7 +71,27 @@ constructor(
     modelNumberForm.validate()
     if (modelNumberForm.isValid) {
       val modelNumber = state.value.form.controls.modelNumber.value
-      navigateToSelectedScaleSetup(modelNumber)
+      checkAndNavigateToScaleSetup(modelNumber)
+    }
+  }
+
+  private fun checkAndNavigateToScaleSetup(sku: String) {
+    val scaleInfo = SCALES.find { it.sku == sku }
+    val setupType = scaleInfo?.setupType
+    val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == sku }
+    if (setupType == ScaleSetupType.AppSync && isScaleAlreadyPaired) {
+      dialogQueueService.enqueue(
+        DialogModel.Confirm(
+          title = PairedScaleExistsAlert.Title,
+          message = PairedScaleExistsAlert.Message(scaleInfo.productName),
+          confirmText = PairedScaleExistsAlert.Pair,
+          cancelText = PairedScaleExistsAlert.Cancel,
+          onConfirm = {
+            navigateToSelectedScaleSetup(sku)
+            dialogQueueService.dismissCurrent()
+          },
+        ),
+      )
     }
   }
 
