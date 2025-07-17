@@ -209,6 +209,10 @@ struct MyScalesScreen: View {
                     default:
                         // Either the sheet was dismissed or it's a non-setup sheet → stop setup tracking
                         scaleStore.bluetoothService.isSetupInProgress = false
+                        scaleStore.bluetoothService.resumeSmartScan(clearOnlyPairing: false)
+                        Task {
+                            await scaleStore.bluetoothService.resyncAndScan()
+                        }
                     }
                 }
                 
