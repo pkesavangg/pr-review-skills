@@ -86,13 +86,7 @@ class BottomTabBarViewModel: ObservableObject {
             .store(in: &cancellables)
 
         // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
-        permissionsService.$requiredCategories
-            .combineLatest(permissionsService.$permissions)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _, _ in
-                self?.evaluateAndShowPermissionAlert()
-            }
-            .store(in: &cancellables)
+        self.evaluateAndShowPermissionAlert()
     }
 
     // MARK: - Permission Disabled Alert Helpers
