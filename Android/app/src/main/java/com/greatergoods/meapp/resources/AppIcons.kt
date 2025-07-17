@@ -33,12 +33,12 @@ object AppIcons {
     val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
   }
 
-    object Outlined {
-        val Help = R.drawable.ic_info
-        val Close = R.drawable.ic_close_outlined
-        val CheckedCircle = R.drawable.ic_circle_check_outlined
-        val MinusCircle = R.drawable.ic_circle_minus_outlined
-    }
+  object Outlined {
+    val Help = R.drawable.ic_info
+    val Close = R.drawable.ic_close_outlined
+    val CheckedCircle = R.drawable.ic_circle_check_outlined
+    val MinusCircle = R.drawable.ic_circle_minus_outlined
+  }
 
   object Filled {
     val Plus = R.drawable.ic_plus_selected
@@ -87,13 +87,11 @@ object AppIcons {
     val My_Fitness_Pal = R.drawable.ic_my_fitnesspal_logo
     val Health_Connect_Logo = R.drawable.health_connect_logo
     val Health_Connect_Off = R.drawable.health_connect_off
-    val Health_Connect_Off_Dark = R.drawable.health_connect_off_dark
     val No_Permission=R.drawable.no_permission
     val Full_Permission=R.drawable.full_permission
-    val Partial_Permission=R.drawable.partial_permission
     val HC_Homepage=R.drawable.hc_homepage
     val User_Conflict = R.drawable.user_conflict
-    val Permission_Failed = R.drawable.permission_failed
+    val Permission_Failed = R.drawable.integration_failed
   }
 
   object Setup {
@@ -101,11 +99,8 @@ object AppIcons {
     val AccucheckLogo = R.drawable.accucheck_logo
     val StepOnGif = R.raw.step_on
     val MetricCard = R.drawable.ic_card_grid
-    val Graph = R.drawable.ic_graph
+    val Graph = R.drawable.ic_graph_bar
     val Scale = R.drawable.ic_scale
     val UserNameScale = R.drawable.scale_0412_user_name
-
   }
-
-
 }

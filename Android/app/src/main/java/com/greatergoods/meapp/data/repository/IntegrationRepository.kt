@@ -7,6 +7,10 @@ import com.greatergoods.meapp.data.storage.db.entity.account.IntegrationsSetting
 import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
+import com.greatergoods.meapp.features.integration.model.Integrations
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,6 +23,24 @@ class IntegrationRepository @Inject constructor(
   private val accountDao: AccountDao
 ) : IIntegrationRepository {
 
+  // Default integrations (match your Angular default)
+  private val defaultIntegrations = Integrations(
+    isFitbitOn = false,
+    isGoogleFitOn = false,
+    isMFPOn = false,
+    isUAOn = false,
+    isFitbitValid = false,
+    isGoogleFitValid = false,
+    isMFPValid = false,
+    isUAValid = false,
+    healthkit = false,
+    isHealthConnectOn = false
+  )
+
+  // StateFlow for integrations (like BehaviorSubject)
+  private val _integrations = MutableStateFlow<Integrations?>(defaultIntegrations)
+  override val integrations: StateFlow<Integrations?> = _integrations.asStateFlow()
+
   override suspend fun getAccount(accountId: String): AccountInfo {
     return authAPI.getAccountWithToken(accountId)
   }
@@ -30,19 +52,30 @@ class IntegrationRepository @Inject constructor(
   override suspend fun updateLocalAccount() {
     val remoteAccount = accountRepository.getActiveAccount().first()
     if (remoteAccount == null) {
+      _integrations.value = defaultIntegrations
       return
     }
+    val account = accountRepository.getAccountFromAPI(remoteAccount.id)
+    accountRepository.updateAccountInfo(account.id, account)
     // Convert to IntegrationsSettingsEntity
     val integrationsSettings = IntegrationsSettingsEntity(
-      accountId = remoteAccount.id,
-      isFitbitOn = remoteAccount.isFitbitOn,
-      isFitbitValid = remoteAccount.isFitbitValid,
-      isHealthConnectOn = remoteAccount.isHealthConnectOn,
-      isHealthKitOn = remoteAccount.isHealthKitOn,
-      isMFPOn  = remoteAccount.isMFPOn,
-      isMFPValid = remoteAccount.isMFPValid,
+      accountId = account.id,
+      isFitbitOn = account.isFitbitOn,
+      isFitbitValid = account.isFitbitValid,
+      isHealthConnectOn = account.isHealthConnectOn,
+      isHealthKitOn = account.isHealthKitOn,
+      isMFPOn  = account.isMFPOn,
+      isMFPValid = account.isMFPValid,
       isSynced = true,
     )
     accountDao.updateIntegrationsSettings(integrationsSettings)
+    // Update the integrations flow
+    _integrations.value = Integrations(
+      isFitbitOn = account.isFitbitOn,
+      isMFPOn = account.isMFPOn,
+      isFitbitValid = account.isFitbitValid,
+      isMFPValid = account.isMFPValid,
+      isHealthConnectOn = account.isHealthConnectOn
+    )
   }
 }

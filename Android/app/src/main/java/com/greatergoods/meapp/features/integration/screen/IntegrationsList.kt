@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.features.integration
+package com.greatergoods.meapp.features.integration.screen
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.integration.IntegrationListItem
 import com.greatergoods.meapp.features.integration.model.IntegrationIntent
 import com.greatergoods.meapp.features.integration.model.IntegrationItem
 import com.greatergoods.meapp.features.integration.model.IntegrationState
@@ -32,6 +33,7 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 fun IntegrationList(
   state: IntegrationState,
   handleIntent: (IntegrationIntent) -> Unit,
+  onHealthConnectIconClick: (() -> Unit)? = null,
 ) {
   LazyColumn(
     modifier =
@@ -43,14 +45,15 @@ fun IntegrationList(
       IntegrationListItem(
         integration = integration,
         onToggle = {
-          // Handle Health Connect navigation separately
-          if (integration.provider == IntegrationProvider.HealthConnect) {
+          if (integration.provider == IntegrationProvider.HealthConnect && integration.isConnected) {
+            handleIntent.invoke(IntegrationIntent.RemoveHealthConnectIntegration)
+          } else if (integration.provider == IntegrationProvider.HealthConnect) {
             handleIntent.invoke(IntegrationIntent.NavigateToHealthConnect)
           } else {
-            // Use existing logic for other integrations
             handleIntent.invoke(IntegrationIntent.OpenIntegration(integration))
           }
         },
+        onIconClick = if (integration.provider == IntegrationProvider.HealthConnect) onHealthConnectIconClick else null,
       )
       // Only show divider if not the last item
       if (index < state.integrations.size - 1) {

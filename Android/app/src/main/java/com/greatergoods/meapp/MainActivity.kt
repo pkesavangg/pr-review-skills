@@ -12,11 +12,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.greatergoods.blewrapper.GGBLEService
 import com.greatergoods.meapp.app.MeApp
 import com.greatergoods.meapp.core.service.IAppNavigationService
-import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.repository.AppRepository
 import com.greatergoods.meapp.data.storage.datastore.FcmDataStore
 import com.greatergoods.meapp.data.storage.datastore.UserDataStore
 import com.greatergoods.meapp.domain.repository.IAppRepository
+import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.proto.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,6 +44,9 @@ class MainActivity : AppCompatActivity() {
   lateinit var eventService: IAppNavigationService
 
   @Inject
+  lateinit var healthConnectService: IHealthConnectService
+
+  @Inject
   lateinit var gGBLEService: GGBLEService
 
   /**
@@ -56,12 +59,14 @@ class MainActivity : AppCompatActivity() {
     super.onCreate(savedInstanceState)
     WindowCompat.setDecorFitsSystemWindows(window, false)
     enableEdgeToEdge()
+    healthConnectService.initializeHealthConnect(this)
     gGBLEService.createInstance(this)
     setContent {
       MeApp()
     }
     observeThemeChanges()
-    handleIntentNavigationIfNeeded(intent)
+    // Handle initial intent
+    handleHealthConnectIntent(intent)
   }
 
   /**
@@ -70,20 +75,18 @@ class MainActivity : AppCompatActivity() {
    */
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
-    handleIntentNavigationIfNeeded(intent)
+    setIntent(intent) // Save the new intent
+    handleHealthConnectIntent(intent)
   }
 
   /**
-   * Handles navigation based on the provided intent, if a destination is specified.
-   * @param intent The intent to check for navigation extras.
+   * Handles Health Connect related intents, including privacy policy.
+   * @param intent The intent to handle
    */
-  private fun handleIntentNavigationIfNeeded(intent: Intent?) {
-    lifecycleScope.launch {
-      val destination = intent?.getStringExtra("destination")
-      AppLog.i("MainActivity", "Destination: $destination")
-      when (destination) {
-        // TODO "Add navigation routes here"
-      }
+  private fun handleHealthConnectIntent(intent: Intent?) {
+    if (intent?.action == "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" ||
+        intent?.action == "android.intent.action.VIEW_PERMISSION_USAGE") {
+      healthConnectService.handleOnNewIntent(intent)
     }
   }
 

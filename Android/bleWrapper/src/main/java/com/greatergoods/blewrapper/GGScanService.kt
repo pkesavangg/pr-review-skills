@@ -28,7 +28,6 @@ abstract class GGScanService {
     ) { response ->
       when (response) {
         is GGScanResponse.Permission -> {
-          Log.e("TAG", "permissions: ${response.data}")
           permissionCallBackFlow.value = response.data
         }
 

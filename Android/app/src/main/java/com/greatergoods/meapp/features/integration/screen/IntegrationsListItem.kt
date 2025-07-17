@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.integration
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,7 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
  *
  * @param integration The integration item to display
  * @param onToggle Callback when enable/disable toggle is clicked
+ * @param onIconClick Callback when the icon is clicked (optional)
  * @param modifier Modifier for styling
  */
 @Composable
@@ -31,6 +33,7 @@ fun IntegrationListItem(
   modifier: Modifier = Modifier,
   integration: IntegrationItem,
   onToggle: () -> Unit = {},
+  onIconClick: (() -> Unit)? = null,
 ) {
   // Toggle button
   BaseListItem(
@@ -44,7 +47,9 @@ fun IntegrationListItem(
       Image(
         painterResource( integration.iconRes),
         contentDescription = "${integration.name} logo",
-        modifier = Modifier.size(42.dp),
+        modifier = Modifier
+          .size(42.dp)
+          .then(if (onIconClick != null) Modifier.clickable { onIconClick() } else Modifier),
       )
     },
   )
@@ -71,6 +76,7 @@ fun IntegrationListItemPreview() {
               requiresOAuth = IntegrationProvider.Fitbit.requiresOAuth(),
             ),
           onToggle = {},
+          onIconClick = {},
         )
 
         // Available integration preview
@@ -85,6 +91,7 @@ fun IntegrationListItemPreview() {
               requiresOAuth = IntegrationProvider.MyFitnessPal.requiresOAuth(),
             ),
           onToggle = {},
+          onIconClick = {},
         )
 
         // Health Connect integration preview
@@ -99,6 +106,7 @@ fun IntegrationListItemPreview() {
               requiresOAuth = IntegrationProvider.HealthConnect.requiresOAuth(),
             ),
           onToggle = {},
+          onIconClick = {},
         )
       }
     }
