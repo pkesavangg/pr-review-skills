@@ -1,8 +1,6 @@
 package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
-import com.greatergoods.blewrapper.GGDeviceService
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
@@ -10,7 +8,6 @@ import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
-import com.greatergoods.meapp.core.network.utility.NetworkState
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -90,14 +87,15 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
   protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
     return combine(
       permissionService.permissionCallBackFlow,
-      connectivityObserver.observe()
+      connectivityObserver.observe(),
     ) { permissions, networkState ->
       val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
       val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
 
       // WiFi switch is enabled if either network is available OR WiFi switch is enabled
       val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
-                                       wifiSwitchStatus == GGPermissionState.ENABLED) {
+        wifiSwitchStatus == GGPermissionState.ENABLED
+      ) {
         GGPermissionState.ENABLED
       } else {
         GGPermissionState.DISABLED

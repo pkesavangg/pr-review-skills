@@ -42,7 +42,13 @@ constructor(
 
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
-    deviceDao.insertDevice(deviceDetails)
+    val existingDevice = deviceDao.getDeviceByMac(deviceDetails.device.mac ?: "") ?: deviceDao.getDeviceByBroadcastId(
+      deviceDetails.device.broadcastId.toString(),
+    )
+    if (existingDevice == null)
+      deviceDao.insertDevice(deviceDetails)
+    else
+      deviceDao.updateDevice(deviceDetails)
   }
 
   override suspend fun deleteDeviceFromDb(deviceId: String) {

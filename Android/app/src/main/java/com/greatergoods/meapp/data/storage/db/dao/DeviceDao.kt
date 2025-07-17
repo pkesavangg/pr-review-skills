@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.greatergoods.meapp.data.storage.db.entity.device.BodyScaleEntity
 import com.greatergoods.meapp.data.storage.db.entity.device.BpmEntity
 import com.greatergoods.meapp.data.storage.db.entity.device.DeviceDetails
@@ -170,6 +171,30 @@ interface DeviceDao {
     device.meta?.let { insertMeta(it) }
     device.r4Preference?.let { insertR4Preference(it) }
   }
+
+  @Transaction
+  suspend fun updateDevice(device: DeviceDetails) {
+    updateDevice(device.device)
+    device.scale?.let { updateScale(it) }
+    device.bpm?.let { updateBpm(it) }
+    device.meta?.let { updateMeta(it) }
+    device.r4Preference?.let { updateR4Preference(it) }
+  }
+
+  @Update
+  suspend fun updateDevice(device: DeviceEntity)
+
+  @Update
+  suspend fun updateScale(scale: BodyScaleEntity)
+
+  @Update
+  suspend fun updateBpm(bpm: BpmEntity)
+
+  @Update
+  suspend fun updateMeta(meta: DeviceMetaDataEntity)
+
+  @Update
+  suspend fun updateR4Preference(preference: R4ScalePreferenceEntity)
 
   @Query("DELETE FROM device WHERE id = :deviceId")
   suspend fun deleteDevice(deviceId: String)

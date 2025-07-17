@@ -137,7 +137,7 @@ constructor(
 
       // 3. Classify devices
       val devicesToSync = storedDevices.filter { device ->
-        !device.isSynced || device.preferences?.isSynced != true
+        !device.isSynced || (device.preferences != null && !device.preferences.isSynced)
       }
       val deletedDevices = storedDevices.filter { it.isDeleted }
       storedDevices.filter {
@@ -166,8 +166,6 @@ constructor(
               )
             }
           }
-
-          deviceRepository.saveDeviceToDb(savedDevice, currentAccountId!!)
           syncedDevicesToStore.add(savedDevice)
         } catch (e: Exception) {
           AppLog.e(tag, "Error syncing device ${device.id}", e.toString())

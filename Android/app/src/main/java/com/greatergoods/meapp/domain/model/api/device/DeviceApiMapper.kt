@@ -1,7 +1,6 @@
 package com.greatergoods.meapp.domain.model.api.device
 
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
-import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.model.storage.Preferences
 import java.util.UUID
@@ -15,6 +14,7 @@ fun DeviceApiModel.toDomainModel(): Device {
   return Device(
     id = scaleId,
     device = GGDeviceDetail(
+      systemID = scaleId,
       deviceName = name ?: "",
       macAddress = mac ?: "",
       identifier = peripheralIdentifier ?: "",
@@ -23,13 +23,12 @@ fun DeviceApiModel.toDomainModel(): Device {
       password = convertIntToHex(password, type),
       wifiMacAddress = null, // Not in API response
       isWifiConfigured = false, // Not in API response
-      // Add other fields as needed
     ),
     preferences = preference?.toPreferences(scaleId),
-    connectionStatus = BLEStatus.DISCONNECTED,
     nickname = nickname ?: name ?: "",
     deviceType = type,
     alreadyPaired = false,
+    isSynced = true,
     sku = sku,
     createdAt = createdAt?.toString(),
     userNumber = userNumber,
@@ -53,7 +52,7 @@ fun Device.toApiModel(): DeviceApiModel =
     mac = device?.macAddress,
     broadcastId = convertHexToInt(device?.broadcastId),
     password = convertHexToInt(device?.password),
-        sku = sku, // Not present in GGDevice
+    sku = sku, // Not present in GGDevice
     createdAt = createdAt.toString(),
     name = device?.deviceName,
     scaleToken = token,
