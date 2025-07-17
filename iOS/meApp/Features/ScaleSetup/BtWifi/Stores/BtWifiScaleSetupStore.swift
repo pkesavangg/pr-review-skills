@@ -209,13 +209,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             onRefresh: { [weak self] in
                                 self?.tryAgainButtonHandler()
                             },
-                            onNetworkSelected: {
-                                [weak self] network in
-                                guard let self else { return }
-                                self.selectedWifiNetwork = network
-                                networkForm.setSSID(selectedWifiNetwork?.ssid ?? "")
-                                self.navigateToStep(.wifiPassword)
-                                self.updateNextEnabled()
+                            onNetworkSelected: { [weak self] network in
+                                self?.handleNetworkSelection(network)
                             }
                         )
                     )
@@ -368,6 +363,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isConnected in
                 self?.updateNextEnabled()
+                self?.handlePermissionChange()
             }
             .store(in: &cancellables)
         
@@ -504,17 +500,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Handles the next button click based on the current step.
     func handleNextButtonClick() {
-        if currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound {
-            handleSaveDuplicateUser()
-        } else if currentStep == .wifiPassword {
+        switch currentStep {
+        case .gatheringNetwork:
+            if scaleSetupError == .duplicatesFound {
+                handleSaveDuplicateUser()
+            } else {
+                moveToNextStep()
+            }
+        case .wifiPassword:
             handleWifiPasswordConnect()
-        } else if currentStep == .viewSettings {
+        case .viewSettings:
             handleViewSettingsAction()
-        } else if currentStep == .customizeSettings {
+        case .customizeSettings:
             handleCustomizeSettingsNext()
-        } else if currentStep == .scaleConnected {
+        case .scaleConnected:
             dismissAction?()
-        } else {
+        default:
             moveToNextStep()
         }
     }
@@ -590,7 +591,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
                     self?.cancelWifi()
                     self?.scaleSetupError = .none
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         self?.navigateToStep(.customizeSettings)
                     }
                 }
@@ -628,6 +629,34 @@ final class BtWifiScaleSetupStore: ObservableObject {
         navigateToStep(.viewSettings)
     }
     
+    /// Handles scale mode and heart rate changes
+    func handleScaleModeChange(_ scaleMode: ScaleModes, heartRateEnabled: Bool) {
+        selectedScaleMode = scaleMode
+        isHeartRateEnabled = heartRateEnabled
+        
+        // Update the next button state
+        updateNextEnabled()
+    }
+    
+    /// Shows the showAccuCheckInfoModal.
+    func showAccuCheckInfoModal() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(AccuCheckInfoModalView() {
+                self.notificationService.dismissModal()
+            })
+        ))
+    }
+    
+    /// Adds a customize settings item to the selected items set
+    func addSelectedCustomizeItem(_ item: String) {
+        selectedCustomizeItems.insert(item)
+    }
+    
+    /// Checks if a customize settings item is selected
+    func isCustomizeItemSelected(_ item: String) -> Bool {
+        return selectedCustomizeItems.contains(item)
+    }
+    
     /// Handles the save action from the view settings screen
     private func handleViewSettingsAction() {
         switch currentCustomizeSetting {
@@ -642,7 +671,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             // Mark that changes were made
             hasCustomizeChanges = true
-            selectedCustomizeItems.insert("userName")
             
             // Reset current customize setting and navigate back
             currentCustomizeSetting = .none
@@ -656,7 +684,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             // Mark that changes were made
             hasCustomizeChanges = true
-            selectedCustomizeItems.insert("scaleModes")
             
             // Reset current customize setting and navigate back
             currentCustomizeSetting = .none
@@ -664,7 +691,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .scaleMetrics:
             // Mark that scale metrics changes were made
             hasCustomizeChanges = true
-            selectedCustomizeItems.insert("scaleMetrics")
             
             // Reset current customize setting and navigate back
             currentCustomizeSetting = .none
@@ -672,7 +698,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .dashboardMetrics:
             // Mark that dashboard metrics changes were made
             hasCustomizeChanges = true
-            selectedCustomizeItems.insert("dashboardMetrics")
             
             // Reset current customize setting and navigate back
             currentCustomizeSetting = .none
@@ -694,15 +719,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // The changes flag should only be set when actually saving changes
         
         // Navigation back to customize settings will be handled by moveToPreviousStep()
-    }
-    
-    /// Handles scale mode and heart rate changes
-    func handleScaleModeChange(_ scaleMode: ScaleModes, heartRateEnabled: Bool) {
-        selectedScaleMode = scaleMode
-        isHeartRateEnabled = heartRateEnabled
-        
-        // Update the next button state
-        updateNextEnabled()
     }
     
     /// Handles the next button click from the customize settings screen
@@ -738,7 +754,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Update duplicateUserName with the form value
         duplicateUserName = removeWhiteSpace(userNameForm.displayName.value)
-        selectedCustomizeItems.insert("userName")
+        selectedCustomizeItems.insert(CustomizeSettingsItem.userName.rawValue)
         
         // Reset to normal state and retry connection
         scaleSetupError = .none
@@ -757,6 +773,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Move to connecting WiFi step
         connectionState = .loading
         navigateToStep(.connectingWifi)
+    }
+    
+    /// Handles the network selection from the WiFi list
+    private func handleNetworkSelection(_ network: WifiDetails) {
+        selectedWifiNetwork = network
+        networkForm.setSSID(selectedWifiNetwork?.ssid ?? "")
+        navigateToStep(.wifiPassword)
+        updateNextEnabled()
     }
     
     /// Handles the pairing process when entering the *wake-up* step.
@@ -779,6 +803,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         stepTimerTask = Task { [weak self] in
             guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
             try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard let self else { return }
                 // Still on wake-up step and nothing discovered → failure
@@ -894,7 +919,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     if self.currentStep == .measurement && self.newEntrySubscription != nil {
                         self.cancelMeasurementSubscription()
                         self.scaleSetupError = .collectMeasurementFailed
-                        self.moveToNextStep()
                     }
                 }
             }
@@ -966,7 +990,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Scale Pairing
     /// Confirms the pairing with the discovered scale.
-    /// TODO: Implement the actual pairing functionality later.
     private func confirmPair() async {
         guard let scale = discoveredScale, discoveryEvent != nil else {
             LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing discovery event or scale")
@@ -982,7 +1005,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             connectionState = .failure
             return
         }
-        
         // Use cached display name, or duplicateUserName if handling duplicate user
         let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
         // Call confirmSmartPair
@@ -1385,10 +1407,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         do {
             // Check which customize settings pages need to be saved
-            let saveScaleMetrics = selectedCustomizeItems.contains("scaleMetrics")
-            let saveScaleMode = selectedCustomizeItems.contains("scaleModes")
-            let saveScaleUsername = selectedCustomizeItems.contains("userName")
-            let saveDashboardMetrics = selectedCustomizeItems.contains("dashboardMetrics")
+            let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
+            let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
+            let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
+            let saveDashboardMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
             
             // Get current preference or create default
             let currentPreference = savedScale.r4ScalePreference ?? {
@@ -1493,16 +1515,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         measurementTimeoutTask = nil
     }
     
-    /// Adds a customize settings item to the selected items set
-    func addSelectedCustomizeItem(_ item: String) {
-        selectedCustomizeItems.insert(item)
-    }
-    
-    /// Checks if a customize settings item is selected
-    func isCustomizeItemSelected(_ item: String) -> Bool {
-        return selectedCustomizeItems.contains(item)
-    }
-    
     /// NOTE: To integrate with CustomizeSettingsView:
     /// When any setting is changed in the CustomizeSettingsView,
     /// call setupStore.markCustomizeSettingsChanged() to track the change.
@@ -1591,17 +1603,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return idx
     }
     
-    /// Shows the showAccuCheckInfoModal.
-    func showAccuCheckInfoModal() {
-        notificationService.showModal(ModalData(
-            presentedView: AnyView(AccuCheckInfoModalView() {
-                self.notificationService.dismissModal()
-            })
-        ))
-    }
-    
     /// Opens the BIA model information modal.
-    func openBIAModel(){
+    private func openBIAModel(){
         notificationService.showModal(ModalData(
             presentedView: AnyView(BIAInfoModalView(){
                 self.notificationService.dismissModal()

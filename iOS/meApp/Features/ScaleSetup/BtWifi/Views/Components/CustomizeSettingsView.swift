@@ -16,68 +16,7 @@ struct CustomizeSettingsView: View {
     // MARK: - Constants
     private let strings = BtWifiScaleSetupStrings.CustomizeSettingsStrings.self
     private let appAssets = AppAssets.self
-    
-    // MARK: - Settings Items
-    enum SettingsItem: String, CaseIterable {
-        case dashboardMetrics = "dashboardMetrics"
-        case scaleMetrics = "scaleMetrics"
-        case scaleModes = "scaleModes"
-        case userName = "userName"
-        
-        var title: String {
-            switch self {
-            case .dashboardMetrics:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.dashboardMetricsTitle
-            case .scaleMetrics:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleMetricsTitle
-            case .scaleModes:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleModesTitle
-            case .userName:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.userNameTitle
-            }
-        }
-        
-        var subtitle: String {
-            switch self {
-            case .dashboardMetrics:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.dashboardMetricsSubtitle
-            case .scaleMetrics:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleMetricsSubtitle
-            case .scaleModes:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleModesSubtitle
-            case .userName:
-                return BtWifiScaleSetupStrings.CustomizeSettingsStrings.userNameSubtitle
-            }
-        }
-        
-        var icon: String {
-            switch self {
-            case .dashboardMetrics:
-                return AppAssets.grid
-            case .scaleMetrics:
-                return AppAssets.metric
-            case .scaleModes:
-                return AppAssets.weightOnlyMode
-            case .userName:
-                return AppAssets.scale
-            }
-        }
-        
-        /// Maps the settings item to the corresponding CustomizeSettings enum
-        var customizeSettingsType: CustomizeSettings {
-            switch self {
-            case .dashboardMetrics:
-                return .dashboardMetrics
-            case .scaleMetrics:
-                return .scaleMetrics
-            case .scaleModes:
-                return .scaleMode
-            case .userName:
-                return .scaleUsername
-            }
-        }
-    }
-    
+
     var body: some View {
             VStack(alignment: .leading) {
                 VStack(alignment: .leading, spacing: .spacingXS) {
@@ -96,7 +35,7 @@ struct CustomizeSettingsView: View {
                         VStack(alignment: .leading, spacing: .spacingLG) {
                             // Settings Items
                             VStack(spacing: .spacingSM) {
-                                ForEach(SettingsItem.allCases, id: \.rawValue) { item in
+                                ForEach(CustomizeSettingsItem.allCases, id: \.rawValue) { item in
                                     settingsItemView(item: item)
                                 }
                             }
@@ -110,9 +49,10 @@ struct CustomizeSettingsView: View {
     }
     
     /// Creates a settings item view with icon, text, and checkmark.
-    private func settingsItemView(item: SettingsItem) -> some View {
+    private func settingsItemView(item: CustomizeSettingsItem) -> some View {
         Button {
             setupStore.setCustomizationPage(item.customizeSettingsType)
+            setupStore.addSelectedCustomizeItem(item.rawValue)
         } label: {
             VStack(alignment: .leading) {
                 HStack(spacing: .spacingSM) {
