@@ -80,7 +80,7 @@ fun CustomizationSettingsItem(
       }
 
       AppIcon(
-        id = if (settings.isVisited) AppIcons.Default.RightCaret else AppIcons.Selection.CircleSelected,
+        id = if (!settings.isVisited) AppIcons.Default.RightCaret else AppIcons.Selection.CircleSelected,
         contentDescription = "Right caret",
         modifier = Modifier.size(24.dp),
       )

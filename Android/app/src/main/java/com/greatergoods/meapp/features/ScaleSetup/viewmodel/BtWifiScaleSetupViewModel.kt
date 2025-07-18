@@ -18,6 +18,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.model.storage.Preferences
@@ -25,6 +26,7 @@ import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
+import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
@@ -36,6 +38,7 @@ import com.greatergoods.meapp.features.ScaleUsers.strings.ScaleUsersStrings
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
 import dagger.assisted.Assisted
@@ -65,6 +68,7 @@ constructor(
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
   override val connectivityObserver: IConnectivityObserver,
+  private val entryService: IEntryService,
   private val dialogUtility: IDialogUtility,
   private val accountService: IAccountService
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
@@ -118,17 +122,13 @@ constructor(
     viewModelScope.launch {
       if (userName == null) {
         ggDeviceService.deleteAccount(discoveredScale!!.toGGBTDevice()) {
-          if (it == GGUserActionResponseType.DELETE_COMPLETED) {
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-            handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-          }
         }
+        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+        handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
       } else {
-        val newToken = deviceService.getScaleToken()
         discoveredScale =
           discoveredScale!!.copy(
             preferences = discoveredScale!!.preferences?.copy(displayName = userName),
-            token = newToken,
           )
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
@@ -150,8 +150,12 @@ constructor(
       permissionService.permissionCallBackFlow.collect {
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
         val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku)
-        if (!areRequiredPermissionsEnabled && state.value.currentStep == BtWifiSetupStep.PERMISSIONS) {
-          handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+        if (!areRequiredPermissionsEnabled) {
+          if (state.value.currentStep != BtWifiSetupStep.PERMISSIONS && state.value.currentStep != BtWifiSetupStep.SCALE_INFO) {
+            handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+          }
+        } else {
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
       }
     }
@@ -339,11 +343,12 @@ constructor(
 
   private fun onExit() {
     viewModelScope.launch {
-      ggDeviceService.resumeScan(clearOnlyPairing = false)
+      if (discoveredScale != null) {
+        ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+      }
+      ggDeviceService.resumeScan(true)
       val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
       ggDeviceService.syncDevices(pairedDevices)
-      if (discoveredScale != null)
-        deviceService.onDeviceUpdate(discoveredScale!!)
       navigateBack()
     }
   }
@@ -475,6 +480,9 @@ constructor(
 
     viewModelScope.launch {
       try {
+        if (discoveredScale != null) {
+          ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
+        }
         ggDeviceService.scanForPairing()
         startObservingDevices()
       } catch (e: Exception) {
@@ -504,6 +512,7 @@ constructor(
           device = ggBtDevice,
         ) {
           when (it) {
+
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
                 fetchUserList()
@@ -514,7 +523,6 @@ constructor(
                   ),
                 )
                 deviceService.saveScale(discoveredScale!!)
-                delay(1000)
                 handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
                 handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
               }
@@ -663,7 +671,7 @@ constructor(
             )
             updateWifiDetails()
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-            handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+            handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
           } else {
             AppLog.w(TAG, "Wifi connection failed")
             handleIntent(
@@ -764,9 +772,6 @@ constructor(
     }
   }
 
-  private fun saveEntry() {
-  }
-
   private fun updateSettings() {
     AppLog.d(TAG, "Starting settings update process")
 
@@ -786,25 +791,35 @@ constructor(
           dashboardService.updateVisibleKeys(keys = dashboardKeys)
         }
         if (preferences != null) {
-          discoveredScale = discoveredScale!!.copy(preferences = preferences)
+          val newName = _state.value.usernameForm.username.value
+          val updatedDevice =
+            discoveredScale!!.copy(preferences = preferences.copy(displayName = newName.ifEmpty { preferences.displayName }))
+          discoveredScale = updatedDevice
           ggDeviceService.updateAccount(
-            discoveredScale!!.toGGBTDevice(),
+            updatedDevice.toGGBTDevice(),
           ) {
             when (it) {
               GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
-                handleIntent(
-                  BtWifiScaleSetupIntent.SetStepConnectionState(
-                    BtWifiSetupStep.UPDATE_SETTINGS,
-                    ConnectionState.Success,
-                  ),
-                )
-                handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-                handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+                viewModelScope.launch {
+                  deviceService.updateScalePreferencesByMac(
+                    updatedDevice.device?.macAddress ?: "",
+                    updatedDevice.preferences!!.toR4ScalePreferenceApiModel(),
+                  )
+                  handleIntent(
+                    BtWifiScaleSetupIntent.SetStepConnectionState(
+                      BtWifiSetupStep.UPDATE_SETTINGS,
+                      ConnectionState.Success,
+                    ),
+                  )
+                  handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+                  handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+                }
               }
 
               else -> null
             }
           }
+          deviceService.updateScalePreferences(discoveredScale!!.id, preferences.toR4ScalePreferenceApiModel())
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during settings update", e.toString())
@@ -882,7 +897,7 @@ constructor(
 
   override fun onEntryResponse(response: GGScanResponse.Entry) {
     when (response.type) {
-      GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
+      GGScanResponseType.SINGLE_ENTRY -> {
         viewModelScope.launch {
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -890,7 +905,6 @@ constructor(
               ConnectionState.Success,
             ),
           )
-          delay(1000)
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(SetCurrentStep(BtWifiSetupStep.SETUP_FINISHED))
         }
@@ -904,13 +918,15 @@ constructor(
     val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
     _state.value.usernameForm.username.onValueChange(username)
     val token = deviceService.getScaleToken()
-    val updatePreference = ScaleMetricsHelper.getDefaultPreference(username)
     val device = Device(
       device = ggDeviceDetail,
-      preferences = updatePreference,
       token = token,
     )
-    discoveredScale = device
+    discoveredScale = device.copy(
+      deviceType = ScaleSetupType.BtWifiR4.value,
+      sku = sku,
+      preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
+    )
   }
 
   private fun subscribeToLiveData() {

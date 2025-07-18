@@ -10,9 +10,11 @@ import kotlinx.coroutines.flow.Flow
  */
 interface IDeviceRepository {
   // DB operations
-  fun getDevices(accountId: String): Flow<List<Device>>
+  fun getDevices(accountId: String, filterDeleted: Boolean = true): Flow<List<Device>>
 
   fun getDevice(deviceId: String): Flow<Device?>
+
+  suspend fun updateDevice(device: Device, accountId: String)
 
   /**
    * Save a device to the local database.

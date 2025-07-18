@@ -18,6 +18,7 @@ lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
 composeBom = "2025.06.01"
 hilt = "2.56.2"
+activityKtx = "1.9.3"
 hiltNavigationCompose = "1.2.0"
 lifecycleRuntimeKtxVersion = "2.6.2"
 material3Version = "1.2.0"
@@ -50,9 +51,12 @@ foundationLayout = "1.8.3"
 runtimeSaveable = "1.8.3"
 composeUITest = "1.8.3"
 material = "1.10.0"
+playServicesLocation = "21.3.0"
 
 
 [libraries]
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activityKtx" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCore" }
 androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "cameraCore" }
 androidx-camera-extensions = { module = "androidx.camera:camera-extensions", version.ref = "cameraCore" }

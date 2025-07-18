@@ -1,11 +1,14 @@
 package com.greatergoods.meapp.features.scaleDetails.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
@@ -17,6 +20,7 @@ import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsReducer
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsState
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleNameDialogFormControls
+import com.greatergoods.meapp.features.scaleDetails.strings.ScaleDetailsStrings
 import com.greatergoods.meapp.features.scaleDetails.strings.ScaleNameDialogStrings
 import com.greatergoods.meapp.features.scaleDetails.strings.WifiMacAddressStrings
 import dagger.assisted.Assisted
@@ -35,6 +39,7 @@ class ScaleDetailsViewModel
 @AssistedInject
 constructor(
   private val deviceService: IDeviceService,
+  private val ggDeviceService: GGDeviceService,
   private val permissionService: GGPermissionService,
   private val dialogUtility: IDialogUtility,
   @Assisted val scaleId: String,
@@ -58,12 +63,11 @@ constructor(
       }
 
       ScaleDetailsIntent.DeleteScale -> {
-        // TODO: Handle delete scale
+        deleteScaleAlert()
       }
 
       ScaleDetailsIntent.OpenProductGuide -> {
         openProductGuide()
-        // TODO: Handle open product guide
       }
 
       ScaleDetailsIntent.Back -> {
@@ -144,6 +148,45 @@ constructor(
       ) {
         navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(state.value.scale!!.id))
       }
+    }
+  }
+
+  private fun deleteScaleAlert() {
+    viewModelScope.launch {
+      dialogQueueService.showDialog(
+        DialogModel.Confirm(
+          message = ScaleDetailsStrings.DeleteScaleConfirmation,
+          confirmText = ScaleDetailsStrings.Delete,
+          cancelText = ScaleDetailsStrings.Cancel,
+          onConfirm = {
+            dialogQueueService.dismissCurrent()
+            dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
+            viewModelScope.launch {
+              deviceService.deleteScale(state.value.scale!!.id)
+              ggDeviceService.deleteAccount(state.value.scale!!.toGGBTDevice(), true) {
+                if (it == GGUserActionResponseType.DELETE_COMPLETED) {
+                  dialogQueueService.showToast(
+                    Toast(
+                      message = ScaleDetailsStrings.DeleteSuccessMessage,
+                    ),
+                  )
+                } else {
+                  dialogQueueService.showToast(
+                    Toast(
+                      message = ScaleDetailsStrings.DeleteErrorMessage,
+                    ),
+                  )
+                }
+              }
+              dialogQueueService.dismissLoader()
+              navigateBack()
+            }
+          },
+          onDismiss = {
+            dialogQueueService.dismissCurrent()
+          },
+        ),
+      )
     }
   }
 

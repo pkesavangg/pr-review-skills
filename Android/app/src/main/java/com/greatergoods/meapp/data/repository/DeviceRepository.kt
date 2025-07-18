@@ -29,16 +29,28 @@ constructor(
   private val deviceDao: DeviceDao,
 ) : IDeviceRepository {
   // DB operations
-  override fun getDevices(accountId: String): Flow<List<Device>> =
-    deviceDao.getDevices(accountId).map { deviceDetailsList ->
-      deviceDetailsList.map { deviceDetails -> deviceDetails.toDeviceDomainModel() }
-    }
+// DB operations
+  override fun getDevices(accountId: String, filterDeleted: Boolean): Flow<List<Device>> =
+    deviceDao.getDevices(accountId)
+      .map { deviceDetailsList ->
+        deviceDetailsList
+          .filter { deviceDetails ->
+            if (filterDeleted) !deviceDetails.device.isDeleted else true
+          }
+          .map { deviceDetails ->
+            deviceDetails.toDeviceDomainModel()
+          }
+      }
 
   override fun getDevice(deviceId: String): Flow<Device?> =
     flow {
       val deviceDetails = deviceDao.getDevice(deviceId)
       emit(deviceDetails?.toDeviceDomainModel())
     }
+
+  override suspend fun updateDevice(device: Device, accountId: String) {
+    deviceDao.updateDevice(device.toDeviceDetails(accountId))
+  }
 
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
@@ -75,7 +87,7 @@ constructor(
 
   override fun getDeviceByBroadcastId(broadcastId: String): Flow<Device?> =
     flow {
-      val deviceEntity = deviceDao.getDeviceByBroadcastId(broadcastId)
+      val deviceEntity = deviceDao.getDeviceByBroadcastIdString(broadcastId)
       emit(deviceEntity?.toDeviceDomainModel())
     }
 
