@@ -133,7 +133,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             metaData.isSynced = false // Mark as unsynced if server update fails
         }
         
-        // Update locally and mark as unsynced - sync will handle server update
+        // Update locally and mark as synced or unsynced based on server update success
         try await localRepository.patchScaleMeta(deviceId, metaData: metaData)
         await syncAllScalesWithRemote()
     }
@@ -149,9 +149,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             preference.isSynced = true // Mark as synced after successful server update
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update scale preference on server: \(error.localizedDescription)")
-            preference.isSynced = false // MMark as unsynced if server update fails
+            preference.isSynced = false // Mark as unsynced if server update fails
         }
-        // Update locally and mark as unsynced - sync will handle server update
+        // Update locally and mark as synced or unsynced based on server update success
         try await localRepository.patchScalePreference(deviceId, preference)
         await syncAllScalesWithRemote()
     }
