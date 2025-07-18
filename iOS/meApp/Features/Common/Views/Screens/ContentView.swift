@@ -14,16 +14,17 @@ struct ContentView: View {
     @StateObject private var viewModel = ContentViewModel()
     
     var body: some View {
-        VStack {
-            switch viewModel.contentViewState {
-            case .initializing:
-                LoadingScreen()
-            case .dashboard:
-                BottomTabBarView()
-            case .landing:
-                LandingScreen()
-            }
-        }
+        UserNumberSelectionView()
+//        VStack {
+//            switch viewModel.contentViewState {
+//            case .initializing:
+//                LoadingScreen()
+//            case .dashboard:
+//                BottomTabBarView()
+//            case .landing:
+//                LandingScreen()
+//            }
+//        }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
         .onChange(of: colorScheme, { oldValue, newValue in
             themeManager.syncWithSystemColorScheme(newValue)
