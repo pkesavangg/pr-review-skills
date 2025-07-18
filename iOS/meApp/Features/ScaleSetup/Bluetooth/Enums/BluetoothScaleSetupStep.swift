@@ -1,0 +1,29 @@
+///
+///  BluetoothScaleSetupStep.swift
+///  meApp
+///
+///  Created by Cursor AI on 18/07/25.
+///
+
+import Foundation
+
+/// Represents each step in the Bluetooth scale setup flow.
+enum BluetoothScaleSetupStep: Int, CaseIterable {
+    /// Introductory information about the scale (SKU, features, etc.).
+    case intro = 0
+    /// Application permissions required for setup (Bluetooth).
+    case permissions
+    /// Allows the user to select the user number on the scale before pairing.
+    case selectUser
+    /// Device discovery & pairing in progress.
+    case connectingBluetooth
+    /// Shows which user the scale is being paired to (legacy A3 flow).
+    case findUser
+    /// Displays *step-on* instructions while the scale syncs the first measurement.
+    case stepOn
+    /// Final success / completion screen.
+    case setupFinished
+
+    /// Convenience property for page-based controls.
+    var index: Int { rawValue }
+} 
