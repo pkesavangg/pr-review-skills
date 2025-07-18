@@ -55,7 +55,12 @@ struct BtWifiScaleSetupScreen: View {
             // Step views with swiper
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews
+                views: stepViews,
+                shouldApplyHorizontalPadding: { index in
+                    // Omit horizontal padding ONLY for the Scale Metrics customization screen.
+                    !(setupStore.steps[index] == .viewSettings &&
+                      setupStore.currentCustomizeSetting == .scaleMetrics)
+                }
             )
             
             // Footer Buttons - hide for specific steps if needed

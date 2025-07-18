@@ -84,6 +84,14 @@ constructor(
     keys,
   )
 
+  override suspend fun updateVisibleKeys(accountId: String?, keys: List<DashboardKey>) {
+    val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
+    val metrics = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
+    val milestones = keys.filterIsInstance<DashboardKey.Milestone>().map { it.key }
+    updateVisibleMetricKeys(id, metrics)
+    updateVisibleMilestoneKeys(id, milestones)
+  }
+
   /**
    * Checks if the given accountId has a visible keys entry.
    * If accountId is null, uses the stored accountId.

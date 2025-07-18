@@ -7,6 +7,7 @@ struct AppConstants {
         static let bluetoothTimeoutNs = 5 * 60 * 1_000_000_000 // Timeout for Bluetooth operations in seconds 5 minutes
         static let discoveredScaleModalTimeout = 30 * 1_000_000_000 // Timeout for discovered scale modal in nanoseconds (30 seconds)
         static let discoveredAlertTimeout = 15 * 1_000_000_000 // Timeout for discovered alert in nanoseconds (15 seconds)
+        static let updateSettingsTimeout = 2 * 60 * 1_000_000_000 // 2 minutes timeout for updating settings in milliseconds
     }
     
     struct Account {

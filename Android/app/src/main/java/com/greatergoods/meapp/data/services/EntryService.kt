@@ -18,12 +18,16 @@ import com.greatergoods.meapp.domain.repository.IGoalRepository
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.goal.helper.Weightless
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -63,6 +67,8 @@ constructor(
 
   private val _monthYear = MutableStateFlow<List<HistoryMonth>>(listOf())
   private val monthYear: StateFlow<List<HistoryMonth>> = _monthYear.asStateFlow()
+
+  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   // Combined flow for account properties - initialized with defaults
   private val weightSettingsFlow = combine(
@@ -180,11 +186,19 @@ constructor(
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating account flows", e.toString())
     }
-
     this.syncOperations()
-    updateLast7Days(accountId)
-    updateLast30Days(accountId)
-    updateMonthYear(accountId)
+    repositoryScope.launch {
+      updateLast7Days(accountId)
+    }
+    repositoryScope.launch {
+      updateLast30Days(accountId)
+    }
+    repositoryScope.launch {
+      updateMonthYear(accountId)
+    }
+    repositoryScope.launch {
+      updateLatestEntry(accountId)
+    }
   }
 
   /**

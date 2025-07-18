@@ -42,7 +42,13 @@ constructor(
 
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
-    deviceDao.insertDevice(deviceDetails)
+    val existingDevice = deviceDao.getDeviceByMac(deviceDetails.device.mac ?: "") ?: deviceDao.getDeviceByBroadcastId(
+      deviceDetails.device.broadcastId.toString(),
+    )
+    if (existingDevice == null)
+      deviceDao.insertDevice(deviceDetails)
+    else
+      deviceDao.updateDevice(deviceDetails)
   }
 
   override suspend fun deleteDeviceFromDb(deviceId: String) {
@@ -109,7 +115,7 @@ constructor(
     val response = deviceApi.getPairedScales()
     if (response.isSuccessful) {
       val apiModels = response.body() ?: emptyList<DeviceApiModel>()
-      return apiModels.toDomainModels(accountId)
+      return apiModels.toDomainModels()
     } else {
       throw Exception("API call failed with code: ${response.code()}")
     }
@@ -122,7 +128,7 @@ constructor(
     val response = deviceApi.saveScale(device.toApiModel())
     if (response.isSuccessful) {
       val apiModel = response.body()
-      return apiModel?.toDomainModel(accountId) ?: device
+      return apiModel?.toDomainModel() ?: device
     } else {
       throw Exception("Failed to save device to API: ${response.code()}")
     }

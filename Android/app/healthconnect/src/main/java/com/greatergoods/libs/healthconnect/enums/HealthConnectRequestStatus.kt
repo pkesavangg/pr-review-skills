@@ -1,4 +1,4 @@
-package com.greatergoods.libs.healthconnect.enum
+package com.greatergoods.libs.healthconnect.enums
 
 /**
  * Status of a permission request/authorization flow.

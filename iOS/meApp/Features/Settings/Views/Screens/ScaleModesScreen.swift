@@ -42,25 +42,18 @@ struct ScaleModesScreen: View {
                 canShowBorder: true
             )
 
-            VStack(alignment: .leading, spacing: .spacingLG) {
-                descriptionWithBIAButton
-
-                SegmentedButtonView(
-                    segments: ScaleModes.allCases,
-                    selectedSegment: $scaleStore.modeValue
-                )
-
-                Group {
-                    if scaleStore.modeValue == .allBodyMetrics {
-                        AllBodyMetricsView(scaleStore: scaleStore)
-                    } else if scaleStore.modeValue == .weightOnly {
-                        WeightOnlyView()
-                    }
+            ScaleModesSelectionView(
+                selectedMode: scaleStore.modeValue,
+                isHeartRateEnabled: scaleStore.isHeartRateEnabled,
+                isR4ScaleSetup: isR4ScaleSetup,
+                onBIAButtonTap: {
+                    scaleStore.openBIAModel()
+                },
+                onValueChanged: { scaleMode, heartRateEnabled in
+                    scaleStore.modeValue = scaleMode
+                    scaleStore.isHeartRateEnabled = heartRateEnabled
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
-
-            }
-
+            )
             .padding(.horizontal, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
@@ -73,25 +66,7 @@ struct ScaleModesScreen: View {
         }
     }
 
-    // MARK: - Description with Inline Button
-    private var descriptionWithBIAButton: some View {
-        VStack(alignment: .leading, spacing: .spacingSM) {
-            if isR4ScaleSetup {
-                Text(lang.changeScaleModeTitle)
-                    .fontOpenSans(.heading4)
-                    .fontWeight(.bold)
-            }
 
-            InlineButtonText(
-                prefix: lang.biaExplanationPrefix,
-                linkText: lang.biaButtonText,
-                suffix: lang.biaExplanationSuffix
-            ) {
-                scaleStore.openBIAModel()
-            }
-        }
-        .padding(.top, .spacingMD)
-    }
 }
 
 #Preview {

@@ -13,6 +13,8 @@ import SwiftUI
 struct SwiperView<Content: View>: View {
     @Binding var selectedIndex: Int
     let views: [Content]
+    /// Keeps track of the previously rendered index so we can decide whether to animate the transition.
+    @State private var previousIndex: Int
     /// Closure that decides whether horizontal padding should be applied for a given page index.
     /// Defaults to always applying padding (previous behaviour).
     private let shouldApplyHorizontalPadding: (Int) -> Bool
@@ -25,6 +27,8 @@ struct SwiperView<Content: View>: View {
         self._selectedIndex = selectedIndex
         self.views = views
         self.shouldApplyHorizontalPadding = shouldApplyHorizontalPadding
+        // Initialise previousIndex with the bound value so the first render has the correct baseline.
+        self._previousIndex = State(initialValue: selectedIndex.wrappedValue)
     }
 
     @GestureState private var dragOffset: CGFloat = 0
@@ -40,7 +44,12 @@ struct SwiperView<Content: View>: View {
             }
             .frame(width: geometry.size.width * CGFloat(views.count), alignment: .leading)
             .offset(x: -CGFloat(selectedIndex) * geometry.size.width + dragOffset)
-            .animation(.easeInOut(duration: 0.3), value: selectedIndex)
+            // Animate only when moving a single page; jump instantly for larger index changes.
+            .animation(abs(selectedIndex - previousIndex) == 1 ? .easeInOut(duration: 0.3) : nil, value: selectedIndex)
+            // Update the tracker once the view has reacted to the index change.
+            .onChange(of: selectedIndex) {
+                previousIndex = selectedIndex
+            }
         }
     }
 }

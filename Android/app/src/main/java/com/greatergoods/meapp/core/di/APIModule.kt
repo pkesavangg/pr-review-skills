@@ -8,6 +8,7 @@ import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.data.api.IDeviceInfoAPI
 import com.greatergoods.meapp.data.api.IExportAPI
 import com.greatergoods.meapp.data.api.IGoalAPI
+import com.greatergoods.meapp.data.api.IHealthConnectAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.ISupportAPI
@@ -66,6 +67,15 @@ object ApiModule {
     @Singleton
     fun provideIntegrationAPI(httpClient: HttpClient): IIntegrationAPI =
         httpClient.createService(IIntegrationAPI::class.java)
+
+    /**
+     * Provides the IHealthConnectAPI implementation using Retrofit.
+     * Used for Health Connect integration operations.
+     */
+    @Provides
+    @Singleton
+    fun provideHealthConnectAPI(httpClient: HttpClient): IHealthConnectAPI =
+        httpClient.createService(IHealthConnectAPI::class.java)
 
     @Provides
     @Singleton

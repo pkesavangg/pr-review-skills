@@ -3,6 +3,25 @@ syntax = "proto3";
 option java_package = "com.greatergoods.meapp.data.storage.datastore";
 option java_multiple_files = true;
 
+// Represents integration data for proto storage
+message ProtoIntegrationData {
+    string accountId = 1;
+    string deviceId = 2;
+    repeated string scopes = 3;
+}
+
+// Represents integration operation type for proto storage
+enum ProtoIntegrationOperationType {
+    PROTO_SAVE = 0;
+    PROTO_REMOVE = 1;
+}
+
+// Represents integrated device info for proto storage
+message ProtoIntegratedDeviceInfo {
+    ProtoIntegrationOperationType operationType = 1;
+    ProtoIntegrationData scopes = 2;
+}
+
 // Represents a single HealthConnectData record.
 message HealthConnectData {
     bool integrated = 2;
@@ -13,6 +32,7 @@ message HealthConnectData {
     optional string updatedAt = 7;
     optional string integratedAt = 8;
     repeated string grantedPermission = 9;
+    optional ProtoIntegratedDeviceInfo integrationInfo = 10;
 }
 
 // Represents a map of string to HealthConnectData.

@@ -74,7 +74,6 @@ fun AddScaleScreenContent(
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
         coroutineScope.launch {
-
           backStack.removeLast()
         }
       }

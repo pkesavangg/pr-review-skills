@@ -6,6 +6,7 @@ import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.meapp.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleUsers.reducer.ScaleUserListIntent
 import com.greatergoods.meapp.features.ScaleUsers.reducer.ScaleUserListReducer
 import com.greatergoods.meapp.features.ScaleUsers.reducer.ScaleUserListState
@@ -55,7 +56,7 @@ constructor(
 
   private fun initScaleUserList() {
     viewModelScope.launch {
-      deviceService.savedScales.collect { devices ->
+      deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
           state.value.usernameForm.username.onValueChange(scaleDevice.preferences?.displayName ?: "")
@@ -98,18 +99,11 @@ constructor(
       try {
         dialogQueueService.showLoader(message = ScaleUsersStrings.LoaderMessage)
 
-        // TODO: Save scale user name using
-        // For now, simulate success
-        val updatedScale = scale.copy(
-          preferences = scale.preferences?.copy(
-            displayName = state.value.usernameForm.username.value,
-          ),
-        ).toGGBTDevice()
         val preferences =
-          scale.toR4ScalePreferenceApiModel().copy(
+          scale.preferences?.copy(
             displayName = state.value.usernameForm.username.value,
-          )
-        val success = deviceService.updateScalePreferences(scaleId, preferences)
+          ) ?: ScaleMetricsHelper.getDefaultPreference(state.value.usernameForm.username.value)
+        val success = deviceService.updateScalePreferences(scaleId, preferences.toR4ScalePreferenceApiModel())
         // ggDeviceService.updateSettings(updatedScale)
 
         if (success) {

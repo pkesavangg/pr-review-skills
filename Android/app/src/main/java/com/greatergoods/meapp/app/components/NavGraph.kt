@@ -22,7 +22,7 @@ import com.greatergoods.meapp.features.goal.screen.GoalScreen
 import com.greatergoods.meapp.features.help.screen.HelpScreen
 import com.greatergoods.meapp.features.history.HistoryScreen
 import com.greatergoods.meapp.features.historyDetail.HistoryDetailScreen
-import com.greatergoods.meapp.features.integration.components.HealthConnectIntegrationScreen
+import com.greatergoods.meapp.features.integration.HealthConnectIntegrationScreen
 import com.greatergoods.meapp.features.integration.screen.IntegrationScreen
 import com.greatergoods.meapp.features.landing.screen.LandingScreen
 import com.greatergoods.meapp.features.landing.screen.MultiAccountLandingScreen
