@@ -5,6 +5,9 @@ import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGDevicePreference
 import com.greatergoods.meapp.data.storage.db.entity.device.DeviceDetails
 import com.greatergoods.meapp.data.storage.db.entity.device.DeviceEntity
+import com.greatergoods.meapp.data.storage.db.entity.device.R4ScalePreferenceEntity
+import com.greatergoods.meapp.domain.model.api.device.convertHexToInt
+import com.greatergoods.meapp.domain.model.api.device.convertIntToHex
 
 /**
  * Extension functions for mapping between Device domain model and database entities.
@@ -17,23 +20,53 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       macAddress = device.mac ?: "",
       identifier = device.peripheralIdentifier ?: "",
       protocolType = device.protocolType,
-      broadcastId = device.broadcastId,
-      broadcastIdString = device.broadcastIdString,
-      password = device.password,
+      broadcastId = convertIntToHex(device.broadcastId, device.deviceType),
+      password = convertIntToHex(device.password, device.deviceType),
       wifiMacAddress = device.wifiMac,
-      isWifiConfigured = device.isWifiConfigured,
+      isWifiConfigured = device.wifiMac != null,
       // Add other fields as needed
     ),
+    isSynced = device.isSynced,
+    isDeleted = device.isDeleted,
+    createdAt = device.createdAt,
     deviceType = device.deviceType,
-    connectionStatus = if (device.isConnected) BLEStatus.CONNECTED else BLEStatus.DISCONNECTED,
     alreadyPaired = false,
     userNumber = device.userNumber?.toIntOrNull(),
     hasServerID = device.hasServerID,
-    isWifiConfigured = device.isWifiConfigured,
     isWeighOnlyModeEnabledByOthers = scale?.isWeighOnlyModeEnabledByOthers ?: false,
     token = device.token,
-    preferences = null, // Add mapping if needed,
+    preferences = r4Preference?.toPreferences(), // Add mapping if needed,
   )
+
+fun R4ScalePreferenceEntity.toPreferences(): Preferences {
+  return Preferences(
+    id = this.id,  // assuming `id` is a String in entity
+    tzOffset = this.tzOffset,
+    timeFormat = this.timeFormat,
+    displayName = this.displayName,
+    displayMetrics = this.displayMetrics,
+    shouldMeasurePulse = this.shouldMeasurePulse,
+    shouldMeasureImpedance = this.shouldMeasureImpedance,
+    shouldFactoryReset = this.shouldFactoryReset,
+    wifiFotaScheduleTime = this.wifiFotaScheduleTime?.toLong(),
+    isSynced = this.isSynced,
+  )
+}
+
+fun Preferences.toR4ScalePreferenceEntity(): R4ScalePreferenceEntity {
+  return R4ScalePreferenceEntity(
+    id = this.id.toString(),  // converting Long to String since entity expects String
+    displayName = this.displayName,
+    displayMetrics = this.displayMetrics,
+    shouldFactoryReset = this.shouldFactoryReset ?: false,
+    shouldMeasureImpedance = this.shouldMeasureImpedance ?: false,
+    shouldMeasurePulse = this.shouldMeasurePulse ?: false,
+    timeFormat = this.timeFormat,
+    tzOffset = this.tzOffset,
+    wifiFotaScheduleTime = this.wifiFotaScheduleTime?.toInt(), // safely cast Long? to Int?
+    isSynced = this.isSynced,
+  )
+}
 
 fun DeviceEntity.toDeviceDomainModel(): Device =
   Device(
@@ -43,18 +76,18 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       macAddress = mac ?: "",
       identifier = peripheralIdentifier ?: "",
       protocolType = protocolType,
-      broadcastId = broadcastId,
-      broadcastIdString = broadcastIdString,
-      password = password,
+      broadcastId = convertIntToHex(broadcastId, deviceType),
+      password = convertIntToHex(password, deviceType),
       wifiMacAddress = wifiMac,
-      isWifiConfigured = isWifiConfigured,
-      // Add other fields as needed
+      isWifiConfigured = wifiMac != null,
     ),
-    connectionStatus = if (isConnected) BLEStatus.CONNECTED else BLEStatus.DISCONNECTED,
+    isSynced = isSynced,
+    isDeleted = isDeleted,
+    createdAt = createdAt,
     alreadyPaired = false,
+    deviceType = deviceType,
     userNumber = userNumber?.toIntOrNull(),
     hasServerID = hasServerID,
-    isWifiConfigured = isWifiConfigured,
     isWeighOnlyModeEnabledByOthers = false,
     token = token,
     preferences = null, // Add mapping if needed
@@ -70,26 +103,23 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         nickname = device?.deviceName, // No nickname in GGDevice, use deviceName
         sku = null, // Not present in GGDevice
         mac = device?.macAddress,
-        password = device?.password,
-        isDeleted = false, // Not present in GGDevice
+        password = convertHexToInt(device?.password),
         deviceName = device?.deviceName,
-        deviceType = device?.protocolType, // No deviceType in GGDevice, use protocolType
-        broadcastId = device?.broadcastId,
-        broadcastIdString = device?.broadcastIdString,
+        deviceType = deviceType, // No deviceType in GGDevice, use protocolType
+        broadcastId = convertHexToInt(device?.broadcastId),
         userNumber = userNumber?.toString(),
         protocolType = device?.protocolType,
-        createdAt = null, // Not present in GGDevice
-        lastModified = null, // Not present in GGDevice
-        isSynced = hasServerID,
+        createdAt = createdAt, // Not present in GGDevice
+        isSynced = isSynced,
         hasServerID = hasServerID,
-        isConnected = connectionStatus == BLEStatus.CONNECTED,
         wifiMac = device?.wifiMacAddress,
-        isWifiConfigured = isWifiConfigured,
+        isDeleted = isDeleted,
         token = token,
       ),
+
     scale = null, // Add mapping if needed
     meta = null, // Add mapping if needed
-    r4Preference = null, // Add mapping if needed
+    r4Preference = preferences?.toR4ScalePreferenceEntity(), // Add mapping if needed
     bpm = null, // Add mapping if needed
   )
 

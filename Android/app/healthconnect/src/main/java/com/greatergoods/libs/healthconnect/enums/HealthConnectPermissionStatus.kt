@@ -1,4 +1,4 @@
-package com.greatergoods.libs.healthconnect.enum
+package com.greatergoods.libs.healthconnect.enums
 
 /**
  * Status of Health Connect permissions for a given set of types.

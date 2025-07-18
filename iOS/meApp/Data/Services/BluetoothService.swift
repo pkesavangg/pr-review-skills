@@ -271,7 +271,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 password: device.password,
                 token: device.token,
                 userNumber: Int(device.userNumber ?? "0"),
-                preference: nil,
+                preference: mapToGGPreference(device.r4ScalePreference),
                 syncAllData: nil,
                 batteryLevel: 0,
                 protocolType: device.protocolType ?? "",
@@ -395,7 +395,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return .failure(.updateProfileFailed(error))
         }
     }
-
+    
     /**
      Configures Wi-Fi on the given device.
      - Returns: Result<WifiSetupResponse, BluetoothServiceError>
@@ -405,7 +405,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-
+            
             let ggConfig = GGBTWifiConfig(ssid: config.ssid, password: config.password ?? "")
             let ggResponse = await ggBleSDK.setupWifi(ggDevice, ggConfig)
             
@@ -847,14 +847,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             try? await entryService.saveNewEntry(entry)
             newEntryReceivedSubject.send(entry)
         } else if let entryList = entriesData as? GGEntryList {
-          // Handle multiple entries
-          let entries = entryList.list.compactMap { convertGGEntry($0) }
-          for entry in entries {
-            try? await entryService.saveNewEntry(entry)
-          }
-          if !entries.isEmpty {
-              newEntryReceivedSubject.send(entries[0])
-          }
+            // Handle multiple entries
+            let entries = entryList.list.compactMap { convertGGEntry($0) }
+            for entry in entries {
+                try? await entryService.saveNewEntry(entry)
+            }
+            if !entries.isEmpty {
+                newEntryReceivedSubject.send(entries[0])
+            }
         }
     }
     
@@ -1100,12 +1100,18 @@ private extension BluetoothService {
     }
     
     func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
-        guard let preference = preference else {
+        guard let preference = preference,
+              // If the underlying row is gone (e.g., after cascade delete) the modelContext becomes nil
+              preference.modelContext != nil else {
             return nil
         }
+
         return GGDevicePreference(
             displayName: preference.displayName,
-            // Add other preference mappings as needed
+            displayMetrics: preference.displayMetrics,
+            shouldMeasureImpedance: preference.shouldMeasureImpedance,
+            shouldMeasurePulse: preference.shouldMeasurePulse,
+            timeFormat: preference.timeFormat
         )
     }
 }

@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.common.strings
 
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+
 /**
  * Static strings for AppPopup composable.
  */
@@ -62,5 +64,58 @@ object AppPopupStrings {
 
   object ScaleDiscoveredPopup {
     const val Title = "New Scale Discovered"
+  }
+
+  object PermissionsPopup {
+    fun Title(permissionType: String) = when (permissionType) {
+      GGPermissionType.BLUETOOTH_SWITCH -> "Bluetooth Access is Disabled"
+      GGPermissionType.NEARBY_DEVICE -> "Nearby Devices Permission."
+      GGPermissionType.LOCATION_SWITCH -> "Your Location may be disabled!"
+      GGPermissionType.LOCATION -> "Weight Gurus needs location access to connect your scale."
+      GGPermissionType.NOTIFICATION -> "Notifications are disabled!"
+      GGPermissionType.CAMERA -> "Weight Gurus needs Camera permission to Scan your scale."
+      GGPermissionType.ALL -> "Unable to scan devices!"
+      else -> ""
+    }
+
+    fun Message(permissionType: String) = when (permissionType) {
+      GGPermissionType.BLUETOOTH_SWITCH ->
+        "To sync with your device, please enable Bluetooth access."
+
+      GGPermissionType.NEARBY_DEVICE ->
+        "Android requires apps that connect to a Bluetooth LE device ask for permission that determines " +
+          "the relative location of nearby devices. Sorry for the inconvenience, but we don\\'t store or use any of this information."
+
+      GGPermissionType.LOCATION_SWITCH ->
+        "Android requires any app that connects to a Bluetooth / Wi-Fi device to ask " +
+          "for location permissions. So, we’re asking—but we don’t actually use or store " +
+          "any information about your location."
+
+      GGPermissionType.LOCATION ->
+        "Android requires you share location permissions with any app that connects via Wi-Fi / Bluetooth. " +
+          "Weight Gurus does not store this information."
+
+      GGPermissionType.NOTIFICATION ->
+        "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
+
+      GGPermissionType.CAMERA ->
+        "You will not be able to pair or sync with your App sync scale. Please enable it from your app permissions."
+
+      GGPermissionType.ALL ->
+        "One or more required permissions or device services may be disabled. Visit the App Permissions screen " +
+          "in the Settings tab to check and enable the app’s permissions access."
+
+      else -> ""
+    }
+
+    fun ConfirmButton(permissionType: String) = when (permissionType) {
+      GGPermissionType.ALL -> "App Permission"
+      else -> "Allow"
+    }
+
+    fun CancelButton(permissionType: String) = when (permissionType) {
+      GGPermissionType.ALL -> "Cancel"
+      else -> "Return"
+    }
   }
 }

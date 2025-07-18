@@ -7,26 +7,44 @@
 
 import SwiftUI
 
+/// A screen that allows users to configure scale modes and settings.
+/// Supports both regular scale mode configuration and R4 scale setup workflows.
 struct ScaleModesScreen: View {
+    // MARK: - Environment Objects
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
+    
+    // MARK: - Observed Objects
     @ObservedObject var scaleStore = ScaleStore()
+    
+    // MARK: - Properties
     let scale: Device
-    var isR4ScaleSetup: Bool = false
-    let lang = ScaleModesStrings.self
+    let isR4ScaleSetup: Bool
+    private let lang = ScaleModesStrings.self
 
+    // MARK: - Initializer
+    init(scale: Device, isR4ScaleSetup: Bool = false) {
+        self.scale = scale
+        self.isR4ScaleSetup = isR4ScaleSetup
+    }
+
+    // MARK: - Body
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
                 title: isR4ScaleSetup ? lang.r4scaleSetupTitle : lang.modeTitle,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { 
+                    Image(AppAssets.chevronLeft)
+                        .accessibilityLabel("Back")
+                },
                 trailingContent: {
                     Group {
                         if isR4ScaleSetup {
                             Button(action: {
-                                scaleStore.openHelp()
+                                scaleStore.handleHelp()
                             }) {
                                 Image(AppAssets.helpCircle)
+                                    .accessibilityLabel("Help")
                             }
                         } else {
                             ButtonView(
@@ -38,6 +56,7 @@ struct ScaleModesScreen: View {
                                     scaleStore.handleScaleModeSave()
                                 }
                             )
+                            .accessibilityLabel("Save scale mode preferences")
                         }
                     }
                 },
@@ -46,28 +65,18 @@ struct ScaleModesScreen: View {
                 canShowBorder: true
             )
 
-            VStack(alignment: .leading, spacing: .spacingLG) {
-                descriptionWithBIAButton
-
-                SegmentedButtonView(
-                    segments: ScaleModes.allCases,
-                    selectedSegment: Binding(
-                        get: { scaleStore.modeValue },
-                        set: { scaleStore.updateModeValue($0) }
-                    )
-                )
-
-                Group {
-                    if scaleStore.modeValue == .allBodyMetrics {
-                        AllBodyMetricsView(scaleStore: scaleStore)
-                    } else if scaleStore.modeValue == .weightOnly {
-                        WeightOnlyView()
-                    }
+            ScaleModesSelectionView(
+                selectedMode: scaleStore.modeValue,
+                isHeartRateEnabled: scaleStore.isHeartRateEnabled,
+                isR4ScaleSetup: isR4ScaleSetup,
+                onBIAButtonTap: {
+                    scaleStore.openBIAModel()
+                },
+                onValueChanged: { scaleMode, heartRateEnabled in
+                    scaleStore.modeValue = scaleMode
+                    scaleStore.isHeartRateEnabled = heartRateEnabled
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
-
-            }
-
+            )
             .padding(.horizontal, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
@@ -79,36 +88,49 @@ struct ScaleModesScreen: View {
         }
 
     }
-
-    // MARK: - Description with Inline Button
-    private var descriptionWithBIAButton: some View {
-        VStack(alignment: .leading, spacing: .spacingSM) {
-            if isR4ScaleSetup {
-                Text(lang.changeScaleModeTitle)
-                    .fontOpenSans(.heading4)
-                    .fontWeight(.bold)
-            }
-
-            InlineButtonText(
-                prefix: lang.biaExplanationPrefix,
-                linkText: lang.biaButtonText,
-                suffix: lang.biaExplanationSuffix
-            ) {
-                scaleStore.openBIAModel()
-            }
-        }
-        .padding(.top, .spacingMD)
-    }
 }
 
-#Preview {
-    ScaleModesScreen(scale: Device(
-        id: "preview-scale-id",
-        accountId: "preview-account",
-        sku: "0412",
-        deviceName: "Preview Scale",
-        deviceType: "scale"       
-    ))
-        .environmentObject(Theme.shared)
-        .environmentObject(Router<SettingsRoute>())
+// MARK: - Preview
+#Preview("Scale Modes Screen - Light") {
+    ScaleModesScreen(
+        scale: Device(
+            id: "preview-scale-id",
+            accountId: "preview-account",
+            sku: "0412",
+            deviceName: "Preview Scale",
+            deviceType: "scale"       
+        )
+    )
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
+}
+
+#Preview("Scale Modes Screen - Dark") {
+    ScaleModesScreen(
+        scale: Device(
+            id: "preview-scale-id",
+            accountId: "preview-account",
+            sku: "0412",
+            deviceName: "Preview Scale",
+            deviceType: "scale"       
+        )
+    )
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
+    .preferredColorScheme(.dark)
+}
+
+#Preview("R4 Scale Setup - Light") {
+    ScaleModesScreen(
+        scale: Device(
+            id: "preview-r4-scale-id",
+            accountId: "preview-account",
+            sku: "0412",
+            deviceName: "R4 Scale Setup",
+            deviceType: "scale"       
+        ),
+        isR4ScaleSetup: true
+    )
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
 }

@@ -27,6 +27,7 @@ final class PermissionsStore: ObservableObject {
 
     private var cancellables: Set<AnyCancellable> = []
 
+    // MARK: - Init
     init() {
         // Derive the initial value from the current scales array
         updatePermissionSets(with: scaleService.scales)
@@ -37,8 +38,8 @@ final class PermissionsStore: ObservableObject {
         // Continue to observe for subsequent scale changes
         scaleService.$scales
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] scales in
-                self?.updatePermissionSets(with: scales)
+            .sink { [weak self] categories in
+                self?.requiredCategories = categories
             }
             .store(in: &cancellables)
     }

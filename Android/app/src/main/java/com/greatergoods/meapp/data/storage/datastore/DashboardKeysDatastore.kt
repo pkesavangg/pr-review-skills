@@ -87,6 +87,26 @@ class DashboardKeysDatastore(
     }
   }
 
+  suspend fun initializeDashboardKeys(accountId: String) {
+    updateData { current ->
+      // If the account already has visible keys, do nothing
+      if (hasVisibleKeys(accountId)) return@updateData current
+
+      // Otherwise, initialize both metric and milestone keys
+      val defaultMetrics = defaultMetricKeys()
+      val defaultMilestones = defaultMilestoneKeys()
+
+      val newVisibleKeys = VisibleKeys.newBuilder()
+        .addAllVisibleMetricKeys(defaultMetrics)
+        .addAllVisibleMilestoneKeys(defaultMilestones)
+        .build()
+
+      current.toBuilder()
+        .putAccountMetricMap(accountId, newVisibleKeys)
+        .build()
+    }
+  }
+
   /**
    * Updates the visible milestone keys for a specific account.
    *

@@ -171,7 +171,7 @@ sealed class AppRoute : NavKey {
 
     @Serializable
     data class AppsyncScaleSetup(
-      val sku: String,
+      val sku: String
     ) : ScaleSetup()
   }
 

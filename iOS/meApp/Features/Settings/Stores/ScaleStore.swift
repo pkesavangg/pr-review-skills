@@ -553,6 +553,16 @@ class ScaleStore: ObservableObject {
         Task {
             await dataManager.fetchScales()
             self.scales = state.data.scales
+    // MARK: - Scale Mode Management
+    
+    /// Handles the initialization logic when the scale modes screen appears
+    func onAppear(scale: Device) {
+        // Handle async operations internally without requiring Task from the view
+        Task.detached { [scale] in
+            await self.loadScale(scale)
+            await MainActor.run {
+                self.loadScaleModePreferences()
+            }
         }
     }
 

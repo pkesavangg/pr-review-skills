@@ -1,7 +1,11 @@
 package com.greatergoods.libs.healthconnect
 
-import androidx.annotation.RequiresApi
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.core.net.toUri
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.BodyFatRecord
@@ -21,35 +25,148 @@ import androidx.health.connect.client.units.Percentage
 import androidx.health.connect.client.units.Power
 import androidx.health.connect.client.units.Pressure
 import com.dmdbrands.healthconnectplugin.config.HealthConnectConfig
-import com.greatergoods.libs.healthconnect.enum.DataType
-import com.greatergoods.libs.healthconnect.enum.HealthConnectPermissionStatus
-import com.greatergoods.libs.healthconnect.enum.HealthConnectRequestStatus
-import com.greatergoods.libs.healthconnect.enum.HealthConnectStatus
+import com.greatergoods.libs.healthconnect.enums.DataType
+import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
+import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
+import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
 import com.greatergoods.libs.healthconnect.interfaces.IHealthConnect
 import com.greatergoods.libs.healthconnect.model.HealthConnectData
 import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Instant
 import kotlin.reflect.KClass
 import android.app.Activity
-import android.content.Context
-import android.os.Build
+import android.content.Intent
 import android.util.Log
 
-/**
- * Default implementation of [com.greatergoods.libs.healthconnect.interfaces.IHealthConnect] for interacting with Health Connect APIs.
- * @param context Application context.
- */
-@RequiresApi(Build.VERSION_CODES.O)
-class HealthConnect(
-    private val context: Context,
-) : IHealthConnect {
-    private val healthConnectClient: HealthConnectClient by lazy {
-        HealthConnectClient.Companion.getOrCreate(context)
-    }
-    private val Tag = "HealthConnect"
 
-    // --- Public API (sorted in ascending order) ---
+/**
+ * Default implementation of [com.greater goods.libs.health connect.interfaces.IHealthConnect] for interacting with Health Connect APIs.
+ * @param activity Application context.
+ */
+class HealthConnect(
+    private val activity: ComponentActivity,
+) : IHealthConnect {
+
+    companion object {
+        private const val TAG = "HealthConnect"
+
+        // Intent actions for privacy policy handling
+        const val ACTION_SHOW_PERMISSIONS_RATIONALE = "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"
+        const val ACTION_VIEW_PERMISSION_USAGE = "android.intent.action.VIEW_PERMISSION_USAGE"
+    }
+
+    private val healthConnectClient: HealthConnectClient by lazy {
+        HealthConnectClient.Companion.getOrCreate(activity)
+    }
+
+    // Permission handling properties
+    private lateinit var requestPermissions: ActivityResultLauncher<Set<String>>
+    private lateinit var permissionList: Set<String>
+    private val callbackTime = 1000L // Callback timeout for privacy policy link handling
+
+    // Permission request callback
+    private var authorizationCallback: ((HealthConnectRequestStatus) -> Unit)? = null
+
+    init {
+        load()
+    }
+
+    /**
+     * Loads and initializes Health Connect with permission handling.
+     * This method sets up the ActivityResultLauncher for permission requests.
+     * Must be called before requesting permissions.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun load() {
+        if (HealthConnectClient.getSdkStatus(activity) == HealthConnectClient.SDK_AVAILABLE ||
+            HealthConnectClient.getSdkStatus(activity) == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+
+            try {
+                val requestPermissionActivityContract = PermissionController.createRequestPermissionResultContract()
+                requestPermissions = activity.registerForActivityResult(requestPermissionActivityContract) { grantedPermissions ->
+                    GlobalScope.launch {
+                        try {
+                            val hasAnyPermission = hasAnyPermissions(grantedPermissions)
+
+                            val result = when {
+                                grantedPermissions.intersect(permissionList).isNotEmpty() -> {
+                                    HealthConnectRequestStatus.CONNECTED
+                                }
+                                hasAnyPermission -> {
+                                    HealthConnectRequestStatus.PARTIAL
+                                }
+                                else -> {
+                                    HealthConnectRequestStatus.CANCELLED
+                                }
+                            }
+                            delay(callbackTime)
+                            sendAuthorizationStatus(result)
+
+                        } catch (e: Exception) {
+
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    /**
+     * Sets up permission handling with ActivityResultLauncher.
+     */
+    override suspend fun requestAuthorization(
+        options: HealthConnectOptions,
+        callback: (HealthConnectRequestStatus) -> Unit
+    ) {
+        try {
+            authorizationCallback = callback
+            permissionList = buildPermissionSet(options)
+            val isPermissionGranted = hasAllPermissions(permissionList)
+            if (isPermissionGranted) {
+                sendAuthorizationStatus(HealthConnectRequestStatus.CONNECTED)
+            } else {
+                requestPermissions.launch(permissionList)
+            }
+
+        } catch (e: Exception) {
+            callback(HealthConnectRequestStatus.CANCELLED)
+        }
+    }
+
+    /**
+     * Sends authorization status to callback (same as Capacitor plugin's sendAuthorizationStatus).
+     */
+    private fun sendAuthorizationStatus(status: HealthConnectRequestStatus) {
+        authorizationCallback?.let { callback ->
+            callback(status)
+            authorizationCallback = null // Clear callback after use
+        }
+    }
+
+    /**
+     * Handles new intents for privacy policy and permissions rationale.
+     * This should be called from the app's activity when receiving new intents.
+     * The actual intent filters are declared in the app's manifest.
+     *
+     * @param intent The new intent to handle
+     */
+    override fun handleOnNewIntent(intent: Intent?) {
+        when (intent?.action) {
+            ACTION_SHOW_PERMISSIONS_RATIONALE,
+            ACTION_VIEW_PERMISSION_USAGE -> {
+                authorizationCallback?.let { callback ->
+                  sendAuthorizationStatus(HealthConnectRequestStatus.PRIVACY_POLICY)
+                    // Don't clear the callback here as the user might return to the permission flow
+                }
+            }
+        }
+    }
 
     /**
      * Deletes all health data for the given options.
@@ -59,7 +176,7 @@ class HealthConnect(
             val now = Instant.now()
             val start = now.minusSeconds(365 * 100 * 24 * 60 * 60L) // 100 years
             val end = now
-            val allTypes = (options.writeTypes + options.readTypes).toSet()
+            val allTypes = options.writeTypes.toSet()
             allTypes.forEach { type ->
                 val recordType = getRecordKClass(type)
                 if (recordType != null) {
@@ -118,13 +235,12 @@ class HealthConnect(
         } catch (e: Exception) {
             // Log or handle error as needed
             Log.e(
-                Tag,
-                "Failed while deleting synced entry by using unique identifier: ${e.message}",
+              TAG,
+              "Failed while deleting synced entry by using unique identifier: ${e.message}",
             )
             HealthConnectResult.Error(e)
         }
     }
-
     /**
      * Gets the list of currently approved Health Connect permissions.
      */
@@ -134,10 +250,8 @@ class HealthConnect(
     /**
      * Returns the set of permission strings for given options.
      */
-    override fun getPermissions(options: HealthConnectOptions): Set<String> {
-        val readPermission = convertToReadPermissions(options.readTypes)
-        val writePermission = convertToWritePermissions(options.writeTypes)
-        return readPermission + writePermission
+    override fun getRequestedPermissions(options: HealthConnectOptions): Set<String> {
+        return buildPermissionSet(options)
     }
 
     /**
@@ -160,7 +274,7 @@ class HealthConnect(
      * Gets the current Health Connect status on the device, distinguishing INSTALL_REQUIRED and UPDATE_REQUIRED.
      */
     override suspend fun getStatus(): HealthConnectStatus {
-        val status = HealthConnectClient.Companion.getSdkStatus(context)
+        val status = HealthConnectClient.Companion.getSdkStatus(activity)
         val providerPackageName = HealthConnectConfig.HealthConnectPackageName // Default provider
         return when (status) {
             HealthConnectClient.Companion.SDK_UNAVAILABLE -> HealthConnectStatus.UNAVAILABLE
@@ -186,24 +300,16 @@ class HealthConnect(
     }
 
     /**
-     * Checks if all permissions in a set are granted.
-     */
-    override suspend fun hasPermissions(permissions: Set<String>): Boolean {
-        val granted = healthConnectClient.permissionController.getGrantedPermissions()
-        return granted.containsAll(permissions)
-    }
-
-    /**
      * Checks if Health Connect is installed (SDK_AVAILABLE).
      */
     override fun isAppInstalled(): Boolean =
-        HealthConnectClient.Companion.getSdkStatus(context) == HealthConnectClient.Companion.SDK_AVAILABLE
+        HealthConnectClient.Companion.getSdkStatus(activity) == HealthConnectClient.Companion.SDK_AVAILABLE
 
     /**
      * Checks if Health Connect is available on the device.
      */
     override suspend fun isAvailable(): Boolean {
-        val status = HealthConnectClient.Companion.getSdkStatus(context)
+        val status = HealthConnectClient.Companion.getSdkStatus(activity)
         return status != HealthConnectClient.Companion.SDK_UNAVAILABLE
     }
 
@@ -213,54 +319,11 @@ class HealthConnect(
      */
     override fun isHealthConnectInstalled(packageName: String): Boolean =
         try {
-            context.packageManager.getPackageInfo(packageName, 0)
+            activity.packageManager.getPackageInfo(packageName, 0)
             true
         } catch (e: Exception) {
             false
         }
-
-    /**
-     * Requests authorization for the given options.
-     */
-    override suspend fun requestAuthorization(options: HealthConnectOptions): HealthConnectRequestStatus =
-        try {
-            val allPermissions = buildPermissionSet(options)
-            // In a real app, you must launch an Activity for result to request permissions.
-            // Here, we simulate the check only (no UI flow in this repo-only implementation).
-            val granted = healthConnectClient.permissionController.getGrantedPermissions()
-            when {
-                granted.containsAll(allPermissions) -> HealthConnectRequestStatus.CONNECTED
-                granted.intersect(allPermissions).isNotEmpty() -> HealthConnectRequestStatus.PARTIAL
-                else -> {
-                    launchHealthConnect(context as Activity, false)
-                    HealthConnectRequestStatus.CANCELLED
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("sdfsdf", e.toString())
-            HealthConnectRequestStatus.CANCELLED
-        }
-
-    /**
-     * Requests Health Connect permissions and returns the result.
-     * @param activity The Activity context to use for launching the permission UI.
-     * @param options The HealthConnectOptions specifying which permissions to request.
-     * @return HealthConnectRequestStatus (CONNECTED, PARTIAL, CANCELLED)
-     */
-    suspend fun requestPermissionsWithResult(
-        activity: android.app.Activity,
-        options: HealthConnectOptions,
-    ): HealthConnectRequestStatus {
-        val permissions = getPermissions(options)
-        //
-        // // Now check what was granted
-        // return when {
-        //     granted.containsAll(permissions) -> HealthConnectRequestStatus.CONNECTED
-        //     granted.isNotEmpty() -> HealthConnectRequestStatus.PARTIAL
-        //     else -> HealthConnectRequestStatus.CANCELLED
-        // }
-        return HealthConnectRequestStatus.CANCELLED
-    }
 
     /**
      * Revokes all Health Connect permissions.
@@ -299,9 +362,9 @@ class HealthConnect(
             val isInstalled = isAppInstalled()
             if (isInstalled && !forcePlayStore) {
                 val intent =
-                    android.content.Intent(
-                        HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS,
-                    )
+                  Intent(
+                      HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS,
+                  )
                 activity.startActivity(intent)
                 true
             } else {
@@ -309,40 +372,40 @@ class HealthConnect(
                 val uriString =
                     "market://details?id=$providerPackageName&url=healthconnect%3A%2F%2Fonboarding"
                 val intent =
-                    android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    Intent(Intent.ACTION_VIEW).apply {
                         setPackage("com.android.vending")
-                        data = android.net.Uri.parse(uriString)
+                        data = uriString.toUri()
                     }
                 activity.startActivity(intent)
                 true
             }
         } catch (e: Exception) {
-            Log.e(Tag, "Failed to launch Health Connect: ${e.message}")
+            Log.e(TAG, "Failed to launch Health Connect: ${e.message}")
             false
         }
 
-    // --- Private/helper functions (sorted alphabetically) ---
+    // --- Private/helper functions (following Capacitor plugin pattern) ---
 
     /**
      * Helper to build the set of Health Connect permission strings from options.
+     * Same as Capacitor plugin's getPermissions() method.
      */
     private fun buildPermissionSet(options: HealthConnectOptions): Set<String> {
-        val write = options.writeTypes.map { "androidx.health.connect.permission.WRITE_${it.name.uppercase()}" }
-        val read = options.readTypes.map { "androidx.health.connect.permission.READ_${it.name.uppercase()}" }
-        return (write + read).toSet()
+        val writePermissions = options.writeTypes.mapNotNull { dataType ->
+            getRecordKClass(dataType)?.let { recordClass ->
+                HealthPermission.getWritePermission(recordClass.kotlin)
+            }
+        }
+        return writePermissions.toSet()
     }
 
     /**
-     * Converts a set of DataType to read permission strings.
+     * Checks if all permissions are granted (same as Capacitor plugin's hasPermissions).
      */
-    private fun convertToReadPermissions(types: Set<DataType>): Set<String> =
-        types.map { "androidx.health.connect.permission.READ_${it.name.uppercase()}" }.toSet()
-
-    /**
-     * Converts a set of DataType to write permission strings.
-     */
-    private fun convertToWritePermissions(types: Set<DataType>): Set<String> =
-        types.map { "androidx.health.connect.permission.WRITE_${it.name.uppercase()}" }.toSet()
+    override suspend fun hasAllPermissions(permissions: Set<String>): Boolean {
+        val granted = healthConnectClient.permissionController.getGrantedPermissions()
+        return granted.containsAll(permissions)
+    }
 
     /**
      * Get the Record class for a Health Connect Record type from DataType.

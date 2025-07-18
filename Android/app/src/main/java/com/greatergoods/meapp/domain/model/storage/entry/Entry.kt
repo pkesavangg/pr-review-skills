@@ -50,5 +50,34 @@ sealed class Entry : IUnitProcessable<Entry> {
     }
 }
 
+fun Entry.toPeriodBodyScaleSummary(): PeriodBodyScaleSummary? {
+    return when (this) {
+        is ScaleEntry -> {
+            val scaleEntity = this.scale.scaleEntry
+            val metrics = this.scale.scaleEntryMetric
+            PeriodBodyScaleSummary(
+                period = "", // Set as needed
+                entryTimestamp = this.entry.entryTimestamp, // ISO string
+                weight = scaleEntity.weight,
+                bodyFat = scaleEntity.bodyFat,
+                muscleMass = scaleEntity.muscleMass,
+                water = scaleEntity.water,
+                bmi = scaleEntity.bmi,
+                bmr = metrics?.bmr,
+                metabolicAge = metrics?.metabolicAge?.toDouble(),
+                proteinPercent = metrics?.proteinPercent,
+                pulse = metrics?.pulse?.toDouble(),
+                skeletalMusclePercent = metrics?.skeletalMusclePercent,
+                subcutaneousFatPercent = metrics?.subcutaneousFatPercent,
+                visceralFatLevel = metrics?.visceralFatLevel,
+                boneMass = metrics?.boneMass,
+                impedance = metrics?.impedance?.toDouble(),
+                unit = this.entry.unit
+            )
+        }
+        is BpmEntry -> null
+    }
+}
+
 
 

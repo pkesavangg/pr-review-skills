@@ -5,11 +5,12 @@ import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.util.Calendar
 import java.util.UUID
 import kotlin.random.Random
 
 enum class BLEStatus {
-  CONNECTED, DISCONNECTED, CONNECTING, DISCONNECTING
+  CONNECTED, DISCONNECTED
 }
 
 data class Device(
@@ -21,13 +22,13 @@ data class Device(
   val alreadyPaired: Boolean = false,
   val userNumber: Int? = 0,
   val hasServerID: Boolean = false,
-  val wifiMac: String? = null,
-  val isWifiConfigured: Boolean = false,
-  val sku: String? = null,
-  val createdAt: String? = null,
+  val createdAt: String? = Calendar.getInstance().timeInMillis.toString(),
+    val sku: String? = null,
   val isWeighOnlyModeEnabledByOthers: Boolean = false,
   val token: String? = null,
-  val preferences: Preferences? = null
+  val preferences: Preferences? = null,
+  val isDeleted: Boolean = false,
+  val isSynced: Boolean = false
 ) {
 
   fun getAppType(): String {
@@ -50,8 +51,6 @@ data class Device(
       return Device(
         device = device,
         hasServerID = false,
-        wifiMac = null,
-        isWifiConfigured = false,
         isWeighOnlyModeEnabledByOthers = false,
         preferences = preferences,
         deviceType = deviceType,
@@ -62,7 +61,7 @@ data class Device(
 
 @Serializable
 data class Preferences(
-  val id: Long = Random.nextLong(),
+  val id: String = Random.nextLong().toString(),
   @SerialName("tzOffset") val tzOffset: Int? = null,
   @SerialName("timeFormat") val timeFormat: String? = null,
   @SerialName("displayName") val displayName: String? = null,
@@ -70,5 +69,6 @@ data class Preferences(
   @SerialName("shouldMeasurePulse") val shouldMeasurePulse: Boolean? = null,
   @SerialName("shouldMeasureImpedance") val shouldMeasureImpedance: Boolean? = null,
   @SerialName("shouldFactoryReset") val shouldFactoryReset: Boolean? = null,
-  @SerialName("wifiFotaScheduleTime") val wifiFotaScheduleTime: Long? = null
+  @SerialName("wifiFotaScheduleTime") val wifiFotaScheduleTime: Long? = null,
+  val isSynced: Boolean = false
 )
