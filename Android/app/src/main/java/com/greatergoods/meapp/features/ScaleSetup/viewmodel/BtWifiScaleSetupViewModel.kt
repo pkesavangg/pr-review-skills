@@ -8,7 +8,6 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGLiveDataResponse
-import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -42,7 +41,6 @@ import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
-import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -774,18 +772,6 @@ constructor(
     }
   }
 
-  private fun saveEntry(ggEntry: List<GGScaleEntry>) {
-    viewModelScope.launch {
-      val accountId = accountService.activeAccountFlow.first()?.id
-      val entry = ggEntry.map { it.toScaleEntry(accountId ?: "", discoveredScale!!.id) }
-      try {
-        entryService.addEntry(entry)
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during saving entry", e.toString())
-      }
-    }
-  }
-
   private fun updateSettings() {
     AppLog.d(TAG, "Starting settings update process")
 
@@ -902,7 +888,7 @@ constructor(
 
   override fun onEntryResponse(response: GGScanResponse.Entry) {
     when (response.type) {
-      GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
+      GGScanResponseType.SINGLE_ENTRY -> {
         viewModelScope.launch {
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -910,8 +896,6 @@ constructor(
               ConnectionState.Success,
             ),
           )
-          saveEntry(response.data.map { it as GGScaleEntry })
-          delay(1000)
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(SetCurrentStep(BtWifiSetupStep.SETUP_FINISHED))
         }

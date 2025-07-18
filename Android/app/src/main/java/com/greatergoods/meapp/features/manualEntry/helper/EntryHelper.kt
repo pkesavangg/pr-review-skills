@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.manualEntry.helper
 
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.data.services.OperationType
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
@@ -13,6 +14,7 @@ import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryForm
 import java.time.Instant
@@ -241,12 +243,12 @@ object EntryHelper {
 
     val bodyScaleEntryEntity = BodyScaleEntryEntity(
       id = 0, // Will be auto-generated in DB
-      weight = weightInKg.toDouble(),
+      weight = weight.toDouble(),
       bodyFat = bodyFat.toDouble(),
       muscleMass = muscleMass.toDouble(),
       water = water.toDouble(),
       bmi = bmi.toDouble(),
-      source = protocolType,
+      source = getScaleSetupType(protocolType).value,
     )
 
     val metricEntity = BodyScaleEntryMetricEntity(
@@ -271,5 +273,11 @@ object EntryHelper {
       entry = entryEntity,
       scale = scaleEntryWithMetrics,
     )
+  }
+
+  fun getScaleSetupType(protocolType: String): ScaleSetupType = when (protocolType) {
+    GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> ScaleSetupType.BtWifiR4
+    else -> ScaleSetupType.Bluetooth
+
   }
 }

@@ -5,6 +5,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -28,12 +29,12 @@ import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.ToastStrings
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -269,6 +270,7 @@ constructor(
           }
 
           is GGScanResponse.Entry -> {
+            handleEntryResponse(response)
           }
 
           else -> null
@@ -278,8 +280,13 @@ constructor(
   }
 
   private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
-    entryResponse.data
-    Log.i("CHECKING", entryResponse.data.toString())
+    when (entryResponse.type) {
+      GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
+        saveEntry(entryResponse.data.map { it as GGScaleEntry })
+      }
+
+      else -> null
+    }
   }
 
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
@@ -300,6 +307,30 @@ constructor(
       }
 
       else -> null
+    }
+  }
+
+  private fun saveEntry(ggEntry: List<GGScaleEntry>) {
+    viewModelScope.launch {
+      if (ggEntry.isEmpty()) {
+        return@launch
+      }
+      val accountId = accountService.activeAccountFlow.first()?.id
+      val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId)
+      if (device == null) {
+        return@launch
+      }
+      val entry = ggEntry.map { it.toScaleEntry(accountId ?: "", device.id) }
+      try {
+        entryService.addEntry(entry)
+        dialogQueueService.showToast(
+          Toast(
+            message = "entry saved successfully",
+          ),
+        )
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during saving entry", e.toString())
+      }
     }
   }
 
