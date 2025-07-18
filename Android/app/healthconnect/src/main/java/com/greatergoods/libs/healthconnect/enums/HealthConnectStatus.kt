@@ -1,4 +1,4 @@
-package com.greatergoods.libs.healthconnect.enum
+package com.greatergoods.libs.healthconnect.enums
 
 /**
  * Status of Health Connect availability on the device.

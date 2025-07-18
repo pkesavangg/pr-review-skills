@@ -18,12 +18,11 @@ data class IntegrationState(
  */
 sealed class IntegrationIntent : IReducer.Intent {
   /** Load integrations data. */
-  object LoadIntegrations : IntegrationIntent()
-
   data class OpenIntegration(
     val integrations: IntegrationItem,
   ) : IntegrationIntent()
-
+  /** Load integrations data. */
+  object LoadIntegrations : IntegrationIntent()
   /** Connect to an integration. */
   data class AddIntegration(
     val provider: IntegrationProvider,
@@ -77,6 +76,9 @@ sealed class IntegrationIntent : IReducer.Intent {
   ) : IntegrationIntent()
 
   data object NavigateToHealthConnect : IntegrationIntent()
+
+  /** Remove Health Connect integration (special case). */
+  object RemoveHealthConnectIntegration : IntegrationIntent()
 
 }
 
@@ -160,6 +162,10 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
       }
 
       is IntegrationIntent.NavigateToHealthConnect ->{
+        state
+      }
+
+      is IntegrationIntent.RemoveHealthConnectIntegration ->{
         state
       }
 

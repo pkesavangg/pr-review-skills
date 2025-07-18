@@ -5,101 +5,103 @@ import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricE
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
 import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.WeightUnit
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.convertToDisplay
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.convertToStored
 
 /**
  * Represents a scale entry, combining EntryEntity and ScaleEntryWithMetrics.
  */
 data class ScaleEntry(
-    override val entry: EntryEntity,
-    val scale: ScaleEntryWithMetrics,
+  override val entry: EntryEntity,
+  val scale: ScaleEntryWithMetrics,
 ) : Entry() {
+  /**
+   * Converts this database scale entry to the domain model ScaleEntry.
+   * @return The domain model ScaleEntry.
+   */
+  fun toScaleApiEntry(): ScaleApiEntry {
+    val metrics = scale.scaleEntryMetric.convertToStored()
+    val scaleEntity = scale.scaleEntry.convertToStored()
+    return ScaleApiEntry(
+      operationType = entry.operationType.lowercase(),
+      entryTimestamp = entry.entryTimestamp,
+      weight = (scaleEntity.weight).toInt(),
+      bodyFat = scaleEntity.bodyFat,
+      muscleMass = scaleEntity.muscleMass,
+      boneMass = metrics?.boneMass,
+      water = scaleEntity.water,
+      bmi = scaleEntity.bmi,
+      source = scaleEntity.source,
+      unit = entry.unit.value,
+      impedance = metrics?.impedance,
+      pulse = metrics?.pulse,
+      visceralFatLevel = metrics?.visceralFatLevel,
+      subcutaneousFatPercent = metrics?.subcutaneousFatPercent,
+      proteinPercent = metrics?.proteinPercent,
+      skeletalMusclePercent = metrics?.skeletalMusclePercent,
+      bmr = metrics?.bmr,
+      metabolicAge = metrics?.metabolicAge,
+      serverTimestamp = entry.serverTimestamp,
+    )
+  }
+
+  companion object {
     /**
-     * Converts this database scale entry to the domain model ScaleEntry.
-     * @return The domain model ScaleEntry.
+     * Creates a ScaleEntry from a domain model ScaleEntry.
+     * @param scaleEntry The domain model ScaleEntry.
+     * @param entryId Optional entry ID.
+     * @param accountId The account ID.
+     * @return The ScaleEntry database model.
      */
-    fun toScaleApiEntry(): ScaleApiEntry {
-        val metrics = scale.scaleEntryMetric
-        val scaleEntity = scale.scaleEntry
-        return ScaleApiEntry(
-            operationType = entry.operationType.lowercase(),
-            entryTimestamp = entry.entryTimestamp,
-            weight = (scaleEntity.weight * 10.0).toInt(),
-            bodyFat = scaleEntity.bodyFat?.times(10.0),
-            muscleMass = scaleEntity.muscleMass?.times(10.0),
-            boneMass = metrics?.boneMass?.times(10.0),
-            water = scaleEntity.water?.times(10.0),
-            bmi = scaleEntity.bmi?.times(10.0),
-            source = scaleEntity.source,
-            unit = entry.unit.value,
-            impedance = metrics?.impedance,
-            pulse = metrics?.pulse,
-            visceralFatLevel = metrics?.visceralFatLevel?.times(10.0),
-            subcutaneousFatPercent = metrics?.subcutaneousFatPercent?.times(10.0),
-            proteinPercent = metrics?.proteinPercent?.times(10.0),
-            skeletalMusclePercent = metrics?.skeletalMusclePercent?.times(10.0),
-            bmr = metrics?.bmr?.times(10.0),
-            metabolicAge = metrics?.metabolicAge,
-            serverTimestamp = entry.serverTimestamp,
+    fun fromScaleApiEntry(
+      scaleEntry: ScaleApiEntry,
+      entryId: Long? = null,
+      accountId: String,
+    ): ScaleEntry {
+      val scaleEntryEntity =
+        BodyScaleEntryEntity(
+          id = entryId ?: 0,
+          weight = scaleEntry.weight.toDouble(),
+          bodyFat = scaleEntry.bodyFat,
+          muscleMass = scaleEntry.muscleMass,
+          water = scaleEntry.water,
+          bmi = scaleEntry.bmi,
+          source = scaleEntry.source,
+        ).convertToDisplay()
+
+      val scaleEntryMetricEntity =
+        BodyScaleEntryMetricEntity(
+          id = entryId ?: 0,
+          bmr = scaleEntry.bmr,
+          metabolicAge = scaleEntry.metabolicAge,
+          proteinPercent = scaleEntry.proteinPercent,
+          pulse = scaleEntry.pulse,
+          skeletalMusclePercent = scaleEntry.skeletalMusclePercent,
+          subcutaneousFatPercent = scaleEntry.subcutaneousFatPercent,
+          visceralFatLevel = scaleEntry.visceralFatLevel,
+          boneMass = scaleEntry.boneMass,
+          impedance = scaleEntry.impedance,
+        ).convertToDisplay()
+
+      val scaleEntity =
+        ScaleEntryWithMetrics(
+          scaleEntry = scaleEntryEntity,
+          scaleEntryMetric = scaleEntryMetricEntity,
         )
+      val entryEntity =
+        EntryEntity(
+          id = entryId ?: 0,
+          accountId = accountId,
+          entryTimestamp = scaleEntry.entryTimestamp,
+          serverTimestamp = scaleEntry.serverTimestamp,
+          opTimestamp = null,
+          operationType = scaleEntry.operationType,
+          deviceType = "scale",
+          deviceId = "manual",
+          unit = WeightUnit.from(scaleEntry.unit),
+          isSynced = true,
+        )
+      return ScaleEntry(entryEntity, scaleEntity)
     }
-
-    companion object {
-        /**
-         * Creates a ScaleEntry from a domain model ScaleEntry.
-         * @param scaleEntry The domain model ScaleEntry.
-         * @param entryId Optional entry ID.
-         * @param accountId The account ID.
-         * @return The ScaleEntry database model.
-         */
-        fun fromScaleApiEntry(
-            scaleEntry: ScaleApiEntry,
-            entryId: Long? = null,
-            accountId: String,
-        ): ScaleEntry {
-            val scaleEntryEntity =
-                BodyScaleEntryEntity(
-                    id = entryId ?: 0,
-                    weight = scaleEntry.weight / 10.0,
-                    bodyFat = scaleEntry.bodyFat?.div(10.0),
-                    muscleMass = scaleEntry.muscleMass?.div(10.0),
-                    water = scaleEntry.water?.div(10.0),
-                    bmi = scaleEntry.bmi?.div(10.0),
-                    source = scaleEntry.source,
-                )
-
-            val scaleEntryMetricEntity =
-                BodyScaleEntryMetricEntity(
-                    id = entryId ?: 0,
-                    bmr = scaleEntry.bmr?.div(10.0),
-                    metabolicAge = scaleEntry.metabolicAge,
-                    proteinPercent = scaleEntry.proteinPercent?.div(10.0),
-                    pulse = scaleEntry.pulse,
-                    skeletalMusclePercent = scaleEntry.skeletalMusclePercent?.div(10.0),
-                    subcutaneousFatPercent = scaleEntry.subcutaneousFatPercent?.div(10.0),
-                    visceralFatLevel = scaleEntry.visceralFatLevel?.div(10.0),
-                    boneMass = scaleEntry.boneMass?.div(10.0),
-                    impedance = scaleEntry.impedance,
-                )
-
-            val scaleEntity =
-                ScaleEntryWithMetrics(
-                    scaleEntry = scaleEntryEntity,
-                    scaleEntryMetric = scaleEntryMetricEntity,
-                )
-            val entryEntity =
-                EntryEntity(
-                    id = entryId ?: 0,
-                    accountId = accountId,
-                    entryTimestamp = scaleEntry.entryTimestamp,
-                    serverTimestamp = scaleEntry.serverTimestamp,
-                    opTimestamp = null,
-                    operationType = scaleEntry.operationType,
-                    deviceType = "scale",
-                    deviceId = "manual",
-                    unit = WeightUnit.from(scaleEntry.unit),
-                    isSynced = true,
-                )
-            return ScaleEntry(entryEntity, scaleEntity)
-        }
-    }
+  }
 }

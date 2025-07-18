@@ -7,6 +7,7 @@ import com.greatergoods.meapp.data.api.IBodyCompAPI
 import com.greatergoods.meapp.data.api.IDeviceAPI
 import com.greatergoods.meapp.data.api.IDeviceInfoAPI
 import com.greatergoods.meapp.data.api.IGoalAPI
+import com.greatergoods.meapp.data.api.IHealthConnectAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.api.INotificationAPI
 import com.greatergoods.meapp.data.api.ISupportAPI
@@ -65,8 +66,12 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideHealthConnectRepository(healthConnectDataStore: HealthConnectDataStore): IHealthConnectRepository =
-        HealthConnectRepository(healthConnectDataStore)
+    fun provideHealthConnectRepository(
+      accountRepository: IAccountRepository,
+      healthConnectDataStore: HealthConnectDataStore,
+      healthConnectAPI: IHealthConnectAPI
+    ): IHealthConnectRepository =
+        HealthConnectRepository(accountRepository, healthConnectAPI, healthConnectDataStore)
 
     @Provides
     @Singleton

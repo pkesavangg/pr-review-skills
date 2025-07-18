@@ -1,7 +1,10 @@
 package com.greatergoods.meapp.features.ScaleMetricsSetting.Helper
 
+import com.dmdbrands.library.ggbluetooth.enums.TimeFormat
+import com.greatergoods.ggbluetoothsdk.external.Utils
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.domain.model.storage.Preferences
 import com.greatergoods.meapp.features.ScaleMetricsSetting.enum.NotifyScaleMode
 import com.greatergoods.meapp.features.ScaleMetricsSetting.model.ScaleMetric
 import com.greatergoods.meapp.features.ScaleMetricsSetting.model.otherScaleMetrics
@@ -30,6 +33,19 @@ object ScaleMetricsHelper {
       "dailyAverage",
       "weeklyAverage",
       "monthlyAverage",
+    )
+  }
+
+  fun getDefaultPreference(displayName: String): Preferences {
+    return Preferences(
+      timeFormat = TimeFormat.TWELVE,
+      tzOffset = Utils.getTimeZoneInMinutes(),
+      displayName = displayName,
+      displayMetrics = getAllMetrics(),
+      shouldMeasureImpedance = true,
+      shouldMeasurePulse = false,
+      shouldFactoryReset = false,
+      wifiFotaScheduleTime = 0L,
     )
   }
 

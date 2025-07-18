@@ -13,7 +13,7 @@ import SwiftUI
 final class PermissionsStore: ObservableObject {
     // MARK: - Published outputs
     /// `requiredCategories` that are *mandatory* – used for red status icons.
-    @Published private(set) var requiredCategories: Set<PermissionListView.Category> = []
+    @Published private(set) var requiredCategories: Set<PermissionCategory> = []
     
     /// Bluetooth authorization status
     @Published private(set) var isBluetoothAuthorized: Bool = false
@@ -27,6 +27,7 @@ final class PermissionsStore: ObservableObject {
 
     private var cancellables: Set<AnyCancellable> = []
 
+    // MARK: - Init
     init() {
         // Derive the initial value from the current scales array
         updatePermissionSets(with: scaleService.scales)
@@ -37,8 +38,8 @@ final class PermissionsStore: ObservableObject {
         // Continue to observe for subsequent scale changes
         scaleService.$scales
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] scales in
-                self?.updatePermissionSets(with: scales)
+            .sink { [weak self] devices in
+                self?.updatePermissionSets(with: devices)
             }
             .store(in: &cancellables)
     }
@@ -87,7 +88,7 @@ final class PermissionsStore: ObservableObject {
     /// - Parameter devices: An array of `Device` instances whose capabilities dictate required permissions.
     private func updatePermissionSets(with devices: [Device]) {
         // Reset
-        var newRequired: Set<PermissionListView.Category> = []
+        var newRequired: Set<PermissionCategory> = []
 
         guard !devices.isEmpty else {
             requiredCategories = []

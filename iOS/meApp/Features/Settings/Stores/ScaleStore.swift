@@ -555,6 +555,19 @@ class ScaleStore: ObservableObject {
             self.scales = state.data.scales
         }
     }
+    
+    // MARK: - Scale Mode Management
+    
+    /// Handles the initialization logic when the scale modes screen appears
+    func onAppear(scale: Device) {
+        // Handle async operations internally without requiring Task from the view
+        Task.detached { [scale] in
+            await self.loadScale(scale)
+            await MainActor.run {
+                self.loadScaleModePreferences()
+            }
+        }
+    }
 
     func updateCurrentUserNameInline(_ newName: String) async {
         // Legacy method - now handled by usersManager
@@ -571,7 +584,7 @@ class ScaleStore: ObservableObject {
         guard let scale = state.device.scale else { return }
         do {
             try await usersManager.updateCurrentUserName(newName, for: scale)
-            } catch {
+        } catch {
             logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(error)")
         }
     }
@@ -646,7 +659,6 @@ class ScaleStore: ObservableObject {
         
         // Update display value
         metricsManager.updateDisplayMetricsValue()
-       // self.displayMetricsValue = state.metrics.displayMetricsValue
     }
     
     func updateProgressMetrics(_ newMetrics: [ScaleMetricSetting]) {
@@ -660,7 +672,6 @@ class ScaleStore: ObservableObject {
         
         // Update display value
         metricsManager.updateDisplayMetricsValue()
-       // self.displayMetricsValue = state.metrics.displayMetricsValue
     }
 
     func getDeviceInfo() async {

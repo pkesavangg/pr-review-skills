@@ -75,7 +75,7 @@ constructor(
 
   private fun setScaleDetails() {
     viewModelScope.launch {
-      deviceService.savedScales.collect { devices ->
+      deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))

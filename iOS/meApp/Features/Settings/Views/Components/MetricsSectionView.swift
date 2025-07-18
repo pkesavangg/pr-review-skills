@@ -40,7 +40,7 @@ struct MetricsSectionView: View {
                     icon: showIcon ? metric.imagePath : nil,
                     isDisabled: !metric.isEnabled
                 )
-                .onChange(of: metric.isEnabled) { _ in
+                .onChange(of: metric.isEnabled) { oldValue, newValue in
                     onValueChanged()
                 }
                 .listRowBackground(theme.backgroundPrimary)

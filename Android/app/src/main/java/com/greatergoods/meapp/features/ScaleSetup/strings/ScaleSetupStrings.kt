@@ -12,6 +12,7 @@ object ScaleSetupStrings {
   const val nextButton = "next"
   const val FinishButton = "Finish"
   const val skipButton = "skip"
+  const val saveButton = "save"
 
   object ScaleInfo {
     fun Title(sku: String) = "Model $sku"

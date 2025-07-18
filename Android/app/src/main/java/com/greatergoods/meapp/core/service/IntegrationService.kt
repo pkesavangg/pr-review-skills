@@ -25,7 +25,7 @@ class IntegrationService @Inject constructor(
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   private val accountService: IAccountService,
-  private val integrationRepository: IIntegrationRepository
+  private val integrationRepository: IIntegrationRepository,
 ) :  BaseService(connectivityObserver, dialogQueueService), IIntegrationService {
 
     companion object {
@@ -132,6 +132,8 @@ class IntegrationService @Inject constructor(
                 action = null
             ))
             AppLog.d(TAG, "Successfully disconnected from integration: $provider")
+            // Update integrations flow
+          integrationRepository.updateLocalAccount()
         } catch (e: Exception) {
             dialogQueueService.dismissLoader()
             AppLog.e(TAG, "Failed to disconnect from integration: $provider", e.toString())

@@ -13,7 +13,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.features.integration.IntegrationList
 import com.greatergoods.meapp.features.integration.model.IntegrationIntent
 import com.greatergoods.meapp.features.integration.model.IntegrationState
 import com.greatergoods.meapp.features.integration.strings.IntegrationStrings
@@ -27,25 +26,24 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
  */
 @Composable
 fun IntegrationScreen() {
-    val viewModel: IntegrationViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
+    val viewmodel: IntegrationViewModel = hiltViewModel()
+    val state by viewmodel.state.collectAsState()
 
+  LaunchedEffect(Unit) {
+    viewmodel.handleIntent(IntegrationIntent.LoadIntegrations)
+  }
     BackHandler {
-        viewModel.handleIntent(IntegrationIntent.OnBack)
+        viewmodel.handleIntent(IntegrationIntent.OnBack)
     }
 
-    // Load integrations on first launch
-    LaunchedEffect(Unit) {
-        viewModel.handleIntent(IntegrationIntent.LoadIntegrations)
-    }
-
-    IntegrationContent(state, viewModel::handleIntent)
+    IntegrationContent(state, viewmodel::handleIntent, viewmodel::onHealthConnectIconClicked)
 }
 
 @Composable
 private fun IntegrationContent(
     state: IntegrationState,
     handleIntent: (IntegrationIntent) -> Unit,
+    onHealthConnectIconClick: () -> Unit = {},
 ) {
     AppScaffold(
         title = IntegrationStrings.Title,
@@ -61,7 +59,7 @@ private fun IntegrationContent(
                 .padding(spacing.md),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            IntegrationList(state, handleIntent)
+            IntegrationList(state, handleIntent, onHealthConnectIconClick)
         }
     }
 }

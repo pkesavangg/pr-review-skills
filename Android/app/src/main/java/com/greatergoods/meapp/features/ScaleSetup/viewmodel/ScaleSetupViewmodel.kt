@@ -8,7 +8,6 @@ import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
-import com.greatergoods.meapp.core.network.utility.NetworkState
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -31,9 +30,9 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    * Called when a new device matching the protocol is found during setup.
    * @param device The GGDeviceDetail of the new device found.
    */
-  protected abstract fun onScanResponse(device: GGScanResponse.DeviceDetail)
+  protected abstract fun onScanResponse(response: GGScanResponse.DeviceDetail)
 
-  protected abstract fun onEntryResponse(device: GGScanResponse.Entry)
+  protected abstract fun onEntryResponse(response: GGScanResponse.Entry)
 
   protected var discoveredScale: Device? = null
 
@@ -82,25 +81,26 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    * The WiFi switch permission is considered enabled if either:
    * 1. Network is available (cellular or WiFi), OR
    * 2. WiFi switch is enabled in the permission callback flow
-   * 
+   *
    * @return Flow emitting updated permission status map
    */
   protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
     return combine(
       permissionService.permissionCallBackFlow,
-      connectivityObserver.observe()
+      connectivityObserver.observe(),
     ) { permissions, networkState ->
       val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
       val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
-      
+
       // WiFi switch is enabled if either network is available OR WiFi switch is enabled
-      val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED || 
-                                       wifiSwitchStatus == GGPermissionState.ENABLED) {
+      val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
+        wifiSwitchStatus == GGPermissionState.ENABLED
+      ) {
         GGPermissionState.ENABLED
       } else {
         GGPermissionState.DISABLED
       }
-      
+
       permissions.toMutableMap().apply {
         put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
       }
