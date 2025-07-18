@@ -110,8 +110,21 @@ final class DateTimeTools {
     }
     
     static func getDateFromDateString(_ dateString: String, format: String) -> Date {
-        guard parse(dateString) != nil else { return Date() }
-        return formatter(format).date(from: dateString) ?? Date()
+        // Validate input
+        guard !dateString.isEmpty else { return Date() }
+        
+        // Try to parse with the specific format first
+        if let date = formatter(format).date(from: dateString) {
+            return date
+        }
+        
+        // Fallback to general parsing
+        if let date = parse(dateString) {
+            return date
+        }
+        
+        // Last resort: return current date
+        return Date()
     }
     
     
@@ -386,7 +399,17 @@ final class DateTimeTools {
     static func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
         let calendar = Calendar.current
-        let years = Set(summaries.map { calendar.component(.year, from: $0.date) })
+        
+        // Validate that all summaries have valid dates
+        let validSummaries = summaries.filter { summary in
+            // Ensure the date is not in the distant past or future (basic validation)
+            let year = calendar.component(.year, from: summary.date)
+            return year >= 1900 && year <= 2100
+        }
+        
+        guard !validSummaries.isEmpty else { return true }
+        
+        let years = Set(validSummaries.map { calendar.component(.year, from: $0.date) })
         return years.count == 1
     }
     

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Represents a scale metric setting configuration
-struct ScaleMetricSetting: Identifiable {
+struct ScaleMetricSetting: Identifiable, Equatable {
     let id = UUID()
     let name: String
     let key: String

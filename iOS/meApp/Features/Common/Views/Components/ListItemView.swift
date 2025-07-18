@@ -11,7 +11,9 @@ import SwiftUI
 /// Use for both "User Name + Delete" and "Title + Detail + Chevron" row styles.
 struct ListItemView<Trailing: View>: View {
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject var themeManager: Theme
     let leadingImage: String?
+    let useThemedImage: Bool?
     let title: String
     let subtitleTop: String?
     let subtitleBottom: String?
@@ -22,6 +24,7 @@ struct ListItemView<Trailing: View>: View {
     
     init(
         leadingImage: String? = nil,
+        useThemedImage: Bool? = false,
         title: String,
         subtitleTop: String? = nil,
         subtitleBottom: String? = nil,
@@ -31,6 +34,7 @@ struct ListItemView<Trailing: View>: View {
         verticalPadding: CGFloat = .spacingSM
     ) {
         self.leadingImage = leadingImage
+        self.useThemedImage = useThemedImage
         self.title = title
         self.subtitleTop = subtitleTop
         self.subtitleBottom = subtitleBottom
@@ -41,6 +45,7 @@ struct ListItemView<Trailing: View>: View {
     }
     init(
         leadingImage: String? = nil,
+        useThemedImage: Bool = false,
         title: String,
         subtitle: String? = nil,
         trailing: Trailing? = nil,
@@ -50,6 +55,7 @@ struct ListItemView<Trailing: View>: View {
     ) {
         self.init(
             leadingImage: leadingImage,
+            useThemedImage: useThemedImage,
             title: title,
             subtitleTop: nil,
             subtitleBottom: subtitle,
@@ -63,8 +69,14 @@ struct ListItemView<Trailing: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             if let leadingImage {
-                AppIconView(icon: leadingImage)
-                    .foregroundColor(theme.actionPrimary)
+                if useThemedImage == true {
+                    ThemedImage(name: leadingImage, isSingleMode: true)
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(theme.actionPrimary)
+                } else {
+                    AppIconView(icon: leadingImage)
+                        .foregroundColor(theme.actionPrimary)
+                }
             }
             VStack(alignment: .leading, spacing: 2) {
                 if let subtitleTop {

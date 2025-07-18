@@ -296,7 +296,17 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
-        let years = Set(summaries.map { calendar.component(.year, from: $0.date) })
+        
+        // Validate that all summaries have valid dates
+        let validSummaries = summaries.filter { summary in
+            // Ensure the date is not in the distant past or future (basic validation)
+            let year = calendar.component(.year, from: summary.date)
+            return year >= 1900 && year <= 2100
+        }
+        
+        guard !validSummaries.isEmpty else { return true }
+        
+        let years = Set(validSummaries.map { calendar.component(.year, from: $0.date) })
         return years.count == 1
     }
 
@@ -375,79 +385,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         } catch {
             logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to optimize cache: \(error)")
             throw DashboardError.cacheUpdateFailed("Failed to optimize cache")
-        }
-    }
-
-    // MARK: - R4 Scale Detection Methods (moved from DashboardStore)
-    
-    /// Determines dashboard metric type based on R4 scale presence
-    func determineDashboardMetricType() async -> DashboardMetricType {
-        let hasR4Scale = await checkForR4ScaleInPairedDevices()
-        let hasR4Entries = await checkForR4ScaleEntries()
-
-        logger.log(level: .info, tag: "DashboardDataManager", message: "R4 scale detection: hasR4Scale=\(hasR4Scale), hasR4Entries=\(hasR4Entries)")
-
-        if hasR4Scale || hasR4Entries {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Dashboard metric type set to 12 (R4 scale detected)")
-            return .twelve
-        } else {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Dashboard metric type set to 4 (no R4 scale)")
-            return .four
-        }
-    }
-
-    private func checkForR4ScaleInPairedDevices() async -> Bool {
-        do {
-            let devices = try await scaleService.getDevices()
-            
-            // Only consider connected/active R4 scales, not just paired ones
-            let activeR4Scales = devices.filter { device in
-                let scaleType = ScaleTypeHelper.determineScaleType(for: device)
-                let isR4 = scaleType == .bluetoothR4
-                
-                // Check if the scale is actually connected/active
-                if isR4 {
-                    // First check if the device is marked as connected
-                    if let isConnected = device.isConnected, isConnected {
-                        return true
-                    }
-                    
-                    // If not marked as connected, check if it has recent entries (within last 30 days)
-                    if let lastSync = device.lastModified {
-                        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-                        let lastSyncDate = Date(timeIntervalSince1970: TimeInterval(lastSync))
-                        return lastSyncDate >= thirtyDaysAgo
-                    }
-                    
-                    // If no connection status or recent sync, consider it not active
-                    return false
-                }
-                return false
-            }
-            
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Found \(activeR4Scales.count) active R4 scales")
-            return !activeR4Scales.isEmpty
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to check for R4 scales: \(error)")
-            return false
-        }
-    }
-
-    private func checkForR4ScaleEntries() async -> Bool {
-        do {
-            let entries = try await entryService.getAllEntries()
-            let r4Entries = entries.filter { entry in
-                if let source = entry.scaleEntry?.source {
-                    return source.lowercased().contains("r4") ||
-                           source.lowercased().contains("btwifi") ||
-                           source.lowercased().contains("bluetooth/wifi")
-                }
-                return false
-            }
-            return !r4Entries.isEmpty
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to check for R4 scale entries: \(error)")
-            return false
         }
     }
 }

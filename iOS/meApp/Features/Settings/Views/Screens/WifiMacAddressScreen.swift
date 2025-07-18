@@ -11,6 +11,7 @@ struct WifiMacAddressScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @ObservedObject var scaleStore = ScaleStore()
+    let scale: Device
     let lang = WifiMacAddressScreenStrings.self
 
     var body: some View {
@@ -62,9 +63,24 @@ struct WifiMacAddressScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            Task {
+                await scaleStore.loadScale(scale)
+                // Only fetch WiFi MAC if it's a connected R4 scale
+                if scaleStore.shouldFetchWifiMacAddress(for: scale) {
+                    await scaleStore.fetchWifiMacAddress()
+                }
+            }
+        }
     }
 }
 
 #Preview {
-    WifiMacAddressScreen()
+    let mockDevice = Device(
+        id: "1",
+        accountId: "demo-account",
+        sku: "0412",
+        deviceName: "AccuCheck Verve Smart Scale"
+    )
+    WifiMacAddressScreen(scale: mockDevice)
 }
