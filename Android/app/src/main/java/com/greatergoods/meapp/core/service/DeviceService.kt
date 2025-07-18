@@ -59,7 +59,11 @@ constructor(
   }
 
   override suspend fun updateDevice(device: Device) {
-    deviceRepository.updateDevice(device, currentAccountId!!)
+    try {
+      deviceRepository.updateDevice(device, currentAccountId!!)
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error updating device", e.toString())
+    }
   }
 
   /**
@@ -313,6 +317,7 @@ constructor(
       // TODO("Update preferences to the scale via ggBluetoothPlugin")
       // Save preferences to API
       deviceRepository.saveScalePreferencesToApi(updatedPreference)
+      syncDevices()
       AppLog.d(tag, "Scale preferences updated successfully")
       true
     } catch (e: Exception) {
@@ -444,6 +449,14 @@ constructor(
       AppLog.e(tag, "Error getting scale token", e.toString())
       throw e
     }
+  }
+
+  override suspend fun updateScalePreferencesByMac(
+    macAddress: String,
+    preferences: R4ScalePreferenceApiModel
+  ): Boolean {
+    val device = getScaleByMac(macAddress) ?: return false
+    return updateScalePreferences(device.id, preferences)
   }
 
   private fun getTimeZoneInMinutes(): Int {

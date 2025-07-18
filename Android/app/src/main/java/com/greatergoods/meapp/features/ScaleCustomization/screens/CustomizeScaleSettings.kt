@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.greatergoods.meapp.domain.model.common.Progress
 import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationLayout
 import com.greatergoods.meapp.features.ScaleCustomization.components.CustomizationSettingsItem
 import com.greatergoods.meapp.features.ScaleCustomization.strings.CustomizeSettingsStrings
@@ -40,6 +42,7 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.dashboard.components.DashboardMetrics
+import com.greatergoods.meapp.features.dashboard.components.DashboardMilestone
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
@@ -64,7 +67,8 @@ fun CustomizeScaleSettings(
     CustomizeSettingsList.map { it.copy(isVisited = visitedSteps.contains(it.step)) }
   }
 
-  var dashboardKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
+  var dashboardMetricKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
+  var dashboardMilestoneKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
   val defaultPreference = ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
   var updatedPreference by remember { mutableStateOf(defaultPreference) }
   HorizontalPagerWithBottomNavigation(
@@ -84,7 +88,7 @@ fun CustomizeScaleSettings(
           size = ButtonSize.Small,
           onClick = {
             scope.launch {
-              pagerState.animateScrollToPage(0)
+              pagerState.scrollToPage(0)
             }
           },
         )
@@ -96,14 +100,22 @@ fun CustomizeScaleSettings(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
+            enabled = !(pagerState.currentPage == CustomizeSettings.SCALE_USERNAME.ordinal && state.usernameForm.username.isValueValid()),
             onClick = {
-              if (visitedSteps.isEmpty()) {
+              if (visitedSteps.isNotEmpty()) {
+                val combinedKeys: List<DashboardKey>? = when {
+                  dashboardMetricKeys != null || dashboardMilestoneKeys != null -> buildList {
+                    dashboardMetricKeys?.let { addAll(it) }
+                    dashboardMilestoneKeys?.let { addAll(it) }
+                  }
+
+                  else -> null
+                }
+
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
-                    dashboardKeys = dashboardKeys,
-                    preferences = updatedPreference.copy(
-                      displayName = state.usernameForm.username.value,
-                    ),
+                    dashboardKeys = combinedKeys,
+                    preferences = updatedPreference,
                   ),
                 )
                 onIntent(
@@ -123,7 +135,7 @@ fun CustomizeScaleSettings(
             size = ButtonSize.Small,
             onClick = {
               scope.launch {
-                pagerState.animateScrollToPage(0)
+                pagerState.scrollToPage(0)
               }
             },
           )
@@ -139,7 +151,7 @@ fun CustomizeScaleSettings(
           subtitle = subtitle,
           onSelectSettings = {
             scope.launch {
-              pagerState.scrollToPage(it.ordinal)
+              pagerState.scrollToPage(it.value)
             }
           },
         )
@@ -154,9 +166,21 @@ fun CustomizeScaleSettings(
           DashboardMetrics(
             metricData = emptyList(),
             visibleKeys = state.dashboardKeys,
-            inEditMode = false,
+            inEditMode = true,
             onMetricsChanged = {
-              dashboardKeys = it
+              dashboardMetricKeys = it
+            },
+          )
+          HorizontalDivider(
+            color = MeTheme.colorScheme.utility,
+            modifier = Modifier.padding(horizontal = spacing.lg),
+          )
+          DashboardMilestone(
+            progress = Progress(),
+            inEditMode = true,
+            visibleKeys = state.dashboardKeys,
+            onMilestonesChanged = {
+              dashboardMilestoneKeys = it
             },
           )
         }

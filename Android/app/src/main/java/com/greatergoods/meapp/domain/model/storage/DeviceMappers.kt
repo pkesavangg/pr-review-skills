@@ -27,6 +27,7 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       isWifiConfigured = device.wifiMac != null,
       // Add other fields as needed
     ),
+    nickname = device.nickname ?: device.deviceName ?: "",
     sku = device.sku,
     isSynced = device.isSynced,
     isDeleted = device.isDeleted,
@@ -84,6 +85,7 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       wifiMacAddress = wifiMac,
       isWifiConfigured = wifiMac != null,
     ),
+    nickname = nickname ?: deviceName ?: "",
     sku = sku,
     isSynced = isSynced,
     isDeleted = isDeleted,
@@ -104,7 +106,7 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         id = id,
         accountId = accountId, // Not present in GGDevice, set as needed
         peripheralIdentifier = device?.identifier,
-        nickname = device?.deviceName, // No nickname in GGDevice, use deviceName
+        nickname = nickname, // No nickname in GGDevice, use deviceName
         sku = sku, // Not present in GGDevice
         mac = device?.macAddress,
         password = convertHexToInt(device?.password),

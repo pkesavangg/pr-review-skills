@@ -3,16 +3,12 @@ package com.greatergoods.meapp.features.scaleDetails.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.greatergoods.blewrapper.GGDeviceService
-import com.greatergoods.meapp.core.config.AppConfig
-import com.greatergoods.meapp.core.navigation.AppRoute
-import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
-import com.greatergoods.meapp.domain.repository.IDeviceService
-import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
@@ -23,8 +19,8 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsReducer
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsState
-import com.greatergoods.meapp.features.scaleDetails.strings.ScaleDetailsStrings
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleNameDialogFormControls
+import com.greatergoods.meapp.features.scaleDetails.strings.ScaleDetailsStrings
 import com.greatergoods.meapp.features.scaleDetails.strings.ScaleNameDialogStrings
 import com.greatergoods.meapp.features.scaleDetails.strings.WifiMacAddressStrings
 import dagger.assisted.Assisted

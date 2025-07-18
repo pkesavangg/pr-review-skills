@@ -91,9 +91,9 @@ enum class AppsyncScaleSetupStep {
 enum class CustomizeSettings(
   val value: Int,
 ) {
-  NONE(-1),
-  DASHBOARD_METRICS(0),
-  SCALE_METRICS(1),
-  SCALE_MODE(2),
-  SCALE_USERNAME(3),
+  NONE(0),
+  DASHBOARD_METRICS(1),
+  SCALE_METRICS(2),
+  SCALE_MODE(3),
+  SCALE_USERNAME(4),
 }

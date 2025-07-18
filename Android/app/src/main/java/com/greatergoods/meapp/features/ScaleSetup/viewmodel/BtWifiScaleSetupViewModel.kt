@@ -791,20 +791,29 @@ constructor(
           dashboardService.updateVisibleKeys(keys = dashboardKeys)
         }
         if (preferences != null) {
-          discoveredScale = discoveredScale!!.copy(preferences = preferences)
+          val newName = _state.value.usernameForm.username.value
+          val updatedDevice =
+            discoveredScale!!.copy(preferences = preferences.copy(displayName = newName.ifEmpty { preferences.displayName }))
+          discoveredScale = updatedDevice
           ggDeviceService.updateAccount(
-            discoveredScale!!.toGGBTDevice(),
+            updatedDevice.toGGBTDevice(),
           ) {
             when (it) {
               GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
-                handleIntent(
-                  BtWifiScaleSetupIntent.SetStepConnectionState(
-                    BtWifiSetupStep.UPDATE_SETTINGS,
-                    ConnectionState.Success,
-                  ),
-                )
-                handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-                handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+                viewModelScope.launch {
+                  deviceService.updateScalePreferencesByMac(
+                    updatedDevice.device?.macAddress ?: "",
+                    updatedDevice.preferences!!.toR4ScalePreferenceApiModel(),
+                  )
+                  handleIntent(
+                    BtWifiScaleSetupIntent.SetStepConnectionState(
+                      BtWifiSetupStep.UPDATE_SETTINGS,
+                      ConnectionState.Success,
+                    ),
+                  )
+                  handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+                  handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+                }
               }
 
               else -> null
@@ -850,7 +859,7 @@ constructor(
     val ggDeviceDetail = response.data
     when (response.type) {
       GGScanResponseType.NEW_DEVICE -> {
-        if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value && ggDeviceDetail.macAddress == "CF:E8:06:14:08:12") {
+        if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
           viewModelScope.launch {
 
             if (deviceService.pairedScales.first().any { it.device?.macAddress == ggDeviceDetail.macAddress }) {

@@ -160,6 +160,11 @@ interface IDeviceService {
     preferences: R4ScalePreferenceApiModel,
   ): Boolean
 
+  suspend fun updateScalePreferencesByMac(
+    macAddress: String,
+    preferences: R4ScalePreferenceApiModel
+  ): Boolean
+
   /**
    * Get scale token from the API.
    * @return The scale token as a string.
