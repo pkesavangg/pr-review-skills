@@ -38,7 +38,6 @@ class ScaleStore: ObservableObject {
     
     // Settings/detail values for UI (replace with computed or fetched values later)
     @Published var modeValue: ScaleModes = .weightOnly
-    @Published var isHeartRateEnabled: Bool = true
     @Published var displayMetricsValue: String = "" // TODO: Replace with actual display metrics
     @Published var usersValue: String = "Kristin" // TODO: Replace with actual users
     @Published var wifiValue: String = "greatergoods1" // TODO: Replace with actual Wi-Fi SSID
@@ -707,10 +706,10 @@ class ScaleStore: ObservableObject {
     /// Handles the initialization logic when the scale modes screen appears
     func onAppear(scale: Device) {
         // Handle async operations internally without requiring Task from the view
-        Task.detached { [weak self] in
-            await self?.loadScale(scale)
+        Task.detached { [scale] in
+            await self.loadScale(scale)
             await MainActor.run {
-                self?.loadScaleModePreferences()
+                self.loadScaleModePreferences()
             }
         }
     }
