@@ -55,15 +55,55 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func handleChartSelection(at selectedDate: Date?) async {
+        // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
+        
+        // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             state.clearSelection()
             logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection cleared")
             return
         }
+        
+        // Hide any existing crosshair first
         state.showCrosshair = false
         state.selectedXValue = selectedDate
+        
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
+    }
+
+    /// Handles complete chart selection including finding closest point and updating metrics
+    /// This method should be called from the DashboardStore with the necessary dependencies
+    func handleCompleteChartSelection(at selectedDate: Date, 
+                                     operations: [BathScaleWeightSummary],
+                                     updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void,
+                                     resetMetrics: @escaping () -> Void) async {
+        // Only handle selection if not currently scrolling
+        guard !state.isScrolling else { return }
+        
+        // Hide any existing crosshair first
+        state.showCrosshair = false
+        
+        guard !operations.isEmpty else { return }
+        
+        // Find the closest data point to the selected date
+        let selectedBin = operations.min { bin1, bin2 in
+            abs(bin1.date.timeIntervalSince(selectedDate)) < abs(bin2.date.timeIntervalSince(selectedDate))
+        }
+        
+        guard let selectedBin = selectedBin else { return }
+        
+        // Set the selected point and show crosshair
+        updateSelectedPoint(selectedBin)
+        
+        // Update metrics with the selected point's values
+        do {
+            try await updateMetrics(selectedBin)
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
+        } catch {
+            logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
+            resetMetrics()
+        }
     }
 
     func findClosestPoint(to selectedDate: Date, in operations: [BathScaleWeightSummary]) -> BathScaleWeightSummary? {

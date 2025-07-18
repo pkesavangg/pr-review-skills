@@ -819,35 +819,23 @@ class DashboardStore: ObservableObject {
 
     // Delegate chart selection to GraphManager
     func handleChartSelection(at selectedDate: Date?) async {
-        // Only handle selection if not currently scrolling
-        guard !state.graph.isScrolling else { return }
-
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             clearSelection()
             return
         }
 
-        // Set the selected X value first
-        await MainActor.run {
-            self.state.graph.selectedXValue = selectedDate
-        }
-        
-        // First, find the closest point to the selected date
-        let closestPoint = graphManager.findClosestPoint(to: selectedDate, in: continuousOperations)
-        
-        // Update the selected point in the graph manager
-        graphManager.updateSelectedPoint(closestPoint)
-        
-        // Update metrics with the selected point's values
-        if let selectedPoint = closestPoint {
-            try? await metricsManager.updateMetrics(with: selectedPoint)
-            logger.log(level: .info, tag: "DashboardStore", message: "Updated metrics with selected point: \(selectedPoint.date)")
-        } else {
-            // If no point found, reset metrics to latest entry
-            resetMetricsToLatestEntry()
-            logger.log(level: .info, tag: "DashboardStore", message: "No point found for selection, reset metrics to latest entry")
-        }
+        // Use the graph manager's complete chart selection method
+        await graphManager.handleCompleteChartSelection(
+            at: selectedDate,
+            operations: continuousOperations,
+            updateMetrics: { selectedPoint in
+                try await self.metricsManager.updateMetrics(with: selectedPoint)
+            },
+            resetMetrics: {
+                self.resetMetricsToLatestEntry()
+            }
+        )
         
         // Force UI update
         await MainActor.run {
