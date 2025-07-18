@@ -6,7 +6,6 @@ import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.meapp.core.config.AppConfig
-import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Device
@@ -202,9 +201,7 @@ constructor(
   private fun navigateBack() {
     viewModelScope.launch {
       try {
-        navigationService.navigateTo(
-          AppRoute.AccountSettings.AddEditScales,
-        )
+        navigationService.navigateBack()
         AppLog.d(TAG, "Successfully navigated back from scale setup")
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())

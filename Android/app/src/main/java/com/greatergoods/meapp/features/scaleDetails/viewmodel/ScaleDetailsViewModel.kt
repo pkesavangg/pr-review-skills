@@ -1,8 +1,10 @@
 package com.greatergoods.meapp.features.scaleDetails.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -26,6 +28,7 @@ class ScaleDetailsViewModel
 @AssistedInject
 constructor(
   private val deviceService: IDeviceService,
+  private val ggDeviceService: GGDeviceService,
   @Assisted val scaleId: String,
 ) : BaseIntentViewModel<ScaleDetailsState, ScaleDetailsIntent>(
   reducer = ScaleDetailsReducer(),
@@ -126,6 +129,7 @@ constructor(
             viewModelScope.launch {
               dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
               deviceService.deleteScale(scaleId)
+              ggDeviceService.disconnectDevice(state.value.scale!!.toGGBTDevice())
               dialogQueueService.dismissLoader()
               dialogQueueService.dismissCurrent()
               navigateBack()

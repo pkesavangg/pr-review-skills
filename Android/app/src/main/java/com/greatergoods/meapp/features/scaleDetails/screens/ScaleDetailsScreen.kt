@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
 import com.greatergoods.meapp.features.common.components.AppIcon
@@ -74,7 +75,7 @@ fun ScaleDetailsScreenContent(
   val scaleSetupType =
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
-  val isConnected = device?.connectionStatus == com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED
+  val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
   val scaleMode =
     if (device?.preferences?.shouldMeasureImpedance == true) {
       ScaleDetailsStrings.AllBodyMetrics
@@ -117,7 +118,7 @@ fun ScaleDetailsScreenContent(
             },
           )
         }
-        if (state.scale?.device?.isWifiConfigured == false) {
+        if (state.scale?.device?.isWifiConfigured == false && state.scale.connectionStatus == BLEStatus.CONNECTED) {
           AppNote(
             message = ScaleDetailsStrings.SetupIncomplete,
             icon = AppIcons.Default.Exclamation,
@@ -276,7 +277,7 @@ fun ScaleDetailsScreenPreview() {
       macAddress = "greatergoods1",
       identifier = "identifier1",
     ),
-    connectionStatus = com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED,
+    connectionStatus = BLEStatus.CONNECTED,
     alreadyPaired = true,
     userNumber = 1,
     preferences = com.greatergoods.meapp.domain.model.storage.Preferences(

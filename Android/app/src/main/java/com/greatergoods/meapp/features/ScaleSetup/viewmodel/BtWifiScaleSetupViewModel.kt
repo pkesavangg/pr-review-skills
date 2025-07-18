@@ -349,12 +349,16 @@ constructor(
 
   private fun onExit() {
     viewModelScope.launch {
+      if (discoveredScale != null) {
+        deviceService.onDeviceUpdate(
+          device = discoveredScale!!,
+        )
+        ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+        ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
+      }
       val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
       ggDeviceService.syncDevices(pairedDevices)
       ggDeviceService.resumeScan(false)
-      if (discoveredScale != null) {
-        deviceService.updateDevice(discoveredScale!!)
-      }
       navigateBack()
     }
   }
@@ -486,6 +490,9 @@ constructor(
 
     viewModelScope.launch {
       try {
+        if (discoveredScale != null) {
+          ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
+        }
         ggDeviceService.scanForPairing()
         startObservingDevices()
       } catch (e: Exception) {
@@ -525,9 +532,8 @@ constructor(
                     ConnectionState.Success,
                   ),
                 )
+                discoveredScale = discoveredScale!!.copy(connectionStatus = BLEStatus.CONNECTED)
                 deviceService.saveScale(discoveredScale!!)
-                if (discoveredScale!!.device != null)
-                  onDeviceUpdate(discoveredScale!!.device!!, connectionStatus = BLEStatus.CONNECTED)
                 handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
                 handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
               }
@@ -676,7 +682,7 @@ constructor(
             )
             updateWifiDetails()
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-            handleIntent(SetCurrentStep(BtWifiSetupStep.STEP_ON))
+            handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
           } else {
             AppLog.w(TAG, "Wifi connection failed")
             handleIntent(

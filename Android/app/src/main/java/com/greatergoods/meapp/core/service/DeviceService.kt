@@ -89,11 +89,11 @@ constructor(
 
     deviceCollectionJob = repositoryScope.launch {
       // Capture previous connection status
-      val previousStatusMap = _pairedScales.value.associateBy({ it.id }, { it.connectionStatus })
+      val previousStatusMap = _pairedScales.value.associateBy({ it.device?.macAddress }, { it.connectionStatus })
 
       deviceRepository.getDevices(accountId).collect { devices ->
         val updatedDevices = devices.map { device ->
-          val connectionStatus = previousStatusMap[device.id] ?: device.connectionStatus
+          val connectionStatus = previousStatusMap[device.device?.macAddress] ?: device.connectionStatus
           device.copy(connectionStatus = connectionStatus)
         }
         _pairedScales.value = updatedDevices
