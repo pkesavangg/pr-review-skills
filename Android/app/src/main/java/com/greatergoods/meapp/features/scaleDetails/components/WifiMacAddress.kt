@@ -46,11 +46,6 @@ fun WifiMacAddressScreen(
       AppIconButton(AppIcons.Default.Close, onClick = onClose)
     },
   ) {
-    AppText(
-      text = WifiMacAddressStrings.Title,
-      textType = TextType.Title,
-      modifier = Modifier.fillMaxWidth(),
-    )
     Column(
       modifier =
         Modifier
@@ -58,13 +53,20 @@ fun WifiMacAddressScreen(
           .padding(vertical = spacing.md, horizontal = spacing.sm),
       verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-      Column {
+
+      AppText(
+        text = WifiMacAddressStrings.Title,
+        textType = TextType.Title,
+        modifier = Modifier.fillMaxWidth(),
+      )
+
+      Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
         AppNote(
           message = WifiMacAddressStrings.MacEncryption,
         )
         AppButton(
           label = WifiMacAddressStrings.CopyMacButton,
-          type = ButtonType.InlineTextPrimary,
+          type = ButtonType.TextPrimary,
           size = ButtonSize.Large,
           onClick = {
             try {
@@ -77,9 +79,11 @@ fun WifiMacAddressScreen(
               handleIntent(ScaleDetailsIntent.OnCopyMacAddress(false))
             }
           },
-          modifier = Modifier.align(Alignment.CenterHorizontally)
+          modifier = Modifier.align(Alignment.CenterHorizontally),
         )
       }
+
+
       AppText(
         text = WifiMacAddressStrings.MacAddressNote,
         textType = TextType.Body,
@@ -92,37 +96,5 @@ fun WifiMacAddressScreen(
 @Composable
 fun WifiMacAddressScreenPreview() {
   MeAppTheme {
-    AppScaffold(
-      title = WifiMacAddressStrings.Title,
-      navigationIcon = {
-        AppIconButton(AppIcons.Default.Close, onClick = {})
-      },
-    ) {
-      Column(
-        modifier =
-          Modifier
-            .fillMaxSize()
-            .padding(vertical = spacing.md, horizontal = spacing.sm),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-      ) {
-        Column {
-          AppNote(
-            message = WifiMacAddressStrings.MacEncryption,
-          )
-          AppButton(
-            label = WifiMacAddressStrings.CopyMacButton,
-            type = ButtonType.InlineTextPrimary,
-            size = ButtonSize.Large,
-            onClick = { },
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-          )
-        }
-
-        AppText(
-          text = WifiMacAddressStrings.MacAddressNote,
-          textType = TextType.Body,
-        )
-      }
-    }
   }
 }

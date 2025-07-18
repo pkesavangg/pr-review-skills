@@ -116,6 +116,11 @@ fun ScaleDetailsScreenContent(
       dragHandle = null,
       sheetState = sheetState,
       sheetGesturesEnabled = false,
+      properties = ModalBottomSheetProperties(
+        shouldDismissOnBackPress = true,
+        isAppearanceLightStatusBars = !isSystemInDarkTheme(),
+        isAppearanceLightNavigationBars = !isSystemInDarkTheme(),
+      )
     ) {
       when (state.settingsScreenStep) {
         ScaleSettingSteps.BLUETOOTH_SETTINGS -> {
