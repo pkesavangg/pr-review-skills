@@ -41,7 +41,7 @@ struct ScaleModesScreen: View {
                     Group {
                         if isR4ScaleSetup {
                             Button(action: {
-                                scaleStore.handleHelp()
+                                scaleStore.openHelp()
                             }) {
                                 Image(AppAssets.helpCircle)
                                     .accessibilityLabel("Help")

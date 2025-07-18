@@ -32,8 +32,11 @@ struct AllBodyMetricsContentView: View {
                     Spacer()
                     
                     CustomToggleView(isOn: Binding(
-                        get: { scaleStore.isHeartRateEnabled },
-                        set: { scaleStore.updateHeartRateEnabled($0) }
+                        get: { isHeartRateOn },
+                        set: { newValue in
+                            isHeartRateOn = newValue
+                            onHeartRateChanged(newValue)
+                        }
                     ))
                     
                 }
