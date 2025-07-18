@@ -9,6 +9,9 @@ object HealthConnectStrings  {
     const val Description =
       "Personalize your experience and control which information is shared between Weight Gurus and Health Connect. Your privacy and data security are top priorities."
   }
+  object Loader {
+    const val loading = "Loading..."
+  }
 
   object ActionButtons {
     const val connect = "connect"

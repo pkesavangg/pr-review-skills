@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.integration.viewmodel
 
+import android.content.Intent
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
@@ -23,7 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.content.Intent
 
 /**
  * ViewModel for managing Health Connect integration state and handling user intents.
@@ -259,6 +259,7 @@ class HealthConnectViewModel @Inject constructor(
      */
     private suspend fun handleConnect(fromIncomplete: Boolean = false) {
         try {
+            dialogQueueService.showLoader("Loading...")
             healthConnectService.requestAuthorization { requestStatus ->
                 viewModelScope.launch {
                     when (requestStatus) {
@@ -284,6 +285,9 @@ class HealthConnectViewModel @Inject constructor(
             }
         } catch (e: Exception) {
         }
+        finally {
+            dialogQueueService.dismissLoader()
+        }
     }
 
     /**
@@ -291,6 +295,7 @@ class HealthConnectViewModel @Inject constructor(
      */
     private  fun handleFinish() {
       viewModelScope.launch {
+          dialogQueueService.showLoader("Loading...")
         try {
           healthConnectService.turnOnIntegration()
           navigationService.navigateBack()
@@ -299,6 +304,9 @@ class HealthConnectViewModel @Inject constructor(
             currentState.copy(errorMessage = "Failed to finish integration: ${e.message}")
           }
         }
+          finally {
+              dialogQueueService.dismissLoader()
+          }
       }
     }
 
@@ -317,28 +325,6 @@ class HealthConnectViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Removes Health Connect integration.
-     */
-    fun removeIntegration() {
-        viewModelScope.launch {
-            try {
-                val success = healthConnectService.removeHealthConnectIntegration()
-                if (success) {
-                    _state.update {
-                        it.copy(
-                            healthConnectSetupState = HealthConnectSetup.CANCEL_CONNECT,
-                            isOutOfSync = false
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                _state.update { currentState ->
-                    currentState.copy(errorMessage = "Failed to remove integration: ${e.message}")
-                }
-            }
-        }
-    }
 
     /**
      * Handles navigation back from change password screen.

@@ -107,12 +107,12 @@ struct DashboardScreen: View {
         let index = store.metricsToShow.firstIndex(of: item) ?? 0
         let isRemoved = store.isMetricRemovedInReorderedArray(at: index)
         let isSelected = store.state.ui.selectedMetricLabel == item.label
-        let verticalPadding = store.state.metrics.metricType == .twelve ? MetricCardView.twelveCardVerticalPadding : MetricCardView.fourCardVerticalPadding
+        let verticalPadding = store.state.metrics.dashboardType == .dashboard12 ? MetricCardView.twelveCardVerticalPadding : MetricCardView.fourCardVerticalPadding
 
         let card = MetricCardView(
             value: store.formattedMetricValue(for: (item.preLabel, item.value)),
             label: item.label,
-            metricType: store.state.metrics.metricType,
+            dashboardType: store.state.metrics.dashboardType,
             isEditMode: store.state.ui.isEditMode,
             isRemoved: isRemoved,
             isSelected: isSelected,
@@ -279,6 +279,13 @@ struct DashboardScreen: View {
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: false, action: {
                     selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                 })
+                
+                // Add button to switch to 12 metrics if currently showing 4 metrics
+                if store.state.metrics.dashboardType == .dashboard4 {
+                    ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: false, action: {
+                        store.switchTo12MetricsDashboard()
+                    })
+                }
             }
         }
         .padding(.bottom, .spacingLG)

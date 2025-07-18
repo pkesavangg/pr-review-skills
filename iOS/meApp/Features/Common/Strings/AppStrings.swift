@@ -72,6 +72,7 @@ struct ScaleDiscoveredSheetStrings {
 
 /// Constants for toast messages used in the app
 struct ToastStrings {
+    static let error = "Error"
     static let loginError = "Login Error"
     static let networkError = "Network Error"
     static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
@@ -120,6 +121,17 @@ struct ToastStrings {
     static let hkIntegrationSynced = "Apple Health is synced!"
     static let saveScaleError = "Error saving scale. Please restart the app and try again."
     static let restartApp = "Please restart your app and try again."
+    static let displayMetricsSaved = "Display metrics saved successfully."
+    static let errorSavingDisplayMetrics = "Failed to save display metrics."
+    static let userNameUpdated = "User name updated successfully."
+    static let errorUpdatingUserName = "Failed to update user name."
+    static let userDeleted = "User deleted successfully."
+    static let errorDeletingUser = "Failed to delete user."
+    static let scaleDeleted = "Scale deleted."
+    static let nicknameUpdated = "Nickname updated."
+    static let deleted = "Deleted"
+    static let saved = "Saved"
+    static let scaleNameUpdated = "Scale name updated."
 }
 
 /// Constants for help modal strings used in the app

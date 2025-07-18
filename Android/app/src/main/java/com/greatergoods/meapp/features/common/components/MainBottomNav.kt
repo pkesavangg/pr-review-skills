@@ -42,6 +42,7 @@ import com.greatergoods.meapp.features.dashboard.string.DashboardString
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.launch
+import android.content.Context
 
 /**
  * Stateless bottom navigation bar.
@@ -50,7 +51,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainBottomNav(
   badgeVisible: List<AppRoute> = emptyList(),
-  showAppsync: Boolean = false,
+  showAppsync: Boolean,
+  onOpenAppSync: () -> Unit
+
 ) {
   var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
   val topBackStack = LocalNavBackStack.current
@@ -86,7 +89,7 @@ fun MainBottomNav(
                 if (item.route in badgeVisible) {
                   // Dot badge
                   Box(
-                    modifier = 
+                    modifier =
                       Modifier
                         .size(8.dp)
                         .clip(CircleShape)
@@ -123,7 +126,7 @@ fun MainBottomNav(
           onClick = {
             coroutineScope.launch {
               if (item.label === DashboardString.BottomNav.appsync) {
-                startAppSyncScan(context)
+                onOpenAppSync()
               }else{
               topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
               val requiredItem =
@@ -162,6 +165,8 @@ fun Modifier.topBorder(
 @Composable
 fun MainBottomNavDemoScreenPreview() {
   MeAppTheme {
-    MainBottomNav(badgeVisible = listOf(AppRoute.Main.Dashboard))
+    MainBottomNav(badgeVisible = listOf(AppRoute.Main.Dashboard),
+                  showAppsync = false,
+                  onOpenAppSync = {})
   }
 }

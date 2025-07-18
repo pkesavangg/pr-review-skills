@@ -51,7 +51,8 @@ struct ActionListItemView: View {
             }
             .frame(height: rowHeight)
         }
-        .disabled(config.toggleBinding != nil && config.onTap == nil)
+        .disabled(config.isDisabled || (config.toggleBinding != nil && config.onTap == nil))
+        .opacity(config.isDisabled ? 0.5 : 1.0)
     }
     
     @ViewBuilder

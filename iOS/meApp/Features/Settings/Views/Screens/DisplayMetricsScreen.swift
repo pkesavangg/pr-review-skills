@@ -14,6 +14,8 @@ struct DisplayMetricsScreen: View {
     @State private var isWeightOnlyModeOn: Bool = true
     @State private var isHeartRateOn: Bool = true
     let lang = ScaleModesStrings.self
+    
+    let scale: Device
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
@@ -27,7 +29,9 @@ struct DisplayMetricsScreen: View {
                         size: .small,
                         isDisabled: false,
                         action: {
-                            scaleStore.saveDisplayMetrics()
+                            Task {
+                                await scaleStore.saveDisplayMetrics()
+                            }
                         }
                     )
                 },
@@ -42,40 +46,37 @@ struct DisplayMetricsScreen: View {
                 bannerSection()
                 descriptionSection()
                 
-                Section {
-                    ForEach($scaleStore.metrics) { $metric in
-                        ToggleListItem(
-                            isOn: $metric.isEnabled,
-                            text: metric.name,
-                            icon: metric.imagePath,
-                            isDisabled: !metric.isEnabled
-                        )
-                        .listRowBackground(theme.backgroundPrimary)
-                        .listRowInsets(EdgeInsets())
-                    }
-                    .onMove { indices, newOffset in
-                        scaleStore.metrics.move(fromOffsets: indices, toOffset: newOffset)
-                    }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-
-                Section {
-                    ForEach($scaleStore.progressMetrics) { $toggle in
-                        ToggleListItem(
-                            isOn: $toggle.isEnabled,
-                            text: toggle.name
-                        )
-                        .listRowBackground(theme.backgroundPrimary)
-                        .listRowInsets(EdgeInsets())
-                    }
-                    .onMove { indices, newOffset in
-                        scaleStore.progressMetrics.move(fromOffsets: indices, toOffset: newOffset)
-                    }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-
+                // Body Metrics Section
+                MetricsSectionView(
+                    metrics: Binding(
+                        get: { scaleStore.metrics },
+                        set: { scaleStore.updateMetrics($0) }
+                    ),
+                    onValueChanged: { scaleStore.updateDisplayMetricsValue() },
+                    onMove: { indices, newOffset in
+                        var updatedMetrics = scaleStore.metrics
+                        updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
+                        scaleStore.updateMetrics(updatedMetrics)
+                        scaleStore.updateDisplayMetricsValue()
+                    },
+                    showIcon: true
+                )
+                
+                // Progress Metrics Section
+                MetricsSectionView(
+                    metrics: Binding(
+                        get: { scaleStore.progressMetrics },
+                        set: { scaleStore.updateProgressMetrics($0) }
+                    ),
+                    onValueChanged: { scaleStore.updateDisplayMetricsValue() },
+                    onMove: { indices, newOffset in
+                        var updatedMetrics = scaleStore.progressMetrics
+                        updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
+                        scaleStore.updateProgressMetrics(updatedMetrics)
+                        scaleStore.updateDisplayMetricsValue()
+                    },
+                    showIcon: false
+                )
             }
             .scrollContentBackground(.hidden)
             .listStyle(.insetGrouped)
@@ -85,6 +86,12 @@ struct DisplayMetricsScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            Task {
+                await scaleStore.loadScale(scale)
+                scaleStore.loadDisplayMetrics()
+            }
+        }
     }
     
     // MARK: - Sections as Functions
@@ -113,6 +120,8 @@ struct DisplayMetricsScreen: View {
         .listRowInsets(EdgeInsets())
     }
     
+    // MARK: - Banner Components
+    
     private func weightOnlyBanner() -> some View {
         let commonLang = CommonStrings.self
         return NoteBox {
@@ -124,7 +133,11 @@ struct DisplayMetricsScreen: View {
                 )
                 .fontWeight(.regular)
                 Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {scaleStore.updateWeightOnlyMode()})
+                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
+                    Task {
+                        await scaleStore.handleWeightOnlyBannerAction()
+                    }
+                })
             }
         }
     }
@@ -162,8 +175,24 @@ struct DisplayMetricsScreen: View {
                     foregroundColor: iconAndLabelColor
                 )
                 Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {scaleStore.updateHeartRate()})
+                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
+                    // Toggle heart rate mode - this would need to be implemented in ScaleStore
+                    // For now, we'll use a placeholder action
+                    scaleStore.updateHeartRateEnabled(!scaleStore.isHeartRateEnabled)
+                })
             }
         }
     }
+}
+
+#Preview {
+    DisplayMetricsScreen(scale: Device(
+        id: "preview-scale-id",
+        accountId: "preview-account",
+        sku: "0412",
+        deviceName: "Preview Scale",
+        deviceType: "scale"
+    ))
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
 }

@@ -14,4 +14,6 @@ struct ScaleBluetoothStrings {
     static let permissionsTitle = "Bluetooth Permissions"
     static let bluetoothAuthorized = "Bluetooth authorized"
     static let bluetoothOn = "Bluetooth is turned on"
+    static let connected = "Connected"
+    static let notConnected = "Not Connected"
 }

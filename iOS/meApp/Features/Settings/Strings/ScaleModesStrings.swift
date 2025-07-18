@@ -34,4 +34,9 @@ struct ScaleModesStrings {
     static let weightOnlyLabel = "Weight Only: "
     static let weightOnlyBannerTitle = "A user has Weight Only Mode on"
     static let weightOnlyBannerDescription = "Only weight and BMI will be collected. You can temporarily enable All Body Metrics and/or review users from scale settings."
+    
+    // Toast Messages
+    static let preferencesSaved = "Scale mode preferences saved successfully"
+    static let preferencesFailed = "Failed to save scale mode preferences"
+    static let bodyMetricsEnabled = "Body metrics enabled successfully"
 }
