@@ -1,10 +1,12 @@
 package com.greatergoods.meapp.core.service
 
+import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.api.device.R4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
@@ -15,7 +17,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -35,20 +40,22 @@ constructor(
 
   // Internal scope for launching long-lived jobs
   private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var fetchJob: Job? = null
+
+  private val _connectionStatusMap = MutableStateFlow<Map<String, BLEStatus>>(emptyMap())
 
   private val _pairedScales = MutableStateFlow<List<Device>>(emptyList())
-  override val pairedScales = _pairedScales.asStateFlow()
+  override val pairedScales: Flow<List<Device>>
+    get() = _pairedScales.asStateFlow()
 
-  override suspend fun onDeviceUpdate(device: Device) {
-    val scale = _pairedScales.value.find { it.device?.macAddress == device.device?.macAddress }
-    if (scale != null) {
-      _pairedScales.value = _pairedScales.value.map {
-        if (it.device?.macAddress == scale.device?.macAddress) {
-          device
-        } else
-          it
+  override suspend fun onDeviceUpdate(macAddress: String?, connectionStatus: BLEStatus) {
+    macAddress?.let { macAddress ->
+      _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
+        this[macAddress] = connectionStatus
       }
     }
+    // Optionally log or handle the null case
+    // else log.warn("Received update with null MAC address")
   }
 
   override suspend fun updateDevice(device: Device) {
@@ -67,12 +74,37 @@ constructor(
     // This will be called when setAccountId is called
   }
 
-  override suspend fun getScales(accountId: String?): Flow<List<Device>> {
+  override suspend fun fetchScales(accountId: String?) {
     val resolvedAccountId = accountId ?: this.currentAccountId
     ?: throw IllegalArgumentException("No account ID provided")
 
-    val devices = deviceRepository.getDevices(resolvedAccountId)
-    return devices
+    // Cancel any previous fetch operation
+    fetchJob?.cancel()
+
+    fetchJob = repositoryScope.launch {
+      combine(
+        deviceRepository.getDevices(resolvedAccountId),
+        _connectionStatusMap,
+      ) { devices, connectionStatusMap ->
+        devices.map { device ->
+          device.copy(connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED)
+        }
+      }.collect { updatedDevices ->
+        _pairedScales.value = updatedDevices
+      }
+    }
+  }
+
+  override fun getGGBTDevices(): Flow<List<GGBTDevice>> {
+    return deviceRepository
+      .getDevices(currentAccountId!!)
+      .map { deviceList ->
+        deviceList.map { it.toGGBTDevice() }
+      }
+      .distinctUntilChanged { oldList, newList ->
+        if (oldList.size != newList.size) return@distinctUntilChanged false
+        oldList.zip(newList).all { (a, b) -> a == b }
+      }
   }
 
   /**
@@ -86,20 +118,7 @@ constructor(
     currentAccountId = accountId
     // Cancel any existing collector job
     deviceCollectionJob?.cancel()
-
-    deviceCollectionJob = repositoryScope.launch {
-      // Capture previous connection status
-      val previousStatusMap = _pairedScales.value.associateBy({ it.device?.macAddress }, { it.connectionStatus })
-
-      deviceRepository.getDevices(accountId).collect { devices ->
-        val updatedDevices = devices.map { device ->
-          val connectionStatus = previousStatusMap[device.device?.macAddress] ?: device.connectionStatus
-          device.copy(connectionStatus = connectionStatus)
-        }
-        _pairedScales.value = updatedDevices
-      }
-    }
-
+    fetchScales(accountId)
     // Sync devices from API and local DB
     syncDevices()
   }
@@ -348,6 +367,7 @@ constructor(
    */
   override suspend fun scaleExistsByBroadcastId(broadcastId: String): Boolean =
     try {
+      _pairedScales.value.any { it.device?.broadcastId == broadcastId }
       deviceRepository.deviceExistsByBroadcastId(broadcastId).first()
     } catch (e: Exception) {
       AppLog.e(tag, "Error checking scale existence by broadcast ID", e.toString())

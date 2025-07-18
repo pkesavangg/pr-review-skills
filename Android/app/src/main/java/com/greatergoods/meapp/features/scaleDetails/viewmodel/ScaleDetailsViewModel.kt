@@ -1,12 +1,14 @@
 package com.greatergoods.meapp.features.scaleDetails.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.meapp.core.config.AppConfig
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsReducer
@@ -126,12 +128,26 @@ constructor(
           confirmText = ScaleDetailsStrings.Delete,
           cancelText = ScaleDetailsStrings.Cancel,
           onConfirm = {
+            dialogQueueService.dismissCurrent()
+            dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
             viewModelScope.launch {
-              dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
-              deviceService.deleteScale(scaleId)
-              ggDeviceService.disconnectDevice(state.value.scale!!.toGGBTDevice())
+              deviceService.deleteScale(state.value.scale!!.id)
+              ggDeviceService.deleteAccount(state.value.scale!!.toGGBTDevice(), true) {
+                if (it == GGUserActionResponseType.DELETE_COMPLETED) {
+                  dialogQueueService.showToast(
+                    Toast(
+                      message = ScaleDetailsStrings.DeleteSuccessMessage,
+                    ),
+                  )
+                } else {
+                  dialogQueueService.showToast(
+                    Toast(
+                      message = ScaleDetailsStrings.DeleteErrorMessage,
+                    ),
+                  )
+                }
+              }
               dialogQueueService.dismissLoader()
-              dialogQueueService.dismissCurrent()
               navigateBack()
             }
           },

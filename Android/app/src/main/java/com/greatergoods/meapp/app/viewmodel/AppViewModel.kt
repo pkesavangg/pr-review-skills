@@ -16,13 +16,11 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
-import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
-import com.greatergoods.meapp.domain.services.IDeviceInfoService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
@@ -50,7 +48,6 @@ constructor(
   private val appRepository: IAppRepository,
   private val entryService: IEntryService,
   private val logManager: LogManager,
-  private val deviceInfoService: IDeviceInfoService,
   private val appNavigationService: IAppNavigationService,
   private val tokenManager: ITokenManager,
   private val dashboardService: IDashboardService,
@@ -97,9 +94,8 @@ constructor(
 
   private fun syncScales() {
     viewModelScope.launch {
-      deviceService.getScales().collect {
-        val ggBTDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
-        ggDeviceService.syncDevices(ggBTDevices)
+      deviceService.getGGBTDevices().collect {
+        ggDeviceService.syncDevices(it)
       }
     }
   }
@@ -303,12 +299,6 @@ constructor(
         )
       }
 
-      GGScanResponseType.DEVICE_INFO_UPDATE -> {
-        onDeviceUpdate(
-          deviceDetail = data,
-        )
-      }
-
       else -> null
     }
   }
@@ -321,7 +311,7 @@ constructor(
       val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
       if (device != null)
         deviceService.onDeviceUpdate(
-          device = device.copy(device = deviceDetail, connectionStatus = connectionStatus ?: device.connectionStatus),
+          macAddress = device.device?.macAddress, connectionStatus = connectionStatus ?: device.connectionStatus,
         )
     }
   }

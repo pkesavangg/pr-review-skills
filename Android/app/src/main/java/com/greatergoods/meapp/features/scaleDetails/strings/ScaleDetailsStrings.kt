@@ -4,6 +4,8 @@ object ScaleDetailsStrings {
   const val DeleteScaleConfirmation = "Are you sure you want to delete this scale?"
   const val Delete = "Delete"
   const val Cancel = "Cancel"
+  const val DeleteSuccessMessage = "scale deleted successfully"
+  const val DeleteErrorMessage = "Error deleting scale"
   const val DeleteLoaderMessage = "Deleting scale..."
   const val Header = "Scale Settings"
   const val Close = "Close"

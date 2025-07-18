@@ -124,17 +124,13 @@ constructor(
     viewModelScope.launch {
       if (userName == null) {
         ggDeviceService.deleteAccount(discoveredScale!!.toGGBTDevice()) {
-          if (it == GGUserActionResponseType.DELETE_COMPLETED) {
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-            handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-          }
         }
+        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+        handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
       } else {
-        val newToken = deviceService.getScaleToken()
         discoveredScale =
           discoveredScale!!.copy(
             preferences = discoveredScale!!.preferences?.copy(displayName = userName),
-            token = newToken,
           )
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
@@ -350,15 +346,11 @@ constructor(
   private fun onExit() {
     viewModelScope.launch {
       if (discoveredScale != null) {
-        deviceService.onDeviceUpdate(
-          device = discoveredScale!!,
-        )
         ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
-        ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
       }
+      ggDeviceService.resumeScan(true)
       val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
       ggDeviceService.syncDevices(pairedDevices)
-      ggDeviceService.resumeScan(false)
       navigateBack()
     }
   }
@@ -532,7 +524,6 @@ constructor(
                     ConnectionState.Success,
                   ),
                 )
-                discoveredScale = discoveredScale!!.copy(connectionStatus = BLEStatus.CONNECTED)
                 deviceService.saveScale(discoveredScale!!)
                 handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
                 handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
@@ -865,19 +856,6 @@ constructor(
     }
   }
 
-  private fun onDeviceUpdate(
-    deviceDetail: GGDeviceDetail,
-    connectionStatus: BLEStatus? = null,
-  ) {
-    viewModelScope.launch {
-      val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
-      if (device != null)
-        deviceService.onDeviceUpdate(
-          device = device.copy(device = deviceDetail, connectionStatus = connectionStatus ?: device.connectionStatus),
-        )
-    }
-  }
-
   /**
    * Callback when a new device matching the protocol is found during setup.
    * @param device The GGDeviceDetail of the new device found.
@@ -886,7 +864,7 @@ constructor(
     val ggDeviceDetail = response.data
     when (response.type) {
       GGScanResponseType.NEW_DEVICE -> {
-        if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
+        if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value && ggDeviceDetail.macAddress == "CF:E8:06:14:08:12") {
           viewModelScope.launch {
 
             if (deviceService.pairedScales.first().any { it.device?.macAddress == ggDeviceDetail.macAddress }) {

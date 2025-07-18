@@ -17,6 +17,7 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 @HiltViewModel
 class AddScaleViewModel
@@ -61,6 +62,7 @@ constructor(
     viewModelScope.launch {
       // Collect saved scales from DeviceService
       deviceService.pairedScales.collect { devices ->
+        Log.d("CHECKING", "Saved scales: ${devices.map { it.connectionStatus }}")
         handleIntent(AddScaleIntent.SetSavedScales(devices))
       }
     }
