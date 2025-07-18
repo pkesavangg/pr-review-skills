@@ -185,29 +185,14 @@ object AppPermissionsHelper {
    */
   fun getRequiredPermissionsForSetupType(
     sku: String,
-    permissionMap: GGPermissionStatusMap
+    permissionMap: GGPermissionStatusMap,
+    requiredPermissionTypes: List<String>? = null
   ): List<PermissionGroup> {
     val scaleSetupType = SCALES.find { it.sku == sku }!!.setupType
-    val requiredPermissionTypes = getRequiredPermissionTypes(scaleSetupType)
+    val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     // Build PermissionItems for only the required types
-    val items = requiredPermissionTypes.mapNotNull { type ->
-      val meta = permissionMetaMap[type] ?: return@mapNotNull null
-      val value = permissionMap[type] ?: PermissionState.NOT_DETERMINED
-      val status = when (value) {
-        PermissionState.ENABLED -> PermissionItemStatus.Granted
-        PermissionState.DISABLED, PermissionState.PERMANENTLY_DENIED -> PermissionItemStatus.Denied
-        PermissionState.NOT_REQUESTED, PermissionState.NOT_DETERMINED -> PermissionItemStatus.NotRequested
-        else -> PermissionItemStatus.NotRequested
-      }
-      PermissionItem(
-        key = type,
-        status = status,
-        enabledDescription = meta.enabledDescription,
-        disabledDescription = meta.disabledDescription,
-        group = meta.group,
-      )
-    }
+    val items = getPermissionItems(requiredPermissionTypes, permissionMap)
 
     // Group items by their group header
     val groupedItems = items.groupBy { it.group }
@@ -249,6 +234,42 @@ object AppPermissionsHelper {
   }
 
   /**
+   * Gets the required permission groups for the given permission types.
+   *
+   * @param permissionMap The permission state map
+   * @param requiredPermissionTypes The list of permission types to get groups for
+   * @return List of permission groups for the specified permission types
+   */
+  fun getRequiredPermissions(
+    permissionMap: GGPermissionStatusMap,
+    requiredPermissionTypes: List<String>
+  ): List<PermissionGroup> {
+    val items = getPermissionItems(requiredPermissionTypes, permissionMap)
+
+    // Group items by their group header
+    val groupedItems = items.groupBy { it.group }
+
+    // Define the order of groups based on the permission types
+    val groupOrder = listOf(
+      AppPermissionsScreenStrings.BluetoothHeader,
+      AppPermissionsScreenStrings.LocationHeader,
+      AppPermissionsScreenStrings.CameraHeader,
+      AppPermissionsScreenStrings.NotificationsHeader,
+      AppPermissionsScreenStrings.NetworkHeader,
+    )
+
+    // Return groups in the defined order, only including groups that have items
+    return groupOrder.mapNotNull { groupHeader ->
+      groupedItems[groupHeader]?.let { groupItems ->
+        PermissionGroup(
+          header = groupHeader,
+          items = groupItems,
+        )
+      }
+    }
+  }
+
+  /**
    * Checks if all required permissions for the given scale SKU are enabled.
    *
    * @param sku The scale SKU to check permissions for
@@ -259,12 +280,13 @@ object AppPermissionsHelper {
     permissionMap: GGPermissionStatusMap,
     sku: String? = null,
     setupType: ScaleSetupType? = null,
+    requiredPermissionTypes: List<String>? = null
   ): Boolean {
-    if(sku == null && setupType == null){
+    if (sku == null && setupType == null) {
       return false
     }
     val scaleSetupType = setupType ?: SCALES.find { it.sku == sku }!!.setupType
-    val requiredPermissionTypes = getRequiredPermissionTypes(scaleSetupType)
+    val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.all { permissionType ->
       val permissionState = permissionMap[permissionType] ?: PermissionState.NOT_DETERMINED
@@ -296,5 +318,30 @@ object AppPermissionsHelper {
   fun canRequestNotificationPermission(permissions: GGPermissionStatusMap): Boolean {
     return permissions[GGPermissionType.NOTIFICATION] != GGPermissionState.ENABLED &&
       permissions[GGPermissionType.NOTIFICATION] != GGPermissionState.PERMANENTLY_DENIED
+  }
+
+  private fun getPermissionItems(
+    requiredPermissionTypes: List<String>,
+    permissionMap: GGPermissionStatusMap
+  ): List<PermissionItem> {
+    // Build PermissionItems for only the required types
+    val items = requiredPermissionTypes.mapNotNull { type ->
+      val meta = permissionMetaMap[type] ?: return@mapNotNull null
+      val value = permissionMap[type] ?: PermissionState.NOT_DETERMINED
+      val status = when (value) {
+        PermissionState.ENABLED -> PermissionItemStatus.Granted
+        PermissionState.DISABLED, PermissionState.PERMANENTLY_DENIED -> PermissionItemStatus.Denied
+        PermissionState.NOT_REQUESTED, PermissionState.NOT_DETERMINED -> PermissionItemStatus.NotRequested
+        else -> PermissionItemStatus.NotRequested
+      }
+      PermissionItem(
+        key = type,
+        status = status,
+        enabledDescription = meta.enabledDescription,
+        disabledDescription = meta.disabledDescription,
+        group = meta.group,
+      )
+    }
+    return items
   }
 }

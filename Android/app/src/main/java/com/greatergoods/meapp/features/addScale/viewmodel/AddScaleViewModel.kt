@@ -92,6 +92,8 @@ constructor(
           },
         ),
       )
+    } else {
+      navigateToSelectedScaleSetup(sku)
     }
   }
 
