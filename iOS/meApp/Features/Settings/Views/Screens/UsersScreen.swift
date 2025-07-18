@@ -17,6 +17,7 @@ struct UsersScreen: View {
     @State private var focusedField: FocusField?
     let scale: Device
     let lang = UsersViewStrings.self
+    let loaderLang = LoaderStrings.self
     
 
 

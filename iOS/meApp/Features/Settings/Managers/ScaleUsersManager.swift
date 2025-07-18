@@ -24,6 +24,9 @@ class ScaleUsersManager: ObservableObject {
             return
         }
         
+        // Set loading state
+        state.isLoadingUsers = true
+        
         do {
             let result = await bluetoothService.getScaleUserList(for: scale)
             switch result {
@@ -37,6 +40,9 @@ class ScaleUsersManager: ObservableObject {
                 logger.log(level: .error, tag: "ScaleUsersManager", message: "Failed to fetch users: \(error)")
             }
         }
+        
+        // Clear loading state
+        state.isLoadingUsers = false
     }
 
     func refreshUserList(for scale: Device) async {

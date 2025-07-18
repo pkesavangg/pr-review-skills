@@ -140,7 +140,8 @@ class ScaleStore: ObservableObject {
     }
 
     var presentingBrowserURL: URL {
-        state.data.browserURL ?? legalURLs.greaterGoodsWebsite
+        let url = state.data.browserURL ?? legalURLs.greaterGoodsWebsite
+        return url
     }
     
     // MARK: - Reactive Bindings
@@ -173,6 +174,9 @@ class ScaleStore: ObservableObject {
                 self?.isDeviceConnected = deviceState.isDeviceConnected
                 self?.scaleTypeValue = deviceState.scaleTypeValue
                 self?.skuValue = deviceState.skuValue
+                
+                // Log connection status changes for debugging
+                self?.logger.log(level: .debug, tag: "ScaleStore", message: "Device connection status updated: \(deviceState.isDeviceConnected)")
             }
             .store(in: &cancellables)
 
@@ -183,6 +187,7 @@ class ScaleStore: ObservableObject {
                 // Update public properties for backward compatibility
                 self?.deviceUsers = usersState.deviceUsers
                 self?.currentDeviceUser = usersState.currentDeviceUser
+                self?.isLoadingUsers = usersState.isLoadingUsers
             }
             .store(in: &cancellables)
 
@@ -237,11 +242,15 @@ class ScaleStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 self?.state.data.scales = devices
+                // Update public property for backward compatibility
+                self?.scales = devices
                 
                 if let currentScale = self?.state.device.scale,
                    let updatedScale = devices.first(where: { $0.id == currentScale.id }) {
                     self?.state.device.scale = updatedScale
                     self?.state.device.isDeviceConnected = updatedScale.isConnected ?? false
+                    // Update public property for backward compatibility
+                    self?.isDeviceConnected = updatedScale.isConnected ?? false
                 }
             }
             .store(in: &cancellables)
@@ -263,6 +272,8 @@ class ScaleStore: ObservableObject {
         await dataManager.fetchScales()
         if let scale = state.device.scale {
             await deviceManager.refreshConnectionStatus()
+            // Ensure the connection status is properly updated in the UI
+            self.isDeviceConnected = state.device.isDeviceConnected
         }
     }
 
@@ -448,10 +459,17 @@ class ScaleStore: ObservableObject {
     }
 
     func openProductGuide(for sku: String) {
+        // Set the URL directly in the data manager
         dataManager.openProductGuide(for: sku)
+        
+        // Ensure the URL is set in the state immediately
+        let url = dataManager.state.browserURL
+        state.data.browserURL = url
+        self.browserURL = url
+        
+        // Show the browser
         state.ui.showTermsBrowser = true
         self.showTermsBrowser = true
-        self.browserURL = state.data.browserURL
     }
 
     func openBIAModel() {
@@ -693,6 +711,12 @@ class ScaleStore: ObservableObject {
     func getWifiMacAddressString() -> String {
         return deviceManager.wifiMacAddressValue
     }
+    
+    func copyWifiMacAddress() {
+        let macAddress = getWifiMacAddressString()
+        UIPasteboard.general.string = macAddress
+        notificationService.showToast(ToastModel(message: ToastStrings.copiedToClipboard))
+    }
 
     // MARK: - WiFi Operations
     func connectToWifiNetwork(wifiName: String) {
@@ -708,5 +732,23 @@ class ScaleStore: ObservableObject {
     func handleSetupIncompleteBannerAction() {
         logger.log(level: .info, tag: "ScaleStore", message: "Setup incomplete banner tapped - navigating to WiFi setup")
         onNavigateToWifi?()
+    }
+
+    // MARK: - Users Loader Management
+    func showUsersLoader() {
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
+    }
+
+    func hideUsersLoader() {
+        notificationService.dismissLoader()
+    }
+
+    func refreshConnectionStatus() async {
+        if let scale = state.device.scale {
+            await deviceManager.refreshConnectionStatus()
+            // Ensure the connection status is properly updated in the UI
+            self.isDeviceConnected = state.device.isDeviceConnected
+            logger.log(level: .debug, tag: "ScaleStore", message: "Connection status refreshed: \(self.isDeviceConnected)")
+        }
     }
 }

@@ -54,6 +54,7 @@ struct ScaleDeviceState {
 struct ScaleUsersState {
     var deviceUsers: [DeviceUser] = []
     var currentDeviceUser: DeviceUser? = nil
+    var isLoadingUsers: Bool = false
 }
 
 // MARK: - WiFi State

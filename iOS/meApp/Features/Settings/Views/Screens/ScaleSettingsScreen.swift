@@ -15,6 +15,9 @@ struct ScaleSettingsScreen: View {
     var scaleType: ScaleType
     let lang = ScaleSettingsStrings.self
     
+    // Timer for periodic connection status refresh
+    @State private var connectionRefreshTimer: Timer?
+    
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -61,7 +64,24 @@ struct ScaleSettingsScreen: View {
                 await scaleStore.loadScale(scale)
                 // Force refresh to ensure we have the latest data
                 await scaleStore.forceRefreshDeviceData()
+                
+                // Refresh connection status specifically
+                await scaleStore.refreshConnectionStatus()
+                
+                // Note: Users will be fetched when the users button is tapped
             }
+            
+            // Set up periodic connection status refresh
+            connectionRefreshTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+                Task {
+                    await scaleStore.refreshConnectionStatus()
+                }
+            }
+        }
+        .onDisappear {
+            // Clean up timer
+            connectionRefreshTimer?.invalidate()
+            connectionRefreshTimer = nil
         }
     }
     
@@ -137,7 +157,16 @@ struct ScaleSettingsScreen: View {
                         title: lang.users,
                         value: scaleStore.usersValue,
                         isDisabled: !scaleStore.isDeviceConnected,
-                        onTap: { router.navigate(to: .users(scale: scale)) }
+                        onTap: { 
+                            Task {
+                                // Show loader while fetching users
+                                scaleStore.showUsersLoader()
+                                await scaleStore.fetchUserList()
+                                // Hide loader and navigate
+                                scaleStore.hideUsersLoader()
+                                router.navigate(to: .users(scale: scale))
+                            }
+                        }
                     )
                 )
             }
@@ -202,6 +231,7 @@ struct ScaleSettingsScreen: View {
                     chevronType: .none
                 )
             )
+
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.datePaired,
@@ -212,7 +242,7 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.productGuide,
-                    onTap: { scaleStore.openProductGuide(for: scaleStore.skuValue) }
+                    onTap: { scaleStore.openProductGuide(for: scale.sku ?? "") }
                 )
             )
         }

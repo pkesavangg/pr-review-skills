@@ -49,7 +49,6 @@ struct ScaleBluetoothScreen: View {
         .onAppear {
             Task {
                 await scaleStore.loadScale(scale)
-                permissionsStore.updateBluetoothPermissions()
             }
         }
     }
