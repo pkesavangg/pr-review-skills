@@ -11,6 +11,7 @@ import com.greatergoods.meapp.features.forgotPasswordDialog.screen.PasswordReset
 import com.greatergoods.meapp.features.integration.components.AddHealthConnect
 import com.greatergoods.meapp.features.integration.components.MultipleDeviceConnectionScreen
 import com.greatergoods.meapp.features.integration.components.OutOfSyncScreen
+import com.greatergoods.meapp.features.scaleDetails.components.ScaleNameModal
 import com.greatergoods.meapp.features.settings.components.AccountSwitchInfoModal
 
 enum class DialogType {
@@ -24,7 +25,8 @@ enum class DialogType {
   AccucheckModal,
   OutOfSyncModal,
   MultipleDeviceConnection,
-  FinishConnect
+  FinishConnect,
+  ScaleName
 }
 
 @Composable
@@ -159,9 +161,10 @@ fun DialogHost() {
           onClose = {
             dialog.onDismiss?.invoke()
             dialogQueueViewModel.dismissCurrent()
-          }
+          },
         )
       }
+
       DialogType.MultipleDeviceConnection -> {
         MultipleDeviceConnectionScreen(
           onPrimaryAction = {
@@ -175,16 +178,28 @@ fun DialogHost() {
           onClose = {
             dialog.onDismiss?.invoke()
             dialogQueueViewModel.dismissCurrent()
-          }
+          },
         )
       }
+
       DialogType.FinishConnect -> {
-        AddHealthConnect (
+        AddHealthConnect(
           onClose = { dialogQueueViewModel.dismissCurrent() },
           onPrimaryAction = {
             dialog.onConfirm?.invoke(Unit)
             dialogQueueViewModel.dismissCurrent()
-          }
+          },
+        )
+      }
+
+      DialogType.ScaleName -> {
+        val scaleId = dialog.params["scaleId"] as? String ?: ""
+        ScaleNameModal(
+          scaleId = scaleId,
+          onDismiss = {
+            dialog.onDismiss?.let { it() }
+            dialogQueueViewModel.dismissCurrent()
+          },
         )
       }
     }

@@ -96,6 +96,9 @@ constructor(
     nickname: String,
   ): Device {
     deviceDao.updateNickname(deviceId, nickname)
+    val device = deviceDao.getDevice(deviceId)?.toDeviceDomainModel()
+    if (device != null)
+      deviceApi.editScale(deviceId, device.copy(nickname = nickname).toApiModel())
     val deviceDetails = deviceDao.getDevice(deviceId)
     return deviceDetails?.toDeviceDomainModel() ?: throw IllegalStateException("Device not found")
   }
