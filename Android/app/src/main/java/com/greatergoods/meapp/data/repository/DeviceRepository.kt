@@ -87,7 +87,7 @@ constructor(
 
   override fun getDeviceByBroadcastId(broadcastId: String): Flow<Device?> =
     flow {
-      val deviceEntity = deviceDao.getDeviceByBroadcastId(broadcastId)
+      val deviceEntity = deviceDao.getDeviceByBroadcastIdString(broadcastId)
       emit(deviceEntity?.toDeviceDomainModel())
     }
 

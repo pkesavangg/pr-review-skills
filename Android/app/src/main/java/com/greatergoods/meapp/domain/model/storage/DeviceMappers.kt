@@ -21,6 +21,7 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       identifier = device.peripheralIdentifier ?: "",
       protocolType = device.protocolType,
       broadcastId = convertIntToHex(device.broadcastId, device.deviceType),
+      broadcastIdString = device.broadcastIdString,
       password = convertIntToHex(device.password, device.deviceType),
       wifiMacAddress = device.wifiMac,
       isWifiConfigured = device.wifiMac != null,
@@ -78,6 +79,7 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       identifier = peripheralIdentifier ?: "",
       protocolType = protocolType,
       broadcastId = convertIntToHex(broadcastId, deviceType),
+      broadcastIdString = broadcastIdString,
       password = convertIntToHex(password, deviceType),
       wifiMacAddress = wifiMac,
       isWifiConfigured = wifiMac != null,
@@ -109,6 +111,7 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         deviceName = device?.deviceName,
         deviceType = deviceType, // No deviceType in GGDevice, use protocolType
         broadcastId = convertHexToInt(device?.broadcastId),
+        broadcastIdString = device?.broadcastId ?: device?.broadcastIdString,
         userNumber = userNumber?.toString(),
         protocolType = device?.protocolType,
         createdAt = createdAt, // Not present in GGDevice

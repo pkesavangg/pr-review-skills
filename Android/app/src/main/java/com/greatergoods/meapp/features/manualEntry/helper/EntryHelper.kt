@@ -231,10 +231,10 @@ object EntryHelper {
   fun GGScaleEntry.toScaleEntry(accountId: String, deviceId: String): ScaleEntry {
     val entryEntity = EntryEntity(
       accountId = accountId,
-      entryTimestamp = date.toString(), // you may want to format it properly
+      entryTimestamp = DateTimeConverter.timestampToIso(date), // you may want to format it properly
       serverTimestamp = null,
       opTimestamp = null,
-      operationType = operationType ?: "add", // default fallback
+      operationType = operationType ?: "create", // default fallback
       deviceType = protocolType,
       deviceId = deviceId,
       unit = if (unit.lowercase() == "kg") WeightUnit.KG else WeightUnit.LB,

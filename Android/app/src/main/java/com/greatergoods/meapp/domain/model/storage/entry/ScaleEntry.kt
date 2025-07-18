@@ -7,6 +7,8 @@ import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.convertToDisplay
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.convertToStored
+import java.util.UUID
+import kotlin.math.roundToInt
 
 /**
  * Represents a scale entry, combining EntryEntity and ScaleEntryWithMetrics.
@@ -26,20 +28,20 @@ data class ScaleEntry(
       operationType = entry.operationType.lowercase(),
       entryTimestamp = entry.entryTimestamp,
       weight = (scaleEntity.weight).toInt(),
-      bodyFat = scaleEntity.bodyFat,
-      muscleMass = scaleEntity.muscleMass,
-      boneMass = metrics?.boneMass,
-      water = scaleEntity.water,
-      bmi = scaleEntity.bmi,
+      bodyFat = scaleEntity.bodyFat?.roundToInt(),
+      muscleMass = scaleEntity.muscleMass?.roundToInt(),
+      boneMass = metrics?.boneMass?.roundToInt(),
+      water = scaleEntity.water?.roundToInt(),
+      bmi = scaleEntity.bmi?.roundToInt(),
       source = scaleEntity.source,
       unit = entry.unit.value,
       impedance = metrics?.impedance,
       pulse = metrics?.pulse,
-      visceralFatLevel = metrics?.visceralFatLevel,
-      subcutaneousFatPercent = metrics?.subcutaneousFatPercent,
-      proteinPercent = metrics?.proteinPercent,
-      skeletalMusclePercent = metrics?.skeletalMusclePercent,
-      bmr = metrics?.bmr,
+      visceralFatLevel = metrics?.visceralFatLevel?.roundToInt(),
+      subcutaneousFatPercent = metrics?.subcutaneousFatPercent?.roundToInt(),
+      proteinPercent = metrics?.proteinPercent?.roundToInt(),
+      skeletalMusclePercent = metrics?.skeletalMusclePercent?.roundToInt(),
+      bmr = metrics?.bmr?.roundToInt(),
       metabolicAge = metrics?.metabolicAge,
       serverTimestamp = entry.serverTimestamp,
     )
@@ -62,24 +64,24 @@ data class ScaleEntry(
         BodyScaleEntryEntity(
           id = entryId ?: 0,
           weight = scaleEntry.weight.toDouble(),
-          bodyFat = scaleEntry.bodyFat,
-          muscleMass = scaleEntry.muscleMass,
-          water = scaleEntry.water,
-          bmi = scaleEntry.bmi,
+          bodyFat = scaleEntry.bodyFat?.toDouble(),
+          muscleMass = scaleEntry.muscleMass?.toDouble(),
+          water = scaleEntry.water?.toDouble(),
+          bmi = scaleEntry.bmi?.toDouble(),
           source = scaleEntry.source,
         ).convertToDisplay()
 
       val scaleEntryMetricEntity =
         BodyScaleEntryMetricEntity(
           id = entryId ?: 0,
-          bmr = scaleEntry.bmr,
+          bmr = scaleEntry.bmr?.toDouble(),
           metabolicAge = scaleEntry.metabolicAge,
-          proteinPercent = scaleEntry.proteinPercent,
+          proteinPercent = scaleEntry.proteinPercent?.toDouble(),
           pulse = scaleEntry.pulse,
-          skeletalMusclePercent = scaleEntry.skeletalMusclePercent,
-          subcutaneousFatPercent = scaleEntry.subcutaneousFatPercent,
-          visceralFatLevel = scaleEntry.visceralFatLevel,
-          boneMass = scaleEntry.boneMass,
+          skeletalMusclePercent = scaleEntry.skeletalMusclePercent?.toDouble(),
+          subcutaneousFatPercent = scaleEntry.subcutaneousFatPercent?.toDouble(),
+          visceralFatLevel = scaleEntry.visceralFatLevel?.toDouble(),
+          boneMass = scaleEntry.boneMass?.toDouble(),
           impedance = scaleEntry.impedance,
         ).convertToDisplay()
 
@@ -94,10 +96,10 @@ data class ScaleEntry(
           accountId = accountId,
           entryTimestamp = scaleEntry.entryTimestamp,
           serverTimestamp = scaleEntry.serverTimestamp,
-          opTimestamp = null,
+          opTimestamp = scaleEntry.serverTimestamp,
           operationType = scaleEntry.operationType,
           deviceType = "scale",
-          deviceId = "manual",
+          deviceId = UUID.randomUUID().toString(),
           unit = WeightUnit.from(scaleEntry.unit),
           isSynced = true,
         )
