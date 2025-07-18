@@ -12,15 +12,15 @@ import SwiftUI
 enum SettingsRoute: Routable {
     case editProfile
     case changePassword
-    case scaleModes
-    case displayMetrics
+    case scaleModes(scale: Device)
+    case displayMetrics(scale: Device)
     case scaleNameScreen(scale: Device)
-    case users
+    case users(scale: Device)
     case wifi
     case wifiCredentials(wifiName: String)    
     case scaleBluetoothScreen(scale: Device)  
     case scaleSettings(scale: Device, scaleType: ScaleType)  
-    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts, wifiMacAddress
+    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts, wifiMacAddress(scale: Device)
 
     var body: some View {
         switch self {
@@ -32,14 +32,14 @@ enum SettingsRoute: Routable {
             MyScalesScreen()
         case .scaleSettings(let scale, let scaleType):
             ScaleSettingsScreen(scale: scale, scaleType: scaleType)
-        case .scaleModes:
-            ScaleModesScreen()
-        case .displayMetrics:
-            DisplayMetricsScreen()
+        case .scaleModes(let scale):
+            ScaleModesScreen(scale: scale)
+        case .displayMetrics(let scale):
+            DisplayMetricsScreen(scale: scale)
         case .scaleNameScreen(let scale):
             ScaleNameScreen(scale: scale)
-        case .users:
-            UsersScreen()
+        case .users(let scale):
+            UsersScreen(scale: scale)
         case .scaleBluetoothScreen(let scale):
             ScaleBluetoothScreen(scale: scale)
         case .wifi:
@@ -60,8 +60,8 @@ enum SettingsRoute: Routable {
             HelpScreen()
         case .myAccounts:
             MyAccountsScreen()
-        case .wifiMacAddress:
-            WifiMacAddressScreen()
+        case .wifiMacAddress(let scale):
+            WifiMacAddressScreen(scale: scale)
         }
     }
 }

@@ -230,7 +230,7 @@ struct MyScalesScreen: View {
                                 scaleIcon: scaleIcon(for: scale.sku),
                                 modelNumber: scale.sku ?? "----",
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
-                                status: .connected,
+                                status: scaleStore.determineConnectionStatus(for: scale),
                                 onTap: {
                                     let scaleType = determineScaleType(for: scale)
                                     router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))

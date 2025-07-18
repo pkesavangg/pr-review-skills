@@ -8,12 +8,25 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.meapp.core.config.AppConfig
+import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
+import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsReducer
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsState
 import com.greatergoods.meapp.features.scaleDetails.strings.ScaleDetailsStrings
+import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleNameDialogFormControls
+import com.greatergoods.meapp.features.scaleDetails.strings.ScaleNameDialogStrings
+import com.greatergoods.meapp.features.scaleDetails.strings.WifiMacAddressStrings
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -31,6 +44,8 @@ class ScaleDetailsViewModel
 constructor(
   private val deviceService: IDeviceService,
   private val ggDeviceService: GGDeviceService,
+  private val permissionService: GGPermissionService,
+  private val dialogUtility: IDialogUtility,
   @Assisted val scaleId: String,
 ) : BaseIntentViewModel<ScaleDetailsState, ScaleDetailsIntent>(
   reducer = ScaleDetailsReducer(),
@@ -40,7 +55,9 @@ constructor(
     fun create(scaleId: String): ScaleDetailsViewModel
   }
 
-  override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState()
+  override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState(
+    scaleNameForm = FormGroup(ScaleNameDialogFormControls.Companion.create()),
+  )
 
   override fun handleIntent(intent: ScaleDetailsIntent) {
     super.handleIntent(intent)
@@ -71,12 +88,30 @@ constructor(
 
       ScaleDetailsIntent.OpenScaleUsers -> openScaleUsers()
 
+      ScaleDetailsIntent.ShowScaleNameModal -> openScaleNameModal()
+      ScaleDetailsIntent.UpdateScaleName -> updateScaleName()
+      is ScaleDetailsIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
+      is ScaleDetailsIntent.RequestPermission -> requestPermission(
+        intent.permissionType,
+      )
+
       else -> {}
     }
   }
 
   init {
     setScaleDetails()
+    observePermissions()
+    val scaleName = state.value.scale?.nickname ?: SCALES.find { it.sku == state.value.scale?.sku }!!.productName
+    handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
+  }
+
+  private fun observePermissions() {
+    viewModelScope.launch {
+      permissionService.permissionCallBackFlow.collect {
+        handleIntent(ScaleDetailsIntent.SetPermissions(it))
+      }
+    }
   }
 
   private fun setScaleDetails() {
@@ -168,6 +203,83 @@ constructor(
         navigationService.navigateTo(AppRoute.ScaleDetails.ScaleUsers(state.value.scale!!.id))
       }
     }
+  }
+
+  /**
+   * Opens the Forgot Password modal.
+   */
+  private fun openScaleNameModal() {
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.ScaleName,
+        params = mapOf(
+          "scaleId" to scaleId,
+        ),
+      ),
+    )
+  }
+
+  /**
+   * Handles scale name update with loader and error handling.
+   * @param scaleName The scale name to update scale nickname for btwifi scale.
+   */
+  private fun updateScaleName() {
+    if (!state.value.scaleNameForm.isValid) {
+      return
+    }
+    val scaleName = state.value.scaleNameForm.controls.name.value
+    dialogQueueService.showLoader(
+      message = ScaleNameDialogStrings.LoaderMessage,
+    )
+    viewModelScope.launch {
+      try {
+        deviceService.updateScaleNickname(state.value.scale!!.id, scaleName)
+        AppLog.i("SaveScaleName", "Updated scale name: $scaleName")
+        showToast(ScaleNameDialogStrings.Toast.Success)
+        dialogQueueService.dismissCurrent()
+      } catch (e: Exception) {
+        AppLog.e("SaveScaleName", "Reset Password failed", e.toString())
+        showToast(ScaleNameDialogStrings.Toast.Error)
+      } finally {
+        dialogQueueService.dismissLoader()
+        state.value.scaleNameForm.resetForm()
+      }
+    }
+  }
+
+  /**
+   * Requests a specific permission with rationale alert using the permission service.
+   */
+  private fun requestPermission(permissionType: String) {
+    viewModelScope.launch {
+      try {
+        dialogUtility.permissionAlert(
+          permissionType = permissionType,
+          onRequest = {
+            permissionService.requestPermission(permissionType)
+          },
+        )
+      } catch (e: Exception) {
+        AppLog.e("requestPermission", "Error requesting permission ${permissionType}", e.toString())
+      }
+    }
+  }
+
+  private fun onCopyMacAddress(isCopied: Boolean) {
+    showToast(
+      message = if (isCopied) WifiMacAddressStrings.Toast.Success
+      else WifiMacAddressStrings.Toast.Error,
+    )
+  }
+
+  private fun showToast(message: String) {
+    dialogQueueService.showToast(
+      Toast(
+        title = null,
+        message = message,
+        action = null,
+      ),
+    )
   }
 
   private fun navigateBack() {

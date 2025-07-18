@@ -40,6 +40,8 @@ struct ScaleItemView: View {
             return (AppAssets.bluetooth, theme.statusIconPrimary)
         case .notConnected:
             return (AppAssets.bluetooth, theme.statusIconSecondary)
+        case .noStatus:
+            return ("", .clear) // Not used since status row is hidden
         }
     }
 
@@ -59,18 +61,21 @@ struct ScaleItemView: View {
                 Text(scaleName)
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
-                    .padding(.bottom, .spacingXS)
+                    .lineLimit(1)
+                    .padding(.bottom, status == .noStatus ? 0 : .spacingXS)
 
-                HStack(spacing: .spacingXS) {
-                    AppIconView(
-                        icon: statusIconDetails.icon,
-                        size: IconSize(width: 24, height: 24)
-                    )
-                    .foregroundColor(statusIconDetails.color)
+                if status != .noStatus {
+                    HStack(spacing: .spacingXS) {
+                        AppIconView(
+                            icon: statusIconDetails.icon,
+                            size: IconSize(width: 24, height: 24)
+                        )
+                        .foregroundColor(statusIconDetails.color)
 
-                    Text(status.displayText)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        Text(status.displayText)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                    }
                 }
             }
             

@@ -423,6 +423,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
             guard !validEntries.isEmpty else { return nil }
 
+            // Ensure we have a valid date string before parsing
+            guard !day.isEmpty else { return nil }
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
@@ -476,6 +478,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             guard !validEntries.isEmpty else { return nil }
 
             // Create date from month string (YYYY-MM) by adding "-01" to get first day of month
+            guard !month.isEmpty else { return nil }
             let dateString = "\(month)-01"
             let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
 

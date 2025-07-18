@@ -79,7 +79,7 @@ struct WifiScreen:View {
                                 .foregroundColor(theme.actionPrimary),
                             rowHeight: 48,
                             onTap: {
-                                router.navigate(to: .wifiCredentials(wifiName: connectedWifiNetwork ?? ""))
+                                router.navigate(to: .wifiCredentials(wifiName: connected))
                             },
                             verticalPadding: .zero
                         )
@@ -95,7 +95,7 @@ struct WifiScreen:View {
                     
                     wifiNetworksListView(networks: wifiNetworks)
                     
-                    ButtonView(text: lang.refresh, type: .textPrimary, size: .large, isDisabled: false, action: { scaleStore.refreshWifiNetworks() })
+                    ButtonView(text: lang.refresh, type: .textPrimary, size: .large, isDisabled: false, action: {})
                         .frame(maxWidth: .infinity, alignment: .center)
                     
                     Spacer()
@@ -111,7 +111,7 @@ struct WifiScreen:View {
                     
                     wifiNetworksListView(networks: wifiNetworks)
                     
-                    ButtonView(text: lang.refresh, type: .textPrimary, size: .large, isDisabled: false, action: { scaleStore.refreshWifiNetworks() })
+                    ButtonView(text: lang.refresh, type: .textPrimary, size: .large, isDisabled: false, action: {})
                     
                     Spacer()
                 }

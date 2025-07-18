@@ -52,8 +52,15 @@ struct ScaleSettingsScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .onAppear {
+            // Set up navigation callback for WiFi setup
+            scaleStore.onNavigateToWifi = {
+                router.navigate(to: .wifi)
+            }
+            
             Task {
                 await scaleStore.loadScale(scale)
+                // Force refresh to ensure we have the latest data
+                await scaleStore.forceRefreshDeviceData()
             }
         }
     }
@@ -71,7 +78,16 @@ struct ScaleSettingsScreen: View {
     }
     private func scaleStatusBannerSection() -> some View {
         Section {
-            ScaleStatusBanner(type: .weightOnly {})
+            if scaleStore.shouldShowWeightOnlyBanner {
+                ScaleStatusBanner(type: .weightOnly {
+                    scaleStore.handleWeightOnlyBannerAction()
+                    
+                })
+            } else if scaleStore.shouldShowSetupIncompleteBanner {
+                ScaleStatusBanner(type: .setupIncomplete {
+                    scaleStore.handleSetupIncompleteBannerAction()
+                })
+            }
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
@@ -105,7 +121,7 @@ struct ScaleSettingsScreen: View {
                         title: lang.mode,
                         value: scaleStore.modeValue.rawValue,
                         onTap: {
-                            router.navigate(to: .scaleModes)
+                            router.navigate(to: .scaleModes(scale: scale))
                         }
                     )
                 )
@@ -113,14 +129,15 @@ struct ScaleSettingsScreen: View {
                     config: ActionListItemConfig(
                         title: lang.displayMetrics,
                         value: scaleStore.displayMetricsValue,
-                        onTap: { router.navigate(to: .displayMetrics) }
+                        onTap: { router.navigate(to: .displayMetrics(scale: scale)) }
                     )
                 )
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.users,
                         value: scaleStore.usersValue,
-                        onTap: { router.navigate(to: .users) }
+                        isDisabled: !scaleStore.isDeviceConnected,
+                        onTap: { router.navigate(to: .users(scale: scale)) }
                     )
                 )
             }
@@ -150,6 +167,7 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.wifi,
                     value: scaleStore.wifiValue,
+                    isDisabled: !scaleStore.isDeviceConnected,
                     onTap: { router.navigate(to: .wifi) }
                 )
             )
@@ -157,7 +175,8 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.wifiMacAddress,
                     value: scaleStore.wifiMacAddressValue,
-                    onTap: { router.navigate(to: .wifiMacAddress) }
+                    isDisabled: !scaleStore.isDeviceConnected,
+                    onTap: { router.navigate(to: .wifiMacAddress(scale: scale)) }
                 )
             )
         }
@@ -173,7 +192,7 @@ struct ScaleSettingsScreen: View {
                     title: lang.scaleType,
                     value: scaleStore.scaleTypeValue,
                     chevronType: .none,
-                    onTap: { scaleStore.scaleTypeTapped() }
+                    onTap: {}
                 )
             )
             ActionListItemView(

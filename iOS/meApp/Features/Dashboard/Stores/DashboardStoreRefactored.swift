@@ -147,6 +147,16 @@ class DashboardStore: ObservableObject {
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
+
+        // Subscribe to dashboard type changes
+        accountService.$activeAccount
+            .compactMap { $0?.dashboardSettings?.dashboardType }
+            .removeDuplicates()
+            .dropFirst() // Skip initial value
+            .sink { [weak self] dashboardType in
+                self?.handleDashboardTypeChange()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Computed Properties
@@ -159,13 +169,13 @@ class DashboardStore: ObservableObject {
     }
 
     var metricGridColumns: [GridItem] {
-        return metricsManager.getMetricGridColumns(for: state.metrics.metricType)
+        return metricsManager.getMetricGridColumns(for: state.metrics.dashboardType)
     }
 
     var metricsToShow: [MetricItem] {
         return metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            metricType: state.metrics.metricType
+            dashboardType: state.metrics.dashboardType
         )
     }
 
@@ -403,10 +413,15 @@ class DashboardStore: ObservableObject {
     // MARK: - Dashboard Initialization
 
     private func initializeDashboard() async {
-        // Determine dashboard metric type based on R4 scale presence
-        let metricType = await dataManager.determineDashboardMetricType()
-        state.metrics.metricType = metricType
-        metricsManager.updateMetricType(metricType)
+        // Determine dashboard type based on account dashboardType
+        let dashboardType = determineDashboardTypeFromAccount()
+        state.metrics.dashboardType = dashboardType
+        metricsManager.updateDashboardType(dashboardType)
+
+        // Force update dashboard type to 12 metrics if it's currently 4 metrics
+        if dashboardType == .dashboard4 {
+            await forceUpdateDashboardTypeTo12()
+        }
 
         // Load dashboard configuration from API first
         await loadDashboardConfigurationFromAPI()
@@ -419,53 +434,55 @@ class DashboardStore: ObservableObject {
         await initializeChart()
     }
 
-
-
-    // MARK: - Dashboard Metric Type Logic
-
-    private func determineDashboardMetricType() async {
-      let hasR4Scale = await checkForR4ScaleInPairedDevices()
-      let hasR4Entries = await checkForR4ScaleEntries()
-
-      if hasR4Scale || hasR4Entries {
-          state.metrics.metricType = .twelve
-          logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metric type set to 12 (R4 scale detected)")
-      } else {
-          state.metrics.metricType = .four
-          logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metric type set to 4 (no R4 scale)")
-      }
-    }
-
-    private func checkForR4ScaleInPairedDevices() async -> Bool {
+    // MARK: - Dashboard Type Management
+    
+    /// Forces the dashboard type to be 12 metrics (3 columns) by updating the account settings
+    private func forceUpdateDashboardTypeTo12() async {
         do {
-            let devices = try await scaleService.getDevices()
-            let r4Scales = devices.filter { device in
-                let scaleType = ScaleTypeHelper.determineScaleType(for: device)
-                return scaleType == .bluetoothR4
-            }
-            return !r4Scales.isEmpty
+            logger.log(level: .info, tag: "DashboardStore", message: "Forcing dashboard type to 12 metrics")
+            
+            // Update the account settings to use 12 metrics
+            _ = try await accountService.updateDashboardType(type: .dashboard12)
+            
+            // Update the local state
+            state.metrics.dashboardType = .dashboard12
+            metricsManager.updateDashboardType(.dashboard12)
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Successfully updated dashboard type to 12 metrics")
         } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to check for R4 scales: \(error)")
-            return false
+            logger.log(level: .error, tag: "DashboardStore", message: "Failed to update dashboard type to 12 metrics: \(error)")
         }
     }
 
-    private func checkForR4ScaleEntries() async -> Bool {
-        do {
-            let entries = try await entryService.getAllEntries()
-            let r4Entries = entries.filter { entry in
-                if let source = entry.scaleEntry?.source {
-                    return source.lowercased().contains("r4") ||
-                           source.lowercased().contains("btwifi") ||
-                           source.lowercased().contains("bluetooth/wifi")
-                }
-                return false
+    /// Public method to manually switch to 12 metrics dashboard
+    func switchTo12MetricsDashboard() {
+        Task {
+            await forceUpdateDashboardTypeTo12()
+            
+            // Force UI update
+            await MainActor.run {
+                self.objectWillChange.send()
             }
-            return !r4Entries.isEmpty
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to check for R4 scale entries: \(error)")
-            return false
         }
+    }
+
+    // MARK: - Dashboard Type Logic
+
+    /// Determines dashboard type based on account dashboardType
+    private func determineDashboardTypeFromAccount() -> DashboardType {
+        guard let account = accountService.activeAccount,
+              let dashboardTypeString = account.dashboardSettings?.dashboardType else {
+            logger.log(level: .info, tag: "DashboardStore", message: "No dashboard type found in account, defaulting to 4 metrics")
+            return .dashboard4
+        }
+        
+        // Convert string to DashboardType enum
+        guard let dashboardType = DashboardType(rawValue: dashboardTypeString) else {
+            return .dashboard4
+        }
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to \(dashboardType.rawValue) (from account dashboardType)")
+        return dashboardType
     }
 
     // MARK: - Data Loading Methods
@@ -523,9 +540,6 @@ class DashboardStore: ObservableObject {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration: \(error)")
         }
     }
-
-
-
 
     // Delegate entry lifecycle to DataManager
     // MARK: - Entry Lifecycle Management
@@ -627,7 +641,6 @@ class DashboardStore: ObservableObject {
         let recentlyScrolled = lastUserScrollTime.map { Date().timeIntervalSince($0) < 2.0 } ?? false
 
         guard !recentlyScrolled else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Skipping latest entry positioning - user recently scrolled")
             return
         }
 
@@ -642,6 +655,18 @@ class DashboardStore: ObservableObject {
         Task {
             await self.updateYAxisCache()
         }
+    }
+
+    /// Handles dashboard type changes by updating the metric type and refreshing the UI
+    func handleDashboardTypeChange() {
+        let newDashboardType = determineDashboardTypeFromAccount()
+        state.metrics.dashboardType = newDashboardType
+        metricsManager.updateDashboardType(newDashboardType)
+        
+        // Force UI update to reflect the new metric type
+        objectWillChange.send()
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType)")
     }
 
     /// Handles unit changes by refreshing streak data and goal data
@@ -772,7 +797,6 @@ class DashboardStore: ObservableObject {
         // Explicitly set scroll position to latest entry date for segment change
         if let latestEntryDate = continuousOperations.map(\.date).max() {
             state.graph.xScrollPosition = latestEntryDate
-            logger.log(level: .debug, tag: "DashboardStore", message: "Set scroll position to latest entry for period change: \(latestEntryDate)")
         }
 
         // Delegate period update to graph manager
@@ -794,18 +818,28 @@ class DashboardStore: ObservableObject {
     }
 
     // Delegate chart selection to GraphManager
-    func handleChartSelection(at selectedDate: Date?) {
-        // Only handle selection if not currently scrolling
-        guard !state.graph.isScrolling else { return }
-
+    func handleChartSelection(at selectedDate: Date?) async {
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             clearSelection()
             return
         }
 
-        Task {
-            await graphManager.handleChartSelection(at: selectedDate)
+        // Use the graph manager's complete chart selection method
+        await graphManager.handleCompleteChartSelection(
+            at: selectedDate,
+            operations: continuousOperations,
+            updateMetrics: { selectedPoint in
+                try await self.metricsManager.updateMetrics(with: selectedPoint)
+            },
+            resetMetrics: {
+                self.resetMetricsToLatestEntry()
+            }
+        )
+        
+        // Force UI update
+        await MainActor.run {
+            self.objectWillChange.send()
         }
     }
 
@@ -1046,18 +1080,15 @@ class DashboardStore: ObservableObject {
     func initializeChart() {
         // Don't initialize if already done or currently scrolling
         guard !hasInitializedChart && !state.graph.isScrolling else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Skipping chart initialization - already initialized or scrolling")
             updateWeightDisplayForCurrentView()
             return
         }
 
         hasInitializedChart = true
-        logger.log(level: .debug, tag: "DashboardStore", message: "Initializing chart with latest entries")
 
         // Explicitly set scroll position to latest entry date for initial load
         if let latestEntryDate = continuousOperations.map(\.date).max() {
             state.graph.xScrollPosition = latestEntryDate
-            logger.log(level: .debug, tag: "DashboardStore", message: "Set initial scroll position to latest entry: \(latestEntryDate)")
         }
 
         // Initialize Y-axis cache

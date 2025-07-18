@@ -68,7 +68,7 @@ struct GoalSettingScreen: View {
                         // Current Weight Input (disabled for maintain)
                         MetricInputField(
                             config: TextInputConfig(
-                                label: "\(labels.currentWeight) (\(weightUnit.rawValue))",
+                                label: "\(labels.startingWeight) (\(weightUnit.rawValue))",
                                 placeholder: "0.0",
                                 inputType: .metric,
                                 errorMessage: settingsStore.goalForm.getError(for: settingsStore.goalForm.currentWeight, isMetric: weightUnit == .kg),
