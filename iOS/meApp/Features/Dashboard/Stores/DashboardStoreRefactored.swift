@@ -641,7 +641,6 @@ class DashboardStore: ObservableObject {
         let recentlyScrolled = lastUserScrollTime.map { Date().timeIntervalSince($0) < 2.0 } ?? false
 
         guard !recentlyScrolled else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Skipping latest entry positioning - user recently scrolled")
             return
         }
 
@@ -798,7 +797,6 @@ class DashboardStore: ObservableObject {
         // Explicitly set scroll position to latest entry date for segment change
         if let latestEntryDate = continuousOperations.map(\.date).max() {
             state.graph.xScrollPosition = latestEntryDate
-            logger.log(level: .debug, tag: "DashboardStore", message: "Set scroll position to latest entry for period change: \(latestEntryDate)")
         }
 
         // Delegate period update to graph manager
@@ -820,18 +818,28 @@ class DashboardStore: ObservableObject {
     }
 
     // Delegate chart selection to GraphManager
-    func handleChartSelection(at selectedDate: Date?) {
-        // Only handle selection if not currently scrolling
-        guard !state.graph.isScrolling else { return }
-
+    func handleChartSelection(at selectedDate: Date?) async {
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             clearSelection()
             return
         }
 
-        Task {
-            await graphManager.handleChartSelection(at: selectedDate)
+        // Use the graph manager's complete chart selection method
+        await graphManager.handleCompleteChartSelection(
+            at: selectedDate,
+            operations: continuousOperations,
+            updateMetrics: { selectedPoint in
+                try await self.metricsManager.updateMetrics(with: selectedPoint)
+            },
+            resetMetrics: {
+                self.resetMetricsToLatestEntry()
+            }
+        )
+        
+        // Force UI update
+        await MainActor.run {
+            self.objectWillChange.send()
         }
     }
 
@@ -1072,18 +1080,15 @@ class DashboardStore: ObservableObject {
     func initializeChart() {
         // Don't initialize if already done or currently scrolling
         guard !hasInitializedChart && !state.graph.isScrolling else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Skipping chart initialization - already initialized or scrolling")
             updateWeightDisplayForCurrentView()
             return
         }
 
         hasInitializedChart = true
-        logger.log(level: .debug, tag: "DashboardStore", message: "Initializing chart with latest entries")
 
         // Explicitly set scroll position to latest entry date for initial load
         if let latestEntryDate = continuousOperations.map(\.date).max() {
             state.graph.xScrollPosition = latestEntryDate
-            logger.log(level: .debug, tag: "DashboardStore", message: "Set initial scroll position to latest entry: \(latestEntryDate)")
         }
 
         // Initialize Y-axis cache
