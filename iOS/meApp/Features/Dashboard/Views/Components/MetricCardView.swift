@@ -4,7 +4,7 @@ struct MetricCardView: View {
     @Environment(\.appTheme) private var theme
     let value: String
     let label: String
-    let metricType: DashboardMetricType
+    let dashboardType: DashboardType
     let isEditMode: Bool
     let isRemoved: Bool
     let isSelected: Bool
@@ -74,7 +74,7 @@ struct MetricCardView: View {
         MetricCardView(
             value: "24.5",
             label: "bmi",
-            metricType: .twelve,
+            dashboardType: .dashboard12,
             isEditMode: false,
             isRemoved: false,
             isSelected: false,
@@ -88,7 +88,7 @@ struct MetricCardView: View {
         MetricCardView(
             value: "18.3",
             label: "body fat",
-            metricType: .four,
+            dashboardType: .dashboard4,
             isEditMode: false,
             isRemoved: false,
             isSelected: true,
@@ -102,7 +102,7 @@ struct MetricCardView: View {
         MetricCardView(
             value: "8",
             label: "visceral fat",
-            metricType: .twelve,
+            dashboardType: .dashboard12,
             isEditMode: true,
             isRemoved: false,
             isSelected: false,
@@ -116,7 +116,7 @@ struct MetricCardView: View {
         MetricCardView(
             value: "41.6",
             label: "muscle",
-            metricType: .four,
+            dashboardType: .dashboard4,
             isEditMode: true,
             isRemoved: true,
             isSelected: false,

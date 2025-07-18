@@ -41,7 +41,7 @@ struct ScaleModesScreen: View {
                     Group {
                         if isR4ScaleSetup {
                             Button(action: {
-                                scaleStore.handleHelp()
+                                scaleStore.openHelp()
                             }) {
                                 Image(AppAssets.helpCircle)
                                     .accessibilityLabel("Help")
@@ -82,11 +82,11 @@ struct ScaleModesScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .onAppear {
-            scaleStore.onAppear(scale: scale)
+            Task {
+                await scaleStore.loadScale(scale)
+            }
         }
-        .onChange(of: scaleStore.modeValue) {
-            scaleStore.updateModeChangeTracking()
-        }
+
     }
 }
 

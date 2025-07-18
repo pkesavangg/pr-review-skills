@@ -31,11 +31,8 @@ final class R4ScalePreference {
     var isSynced: Bool = false // Flag to check if the preference is synced with the server
 
     init(from dto: R4ScalePreferenceDTO) {
-        // Ensure we have a valid scale ID - this should never be nil in practice
-        guard let scaleId = dto.scaleId, !scaleId.isEmpty else {
-            fatalError("R4ScalePreference requires a valid scaleId")
-        }
-        self.id = scaleId
+
+        self.id = dto.scaleId ?? ""
         self.displayName = dto.displayName
         self.displayMetrics = dto.displayMetrics
         self.shouldFactoryReset = dto.shouldFactoryReset

@@ -38,4 +38,5 @@ struct ScaleModesStrings {
     // Toast Messages
     static let preferencesSaved = "Scale mode preferences saved successfully"
     static let preferencesFailed = "Failed to save scale mode preferences"
+    static let bodyMetricsEnabled = "Body metrics enabled successfully"
 }

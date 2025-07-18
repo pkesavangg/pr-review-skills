@@ -66,7 +66,10 @@ struct WifiMacAddressScreen: View {
         .onAppear {
             Task {
                 await scaleStore.loadScale(scale)
-                await scaleStore.fetchWifiMacAddress()
+                // Only fetch WiFi MAC if it's a connected R4 scale
+                if scaleStore.shouldFetchWifiMacAddress(for: scale) {
+                    await scaleStore.fetchWifiMacAddress()
+                }
             }
         }
     }

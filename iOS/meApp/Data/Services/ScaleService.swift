@@ -123,7 +123,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             throw ScaleError.deviceNotFound(id: deviceId)
         }
 
-        // Update locally and mark as unsynced - sync will handle server update
+        // Update locally first
         try await localRepository.patchScaleMeta(deviceId, metaData: metaData)
         
         // Update on server immediately

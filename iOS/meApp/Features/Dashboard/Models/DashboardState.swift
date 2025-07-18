@@ -40,32 +40,18 @@ struct UIState {
 
 // MARK: - Metrics State
 struct MetricsState {
-    var metricType: DashboardMetricType = .four
+    var dashboardType: DashboardType = .dashboard12
     var metrics: [MetricItem] = []
     var activeMetricsCount: Int = 12
 
     var metricsToShow: [MetricItem] {
-        if metricType == .four {
-            let fourLabels: Set<String> = Set(DashboardConstants.MetricType.fourScaleMetrics.compactMap { apiName in
-                // Convert API names to display labels
-                switch apiName {
-                case "bmi": return DashboardStrings.bmi
-                case "bodyFat": return DashboardStrings.bodyFat
-                case "muscleMass": return DashboardStrings.muscle
-                case "water": return DashboardStrings.water
-                default: return ""
-                }
-            })
-            return Array(metrics.prefix(activeMetricsCount)).filter { fourLabels.contains($0.label) }
-        } else {
-            // For 12-metric mode, show all metrics regardless of activeMetricsCount
-            return metrics
-        }
+        // Show only active metrics based on activeMetricsCount
+        return Array(metrics.prefix(activeMetricsCount))
     }
     
-    /// Returns grid columns configuration based on metric type
+    /// Returns grid columns configuration based on dashboard type
     var gridColumns: [GridItem] {
-        let columnCount = metricType == .four ? 
+        let columnCount = dashboardType == .dashboard4 ? 
             DashboardConstants.UI.fourMetricGridColumns : 
             DashboardConstants.UI.twelveMetricGridColumns
         

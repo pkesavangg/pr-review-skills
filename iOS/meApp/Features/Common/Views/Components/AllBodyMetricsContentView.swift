@@ -30,11 +30,15 @@ struct AllBodyMetricsContentView: View {
                     .fontWeight(.bold)
 
                     Spacer()
-
-                    CustomToggleView(isOn: $isHeartRateOn)
-                        .onChange(of: isHeartRateOn) { oldValue, newValue in
+                    
+                    CustomToggleView(isOn: Binding(
+                        get: { isHeartRateOn },
+                        set: { newValue in
+                            isHeartRateOn = newValue
                             onHeartRateChanged(newValue)
                         }
+                    ))
+                    
                 }
 
                 Text(lang.heartRateInfoDescription)
@@ -49,5 +53,7 @@ struct AllBodyMetricsContentView: View {
             }
         }
         .background(theme.backgroundSecondary)
+
+        
     }
 }
