@@ -49,9 +49,9 @@ struct BluetoothScaleSetupScreen: View {
 
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews
-            )
-
+                views: stepViews) { index in
+                    setupStore.steps[index] != .selectUser
+                }
             footerButtons
                 .padding(.spacingSM)
         }

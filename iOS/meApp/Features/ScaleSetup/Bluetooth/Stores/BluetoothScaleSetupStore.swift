@@ -88,10 +88,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
             case .selectUser:
                 // Dummy view – UI to select user number will be implemented later.
                 return AnyView(
-                    VStack(spacing: .spacingMD) {
-                        Text("Select User (Placeholder)")
-                            .fontOpenSans(.body1)
-                    }
+                    UserNumberSelectionView(selectedNumber: selectedUserNumber, onNumberSelected: { value in
+                        self.selectedUserNumber = value
+                    })
                 )
             case .connectingBluetooth:
                 return AnyView(
