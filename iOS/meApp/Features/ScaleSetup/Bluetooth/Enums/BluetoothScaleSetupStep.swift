@@ -17,8 +17,8 @@ enum BluetoothScaleSetupStep: Int, CaseIterable {
     case selectUser
     /// Device discovery & pairing in progress.
     case connectingBluetooth
-    /// Shows which user the scale is being paired to (legacy A3 flow).
-    case findUser
+    /// Educate the user to set the user number on the scale.
+    case setUser
     /// Displays *step-on* instructions while the scale syncs the first measurement.
     case stepOn
     /// Final success / completion screen.

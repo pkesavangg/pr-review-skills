@@ -47,8 +47,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
 
-    /// Flag that indicates if the scale is currently syncing the first entry.
-    @Published var syncing: Bool = true
+    /// Flag that indicates if the scale is currently synced the first entry.
+    @Published var isEntrySynced: Bool = false
 
     /// Computed helper mirroring the `backDisabled()` logic from the legacy Angular flow.
     var isBackDisabled: Bool {
@@ -56,10 +56,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
         case .intro:
             return true // Same as scaleInfo in Angular
         case .stepOn:
-            return syncing
+            return isEntrySynced
         case .setupFinished:
             return true
-        case .findUser:
+        case .setUser:
             return discoveredScale != nil
         default:
             return false
@@ -70,6 +70,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     @Published var selectedUserNumber: Int? = nil {
         didSet { updateNextEnabled() }
     }
+    @Published var bluetoothConnectionState: ConnectionState = .loading
 
     private let tag = "BluetoothScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
@@ -94,18 +95,17 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 )
             case .connectingBluetooth:
                 return AnyView(
-                    Text("connectingBluetooth (Placeholder)")
-                        .fontOpenSans(.body1)
+                    ConnectingBluetoothView(sku: scaleItem.sku, connectionState: bluetoothConnectionState) {
+                        self.retryPairing()
+                    }
                 )
-            case .findUser:
+            case .setUser:
                 return AnyView(
-                    Text("findUser (Placeholder)")
-                        .fontOpenSans(.body1)
+                    SetUserNumberView(sku: scaleItem.sku, userNumber: selectedUserNumber ?? 0)
                 )
             case .stepOn:
                 return AnyView(
-                    Text("stepOn (Placeholder)")
-                        .fontOpenSans(.body1)
+                    BtSetupStepOnView(isEntrySynced: isEntrySynced)
                 )
             case .setupFinished:
                 let lang = scaleSetupStrings.FinishViewStrings.self
@@ -198,19 +198,20 @@ final class BluetoothScaleSetupStore: ObservableObject {
         case .connectingBluetooth:
             connectionState = .loading
             pair()
-        case .findUser:
+        case .setUser:
+            break // No action needed, just show the view
             // Simulate quick progression to step-on
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s
-                self.moveToNextStep()
-                // Start syncing simulation
-                self.syncing = true
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3s fake sync
-                    self.syncing = false
-                    self.updateNextEnabled()
-                }
-            }
+//            Task { @MainActor in
+//                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s
+//                self.moveToNextStep()
+//                // Start syncing simulation
+//                self.isEntrySynced = true
+//                Task { @MainActor in
+//                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3s fake sync
+//                    self.isEntrySynced = false
+//                    self.updateNextEnabled()
+//                }
+//            }
         default:
             break
         }
@@ -259,8 +260,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
 
         self.discoveredScale = event.device
         self.discoveryEvent = event
-
-        Task { await self.saveDiscoveredScale() }
     }
 
     private func saveDiscoveredScale() async {
@@ -275,7 +274,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
             connectionState = .success
             // Advance to findUser after small delay to show success state.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                if let findIndex = self.steps.firstIndex(of: .findUser) {
+                if let findIndex = self.steps.firstIndex(of: .setUser) {
                     self.currentStepIndex = findIndex
                 }
             }
@@ -300,28 +299,36 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
 
     private func updateNextEnabled() {
-        // When we are on the permissions step we only enable "Next" once the
-        // required Bluetooth permissions are granted. For any other step the
-        // button stays enabled so the user can progress or go back.
-        guard currentStep == .permissions else {
+        switch currentStep {
+        case .permissions:
+            // Evaluate individual Bluetooth-related permissions
+            let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
+            let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+
+            // Automatically prompt for the missing permission, prioritising the core
+            // Bluetooth authorisation before the hardware switch.
+            if !bluetoothEnabled {
+                Task { await permissionsService.handlePermission(.bluetooth) }
+            } else if !bluetoothSwitchEnabled {
+                Task { await permissionsService.handlePermission(.bluetoothSwitch) }
+            }
+
+            // Enable the Next button only when both permissions are satisfied
+            isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled
+        case .selectUser:
+            // Enable next button only when user number is selected
+            isNextEnabled = selectedUserNumber != nil
+       case .connectingBluetooth:
+           // Enable next button only when connection is successful (paired)
+           isNextEnabled = connectionState == .success
+       case .stepOn:
+           // Enable next button only when entry sync is complete
+           isNextEnabled = isEntrySynced
+            
+        default:
+            // For all other steps, enable the next button
             isNextEnabled = true
-            return
         }
-
-        // Evaluate individual Bluetooth-related permissions
-        let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
-        let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-
-        // Automatically prompt for the missing permission, prioritising the core
-        // Bluetooth authorisation before the hardware switch.
-        if !bluetoothEnabled {
-            Task { await permissionsService.handlePermission(.bluetooth) }
-        } else if !bluetoothSwitchEnabled {
-            Task { await permissionsService.handlePermission(.bluetoothSwitch) }
-        }
-
-        // Enable the Next button only when both permissions are satisfied
-        isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled
     }
 
     /// Reacts to permission changes that occur while the wizard is running. If

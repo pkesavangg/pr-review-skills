@@ -721,8 +721,17 @@ struct AppAssets {
     static let userInfoScreen = "0412UserInfoScreen"
     static let wgLogo = "wgLogo"
     static let stepOnGif = "stepOnGif"
+    static let btStepOnGif = "btStepOnGif"
     static let accuCheck = "accuCheck"
     static let accuCheckTickLarge = "accuCheckTickLarge"
+    
+    // MARK: - Bluetooth Setup
+    static let setupPressUnitButtonGifName: (String) -> String = { sku in
+        "\(sku)-Setup-PressUnitButton"
+    }
+    static let setupSetUserNumberGifName: (String) -> String = { sku in
+        "\(sku)-Setup-SetUserNumber"
+    }
 }
 
 /// Constants used in the AppSync entry result confirmation card
