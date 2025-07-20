@@ -1,8 +1,5 @@
 package com.greatergoods.meapp.core.service
 
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
 import com.greatergoods.libs.healthconnect.HealthConnect
 import com.greatergoods.libs.healthconnect.enums.DataType
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
@@ -41,6 +38,9 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 
 /**
  * Implementation of Health Connect service for managing Health Connect integration.
@@ -64,6 +64,36 @@ class HealthConnectService @Inject constructor(
   // Service state
   private val tag = "HealthConnectService"
   private var isLoaded = false
+
+  // Global account ID - automatically updated when account changes
+  private var currentAccountId: String? = null
+
+  /**
+   * Initializes the service and starts observing account changes.
+   */
+  init {
+    // Start observing account changes to update global accountId
+    CoroutineScope(Dispatchers.IO).launch {
+      accountRepository.getActiveAccount().collect { account ->
+        currentAccountId = account?.id
+        AppLog.d(tag, "Account changed, updated global accountId: $currentAccountId")
+      }
+    }
+  }
+  /**
+   * Checks if there's an active account.
+   * @return true if there's an active account, false otherwise
+   */
+  private fun hasActiveAccount(): Boolean = currentAccountId != null
+
+  /**
+   * Gets the current account ID or throws an exception if none is available.
+   * @return The current account ID
+   * @throws IllegalStateException if no account is active
+   */
+  private fun requireCurrentAccountId(): String {
+    return currentAccountId ?: throw IllegalStateException("No active account found")
+  }
 
   // State flows
   private val _outOfSyncState = MutableStateFlow(false)
@@ -267,35 +297,40 @@ class HealthConnectService @Inject constructor(
   override suspend fun syncAllData(fromOutOfSync: Boolean): Boolean {
     dialogQueueService.showLoader("Syncing...")
     AppLog.i(tag, "Data syncing")
-    val activeAccount = accountRepository.getActiveAccount().first()
-    if (activeAccount != null) {
-      try {
-        val entries: List<Entry> = entryRepository.getEntriesByAccount(activeAccount.id)
-        val summaries: List<PeriodBodyScaleSummary> = entries.mapNotNull { it.toPeriodBodyScaleSummary() }
-        syncData(summaries)
-        dialogQueueService.dismissLoader()
-        if (!fromOutOfSync) {
-          dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
-        } else {
-          dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncHc))
-        }
-        return true
-      } catch (e: Exception) {
-        AppLog.e(tag, "User denied health connect permission or sync failed", e.toString())
-        dialogQueueService.dismissLoader()
-        dialogQueueService.showDialog(
-          DialogModel.Alert(
-            title = HealthConnectStrings.dataNotSynced.title,
-            message = HealthConnectStrings.dataNotSynced.message,
-            dismissText = HealthConnectStrings.ActionButtons.close,
-            onDismiss = { dialogQueueService.dismissCurrent() },
-          )
-        )
-        return false
-      } finally {
-        dialogQueueService.dismissLoader()
+
+    if (!hasActiveAccount()) {
+      AppLog.w(tag, "No active account found")
+      dialogQueueService.dismissLoader()
+      return false
+    }
+
+    val accountId = requireCurrentAccountId()
+    try {
+      val entries: List<Entry> = entryRepository.getEntriesByAccount(accountId)
+      val summaries: List<PeriodBodyScaleSummary> = entries.mapNotNull { it.toPeriodBodyScaleSummary() }
+      syncData(summaries)
+      dialogQueueService.dismissLoader()
+      if (!fromOutOfSync) {
+        dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
+      } else {
+        dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncHc))
       }
-    } else return false
+      return true
+    } catch (e: Exception) {
+      AppLog.e(tag, "User denied health connect permission or sync failed", e.toString())
+      dialogQueueService.dismissLoader()
+      dialogQueueService.showDialog(
+        DialogModel.Alert(
+          title = HealthConnectStrings.dataNotSynced.title,
+          message = HealthConnectStrings.dataNotSynced.message,
+          dismissText = HealthConnectStrings.ActionButtons.close,
+          onDismiss = { dialogQueueService.dismissCurrent() },
+        )
+      )
+      return false
+    } finally {
+      dialogQueueService.dismissLoader()
+    }
   }
 
   private suspend fun syncData(entries: List<PeriodBodyScaleSummary>) {
@@ -373,13 +408,12 @@ class HealthConnectService @Inject constructor(
 
   override suspend fun turnOnIntegration(fromMultiDevice: Boolean, isRequestNeed: Boolean) {
      try {
-      val currentAccount = accountRepository.getActiveAccount().first()
-      val accountId = currentAccount?.id
-
-      if (accountId == null) {
+      if (!hasActiveAccount()) {
         AppLog.e(tag, "No active account found")
         return
       }
+
+      val accountId = requireCurrentAccountId()
       // Get approved permissions from Health Connect
       val permissionList = getApprovedPermissionList()
       // Create integration data
@@ -390,8 +424,9 @@ class HealthConnectService @Inject constructor(
         preferences = IntegrationPreferences(scopes = permissionList),
       )
        healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
-      healthConnectRepository.saveIntegration(integration)
-      integrationRepository.updateLocalAccount()
+       healthConnectRepository.saveIntegration(integration)
+       healthConnectRepository.setHcPermissions(accountId,permissionList)
+       integrationRepository.updateLocalAccount()
       true
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to turn on integration", e.toString())
@@ -420,14 +455,17 @@ class HealthConnectService @Inject constructor(
       }
       // Get the device ID for the current integration
       val deviceId = getDeviceId()
-      val account = accountRepository.getActiveAccount().first()
-      if(account != null){
+      val accountId = currentAccountId
+      if(accountId != null){
         healthConnectRepository.removeServerHcIntegration(deviceId)
-        healthConnectRepository.setHcIntegrationStatus(account.id, false)
+        healthConnectRepository.setHcIntegrationStatus(accountId, false)
+        healthConnectRepository.updateOutOfSync(accountId,false)
+        healthConnectRepository.updateAlertSeen(accountId,true)
         // Update integrations flow
         integrationRepository.updateLocalAccount()
       }
       _outOfSyncState.value = false
+      dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.removeHC))
       AppLog.i(tag, "Successfully removed Health Connect integration")
       true
     } catch (e: Exception) {
@@ -438,8 +476,7 @@ class HealthConnectService @Inject constructor(
 
   override suspend fun clearHealthConnect(): Boolean {
     return try {
-      val currentAccount = accountRepository.getActiveAccount().first()
-      val accountId = currentAccount?.id
+      val accountId = currentAccountId
 
       if (accountId == null) {
         AppLog.w(tag, "No active account found")
@@ -489,8 +526,7 @@ class HealthConnectService @Inject constructor(
 
   override suspend fun checkPermissionChange() {
      try {
-      val currentAccount = accountRepository.getActiveAccount().first()
-      val accountId = currentAccount?.id
+      val accountId = currentAccountId
 
       if (accountId == null) {
         AppLog.w(tag, "No active account found")
@@ -520,8 +556,7 @@ class HealthConnectService @Inject constructor(
 
   override suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean): Boolean {
     return try {
-      val currentAccount = accountRepository.getActiveAccount().first()
-      val accountId = currentAccount?.id
+      val accountId = currentAccountId
 
       if (accountId == null) {
         AppLog.w(tag, "No active account found")
@@ -554,10 +589,57 @@ class HealthConnectService @Inject constructor(
     }
   }
 
+
+
+  /**
+   * Gets the list of approved permissions from Health Connect.
+   * This method returns the permissions that the user has granted to the app.
+   */
+  override suspend fun getApprovedPermissionList(): List<String> {
+    return try {
+      if (!isLoaded) {
+        AppLog.w(tag, "Health Connect service not loaded")
+        return emptyList()
+      }
+
+      val approvedPermissions = healthConnect.getApprovedPermissionList()
+      AppLog.i(tag, "Retrieved ${approvedPermissions.size} approved permissions")
+      approvedPermissions.toList()
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to get approved permission list", e.toString())
+      emptyList()
+    }
+  }
+
+  override fun syncWeightHistory() {
+    dialogQueueService.showDialog(
+      DialogModel.Confirm(
+        title = HealthConnectStrings.SyncAlert.title,
+        message = HealthConnectStrings.SyncAlert.description,
+        confirmText = HealthConnectStrings.ActionButtons.sync,
+        cancelText = HealthConnectStrings.ActionButtons.cancel,
+        onConfirm = {
+          dialogQueueService.showLoader("Removing...")
+          CoroutineScope(Dispatchers.IO).launch {
+            syncAllData()
+            dialogQueueService.dismissCurrent()
+            dialogQueueService.dismissLoader()
+            dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
+          }
+        },
+        onCancel = {
+          dialogQueueService.dismissCurrent()
+        },
+        onDismiss = {
+          dialogQueueService.dismissCurrent()
+        },
+      ),
+    )
+  }
+
   override suspend fun healthConnectOutOfSync(): Boolean {
     return try {
-      val currentAccount = accountRepository.getActiveAccount().first()
-      val accountId = currentAccount?.id
+      val accountId = currentAccountId
       if (accountId == null) {
         AppLog.w(tag, "No active account found")
         return false
@@ -630,74 +712,27 @@ class HealthConnectService @Inject constructor(
   }
 
   /**
-   * Gets the list of approved permissions from Health Connect.
-   * This method returns the permissions that the user has granted to the app.
-   */
-  override suspend fun getApprovedPermissionList(): List<String> {
-    return try {
-      if (!isLoaded) {
-        AppLog.w(tag, "Health Connect service not loaded")
-        return emptyList()
-      }
-
-      val approvedPermissions = healthConnect.getApprovedPermissionList()
-      AppLog.i(tag, "Retrieved ${approvedPermissions.size} approved permissions")
-      approvedPermissions.toList()
-    } catch (e: Exception) {
-      AppLog.e(tag, "Failed to get approved permission list", e.toString())
-      emptyList()
-    }
-  }
-
-  override fun syncWeightHistory() {
-    dialogQueueService.showDialog(
-      DialogModel.Confirm(
-        title = HealthConnectStrings.SyncAlert.title,
-        message = HealthConnectStrings.SyncAlert.description,
-        confirmText = HealthConnectStrings.ActionButtons.sync,
-        cancelText = HealthConnectStrings.ActionButtons.cancel,
-        onConfirm = {
-          dialogQueueService.showLoader("Removing...")
-          CoroutineScope(Dispatchers.IO).launch {
-            syncAllData()
-            dialogQueueService.dismissCurrent()
-            dialogQueueService.dismissLoader()
-            dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
-          }
-        },
-        onCancel = {
-          dialogQueueService.dismissCurrent()
-        },
-        onDismiss = {
-          dialogQueueService.dismissCurrent()
-        },
-      ),
-    )
-  }
-
-  /**
    * Checks Health Connect permission and shows the appropriate modal if needed.
    * This matches the Angular checkHealthConnectPermissionDisabled logic.
    */
   override suspend fun checkHealthConnectPermissionDisabled() {
     val healthConnectStatus = healthConnectStatus()
-    val currentAccount = accountRepository.getActiveAccount().first()
-    val accountId = currentAccount?.id
+    val accountId = currentAccountId
     if (accountId == null) return
     val healthConnectData = healthConnectRepository.getAccountByID(accountId)
     val isHealthConnectOpened = healthConnectData?.modalState ?: false
     val outOfSyncSession = healthConnectData?.outOfSync ?: false
-    val isIntegrated = currentAccount.isHealthConnectOn
+    val isIntegrated = integrationRepository.integrations.first()
     val isAlreadyConnected = try {
       checkIfAlreadyUsed()
     } catch (e: Exception) {
       false
     }
     val permissionStatus = checkPermissionStatus()
-    val integrationsFromServer = isIntegrated // Placeholder for server check
+    // val integrationsFromServer = isIntegrated // Placeholder for server check
     val shouldShowPopup = true // You can add your own logic for this
     // Migration: If integrated, try to turn on integration
-    if (isIntegrated) {
+    if (isIntegrated?.isHealthConnectOn == true) {
       turnOnIntegration(fromMultiDevice = true, isRequestNeed = true)
     }
     // If permission is NONE and modal was opened, reset modal state
@@ -716,7 +751,7 @@ class HealthConnectService @Inject constructor(
     // Multi-device connection check
     if ((permissionStatus == HealthConnectPermissionStatus.NONE ||
         permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
-        permissionStatus == HealthConnectPermissionStatus.ALL) && integrationsFromServer
+        permissionStatus == HealthConnectPermissionStatus.ALL)
     ) {
       val isConnect = permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
         permissionStatus == HealthConnectPermissionStatus.ALL
@@ -726,7 +761,7 @@ class HealthConnectService @Inject constructor(
       }
     }
     // Out of sync modal
-    if (permissionStatus == HealthConnectPermissionStatus.NONE && isIntegrated && !outOfSyncSession) {
+    if (permissionStatus == HealthConnectPermissionStatus.NONE && isIntegrated?.isHealthConnectOn == true && !outOfSyncSession) {
       healthConnectRepository.updateOutOfSync(accountId, true)
       healthConnectRepository.updateModalState(accountId, true)
       _outOfSyncState.value = true // Set observable for out of sync
@@ -734,24 +769,41 @@ class HealthConnectService @Inject constructor(
         dialogQueueService.showDialog(
           DialogModel.Custom(
             contentKey = DialogType.OutOfSyncModal,
+            params =
+              mapOf(
+                "onSecondaryAction" to {
+                  CoroutineScope(Dispatchers.Main).launch {
+                    dialogQueueService.showLoader(HealthConnectStrings.Loader.loading)
+                    removeHealthConnectIntegration()
+                    healthConnectRepository.updateOutOfSync(accountId, true)
+                    healthConnectRepository.updateModalState(accountId, true)
+                    dialogQueueService.dismissCurrent()
+                    dialogQueueService.dismissLoader()
+                  }
+                },
+              ),
             onConfirm = {
               dialogQueueService.dismissCurrent()
               CoroutineScope(Dispatchers.Main).launch {
-                openHealthConnect()          // ← now allowed
+                openHealthConnect()
+                healthConnectRepository.setOpen(accountId,true)// ← now allowed
                 // On confirm, you may want to reset out-of-sync state if permissions are restored
                 healthConnectRepository.updateOutOfSync(accountId, true)
-                healthConnectRepository.updateModalState(accountId, false)
-                _outOfSyncState.value = false
+                healthConnectRepository.updateModalState(accountId, true)
+                _outOfSyncState.value = true
               }
             },
             onDismiss = {
-              CoroutineScope(Dispatchers.Main).launch {
-                removeHealthConnectIntegration()
+              CoroutineScope(Dispatchers.IO).launch {
                 healthConnectRepository.updateOutOfSync(accountId, true)
-                dialogQueueService.dismissCurrent()
-              } },
+                healthConnectRepository.updateModalState(accountId, false)
+                _outOfSyncState.value = true
+              }
+              },
           ),
         )
+        healthConnectRepository.updateModalState(accountId, true)
+
       }
       return
     }
@@ -767,7 +819,7 @@ class HealthConnectService @Inject constructor(
       permissionStatus == HealthConnectPermissionStatus.ALL
     ) {
       val isModalDismissed = healthConnectData?.modalState ?: false
-      if (!isIntegrated && !isModalDismissed && !isHealthConnectOpened) {
+      if (isIntegrated?.isHealthConnectOn == false && !isModalDismissed && !isHealthConnectOpened) {
         if (shouldShowPopup) {
           dialogQueueService.showDialog(
             DialogModel.Custom(
@@ -805,7 +857,7 @@ class HealthConnectService @Inject constructor(
       }
     }
     // Install required modal (not implemented, but you can add it here)
-    if (healthConnectStatus == HealthConnectStatus.INSTALL_REQUIRED && isIntegrated) {
+    if (healthConnectStatus == HealthConnectStatus.INSTALL_REQUIRED && isIntegrated?.isHealthConnectOn == true) {
       // Show install required modal or alert
       // dialogQueueService.showDialog(...)
     }

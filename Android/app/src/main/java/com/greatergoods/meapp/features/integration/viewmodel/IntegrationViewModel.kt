@@ -61,19 +61,15 @@ class IntegrationViewModel @Inject constructor(
     override fun provideInitialState(): IntegrationState = IntegrationState()
 
     init {
-        // Subscribe to active account changes
+        // Update currentAccount variable for local use
         viewModelScope.launch {
             accountService.activeAccountFlow.collectLatest { account ->
                 currentAccount = account
+                healthConnectRepository.updateIntegrationStateFromLocalStorage()
                 AppLog.d("IntegrationViewModel", "Active account updated: ${account?.id}")
             }
         }
-        // Observe integrationState from HealthConnectRepository
-        viewModelScope.launch {
-            healthConnectRepository.integrationState.collect { newState ->
-                handleIntent(IntegrationIntent.SetIntegrations(newState.integrations))
-            }
-        }
+
         // Observe integrations from IntegrationRepository (like BehaviorSubject)
         viewModelScope.launch {
             integrationRepository.integrations.collectLatest { integrations ->
@@ -135,6 +131,12 @@ class IntegrationViewModel @Inject constructor(
           dialogQueueService.showLoader("Removing...")
           CoroutineScope(Dispatchers.IO).launch {
             healthConnectService.removeHealthConnectIntegration()
+
+            // Update local storage and sync state
+            currentAccount?.let { account ->
+              healthConnectRepository.updateHealthConnectIntegrationStatus(account.id, false)
+            }
+
             // Update UI state
             handleIntent(
               IntegrationIntent.UpdateIntegrationConnectionStatus(
@@ -200,9 +202,15 @@ class IntegrationViewModel @Inject constructor(
                     val updatedIntegrations = integrations.map { integration ->
                         if (integration.provider == IntegrationProvider.HealthConnect) {
                             val currentAccount = currentAccount
+                            // Get Health Connect status from local storage (like Angular service)
                             val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
-                            val isOutOfSync = healthConnectService.outOfSyncState.first()
+                            val healthConnectData = currentAccount?.let { account ->
+                                healthConnectRepository.getAccountByID(account.id)
+                            }
+                            val isOutOfSync = healthConnectData?.outOfSync == true
+
                             integration.copy(
+                                isConnected = isHealthConnectOn,
                                 iconRes = if (isHealthConnectOn && isOutOfSync) AppIcons.Integrations.Health_Connect_Off else AppIcons.Integrations.Health_Connect_Logo,
                             )
                         } else {
@@ -210,6 +218,10 @@ class IntegrationViewModel @Inject constructor(
                         }
                     }
                     handleIntent(IntegrationIntent.SetIntegrations(updatedIntegrations))
+
+                    // Update the HealthConnectRepository state to sync with local storage
+                    healthConnectRepository.updateIntegrationStateFromLocalStorage()
+
                     AppLog.d("IntegrationViewModel", "Loaded ${updatedIntegrations.size} integrations with status")
                     if (!skipInvalidIntegrationsCheck) {
                         val inactiveProviders = checkForInactiveIntegrations()
@@ -231,7 +243,11 @@ class IntegrationViewModel @Inject constructor(
         if (integration.provider == IntegrationProvider.HealthConnect) {
             viewModelScope.launch {
                 val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
-                val permissionList = healthConnectService.getApprovedPermissionList()
+                // Get Health Connect data from local storage (like Angular service)
+                val healthConnectData = currentAccount?.let { account ->
+                    healthConnectRepository.getAccountByID(account.id)
+                }
+                val permissionList = healthConnectData?.grantedPermissionList ?: emptyList()
                 val isOutOfSync = isHealthConnectOn && permissionList.isEmpty()
                 if (isOutOfSync) {
                     // Show out of sync alert (call HealthConnectViewModel's alert or show directly)
@@ -662,7 +678,11 @@ class IntegrationViewModel @Inject constructor(
     fun onHealthConnectIconClicked() {
         viewModelScope.launch {
             val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
-            val permissionList = healthConnectService.getApprovedPermissionList()
+            // Get Health Connect data from local storage (like Angular service)
+            val healthConnectData = currentAccount?.let { account ->
+                healthConnectRepository.getAccountByID(account.id)
+            }
+            val permissionList = healthConnectData?.grantedPermissionList ?: emptyList()
             val isOutOfSync = isHealthConnectOn && permissionList.isEmpty()
             if (isOutOfSync) {
                 showOutOfSyncAlert()

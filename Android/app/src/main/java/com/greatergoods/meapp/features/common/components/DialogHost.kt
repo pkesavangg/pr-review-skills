@@ -149,13 +149,14 @@ fun DialogHost() {
       }
 
       DialogType.OutOfSyncModal -> {
+        val secondaryAction = dialog.params["secondaryAction"] as? (() -> Unit)
         OutOfSyncScreen(
           onPrimaryAction = {
             dialog.onConfirm?.invoke(Unit)
             dialogQueueViewModel.dismissCurrent()
           },
           onSecondaryAction = {
-            dialog.onDismiss?.invoke()
+            secondaryAction?.invoke()
             dialogQueueViewModel.dismissCurrent()
           },
           onClose = {

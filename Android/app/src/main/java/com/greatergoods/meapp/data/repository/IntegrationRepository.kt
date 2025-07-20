@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 @Singleton
 class IntegrationRepository @Inject constructor(
@@ -56,6 +57,7 @@ class IntegrationRepository @Inject constructor(
       return
     }
     val account = accountRepository.getAccountFromAPI(remoteAccount.id)
+    Log.d("acountRepository", account.isHealthConnectOn.toString())
     accountRepository.updateAccountInfo(account.id, account)
     // Convert to IntegrationsSettingsEntity
     val integrationsSettings = IntegrationsSettingsEntity(

@@ -134,6 +134,30 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
     }
 
     /**
+     * Updates the open status for an account.
+     */
+    suspend fun setOpen(accountId: String, open: Boolean) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setOpen(open)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setOpen(open)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Gets the open status for an account.
+     */
+    suspend fun getOpen(accountId: String): Boolean {
+        return getData().dataMap[accountId]?.open ?: false
+    }
+
+    /**
      * Updates the modal state for an account.
      */
     suspend fun updateModalState(accountId: String, state: Boolean) {

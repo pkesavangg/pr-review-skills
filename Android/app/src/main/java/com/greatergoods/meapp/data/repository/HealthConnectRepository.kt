@@ -26,7 +26,7 @@ import javax.inject.Singleton
 class HealthConnectRepository @Inject constructor(
   private val accountRepository: IAccountRepository,
   private val healthConnectAPI: IHealthConnectAPI,
-  private val healthConnectDataStore: HealthConnectDataStore
+  private val healthConnectDataStore: HealthConnectDataStore,
 ) : IHealthConnectRepository {
 
   private val tag = "HealthConnectRepository"
@@ -35,17 +35,87 @@ class HealthConnectRepository @Inject constructor(
   private val _integrationState = MutableStateFlow(IntegrationState())
   override val integrationState: StateFlow<IntegrationState> = _integrationState
 
-  // Call this whenever the integration state changes
-  fun updateIntegrationState(newState: IntegrationState) {
+  /**
+   * Updates the integration state and optionally persists to local storage.
+   * This method should be called whenever the integration state changes.
+   */
+  override fun updateIntegrationState(newState: IntegrationState) {
     _integrationState.value = newState
-    // Optionally persist to DB or server
+    AppLog.d(tag, "Integration state updated: ${newState.integrations.size} integrations")
   }
 
-  override val accountDataFlow: Flow<Map<String, HealthConnectData>> =
-    healthConnectDataStore.healthConnectDataFlow
+  /**
+   * Updates the integration state from local storage data for the current account.
+   * This method should be called to sync the UI state with local storage.
+   */
+  override suspend fun updateIntegrationStateFromLocalStorage() {
+    try {
+      val currentAccount = accountRepository.getActiveAccount().first()
+      if (currentAccount != null) {
+        val healthConnectData = getAccountByID(currentAccount.id)
+        val isHealthConnectOn = healthConnectData?.integrated == true
+        val isOutOfSync = healthConnectData?.outOfSync == true
+        // Update the integration state with local storage data
+        val currentState = _integrationState.value
+        val updatedIntegrations = currentState.integrations.map { integration ->
+          if (integration.provider == com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider.HealthConnect) {
+            integration.copy(
+              isConnected = isHealthConnectOn,
+            )
+          } else {
+            integration
+          }
+        }
+        updateIntegrationState(currentState.copy(integrations = updatedIntegrations))
+        AppLog.d(tag, "Integration state updated from local storage - HealthConnect: connected=$isHealthConnectOn, outOfSync=$isOutOfSync")
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to update integration state from local storage", e.toString())
+    }
+  }
 
-  override val activeAccountIdFlow: Flow<String?> =
-    healthConnectDataStore.activeAccountIdFlow
+  /**
+   * Updates the Health Connect integration status in local storage and syncs the state.
+   */
+  override suspend fun updateHealthConnectIntegrationStatus(accountId: String, integrated: Boolean) {
+    try {
+      setHcIntegrationStatus(accountId, integrated)
+      updateIntegrationStateFromLocalStorage()
+      AppLog.d(tag, "Health Connect integration status updated: $integrated for account: $accountId")
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to update Health Connect integration status", e.toString())
+    }
+  }
+
+  /**
+   * Updates the out of sync status in local storage and syncs the state.
+   */
+  override suspend fun updateOutOfSyncStatus(accountId: String, outOfSync: Boolean) {
+    try {
+      updateOutOfSync(accountId, outOfSync)
+      updateIntegrationStateFromLocalStorage()
+      AppLog.d(tag, "Out of sync status updated: $outOfSync for account: $accountId")
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to update out of sync status", e.toString())
+    }
+  }
+
+  /**
+   * Observes account changes and automatically updates integration state from local storage.
+   * This method should be called to start automatic state synchronization.
+   */
+  override suspend fun observeAccountChanges() {
+    try {
+      accountRepository.getActiveAccount().collect { account ->
+        if (account != null) {
+          updateIntegrationStateFromLocalStorage()
+          AppLog.d(tag, "Account changed, updated integration state for account: ${account.id}")
+        }
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to observe account changes", e.toString())
+    }
+  }
 
   override suspend fun getAccountDataMap(): Map<String, HealthConnectData> =
     healthConnectDataStore.healthConnectData()
@@ -79,10 +149,30 @@ class HealthConnectRepository @Inject constructor(
     healthConnectDataStore.updateAlertSeen(accountId, seen)
   }
 
+  /**
+   * Updates the out of sync status for an account.
+   */
   override suspend fun updateOutOfSync(accountId: String, outOfSync: Boolean) {
     healthConnectDataStore.updateOutOfSync(accountId, outOfSync)
   }
 
+  /**
+   * Updates the open status for an account.
+   */
+  override suspend fun setOpen(accountId: String, open: Boolean) {
+    healthConnectDataStore.setOpen(accountId, open)
+  }
+
+  /**
+   * Gets the open status for an account.
+   */
+  override suspend fun getOpen(accountId: String): Boolean {
+    return healthConnectDataStore.getOpen(accountId)
+  }
+
+  /**
+   * Updates the modal state for an account.
+   */
   override suspend fun updateModalState(accountId: String, state: Boolean) {
     healthConnectDataStore.updateModalState(accountId, state)
   }
@@ -125,12 +215,14 @@ class HealthConnectRepository @Inject constructor(
         IntegratedDeviceInfo(
           operationType = IntegrationOperationType.SAVE.value,
           scopes = integrationData,
+          isCurrentDeviceDeleted = false
         ),
       )
     } catch (e: Exception) {
       syncIntegration(IntegratedDeviceInfo(
         operationType = IntegrationOperationType.SAVE.value,
         scopes = integrationData,
+        isCurrentDeviceDeleted = false
       ))
       AppLog.e(tag, "Failed to save integration: ${e.message}")
     }
@@ -213,7 +305,6 @@ class HealthConnectRepository @Inject constructor(
       if (isCurrentDeviceIntegrated !== null) {
         healthConnectAPI.removeIntegration(deviceId)
         if (currentData.integrationInfo != null) {
-          healthConnectDataStore.updateOutOfSync(account.id, true)
           healthConnectDataStore.setIntegrationInfo(
             account.id,
             IntegratedDeviceInfo(
