@@ -122,7 +122,7 @@ constructor(
     observeStepChanges()
     viewModelScope.launch {
       if (scaleId != null) {
-        discoveredScale = deviceService.getScale(scaleId)
+        discoveredScale = deviceService.pairedScales.first().find { it.id == scaleId }
       }
       handleIntent(SetCurrentStep(initialStep))
     }

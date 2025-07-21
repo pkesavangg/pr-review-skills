@@ -53,6 +53,7 @@ fun BtWifiScaleSetupScreen(
   val state by viewModel.state.collectAsState()
   BtWifiScaleSetupScreenContent(
     state = state,
+    initialStep == BtWifiSetupStep.GATHERING_NETWORK,
     onIntent = viewModel::handleIntent,
   )
 }
@@ -60,6 +61,7 @@ fun BtWifiScaleSetupScreen(
 @Composable
 fun BtWifiScaleSetupScreenContent(
   state: BtWifiScaleSetupState,
+  isFromWiFiSetup : Boolean = false,
   onIntent: (BtWifiScaleSetupIntent) -> Unit,
 ) {
   val focusManager = LocalFocusManager.current
@@ -126,8 +128,8 @@ fun BtWifiScaleSetupScreenContent(
 
         else -> null
       },
-      middleContent = when (state.currentStep) {
-        BtWifiSetupStep.SETUP_FINISHED -> {
+      middleContent = when  {
+        state.currentStep == BtWifiSetupStep.SETUP_FINISHED -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
@@ -141,7 +143,7 @@ fun BtWifiScaleSetupScreenContent(
           }
         }
 
-        BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
+       state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !isFromWiFiSetup -> {
           {
             AppButton(
               type = ButtonType.TextTertiary,
