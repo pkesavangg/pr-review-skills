@@ -132,6 +132,7 @@ struct ToastStrings {
     static let deleted = "Deleted"
     static let saved = "Saved"
     static let scaleNameUpdated = "Scale name updated."
+    static let logsSent = "Logs sent to Greater Goods"
 }
 
 /// Constants for help modal strings used in the app
@@ -588,6 +589,7 @@ struct LoaderStrings {
     static let deletingEntry = "Deleting entry..."
     static let savingScale = "Saving scale..."
     static let exiting = "Exiting..."
+    static let sendingLogs = "Sending logs..."
 }
 
 struct URLStrings {

@@ -98,6 +98,101 @@ final class LoggerService: LoggerServiceProtocol {
     public func getCurrentSessionId() -> String {
         return sessionId
     }
+
+    /// Sends logs to the server for the current account
+    public func sendLogsToServer(accountId: String? = nil, version: String = AppInfo.appVersion) async throws {
+        let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
+        guard let resolvedAccountId = resolvedAccountId else {
+            throw NSError(domain: "LoggerService", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active account found"])
+        }
+        
+        // Get logs for the account
+        let logs = try await getLogsForAccount(resolvedAccountId)
+        
+        // Format logs for API
+        let logsPayload = formatLogsForAPI(logs, version: version)
+        
+        // Send to API using LoggerApiRepository
+        let loggerAPI = LoggerApiRepository()
+        try await loggerAPI.sendLogs(logsPayload)
+        
+        // Clear logs for the account after successful upload
+        try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
+        
+        systemLogger.log(level: .info, tag: "LoggerService", message: "Successfully sent \(logs.count) logs to server for account \(resolvedAccountId) and cleared local logs")
+    }
+    
+    /// Helper method to parse additional data as string array
+    private func parseDataAsStringArray(_ data: String) -> [String]? {
+        // Try to parse as JSON array
+        guard let jsonData = data.data(using: .utf8) else { return nil }
+        
+        do {
+            if let array = try JSONSerialization.jsonObject(with: jsonData) as? [String] {
+                return array
+            }
+        } catch {
+            // If parsing fails, return nil to use as single string
+        }
+        
+        return nil
+    }
+    
+    /// Helper method to parse additional data as JSON object
+    private func parseDataAsJSON(_ data: String) -> [String: Any]? {
+        guard let jsonData = data.data(using: .utf8) else { return nil }
+        
+        do {
+            if let jsonObject = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                return jsonObject
+            }
+        } catch {
+            // If parsing fails, return nil
+        }
+        
+        return nil
+    }
+    
+    /// Formats logs for API submission with the required JSON structure
+    private func formatLogsForAPI(_ logs: [LogEntry], version: String = AppInfo.appVersion) -> LogsPayload {
+        let formattedLogs = logs.map { logEntry -> LogEntryPayload in
+            // Convert timestamp from milliseconds to ISO 8601 string
+            let date = Date(timeIntervalSince1970: TimeInterval(logEntry.timestamp) / 1000.0)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let timeString = formatter.string(from: date)
+            
+            // Create the log message in the expected format: "Tag: Message"
+            let logMessage = "\(logEntry.tag): \(logEntry.message)"
+            
+            // Create the data structure
+            let data: LogEntryData
+            if let additionalData = logEntry.data, !additionalData.isEmpty {
+                // Try to parse additional data as JSON array
+                var parsedData: [Any] = []
+                
+                if let dataArray = parseDataAsStringArray(additionalData) {
+                    parsedData = [dataArray]
+                } else {
+                    // Try to parse as JSON object or use as string
+                    if let jsonObject = parseDataAsJSON(additionalData) {
+                        parsedData = [jsonObject]
+                    } else {
+                        // Use as plain string array
+                        parsedData = [additionalData]
+                    }
+                }
+                
+                data = .array(logMessage, parsedData)
+            } else {
+                data = .string(logMessage)
+            }
+            
+            return LogEntryPayload(time: timeString, data: data)
+        }
+        
+        return LogsPayload(version: version, logs: formattedLogs)
+    }
 }
 
 // MARK: - USAGE GUIDE
