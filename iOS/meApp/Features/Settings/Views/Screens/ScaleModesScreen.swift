@@ -73,20 +73,19 @@ struct ScaleModesScreen: View {
                     scaleStore.openBIAModel()
                 },
                 onValueChanged: { scaleMode, heartRateEnabled in
-                    scaleStore.modeValue = scaleMode
-                    scaleStore.isHeartRateEnabled = heartRateEnabled
+                    scaleStore.updateModeValue(scaleMode)
+                    scaleStore.updateHeartRateEnabled(heartRateEnabled)
                 }
             )
             .padding(.horizontal, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
-        .onAppear {
-            Task {
-                await scaleStore.loadScale(scale)
-            }
+        .presentLoader(loaderData: scaleStore.loaderData)
+        .task {
+            // Load scale mode data when the screen appears
+            await scaleStore.loadScaleModeDataWithLoading(for: scale)
         }
-
     }
 }
 

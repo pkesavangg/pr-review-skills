@@ -57,7 +57,7 @@ struct ScaleSettingsScreen: View {
         .onAppear {
             // Set up navigation callback for WiFi setup
             scaleStore.onNavigateToWifi = {
-                router.navigate(to: .wifi)
+                router.navigate(to: .wifi(scale: scale))
             }
             
             Task {
@@ -68,6 +68,12 @@ struct ScaleSettingsScreen: View {
                 // Refresh connection status specifically
                 await scaleStore.refreshConnectionStatus()
                 
+                // Refresh WiFi status to ensure banner logic is correct
+                await scaleStore.refreshWifiStatus()
+                
+                // Check device info and WiFi configuration for scale SKU 0412
+                await scaleStore.checkDeviceInfoAndWifiConfiguration()
+                
                 // Note: Users will be fetched when the users button is tapped
             }
             
@@ -75,6 +81,12 @@ struct ScaleSettingsScreen: View {
             connectionRefreshTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
                 Task {
                     await scaleStore.refreshConnectionStatus()
+                    await scaleStore.refreshWifiStatus()
+                    
+                    // Periodically check device info and WiFi configuration for scale SKU 0412
+                    if scale.sku == "0412" {
+                        await scaleStore.checkDeviceInfoAndWifiConfiguration()
+                    }
                 }
             }
         }
@@ -82,6 +94,17 @@ struct ScaleSettingsScreen: View {
             // Clean up timer
             connectionRefreshTimer?.invalidate()
             connectionRefreshTimer = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Refresh WiFi status when app becomes active (e.g., returning from WiFi setup)
+            Task {
+                await scaleStore.refreshWifiStatus()
+                
+                // Check device info and WiFi configuration for scale SKU 0412 when app becomes active
+                if scale.sku == "0412" {
+                    await scaleStore.checkDeviceInfoAndWifiConfiguration()
+                }
+            }
         }
     }
     
@@ -100,8 +123,8 @@ struct ScaleSettingsScreen: View {
         Section {
             if scaleStore.shouldShowWeightOnlyBanner {
                 ScaleStatusBanner(type: .weightOnly {
-                    scaleStore.handleWeightOnlyBannerAction()
-                    
+                    // Navigate to scale modes screen where user can change their mode
+                    router.navigate(to: .scaleModes(scale: scale))
                 })
             } else if scaleStore.shouldShowSetupIncompleteBanner {
                 ScaleStatusBanner(type: .setupIncomplete {
@@ -197,7 +220,7 @@ struct ScaleSettingsScreen: View {
                     title: lang.wifi,
                     value: scaleStore.wifiValue,
                     isDisabled: !scaleStore.isDeviceConnected,
-                    onTap: { router.navigate(to: .wifi) }
+                    onTap: { router.navigate(to: .wifi(scale: scale)) }
                 )
             )
             ActionListItemView(

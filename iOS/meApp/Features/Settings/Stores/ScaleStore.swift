@@ -121,7 +121,7 @@ class ScaleStore: ObservableObject {
 
     var shouldShowSetupIncompleteBanner: Bool {
         guard let scale = state.device.scale else { return false }
-        return modesManager.shouldShowSetupIncompleteBanner(for: scale)
+        return modesManager.shouldShowSetupIncompleteBanner(for: scale, connectedWifiSSID: state.device.connectedWifiSSID)
     }
 
     var isFormValid: Bool { dataManager.isFormValid }
@@ -142,6 +142,14 @@ class ScaleStore: ObservableObject {
     var presentingBrowserURL: URL {
         let url = state.data.browserURL ?? legalURLs.greaterGoodsWebsite
         return url
+    }
+    
+    /// Loader binding for presentLoader
+    var loaderData: Binding<LoaderModel?> {
+        Binding(
+            get: { self.isLoading ? LoaderModel(text: LoaderStrings.loading) : nil },
+            set: { _ in }
+        )
     }
     
     // MARK: - Reactive Bindings
@@ -174,9 +182,7 @@ class ScaleStore: ObservableObject {
                 self?.isDeviceConnected = deviceState.isDeviceConnected
                 self?.scaleTypeValue = deviceState.scaleTypeValue
                 self?.skuValue = deviceState.skuValue
-                
-                // Log connection status changes for debugging
-                self?.logger.log(level: .debug, tag: "ScaleStore", message: "Device connection status updated: \(deviceState.isDeviceConnected)")
+
             }
             .store(in: &cancellables)
 
@@ -266,6 +272,28 @@ class ScaleStore: ObservableObject {
         
         modesManager.loadScaleModePreferences(for: scale)
         metricsManager.loadDisplayMetrics(for: scale)
+    }
+    
+    /// Loads scale mode data specifically for the ScaleModesScreen
+    func loadScaleModeData(for scale: Device) async {
+        await deviceManager.loadScale(scale)
+        modesManager.loadScaleModePreferences(for: scale)
+    }
+    
+    /// Loads scale mode data with loading state management
+    func loadScaleModeDataWithLoading(for scale: Device) async {
+        // Set loading state to show full-screen loader
+        await MainActor.run {
+            state.ui.isLoading = true
+            self.isLoading = true
+        }
+        
+        await loadScaleModeData(for: scale)
+        
+        await MainActor.run {
+            state.ui.isLoading = false
+            self.isLoading = false
+        }
     }
 
     func forceRefreshDeviceData() async {
@@ -393,9 +421,20 @@ class ScaleStore: ObservableObject {
         Task {
             do {
                 try await modesManager.saveScaleModePreferences(for: scale)
+                
+                // Ensure the scale's R4ScalePreference is updated in the store state
+                if let updatedScale = state.device.scale {
+                    updatedScale.r4ScalePreference = scale.r4ScalePreference
+                }
+                
                 notificationService.showToast(ToastModel(title: ToastStrings.success, message: ScaleModesStrings.preferencesSaved))
+                
+                // Refresh device data to ensure UI is updated
                 await forceRefreshDeviceData()
+                
+                logger.log(level: .info, tag: "ScaleStore", message: "Scale mode preferences saved successfully")
             } catch {
+                logger.log(level: .error, tag: "ScaleStore", message: "Failed to save scale mode preferences: \(error)")
                 notificationService.showToast(ToastModel(title: ToastStrings.error, message: ScaleModesStrings.preferencesFailed))
             }
             
@@ -406,9 +445,12 @@ class ScaleStore: ObservableObject {
 
     func handleWeightOnlyBannerAction()  {
         guard let scale = state.device.scale else { return }
-        Task{
-            await modesManager.handleWeightOnlyBannerAction(for: scale)
-        }
+        
+        // Navigate to scale modes screen where user can change their mode
+        logger.log(level: .info, tag: "ScaleStore", message: "Weight-only banner tapped - navigating to scale modes screen")
+        
+        // The navigation will be handled by the calling view (ScaleSettingsScreen)
+        // This method is kept for logging and potential future functionality
     }
 
     // MARK: - Metrics Management
@@ -731,7 +773,20 @@ class ScaleStore: ObservableObject {
 
     func handleSetupIncompleteBannerAction() {
         logger.log(level: .info, tag: "ScaleStore", message: "Setup incomplete banner tapped - navigating to WiFi setup")
+        
+        // Refresh WiFi status before navigating to ensure we have the latest state
+        Task {
+            await refreshWifiStatus()
+        }
+        
         onNavigateToWifi?()
+        
+        // Also refresh WiFi status after a delay to handle when user returns from WiFi setup
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            Task {
+                await self.refreshWifiStatus()
+            }
+        }
     }
 
     // MARK: - Users Loader Management
@@ -748,7 +803,59 @@ class ScaleStore: ObservableObject {
             await deviceManager.refreshConnectionStatus()
             // Ensure the connection status is properly updated in the UI
             self.isDeviceConnected = state.device.isDeviceConnected
-            logger.log(level: .debug, tag: "ScaleStore", message: "Connection status refreshed: \(self.isDeviceConnected)")
+        }
+    }
+
+    /// Refreshes the WiFi status and triggers UI update
+    func refreshWifiStatus() async {
+        if let scale = state.device.scale {
+            await deviceManager.getConnectedWifiSSID()
+            await modesManager.refreshWifiStatus(for: scale)
+            
+            // For SKU 0412, also check device info to get accurate WiFi configuration status
+            if scale.sku == "0412" {
+                await checkDeviceInfoAndWifiConfiguration()
+            }
+        }
+    }
+    
+    /// Checks device info and WiFi configuration for scale SKU 0412
+    func checkDeviceInfoAndWifiConfiguration() async {
+        guard let scale = state.device.scale,
+              scale.sku == "0412" else { return }
+        
+        do {
+            let result = await bluetoothService.getDeviceInfo(for: scale)
+            switch result {
+            case .success(let deviceInfo):
+                let isWifiConfigured = deviceInfo.isWifiConfigured
+                // Update the scale's WiFi configuration status
+                scale.isWifiConfigured = isWifiConfigured
+                logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved - WiFi configured: \(isWifiConfigured)")
+            case .failure(let error):
+                logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info: \(error)")
+            }
+        }
+    }
+    
+    /// Checks device info for all connected SKU 0412 scales to properly determine setup incomplete status
+    func checkDeviceInfoForAllR4Scales() async {
+        for scale in scales {
+            // Only check device info for connected SKU 0412 scales
+            if scale.sku == "0412" && scale.isConnected == true {
+                do {
+                    let result = await bluetoothService.getDeviceInfo(for: scale)
+                    switch result {
+                    case .success(let deviceInfo):
+                        let isWifiConfigured = deviceInfo.isWifiConfigured
+                        // Update the scale's WiFi configuration status
+                        scale.isWifiConfigured = isWifiConfigured
+                        logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved for \(scale.id) - WiFi configured: \(isWifiConfigured)")
+                    case .failure(let error):
+                        logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info for \(scale.id): \(error)")
+                    }
+                }
+            }
         }
     }
 }

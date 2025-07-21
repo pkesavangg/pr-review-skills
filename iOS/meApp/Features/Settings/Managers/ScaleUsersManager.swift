@@ -20,7 +20,6 @@ class ScaleUsersManager: ObservableObject {
     // MARK: - User Management
     func fetchUserList(for scale: Device) async {
         guard scale.isConnected == true else {
-            logger.log(level: .debug, tag: "ScaleUsersManager", message: "Scale not connected, skipping user list fetch")
             return
         }
         
@@ -33,11 +32,9 @@ class ScaleUsersManager: ObservableObject {
             case .success(let users):
                 state.deviceUsers = users
                 updateCurrentUserFromDeviceUsers(users, scale: scale)
-                logger.log(level: .debug, tag: "ScaleUsersManager", message: "Fetched \(users.count) users")
             case .failure(let error):
                 state.deviceUsers = []
                 state.currentDeviceUser = nil
-                logger.log(level: .error, tag: "ScaleUsersManager", message: "Failed to fetch users: \(error)")
             }
         }
         
@@ -51,7 +48,6 @@ class ScaleUsersManager: ObservableObject {
 
     func deleteUser(_ user: DeviceUser, from scale: Device) async throws {
         guard scale.isConnected == true else {
-            logger.log(level: .debug, tag: "ScaleUsersManager", message: "Scale not connected, skipping user deletion")
             return
         }
         
@@ -102,7 +98,6 @@ class ScaleUsersManager: ObservableObject {
 
     func updateCurrentUserName(_ newName: String, for scale: Device) async throws {
         guard scale.isConnected == true else {
-            logger.log(level: .debug, tag: "ScaleUsersManager", message: "Scale not connected, skipping user name update")
             return
         }
         
@@ -122,16 +117,18 @@ class ScaleUsersManager: ObservableObject {
         let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
         switch result {
         case .success(let response):
-            if response == .creationCompleted {
+            // Treat both creationCompleted and userSelectionInProgress as success
+            // userSelectionInProgress means the scale is waiting for user selection, which is normal
+            if response == .creationCompleted || response == .userSelectionInProgress {
                 state.currentDeviceUser = DeviceUser(
                     name: newName,
                     token: state.currentDeviceUser?.token,
                     lastActive: state.currentDeviceUser?.lastActive ?? Int(Date().timeIntervalSince1970),
                     isBodyMetricsEnabled: state.currentDeviceUser?.isBodyMetricsEnabled ?? true
                 )
-                logger.log(level: .info, tag: "ScaleUsersManager", message: "Updated user name to: \(newName)")
+                logger.log(level: .info, tag: "ScaleUsersManager", message: "Updated user name to: \(newName) (response: \(response))")
             } else {
-                logger.log(level: .error, tag: "ScaleUsersManager", message: "Failed to update user name: \(response)")
+                logger.log(level: .info, tag: "ScaleUsersManager", message: "Scale update returned unexpected response: \(response)")
                 throw ScaleUserError.userUpdateFailed
             }
         case .failure(let error):

@@ -181,9 +181,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     Group {
                         switch scaleSetupError {
                         case .maxUserReached:
-                            MaxUserListView(userList: userList)
+                            MaxUserListView(userList: userList).environmentObject(self)
                         case .duplicatesFound:
-                            DuplicateUserView()
+                            DuplicateUserView().environmentObject(self)
                         default:
                             if self.savedScale != nil {
                                 ConnectionPromptView(
@@ -223,7 +223,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 
             case .wifiPassword:
                 if let selectedNetwork = selectedWifiNetwork {
-                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork))
+                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork).environmentObject(self))
                 } else {
                     return AnyView(WifiConnectionView(
                         state: .noNetworks,
@@ -245,13 +245,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     }
                 ))
             case .customizeSettings:
-                return AnyView(CustomizeSettingsView())
+                return AnyView(CustomizeSettingsView().environmentObject(self))
             case .viewSettings:
                 return AnyView(
                     Group {
                         switch currentCustomizeSetting {
                         case .scaleUsername:
-                            DuplicateUserView(isFromCustomizeSettings: true)
+                            DuplicateUserView(isFromCustomizeSettings: true).environmentObject(self)
                         case .scaleMode:
                             ScaleModesSelectionView(
                                 selectedMode: selectedScaleMode,
@@ -1247,9 +1247,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self.connectionState = .success
                 self.errorCode = nil
                 
-                // Navigate to customize settings after success delay
+                // Update WiFi configuration status in local database
+                if let broadcastId = scale.broadcastIdString {
+                    await scaleService.updateConnectedDeviceWifiStatus(broadcastId: broadcastId, isConfigured: true)
+                    LoggerService.shared.log(level: .info, tag: tag, message: "Updated WiFi configuration status to true for broadcast ID: \(broadcastId)")
+                }
+                
+                // Check device info and WiFi configuration for scale SKU 0412
+                if scale.sku == "0412" {
+                    await checkDeviceInfoAfterWifiSetup(scale: scale)
+                }
+                
+                // Navigate back to root after success delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    self.navigateToStep(.customizeSettings)
+                    self.dismissAction?()
                 }
                 break
             default:
@@ -1267,6 +1278,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.errorCode = nil
         }
         self.resetNetworkForm()
+    }
+    
+    /// Checks device info and WiFi configuration after WiFi setup for scale SKU 0412
+    private func checkDeviceInfoAfterWifiSetup(scale: Device) async {
+        do {
+            let result = await bluetoothService.getDeviceInfo(for: scale)
+            switch result {
+            case .success(let deviceInfo):
+                let isWifiConfigured = deviceInfo.isWifiConfigured
+                LoggerService.shared.log(level: .info, tag: tag, message: "Device info after WiFi setup - WiFi configured: \(isWifiConfigured)")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info after WiFi setup: \(error)")
+            }
+        }
     }
     
     // MARK: - Device Discovery Handling

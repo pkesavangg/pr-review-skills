@@ -20,6 +20,7 @@ class ScaleDeviceManager: ObservableObject {
 
     // MARK: - Device Loading
     func loadScale(_ scale: Device) async {
+        
         state.scale = scale
         state.isBluetoothScale = scale.deviceType == "bluetooth"
         state.isDeviceConnected = scale.isConnected ?? false
@@ -70,12 +71,23 @@ class ScaleDeviceManager: ObservableObject {
 
     func refreshConnectionStatus() async {
         guard let scale = state.scale else { return }
-        
+
         do {
             let devices = try await scaleService.getDevices()
             if let updatedScale = devices.first(where: { $0.id == scale.id }) {
-                state.scale = updatedScale
-                state.isDeviceConnected = updatedScale.isConnected ?? false
+                
+                // Preserve r4ScalePreference from the current scale to avoid losing mode preferences
+                var scaleToUpdate = updatedScale
+                if let currentR4Preference = scale.r4ScalePreference {
+                    scaleToUpdate.r4ScalePreference = currentR4Preference
+                   
+                }
+                
+                state.scale = scaleToUpdate
+                state.isDeviceConnected = scaleToUpdate.isConnected ?? false
+
+                await getConnectedWifiSSID()
+                
             }
         } catch {
             logger.log(level: .error, tag: "ScaleDeviceManager", message: "Failed to refresh connection: \(error)")
@@ -136,10 +148,13 @@ class ScaleDeviceManager: ObservableObject {
             return .noStatus
         }
         
+        // For R4 scales (like SKU 0412), check WiFi configuration and weight-only mode
         if scaleType == .bluetoothR4 && scale.isConnected == true {
             let isWifiConfigured = scale.isWifiConfigured == true
             let isInWeightOnlyMode = isWeightOnlyModeEnabledByOthers(for: scale)
             
+            // Only show setup incomplete if WiFi is not configured AND not in weight-only mode
+            // If WiFi is configured, the scale is properly set up regardless of mode
             if !isWifiConfigured && !isInWeightOnlyMode {
                 return .setupIncomplete
             }
