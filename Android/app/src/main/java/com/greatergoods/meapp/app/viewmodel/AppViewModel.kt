@@ -9,6 +9,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.service.IAppNavigationService
@@ -32,6 +33,7 @@ import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -61,11 +63,13 @@ constructor(
   reducer = AppReducer(),
 ) {
   companion object {
-    private const val TAG = "AppLoaderView"
+    private const val TAG = "AppViewModel"
     private var currentAccountId: String? = null
   }
 
   override fun provideInitialState(): AppState = AppState()
+  private var canShowPopUp = true
+  private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
@@ -90,6 +94,34 @@ constructor(
       val account = accountService.getCurrentAccount()
       initLoadingData(account)
       initEvents()
+    }
+  }
+
+  override fun handleIntent(intent: AppIntent) {
+    when (intent) {
+      is AppIntent.OnPopUpConnect -> onPopUpConnect()
+
+      is AppIntent.OnPopUpDismiss -> onPopUpDismiss()
+
+      else -> {}
+    }
+    super.handleIntent(intent)
+  }
+
+  private fun onPopUpConnect() {
+    viewModelScope.launch {
+      navigationService.navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup("0412"))
+      onPopUpDismiss()
+    }
+  }
+
+  private fun onPopUpDismiss() {
+    viewModelScope.launch {
+      handleIntent(AppIntent.SetScaleDiscovered(false))
+      if (discoveredBroadcastId != null)
+        ggDeviceService.skipDevice(discoveredBroadcastId!!)
+      delay(30 * 1000)
+      canShowPopUp = true
     }
   }
 
@@ -291,22 +323,36 @@ constructor(
 
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
     val data = deviceResponse.data
-    when (deviceResponse.type) {
-      GGScanResponseType.DEVICE_CONNECTED -> {
-        onDeviceUpdate(
-          deviceDetail = data,
-          connectionStatus = BLEStatus.CONNECTED,
-        )
-      }
+    viewModelScope.launch {
 
-      GGScanResponseType.DEVICE_DISCONNECTED -> {
-        onDeviceUpdate(
-          deviceDetail = data,
-          connectionStatus = BLEStatus.DISCONNECTED,
-        )
-      }
+      when (deviceResponse.type) {
+        GGScanResponseType.NEW_DEVICE -> {
+          if (canShowPopUp && data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
+            val currentRoute = navigationService.getCurrentRoute()
+            if (currentRoute !is AppRoute.ScaleSetup) {
+              handleIntent(AppIntent.SetScaleDiscovered(true))
+              discoveredBroadcastId = data.broadcastId
+              canShowPopUp = false
+            }
+          }
+        }
 
-      else -> null
+        GGScanResponseType.DEVICE_CONNECTED -> {
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.CONNECTED,
+          )
+        }
+
+        GGScanResponseType.DEVICE_DISCONNECTED -> {
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.DISCONNECTED,
+          )
+        }
+
+        else -> null
+      }
     }
   }
 

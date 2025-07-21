@@ -26,7 +26,6 @@ import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
-import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
@@ -68,7 +67,6 @@ constructor(
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
   override val connectivityObserver: IConnectivityObserver,
-  private val entryService: IEntryService,
   private val dialogUtility: IDialogUtility,
   private val accountService: IAccountService
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
@@ -116,6 +114,7 @@ constructor(
     loadScaleInfo()
     observePermissions()
     observeStepChanges()
+    ggDeviceService.scanForPairing()
   }
 
   private fun replaceAccount(userName: String? = null) {
@@ -483,7 +482,6 @@ constructor(
         if (discoveredScale != null) {
           ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
         }
-        ggDeviceService.scanForPairing()
         startObservingDevices()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during wake up process", e.toString())
