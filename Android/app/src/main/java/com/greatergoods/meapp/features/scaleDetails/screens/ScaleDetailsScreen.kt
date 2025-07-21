@@ -1,8 +1,8 @@
 package com.greatergoods.meapp.features.scaleDetails.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -120,7 +119,7 @@ fun ScaleDetailsScreenContent(
         shouldDismissOnBackPress = true,
         isAppearanceLightStatusBars = !isSystemInDarkTheme(),
         isAppearanceLightNavigationBars = !isSystemInDarkTheme(),
-      )
+      ),
     ) {
       when (state.settingsScreenStep) {
         ScaleSettingSteps.BLUETOOTH_SETTINGS -> {
@@ -201,7 +200,9 @@ fun ScaleDetailsScreenContent(
             icon = AppIcons.Default.Exclamation,
             buttonText = ScaleDetailsStrings.SetupWifi,
             iconType = AppIconType.Danger,
-            onButtonClick = {},
+            onButtonClick = {
+              handleIntent(ScaleDetailsIntent.OpenWiFiSetup)
+            },
           )
         }
         Spacer(modifier = Modifier.height(spacing.md))

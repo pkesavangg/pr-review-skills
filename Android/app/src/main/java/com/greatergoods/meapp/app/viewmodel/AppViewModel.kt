@@ -24,6 +24,7 @@ import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.SCALES
@@ -110,7 +111,7 @@ constructor(
 
   private fun onPopUpConnect() {
     viewModelScope.launch {
-      navigationService.navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup("0412"))
+      navigationService.navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup("0412", BtWifiSetupStep.CONNECTING_BLUETOOTH))
       onPopUpDismiss()
     }
   }

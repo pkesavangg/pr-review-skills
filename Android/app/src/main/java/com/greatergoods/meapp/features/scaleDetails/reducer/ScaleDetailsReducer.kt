@@ -56,11 +56,12 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
 
   object OpenScaleUsers : ScaleDetailsIntent
   object OpenScaleDisplayMetrics : ScaleDetailsIntent
+  object OpenWiFiSetup : ScaleDetailsIntent
 
   object Back : ScaleDetailsIntent
   object ShowScaleNameModal : ScaleDetailsIntent
   object UpdateScaleName : ScaleDetailsIntent
-  data class OnCopyMacAddress(val isCopied: Boolean): ScaleDetailsIntent
+  data class OnCopyMacAddress(val isCopied: Boolean) : ScaleDetailsIntent
   data class SetScaleName(val name: String) : ScaleDetailsIntent
   data class SetPermissions(val permissions: GGPermissionStatusMap) : ScaleDetailsIntent
   data class SetSettingsScreenStep(val step: ScaleSettingSteps) : ScaleDetailsIntent

@@ -43,11 +43,13 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 @Composable
 fun BtWifiScaleSetupScreen(
   sku: String,
-  viewModel: BtWifiScaleSetupViewModel =
-    hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
-      factory.create(sku)
-    },
+  initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
+  scaleId: String? = null
 ) {
+  val viewModel: BtWifiScaleSetupViewModel =
+    hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
+      factory.create(sku, scaleId , initialStep)
+    }
   val state by viewModel.state.collectAsState()
   BtWifiScaleSetupScreenContent(
     state = state,
@@ -63,13 +65,7 @@ fun BtWifiScaleSetupScreenContent(
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
-  val dummyDuplicateUser = GGBTUser(
-    name = "Poongs 1",
-    token = "424443432323424324",
-    lastActive = 1656720000, // July 02, 2022
-    isBodyMetricsEnabled = true,
-  )
-  BtWifiScaleSetupStrings
+
 
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
@@ -237,7 +233,7 @@ fun BtWifiScaleSetupScreenContent(
               supportingImage = AppIcons.Setup.UserNameScale,
               supportingButtonLabel = BtWifiScaleSetupStrings.DuplicateUser.RestoreAccountButton,
               supportText = BtWifiScaleSetupStrings.DuplicateUser
-                .LastActive(dummyDuplicateUser.lastActive.formatTimestamp()).lowercase(),
+                .LastActive(state.duplicateUser?.lastActive?.formatTimestamp()).lowercase(),
               onSupportingButtonClick = {
                 onIntent(BtWifiScaleSetupIntent.ReplaceAccount())
               },

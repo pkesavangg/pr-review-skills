@@ -75,7 +75,7 @@ object BtWifiScaleSetupStrings {
     const val Subtitle = "Choose a new user name to proceed. Or, if this is you, restore the existing account."
     const val UsernameLabel = "User name"
     const val RestoreAccountButton = "Restore Account"
-    fun LastActive(date: String) = "last active $date"
+    fun LastActive(date: String?) = "last active $date"
   }
 
   object CustomizeSettings {
