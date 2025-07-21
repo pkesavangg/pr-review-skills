@@ -109,11 +109,12 @@ constructor(
     viewModelScope.launch {
       val scale = state.value.scale
       if (scale != null) {
+        ggDeviceService.addCacheDevice(scale.device?.broadcastId, scale)
         navigationService.navigateTo(
           AppRoute.ScaleSetup.BtWifiScaleSetup(
             scale.sku ?: "0412",
             BtWifiSetupStep.GATHERING_NETWORK,
-            scale.id,
+            scale.device?.broadcastId,
           ),
         )
       }

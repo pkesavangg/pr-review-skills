@@ -154,7 +154,7 @@ sealed class AppRoute : NavKey {
     data class BtWifiScaleSetup(
       val sku: String,
       val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
-      val scaleId: String? = null
+      val broadcastId: String? = null
     ) : ScaleSetup()
 
     @Serializable

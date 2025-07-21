@@ -7,6 +7,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
@@ -18,12 +19,14 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
+import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
@@ -111,7 +114,13 @@ constructor(
 
   private fun onPopUpConnect() {
     viewModelScope.launch {
-      navigationService.navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup("0412", BtWifiSetupStep.CONNECTING_BLUETOOTH))
+      navigationService.navigateTo(
+        AppRoute.ScaleSetup.BtWifiScaleSetup(
+          "0412",
+          BtWifiSetupStep.CONNECTING_BLUETOOTH,
+          discoveredBroadcastId,
+        ),
+      )
       onPopUpDismiss()
     }
   }
@@ -333,6 +342,7 @@ constructor(
             if (currentRoute !is AppRoute.ScaleSetup) {
               handleIntent(AppIntent.SetScaleDiscovered(true))
               discoveredBroadcastId = data.broadcastId
+              ggDeviceService.addCacheDevice(discoveredBroadcastId, customizeDevice(data))
               canShowPopUp = false
             }
           }
@@ -355,6 +365,20 @@ constructor(
         else -> null
       }
     }
+  }
+
+  private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail): GGCacheDevice {
+    val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
+    val token = deviceService.getScaleToken()
+    val device = Device(
+      device = ggDeviceDetail,
+      token = token,
+    )
+    return device.copy(
+      deviceType = ScaleSetupType.BtWifiR4.value,
+      sku = "0412",
+      preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
+    )
   }
 
   private fun saveEntry(ggEntry: List<GGScaleEntry>) {

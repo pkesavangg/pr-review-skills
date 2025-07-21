@@ -12,7 +12,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.greatergoods.meapp.features.ScaleCustomization.screens.CustomizeScaleSettings
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
@@ -44,11 +43,11 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 fun BtWifiScaleSetupScreen(
   sku: String,
   initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
-  scaleId: String? = null
+  broadcastId: String? = null
 ) {
   val viewModel: BtWifiScaleSetupViewModel =
     hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
-      factory.create(sku, scaleId , initialStep)
+      factory.create(sku, broadcastId, initialStep)
     }
   val state by viewModel.state.collectAsState()
   BtWifiScaleSetupScreenContent(

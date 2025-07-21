@@ -17,14 +17,33 @@ import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.dmdbrands.library.ggbluetooth.model.GGWifiResponse
 import com.dmdbrands.library.ggbluetooth.model.GGWifiSetupResponse
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
+import kotlin.collections.toMutableMap
 
-class GGDeviceService @Inject constructor(ggBleService: GGBLEService) : GGScanService() {
+interface GGCacheDevice
+
+class GGDeviceService @Inject constructor(
+  ggBleService: GGBLEService
+) : GGScanService() {
   override val ggBluetooth: GGBluetooth = ggBleService.ggBluetooth
   override val deviceCallbackFlow: MutableStateFlow<GGScanResponse> =
     ggBleService._deviceCallbackFlow
   override val permissionCallBackFlow: MutableStateFlow<GGPermissionStatusMap> =
     ggBleService._permissionCallbackFlow
+
+  // Generic StateFlow for device cache
+  private val _deviceCache: MutableStateFlow<Map<String, GGCacheDevice>> = MutableStateFlow(emptyMap())
+  val deviceCache: StateFlow<Map<String, GGCacheDevice>> = _deviceCache
+
+  // Function to add a device to the cache
+  fun addCacheDevice(broascastId: String?, device: GGCacheDevice) {
+    if (broascastId == null) return
+    val currentCache = _deviceCache.value
+    val updatedCache = currentCache.toMutableMap()
+    updatedCache[broascastId] = device
+    _deviceCache.value = updatedCache
+  }
 
   /**
    * Initiates the pairing process with the specified device and returns the result through the callback.
