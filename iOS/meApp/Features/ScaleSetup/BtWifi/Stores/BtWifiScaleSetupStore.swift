@@ -638,7 +638,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .scaleMetrics:
             // Preload currently saved display metrics so the customization screen accurately reflects existing configuration.
             if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
-                selectedScaleMetrics = preference.displayMetrics
+              selectedScaleMetrics = preference.displayMetrics
             } else {
                 selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
             }
@@ -1122,7 +1122,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     wifiFotaScheduleTime: 0,
                     updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
                     isTemporary: false
-                ))
+                ), scaleId: scaleID)
             }
             // Update preference properties
             scale.r4ScalePreference?.id = scaleID
@@ -1440,7 +1440,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
                     isTemporary: true
                 )
-                return R4ScalePreference(from: defaultDTO)
+              return R4ScalePreference(from: defaultDTO, scaleId: savedScale.id)
             }()
             
             // Build updated preference object
@@ -1458,7 +1458,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 isTemporary: true
             )
             
-            let updatedPreference = R4ScalePreference(from: updatedPreferenceDTO)
+            let updatedPreference = R4ScalePreference(from: updatedPreferenceDTO, scaleId: savedScale.id)
             
             // Set up timeout task
             let timeoutTask = Task { [weak self] in
