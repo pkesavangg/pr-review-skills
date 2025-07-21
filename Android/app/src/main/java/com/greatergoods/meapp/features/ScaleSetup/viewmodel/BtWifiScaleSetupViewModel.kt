@@ -355,7 +355,8 @@ constructor(
     viewModelScope.launch {
       if (discoveredScale != null) {
         deviceService.updateDevice(discoveredScale!!)
-        ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+        if (discoveredScale!!.device?.isWifiConfigured == false)
+          ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
       }
       ggDeviceService.resumeScan(true)
       val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }

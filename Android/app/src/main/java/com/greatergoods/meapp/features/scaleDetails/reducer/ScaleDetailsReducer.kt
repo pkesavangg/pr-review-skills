@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.scaleDetails.reducer
 
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
@@ -65,6 +66,7 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
   data class SetScaleName(val name: String) : ScaleDetailsIntent
   data class SetPermissions(val permissions: GGPermissionStatusMap) : ScaleDetailsIntent
   data class SetSettingsScreenStep(val step: ScaleSettingSteps) : ScaleDetailsIntent
+  data class SetScaleUsers(val users: List<GGBTUser>) : ScaleDetailsIntent
   data class RequestPermission(val permissionType: String) : ScaleDetailsIntent
 }
 

@@ -237,6 +237,9 @@ fun ScaleDetailsScreenContent(
                   title = ScaleDetailsStrings.Users,
                   type = SettingsItemType.Action(device?.preferences?.displayName ?: ""),
                   enabled = isConnected,
+                  onClick = {
+                    handleIntent(ScaleDetailsIntent.OpenScaleUsers)
+                  },
                 ),
               )
             }
