@@ -279,6 +279,7 @@ class BottomTabBarViewModel: ObservableObject {
               !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
+              event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
               !event.deviceInfo.sku.isEmpty else {
             return false
         }

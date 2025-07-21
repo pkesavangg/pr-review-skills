@@ -873,7 +873,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         // Handle single entry
         if let weightEntry = entriesData as? GGEntry {
             let entry = convertGGEntry(weightEntry)
-            guard let entry = entry, !isSetupInProgress else {
+            guard let entry = entry else {
                 return
             }
             try? await entryService.saveNewEntry(entry)
@@ -881,12 +881,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         } else if let entryList = entriesData as? GGEntryList {
             // Handle multiple entries
             let entries = entryList.list.compactMap { convertGGEntry($0) }
-            if !isSetupInProgress {
-                for entry in entries {
-                    try? await entryService.saveNewEntry(entry)
-                }
+            for entry in entries {
+                try? await entryService.saveNewEntry(entry)
             }
-            
             if !entries.isEmpty {
                 newEntryReceivedSubject.send(entries[0])
             }
