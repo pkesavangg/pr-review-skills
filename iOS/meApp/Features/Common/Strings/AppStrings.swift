@@ -133,6 +133,9 @@ struct ToastStrings {
     static let saved = "Saved"
     static let scaleNameUpdated = "Scale name updated."
     static let logsSent = "Logs sent to Greater Goods"
+    static let synced = "Entries successfully resynced."
+    static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
+    static let resyncErrorTitle = "Not Connected to Wi-Fi"
 }
 
 /// Constants for help modal strings used in the app
@@ -590,6 +593,7 @@ struct LoaderStrings {
     static let savingScale = "Saving scale..."
     static let exiting = "Exiting..."
     static let sendingLogs = "Sending logs..."
+    static let resync = "Resyncing Data..."
 }
 
 struct URLStrings {
