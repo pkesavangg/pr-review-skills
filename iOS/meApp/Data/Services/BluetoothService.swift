@@ -280,7 +280,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 macAddress: device.mac ?? ""
             )
         }
-        print("Syncing devices: \(ggDevices.map { $0.broadcastId })",  ggDevices.map { $0.userNumber }, ggDevices.map { $0.password })
         ggBleSDK.syncDevices(ggDevices)
     }
     
@@ -874,7 +873,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         // Handle single entry
         if let weightEntry = entriesData as? GGEntry {
             let entry = convertGGEntry(weightEntry)
-            guard let entry = entry else {
+            guard let entry = entry, !isSetupInProgress else {
                 return
             }
             try? await entryService.saveNewEntry(entry)
@@ -882,9 +881,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         } else if let entryList = entriesData as? GGEntryList {
             // Handle multiple entries
             let entries = entryList.list.compactMap { convertGGEntry($0) }
-            for entry in entries {
-                try? await entryService.saveNewEntry(entry)
+            if !isSetupInProgress {
+                for entry in entries {
+                    try? await entryService.saveNewEntry(entry)
+                }
             }
+            
             if !entries.isEmpty {
                 newEntryReceivedSubject.send(entries[0])
             }
@@ -896,7 +898,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
             return nil
         }
-        
         // Create timestamp in ISO8601 format
         let entryDate = ggEntry.date != nil ?
         Date(timeIntervalSince1970: TimeInterval(ggEntry.date!) / 1000) :
@@ -922,7 +923,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             bodyFat: roundMetric(ggEntry.bodyFat),
             muscleMass: roundMetric(ggEntry.muscleMass),
             water: roundMetric(ggEntry.water),
-            bmi: roundMetric(ggEntry.bmi) ?? ConversionTools.calculateBMI(weight: Double(ggEntry.weightInKg), height: calculateHeightCm(height: activeAccount.weightSettings?.height)),
+            bmi: ggEntry.bmi > 0 ? roundMetric(ggEntry.bmi) : ConversionTools.calculateBMI(weight: Double(ggEntry.weightInKg), height: calculateHeightCm(height: activeAccount.weightSettings?.height)),
             source: sourceType.rawValue
         )
         // Create BathScaleMetric with detailed metrics
@@ -987,11 +988,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     private func calculateHeightCm(height: String?) -> Int {
         let storedHeight: Int = {
-            if let heightStr = height, let h = Int(heightStr) { return h }
+            if let heightStr = height,
+               let h = Double(heightStr) {
+                return Int(round(h)) // not optional, so no need for if-let
+            }
             return 680 // fallback: 68.0 inches (5'8")
         }()
         return ConversionTools.convertStoredHeightToCm(storedHeight)
     }
+
     
     /// Creates ScanData from Account using proper conversions and types
     func createScanData(from account: Account?) -> ScanData? {
@@ -1063,7 +1068,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Bluetooth (A3) scales have a resolution of .2 lbs, so they require a specific formula to match
             return Int(ConversionTools.convertBluetoothToStored(Double(weightInKg)) * 10)
         case .A6:
-            return Int(ConversionTools.convertKgToStored(Double(weightInKg)) * 10)
+            return Int(ConversionTools.convertKgToStored(Double(weightInKg)))
         case .R4:
             return Int(ConversionTools.convertLbsToStored(Double(weight)))
         }

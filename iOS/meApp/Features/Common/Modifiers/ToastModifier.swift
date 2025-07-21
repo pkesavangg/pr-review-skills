@@ -145,6 +145,7 @@ struct ToastModifier: ViewModifier {
                     }
                 }
         )
+        .themeDropShadow()
     }
     
     private func addToast(_ toast: ToastModel) {
