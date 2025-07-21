@@ -15,6 +15,7 @@ final class LoggerService: LoggerServiceProtocol {
     @Injector var accountService: AccountService
     
     private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
+    private let loggerApiRepository: LoggerApiRepositoryProtocol = LoggerApiRepository()
     private let sessionId: String = UUID().uuidString
     private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
@@ -103,7 +104,7 @@ final class LoggerService: LoggerServiceProtocol {
     public func sendLogsToServer(accountId: String? = nil, version: String = AppInfo.appVersion) async throws {
         let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
         guard let resolvedAccountId = resolvedAccountId else {
-            throw NSError(domain: "LoggerService", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active account found"])
+            throw LoggerServiceError.noActiveAccount
         }
         
         // Get logs for the account
@@ -111,13 +112,13 @@ final class LoggerService: LoggerServiceProtocol {
         
         // Format logs for API
         let logsPayload = formatLogsForAPI(logs, version: version)
-        
+
         // Send to API using LoggerApiRepository
-        let loggerAPI = LoggerApiRepository()
-        try await loggerAPI.sendLogs(logsPayload)
+        try await loggerApiRepository.sendLogs(logsPayload)
         
         // Clear logs for the account after successful upload
         try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
+
         
         systemLogger.log(level: .info, tag: "LoggerService", message: "Successfully sent \(logs.count) logs to server for account \(resolvedAccountId) and cleared local logs")
     }
