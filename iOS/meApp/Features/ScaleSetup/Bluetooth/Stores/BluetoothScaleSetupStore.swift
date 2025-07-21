@@ -132,7 +132,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Navigation Helpers
-    // MARK: - Navigation Helpers
     func moveToNextStep() {
         // Special handling when moving from permissions step
         
