@@ -586,6 +586,8 @@ struct LoaderStrings {
     static let syncing = "Syncing..."
     static let deletingScale = "Deleting scale..."
     static let deletingEntry = "Deleting entry..."
+    static let savingScale = "Saving scale..."
+    static let exiting = "Exiting..."
 }
 
 struct URLStrings {

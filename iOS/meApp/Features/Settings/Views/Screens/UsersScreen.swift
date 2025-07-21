@@ -127,7 +127,7 @@ struct UsersScreen: View {
         nickname: "Preview Scale",
         sku: "0412",
         mac: "00:00:00:00:00:00",
-        password: "password",
+        password: 3692707582,
         deviceName: "Preview Scale",
         deviceType: "bluetooth",
         broadcastId: 123456,

@@ -38,7 +38,7 @@ final class Device {
     var nickname: String? // User's nickname for the device
     var sku: String? // SKU identifier
     var mac: String? // MAC address
-    var password: String? // Device password
+    var password: Int64? // Device password
     var isDeleted: Bool? // If the device is deleted
     var deviceName: String? // Device name
     var deviceType: String? // Device type (e.g., 'scale', 'bgm')
@@ -66,7 +66,7 @@ final class Device {
          nickname: String? = nil,
          sku: String? = nil,
          mac: String? = nil,
-         password: String? = nil,
+         password: Int64? = nil,
          isDeleted: Bool? = nil,
          deviceName: String? = nil,
          deviceType: String? = nil,
@@ -133,7 +133,7 @@ final class Device {
             nickname: dto.nickname,
             sku: dto.sku,
             mac: dto.mac,
-            password: dto.password.map { String($0) },
+            password: dto.password.map { Int64($0) },
             isDeleted: dto.isDeleted,
             deviceName: dto.name,
             deviceType: "scale",
