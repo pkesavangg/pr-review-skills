@@ -10,8 +10,8 @@ enum WifiScaleSetupStep: Int, CaseIterable {
     case wifiPassword
     /// Select user number.
     case selectUser
-    /// Scale unit button.
-    case scaleUnit
+    /// Pairing mode activation.
+    case activatePairingMode
     /// User confirmation.
     case userConfirm
     /// AP mode.

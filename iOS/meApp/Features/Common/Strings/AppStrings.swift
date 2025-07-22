@@ -756,6 +756,11 @@ struct AppAssets {
     static let setupSetUserNumberGifName: (String) -> String = { sku in
         "\(sku)-Setup-SetUserNumber"
     }
+    
+    // MARK: - WiFi Setup
+    static let wifiStepOnGif: (String) -> String = { sku in
+        sku == "0384" ? "0384-Sync" : "0396-Sync"
+    }
 }
 
 /// Constants used in the AppSync entry result confirmation card

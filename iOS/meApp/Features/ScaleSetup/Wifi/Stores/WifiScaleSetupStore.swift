@@ -38,6 +38,9 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
     
+    @Published var selectedUserNumber: Int?
+    @Published var selectedErrorCode: String?
+    
     /// Callback used by the screen to dismiss itself.
     var dismissAction: DismissAction?
     
@@ -53,6 +56,16 @@ final class WifiScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
+            case .selectUser:
+                return AnyView(UserNumberSelectionView(selectedNumber: selectedUserNumber) { number in
+                    self.selectedUserNumber = number
+                })
+            case .activatePairingMode:
+                return AnyView(ActivatePairingModeView(sku: scaleItem.sku))
+            case .errorSelect:
+                return AnyView(ErrorCodeSelectionView(selectedError: selectedErrorCode) { code in
+                    self.selectedErrorCode = code
+                })
             default:
                 // Empty view placeholder for other steps
                 return AnyView(EmptyView())
@@ -187,8 +200,8 @@ final class WifiScaleSetupStore: ObservableObject {
     private func arePermissionsEnabled() -> Bool {
         // For WiFi setup, we need Location permission and switches enabled
         return permissionsService.getPermissionState(.LOCATION) == .ENABLED &&
-               permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED &&
-               permissionsService.getPermissionState(.WIFI_SWITCH) == .ENABLED
+        permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED &&
+        permissionsService.getPermissionState(.WIFI_SWITCH) == .ENABLED
     }
     
     private func updateNextEnabled() {
@@ -227,4 +240,4 @@ final class WifiScaleSetupStore: ObservableObject {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }
-} 
+}
