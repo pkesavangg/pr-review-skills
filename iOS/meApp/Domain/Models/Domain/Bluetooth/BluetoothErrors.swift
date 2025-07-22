@@ -31,6 +31,7 @@ enum BluetoothServiceError: Error, LocalizedError {
     case firmwareUpdateFailed(Error)
     case clearDataFailed(Error)
     case updateProfileFailed(Error)
+    case getDeviceLogsFailed(Error)
     case getScaleUserListFailed(Error)
     case getDeviceInfoFailed(Error)
     case getMeasurementLiveDataFailed(Error)

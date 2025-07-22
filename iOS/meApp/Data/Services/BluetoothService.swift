@@ -643,7 +643,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
-            return .failure(.updateProfileFailed(error))
+            return .failure(.getDeviceLogsFailed(error))
         }
     }
     
