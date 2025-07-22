@@ -20,7 +20,8 @@ class HelpStore: ObservableObject {
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
-    
+    @Injector var scaleService: ScaleService
+    var kvStorage = KvStorageService.shared
     var theme = Theme.shared
     
     @Published var activeAccount: Account?
@@ -126,9 +127,44 @@ class HelpStore: ObservableObject {
     
     /// Clears all local persistence (dangerous!).
     func clearAllLocalData() {
-        logger.log(level: .info, tag: tag, message: "Clear Local Data tapped")
-        // TODO: Wire into actual local data wiping routine.
-        notificationService.showToast(ToastModel(message: "Local data cleared."))
+        Task {
+            let alertLang = AlertStrings.DataClearingAlert.self
+            
+            // Show loading indicator
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.pleaseWait))
+            
+            do {
+                // Clear all data from repositories
+                try await Task.sleep(for: .seconds(3)) // Simulate delay for UI
+                kvStorage.clearAll()
+                await entryService.clearAllData()
+                await scaleService.clearAllData()
+                try await accountService.deleteAllAccounts()
+                // Show success alert
+                notificationService.dismissLoader()
+                let alert = AlertModel(
+                    title: alertLang.successHeader,
+                    message: alertLang.successMessage,
+                    buttons: [
+                        AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
+                    ]
+                )
+                notificationService.showAlert(alert)
+                
+            } catch {
+                // Show error alert
+                notificationService.dismissLoader()
+                let alert = AlertModel(
+                    title: alertLang.errorHeader,
+                    message: alertLang.errorMessage,
+                    buttons: [
+                        AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
+                    ]
+                )
+                notificationService.showAlert(alert)
+                logger.log(level: .error, tag: tag, message: "Failed to clear local data: \(error.localizedDescription)")
+            }
+        }
     }
     
     /// Shows the system/app rating modal.

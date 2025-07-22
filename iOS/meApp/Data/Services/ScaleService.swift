@@ -56,6 +56,16 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     // MARK: - Published State
     @Published private(set) var scales: [Device] = []
 
+    /// Clears all scale data from local storage.
+    func clearAllData() async {
+        do {
+            try await localRepository.clearAllData()
+            logger.log(level: .info, tag: tag, message: "Successfully cleared all scale data")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to clear scale data: \(error.localizedDescription)")
+        }
+    }
+
     /// Default initializer that creates its own dependencies.
     init() {
         self.accountService = AccountService.shared

@@ -574,6 +574,14 @@ struct AlertStrings {
         static let dismissButton = "DISMISS"
         static let appPermissionButton = "APP PERMISSION"
     }
+    
+    struct DataClearingAlert {
+        static let successHeader = "Your data has been cleared."
+        static let successMessage = "To complete this, you will need to close your app."
+        static let errorHeader = "Something may have gone wrong."
+        static let errorMessage = "Please restart your app and try again. If the problem continues, you can clear your data by deleting the app."
+        static let okButton = "OK"
+    }
 }
 
 struct LoaderStrings {
@@ -594,6 +602,7 @@ struct LoaderStrings {
     static let exiting = "Exiting..."
     static let sendingLogs = "Sending logs..."
     static let resync = "Resyncing Data..."
+    static let pleaseWait = "Please wait..."
 }
 
 struct URLStrings {
