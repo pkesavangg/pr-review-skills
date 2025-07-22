@@ -145,9 +145,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     
     /// Deletes all accounts locally.
     func deleteAllAccounts() async throws {
-        guard let accountId = activeAccount?.accountId else {
-            throw AccountError.noActiveAccount
-        }
         do {
             try await localRepo.deleteAllAccounts()
             try await updatePublishedState()

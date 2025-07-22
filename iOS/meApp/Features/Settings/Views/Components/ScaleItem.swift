@@ -34,7 +34,7 @@ struct ScaleItemView: View {
         self.hideChevron = hideChevron
         self.isDisabled = isDisabled
     }
-
+    
     private var statusIconDetails: (icon: String, color: Color) {
         switch status {
         case .setupIncomplete:
@@ -47,7 +47,7 @@ struct ScaleItemView: View {
             return ("", .clear) // Not used since status row is hidden
         }
     }
-
+    
     var body: some View {
         HStack(spacing: .spacingSM) {
             scaleIcon
@@ -55,20 +55,20 @@ struct ScaleItemView: View {
                 .scaledToFit()
                 .frame(width: 75, height: 75)
                 .opacity(isDisabled ? 0.5 : 1)
-
+            
             VStack(alignment: .leading) {
                 Text(modelNumber)
                     .fontOpenSans(.heading5)
                     .fontWeight(.bold)
                     .foregroundColor(theme.textHeading)
-.opacity(isDisabled ? 0.7 : 1)
+                    .opacity(isDisabled ? 0.7 : 1)
                 Text(scaleName)
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
                     .lineLimit(1)
                     .padding(.bottom, status == .noStatus ? 0 : .spacingXS)
                     .opacity(isDisabled ? 0.7 : 1)
-
+                
                 if status != .noStatus {
                     HStack(spacing: .spacingXS) {
                         AppIconView(
@@ -77,7 +77,7 @@ struct ScaleItemView: View {
                         )
                         .foregroundColor(statusIconDetails.color)
                         .opacity(isDisabled ? 0.5 : 1)
-
+                        
                         Text(status.displayText)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
@@ -87,7 +87,7 @@ struct ScaleItemView: View {
             }
             
             Spacer()
-
+            
             if !hideChevron && !isDisabled {
                 Button(action: {
                     onTap()

@@ -29,14 +29,14 @@ struct ScaleLogSheetView: View {
                                     scaleIcon: scaleIcon(for: scale.sku),
                                     modelNumber: scale.sku ?? "----",
                                     scaleName: scale.nickname ?? scale.deviceName ?? "Unknown Scale",
-                                    status: scale.isConnected ?? false ? .connected : .connected,
+                                    status: scale.isConnected ?? false ? .connected : .notConnected,
                                     onTap: {
                                         helpStore.sendScaleLogHandler(broadcastId: scale.broadcastIdString)
                                     },
                                     isDisabled: !(scale.isConnected ?? false)
                                 )
                             }
-                            .disabled(scale.isConnected != true)
+                            .disabled(!(scale.isConnected ?? false))
                             Divider()
                                 .frame(height: 0.5)
                                 .frame(maxWidth: .infinity)
