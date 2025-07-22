@@ -426,7 +426,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     // MARK: - Internal Helpers
     private func refreshScalesFromLocal() async {
-        print("refreshScalesFromLocal")
         do {
             self.scales = try await localRepository.listScales().filter { $0.isDeleted != true }
         } catch {
